@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { StepAiSuggestions } from './step-ai-suggestions';
 
 const UPGRADE_NOTICE =
-    "AI suggestions are a Standard Plan feature. You'll choose a plan at the end of the onboarding.";
+    "AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.";
 
 // Mutable so each test can flip whether an upgrade is required before render.
 const state = {
@@ -55,19 +55,53 @@ vi.mock('@inertiajs/react', () => ({
 
 describe('StepAiSuggestions upgrade notice', () => {
     it('warns free users that AI suggestions require a paid plan', async () => {
+        state.consented = false;
         state.requires_upgrade = true;
-        render(<StepAiSuggestions categories={[]} onComplete={vi.fn()} />);
+        render(
+            <StepAiSuggestions
+                categories={[]}
+                hasConnectedAccount={false}
+                onComplete={vi.fn()}
+            />,
+        );
 
         expect(await screen.findByText(UPGRADE_NOTICE)).toBeInTheDocument();
     });
 
     it('omits the notice when no upgrade is required', async () => {
+        state.consented = false;
         state.requires_upgrade = false;
-        render(<StepAiSuggestions categories={[]} onComplete={vi.fn()} />);
+        render(
+            <StepAiSuggestions
+                categories={[]}
+                hasConnectedAccount={false}
+                onComplete={vi.fn()}
+            />,
+        );
 
         expect(
             await screen.findByText('Suggest my rules with AI'),
         ).toBeInTheDocument();
         expect(screen.queryByText(UPGRADE_NOTICE)).not.toBeInTheDocument();
+    });
+
+    it('activates AI directly for users with a connected bank', async () => {
+        state.consented = false;
+        state.requires_upgrade = false;
+        render(
+            <StepAiSuggestions
+                categories={[]}
+                hasConnectedAccount
+                onComplete={vi.fn()}
+            />,
+        );
+
+        // Auto-consent runs, so the prompt is skipped and we jump to generating.
+        expect(
+            await screen.findByText('Looking for patterns'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('Suggest my rules with AI'),
+        ).not.toBeInTheDocument();
     });
 });

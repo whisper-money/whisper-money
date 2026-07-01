@@ -600,6 +600,69 @@ it('completes entire onboarding flow with account creation, transaction import, 
 });
 
 // =============================================================================
+// AI Suggestions Consent Tests
+// =============================================================================
+
+it('activates AI directly without a consent prompt when a bank is connected', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $bank = Bank::factory()->create(['name' => 'Connected AI Bank']);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'banking_connection_id' => $connection->id,
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit('/onboarding?step=ai-suggestions');
+
+    // A linked bank already commits the user to a paid plan, so the consent
+    // prompt is skipped and AI is turned on for them. With no transactions yet
+    // the run stops at the "need more data" screen instead of calling the AI.
+    $page->wait(3)
+        ->assertDontSee('Let AI organize your money')
+        ->assertDontSee('Suggest my rules with AI')
+        ->assertSee('AI suggestions need more data')
+        ->assertNoJavascriptErrors();
+
+    expect($user->refresh()->hasActiveAiConsent())->toBeTrue();
+});
+
+it('asks for consent before activating AI when no bank is connected', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $this->actingAs($user);
+
+    expect($user->hasActiveAiConsent())->toBeFalse();
+
+    $page = visit('/onboarding?step=ai-suggestions');
+
+    // Free users must opt in, and are told AI commits them to picking a plan.
+    $page->wait(2)
+        ->assertSee('Let AI organize your money')
+        ->assertSee("AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.")
+        ->assertSee('Suggest my rules with AI')
+        ->assertNoJavascriptErrors();
+
+    // Nothing is activated until they explicitly accept.
+    expect($user->refresh()->hasActiveAiConsent())->toBeFalse();
+
+    $page->click('Suggest my rules with AI')
+        ->wait(3)
+        ->assertNoJavascriptErrors();
+
+    expect($user->refresh()->hasActiveAiConsent())->toBeTrue();
+});
+
+// =============================================================================
 // Subscribe Page Free Plan Tests
 // =============================================================================
 
@@ -614,5 +677,37 @@ it('shows free plan option on subscribe page when no bank was connected', functi
 
     $page->assertPathIs('/subscribe')
         ->assertSee('Continue for free')
+        ->assertNoJavascriptErrors();
+});
+
+it('forces a plan choice on subscribe when a bank is connected', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user);
+
+    $page = visit('/subscribe');
+
+    $page->assertPathIs('/subscribe')
+        ->assertSee('Start My Financial Journey')
+        ->assertDontSee('Continue for free')
+        ->assertNoJavascriptErrors();
+});
+
+it('forces a plan choice on subscribe when AI consent is active', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    $user->recordAiConsent();
+
+    $this->actingAs($user);
+
+    $page = visit('/subscribe');
+
+    $page->assertPathIs('/subscribe')
+        ->assertSee('Start My Financial Journey')
+        ->assertDontSee('Continue for free')
         ->assertNoJavascriptErrors();
 });

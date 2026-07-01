@@ -27,7 +27,11 @@ describe('StepAiSuggestions generating state', () => {
 
     function renderStep() {
         return render(
-            <StepAiSuggestions categories={[]} onComplete={vi.fn()} />,
+            <StepAiSuggestions
+                categories={[]}
+                hasConnectedAccount={false}
+                onComplete={vi.fn()}
+            />,
         );
     }
 
