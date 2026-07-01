@@ -11,7 +11,7 @@ import {
     OctagonXIcon,
     TriangleAlertIcon,
 } from 'lucide-react';
-import { StrictMode, useEffect } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast, Toaster } from 'sonner';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
@@ -134,6 +134,35 @@ const getProgressBarColor = () => {
     return isDark ? '#EEE' : '#4B5563'; // gray-400 for dark mode, gray-600 for light mode
 };
 
+const isOnboardingPath = () =>
+    typeof window !== 'undefined' &&
+    window.location.pathname.startsWith('/onboarding');
+
+// Onboarding has no bottom navigation bar, so toasts sit flush at the bottom
+// center instead of being lifted to clear the (absent) mobile tab bar.
+function AppToaster() {
+    const [isOnboarding, setIsOnboarding] = useState(isOnboardingPath);
+
+    useEffect(() => {
+        return router.on('navigate', () => setIsOnboarding(isOnboardingPath()));
+    }, []);
+
+    return (
+        <Toaster
+            richColors
+            position={isOnboarding ? 'bottom-center' : undefined}
+            mobileOffset={{ bottom: isOnboarding ? '16px' : '110px' }}
+            icons={{
+                success: <CircleCheckIcon className="size-4" />,
+                info: <InfoIcon className="size-4" />,
+                warning: <TriangleAlertIcon className="size-4" />,
+                error: <OctagonXIcon className="size-4" />,
+                loading: <Loader2Icon className="size-4 animate-spin" />,
+            }}
+        />
+    );
+}
+
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     resolve: (name) =>
@@ -228,23 +257,7 @@ createInertiaApp({
                                     initialExpiredConnections
                                 }
                             />
-                            <Toaster
-                                richColors
-                                mobileOffset={{ bottom: '110px' }}
-                                icons={{
-                                    success: (
-                                        <CircleCheckIcon className="size-4" />
-                                    ),
-                                    info: <InfoIcon className="size-4" />,
-                                    warning: (
-                                        <TriangleAlertIcon className="size-4" />
-                                    ),
-                                    error: <OctagonXIcon className="size-4" />,
-                                    loading: (
-                                        <Loader2Icon className="size-4 animate-spin" />
-                                    ),
-                                }}
-                            />
+                            <AppToaster />
                         </SyncProvider>
                     </PrivacyModeProvider>
                 </EncryptionKeyProvider>

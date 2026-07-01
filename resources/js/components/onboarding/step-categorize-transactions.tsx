@@ -52,7 +52,6 @@ export function StepCategorizeTransactions({
         isComplete,
         uncategorizedTransactions,
         currentTransaction,
-        remainingCount,
         animationState,
         lastSelectedCategory,
         sortedCategories,
@@ -78,8 +77,6 @@ export function StepCategorizeTransactions({
         isComplete ||
         categorizedCount >= minimumRequired ||
         totalAvailable === 0;
-
-    const hasReachedMinimum = categorizedCount >= minimumRequired;
 
     // Show rules hint after first categorization, only once
     useEffect(() => {
@@ -262,6 +259,51 @@ export function StepCategorizeTransactions({
 
     return (
         <div className="flex w-full flex-col gap-4">
+            {/* Progress banner: makes the "categorize at least N" goal obvious */}
+            <div className="rounded-xl border bg-card p-4">
+                {canContinue ? (
+                    <div className="flex items-center gap-3">
+                        <CheckCircle2 className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <p className="text-sm font-medium">
+                            {__(
+                                'Done! You can continue now, or keep categorizing if you want.',
+                            )}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-baseline justify-between gap-3">
+                            <p className="text-sm font-medium">
+                                {__(
+                                    'To continue, you need to categorize at least :count transactions.',
+                                    { count: minimumRequired },
+                                )}
+                            </p>
+                            <span className="shrink-0 text-sm font-semibold tabular-nums">
+                                {categorizedCount}/{minimumRequired}
+                            </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                            {Array.from({ length: minimumRequired }).map(
+                                (_, i) => (
+                                    <div
+                                        key={i}
+                                        className={`h-2 flex-1 rounded-full transition-colors ${
+                                            i < categorizedCount
+                                                ? 'bg-violet-600 dark:bg-violet-400'
+                                                : 'bg-muted'
+                                        }`}
+                                    />
+                                ),
+                            )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            {__('You do not need to categorize all of them.')}
+                        </p>
+                    </div>
+                )}
+            </div>
+
             {/* Header row */}
             <div className="flex items-center justify-between">
                 <Popover open={showRulesHint} onOpenChange={() => {}}>
@@ -322,27 +364,14 @@ export function StepCategorizeTransactions({
                         size="sm"
                         onClick={onComplete}
                         disabled={!canContinue}
+                        className={
+                            canContinue
+                                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                                : undefined
+                        }
                     >
                         {__('Continue')}
                     </Button>
-
-                    <span className="text-sm text-muted-foreground">
-                        {hasReachedMinimum ? (
-                            <>
-                                <span className="font-medium text-foreground">
-                                    {remainingCount}
-                                </span>{' '}
-                                {__('remaining')}
-                            </>
-                        ) : (
-                            <>
-                                <span className="font-medium text-foreground">
-                                    {categorizedCount}
-                                </span>
-                                /{minimumRequired}
-                            </>
-                        )}
-                    </span>
                 </div>
             </div>
 
