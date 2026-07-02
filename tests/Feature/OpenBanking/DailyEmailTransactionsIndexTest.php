@@ -11,4 +11,5 @@ it('has a composite index supporting the daily synced-email transaction query', 
     expect($match)->not->toBeNull(
         'Expected a (user_id, source, created_at) index on transactions for the daily email query.'
     );
+    expect($match['name'])->toBe('idx_transactions_user_source_created');
 });
