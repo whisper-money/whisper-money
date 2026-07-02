@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\TransactionDescriptionFormatter;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Support\Facades\DB;
 
 test('sync creates transactions from provider data', function () {
     $user = User::factory()->onboarded()->create();
@@ -519,6 +520,50 @@ test('sync still dedupes when bank later supplies a real id for a fingerprinted 
     // explosion — and crucially the unique index does not throw.
     $service->sync($account, '2025-05-01', '2025-05-31');
     expect($account->transactions()->count())->toBeLessThanOrEqual(2);
+});
+
+test('sync checks for duplicates once per run regardless of batch size', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactions = collect(range(1, 6))->map(fn (int $i) => [
+        'transaction_id' => "txn-{$i}",
+        'transaction_amount' => ['amount' => '10.00', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-01-15',
+        'remittance_information' => ["Purchase {$i}"],
+    ])->all();
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn(['transactions' => $transactions, 'continuation_key' => null]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+
+    DB::enableQueryLog();
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+    $queries = collect(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    expect($created)->toBe(6);
+
+    // The dedup lookup is a single preload SELECT, not one exists() per row.
+    $dedupSelects = $queries->filter(fn (array $q): bool => str_contains($q['query'], 'dedup_fingerprint')
+        && str_starts_with(strtolower(ltrim($q['query'])), 'select')
+    );
+    expect($dedupSelects)->toHaveCount(1);
+
+    // The old per-row `select exists(... dedup_fingerprint ...)` probe is gone.
+    $dedupExistsProbes = $queries->filter(fn (array $q): bool => str_contains(strtolower($q['query']), 'exists(')
+        && str_contains($q['query'], 'dedup_fingerprint')
+    );
+    expect($dedupExistsProbes)->toHaveCount(0);
 });
 
 test('sync dedupes against soft-deleted fingerprinted transactions', function () {
