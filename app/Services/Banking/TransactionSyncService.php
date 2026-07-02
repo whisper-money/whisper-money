@@ -156,10 +156,13 @@ class TransactionSyncService
         $knownFingerprints = [];
         $knownExternalIds = [];
 
+        // cursor() streams rows so peak memory is the two sets, not an extra
+        // buffered Collection of every historical row on top of them.
         $rows = $account->transactions()
             ->withTrashed()
             ->toBase()
-            ->get(['dedup_fingerprint', 'external_transaction_id']);
+            ->select(['dedup_fingerprint', 'external_transaction_id'])
+            ->cursor();
 
         foreach ($rows as $row) {
             if ($row->dedup_fingerprint !== null) {
