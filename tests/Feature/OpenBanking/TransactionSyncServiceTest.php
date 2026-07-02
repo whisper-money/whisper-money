@@ -562,6 +562,42 @@ test('sync dedupes external ids case-insensitively like the production collation
     expect($account->transactions()->count())->toBe(1);
 });
 
+test('sync dedupes a transaction that repeats across pages in one run', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $payload = [
+        'transaction_id' => 'txn-dup',
+        'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-01-15',
+        'remittance_information' => ['Repeated across pages'],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->ordered()
+        ->andReturn(['transactions' => [$payload], 'continuation_key' => 'page2']);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->ordered()
+        ->andReturn(['transactions' => [$payload], 'continuation_key' => null]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+
+    // The second occurrence is folded into the in-memory set from the first
+    // insert, so it is deduped without relying on the unique-index backstop.
+    expect($created)->toBe(1);
+    expect($account->transactions()->count())->toBe(1);
+});
+
 test('sync checks for duplicates once per run regardless of batch size', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
