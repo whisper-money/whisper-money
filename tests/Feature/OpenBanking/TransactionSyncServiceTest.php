@@ -522,6 +522,46 @@ test('sync still dedupes when bank later supplies a real id for a fingerprinted 
     expect($account->transactions()->count())->toBeLessThanOrEqual(2);
 });
 
+test('sync dedupes external ids case-insensitively like the production collation', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    // Legacy row keyed only on the upstream id (no fingerprint), stored uppercase.
+    Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'external_transaction_id' => 'ABC-001',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    // Same id, different case — utf8mb4_unicode_ci treats these as equal.
+                    'transaction_id' => 'abc-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['Duplicate with different case'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+
+    expect($created)->toBe(0);
+    expect($account->transactions()->count())->toBe(1);
+});
+
 test('sync checks for duplicates once per run regardless of batch size', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);

@@ -99,7 +99,7 @@ class TransactionSyncService
         // match on the fingerprint, or — for legacy rows keyed solely on the
         // upstream id before the fingerprint column existed — the external id.
         $exists = isset($knownFingerprints[$fingerprint])
-            || ($externalId !== null && isset($knownExternalIds[$externalId]));
+            || ($externalId !== null && isset($knownExternalIds[$this->dedupExternalIdKey($externalId)]));
 
         if ($exists) {
             return false;
@@ -138,10 +138,24 @@ class TransactionSyncService
         $knownFingerprints[$fingerprint] = true;
 
         if ($externalId !== null) {
-            $knownExternalIds[$externalId] = true;
+            $knownExternalIds[$this->dedupExternalIdKey($externalId)] = true;
         }
 
         return true;
+    }
+
+    /**
+     * Normalize an external transaction id for dedup lookups so matching stays
+     * case-insensitive, mirroring the production `utf8mb4_unicode_ci` collation
+     * the old `where external_transaction_id = ?` probe relied on. Without this
+     * a legacy id stored as `ABC` would no longer dedup an incoming `abc`, and
+     * since there is no unique index on `external_transaction_id` that would
+     * silently double-import the transaction. (Accent/width folding is not
+     * replicated; bank reference ids are ASCII in practice.)
+     */
+    private function dedupExternalIdKey(string $externalId): string
+    {
+        return mb_strtolower($externalId);
     }
 
     /**
@@ -170,7 +184,7 @@ class TransactionSyncService
             }
 
             if ($row->external_transaction_id !== null) {
-                $knownExternalIds[$row->external_transaction_id] = true;
+                $knownExternalIds[$this->dedupExternalIdKey($row->external_transaction_id)] = true;
             }
         }
 
