@@ -3,29 +3,17 @@
 namespace App\Providers;
 
 use App\Contracts\BankingProviderInterface;
-use App\Events\TransactionCreated;
-use App\Events\TransactionDeleted;
-use App\Events\TransactionUpdated;
 use App\Http\Responses\RegisterResponse;
-use App\Listeners\ApplyAutomationRules;
-use App\Listeners\AssignTransactionToBudget;
-use App\Listeners\CategorizeTransactionWithAi;
-use App\Listeners\PostStripeEventToDiscord;
-use App\Listeners\UnassignTransactionFromBudget;
-use App\Listeners\UpdateLastLoggedInAt;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
 use App\Services\Ai\UncategorizedTransactionMatcher;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Discord\DiscordWebhook;
-use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
-use Laravel\Cashier\Events\WebhookReceived;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 
 class AppServiceProvider extends ServiceProvider
@@ -59,14 +47,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Event::listen(TransactionCreated::class, ApplyAutomationRules::class);
-        Event::listen(TransactionCreated::class, AssignTransactionToBudget::class);
-        Event::listen(TransactionCreated::class, CategorizeTransactionWithAi::class);
-        Event::listen(TransactionUpdated::class, AssignTransactionToBudget::class);
-        Event::listen(TransactionDeleted::class, UnassignTransactionFromBudget::class);
-        Event::listen(WebhookReceived::class, PostStripeEventToDiscord::class);
-        Event::listen(Login::class, UpdateLastLoggedInAt::class);
-
+        // Event listeners are registered automatically via Laravel's event
+        // discovery of the App\Listeners directory (matched by their handle()
+        // type-hint). Do not also register them explicitly here — doing both
+        // registers every listener twice, so each queued listener is dispatched
+        // twice per event.
         RateLimiter::for('emails', function (object $job): Limit {
             return Limit::perSecond(30);
         });
