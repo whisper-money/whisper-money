@@ -31,6 +31,15 @@ class TransactionSyncService
         $dailyBalances = [];
         $bankName = $account->bank?->name;
 
+        // Preload the account's existing dedup keys once. Without this every
+        // incoming transaction ran its own exists() probe (the N+1 in
+        // PHP-LARAVEL-3Y). Keys inserted during this run are folded back into
+        // the sets so duplicates within the same sync are still caught in
+        // memory, and the unique index still backstops concurrent syncs.
+        // ponytail: loads every key for the account; if one account's history
+        // ever dwarfs its sync window, narrow this to the incoming batch's keys.
+        [$knownFingerprints, $knownExternalIds] = $this->loadExistingDedupKeys($account);
+
         do {
             $result = $this->provider->getTransactions(
                 $account->external_account_id,
@@ -41,7 +50,7 @@ class TransactionSyncService
             );
 
             foreach ($result['transactions'] as $transaction) {
-                if ($this->importTransaction($account, $transaction, $bankName)) {
+                if ($this->importTransaction($account, $transaction, $bankName, $knownFingerprints, $knownExternalIds)) {
                     $created++;
                 }
 
@@ -81,23 +90,16 @@ class TransactionSyncService
      *    certain card transactions, which previously bypassed dedup.
      *  - Race conditions between overlapping sync runs.
      */
-    private function importTransaction(Account $account, array $data, ?string $bankName): bool
+    private function importTransaction(Account $account, array $data, ?string $bankName, array &$knownFingerprints, array &$knownExternalIds): bool
     {
         $externalId = $data['transaction_id'] ?? $data['entry_reference'] ?? null;
         $fingerprint = TransactionFingerprint::for($data);
 
-        $exists = $account->transactions()
-            ->withTrashed()
-            ->where(function ($query) use ($fingerprint, $externalId) {
-                $query->where('dedup_fingerprint', $fingerprint);
-
-                if ($externalId !== null) {
-                    // Also match legacy rows imported before the fingerprint
-                    // column existed, which are keyed solely on the upstream id.
-                    $query->orWhere('external_transaction_id', $externalId);
-                }
-            })
-            ->exists();
+        // Mirror of the previous exists() probe against the preloaded sets:
+        // match on the fingerprint, or — for legacy rows keyed solely on the
+        // upstream id before the fingerprint column existed — the external id.
+        $exists = isset($knownFingerprints[$fingerprint])
+            || ($externalId !== null && isset($knownExternalIds[$this->dedupExternalIdKey($externalId)]));
 
         if ($exists) {
             return false;
@@ -133,7 +135,60 @@ class TransactionSyncService
             return false;
         }
 
+        $knownFingerprints[$fingerprint] = true;
+
+        if ($externalId !== null) {
+            $knownExternalIds[$this->dedupExternalIdKey($externalId)] = true;
+        }
+
         return true;
+    }
+
+    /**
+     * Normalize an external transaction id for dedup lookups so matching stays
+     * case-insensitive, mirroring the production `utf8mb4_unicode_ci` collation
+     * the old `where external_transaction_id = ?` probe relied on. Without this
+     * a legacy id stored as `ABC` would no longer dedup an incoming `abc`, and
+     * since there is no unique index on `external_transaction_id` that would
+     * silently double-import the transaction. (Accent/width folding is not
+     * replicated; bank reference ids are ASCII in practice.)
+     */
+    private function dedupExternalIdKey(string $externalId): string
+    {
+        return mb_strtolower($externalId);
+    }
+
+    /**
+     * Preload the account's existing dedup keys, including soft-deleted rows,
+     * so duplicate detection runs against in-memory sets instead of one
+     * exists() query per incoming transaction.
+     *
+     * @return array{0: array<string, true>, 1: array<string, true>} fingerprints keyed set, external ids keyed set
+     */
+    private function loadExistingDedupKeys(Account $account): array
+    {
+        $knownFingerprints = [];
+        $knownExternalIds = [];
+
+        // cursor() streams rows so peak memory is the two sets, not an extra
+        // buffered Collection of every historical row on top of them.
+        $rows = $account->transactions()
+            ->withTrashed()
+            ->toBase()
+            ->select(['dedup_fingerprint', 'external_transaction_id'])
+            ->cursor();
+
+        foreach ($rows as $row) {
+            if ($row->dedup_fingerprint !== null) {
+                $knownFingerprints[$row->dedup_fingerprint] = true;
+            }
+
+            if ($row->external_transaction_id !== null) {
+                $knownExternalIds[$this->dedupExternalIdKey($row->external_transaction_id)] = true;
+            }
+        }
+
+        return [$knownFingerprints, $knownExternalIds];
     }
 
     /**

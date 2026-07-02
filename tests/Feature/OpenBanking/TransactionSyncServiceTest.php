@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\TransactionDescriptionFormatter;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Support\Facades\DB;
 
 test('sync creates transactions from provider data', function () {
     $user = User::factory()->onboarded()->create();
@@ -519,6 +520,126 @@ test('sync still dedupes when bank later supplies a real id for a fingerprinted 
     // explosion — and crucially the unique index does not throw.
     $service->sync($account, '2025-05-01', '2025-05-31');
     expect($account->transactions()->count())->toBeLessThanOrEqual(2);
+});
+
+test('sync dedupes external ids case-insensitively like the production collation', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    // Legacy row keyed only on the upstream id (no fingerprint), stored uppercase.
+    Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'external_transaction_id' => 'ABC-001',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    // Same id, different case — utf8mb4_unicode_ci treats these as equal.
+                    'transaction_id' => 'abc-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['Duplicate with different case'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+
+    expect($created)->toBe(0);
+    expect($account->transactions()->count())->toBe(1);
+});
+
+test('sync dedupes a transaction that repeats across pages in one run', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $payload = [
+        'transaction_id' => 'txn-dup',
+        'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-01-15',
+        'remittance_information' => ['Repeated across pages'],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->ordered()
+        ->andReturn(['transactions' => [$payload], 'continuation_key' => 'page2']);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->ordered()
+        ->andReturn(['transactions' => [$payload], 'continuation_key' => null]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+
+    // The second occurrence is folded into the in-memory set from the first
+    // insert, so it is deduped without relying on the unique-index backstop.
+    expect($created)->toBe(1);
+    expect($account->transactions()->count())->toBe(1);
+});
+
+test('sync checks for duplicates once per run regardless of batch size', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactions = collect(range(1, 6))->map(fn (int $i) => [
+        'transaction_id' => "txn-{$i}",
+        'transaction_amount' => ['amount' => '10.00', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-01-15',
+        'remittance_information' => ["Purchase {$i}"],
+    ])->all();
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn(['transactions' => $transactions, 'continuation_key' => null]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+
+    DB::enableQueryLog();
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+    $queries = collect(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    expect($created)->toBe(6);
+
+    // The dedup lookup is a single preload SELECT, not one exists() per row.
+    $dedupSelects = $queries->filter(fn (array $q): bool => str_contains($q['query'], 'dedup_fingerprint')
+        && str_starts_with(strtolower(ltrim($q['query'])), 'select')
+    );
+    expect($dedupSelects)->toHaveCount(1);
+
+    // The old per-row `select exists(... dedup_fingerprint ...)` probe is gone.
+    $dedupExistsProbes = $queries->filter(fn (array $q): bool => str_contains(strtolower($q['query']), 'exists(')
+        && str_contains($q['query'], 'dedup_fingerprint')
+    );
+    expect($dedupExistsProbes)->toHaveCount(0);
 });
 
 test('sync dedupes against soft-deleted fingerprinted transactions', function () {
