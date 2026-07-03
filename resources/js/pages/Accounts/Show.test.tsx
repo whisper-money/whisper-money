@@ -7,6 +7,7 @@ import AccountShow from './Show';
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     router: { reload: vi.fn() },
+    Deferred: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('@/actions/App/Http/Controllers/AccountController', () => ({
