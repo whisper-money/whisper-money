@@ -38,7 +38,10 @@ export default defineConfig({
                       url: 'https://de.sentry.io/',
                       authToken: sentryAuthToken,
                       org: 'whisper-money',
-                      project: 'frontend',
+                      // Frontend JS errors are captured into the php-laravel
+                      // project (see app.tsx Sentry.init using SENTRY_LARAVEL_DSN),
+                      // so maps must be uploaded there to symbolicate them.
+                      project: 'php-laravel',
                       release: {
                           create: false,
                           finalize: false,
