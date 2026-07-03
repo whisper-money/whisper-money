@@ -4,9 +4,18 @@ use App\Models\User;
 
 beforeEach(function () {
     config(['app.demo' => [
+        'enabled' => true,
         'email' => 'demo@whisper.money',
         'password' => 'demo',
     ]]);
+});
+
+test('demo:reset does nothing when the demo account is disabled', function () {
+    config(['app.demo.enabled' => false]);
+
+    $this->artisan('demo:reset')->assertSuccessful();
+
+    expect(User::where('email', 'demo@whisper.money')->exists())->toBeFalse();
 });
 
 test('demo:reset fails if demo email is not configured', function () {
