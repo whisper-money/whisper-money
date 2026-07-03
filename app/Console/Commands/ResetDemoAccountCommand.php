@@ -40,6 +40,14 @@ class ResetDemoAccountCommand extends Command
 
     public function handle(): int
     {
+        $demoEnabled = config('app.demo.enabled');
+
+        if (! $demoEnabled) {
+            $this->info('Demo account is not enabled');
+
+            return self::SUCCESS;
+        }
+
         $demoEmail = config('app.demo.email');
         $demoPassword = config('app.demo.password');
 
