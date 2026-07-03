@@ -50,3 +50,26 @@ it('caps the page size at 100', function () {
 
     $response->assertOk()->assertJsonPath('per_page', 100);
 });
+
+it('clamps a non-positive page size up to 1', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    $response = $this->getJson('/api/transactions?account_id='.$account->id.'&per_page=0');
+
+    $response->assertOk()->assertJsonPath('per_page', 1);
+});
+
+it('does not return transactions from another users account', function () {
+    $stranger = User::factory()->create();
+    $strangerAccount = Account::factory()->create(['user_id' => $stranger->id]);
+
+    Transaction::factory()->count(2)->create([
+        'user_id' => $stranger->id,
+        'account_id' => $strangerAccount->id,
+    ]);
+
+    $response = $this->getJson('/api/transactions?account_id='.$strangerAccount->id);
+
+    $response->assertOk();
+    expect($response->json('data'))->toBe([]);
+});

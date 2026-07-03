@@ -26,7 +26,8 @@ class TransactionController extends Controller
 
         if ($accountId = $request->query('account_id')) {
             $query->where('account_id', $accountId)
-                ->orderBy('transaction_date', 'desc');
+                ->orderBy('transaction_date', 'desc')
+                ->orderBy('id', 'desc');
         }
 
         $perPage = min(max((int) $request->query('per_page', 100), 1), 100);
