@@ -9,6 +9,10 @@ use App\Models\UserMailLog;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 
+// Freeze time so day-relative timestamps land on exact boundaries; without this the
+// two now() calls below drift by microseconds and tip the "exactly 3 days" case over.
+beforeEach(fn () => $this->freezeTime());
+
 /**
  * Creates a user whose AI consent was recorded $acceptedDaysAgo days ago, having
  * signed up $signedUpDaysAgo days ago.
