@@ -99,7 +99,7 @@ Route::get('terms', function () {
     return Inertia::render('terms');
 })->name('terms');
 
-Route::middleware(['auth', 'verified', 'block-demo'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe', [SubscriptionController::class, 'index'])->name('subscribe');
     Route::get('subscribe/checkout', [SubscriptionController::class, 'checkout'])->name('subscribe.checkout');
     Route::get('subscribe/success', [SubscriptionController::class, 'success'])->name('subscribe.success');
@@ -135,7 +135,7 @@ Route::middleware(['auth', 'verified', 'block-demo'])->group(function () {
     Route::delete('integration-requests/{integrationRequest}/vote', [IntegrationRequestController::class, 'removeVote'])->name('integration-requests.vote.destroy');
 });
 
-Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'block-demo'])->group(function () {
+Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     // Renders the dashboard with the integration-requests drawer opened on top.
     Route::get('integration-requests', [IntegrationRequestController::class, 'index'])->name('integration-requests.index');
@@ -165,7 +165,7 @@ Route::get('open-banking/callback', [AuthorizationController::class, 'callback']
 
 // Open-banking routes are accessible without the onboarded/subscribed middleware
 // so that users can connect their bank during the onboarding flow.
-Route::middleware(['auth', 'verified', 'block-demo'])->prefix('open-banking')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('open-banking')->group(function () {
     Route::get('institutions', [InstitutionController::class, 'index'])->name('open-banking.institutions');
     Route::post('authorize', [AuthorizationController::class, 'store'])->name('open-banking.authorize');
     Route::post('connections/{connection}/reauthorize', [AuthorizationController::class, 'reauthorize'])->name('open-banking.reauthorize');
@@ -186,7 +186,7 @@ Route::middleware(['auth', 'verified', 'block-demo'])->prefix('open-banking')->g
         ->name('open-banking.interactive-brokers.connect');
 });
 
-Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'block-demo'])->group(function () {
+Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
     Route::post('budgets', [BudgetController::class, 'store'])->name('budgets.store');
     Route::get('budgets/{budget}', [BudgetController::class, 'show'])->name('budgets.show');
