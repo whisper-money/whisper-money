@@ -80,7 +80,16 @@ class TransactionController extends Controller
 
     private function duplicateKey(string $date, int $amount, string $description): string
     {
-        $normalized = preg_replace('/\s+/', ' ', trim(mb_strtolower($description)));
+        // Collapse every Unicode whitespace run (matching JS \s, which includes
+        // the non-breaking spaces common in bank statements) to a single space,
+        // then trim. PHP's default \s is ASCII-only, so without this an existing
+        // "Coffee Shop" and an imported "Coffee Shop" would not be seen as
+        // the same row, unlike the old client-side check.
+        $normalized = trim((string) preg_replace(
+            '/[\s\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]+/u',
+            ' ',
+            mb_strtolower($description),
+        ));
 
         return $date.'|'.$amount.'|'.$normalized;
     }

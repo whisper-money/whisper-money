@@ -85,3 +85,57 @@ it('does not leak another users account', function () {
 
     $response->assertNotFound();
 });
+
+it('treats non-breaking spaces as regular whitespace when matching', function () {
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-01-15',
+        'amount' => 1234,
+        'description' => 'Coffee Shop',
+    ]);
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-01-15', 'amount' => 1234, 'description' => "Coffee\u{00A0}Shop"],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [true]]);
+});
+
+it('only matches existing transactions within the incoming date range', function () {
+    // Same amount + description as the incoming row, but outside its date range.
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2025-12-01',
+        'amount' => 1234,
+        'description' => 'Coffee Shop',
+    ]);
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-01-15', 'amount' => 1234, 'description' => 'Coffee Shop'],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [false]]);
+});
+
+it('validates the request payload', function () {
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'transactions' => [
+            ['transaction_date' => 'not-a-date', 'amount' => 'abc', 'description' => ''],
+        ],
+    ]);
+
+    $response->assertUnprocessable()->assertJsonValidationErrors([
+        'account_id',
+        'transactions.0.transaction_date',
+        'transactions.0.amount',
+        'transactions.0.description',
+    ]);
+});
