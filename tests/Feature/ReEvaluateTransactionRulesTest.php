@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -213,7 +214,7 @@ test('bulk endpoint sets initial pending status in cache', function () {
         ->postJson(route('transactions.re-evaluate-rules.bulk'));
 
     $jobId = $response->json('job_id');
-    $cacheKey = ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId);
+    $cacheKey = ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId);
 
     expect(Cache::get($cacheKey))->toMatchArray(['status' => 'pending']);
 });
@@ -224,7 +225,7 @@ test('bulk endpoint sets initial pending status in cache', function () {
 
 test('status endpoint returns progress from cache', function () {
     $jobId = 'test-job-id';
-    $cacheKey = ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId);
+    $cacheKey = ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId);
 
     Cache::put($cacheKey, [
         'status' => 'processing',
@@ -247,6 +248,19 @@ test('status endpoint returns progress from cache', function () {
 test('status endpoint returns 404 for unknown job', function () {
     $this->actingAs($this->user)
         ->getJson(route('transactions.re-evaluate-rules.status', 'non-existent-job-id'))
+        ->assertNotFound();
+});
+
+test('status endpoint does not leak another user\'s job progress', function () {
+    $jobId = 'owned-by-someone-else';
+    $cacheKey = ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId);
+
+    Cache::put($cacheKey, ['status' => 'processing', 'processed' => 5, 'total' => 50, 'updated' => 1], now()->addHour());
+
+    $otherUser = User::factory()->onboarded()->create();
+
+    $this->actingAs($otherUser)
+        ->getJson(route('transactions.re-evaluate-rules.status', $jobId))
         ->assertNotFound();
 });
 
@@ -287,10 +301,58 @@ test('job applies rules to non-encrypted transactions and tracks progress', func
     expect($matchingTransaction->fresh()->category_id)->toBe($this->category->id);
     expect($nonMatchingTransaction->fresh()->category_id)->toBeNull();
 
-    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId));
+    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId));
     expect($progress['status'])->toBe('done');
     expect($progress['processed'])->toBe(2);
     expect($progress['updated'])->toBe(1);
+});
+
+test('job queries automation rules once regardless of transaction count', function () {
+    // Create transactions BEFORE the rule so the creation listener has no rules to apply
+    Transaction::factory()->enableBanking()->count(5)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => null,
+    ]);
+
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
+        'action_category_id' => $this->category->id,
+    ]);
+
+    $ruleQueries = 0;
+    DB::listen(function ($query) use (&$ruleQueries): void {
+        if (str_contains($query->sql, 'automation_rules')) {
+            $ruleQueries++;
+        }
+    });
+
+    $jobId = 'test-job-'.uniqid();
+    (new ReEvaluateTransactionRulesJob($this->user, $jobId))->handle(app(AutomationRuleService::class));
+
+    expect($ruleQueries)->toBe(1);
+});
+
+test('job marks cache as failed and preserves counts', function () {
+    $jobId = 'reeval-failed';
+    Cache::put(
+        ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId),
+        ['status' => 'processing', 'processed' => 4, 'total' => 20, 'updated' => 2],
+        now()->addHour(),
+    );
+
+    (new ReEvaluateTransactionRulesJob($this->user, $jobId))
+        ->failed(new RuntimeException('boom'));
+
+    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId));
+    expect($progress['status'])->toBe('failed')
+        ->and($progress['processed'])->toBe(4)
+        ->and($progress['total'])->toBe(20)
+        ->and($progress['updated'])->toBe(2);
 });
 
 test('job skips encrypted transactions', function () {
@@ -314,7 +376,7 @@ test('job skips encrypted transactions', function () {
     $job = new ReEvaluateTransactionRulesJob($this->user, $jobId);
     $job->handle(app(AutomationRuleService::class));
 
-    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId));
+    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId));
     // 0 processed because the encrypted transaction is excluded from the query
     expect($progress['processed'])->toBe(0);
     expect($progress['updated'])->toBe(0);
@@ -352,7 +414,7 @@ test('job only processes provided transaction_ids', function () {
     expect($t1->fresh()->category_id)->toBe($this->category->id);
     expect($t2->fresh()->category_id)->toBeNull();
 
-    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId));
+    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId));
     expect($progress['processed'])->toBe(1);
 });
 
@@ -412,7 +474,7 @@ test('job applies rules to transactions matching filters', function () {
     expect($matchingTransaction->fresh()->category_id)->toBe($this->category->id);
     expect($outsideRangeTransaction->fresh()->category_id)->toBeNull();
 
-    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId));
+    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId));
     expect($progress['status'])->toBe('done');
     expect($progress['processed'])->toBe(1);
     expect($progress['updated'])->toBe(1);

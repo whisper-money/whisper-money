@@ -41,9 +41,9 @@ class CategorizeUncategorizedTransactionsJob implements ShouldQueue
         return (string) config('ai_categorization.queue');
     }
 
-    public static function cacheKeyForJobId(string $jobId): string
+    public static function cacheKeyForJobId(string $userId, string $jobId): string
     {
-        return "categorize_transactions_job_{$jobId}";
+        return "categorize_transactions_job_{$userId}_{$jobId}";
     }
 
     public function handle(AiCategorizationGate $gate, AiCategorizer $categorizer): void
@@ -68,7 +68,7 @@ class CategorizeUncategorizedTransactionsJob implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        $progress = Cache::get(self::cacheKeyForJobId($this->jobId), [
+        $progress = Cache::get(self::cacheKeyForJobId($this->user->id, $this->jobId), [
             'processed' => 0,
             'total' => 0,
             'applied' => 0,
@@ -87,7 +87,7 @@ class CategorizeUncategorizedTransactionsJob implements ShouldQueue
      */
     private function updateProgress(string $status, int $processed, int $total, int $applied): void
     {
-        Cache::put(self::cacheKeyForJobId($this->jobId), [
+        Cache::put(self::cacheKeyForJobId($this->user->id, $this->jobId), [
             'status' => $status,
             'processed' => $processed,
             'total' => $total,

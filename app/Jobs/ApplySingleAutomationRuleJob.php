@@ -27,6 +27,7 @@ class ApplySingleAutomationRuleJob implements ShouldQueue
         public AutomationRule $rule,
         public string $jobId,
         public array $transactionIds,
+        public bool $onlyUncategorized = false,
     ) {}
 
     public function handle(AutomationRuleService $service): void
@@ -46,7 +47,7 @@ class ApplySingleAutomationRuleJob implements ShouldQueue
             ->whereNull('description_iv')
             ->with(['account.bank', 'category', 'labels'])
             ->chunkById(100, function ($transactions) use ($service, $rule, $total, &$processed, &$applied, &$changed) {
-                $changed += $service->applyRuleActionsToTransactions($transactions, $rule);
+                $changed += $service->applyRuleActionsToTransactions($transactions, $rule, $this->onlyUncategorized);
                 $applied += $transactions->count();
                 $processed += $transactions->count();
 
@@ -69,14 +70,14 @@ class ApplySingleAutomationRuleJob implements ShouldQueue
         );
     }
 
-    public static function cacheKeyForJobId(string $jobId): string
+    public static function cacheKeyForJobId(string $userId, string $jobId): string
     {
-        return "apply_automation_rule_job_{$jobId}";
+        return "apply_automation_rule_job_{$userId}_{$jobId}";
     }
 
     private function cacheKey(): string
     {
-        return self::cacheKeyForJobId($this->jobId);
+        return self::cacheKeyForJobId($this->rule->user_id, $this->jobId);
     }
 
     /**

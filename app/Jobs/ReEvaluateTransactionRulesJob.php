@@ -83,14 +83,14 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
         );
     }
 
-    public static function cacheKeyForJobId(string $jobId): string
+    public static function cacheKeyForJobId(string $userId, string $jobId): string
     {
-        return "re_evaluate_rules_job_{$jobId}";
+        return "re_evaluate_rules_job_{$userId}_{$jobId}";
     }
 
     private function cacheKey(): string
     {
-        return self::cacheKeyForJobId($this->jobId);
+        return self::cacheKeyForJobId($this->user->id, $this->jobId);
     }
 
     /**

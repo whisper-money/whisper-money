@@ -940,6 +940,7 @@ export default function Transactions({
             const jobId = bulkResponse.data.job_id;
 
             await new Promise<void>((resolve, reject) => {
+                let pendingTicks = 0;
                 const poll = async () => {
                     try {
                         const statusResponse = await axios.get<{
@@ -969,6 +970,13 @@ export default function Transactions({
                             resolve();
                         } else if (status === 'failed') {
                             reject(new Error('Job failed'));
+                        } else if (
+                            status === 'pending' &&
+                            ++pendingTicks > 30
+                        ) {
+                            // The job never started (e.g. no queue worker
+                            // running) — give up instead of polling forever.
+                            reject(new Error('Job did not start'));
                         } else {
                             setTimeout(poll, 1000);
                         }
@@ -1472,7 +1480,7 @@ export default function Transactions({
                                                         handleDismissAiConsent
                                                     }
                                                     disabled={aiConsentSaving}
-                                                    className="opacity-20 hover:opacity-100 transition-all duration-300"
+                                                    className="opacity-20 transition-all duration-300 hover:opacity-100"
                                                     variant="ghost"
                                                     size="icon"
                                                     aria-label={__('Dismiss')}

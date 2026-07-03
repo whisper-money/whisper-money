@@ -47,7 +47,7 @@ class ReEvaluateTransactionRulesController extends Controller
 
         // Set initial pending state so the first poll returns something meaningful
         Cache::put(
-            ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId),
+            ReEvaluateTransactionRulesJob::cacheKeyForJobId($user->id, $jobId),
             ['status' => 'pending', 'processed' => 0, 'total' => 0, 'updated' => 0],
             now()->addHour(),
         );
@@ -64,7 +64,7 @@ class ReEvaluateTransactionRulesController extends Controller
      */
     public function status(Request $request, string $jobId): JsonResponse
     {
-        $cacheKey = ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId);
+        $cacheKey = ReEvaluateTransactionRulesJob::cacheKeyForJobId($request->user()->id, $jobId);
         $progress = Cache::get($cacheKey);
 
         if ($progress === null) {

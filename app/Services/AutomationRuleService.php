@@ -13,17 +13,25 @@ use JWadhams\JsonLogic;
 
 class AutomationRuleService
 {
+    /**
+     * Per-user rule cache, memoized for the lifetime of this service instance.
+     *
+     * Bulk re-evaluation calls applyRules() once per transaction; without this
+     * every transaction re-queried the user's full rule set (an N+1). A service
+     * instance is short-lived (resolved fresh per job/request), so rules created
+     * after it is built are never seen mid-run — which is the intended behaviour.
+     *
+     * @var array<string, EloquentCollection<int, AutomationRule>>
+     */
+    private array $rulesByUser = [];
+
     public function applyRules(Transaction $transaction): void
     {
         if ($transaction->description_iv !== null) {
             return;
         }
 
-        $rules = AutomationRule::query()
-            ->where('user_id', $transaction->user_id)
-            ->with('labels')
-            ->orderBy('priority')
-            ->get();
+        $rules = $this->rulesForUser($transaction->user_id);
 
         if ($rules->isEmpty()) {
             return;
@@ -61,9 +69,17 @@ class AutomationRuleService
     }
 
     /**
+     * Apply a rule's actions to a set of transactions.
+     *
+     * When $onlyUncategorized is true the set is re-filtered here, at apply
+     * time, rather than trusting the caller's (possibly stale) match snapshot.
+     * A transaction that was categorized after the snapshot was taken — by the
+     * user, another rule, or the AI backfill — is skipped so the rule never
+     * silently overwrites a category the user did not ask it to touch.
+     *
      * @param  EloquentCollection<int, Transaction>  $transactions
      */
-    public function applyRuleActionsToTransactions(EloquentCollection $transactions, AutomationRule $rule): int
+    public function applyRuleActionsToTransactions(EloquentCollection $transactions, AutomationRule $rule, bool $onlyUncategorized = false): int
     {
         if ($transactions->isEmpty()) {
             return 0;
@@ -71,6 +87,16 @@ class AutomationRuleService
 
         $rule->loadMissing('labels');
         $transactions->loadMissing('labels');
+
+        if ($onlyUncategorized) {
+            $transactions = $transactions->reject(
+                fn (Transaction $transaction): bool => $this->shouldSkipForOnlyUncategorized($rule, $transaction),
+            );
+
+            if ($transactions->isEmpty()) {
+                return 0;
+            }
+        }
 
         $changedTransactionIds = [];
 
@@ -219,6 +245,18 @@ class AutomationRuleService
                 ? $this->normalizeWhitespace(mb_strtolower($transaction->debtor_name))
                 : null,
         ];
+    }
+
+    /**
+     * @return EloquentCollection<int, AutomationRule>
+     */
+    private function rulesForUser(string $userId): EloquentCollection
+    {
+        return $this->rulesByUser[$userId] ??= AutomationRule::query()
+            ->where('user_id', $userId)
+            ->with('labels')
+            ->orderBy('priority')
+            ->get();
     }
 
     /**

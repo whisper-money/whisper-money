@@ -103,7 +103,7 @@ class AutomationRuleApplicationController extends Controller
                 ->with(['account.bank', 'category', 'labels'])
                 ->get();
 
-            $changed = $service->applyRuleActionsToTransactions($transactions, $automationRule);
+            $changed = $service->applyRuleActionsToTransactions($transactions, $automationRule, $onlyUncategorized);
 
             $applied = $transactions->count();
 
@@ -121,12 +121,12 @@ class AutomationRuleApplicationController extends Controller
         $jobId = (string) Str::uuid();
 
         Cache::put(
-            ApplySingleAutomationRuleJob::cacheKeyForJobId($jobId),
+            ApplySingleAutomationRuleJob::cacheKeyForJobId($automationRule->user_id, $jobId),
             ['status' => 'pending', 'processed' => 0, 'total' => $total, 'applied' => 0, 'updated' => 0],
             now()->addHour(),
         );
 
-        ApplySingleAutomationRuleJob::dispatch($automationRule, $jobId, $matchingIds);
+        ApplySingleAutomationRuleJob::dispatch($automationRule, $jobId, $matchingIds, $onlyUncategorized);
 
         $this->forgetMatchesCache($automationRule, $onlyUncategorized);
 
@@ -141,7 +141,7 @@ class AutomationRuleApplicationController extends Controller
      */
     public function status(Request $request, string $jobId): JsonResponse
     {
-        $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($jobId));
+        $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($request->user()->id, $jobId));
 
         if ($progress === null) {
             return response()->json(['message' => 'Job not found.'], 404);
