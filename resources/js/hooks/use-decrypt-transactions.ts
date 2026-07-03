@@ -6,6 +6,28 @@ import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useRef } from 'react';
 
+// on 429 wait out the API throttle and retry the same request,
+// instead of aborting the whole migration. Honours Laravel's Retry-After header.
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    while (true) {
+        try {
+            return await fn();
+        } catch (e) {
+            if (axios.isAxiosError(e) && e.response?.status === 429) {
+                const retryAfter =
+                    Number(e.response.headers['retry-after']) || 1;
+                await new Promise((resolve) =>
+                    setTimeout(resolve, retryAfter * 1000),
+                );
+
+                continue;
+            }
+
+            throw e;
+        }
+    }
+}
+
 interface EncryptedTransaction {
     id: string;
     description: string;
@@ -55,8 +77,10 @@ export function useDecryptTransactions() {
                 // when a page yields nothing we can decrypt — otherwise rows
                 // that always fail to decrypt would loop forever.
                 while (true) {
-                    const { data: page } = await axios.get<PaginatedResponse>(
-                        '/api/transactions?encrypted=true',
+                    const { data: page } = await withRetry(() =>
+                        axios.get<PaginatedResponse>(
+                            '/api/transactions?encrypted=true',
+                        ),
                     );
 
                     if (page.data.length === 0) {
@@ -102,9 +126,11 @@ export function useDecryptTransactions() {
                     // Send in chunks of 50
                     for (let i = 0; i < batch.length; i += 50) {
                         const chunk = batch.slice(i, i + 50);
-                        await axios.patch('/api/transactions/bulk', {
-                            transactions: chunk,
-                        });
+                        await withRetry(() =>
+                            axios.patch('/api/transactions/bulk', {
+                                transactions: chunk,
+                            }),
+                        );
                     }
                 }
 
