@@ -210,6 +210,10 @@ class AuthorizationController extends Controller
         } catch (\Throwable $e) {
             Log::error('EnableBanking session creation failed', ['error' => $e->getMessage()]);
 
+            if ($connection) {
+                $connection->update(['state_token' => null]);
+            }
+
             return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', 'Failed to connect to your bank. Please try again.');
         }
 

@@ -15,21 +15,27 @@ class TransactionSyncController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'since' => ['nullable', 'date'],
+        ]);
+
         $query = Transaction::query()
             ->where('user_id', $request->user()->id);
 
-        if ($request->has('since')) {
-            $query->where('updated_at', '>', $request->input('since'));
+        if ($validated['since'] ?? null) {
+            $query->where('updated_at', '>', $validated['since']);
         }
 
         $transactions = $query
             ->with('labels')
             ->orderBy('transaction_date', 'desc')
             ->orderBy('updated_at', 'desc')
+            ->limit(500)
             ->get();
 
         return response()->json([
             'data' => $transactions,
+            'has_more' => $transactions->count() === 500,
         ]);
     }
 }
