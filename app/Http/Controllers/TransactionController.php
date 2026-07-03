@@ -313,8 +313,10 @@ class TransactionController extends Controller
         if ($request->has('category_id')) {
             $newCategoryId = $request->input('category_id');
 
+            $overrideHandler = app(CategoryOverrideHandler::class);
+
             foreach ($transactions as $transaction) {
-                app(CategoryOverrideHandler::class)->record($transaction, $newCategoryId);
+                $overrideHandler->record($transaction, $newCategoryId);
             }
 
             $updateData['category_id'] = $newCategoryId;
