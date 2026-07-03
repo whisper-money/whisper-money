@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Ai\AiRuleLearner;
 use App\Services\Ai\CategorizationOutcome;
 use App\Services\AutomationRuleService;
+use Illuminate\Support\Facades\DB;
 
 function expenseCategory(User $user): Category
 {
@@ -49,6 +50,61 @@ it('creates an ai-owned rule at the lowest priority and links the transaction', 
         ->and($rule->priority)->toBe(6)
         ->and($rule->rules_json)->toBe(['==' => [['var' => 'creditor_name'], 'mercadona']])
         ->and($transaction->refresh()->categorized_by_rule_id)->toBe($rule->id);
+});
+
+it('resolves a fresh instance per container lookup so the memoized corpus cannot leak or go stale', function () {
+    // The per-user corpus cache has no invalidation and is safe only while the
+    // learner is never a singleton. Guard that invariant.
+    expect(app(AiRuleLearner::class))->not->toBe(app(AiRuleLearner::class));
+});
+
+it('learns each correction correctly across a batch while loading the corpus once', function () {
+    $user = User::factory()->create();
+    $target = expenseCategory($user);
+    // A separate category keeps the corrected txns out of the "uncategorized"
+    // count, so the overbroad guard (which needs uncategorized rows) is a no-op
+    // and each correction actually learns a description rule.
+    $existing = expenseCategory($user);
+
+    // Merchant-less, plaintext transactions force the description-token path,
+    // which is what loads the per-user description corpus.
+    $makeTxn = fn (string $description): Transaction => Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => $existing->id,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => $description,
+    ]);
+
+    $first = $makeTxn('Netflix subscription');
+    $second = $makeTxn('Spotify premium');
+
+    // One instance across the batch, mirroring the bulkUpdate loop where the
+    // handler (and its learner) is resolved once.
+    $learner = app(AiRuleLearner::class);
+
+    DB::enableQueryLog();
+    $firstRule = $learner->learnFromCorrection($first, $target->id);
+    $secondRule = $learner->learnFromCorrection($second, $target->id);
+    $queries = collect(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    // The second learning ran against the memoized corpus and still produced a
+    // distinct, valid clause: both corrections live in the one target rule.
+    expect($firstRule)->not->toBeNull()
+        ->and($secondRule)->not->toBeNull()
+        ->and($secondRule->id)->toBe($firstRule->id)
+        ->and($secondRule->refresh()->rules_json)->toHaveKey('or')
+        ->and($secondRule->rules_json['or'])->toHaveCount(2);
+
+    // The corpus is the pluck of the `description` column (not the matcher's
+    // count(*) probes, which also filter on description_iv), loaded once.
+    $corpusLoads = $queries->filter(fn (array $q): bool => str_starts_with(strtolower(ltrim($q['query'])), 'select')
+        && str_contains($q['query'], 'description_iv')
+        && ! str_contains(strtolower($q['query']), 'count(')
+    );
+
+    expect($corpusLoads)->toHaveCount(1);
 });
 
 it('appends a new merchant to the existing ai rule for the same category', function () {

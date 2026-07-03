@@ -27,6 +27,23 @@ use Illuminate\Support\Str;
  */
 class AiRuleLearner
 {
+    /**
+     * Per-user document-frequency corpus, memoized for the lifetime of this
+     * instance. A bulk correction runs learnFromCorrection once per transaction
+     * for the same user, and the description corpus is immutable while only
+     * categories change — so loading and tokenizing every description on every
+     * transaction (the N+1 in PHP-LARAVEL-40) is wasted work.
+     *
+     * SAFETY: this cache has no invalidation. It is only correct because the
+     * learner is resolved fresh per request (never bound singleton/scoped) and
+     * one instance only ever serves a single user. Do NOT bind this singleton or
+     * reuse one instance across users/requests — the corpus would go stale and
+     * leak. An arch test guards the non-singleton binding.
+     *
+     * @var array<string, array{frequency: array<string, int>, count: int}>
+     */
+    private array $descriptionCorpus = [];
+
     public function __construct(
         private readonly DescriptionTokenizer $tokenizer,
         private readonly TransactionMatcher $matcher,
@@ -153,16 +170,33 @@ class AiRuleLearner
      */
     private function distinctiveDescriptionTokens(Transaction $transaction): array
     {
-        $descriptions = Transaction::query()
-            ->where('user_id', $transaction->user_id)
-            ->whereNull('description_iv')
-            ->pluck('description')
-            ->all();
+        $corpus = $this->descriptionCorpus($transaction->user_id);
+        $threshold = $corpus['count'] * (float) config('ai_suggestions.noise_token_fraction');
 
-        $frequency = $this->tokenizer->documentFrequency($descriptions);
-        $threshold = count($descriptions) * (float) config('ai_suggestions.noise_token_fraction');
+        return $this->tokenizer->distinctiveTokens((string) $transaction->description, $corpus['frequency'], $threshold);
+    }
 
-        return $this->tokenizer->distinctiveTokens((string) $transaction->description, $frequency, $threshold);
+    /**
+     * The user's description document-frequency map and corpus size, loaded once
+     * per instance. Safe to memoize: descriptions are never mutated by a
+     * categorization change, so the corpus is stable across a bulk correction.
+     *
+     * @return array{frequency: array<string, int>, count: int}
+     */
+    private function descriptionCorpus(string $userId): array
+    {
+        return $this->descriptionCorpus[$userId] ??= (function () use ($userId): array {
+            $descriptions = Transaction::query()
+                ->where('user_id', $userId)
+                ->whereNull('description_iv')
+                ->pluck('description')
+                ->all();
+
+            return [
+                'frequency' => $this->tokenizer->documentFrequency($descriptions),
+                'count' => count($descriptions),
+            ];
+        })();
     }
 
     /**
