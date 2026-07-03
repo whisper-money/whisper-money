@@ -112,11 +112,14 @@ class TransactionController extends Controller
             abort(403, 'Some transactions do not belong to the authenticated user.');
         }
 
+        $userId = $request->user()->id;
+
         foreach ($validated['transactions'] as $data) {
             $updateData = collect($data)->except('id')->toArray();
 
             Transaction::query()
                 ->where('id', $data['id'])
+                ->where('user_id', $userId)
                 ->toBase()
                 ->update($updateData);
         }

@@ -13,7 +13,7 @@ use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\Sync\TransactionSyncController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     // Encryption (legacy decrypt-migration support only)
     Route::get('encryption/message', [EncryptionController::class, 'getMessage']);
 
