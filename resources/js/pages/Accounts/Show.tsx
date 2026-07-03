@@ -60,6 +60,7 @@ import {
 import { AutomationRule } from '@/types/automation-rule';
 import { Category } from '@/types/category';
 import { Label as LabelType } from '@/types/label';
+import { type Transaction } from '@/types/transaction';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
@@ -81,6 +82,7 @@ interface Props {
     banks: Bank[];
     labels?: LabelType[];
     automationRules?: AutomationRule[];
+    transactions?: Transaction[];
 }
 
 export default function AccountShow({
@@ -90,6 +92,7 @@ export default function AccountShow({
     banks,
     labels = [],
     automationRules = [],
+    transactions = [],
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
@@ -101,7 +104,6 @@ export default function AccountShow({
     const [editingLoanDetails, setEditingLoanDetails] = useState(false);
     const [editLoanDialogOpen, setEditLoanDialogOpen] = useState(false);
     const [createTransactionOpen, setCreateTransactionOpen] = useState(false);
-    const [transactionRefreshKey, setTransactionRefreshKey] = useState(0);
     const [chartComputedData, setChartComputedData] =
         useState<ChartComputedData | null>(null);
 
@@ -118,7 +120,7 @@ export default function AccountShow({
     }
 
     function handleTransactionCreated() {
-        setTransactionRefreshKey((prev) => prev + 1);
+        router.reload({ only: ['transactions'] });
         handleBalanceUpdated();
     }
 
@@ -381,13 +383,13 @@ export default function AccountShow({
 
                 {isTransactionalAccount(account) && (
                     <TransactionList
-                        key={transactionRefreshKey}
                         categories={categories}
                         accounts={accounts}
                         banks={banks}
                         labels={labels}
                         automationRules={automationRules}
                         accountId={account.id}
+                        transactions={transactions}
                         pageSize={50}
                         hideAccountFilter={true}
                         showActionsMenu={false}

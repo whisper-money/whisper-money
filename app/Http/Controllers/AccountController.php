@@ -120,8 +120,20 @@ class AccountController extends Controller
             }
         }
 
+        // ponytail: load-all transactions for the account (server-side, replaces
+        // the old client-side sync-all-then-filter). Fine for a single account;
+        // switch to a deferred/cursor-paginated prop if accounts grow huge.
+        $transactions = $account->type->hasTransactionLedger()
+            ? $account->transactions()
+                ->with(['category', 'labels'])
+                ->orderBy('transaction_date', 'desc')
+                ->orderBy('id', 'desc')
+                ->get()
+            : [];
+
         return Inertia::render('Accounts/Show', [
             'account' => $data,
+            'transactions' => $transactions,
         ]);
     }
 

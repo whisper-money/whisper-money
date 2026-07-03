@@ -65,7 +65,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { consoleDebug } from '@/lib/debug';
-import { db } from '@/lib/dexie-db';
 import { captureEvent } from '@/lib/posthog';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -231,7 +230,7 @@ export interface TransactionListProps {
     labels?: Label[];
     automationRules?: AutomationRule[];
     accountId?: UUID;
-    transactions?: Transaction[]; // Optional: if provided, use these instead of fetching from Dexie
+    transactions?: Transaction[]; // Server-provided transactions to render
     pageSize?: number;
     hideAccountFilter?: boolean;
     showActionsMenu?: boolean;
@@ -280,7 +279,6 @@ export function TransactionList({
         [],
     );
     const [isLoading, setIsLoading] = useState(true);
-    const [refreshKey, setRefreshKey] = useState(0);
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'transaction_date', desc: true },
     ]);
@@ -349,122 +347,28 @@ export function TransactionList({
     );
 
     useEffect(() => {
-        async function processTransactions() {
-            // If transactions are provided directly, use them as-is.
-            if (providedTransactions) {
-                setIsLoading(true);
-                try {
-                    const processed = providedTransactions.map(
-                        (transaction) =>
-                            ({
-                                ...transaction,
-                                decryptedDescription: transaction.description,
-                                decryptedNotes: transaction.notes || null,
-                                label_ids:
-                                    transaction.label_ids ??
-                                    transaction.labels?.map(
-                                        (label) => label.id,
-                                    ) ??
-                                    [],
-                            }) as DecryptedTransaction,
-                    );
-
-                    setTransactions(processed);
-                } catch (error) {
-                    console.error('Error processing transactions:', error);
-                } finally {
-                    setIsLoading(false);
-                }
-                return;
-            }
-
-            setIsLoading(true);
-            try {
-                const response = await axios.get('/api/sync/transactions');
-                const serverData = response.data.data || response.data;
-
-                if (!Array.isArray(serverData)) {
-                    throw new Error('Invalid server response format');
-                }
-
-                let filteredServerData = serverData;
-                if (accountId) {
-                    filteredServerData = serverData.filter(
-                        (t: Transaction) => t.account_id === accountId,
-                    );
-                }
-
-                const accountsMap = new Map(
-                    accounts.map((account) => [account.id, account]),
-                );
-                const categoriesMap = new Map(
-                    categories.map((category) => [category.id, category]),
-                );
-                const banksMap = new Map(banks.map((bank) => [bank.id, bank]));
-
-                const transformedTransactions = filteredServerData.map(
-                    (serverRecord: Transaction) => {
-                        const label_ids = serverRecord.labels?.map(
-                            (l: { id: string }) => l.id,
-                        );
-
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        const { labels: _labels, ...rest } = serverRecord;
-
-                        return {
-                            ...rest,
-                            transaction_date: String(
-                                serverRecord.transaction_date,
-                            ).slice(0, 10),
-                            label_ids: label_ids || [],
-                        } as Transaction;
-                    },
-                );
-
-                const processed = transformedTransactions.map((transaction) => {
-                    const account = accountsMap.get(transaction.account_id);
-                    const category = transaction.category_id
-                        ? categoriesMap.get(transaction.category_id)
-                        : null;
-                    const bank = account?.bank?.id
-                        ? banksMap.get(account.bank!.id)
-                        : undefined;
-
-                    return {
+        setIsLoading(true);
+        try {
+            const processed = (providedTransactions ?? []).map(
+                (transaction) =>
+                    ({
                         ...transaction,
                         decryptedDescription: transaction.description,
                         decryptedNotes: transaction.notes || null,
-                        account,
-                        category: category || null,
-                        bank,
-                    } as DecryptedTransaction;
-                });
+                        label_ids:
+                            transaction.label_ids ??
+                            transaction.labels?.map((label) => label.id) ??
+                            [],
+                    }) as DecryptedTransaction,
+            );
 
-                const validTransactions = processed;
-
-                validTransactions.sort((a, b) => {
-                    const dateA = parseISO(a.transaction_date).getTime();
-                    const dateB = parseISO(b.transaction_date).getTime();
-                    return dateB - dateA;
-                });
-
-                setTransactions(validTransactions);
-            } catch (error) {
-                console.error('Failed to load transactions:', error);
-            } finally {
-                setIsLoading(false);
-            }
+            setTransactions(processed);
+        } catch (error) {
+            console.error('Error processing transactions:', error);
+        } finally {
+            setIsLoading(false);
         }
-
-        processTransactions();
-    }, [
-        refreshKey,
-        accounts,
-        banks,
-        categories,
-        accountId,
-        providedTransactions,
-    ]);
+    }, [providedTransactions]);
 
     useEffect(() => {
         try {
@@ -486,50 +390,35 @@ export function TransactionList({
     const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
-        async function searchInIndexedDB() {
-            if (!filters.searchText) {
-                setSearchMatchedIds(new Set());
-                setIsSearching(false);
-                return;
-            }
+        if (!filters.searchText) {
+            setSearchMatchedIds(new Set());
+            setIsSearching(false);
+            return;
+        }
 
-            setIsSearching(true);
-            try {
-                const searchLower = filters.searchText.toLowerCase();
+        setIsSearching(true);
+        const searchLower = filters.searchText.toLowerCase();
+        const matchedIds = new Set<string>();
 
-                let allIndexedTransactions = await db.transactions.toArray();
+        for (const tx of transactions) {
+            const description = (
+                tx.decryptedDescription ??
+                tx.description ??
+                ''
+            ).toLowerCase();
+            const notes = (tx.decryptedNotes ?? tx.notes ?? '').toLowerCase();
 
-                if (accountId) {
-                    allIndexedTransactions = allIndexedTransactions.filter(
-                        (t) => t.account_id === accountId,
-                    );
-                }
-
-                const matchedIds = new Set<string>();
-
-                for (const tx of allIndexedTransactions) {
-                    const matchesDescription = tx.description
-                        .toLowerCase()
-                        .includes(searchLower);
-                    const matchesNotes =
-                        tx.notes?.toLowerCase().includes(searchLower) || false;
-
-                    if (matchesDescription || matchesNotes) {
-                        matchedIds.add(tx.id);
-                    }
-                }
-
-                setSearchMatchedIds(matchedIds);
-            } catch (error) {
-                console.error('Failed to search in IndexedDB:', error);
-                setSearchMatchedIds(new Set());
-            } finally {
-                setIsSearching(false);
+            if (
+                description.includes(searchLower) ||
+                notes.includes(searchLower)
+            ) {
+                matchedIds.add(tx.id);
             }
         }
 
-        searchInIndexedDB();
-    }, [filters.searchText, accountId]);
+        setSearchMatchedIds(matchedIds);
+        setIsSearching(false);
+    }, [filters.searchText, transactions]);
 
     const manualAccountIds = useMemo(
         () =>
@@ -543,6 +432,13 @@ export function TransactionList({
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter((transaction) => {
+            // When scoped to a single account, drop rows that were reassigned to
+            // another account (e.g. via inline edit). The list no longer
+            // refetches, so without this they would linger until a full reload.
+            if (accountId && transaction.account_id !== accountId) {
+                return false;
+            }
+
             if (filters.searchText && !searchMatchedIds.has(transaction.id)) {
                 return false;
             }
@@ -907,7 +803,6 @@ export function TransactionList({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to delete transaction:', error);
         } finally {
@@ -948,7 +843,6 @@ export function TransactionList({
             );
 
             setRowSelection({});
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to update transactions:', error);
         } finally {
@@ -987,7 +881,6 @@ export function TransactionList({
             );
 
             setRowSelection({});
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
         } finally {
@@ -1041,7 +934,6 @@ export function TransactionList({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to delete transactions:', error);
         } finally {

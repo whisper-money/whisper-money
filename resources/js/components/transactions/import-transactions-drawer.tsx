@@ -416,8 +416,6 @@ export function ImportTransactionsDrawer({
                 return;
             }
 
-            await transactionSyncService.sync();
-
             const duplicateFlags = await transactionSyncService.checkDuplicates(
                 account.id,
                 parsedTransactions,
@@ -720,17 +718,7 @@ export function ImportTransactionsDrawer({
             toast.error(__('All transactions failed to import'));
         }
 
-        transactionSyncService
-            .sync()
-            .then(() => {
-                onImportComplete?.();
-            })
-            .catch((syncError) => {
-                console.error(
-                    'Failed to sync transactions with backend:',
-                    syncError,
-                );
-            });
+        onImportComplete?.();
     };
 
     const handleSelectionChange = (index: number, selected: boolean) => {

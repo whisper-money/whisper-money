@@ -8,6 +8,7 @@ use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\RealEstateDetail;
+use App\Models\Transaction;
 use App\Models\User;
 
 beforeEach(function () {
@@ -209,6 +210,53 @@ test('account show includes categories, accounts, and banks', function () {
             ->has('categories', 3)
             ->has('accounts', 1)
             ->has('banks')
+        );
+});
+
+test('account show includes the account transactions and excludes other accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    $otherAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    Transaction::factory()->count(2)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $otherAccount->id,
+    ]);
+
+    $this->get(route('accounts.show', $account))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Show')
+            ->has('transactions', 2)
+        );
+});
+
+test('account show returns no transactions for non-transactional accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Investment,
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+    ]);
+
+    $this->get(route('accounts.show', $account))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions', 0)
         );
 });
 

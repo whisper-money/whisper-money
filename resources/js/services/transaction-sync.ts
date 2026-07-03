@@ -220,48 +220,24 @@ class TransactionSyncService {
             description: string;
         }>,
     ): Promise<boolean[]> {
+        if (transactions.length === 0) {
+            return [];
+        }
+
         try {
-            if (transactions.length === 0) {
-                return [];
-            }
+            const response = await axios.post<{ duplicates: boolean[] }>(
+                '/api/transactions/check-duplicates',
+                {
+                    account_id: accountId,
+                    transactions: transactions.map((t) => ({
+                        transaction_date: t.transaction_date,
+                        amount: t.amount,
+                        description: t.description,
+                    })),
+                },
+            );
 
-            const dates = transactions.map((t) => t.transaction_date);
-            const minDate = dates.reduce((a, b) => (a < b ? a : b));
-            const maxDate = dates.reduce((a, b) => (a > b ? a : b));
-
-            const normalizeDate = (dateStr: string): string =>
-                dateStr.slice(0, 10);
-
-            const allTransactions = await this.getByAccountId(accountId);
-            const transactionsInRange = allTransactions.filter((t) => {
-                const txDate = normalizeDate(t.transaction_date);
-                return txDate >= minDate && txDate <= maxDate;
-            });
-
-            const existingTransactions = transactionsInRange.map((t) => ({
-                transaction_date: normalizeDate(t.transaction_date),
-                amount: parseFloat(t.amount),
-                description: t.description
-                    .toLowerCase()
-                    .trim()
-                    .replace(/\s+/g, ' '),
-            }));
-
-            return transactions.map((importingTx) => {
-                const normalizedDescription = importingTx.description
-                    .toLowerCase()
-                    .trim()
-                    .replace(/\s+/g, ' ');
-
-                return existingTransactions.some(
-                    (existing) =>
-                        existing.transaction_date ===
-                            importingTx.transaction_date &&
-                        Math.abs(existing.amount - importingTx.amount) <
-                            0.001 &&
-                        existing.description === normalizedDescription,
-                );
-            });
+            return response.data.duplicates;
         } catch (error) {
             console.warn(
                 'Duplicate check failed, assuming no duplicates:',

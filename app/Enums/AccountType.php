@@ -35,6 +35,20 @@ enum AccountType: string
     }
 
     /**
+     * Whether this account type surfaces a transaction ledger in the UI. The
+     * account detail page renders a transaction list only for these types.
+     *
+     * Mirrors the frontend `isTransactionalAccount`. This is intentionally
+     * distinct from isNonTransactional(): that is the narrower balance-only
+     * concept used for net-worth charts and treats loan accounts as
+     * balance-tracking-with-amortization, whereas a loan has no editable ledger.
+     */
+    public function hasTransactionLedger(): bool
+    {
+        return ! in_array($this, [self::Investment, self::Loan, self::Retirement, self::RealEstate], true);
+    }
+
+    /**
      * Whether a bank connection can sync transactions into this account type.
      * Excludes balance/value-tracking types (loan, investment, retirement, real estate).
      */
