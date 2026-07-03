@@ -17,7 +17,10 @@ import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
 import { MobileBackButton } from '@/components/mobile-back-button';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
-import { TransactionList } from '@/components/transactions/transaction-list';
+import {
+    TransactionList,
+    TransactionListSkeleton,
+} from '@/components/transactions/transaction-list';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
@@ -39,7 +42,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
@@ -385,13 +387,7 @@ export default function AccountShow({
                 {isTransactionalAccount(account) && (
                     <Deferred
                         data="transactions"
-                        fallback={
-                            <div className="space-y-2">
-                                {Array.from({ length: 8 }).map((_, i) => (
-                                    <Skeleton key={i} className="h-12 w-full" />
-                                ))}
-                            </div>
-                        }
+                        fallback={<TransactionListSkeleton />}
                     >
                         <TransactionList
                             categories={categories}
