@@ -160,7 +160,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 // redirect back to Safari where the app session does not exist. The connection is
 // resolved from the signed state token EnableBanking echoes back instead.
 Route::get('open-banking/callback', [AuthorizationController::class, 'callback'])
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:30,1')
     ->name('open-banking.callback');
 
 // Open-banking routes are accessible without the onboarded/subscribed middleware
