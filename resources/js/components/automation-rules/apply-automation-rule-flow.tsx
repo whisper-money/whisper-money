@@ -178,6 +178,7 @@ export function ApplyAutomationRuleFlow({
     const pollStatus = useCallback(
         async (jobId: string) => {
             const url = statusRoute(jobId).url;
+            let pendingTicks = 0;
             const poll = async (): Promise<void> => {
                 const res = await fetch(url, {
                     headers: { Accept: 'application/json' },
@@ -198,6 +199,13 @@ export function ApplyAutomationRuleFlow({
                     return;
                 }
                 if (data.status === 'failed') {
+                    toast.error(__('Failed to apply rule to transactions.'));
+                    setApplying(false);
+                    return;
+                }
+                // The job never started (e.g. no queue worker running) — give
+                // up instead of polling forever.
+                if (data.status === 'pending' && ++pendingTicks > 30) {
                     toast.error(__('Failed to apply rule to transactions.'));
                     setApplying(false);
                     return;
