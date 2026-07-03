@@ -65,6 +65,7 @@ vi.mock('@/components/transactions/edit-transaction-dialog', () => ({
 
 vi.mock('@/components/transactions/transaction-list', () => ({
     TransactionList: () => null,
+    TransactionListSkeleton: () => null,
 }));
 
 vi.mock('@/components/bank-logo', () => ({
