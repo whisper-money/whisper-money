@@ -13,17 +13,25 @@ use JWadhams\JsonLogic;
 
 class AutomationRuleService
 {
+    /**
+     * Per-user rule cache, memoized for the lifetime of this service instance.
+     *
+     * Bulk re-evaluation calls applyRules() once per transaction; without this
+     * every transaction re-queried the user's full rule set (an N+1). A service
+     * instance is short-lived (resolved fresh per job/request), so rules created
+     * after it is built are never seen mid-run — which is the intended behaviour.
+     *
+     * @var array<string, EloquentCollection<int, AutomationRule>>
+     */
+    private array $rulesByUser = [];
+
     public function applyRules(Transaction $transaction): void
     {
         if ($transaction->description_iv !== null) {
             return;
         }
 
-        $rules = AutomationRule::query()
-            ->where('user_id', $transaction->user_id)
-            ->with('labels')
-            ->orderBy('priority')
-            ->get();
+        $rules = $this->rulesForUser($transaction->user_id);
 
         if ($rules->isEmpty()) {
             return;
@@ -237,6 +245,18 @@ class AutomationRuleService
                 ? $this->normalizeWhitespace(mb_strtolower($transaction->debtor_name))
                 : null,
         ];
+    }
+
+    /**
+     * @return EloquentCollection<int, AutomationRule>
+     */
+    private function rulesForUser(string $userId): EloquentCollection
+    {
+        return $this->rulesByUser[$userId] ??= AutomationRule::query()
+            ->where('user_id', $userId)
+            ->with('labels')
+            ->orderBy('priority')
+            ->get();
     }
 
     /**

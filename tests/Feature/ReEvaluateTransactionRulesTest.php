@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -304,6 +305,36 @@ test('job applies rules to non-encrypted transactions and tracks progress', func
     expect($progress['status'])->toBe('done');
     expect($progress['processed'])->toBe(2);
     expect($progress['updated'])->toBe(1);
+});
+
+test('job queries automation rules once regardless of transaction count', function () {
+    // Create transactions BEFORE the rule so the creation listener has no rules to apply
+    Transaction::factory()->enableBanking()->count(5)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => null,
+    ]);
+
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
+        'action_category_id' => $this->category->id,
+    ]);
+
+    $ruleQueries = 0;
+    DB::listen(function ($query) use (&$ruleQueries): void {
+        if (str_contains($query->sql, 'automation_rules')) {
+            $ruleQueries++;
+        }
+    });
+
+    $jobId = 'test-job-'.uniqid();
+    (new ReEvaluateTransactionRulesJob($this->user, $jobId))->handle(app(AutomationRuleService::class));
+
+    expect($ruleQueries)->toBe(1);
 });
 
 test('job skips encrypted transactions', function () {
