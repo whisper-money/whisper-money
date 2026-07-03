@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\BulkUpdateTransactionRequest;
+use App\Http\Requests\Api\CheckDuplicateTransactionsRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,9 +24,64 @@ class TransactionController extends Controller
             $query->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'));
         }
 
-        $transactions = $query->simplePaginate(100);
+        if ($accountId = $request->query('account_id')) {
+            $query->where('account_id', $accountId)
+                ->orderBy('transaction_date', 'desc');
+        }
+
+        $perPage = min(max((int) $request->query('per_page', 100), 1), 100);
+
+        $transactions = $query->simplePaginate($perPage);
 
         return response()->json($transactions);
+    }
+
+    /**
+     * Flag which of the given (date, amount, description) tuples already exist
+     * on the account. Replaces the old client-side IndexedDB duplicate check.
+     *
+     * Matching mirrors the previous frontend logic: same day, exact amount (both
+     * in integer cents), and case-insensitive description with collapsed
+     * whitespace. Returns a boolean per input transaction, in order.
+     */
+    public function checkDuplicates(CheckDuplicateTransactionsRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $account = $request->user()->accounts()->findOrFail($validated['account_id']);
+        $incoming = $validated['transactions'];
+
+        $dates = array_map(fn (array $t): string => substr($t['transaction_date'], 0, 10), $incoming);
+
+        $existing = $account->transactions()
+            ->whereBetween('transaction_date', [min($dates), max($dates)])
+            ->get(['transaction_date', 'amount', 'description']);
+
+        $seen = [];
+        foreach ($existing as $transaction) {
+            $seen[$this->duplicateKey(
+                $transaction->transaction_date->format('Y-m-d'),
+                (int) $transaction->amount,
+                $transaction->description,
+            )] = true;
+        }
+
+        $duplicates = array_map(
+            fn (array $t): bool => isset($seen[$this->duplicateKey(
+                substr($t['transaction_date'], 0, 10),
+                (int) $t['amount'],
+                $t['description'],
+            )]),
+            $incoming,
+        );
+
+        return response()->json(['duplicates' => $duplicates]);
+    }
+
+    private function duplicateKey(string $date, int $amount, string $description): string
+    {
+        $normalized = preg_replace('/\s+/', ' ', trim(mb_strtolower($description)));
+
+        return $date.'|'.$amount.'|'.$normalized;
     }
 
     /**

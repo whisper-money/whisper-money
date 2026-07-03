@@ -17,11 +17,11 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
-import { transactionSyncService } from '@/services/transaction-sync';
 import { type ParsedTransaction } from '@/types/import';
 import { type Transaction } from '@/types/transaction';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import axios from 'axios';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -53,16 +53,21 @@ export function ImportStepPreview({
     const [isExistingOpen, setIsExistingOpen] = useState(false);
 
     useEffect(() => {
-        if (accountId) {
-            transactionSyncService.getByAccountId(accountId).then((txns) => {
-                const sorted = txns.sort(
-                    (a, b) =>
-                        new Date(b.transaction_date).getTime() -
-                        new Date(a.transaction_date).getTime(),
-                );
-                setExistingTransactions(sorted.slice(0, 10));
-            });
+        if (!accountId) {
+            return;
         }
+
+        axios
+            .get('/api/transactions', {
+                params: { account_id: accountId, per_page: 10 },
+            })
+            .then((response) => {
+                setExistingTransactions(response.data.data ?? []);
+            })
+            .catch((error) => {
+                console.error('Failed to load existing transactions:', error);
+                setExistingTransactions([]);
+            });
     }, [accountId]);
 
     const stats = useMemo(() => {

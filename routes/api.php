@@ -27,6 +27,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // Transactions
     Route::get('transactions', [TransactionController::class, 'index'])->name('api.transactions.index');
+    Route::post('transactions/check-duplicates', [TransactionController::class, 'checkDuplicates'])->name('api.transactions.check-duplicates');
     Route::get('transactions/analysis', [TransactionAnalysisController::class, 'summary'])->name('api.transactions.analysis');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('api.transactions.bulk-update');
 
