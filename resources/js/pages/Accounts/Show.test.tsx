@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { router } from '@inertiajs/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +8,7 @@ import AccountShow from './Show';
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     router: { reload: vi.fn() },
+    Deferred: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('@/actions/App/Http/Controllers/AccountController', () => ({
@@ -113,6 +115,17 @@ describe('AccountShow', () => {
                 mode: 'create',
             }),
         );
+    });
+
+    it('reloads only the deferred transactions prop after a transaction is created', () => {
+        renderPage();
+
+        const { onSuccess } = editTransactionDialog.mock.calls.at(-1)![0] as {
+            onSuccess: () => void;
+        };
+        act(() => onSuccess());
+
+        expect(router.reload).toHaveBeenCalledWith({ only: ['transactions'] });
     });
 
     it('hides transaction action for connected accounts', () => {

@@ -39,6 +39,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
@@ -63,7 +64,7 @@ import { Label as LabelType } from '@/types/label';
 import { type Transaction } from '@/types/transaction';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Head, router } from '@inertiajs/react';
+import { Deferred, Head, router } from '@inertiajs/react';
 import { ChevronDown, Pencil, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
@@ -382,23 +383,34 @@ export default function AccountShow({
                 )}
 
                 {isTransactionalAccount(account) && (
-                    <TransactionList
-                        categories={categories}
-                        accounts={accounts}
-                        banks={banks}
-                        labels={labels}
-                        automationRules={automationRules}
-                        accountId={account.id}
-                        transactions={transactions}
-                        pageSize={50}
-                        hideAccountFilter={true}
-                        showActionsMenu={false}
-                        maxHeight={600}
-                        hideColumns={['bank', 'account']}
-                        onBalanceUpdated={() =>
-                            setChartRefreshKey((key) => key + 1)
+                    <Deferred
+                        data="transactions"
+                        fallback={
+                            <div className="space-y-2">
+                                {Array.from({ length: 8 }).map((_, i) => (
+                                    <Skeleton key={i} className="h-12 w-full" />
+                                ))}
+                            </div>
                         }
-                    />
+                    >
+                        <TransactionList
+                            categories={categories}
+                            accounts={accounts}
+                            banks={banks}
+                            labels={labels}
+                            automationRules={automationRules}
+                            accountId={account.id}
+                            transactions={transactions}
+                            pageSize={50}
+                            hideAccountFilter={true}
+                            showActionsMenu={false}
+                            maxHeight={600}
+                            hideColumns={['bank', 'account']}
+                            onBalanceUpdated={() =>
+                                setChartRefreshKey((key) => key + 1)
+                            }
+                        />
+                    </Deferred>
                 )}
             </div>
 

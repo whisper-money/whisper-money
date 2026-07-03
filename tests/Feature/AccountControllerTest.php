@@ -238,7 +238,10 @@ test('account show includes the account transactions and excludes other accounts
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Accounts/Show')
-            ->has('transactions', 2)
+            ->missing('transactions')
+            ->loadDeferredProps(fn ($reload) => $reload
+                ->has('transactions', 2)
+            )
         );
 });
 
