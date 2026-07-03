@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\AutomationRuleService;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -336,6 +337,39 @@ test('cannot poll apply job status belonging to another user', function () {
     $this->actingAs($otherUser)
         ->getJson(route('automation-rules.apply.status', $jobId))
         ->assertNotFound();
+});
+
+test('apply re-checks only_uncategorized at apply time and skips newly categorized transactions', function () {
+    $otherCategory = Category::factory()->create(['user_id' => $this->user->id]);
+
+    // Both matched the rule when the snapshot was taken, but this one has since
+    // been categorized (by the user, another rule, or the AI backfill).
+    $nowCategorized = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => $otherCategory->id,
+    ]);
+
+    $stillUncategorized = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -3000,
+        'category_id' => null,
+    ]);
+
+    $transactions = Transaction::query()
+        ->whereIn('id', [$nowCategorized->id, $stillUncategorized->id])
+        ->get();
+
+    $changed = app(AutomationRuleService::class)
+        ->applyRuleActionsToTransactions($transactions, $this->rule, onlyUncategorized: true);
+
+    expect($changed)->toBe(1);
+    expect($nowCategorized->fresh()->category_id)->toBe($otherCategory->id);
+    expect($stillUncategorized->fresh()->category_id)->toBe($this->category->id);
 });
 
 test('label-only rule applies when only_uncategorized is true', function () {

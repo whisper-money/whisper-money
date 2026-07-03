@@ -103,7 +103,7 @@ class AutomationRuleApplicationController extends Controller
                 ->with(['account.bank', 'category', 'labels'])
                 ->get();
 
-            $changed = $service->applyRuleActionsToTransactions($transactions, $automationRule);
+            $changed = $service->applyRuleActionsToTransactions($transactions, $automationRule, $onlyUncategorized);
 
             $applied = $transactions->count();
 
@@ -126,7 +126,7 @@ class AutomationRuleApplicationController extends Controller
             now()->addHour(),
         );
 
-        ApplySingleAutomationRuleJob::dispatch($automationRule, $jobId, $matchingIds);
+        ApplySingleAutomationRuleJob::dispatch($automationRule, $jobId, $matchingIds, $onlyUncategorized);
 
         $this->forgetMatchesCache($automationRule, $onlyUncategorized);
 

@@ -61,9 +61,17 @@ class AutomationRuleService
     }
 
     /**
+     * Apply a rule's actions to a set of transactions.
+     *
+     * When $onlyUncategorized is true the set is re-filtered here, at apply
+     * time, rather than trusting the caller's (possibly stale) match snapshot.
+     * A transaction that was categorized after the snapshot was taken — by the
+     * user, another rule, or the AI backfill — is skipped so the rule never
+     * silently overwrites a category the user did not ask it to touch.
+     *
      * @param  EloquentCollection<int, Transaction>  $transactions
      */
-    public function applyRuleActionsToTransactions(EloquentCollection $transactions, AutomationRule $rule): int
+    public function applyRuleActionsToTransactions(EloquentCollection $transactions, AutomationRule $rule, bool $onlyUncategorized = false): int
     {
         if ($transactions->isEmpty()) {
             return 0;
@@ -71,6 +79,16 @@ class AutomationRuleService
 
         $rule->loadMissing('labels');
         $transactions->loadMissing('labels');
+
+        if ($onlyUncategorized) {
+            $transactions = $transactions->reject(
+                fn (Transaction $transaction): bool => $this->shouldSkipForOnlyUncategorized($rule, $transaction),
+            );
+
+            if ($transactions->isEmpty()) {
+                return 0;
+            }
+        }
 
         $changedTransactionIds = [];
 
