@@ -33,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $trustedProxies = env('TRUSTED_PROXIES');
 
         $middleware->trustProxies(
-            at: is_string($trustedProxies) ? explode(',', $trustedProxies) : null,
+            at: is_string($trustedProxies) ? array_map('trim', explode(',', $trustedProxies)) : null,
             headers: Request::HEADER_X_FORWARDED_FOR
                 | Request::HEADER_X_FORWARDED_HOST
                 | Request::HEADER_X_FORWARDED_PORT
