@@ -337,6 +337,24 @@ test('job queries automation rules once regardless of transaction count', functi
     expect($ruleQueries)->toBe(1);
 });
 
+test('job marks cache as failed and preserves counts', function () {
+    $jobId = 'reeval-failed';
+    Cache::put(
+        ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId),
+        ['status' => 'processing', 'processed' => 4, 'total' => 20, 'updated' => 2],
+        now()->addHour(),
+    );
+
+    (new ReEvaluateTransactionRulesJob($this->user, $jobId))
+        ->failed(new RuntimeException('boom'));
+
+    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId));
+    expect($progress['status'])->toBe('failed')
+        ->and($progress['processed'])->toBe(4)
+        ->and($progress['total'])->toBe(20)
+        ->and($progress['updated'])->toBe(2);
+});
+
 test('job skips encrypted transactions', function () {
     AutomationRule::factory()->create([
         'user_id' => $this->user->id,

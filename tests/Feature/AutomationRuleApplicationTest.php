@@ -290,6 +290,56 @@ test('apply endpoint queues a job when matches exceed threshold', function () {
     Queue::assertPushed(ApplySingleAutomationRuleJob::class);
 });
 
+test('apply job applies the rule and records done progress', function () {
+    $t1 = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => null,
+    ]);
+    $t2 = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -3000,
+        'category_id' => null,
+    ]);
+
+    $jobId = 'apply-run-1';
+    (new ApplySingleAutomationRuleJob($this->rule, $jobId, [$t1->id, $t2->id]))
+        ->handle(app(AutomationRuleService::class));
+
+    expect($t1->fresh()->category_id)->toBe($this->category->id)
+        ->and($t2->fresh()->category_id)->toBe($this->category->id);
+
+    $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($this->user->id, $jobId));
+    expect($progress['status'])->toBe('done')
+        ->and($progress['total'])->toBe(2)
+        ->and($progress['processed'])->toBe(2)
+        ->and($progress['applied'])->toBe(2)
+        ->and($progress['updated'])->toBe(2);
+});
+
+test('apply job marks cache as failed and preserves counts', function () {
+    $jobId = 'apply-failed';
+    Cache::put(
+        ApplySingleAutomationRuleJob::cacheKeyForJobId($this->user->id, $jobId),
+        ['status' => 'processing', 'processed' => 3, 'total' => 10, 'applied' => 3, 'updated' => 2],
+        now()->addHour(),
+    );
+
+    (new ApplySingleAutomationRuleJob($this->rule, $jobId, ['x', 'y']))
+        ->failed(new RuntimeException('boom'));
+
+    $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($this->user->id, $jobId));
+    expect($progress['status'])->toBe('failed')
+        ->and($progress['processed'])->toBe(3)
+        ->and($progress['total'])->toBe(10)
+        ->and($progress['applied'])->toBe(3)
+        ->and($progress['updated'])->toBe(2);
+});
+
 test('apply endpoint returns done with zero matches when no transactions match', function () {
     Transaction::factory()->enableBanking()->create([
         'user_id' => $this->user->id,
