@@ -69,14 +69,14 @@ class ApplySingleAutomationRuleJob implements ShouldQueue
         );
     }
 
-    public static function cacheKeyForJobId(string $jobId): string
+    public static function cacheKeyForJobId(string $userId, string $jobId): string
     {
-        return "apply_automation_rule_job_{$jobId}";
+        return "apply_automation_rule_job_{$userId}_{$jobId}";
     }
 
     private function cacheKey(): string
     {
-        return self::cacheKeyForJobId($this->jobId);
+        return self::cacheKeyForJobId($this->rule->user_id, $this->jobId);
     }
 
     /**

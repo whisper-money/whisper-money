@@ -318,6 +318,26 @@ test('cannot apply rule belonging to another user', function () {
         ->assertForbidden();
 });
 
+test('cannot poll apply job status belonging to another user', function () {
+    $jobId = 'apply-job-1';
+    Cache::put(
+        ApplySingleAutomationRuleJob::cacheKeyForJobId($this->user->id, $jobId),
+        ['status' => 'processing', 'processed' => 1, 'total' => 4],
+        now()->addHour(),
+    );
+
+    $this->actingAs($this->user)
+        ->getJson(route('automation-rules.apply.status', $jobId))
+        ->assertOk()
+        ->assertJsonPath('status', 'processing');
+
+    $otherUser = User::factory()->onboarded()->create();
+
+    $this->actingAs($otherUser)
+        ->getJson(route('automation-rules.apply.status', $jobId))
+        ->assertNotFound();
+});
+
 test('label-only rule applies when only_uncategorized is true', function () {
     $labelOnlyRule = AutomationRule::factory()->create([
         'user_id' => $this->user->id,

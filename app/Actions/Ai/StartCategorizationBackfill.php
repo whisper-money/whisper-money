@@ -37,7 +37,7 @@ class StartCategorizationBackfill
         $jobId = (string) Str::uuid();
 
         Cache::put(
-            CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($jobId),
+            CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($user->id, $jobId),
             ['status' => 'pending', 'processed' => 0, 'total' => $total, 'applied' => 0],
             now()->addHour(),
         );

@@ -121,7 +121,7 @@ class AutomationRuleApplicationController extends Controller
         $jobId = (string) Str::uuid();
 
         Cache::put(
-            ApplySingleAutomationRuleJob::cacheKeyForJobId($jobId),
+            ApplySingleAutomationRuleJob::cacheKeyForJobId($automationRule->user_id, $jobId),
             ['status' => 'pending', 'processed' => 0, 'total' => $total, 'applied' => 0, 'updated' => 0],
             now()->addHour(),
         );
@@ -141,7 +141,7 @@ class AutomationRuleApplicationController extends Controller
      */
     public function status(Request $request, string $jobId): JsonResponse
     {
-        $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($jobId));
+        $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($request->user()->id, $jobId));
 
         if ($progress === null) {
             return response()->json(['message' => 'Job not found.'], 404);

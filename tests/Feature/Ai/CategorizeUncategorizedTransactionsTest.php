@@ -85,7 +85,7 @@ it('does not dispatch a backfill when AI categorization is disabled', function (
 it('returns categorization progress from the status endpoint', function () {
     $user = User::factory()->create();
     Cache::put(
-        CategorizeUncategorizedTransactionsJob::cacheKeyForJobId('job-123'),
+        CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($user->id, 'job-123'),
         ['status' => 'processing', 'processed' => 1, 'total' => 4, 'applied' => 1],
         now()->addHour(),
     );
@@ -99,6 +99,20 @@ it('returns 404 from the status endpoint for an unknown job', function () {
     $user = User::factory()->create();
 
     actingAs($user)->getJson(route('ai.categorization.status', 'missing'))
+        ->assertNotFound();
+});
+
+it('does not leak another user\'s categorization progress', function () {
+    $owner = User::factory()->create();
+    Cache::put(
+        CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($owner->id, 'job-123'),
+        ['status' => 'processing', 'processed' => 1, 'total' => 4, 'applied' => 1],
+        now()->addHour(),
+    );
+
+    $otherUser = User::factory()->create();
+
+    actingAs($otherUser)->getJson(route('ai.categorization.status', 'job-123'))
         ->assertNotFound();
 });
 
@@ -139,7 +153,7 @@ it('records progress while categorizing the uncategorized transactions', functio
     $jobId = 'job-run-1';
     app()->call([new CategorizeUncategorizedTransactionsJob($user, $jobId), 'handle']);
 
-    $progress = Cache::get(CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($jobId));
+    $progress = Cache::get(CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($user->id, $jobId));
 
     expect($progress['status'])->toBe('done')
         ->and($progress['total'])->toBe(2)
@@ -151,7 +165,7 @@ it('marks the cache as failed and preserves counts when the job fails', function
     $user = User::factory()->create();
     $jobId = 'failed-job';
     Cache::put(
-        CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($jobId),
+        CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($user->id, $jobId),
         ['status' => 'processing', 'processed' => 3, 'total' => 10, 'applied' => 2],
         now()->addHour(),
     );
@@ -159,7 +173,7 @@ it('marks the cache as failed and preserves counts when the job fails', function
     (new CategorizeUncategorizedTransactionsJob($user, $jobId))
         ->failed(new RuntimeException('boom'));
 
-    $progress = Cache::get(CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($jobId));
+    $progress = Cache::get(CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($user->id, $jobId));
 
     expect($progress['status'])->toBe('failed')
         ->and($progress['processed'])->toBe(3)
