@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Ai\AiRuleLearner;
 use App\Services\Ai\CategorizationOutcome;
 use App\Services\AutomationRuleService;
+use Illuminate\Support\Facades\DB;
 
 function expenseCategory(User $user): Category
 {
@@ -49,6 +50,43 @@ it('creates an ai-owned rule at the lowest priority and links the transaction', 
         ->and($rule->priority)->toBe(6)
         ->and($rule->rules_json)->toBe(['==' => [['var' => 'creditor_name'], 'mercadona']])
         ->and($transaction->refresh()->categorized_by_rule_id)->toBe($rule->id);
+});
+
+it('loads the description corpus once across a bulk of correction learnings', function () {
+    $user = User::factory()->create();
+    $category = expenseCategory($user);
+
+    // Merchant-less, plaintext transactions force the description-token path,
+    // which is what loads the per-user description corpus.
+    $makeTxn = fn (string $description): Transaction => Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => $description,
+    ]);
+
+    $first = $makeTxn('zzalpha distinctive ref one');
+    $second = $makeTxn('zzbeta distinctive ref two');
+
+    // Same instance across the batch, mirroring the bulkUpdate loop where the
+    // handler (and its learner) is resolved once.
+    $learner = app(AiRuleLearner::class);
+
+    DB::enableQueryLog();
+    $learner->learnFromCorrection($first, $category->id);
+    $learner->learnFromCorrection($second, $category->id);
+    $queries = collect(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    // The corpus is the pluck of the `description` column (not the matcher's
+    // count(*) probes, which also filter on description_iv).
+    $corpusLoads = $queries->filter(fn (array $q): bool => str_starts_with(strtolower(ltrim($q['query'])), 'select')
+        && str_contains($q['query'], 'description_iv')
+        && ! str_contains(strtolower($q['query']), 'count(')
+    );
+
+    expect($corpusLoads)->toHaveCount(1);
 });
 
 it('appends a new merchant to the existing ai rule for the same category', function () {
