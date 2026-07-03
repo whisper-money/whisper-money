@@ -34,6 +34,12 @@ class AiRuleLearner
      * categories change — so loading and tokenizing every description on every
      * transaction (the N+1 in PHP-LARAVEL-40) is wasted work.
      *
+     * SAFETY: this cache has no invalidation. It is only correct because the
+     * learner is resolved fresh per request (never bound singleton/scoped) and
+     * one instance only ever serves a single user. Do NOT bind this singleton or
+     * reuse one instance across users/requests — the corpus would go stale and
+     * leak. An arch test guards the non-singleton binding.
+     *
      * @var array<string, array{frequency: array<string, int>, count: int}>
      */
     private array $descriptionCorpus = [];

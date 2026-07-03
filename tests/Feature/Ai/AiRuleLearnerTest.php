@@ -52,6 +52,12 @@ it('creates an ai-owned rule at the lowest priority and links the transaction', 
         ->and($transaction->refresh()->categorized_by_rule_id)->toBe($rule->id);
 });
 
+it('resolves a fresh instance per container lookup so the memoized corpus cannot leak or go stale', function () {
+    // The per-user corpus cache has no invalidation and is safe only while the
+    // learner is never a singleton. Guard that invariant.
+    expect(app(AiRuleLearner::class))->not->toBe(app(AiRuleLearner::class));
+});
+
 it('learns each correction correctly across a batch while loading the corpus once', function () {
     $user = User::factory()->create();
     $target = expenseCategory($user);
