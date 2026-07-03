@@ -432,6 +432,13 @@ export function TransactionList({
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter((transaction) => {
+            // When scoped to a single account, drop rows that were reassigned to
+            // another account (e.g. via inline edit). The list no longer
+            // refetches, so without this they would linger until a full reload.
+            if (accountId && transaction.account_id !== accountId) {
+                return false;
+            }
+
             if (filters.searchText && !searchMatchedIds.has(transaction.id)) {
                 return false;
             }
