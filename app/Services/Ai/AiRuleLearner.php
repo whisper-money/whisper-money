@@ -28,6 +28,15 @@ use Illuminate\Support\Str;
 class AiRuleLearner
 {
     /**
+     * A description rule keyed on a single token needs that token to be long
+     * enough to be distinctive; a short lone token (e.g. "suc") is a generic
+     * banking abbreviation that stays rare in one user's corpus yet matches
+     * broadly as a substring. Two or more tokens are specific enough regardless
+     * of length.
+     */
+    private const MIN_SOLE_TOKEN_LENGTH = 5;
+
+    /**
      * Per-user document-frequency corpus, memoized for the lifetime of this
      * instance. A bulk correction runs learnFromCorrection once per transaction
      * for the same user, and the description corpus is immutable while only
@@ -146,6 +155,10 @@ class AiRuleLearner
         $tokens = $this->distinctiveDescriptionTokens($transaction);
 
         if ($tokens === []) {
+            return null;
+        }
+
+        if (count($tokens) === 1 && mb_strlen($tokens[0]) < self::MIN_SOLE_TOKEN_LENGTH) {
             return null;
         }
 
