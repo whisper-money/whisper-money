@@ -62,6 +62,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
+        'stripe_id',
+        'pm_type',
+        'pm_last_four',
+        'trial_ends_at',
+        'encryption_salt',
     ];
 
     /**
