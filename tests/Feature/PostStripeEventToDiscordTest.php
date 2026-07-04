@@ -159,6 +159,31 @@ test('reports the status change on a meaningful update', function () {
             ->contains(fn ($field) => $field['name'] === 'Changed' && str_contains($field['value'], 'trialing → active')));
 });
 
+test('reports the old and new plan on a plan change', function () {
+    Http::fake();
+
+    $price = fn (int $amount) => [
+        'items' => ['data' => [['price' => [
+            'unit_amount' => $amount,
+            'currency' => 'eur',
+            'recurring' => ['interval' => 'month', 'interval_count' => 1],
+        ]]]],
+    ];
+
+    handleStripeWebhook([
+        'id' => 'evt_plan_change',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['id' => 'sub_1', 'status' => 'active', 'customer' => 'cus_1'] + $price(399),
+            'previous_attributes' => $price(999),
+        ],
+    ]);
+
+    Http::assertSent(fn ($request) => str_contains($request['embeds'][0]['title'], 'Plan changed')
+        && collect($request['embeds'][0]['fields'])
+            ->contains(fn ($field) => $field['name'] === 'Changed' && str_contains($field['value'], '€9.99 / month → €3.99 / month')));
+});
+
 test('ignores trivial subscription updates', function () {
     Http::fake();
 
