@@ -206,34 +206,48 @@ class PostStripeEventToDiscord implements ShouldQueue
         }
 
         if (array_key_exists('items', $previous) || array_key_exists('plan', $previous)) {
-            $lines[] = 'Plan: '.($this->planLabel($object) ?? 'updated');
+            $new = $this->planLabel($object) ?? 'updated';
+            $old = $this->planLabel($previous);
+            $lines[] = ($old !== null && $old !== $new)
+                ? sprintf('Plan: %s → %s', $old, $new)
+                : 'Plan: '.$new;
         }
 
         return $lines === [] ? null : implode("\n", $lines);
     }
 
     /**
-     * @param  array<string, mixed>  $object
+     * Build a "€3.99 / month" label from either a subscription object, or a
+     * previous_attributes diff. Handles both the modern `items.data[].price`
+     * shape and the legacy top-level `plan` shape Stripe still includes.
+     *
+     * @param  array<string, mixed>  $source
      */
-    private function planLabel(array $object): ?string
+    private function planLabel(array $source): ?string
     {
-        $price = $object['items']['data'][0]['price'] ?? null;
+        $price = $source['items']['data'][0]['price'] ?? $source['plan'] ?? null;
 
-        if (! is_array($price) || ! isset($price['unit_amount'])) {
+        if (! is_array($price)) {
             return null;
         }
 
-        $amount = $this->money((int) $price['unit_amount'], (string) ($price['currency'] ?? 'usd'));
-        $recurring = $price['recurring'] ?? null;
+        $amount = $price['unit_amount'] ?? $price['amount'] ?? null;
 
-        if (! is_array($recurring) || ! isset($recurring['interval'])) {
-            return $amount;
+        if ($amount === null) {
+            return null;
+        }
+
+        $label = $this->money((int) $amount, (string) ($price['currency'] ?? 'usd'));
+        $recurring = is_array($price['recurring'] ?? null) ? $price['recurring'] : $price;
+
+        if (! isset($recurring['interval'])) {
+            return $label;
         }
 
         $count = (int) ($recurring['interval_count'] ?? 1);
         $interval = $count > 1 ? sprintf('%d %ss', $count, $recurring['interval']) : (string) $recurring['interval'];
 
-        return sprintf('%s / %s', $amount, $interval);
+        return sprintf('%s / %s', $label, $interval);
     }
 
     /**
