@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Console\Commands\Concerns\FindsUsersWithLegacyEncryption;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,6 +15,12 @@ use Illuminate\Foundation\Queue\Queueable;
  *
  * It re-checks the condition on execution and is therefore idempotent: dispatching
  * it more than once (or after the salt was already cleared elsewhere) is a no-op.
+ *
+ * Because the purge is destructive (it drops the only key material for any data
+ * still encrypted at rest), the residual check uses the same source of truth as
+ * {@see FindsUsersWithLegacyEncryption}: the
+ * per-row `*_iv` columns, never the stale `accounts.encrypted` flag. Keying off
+ * that flag could destroy the salt while an account name is still encrypted.
  */
 class PurgeResidualEncryptionArtifactsJob implements ShouldQueue
 {
@@ -40,7 +47,7 @@ class PurgeResidualEncryptionArtifactsJob implements ShouldQueue
     private function hasResidualEncryptedData(User $user): bool
     {
         $hasEncryptedAccounts = $user->accounts()
-            ->where('encrypted', true)
+            ->whereNotNull('name_iv')
             ->exists();
 
         if ($hasEncryptedAccounts) {
