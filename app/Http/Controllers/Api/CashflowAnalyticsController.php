@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 class CashflowAnalyticsController extends Controller
 {
@@ -218,9 +219,11 @@ class CashflowAnalyticsController extends Controller
 
     private function sumTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
     {
-        $onSide = $type === CategoryType::Income
-            ? fn (Transaction $transaction): bool => $transaction->isIncomeSide()
-            : fn (Transaction $transaction): bool => $transaction->isExpenseSide();
+        $onSide = match ($type) {
+            CategoryType::Income => fn (Transaction $transaction): bool => $transaction->isIncomeSide(),
+            CategoryType::Expense => fn (Transaction $transaction): bool => $transaction->isExpenseSide(),
+            default => throw new InvalidArgumentException("sumTransactions only supports Income and Expense, got {$type->value}."),
+        };
 
         return $transactions
             ->filter($onSide)
