@@ -4,12 +4,11 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingProvider;
 use App\Http\Requests\OpenBanking\ConnectBinanceRequest;
-use App\Models\User;
 use App\Services\AccountUserCurrencyService;
 use App\Services\Banking\BinanceClient;
 use Illuminate\Http\JsonResponse;
 
-class BinanceController extends OpenBankingConnectController
+class BinanceController extends CryptoPortfolioConnectController
 {
     /**
      * Validate Binance API credentials and create a connection.
@@ -34,11 +33,6 @@ class BinanceController extends OpenBankingConnectController
         return 'https://whisper.money/storage/banks/logos/t1h5rqi19dJTPl6ZadziPjNwm0lrcdTFBRzB3iCy.png';
     }
 
-    protected function aspspCountry(array $validated): string
-    {
-        return $validated['country'];
-    }
-
     protected function fetchProviderData(array $validated): mixed
     {
         $client = new BinanceClient($validated['api_key'], $validated['api_secret']);
@@ -55,16 +49,5 @@ class BinanceController extends OpenBankingConnectController
     protected function credentialErrorMessage(\Throwable $e): string
     {
         return 'Invalid API credentials or failed to connect to Binance.';
-    }
-
-    protected function buildPendingAccounts(mixed $providerData, User $user): array
-    {
-        return [
-            [
-                'uid' => 'binance-portfolio',
-                'currency' => $user->currency_code,
-                'name' => 'Crypto Portfolio',
-            ],
-        ];
     }
 }

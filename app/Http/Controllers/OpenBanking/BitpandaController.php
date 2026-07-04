@@ -4,12 +4,11 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingProvider;
 use App\Http\Requests\OpenBanking\ConnectBitpandaRequest;
-use App\Models\User;
 use App\Services\AccountUserCurrencyService;
 use App\Services\Banking\BitpandaClient;
 use Illuminate\Http\JsonResponse;
 
-class BitpandaController extends OpenBankingConnectController
+class BitpandaController extends CryptoPortfolioConnectController
 {
     /**
      * Validate Bitpanda API key and create a connection.
@@ -34,11 +33,6 @@ class BitpandaController extends OpenBankingConnectController
         return 'https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png';
     }
 
-    protected function aspspCountry(array $validated): string
-    {
-        return $validated['country'];
-    }
-
     protected function fetchProviderData(array $validated): mixed
     {
         $client = new BitpandaClient($validated['api_key']);
@@ -55,16 +49,5 @@ class BitpandaController extends OpenBankingConnectController
     protected function credentialErrorMessage(\Throwable $e): string
     {
         return 'Invalid API key or failed to connect to Bitpanda.';
-    }
-
-    protected function buildPendingAccounts(mixed $providerData, User $user): array
-    {
-        return [
-            [
-                'uid' => 'bitpanda-portfolio',
-                'currency' => $user->currency_code,
-                'name' => 'Crypto Portfolio',
-            ],
-        ];
     }
 }
