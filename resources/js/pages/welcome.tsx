@@ -2068,6 +2068,13 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Francisco Montes',
+            gravatar: 'c81f10150ae734978a346a7d617712ad',
+            text: __(
+                "The design is simple and clean, and it's genuinely easy to use. In a few clicks I set up an account, imported my transactions, created a couple of automation rules, and tried the AI. Two days in, and it's the best I've found.",
+            ),
+        },
+        {
             name: 'Víctor Falcón (co-owner)',
             gravatar: '50901af884c50a8f12804b0cf3aeb98a',
             text: __(
