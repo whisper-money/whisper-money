@@ -46,11 +46,6 @@ class IndexaCapitalController extends OpenBankingConnectController
         return $client->getUser();
     }
 
-    protected function validationFailureLogMessage(): string
-    {
-        return 'Indexa Capital token validation failed';
-    }
-
     protected function credentialErrorMessage(\Throwable $e): string
     {
         return 'Invalid API token or failed to connect to Indexa Capital.';
@@ -58,6 +53,8 @@ class IndexaCapitalController extends OpenBankingConnectController
 
     /**
      * Build the pending accounts data in the same format as EnableBanking.
+     *
+     * @param  array{accounts?: array<int, array{account_number?: string, type?: string}>}  $providerData
      */
     protected function buildPendingAccounts(mixed $providerData, User $user): array
     {

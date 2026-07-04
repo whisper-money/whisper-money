@@ -42,8 +42,6 @@ abstract class OpenBankingConnectController extends Controller
      */
     abstract protected function fetchProviderData(array $validated): mixed;
 
-    abstract protected function validationFailureLogMessage(): string;
-
     abstract protected function credentialErrorMessage(\Throwable $e): string;
 
     /**
@@ -77,7 +75,10 @@ abstract class OpenBankingConnectController extends Controller
         try {
             $providerData = $this->fetchProviderData($validated);
         } catch (\Throwable $e) {
-            Log::warning($this->validationFailureLogMessage(), ['error' => $e->getMessage()]);
+            Log::warning('OpenBanking credential validation failed', [
+                'provider' => $this->provider()->value,
+                'error' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'message' => $this->credentialErrorMessage($e),

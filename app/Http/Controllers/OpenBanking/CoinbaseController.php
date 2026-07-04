@@ -41,11 +41,6 @@ class CoinbaseController extends CryptoPortfolioConnectController
         return null;
     }
 
-    protected function validationFailureLogMessage(): string
-    {
-        return 'Coinbase credential validation failed';
-    }
-
     protected function credentialErrorMessage(\Throwable $e): string
     {
         return 'Invalid API credentials or failed to connect to Coinbase.';

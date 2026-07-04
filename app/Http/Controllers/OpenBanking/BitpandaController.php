@@ -41,11 +41,6 @@ class BitpandaController extends CryptoPortfolioConnectController
         return null;
     }
 
-    protected function validationFailureLogMessage(): string
-    {
-        return 'Bitpanda credential validation failed';
-    }
-
     protected function credentialErrorMessage(\Throwable $e): string
     {
         return 'Invalid API key or failed to connect to Bitpanda.';

@@ -41,11 +41,6 @@ class BinanceController extends CryptoPortfolioConnectController
         return null;
     }
 
-    protected function validationFailureLogMessage(): string
-    {
-        return 'Binance credential validation failed';
-    }
-
     protected function credentialErrorMessage(\Throwable $e): string
     {
         return 'Invalid API credentials or failed to connect to Binance.';

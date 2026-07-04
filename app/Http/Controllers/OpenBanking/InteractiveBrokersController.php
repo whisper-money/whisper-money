@@ -48,11 +48,6 @@ class InteractiveBrokersController extends OpenBankingConnectController
         return $client->fetchStatement();
     }
 
-    protected function validationFailureLogMessage(): string
-    {
-        return 'Interactive Brokers connection validation failed';
-    }
-
     /**
      * Turn a Flex failure into a message the user can act on: bad credentials,
      * a busy/rate-limited service, or a statement that is still generating.
