@@ -138,6 +138,9 @@ class Transaction extends Model
      * booked to an income category (a reversal there nets back out) or an
      * uncategorized inflow. Internal movements (transfer, savings, investment)
      * belong to neither side.
+     *
+     * Reads categoryType(), so callers should eager-load the category relation
+     * when classifying a collection to avoid an N+1.
      */
     public function isIncomeSide(): bool
     {
@@ -148,6 +151,9 @@ class Transaction extends Model
     /**
      * Whether this transaction sits on the expense side: booked to an expense
      * category (a refund there nets back out) or an uncategorized outflow.
+     *
+     * Reads categoryType(), so callers should eager-load the category relation
+     * when classifying a collection to avoid an N+1.
      */
     public function isExpenseSide(): bool
     {
