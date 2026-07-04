@@ -158,5 +158,11 @@ return [
             'allows_primary' => true,
             'allows_account' => true,
         ],
+        [
+            'code' => 'GHS',
+            'name' => 'Ghanaian Cedi',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];
