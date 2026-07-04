@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\CategoryType;
 use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexTransactionRequest;
@@ -95,9 +94,9 @@ class TransactionAnalysisController extends Controller
         $expense = 0;
 
         foreach ($transactions as $transaction) {
-            if ($this->isIncomeSide($transaction)) {
+            if ($transaction->isIncomeSide()) {
                 $income += $this->convertTransactionAmount($transaction, $currency);
-            } elseif ($this->isExpenseSide($transaction)) {
+            } elseif ($transaction->isExpenseSide()) {
                 $expense += $this->convertTransactionAmount($transaction, $currency);
             }
         }
@@ -128,7 +127,7 @@ class TransactionAnalysisController extends Controller
     private function categoryBreakdown(Collection $transactions, string $currency, string $userId): Collection
     {
         $expenses = $transactions->filter(
-            fn (Transaction $transaction): bool => $this->isExpenseSide($transaction),
+            fn (Transaction $transaction): bool => $transaction->isExpenseSide(),
         );
 
         $grouped = $expenses
@@ -187,7 +186,7 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            if (! $this->isExpenseSide($transaction)) {
+            if (! $transaction->isExpenseSide()) {
                 continue;
             }
 
@@ -215,7 +214,7 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            if (! $this->isExpenseSide($transaction)) {
+            if (! $transaction->isExpenseSide()) {
                 continue;
             }
 
@@ -246,7 +245,7 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            if (! $this->isExpenseSide($transaction)) {
+            if (! $transaction->isExpenseSide()) {
                 continue;
             }
 
@@ -279,7 +278,7 @@ class TransactionAnalysisController extends Controller
     private function largestExpenses(Collection $transactions, string $currency): array
     {
         return $transactions
-            ->filter(fn (Transaction $transaction): bool => $this->isExpenseSide($transaction) && $transaction->amount < 0)
+            ->filter(fn (Transaction $transaction): bool => $transaction->isExpenseSide() && $transaction->amount < 0)
             ->sortBy(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency))
             ->take(self::LARGEST_EXPENSES_LIMIT)
             ->map(fn (Transaction $transaction): array => [
@@ -332,9 +331,9 @@ class TransactionAnalysisController extends Controller
             $key = $transaction->transaction_date->format($keyFormat);
             $buckets[$key] ??= ['income' => 0, 'expense' => 0];
 
-            if ($this->isIncomeSide($transaction)) {
+            if ($transaction->isIncomeSide()) {
                 $buckets[$key]['income'] += $this->convertTransactionAmount($transaction, $currency);
-            } elseif ($this->isExpenseSide($transaction)) {
+            } elseif ($transaction->isExpenseSide()) {
                 $buckets[$key]['expense'] -= $this->convertTransactionAmount($transaction, $currency);
             }
         }
@@ -376,28 +375,5 @@ class TransactionAnalysisController extends Controller
         $dates = $transactions->map(fn (Transaction $transaction): Carbon => $transaction->transaction_date);
 
         return (int) $dates->min()->diffInDays($dates->max()) + 1;
-    }
-
-    /**
-     * Whether a transaction belongs to the expense side: anything booked to an
-     * expense category (a refund there nets back out), plus uncategorized
-     * outflows. Transfers, savings and investments are internal movements, so
-     * they sit on neither side — matching the cashflow screen.
-     */
-    private function isExpenseSide(Transaction $transaction): bool
-    {
-        return $transaction->categoryType() === CategoryType::Expense
-            || ($transaction->category_id === null && $transaction->amount < 0);
-    }
-
-    /**
-     * Whether a transaction belongs to the income side: anything booked to an
-     * income category (a reversal there nets back out), plus uncategorized
-     * inflows. Internal movements are excluded for the same reason as expenses.
-     */
-    private function isIncomeSide(Transaction $transaction): bool
-    {
-        return $transaction->categoryType() === CategoryType::Income
-            || ($transaction->category_id === null && $transaction->amount > 0);
     }
 }

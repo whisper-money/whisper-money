@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\CashflowSummaryService;
 use App\Services\CategoryTree;
 use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
@@ -15,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 class CashflowAnalyticsController extends Controller
 {
@@ -208,14 +210,8 @@ class CashflowAnalyticsController extends Controller
         $savings = $this->sumOutflowTransactions($transactions, $userCurrency, CategoryType::Savings);
         $investments = $this->sumOutflowTransactions($transactions, $userCurrency, CategoryType::Investment);
 
-        $net = $income - $expense;
-        $savingsRate = $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0;
-
         return [
-            'income' => $income,
-            'expense' => $expense,
-            'net' => $net,
-            'savings_rate' => $savingsRate,
+            ...CashflowSummaryService::summarize($income, $expense),
             'savings' => $savings,
             'investments' => $investments,
         ];
@@ -223,15 +219,14 @@ class CashflowAnalyticsController extends Controller
 
     private function sumTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
     {
-        return $transactions
-            ->filter(function (Transaction $transaction) use ($type): bool {
-                if ($transaction->categoryType() === $type) {
-                    return true;
-                }
+        $onSide = match ($type) {
+            CategoryType::Income => fn (Transaction $transaction): bool => $transaction->isIncomeSide(),
+            CategoryType::Expense => fn (Transaction $transaction): bool => $transaction->isExpenseSide(),
+            default => throw new InvalidArgumentException("sumTransactions only supports Income and Expense, got {$type->value}."),
+        };
 
-                return $transaction->category_id === null
-                    && $this->matchesSign($transaction->amount, $type === CategoryType::Income ? '>' : '<');
-            })
+        return $transactions
+            ->filter($onSide)
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
     }
 

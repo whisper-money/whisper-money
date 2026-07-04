@@ -3,7 +3,12 @@ import { type Category } from './category';
 import { type Label } from './label';
 import { UUID } from './uuid';
 
-export type TransactionSource = 'manually_created' | 'imported';
+// Mirrors App\Enums\TransactionSource (PHP). Keep both in sync.
+export type TransactionSource =
+    | 'manually_created'
+    | 'imported'
+    | 'enablebanking'
+    | 'wise';
 
 export type CategorySource = 'manual' | 'rule' | 'ai' | 'bank';
 

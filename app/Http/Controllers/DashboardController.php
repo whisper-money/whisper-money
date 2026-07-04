@@ -6,11 +6,11 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
-use App\Services\CategoryTree;
+use App\Services\CashflowSummaryService;
+use App\Services\CategorySpendingService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,7 +19,7 @@ class DashboardController extends Controller
 {
     public function __construct(
         private AccountMetricsService $accountMetricsService,
-        private CategoryTree $tree,
+        private CategorySpendingService $categorySpendingService,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -59,8 +59,8 @@ class DashboardController extends Controller
         $period = new PeriodComparator($from, $to);
         $previousPeriod = $period->previous();
 
-        $currentSpending = $this->getCategorySpending($user->id, $period->from, $period->to);
-        $previousSpending = $this->getCategorySpending($user->id, $previousPeriod->from, $previousPeriod->to);
+        $currentSpending = $this->categorySpendingService->forPeriod($user->id, $period->from, $period->to);
+        $previousSpending = $this->categorySpendingService->forPeriod($user->id, $previousPeriod->from, $previousPeriod->to);
 
         $totalAmount = $currentSpending->sum('amount');
 
@@ -100,50 +100,12 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Spending per top-level category: child category amounts roll up into
-     * their root ancestor so the dashboard only lists parents.
-     */
-    private function getCategorySpending(string $userId, Carbon $from, Carbon $to): Collection
-    {
-        $perCategory = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense)
-                    ->whereNull('categories.deleted_at');
-            })
-            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
-            ->groupBy('transactions.category_id')
-            ->get()
-            ->map(fn ($item): array => [
-                'category_id' => $item->category_id,
-                'category' => null,
-                'amount' => (int) -$item->total_amount,
-            ])
-            ->values()
-            ->all();
-
-        return collect($this->tree->rollUp($perCategory, $userId, null))
-            ->filter(fn (array $item): bool => $item['amount'] > 0)
-            ->values();
-    }
-
     private function calculateCashflowSummary(string $userId, Carbon $from, Carbon $to): array
     {
         $income = max(0, $this->getTransactionSum($userId, $from, $to, CategoryType::Income));
         $expense = max(0, -$this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
 
-        $net = $income - $expense;
-        $savingsRate = $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0;
-
-        return [
-            'income' => $income,
-            'expense' => $expense,
-            'net' => $net,
-            'savings_rate' => $savingsRate,
-        ];
+        return CashflowSummaryService::summarize($income, $expense);
     }
 
     private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int

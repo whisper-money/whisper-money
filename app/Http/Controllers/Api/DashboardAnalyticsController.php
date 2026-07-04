@@ -6,19 +6,16 @@ use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
-use App\Models\AccountBalance;
-use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\BalanceLookup;
-use App\Services\CategoryTree;
+use App\Services\CategorySpendingService;
 use App\Services\ExchangeRateService;
 use App\Services\LoanAmortizationService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class DashboardAnalyticsController extends Controller
 {
@@ -26,7 +23,7 @@ class DashboardAnalyticsController extends Controller
         private ExchangeRateService $exchangeRateService,
         private AccountMetricsService $accountMetricsService,
         private LoanAmortizationService $loanAmortizationService,
-        private CategoryTree $tree,
+        private CategorySpendingService $categorySpendingService,
     ) {}
 
     public function netWorth(Request $request)
@@ -41,9 +38,21 @@ class DashboardAnalyticsController extends Controller
 
         $userCurrency = $request->user()->currency_code;
 
+        $accounts = Account::query()
+            ->where('user_id', $request->user()->id)
+            ->get();
+
+        // Load every account's balance history for the compared range in a
+        // fixed number of queries instead of one balance lookup per account.
+        $lookup = BalanceLookup::forAccounts(
+            $accounts->pluck('id'),
+            $previousPeriod->to,
+            $period->to,
+        );
+
         return response()->json([
-            'current' => $this->calculateNetWorthAt($period->to, $userCurrency),
-            'previous' => $this->calculateNetWorthAt($previousPeriod->to, $userCurrency),
+            'current' => $this->calculateNetWorthAt($accounts, $lookup, $period->to, $userCurrency),
+            'previous' => $this->calculateNetWorthAt($accounts, $lookup, $previousPeriod->to, $userCurrency),
             'currency_code' => $userCurrency,
         ]);
     }
@@ -439,8 +448,8 @@ class DashboardAnalyticsController extends Controller
         $previousPeriod = $period->previous();
         $drillParentId = $validated['parent'] ?? null;
 
-        $currentSpending = $this->getCategorySpending($request->user()->id, $period->from, $period->to, $drillParentId);
-        $previousSpending = $this->getCategorySpending($request->user()->id, $previousPeriod->from, $previousPeriod->to, $drillParentId);
+        $currentSpending = $this->categorySpendingService->forPeriod($request->user()->id, $period->from, $period->to, $drillParentId);
+        $previousSpending = $this->categorySpendingService->forPeriod($request->user()->id, $previousPeriod->from, $previousPeriod->to, $drillParentId);
 
         $totalAmount = $currentSpending->sum('amount');
 
@@ -466,50 +475,14 @@ class DashboardAnalyticsController extends Controller
     }
 
     /**
-     * Expense spending rolled up the category tree.
-     *
-     * Without a drill target, child amounts fold into their top-level ancestor
-     * so only parents are listed. With one, the parent's children become the
-     * rows (plus a direct node for transactions sitting on the parent itself).
+     * @param  Collection<int, Account>  $accounts
      */
-    private function getCategorySpending(string $userId, Carbon $from, Carbon $to, ?string $drillParentId = null): Collection
+    private function calculateNetWorthAt(Collection $accounts, BalanceLookup $lookup, Carbon $date, string $userCurrency): int
     {
-        $perCategory = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense)
-                    ->whereNull('categories.deleted_at');
-            })
-            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
-            ->groupBy('transactions.category_id')
-            ->get()
-            ->map(fn ($item): array => [
-                'category_id' => $item->category_id,
-                'category' => null,
-                'amount' => (int) -$item->total_amount,
-            ])
-            ->values()
-            ->all();
-
-        return collect($this->tree->rollUp($perCategory, $userId, $drillParentId))
-            ->filter(fn (array $item): bool => $item['amount'] > 0)
-            ->values();
-    }
-
-    private function calculateNetWorthAt(Carbon $date, string $userCurrency): int
-    {
-        $accounts = Account::where('user_id', request()->user()->id)->get();
-
         $total = 0;
 
         foreach ($accounts as $account) {
-            $balance = AccountBalance::query()
-                ->where('account_id', $account->id)
-                ->where('balance_date', '<=', $date->toDateString())
-                ->orderBy('balance_date', 'desc')
-                ->value('balance') ?? 0;
+            $balance = $lookup->getBalanceAt($account->id, $date);
 
             $convertedBalance = $this->exchangeRateService->convert(
                 $account->currency_code,

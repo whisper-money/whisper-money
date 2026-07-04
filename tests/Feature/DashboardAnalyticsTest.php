@@ -71,6 +71,52 @@ test('net worth calculates assets minus liabilities', function () {
         ]);
 });
 
+test('net worth queries account balances a fixed number of times regardless of account count', function () {
+    // Six accounts, each with a current and a prior-period balance. The old
+    // implementation ran one balance query per account per compared period,
+    // so this would scale with the account count; BalanceLookup keeps it flat.
+    for ($i = 0; $i < 6; $i++) {
+        $account = Account::factory()->create([
+            'user_id' => $this->user->id,
+            'type' => AccountType::Checking,
+            'currency_code' => 'USD',
+        ]);
+
+        AccountBalance::factory()->create([
+            'account_id' => $account->id,
+            'balance_date' => now(),
+            'balance' => 100000,
+        ]);
+        AccountBalance::factory()->create([
+            'account_id' => $account->id,
+            'balance_date' => now()->subDays(30),
+            'balance' => 90000,
+        ]);
+    }
+
+    $balanceQueries = 0;
+    DB::listen(function ($query) use (&$balanceQueries): void {
+        if (str_starts_with(strtolower($query->sql), 'select') && str_contains($query->sql, 'account_balances')) {
+            $balanceQueries++;
+        }
+    });
+
+    $response = $this->getJson('/api/dashboard/net-worth?'.http_build_query([
+        'from' => now()->subDays(29)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk()
+        ->assertJson([
+            'current' => 600000, // 6 x 100000
+            'previous' => 540000, // 6 x 90000
+            'currency_code' => 'USD',
+        ]);
+
+    // BalanceLookup issues at most three balance queries for the whole request.
+    expect($balanceQueries)->toBeLessThanOrEqual(3);
+});
+
 test('net worth response includes currency_code', function () {
     $response = $this->getJson('/api/dashboard/net-worth?'.http_build_query([
         'from' => now()->subDays(29)->toDateString(),
