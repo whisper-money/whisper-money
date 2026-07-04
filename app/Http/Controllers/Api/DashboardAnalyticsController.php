@@ -6,7 +6,6 @@ use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
-use App\Models\AccountBalance;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\BalanceLookup;
@@ -15,6 +14,7 @@ use App\Services\ExchangeRateService;
 use App\Services\LoanAmortizationService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 
 class DashboardAnalyticsController extends Controller
@@ -38,9 +38,21 @@ class DashboardAnalyticsController extends Controller
 
         $userCurrency = $request->user()->currency_code;
 
+        $accounts = Account::query()
+            ->where('user_id', $request->user()->id)
+            ->get();
+
+        // Load every account's balance history for the compared range in a
+        // fixed number of queries instead of one balance lookup per account.
+        $lookup = BalanceLookup::forAccounts(
+            $accounts->pluck('id'),
+            $previousPeriod->to,
+            $period->to,
+        );
+
         return response()->json([
-            'current' => $this->calculateNetWorthAt($period->to, $userCurrency),
-            'previous' => $this->calculateNetWorthAt($previousPeriod->to, $userCurrency),
+            'current' => $this->calculateNetWorthAt($accounts, $lookup, $period->to, $userCurrency),
+            'previous' => $this->calculateNetWorthAt($accounts, $lookup, $previousPeriod->to, $userCurrency),
             'currency_code' => $userCurrency,
         ]);
     }
@@ -462,18 +474,15 @@ class DashboardAnalyticsController extends Controller
         return response()->json($top);
     }
 
-    private function calculateNetWorthAt(Carbon $date, string $userCurrency): int
+    /**
+     * @param  Collection<int, Account>  $accounts
+     */
+    private function calculateNetWorthAt(Collection $accounts, BalanceLookup $lookup, Carbon $date, string $userCurrency): int
     {
-        $accounts = Account::where('user_id', request()->user()->id)->get();
-
         $total = 0;
 
         foreach ($accounts as $account) {
-            $balance = AccountBalance::query()
-                ->where('account_id', $account->id)
-                ->where('balance_date', '<=', $date->toDateString())
-                ->orderBy('balance_date', 'desc')
-                ->value('balance') ?? 0;
+            $balance = $lookup->getBalanceAt($account->id, $date);
 
             $convertedBalance = $this->exchangeRateService->convert(
                 $account->currency_code,
