@@ -218,15 +218,12 @@ class CashflowAnalyticsController extends Controller
 
     private function sumTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
     {
-        return $transactions
-            ->filter(function (Transaction $transaction) use ($type): bool {
-                if ($transaction->categoryType() === $type) {
-                    return true;
-                }
+        $onSide = $type === CategoryType::Income
+            ? fn (Transaction $transaction): bool => $transaction->isIncomeSide()
+            : fn (Transaction $transaction): bool => $transaction->isExpenseSide();
 
-                return $transaction->category_id === null
-                    && $this->matchesSign($transaction->amount, $type === CategoryType::Income ? '>' : '<');
-            })
+        return $transactions
+            ->filter($onSide)
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
     }
 
