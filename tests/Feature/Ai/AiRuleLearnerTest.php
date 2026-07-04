@@ -107,6 +107,68 @@ it('learns each correction correctly across a batch while loading the corpus onc
     expect($corpusLoads)->toHaveCount(1);
 });
 
+it('does not learn a description rule from a single short token', function () {
+    $user = User::factory()->create();
+    $target = expenseCategory($user);
+    // Corrected txn parked in another category, so the overbroad guard (which
+    // measures uncategorized rows) is a no-op and only the token guard decides.
+    $existing = expenseCategory($user);
+
+    // Merchant-less so the description-token path runs. A lone short token like
+    // "suc" (sucursal) is a generic banking abbreviation and must not become a
+    // rule, even when it is rare in this user's corpus.
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => $existing->id,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => 'suc',
+    ]);
+
+    expect(app(AiRuleLearner::class)->learnFromCorrection($transaction, $target->id))->toBeNull();
+});
+
+it('learns a description rule from a single sufficiently long token', function () {
+    $user = User::factory()->create();
+    $target = expenseCategory($user);
+    $existing = expenseCategory($user);
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => $existing->id,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => 'netflix',
+    ]);
+
+    $rule = app(AiRuleLearner::class)->learnFromCorrection($transaction, $target->id);
+
+    expect($rule)->not->toBeNull()
+        ->and($rule->rules_json)->toBe(['in' => ['netflix', ['var' => 'description']]]);
+});
+
+it('learns a description rule from two short tokens', function () {
+    $user = User::factory()->create();
+    $target = expenseCategory($user);
+    $existing = expenseCategory($user);
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => $existing->id,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => 'abc def',
+    ]);
+
+    $rule = app(AiRuleLearner::class)->learnFromCorrection($transaction, $target->id);
+
+    expect($rule)->not->toBeNull()
+        ->and($rule->rules_json)->toBe(['and' => [
+            ['in' => ['abc', ['var' => 'description']]],
+            ['in' => ['def', ['var' => 'description']]],
+        ]]);
+});
+
 it('appends a new merchant to the existing ai rule for the same category', function () {
     $user = User::factory()->create();
     $category = expenseCategory($user);

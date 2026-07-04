@@ -1,3 +1,4 @@
+import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AmountInput } from '@/components/ui/amount-input';
@@ -39,6 +40,7 @@ import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { router } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -440,7 +442,10 @@ export function EditTransactionDialog({
                     finalDecryptedDescription = trimmedDescription;
                 }
 
-                await transactionSyncService.update(transaction.id, updateData);
+                const result = await transactionSyncService.update(
+                    transaction.id,
+                    updateData,
+                );
 
                 const updatedRecord = await transactionSyncService.getById(
                     transaction.id,
@@ -476,7 +481,32 @@ export function EditTransactionDialog({
                 toast.success(__('Transaction updated successfully'));
                 onSuccess(updatedTransaction);
 
-                if (
+                if (result.learned_rule) {
+                    // The correction already taught the system a forward rule, so
+                    // confirm that and offer an instant undo — and skip the
+                    // "Automatize" prompt, which would only offer to create a rule
+                    // that now exists. Mirrors the transaction-table flow.
+                    const ruleId = result.learned_rule.id;
+
+                    toast.success(
+                        __(
+                            'Learned: similar transactions will be categorized automatically.',
+                        ),
+                        {
+                            closeButton: true,
+                            duration: 10000,
+                            action: {
+                                label: __('Undo'),
+                                onClick: () => {
+                                    router.delete(destroy(ruleId).url, {
+                                        preserveScroll: true,
+                                        preserveState: true,
+                                    });
+                                },
+                            },
+                        },
+                    );
+                } else if (
                     selectedCategoryId &&
                     selectedCategoryId !== transaction.category_id &&
                     updatedCategory
