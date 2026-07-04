@@ -152,5 +152,11 @@ return [
             'allows_primary' => true,
             'allows_account' => true,
         ],
+        [
+            'code' => 'NGN',
+            'name' => 'Nigerian Naira',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];
