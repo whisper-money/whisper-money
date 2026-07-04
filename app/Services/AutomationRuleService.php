@@ -373,7 +373,7 @@ class AutomationRuleService
                         return mb_strtolower($item);
                     }
 
-                    if (is_array($item) && isset($item['var']) && in_array($item['var'], ['description', 'notes'])) {
+                    if (is_array($item) && isset($item['var']) && in_array($item['var'], ['description', 'notes', 'creditor_name', 'debtor_name'], true)) {
                         return $item;
                     }
 
