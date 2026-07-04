@@ -6,6 +6,7 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
+use App\Services\CashflowSummaryService;
 use App\Services\CategoryTree;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
@@ -135,15 +136,7 @@ class DashboardController extends Controller
         $income = max(0, $this->getTransactionSum($userId, $from, $to, CategoryType::Income));
         $expense = max(0, -$this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
 
-        $net = $income - $expense;
-        $savingsRate = $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0;
-
-        return [
-            'income' => $income,
-            'expense' => $expense,
-            'net' => $net,
-            'savings_rate' => $savingsRate,
-        ];
+        return CashflowSummaryService::summarize($income, $expense);
     }
 
     private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
