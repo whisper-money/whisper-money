@@ -19,8 +19,6 @@ class CategorySpendingService
      * ancestor so only parents are listed. With one, the parent's children
      * become the rows (plus a direct node for transactions sitting on the
      * parent itself). Soft-deleted categories are excluded.
-     *
-     * @return Collection<int, array<string, mixed>>
      */
     public function forPeriod(string $userId, Carbon $from, Carbon $to, ?string $drillParentId = null): Collection
     {
