@@ -15,6 +15,11 @@ use function Pest\Laravel\assertDatabaseHas;
 use function Pest\Laravel\assertDatabaseMissing;
 
 beforeEach(function () {
+    // The balance-evolution endpoint converts account currency via the external
+    // currency-rate provider; fake it so these tests stay hermetic under the
+    // stray-request guard instead of hitting the CDN.
+    fakeCurrencyApi();
+
     $this->user = User::factory()->onboarded()->create();
     $this->bank = Bank::factory()->create();
     $this->service = app(LoanAmortizationService::class);

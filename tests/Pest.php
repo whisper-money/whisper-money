@@ -13,7 +13,9 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use App\Services\Banking\TransactionSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Stripe\Collection as StripeCollection;
 use Stripe\Service\SubscriptionService;
 use Stripe\StripeClient;
@@ -51,6 +53,20 @@ pest()->browser()->timeout(15000);
 pest()->beforeEach(function () {
     $this->withoutVite();
 })->in('Feature', 'Performance');
+
+/*
+|--------------------------------------------------------------------------
+| Block stray HTTP requests in Feature tests
+|--------------------------------------------------------------------------
+|
+| Any Feature test whose code path hits the network without a matching
+| Http::fake() should fail loudly instead of making a real request. Tests
+| that legitimately talk to external services register their own fakes,
+| which take precedence over this guard.
+*/
+pest()->beforeEach(function () {
+    Http::preventStrayRequests();
+})->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
@@ -287,4 +303,38 @@ function runSync(
     }
 
     $job->handle(app(BankingConnectionSyncerFactory::class));
+}
+
+/**
+ * Fake the external currency-rate provider (the jsdelivr CDN and its pages.dev
+ * fallback) that CurrencyConversionService and ExchangeRateService fetch from,
+ * returning a deterministic 1:1 rate for every currency. Tests that trigger a
+ * currency conversion (e.g. the balance-evolution endpoint) can call this in
+ * their setup to stay hermetic under the stray-request guard.
+ *
+ * The stub only matches the provider's `/currencies/{code}.min.json` path and
+ * returns null otherwise, so it never shadows another test's own Http::fake()
+ * nor the stray-request guard for unrelated hosts.
+ */
+function fakeCurrencyApi(): void
+{
+    Http::fake(function (Request $request) {
+        if (! preg_match('#/currencies/([a-z0-9]+)\.min\.json#i', $request->url(), $matches)) {
+            return null;
+        }
+
+        $currency = strtolower($matches[1]);
+
+        return Http::response([
+            'date' => '2024-01-01',
+            $currency => [
+                'usd' => 1.0,
+                'eur' => 1.0,
+                'gbp' => 1.0,
+                'jpy' => 1.0,
+                'btc' => 1.0,
+                'eth' => 1.0,
+            ],
+        ]);
+    });
 }
