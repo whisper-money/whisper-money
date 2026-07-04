@@ -3,9 +3,11 @@
 use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Mail\BrokenBankLogosReportEmail;
+use App\Mail\Drip\AiConsentFollowUpEmail;
 use App\Mail\Drip\FeedbackEmail;
 use App\Mail\Drip\ImportHelpEmail;
 use App\Mail\Drip\OnboardingReminderEmail;
+use App\Mail\Drip\PaywallFollowUpEmail;
 use App\Mail\Drip\PromoCodeEmail;
 use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Mail\Drip\WelcomeEmail;
@@ -84,23 +86,43 @@ test('drip mailables use the drip sender', function (string $mailableClass) {
     $user = User::factory()->create();
 
     $mailable = match ($mailableClass) {
+        AiConsentFollowUpEmail::class => new AiConsentFollowUpEmail($user),
         WelcomeEmail::class => new WelcomeEmail($user),
         FeedbackEmail::class => new FeedbackEmail($user),
         ImportHelpEmail::class => new ImportHelpEmail($user),
         OnboardingReminderEmail::class => new OnboardingReminderEmail($user),
+        PaywallFollowUpEmail::class => new PaywallFollowUpEmail($user),
         PromoCodeEmail::class => new PromoCodeEmail($user),
         SubscriptionCancelledEmail::class => new SubscriptionCancelledEmail($user),
     };
 
     expect($mailable->envelope()->from)->toEqual(new Address('hi@whisper.money', 'Álvaro and Víctor'));
 })->with([
+    AiConsentFollowUpEmail::class,
     WelcomeEmail::class,
     FeedbackEmail::class,
     ImportHelpEmail::class,
     OnboardingReminderEmail::class,
+    PaywallFollowUpEmail::class,
     PromoCodeEmail::class,
     SubscriptionCancelledEmail::class,
 ]);
+
+test('only the paywall follow-up sets a reply-to, back to the drip sender', function () {
+    $user = User::factory()->create();
+
+    expect((new PaywallFollowUpEmail($user))->envelope()->replyTo)
+        ->toEqual([new Address('hi@whisper.money', 'Álvaro and Víctor')]);
+
+    expect((new WelcomeEmail($user))->envelope()->replyTo)->toBe([]);
+});
+
+test('promo code email adds the founder promo code to its view data', function () {
+    $user = User::factory()->create();
+
+    expect((new PromoCodeEmail($user))->content()->with)
+        ->toEqual(['userName' => $user->name, 'promoCode' => 'FOUNDER']);
+});
 
 test('default sender is used for active non-drip mailables', function (string $mailableClass) {
     $user = User::factory()->create();

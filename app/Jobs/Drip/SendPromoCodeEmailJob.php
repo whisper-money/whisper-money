@@ -4,53 +4,24 @@ namespace App\Jobs\Drip;
 
 use App\Enums\DripEmailType;
 use App\Mail\Drip\PromoCodeEmail;
-use App\Models\User;
-use App\Models\UserMailLog;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Mail\Mailable;
 
-class SendPromoCodeEmailJob implements ShouldQueue
+class SendPromoCodeEmailJob extends SendDripEmailJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public function __construct(public User $user)
+    protected function emailType(): DripEmailType
     {
-        $this->onQueue('emails');
+        return DripEmailType::PromoCode;
     }
 
-    public function handle(): void
+    protected function buildMail(): Mailable
     {
-        if (! $this->user->canReceiveEmails()) {
-            return;
-        }
+        return new PromoCodeEmail($this->user);
+    }
 
-        if ($this->user->hasReceivedEmail(DripEmailType::PromoCode)) {
-            return;
-        }
-
-        if (! $this->user->isOnboarded()) {
-            return;
-        }
-
-        if (! $this->user->transactions()->exists()) {
-            return;
-        }
-
-        if ($this->user->hasProPlan()) {
-            return;
-        }
-
-        Mail::to($this->user)->send(new PromoCodeEmail($this->user));
-
-        UserMailLog::create([
-            'user_id' => $this->user->id,
-            'email_type' => DripEmailType::PromoCode,
-            'email_identifier' => DripEmailType::PromoCode->value,
-            'sent_at' => now(),
-        ]);
+    protected function shouldSend(): bool
+    {
+        return $this->user->isOnboarded()
+            && $this->user->transactions()->exists()
+            && ! $this->user->hasProPlan();
     }
 }
