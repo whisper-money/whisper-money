@@ -4,49 +4,23 @@ namespace App\Jobs\Drip;
 
 use App\Enums\DripEmailType;
 use App\Mail\Drip\PaywallFollowUpEmail;
-use App\Models\User;
-use App\Models\UserMailLog;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Mail\Mailable;
 
-class SendPaywallFollowUpEmailJob implements ShouldQueue
+class SendPaywallFollowUpEmailJob extends SendDripEmailJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public function __construct(public User $user)
+    protected function emailType(): DripEmailType
     {
-        $this->onQueue('emails');
+        return DripEmailType::PaywallFollowUp;
     }
 
-    public function handle(): void
+    protected function buildMail(): Mailable
     {
-        if (! $this->user->canReceiveEmails()) {
-            return;
-        }
+        return new PaywallFollowUpEmail($this->user);
+    }
 
-        if ($this->user->hasReceivedEmail(DripEmailType::PaywallFollowUp)) {
-            return;
-        }
-
-        if ($this->user->hasProPlan()) {
-            return;
-        }
-
-        if (! $this->user->bankingConnections()->exists()) {
-            return;
-        }
-
-        Mail::to($this->user)->send(new PaywallFollowUpEmail($this->user));
-
-        UserMailLog::create([
-            'user_id' => $this->user->id,
-            'email_type' => DripEmailType::PaywallFollowUp,
-            'email_identifier' => DripEmailType::PaywallFollowUp->value,
-            'sent_at' => now(),
-        ]);
+    protected function shouldSend(): bool
+    {
+        return ! $this->user->hasProPlan()
+            && $this->user->bankingConnections()->exists();
     }
 }

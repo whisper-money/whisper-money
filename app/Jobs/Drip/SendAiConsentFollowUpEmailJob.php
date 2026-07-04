@@ -4,45 +4,22 @@ namespace App\Jobs\Drip;
 
 use App\Enums\DripEmailType;
 use App\Mail\Drip\AiConsentFollowUpEmail;
-use App\Models\User;
-use App\Models\UserMailLog;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Mail\Mailable;
 
-class SendAiConsentFollowUpEmailJob implements ShouldQueue
+class SendAiConsentFollowUpEmailJob extends SendDripEmailJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public function __construct(public User $user)
+    protected function emailType(): DripEmailType
     {
-        $this->onQueue('emails');
+        return DripEmailType::AiConsentFollowUp;
     }
 
-    public function handle(): void
+    protected function buildMail(): Mailable
     {
-        if (! $this->user->canReceiveEmails()) {
-            return;
-        }
+        return new AiConsentFollowUpEmail($this->user);
+    }
 
-        if ($this->user->hasReceivedEmail(DripEmailType::AiConsentFollowUp)) {
-            return;
-        }
-
-        if (! $this->user->aiConsents()->active()->exists()) {
-            return;
-        }
-
-        Mail::to($this->user)->send(new AiConsentFollowUpEmail($this->user));
-
-        UserMailLog::create([
-            'user_id' => $this->user->id,
-            'email_type' => DripEmailType::AiConsentFollowUp,
-            'email_identifier' => DripEmailType::AiConsentFollowUp->value,
-            'sent_at' => now(),
-        ]);
+    protected function shouldSend(): bool
+    {
+        return $this->user->aiConsents()->active()->exists();
     }
 }

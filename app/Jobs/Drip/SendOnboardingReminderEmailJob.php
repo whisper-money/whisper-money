@@ -4,45 +4,22 @@ namespace App\Jobs\Drip;
 
 use App\Enums\DripEmailType;
 use App\Mail\Drip\OnboardingReminderEmail;
-use App\Models\User;
-use App\Models\UserMailLog;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Mail\Mailable;
 
-class SendOnboardingReminderEmailJob implements ShouldQueue
+class SendOnboardingReminderEmailJob extends SendDripEmailJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public function __construct(public User $user)
+    protected function emailType(): DripEmailType
     {
-        $this->onQueue('emails');
+        return DripEmailType::OnboardingReminder;
     }
 
-    public function handle(): void
+    protected function buildMail(): Mailable
     {
-        if (! $this->user->canReceiveEmails()) {
-            return;
-        }
+        return new OnboardingReminderEmail($this->user);
+    }
 
-        if ($this->user->hasReceivedEmail(DripEmailType::OnboardingReminder)) {
-            return;
-        }
-
-        if ($this->user->isOnboarded()) {
-            return;
-        }
-
-        Mail::to($this->user)->send(new OnboardingReminderEmail($this->user));
-
-        UserMailLog::create([
-            'user_id' => $this->user->id,
-            'email_type' => DripEmailType::OnboardingReminder,
-            'email_identifier' => DripEmailType::OnboardingReminder->value,
-            'sent_at' => now(),
-        ]);
+    protected function shouldSend(): bool
+    {
+        return ! $this->user->isOnboarded();
     }
 }
