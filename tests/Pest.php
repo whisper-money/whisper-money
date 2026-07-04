@@ -14,6 +14,7 @@ use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use App\Services\Banking\TransactionSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Stripe\Collection as StripeCollection;
 use Stripe\Service\SubscriptionService;
 use Stripe\StripeClient;
@@ -51,6 +52,20 @@ pest()->browser()->timeout(15000);
 pest()->beforeEach(function () {
     $this->withoutVite();
 })->in('Feature', 'Performance');
+
+/*
+|--------------------------------------------------------------------------
+| Block stray HTTP requests in Feature tests
+|--------------------------------------------------------------------------
+|
+| Any Feature test whose code path hits the network without a matching
+| Http::fake() should fail loudly instead of making a real request. Tests
+| that legitimately talk to external services register their own fakes,
+| which take precedence over this guard.
+*/
+pest()->beforeEach(function () {
+    Http::preventStrayRequests();
+})->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
