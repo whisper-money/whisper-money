@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
+use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
@@ -56,12 +57,12 @@ class HandleInertiaRequests extends Middleware
             ->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
             ->exists() ?? false;
 
-        // Clean up encryption data if no encrypted accounts or transactions remain
-        if (! $request->is('api/*') && $user?->encryption_salt !== null) {
-            if (! $hasEncryptedAccounts && ! $hasEncryptedTransactions) {
-                $user->encryptedMessage()->delete();
-                $user->update(['encryption_salt' => null]);
-            }
+        // A shared-data provider must stay read-only, so hand the residual
+        // encryption cleanup off to a queued job instead of mutating the user
+        // inline during the render. The job re-checks the condition and is
+        // idempotent, so dispatching it on repeat requests is harmless.
+        if (! $request->is('api/*') && $user?->encryption_salt !== null && ! $hasEncryptedAccounts && ! $hasEncryptedTransactions) {
+            PurgeResidualEncryptionArtifactsJob::dispatch($user);
         }
 
         return [
