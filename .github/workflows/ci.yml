@@ -262,6 +262,14 @@ jobs:
       - name: Lint Frontend
         run: bun run lint
 
+      # Advisory for now: the codebase carries a backlog of pre-existing
+      # `tsc --noEmit` errors that predate this step, so it must not gate
+      # merges yet. It still surfaces type regressions in the CI log. Flip
+      # `continue-on-error` to false once the existing backlog is cleared.
+      - name: Type Check Frontend
+        run: bun run types
+        continue-on-error: true
+
       - name: Frontend Tests
         run: bun run test
 
