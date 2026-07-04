@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Console\Commands\Concerns\FindsUsersWithLegacyEncryption;
 use App\Models\User;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
@@ -15,18 +16,25 @@ use Illuminate\Foundation\Queue\Queueable;
  *
  * It re-checks the condition on execution and is therefore idempotent: dispatching
  * it more than once (or after the salt was already cleared elsewhere) is a no-op.
+ * It is also {@see ShouldBeUnique} keyed by user, so the repeated dispatches that
+ * share() issues on every page load collapse into a single queued job per user.
  *
  * Because the purge is destructive (it drops the only key material for any data
  * still encrypted at rest), the residual check uses the same source of truth as
- * {@see FindsUsersWithLegacyEncryption}: the
- * per-row `*_iv` columns, never the stale `accounts.encrypted` flag. Keying off
- * that flag could destroy the salt while an account name is still encrypted.
+ * {@see FindsUsersWithLegacyEncryption}: the per-row `*_iv` columns, never the
+ * stale `accounts.encrypted` flag. Keying off that flag could destroy the salt
+ * while an account name is still encrypted.
  */
-class PurgeResidualEncryptionArtifactsJob implements ShouldQueue
+class PurgeResidualEncryptionArtifactsJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
     public function __construct(public User $user) {}
+
+    public function uniqueId(): string
+    {
+        return $this->user->id;
+    }
 
     public function handle(): void
     {
