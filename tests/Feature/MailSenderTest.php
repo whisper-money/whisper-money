@@ -117,6 +117,13 @@ test('only the paywall follow-up sets a reply-to, back to the drip sender', func
     expect((new WelcomeEmail($user))->envelope()->replyTo)->toBe([]);
 });
 
+test('promo code email adds the founder promo code to its view data', function () {
+    $user = User::factory()->create();
+
+    expect((new PromoCodeEmail($user))->content()->with)
+        ->toEqual(['userName' => $user->name, 'promoCode' => 'FOUNDER']);
+});
+
 test('default sender is used for active non-drip mailables', function (string $mailableClass) {
     $user = User::factory()->create();
 
