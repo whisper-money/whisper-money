@@ -40,7 +40,12 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // retry_after must exceed the longest job $timeout on this connection
+            // (currently 600s). Otherwise a long job outlives its reservation, the
+            // queue hands it to a second worker, and a tries=1 job dies with
+            // MaxAttemptsExceededException (and re-runs its side effects). The
+            // worker --timeout must sit between the longest timeout and this value.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 900),
             'after_commit' => true,
         ],
 
