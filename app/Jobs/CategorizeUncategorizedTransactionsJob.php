@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\Ai\AiCategorizer;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
@@ -15,11 +16,17 @@ use Throwable;
  * consent outside of onboarding. Progress is written to the cache so the
  * transactions page can poll it and surface live progress while the batch runs.
  *
+ * De-duplicated per user: a second dispatch (double "Enable AI" click, or
+ * re-enabling consent while a run is still in flight) would read the same
+ * pending-transaction snapshot on a concurrent worker and re-bill the model for
+ * work already underway — the exact harm tries=1 targets but cannot prevent,
+ * since tries only bounds re-attempts of one dispatch, not duplicate dispatches.
+ *
  * ponytail: mirrors CategorizeOnboardingTransactionsJob's selection + chunking;
  * kept separate so the onboarding pass stays progress-free. Fold the two
  * together if a third caller ever needs the same loop.
  */
-class CategorizeUncategorizedTransactionsJob implements ShouldQueue
+class CategorizeUncategorizedTransactionsJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -34,7 +41,18 @@ class CategorizeUncategorizedTransactionsJob implements ShouldQueue
      */
     public int $tries = 1;
 
+    /**
+     * Safety TTL for the unique lock in case a worker dies mid-run; comfortably
+     * longer than a full run.
+     */
+    public int $uniqueFor = 1800;
+
     public function __construct(public User $user, public string $jobId) {}
+
+    public function uniqueId(): string
+    {
+        return $this->user->id;
+    }
 
     public function viaQueue(): string
     {

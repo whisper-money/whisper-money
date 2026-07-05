@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategorizeTransactions;
 use App\Services\Ai\CategoryCatalog;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 
@@ -217,4 +218,12 @@ it('categorizes the most recent transactions first', function () {
     app()->call([new CategorizeUncategorizedTransactionsJob($user, 'order-job'), 'handle']);
 
     expect($order)->toBe([$newest->id, $middle->id, $oldest->id]);
+});
+
+it('de-duplicates the backfill per user so a concurrent dispatch cannot double-bill', function () {
+    $user = User::factory()->create();
+    $job = new CategorizeUncategorizedTransactionsJob($user, 'job-x');
+
+    expect($job)->toBeInstanceOf(ShouldBeUnique::class)
+        ->and($job->uniqueId())->toBe($user->id);
 });
