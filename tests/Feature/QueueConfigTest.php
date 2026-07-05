@@ -9,11 +9,15 @@ use Illuminate\Support\Str;
  * second worker picks it up: a tries=1 job then dies with
  * MaxAttemptsExceededException and re-runs its side effects. Guard the
  * invariant so a new long-running job can never silently reintroduce it.
+ * Queued Mailables and Notifications honor $timeout too, so scan them as well.
  */
 test('every queued job timeout stays below the database queue retry_after', function () {
     $retryAfter = (int) config('queue.connections.database.retry_after');
 
-    $offenders = collect(File::allFiles(app_path('Jobs')))
+    $queueableDirs = ['Jobs', 'Mail', 'Notifications'];
+
+    $offenders = collect($queueableDirs)
+        ->flatMap(fn (string $dir): array => File::allFiles(app_path($dir)))
         ->map(function ($file): string {
             $relative = Str::of($file->getPathname())
                 ->after(app_path().DIRECTORY_SEPARATOR)
