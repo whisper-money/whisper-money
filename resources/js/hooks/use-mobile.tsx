@@ -1,3 +1,7 @@
+import {
+    addMediaQueryListener,
+    removeMediaQueryListener,
+} from '@/lib/media-query';
 import { useSyncExternalStore } from 'react';
 
 const MOBILE_BREAKPOINT = 768;
@@ -11,8 +15,8 @@ function subscribe(callback: () => void) {
     const mql = getMediaQueryList();
     if (!mql) return () => {};
 
-    mql.addEventListener('change', callback);
-    return () => mql.removeEventListener('change', callback);
+    addMediaQueryListener(mql, callback);
+    return () => removeMediaQueryListener(mql, callback);
 }
 
 function getSnapshot() {
