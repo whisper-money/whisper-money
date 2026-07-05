@@ -28,6 +28,18 @@ describe('addMediaQueryListener', () => {
 
         expect(addListener).toHaveBeenCalledWith(handler);
     });
+
+    it('does not throw when neither API is present', () => {
+        expect(() =>
+            addMediaQueryListener(
+                fakeMql({
+                    addEventListener: undefined,
+                    addListener: undefined,
+                }),
+                () => {},
+            ),
+        ).not.toThrow();
+    });
 });
 
 describe('removeMediaQueryListener', () => {

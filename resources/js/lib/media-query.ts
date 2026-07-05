@@ -18,7 +18,12 @@ export function addMediaQueryListener(
         return;
     }
 
-    mql.addListener(handler);
+    // Deprecated fallback for Safari <14 / legacy browsers. Guarded so a
+    // hypothetical MediaQueryList exposing neither API no-ops instead of
+    // re-introducing the crash this helper exists to prevent.
+    if (typeof mql.addListener === 'function') {
+        mql.addListener(handler);
+    }
 }
 
 export function removeMediaQueryListener(
@@ -31,5 +36,7 @@ export function removeMediaQueryListener(
         return;
     }
 
-    mql.removeListener(handler);
+    if (typeof mql.removeListener === 'function') {
+        mql.removeListener(handler);
+    }
 }
