@@ -118,6 +118,7 @@
     "Your bank account is connected.": "Tu cuenta bancaria está conectada.",
     "A filter with that name already exists": "Ya existe un filtro con ese nombre",
     "Delete saved filter": "Eliminar filtro guardado",
+    "Are you sure you want to delete “:name”? This action cannot be undone.": "¿Seguro que quieres eliminar «:name»? Esta acción no se puede deshacer.",
     "Failed to delete the saved filter": "No se pudo eliminar el filtro guardado",
     "Failed to save the filter": "No se pudo guardar el filtro",
     "Failed to update the saved filter": "No se pudo actualizar el filtro guardado",

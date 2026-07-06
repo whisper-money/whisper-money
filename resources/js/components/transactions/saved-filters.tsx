@@ -1,3 +1,13 @@
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -36,7 +46,7 @@ import {
     Save,
     Trash2,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface SavedFilter {
@@ -54,6 +64,15 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
     const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
     const [activeId, setActiveId] = useState<UUID | null>(null);
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<SavedFilter | null>(
+        null,
+    );
+    // Retain the last name so it stays visible during the close animation,
+    // once pendingDelete has already been cleared to null.
+    const pendingDeleteName = useRef('');
+    if (pendingDelete) {
+        pendingDeleteName.current = pendingDelete.name;
+    }
     const [name, setName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -253,11 +272,11 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
                                 <button
                                     type="button"
                                     aria-label={__('Delete saved filter')}
-                                    className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                                    className="shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:text-destructive [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                                     onClick={(event) => {
                                         event.preventDefault();
                                         event.stopPropagation();
-                                        handleDelete(savedFilter);
+                                        setPendingDelete(savedFilter);
                                     }}
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -332,6 +351,43 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog
+                open={pendingDelete !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setPendingDelete(null);
+                    }
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {__('Delete saved filter')}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {__(
+                                'Are you sure you want to delete “:name”? This action cannot be undone.',
+                                { name: pendingDeleteName.current },
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{__('Cancel')}</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="destructive"
+                            onClick={() => {
+                                if (pendingDelete) {
+                                    handleDelete(pendingDelete);
+                                }
+                                setPendingDelete(null);
+                            }}
+                        >
+                            {__('Delete')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
