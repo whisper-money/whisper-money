@@ -1,6 +1,8 @@
 name: Release
 
 on:
+  schedule:
+    - cron: "0 8 * * 1" # Mondays 08:00 UTC = 10:00 Madrid (CEST) / 09:00 (CET)
   workflow_dispatch:
     inputs:
       increment:
@@ -42,23 +44,38 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Check for releasable commits
+        id: guard
+        run: |
+          LAST=$(git describe --tags --abbrev=0)
+          if [ -z "$(git log "$LAST"..HEAD --oneline)" ]; then
+            echo "No commits since $LAST; skipping release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create release branch
         id: branch
+        if: steps.guard.outputs.skip != 'true'
         run: |
           BRANCH="release/run-${{ github.run_id }}"
           git checkout -b "$BRANCH"
           echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Run release-it
+        if: steps.guard.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx release-it ${{ inputs.increment }} --ci
+        run: npx release-it "${{ inputs.increment || 'patch' }}" --ci
 
       - name: Read new version
         id: version
+        if: steps.guard.outputs.skip != 'true'
         run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Open pull request
+        if: steps.guard.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
