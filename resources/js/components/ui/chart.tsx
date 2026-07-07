@@ -686,6 +686,7 @@ export {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
+    ChartTooltipPortal,
     ChartLegend,
     ChartLegendContent,
     ChartStyle,
