@@ -2,6 +2,7 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
+use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\BankingConnection;
@@ -673,4 +674,92 @@ test('sync dedupes against soft-deleted fingerprinted transactions', function ()
     expect($created)->toBe(0);
     expect($account->transactions()->withTrashed()->count())->toBe(1);
     expect($account->transactions()->withTrashed()->first()->trashed())->toBeTrue();
+});
+
+test('sync clamps date_from and retries once when the bank rejects the period', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+
+    // Requested 92-day window is refused; the ladder's widest step (90 days
+    // before date_to = 2026-04-08) is retried, with strategy dropped to null.
+    $mockProvider->shouldReceive('getTransactions')
+        ->with('ext-123', '2026-04-06', '2026-07-07', null, 'longest')
+        ->once()
+        ->andThrow(new WrongTransactionsPeriodException('too wide'));
+
+    $mockProvider->shouldReceive('getTransactions')
+        ->with('ext-123', '2026-04-08', '2026-07-07', null, null)
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2026-04-15',
+                    'remittance_information' => ['Grocery Store Purchase'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $created = $service->sync($account, '2026-04-06', '2026-07-07', 'longest', saveDailyBalances: false);
+
+    expect($created)->toBe(1);
+    expect($account->transactions()->count())->toBe(1);
+});
+
+test('sync gives up on the account when even the narrowest window is rejected', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+
+    // Initial attempt + one per ladder step (90/30/7) = 4 refused attempts,
+    // then the service rethrows so the caller (syncer) can skip the account.
+    $mockProvider->shouldReceive('getTransactions')
+        ->times(4)
+        ->andThrow(new WrongTransactionsPeriodException('too wide'));
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+
+    expect(fn () => $service->sync($account, '2026-04-06', '2026-07-07', saveDailyBalances: false))
+        ->toThrow(WrongTransactionsPeriodException::class);
+});
+
+test('sync does not retry when the rejected window is already narrow', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+
+    // date_from is only 3 days back — no ladder step narrows it further, so the
+    // exception is rethrown immediately without a pointless retry.
+    $mockProvider->shouldReceive('getTransactions')
+        ->with('ext-123', '2026-07-04', '2026-07-07', null, null)
+        ->once()
+        ->andThrow(new WrongTransactionsPeriodException('too wide'));
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+
+    expect(fn () => $service->sync($account, '2026-07-04', '2026-07-07', saveDailyBalances: false))
+        ->toThrow(WrongTransactionsPeriodException::class);
 });
