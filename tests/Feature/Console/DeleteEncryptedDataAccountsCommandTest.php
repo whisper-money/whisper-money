@@ -28,6 +28,23 @@ test('it soft-deletes users with encrypted data who did not sign in within the g
     expect(User::whereKey($clean->id)->exists())->toBeTrue();
 });
 
+test('it never deletes a subscribed user', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $subscribed = User::factory()->create(['last_active_at' => now()->subDays(30)]);
+    Transaction::factory()->for($subscribed)->create();
+    $subscribed->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    artisan('encryption:delete-accounts', ['--force' => true])->assertSuccessful();
+
+    expect(User::whereKey($subscribed->id)->exists())->toBeTrue();
+});
+
 test('it never deletes the demo account', function () {
     $demo = User::factory()->create([
         'email' => config('app.demo.email'),

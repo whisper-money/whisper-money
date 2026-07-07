@@ -28,6 +28,23 @@ test('it queues a warning email for users with encrypted transactions or account
     Queue::assertNotPushed(SendUpdateEmailJob::class, fn (SendUpdateEmailJob $job) => $job->user->is($clean));
 });
 
+test('it never warns a subscribed user', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $subscribed = User::factory()->create();
+    Transaction::factory()->for($subscribed)->create();
+    $subscribed->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    artisan('encryption:notify-removal', ['--force' => true])->assertSuccessful();
+
+    Queue::assertNotPushed(SendUpdateEmailJob::class);
+});
+
 test('it queues on the emails queue', function () {
     $user = User::factory()->create();
     Transaction::factory()->for($user)->create();
