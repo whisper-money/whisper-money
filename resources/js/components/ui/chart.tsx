@@ -2,6 +2,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import * as RechartsPrimitive from 'recharts';
 
+import { computeTooltipPosition } from '@/lib/chart-tooltip-position';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
@@ -142,6 +143,11 @@ function ChartTooltipPortal({
         };
     }, []);
 
+    // Only recompute when the cursor coordinate (or offset) changes. Depending
+    // on nothing re-ran this effect after its own setPos, and the equality
+    // guard alone could not stop the render→effect→setPos loop once positions
+    // oscillated by a sub-pixel — React aborted with "Maximum update depth
+    // exceeded". `pos` is deliberately not a dependency.
     React.useLayoutEffect(() => {
         if (!anchorRef.current || !coordinate) {
             return;
@@ -151,37 +157,26 @@ function ChartTooltipPortal({
             return;
         }
         const rect = wrapper.getBoundingClientRect();
-        const cx = (coordinate.x ?? 0) + rect.left;
-        const cy = (coordinate.y ?? 0) + rect.top;
-
         const tipEl = tooltipRef.current;
-        const tipW = tipEl?.offsetWidth ?? 0;
-        const tipH = tipEl?.offsetHeight ?? 0;
 
-        let x = cx + offset;
-        let y = cy + offset;
-
-        // Flip if overflowing viewport
-        if (x + tipW > window.innerWidth - 8) {
-            x = cx - tipW - offset;
-        }
-        if (y + tipH > window.innerHeight - 8) {
-            y = cy - tipH - offset;
-        }
-        if (x < 8) {
-            x = 8;
-        }
-        if (y < 8) {
-            y = 8;
-        }
-
-        setPos((prev) => {
-            if (prev && prev.x === x && prev.y === y) {
-                return prev;
-            }
-            return { x, y };
+        const next = computeTooltipPosition({
+            cx: (coordinate.x ?? 0) + rect.left,
+            cy: (coordinate.y ?? 0) + rect.top,
+            tipW: tipEl?.offsetWidth ?? 0,
+            tipH: tipEl?.offsetHeight ?? 0,
+            offset,
+            viewportW: window.innerWidth,
+            viewportH: window.innerHeight,
         });
-    });
+
+        setPos((prev) =>
+            prev && prev.x === next.x && prev.y === next.y ? prev : next,
+        );
+        // Depend on the primitive x/y, not the `coordinate` object: Recharts
+        // passes a fresh object every render, so depending on it would run this
+        // effect on every render again and reopen the loop.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [coordinate?.x, coordinate?.y, offset]);
 
     return (
         <>
@@ -691,6 +686,7 @@ export {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
+    ChartTooltipPortal,
     ChartLegend,
     ChartLegendContent,
     ChartStyle,
