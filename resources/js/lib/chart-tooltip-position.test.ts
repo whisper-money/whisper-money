@@ -62,21 +62,16 @@ describe('computeTooltipPosition', () => {
         expect(pos).toEqual({ x: 8, y: 8 });
     });
 
-    it('rounds to whole pixels so the result is a stable fixed point', () => {
-        const input = {
-            cx: 100.4,
-            cy: 100.6,
-            tipW: 120,
-            tipH: 60,
-            offset: 12,
-            ...viewport,
-        };
-        const first = computeTooltipPosition(input);
+    it('rounds to whole pixels so sub-pixel jitter collapses to one coordinate', () => {
+        const base = { tipW: 120, tipH: 60, offset: 12, ...viewport };
+        const a = computeTooltipPosition({ cx: 100.1, cy: 100.1, ...base });
+        const b = computeTooltipPosition({ cx: 100.4, cy: 100.4, ...base });
 
-        expect(Number.isInteger(first.x)).toBe(true);
-        expect(Number.isInteger(first.y)).toBe(true);
-        // Same inputs must yield an identical result — the effect relies on this
-        // to converge instead of looping.
-        expect(computeTooltipPosition(input)).toEqual(first);
+        expect(Number.isInteger(a.x)).toBe(true);
+        expect(Number.isInteger(a.y)).toBe(true);
+        // 100.1 and 100.4 both land on the same pixel, so the equality guard
+        // sees an unchanged position instead of thrashing on the difference.
+        expect(a).toEqual(b);
+        expect(a).toEqual({ x: 112, y: 112 });
     });
 });

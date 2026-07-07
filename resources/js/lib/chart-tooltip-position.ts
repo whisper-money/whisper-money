@@ -18,9 +18,11 @@ export interface TooltipPositionInput {
 /**
  * Computes the fixed-position coordinates for the chart tooltip, flipping it to
  * the opposite side of the cursor when it would overflow the viewport and
- * clamping it to an 8px margin. The result is rounded to whole pixels so the
- * output is a stable fixed point: fractional `getBoundingClientRect` values
- * can't produce sub-pixel oscillation between renders.
+ * clamping it to an 8px margin. The result is rounded to whole pixels so that
+ * sub-pixel jitter from `getBoundingClientRect` collapses to the same
+ * coordinate. (The effect's dependency array in chart.tsx is what actually
+ * stops the render loop; rounding only reduces how often the equality guard is
+ * defeated by a fractional difference.)
  */
 export function computeTooltipPosition({
     cx,
