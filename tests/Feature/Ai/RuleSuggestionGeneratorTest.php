@@ -2,6 +2,8 @@
 
 use App\Ai\Agents\RuleSuggestionAgent;
 use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
+use Illuminate\Support\Facades\Exceptions;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
 it('returns the structured suggestions produced by the model', function () {
     RuleSuggestionAgent::fake([
@@ -93,6 +95,55 @@ it('keeps successful batches when one batch fails after retry', function () {
 
     expect($suggestions)->toHaveCount(1)
         ->and($suggestions[0]['match_token'])->toBe('okkey');
+});
+
+it('does not report an expected transient provider overload', function () {
+    config()->set('ai_suggestions.group_batch_size', 1);
+
+    Exceptions::fake();
+
+    RuleSuggestionAgent::fake(function (string $prompt) {
+        if (str_contains($prompt, 'boomtoken')) {
+            throw ProviderOverloadedException::forProvider('gemini');
+        }
+
+        return ['suggestions' => [genSuggestion('okkey')]];
+    });
+
+    $generator = new LaravelAiRuleSuggestionGenerator;
+
+    $suggestions = $generator->generate(
+        groups: [benchGroup('boomtoken'), benchGroup('goodkey')],
+        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+    );
+
+    expect($suggestions)->toHaveCount(1)
+        ->and($suggestions[0]['match_token'])->toBe('okkey');
+
+    Exceptions::assertNothingReported();
+});
+
+it('reports an unexpected batch failure', function () {
+    config()->set('ai_suggestions.group_batch_size', 1);
+
+    Exceptions::fake();
+
+    RuleSuggestionAgent::fake(function (string $prompt) {
+        if (str_contains($prompt, 'boomtoken')) {
+            throw new RuntimeException('batch failed');
+        }
+
+        return ['suggestions' => [genSuggestion('okkey')]];
+    });
+
+    $generator = new LaravelAiRuleSuggestionGenerator;
+
+    $generator->generate(
+        groups: [benchGroup('boomtoken'), benchGroup('goodkey')],
+        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+    );
+
+    Exceptions::assertReported(RuntimeException::class);
 });
 
 it('rethrows when every batch fails', function () {
