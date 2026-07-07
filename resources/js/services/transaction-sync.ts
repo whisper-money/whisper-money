@@ -1,4 +1,4 @@
-import { db } from '@/lib/dexie-db';
+import { db, withDb } from '@/lib/dexie-db';
 import { TransactionSyncManager } from '@/lib/sync-manager';
 import type { LearnedRuleNotice } from '@/types/automation-rule';
 import type { Transaction } from '@/types/transaction';
@@ -192,7 +192,11 @@ class TransactionSyncService {
         await axios.delete(`/transactions/${id}`, {
             data: options?.updateBalance ? { update_balance: true } : undefined,
         });
-        await db.transactions.delete(id);
+        // The API delete above is authoritative; the local cache eviction is
+        // best-effort and skipped when IndexedDB is unavailable (PHP-LARAVEL-43).
+        await withDb<void>(async () => {
+            await db.transactions.delete(id);
+        }, undefined);
     }
 
     async updateManyIndividual(
