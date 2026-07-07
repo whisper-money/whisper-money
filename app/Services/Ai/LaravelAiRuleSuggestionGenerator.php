@@ -4,7 +4,9 @@ namespace App\Services\Ai;
 
 use App\Ai\Agents\RuleSuggestionAgent;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Exceptions\FailoverableException;
 use Throwable;
 
 class LaravelAiRuleSuggestionGenerator implements RuleSuggestionGenerator
@@ -27,6 +29,17 @@ class LaravelAiRuleSuggestionGenerator implements RuleSuggestionGenerator
                 foreach ($this->generateBatchWithRetry($batch, $categoryOptions) as $suggestion) {
                     $suggestions[] = $suggestion;
                 }
+            } catch (FailoverableException $exception) {
+                // An overloaded or rate-limited provider is an expected transient
+                // condition, not a bug (PHP-LARAVEL-44). Count it as a failure so
+                // an all-transient run still surfaces, but don't report the
+                // per-batch noise — a genuine total failure is still reported once
+                // by the run-level handler. Mirrors CategorizeTransactions.
+                $failures++;
+                $lastError = $exception;
+                Log::warning('AI rule-suggestion batch dropped: provider transient failure.', [
+                    'exception' => $exception->getMessage(),
+                ]);
             } catch (Throwable $exception) {
                 // A single batch failing must not discard the suggestions from
                 // the batches that did succeed (a run can span many batches).
