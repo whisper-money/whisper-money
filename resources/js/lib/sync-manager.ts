@@ -2,7 +2,7 @@ import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
-import { db } from './dexie-db';
+import { db, isIndexedDbAvailable, withDb } from './dexie-db';
 
 export interface SyncResult {
     success: boolean;
@@ -29,18 +29,29 @@ export class TransactionSyncManager {
     }
 
     async getLastSyncTime(): Promise<string | null> {
-        const metadata = await db.sync_metadata.get(LAST_SYNC_KEY);
-        return metadata?.value || null;
+        return withDb(async () => {
+            const metadata = await db.sync_metadata.get(LAST_SYNC_KEY);
+            return metadata?.value || null;
+        }, null);
     }
 
     async setLastSyncTime(timestamp: string): Promise<void> {
-        await db.sync_metadata.put({
-            key: LAST_SYNC_KEY,
-            value: timestamp,
-        });
+        await withDb<void>(async () => {
+            await db.sync_metadata.put({
+                key: LAST_SYNC_KEY,
+                value: timestamp,
+            });
+        }, undefined);
     }
 
     async sync(): Promise<SyncResult> {
+        // No offline store to sync into (see PHP-LARAVEL-43). Skip cleanly —
+        // empty errors so callers do not treat it as a failure — and avoid the
+        // pointless server round-trip that would only populate a missing cache.
+        if (!isIndexedDbAvailable()) {
+            return { success: true, inserted: 0, updated: 0, errors: [] };
+        }
+
         if (this.syncInProgress) {
             return {
                 success: false,
@@ -129,18 +140,22 @@ export class TransactionSyncManager {
     }
 
     async getAll(): Promise<Transaction[]> {
-        return await db.transactions.toArray();
+        return withDb<Transaction[]>(() => db.transactions.toArray(), []);
     }
 
     async getById(id: UUID): Promise<Transaction | null> {
-        return (await db.transactions.get(id)) || null;
+        return withDb<Transaction | null>(
+            async () => (await db.transactions.get(id)) || null,
+            null,
+        );
     }
 
     async getByAccountId(accountId: UUID): Promise<Transaction[]> {
-        return await db.transactions
-            .where('account_id')
-            .equals(accountId)
-            .toArray();
+        return withDb<Transaction[]>(
+            () =>
+                db.transactions.where('account_id').equals(accountId).toArray(),
+            [],
+        );
     }
 
     isSyncing(): boolean {
@@ -148,7 +163,9 @@ export class TransactionSyncManager {
     }
 
     async clearAll(): Promise<void> {
-        await db.transactions.clear();
-        await db.sync_metadata.delete(LAST_SYNC_KEY);
+        await withDb<void>(async () => {
+            await db.transactions.clear();
+            await db.sync_metadata.delete(LAST_SYNC_KEY);
+        }, undefined);
     }
 }
