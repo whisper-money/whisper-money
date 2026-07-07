@@ -48,4 +48,10 @@ return [
         'ai_cohort_webhook_url' => env('DISCORD_AI_COHORT_WEBHOOK_URL'),
     ],
 
+    'plaid' => [
+        'client_id' => env('PLAID_CLIENT_ID'),
+        'secret' => env('PLAID_SECRET'),
+        'env' => env('PLAID_ENV', 'sandbox'),
+    ],
+
 ];

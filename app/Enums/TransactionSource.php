@@ -8,4 +8,5 @@ enum TransactionSource: string
     case Imported = 'imported';
     case EnableBanking = 'enablebanking';
     case Wise = 'wise';
+    case Plaid = 'plaid';
 }

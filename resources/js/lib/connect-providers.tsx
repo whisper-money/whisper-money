@@ -46,6 +46,8 @@ export type ConnectProvider = {
     cardDescription: string;
     fields: CredentialField[];
     help: { before: string; href: string; link: string; after?: string };
+    /** Uses a frontend SDK (Plaid Link) instead of credential fields. */
+    usesSdk?: boolean;
 };
 
 export const CONNECT_PROVIDERS: ConnectProvider[] = [
@@ -237,6 +239,27 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
             link: 'Performance & Reports → Flex Queries',
         },
     },
+    {
+        providerKey: 'plaid',
+        institution: {
+            name: 'Plaid',
+            country: 'US',
+            logo: null,
+            maximum_consent_validity: null,
+        },
+        endpoint: '/open-banking/plaid/connect',
+        onlyCountry: 'US',
+        usesSdk: true,
+        headerDescription: 'Connect your US bank account through Plaid.',
+        cardDescription:
+            'Use Plaid to securely connect your US bank account.',
+        fields: [],
+        help: {
+            before: 'Plaid securely connects to over 12,000 US financial institutions.',
+            href: 'https://plaid.com',
+            link: 'Learn more about Plaid',
+        },
+    },
 ];
 
 /** Find a provider by the selected institution name. */
@@ -268,6 +291,9 @@ export function isProviderComplete(
     provider: ConnectProvider,
     values: Record<string, string>,
 ): boolean {
+    if (provider.usesSdk) {
+        return true;
+    }
     return provider.fields.every((f) => (values[f.key] ?? '').length > 0);
 }
 
@@ -303,6 +329,19 @@ export function ProviderCredentialFields({
     onChange: (key: string, value: string) => void;
     idPrefix?: string;
 }) {
+    if (provider.usesSdk) {
+        return (
+            <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                    {__(
+                        'You will be redirected to Plaid to securely connect your bank account.',
+                    )}
+                </p>
+                <ProviderHelp help={provider.help} />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
             {provider.fields.map((field) => {

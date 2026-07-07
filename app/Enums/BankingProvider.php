@@ -12,6 +12,7 @@ enum BankingProvider: string
     case Coinbase = 'coinbase';
     case InteractiveBrokers = 'interactivebrokers';
     case Wise = 'wise';
+    case Plaid = 'plaid';
     case EnableBanking = 'enablebanking';
 
     /**
@@ -20,7 +21,10 @@ enum BankingProvider: string
      */
     public function usesApiKey(): bool
     {
-        return $this !== self::EnableBanking;
+        return match ($this) {
+            self::EnableBanking => false,
+            default => true,
+        };
     }
 
     /**
@@ -30,7 +34,7 @@ enum BankingProvider: string
     {
         return match ($this) {
             self::IndexaCapital, self::Binance, self::Bitpanda, self::Coinbase, self::InteractiveBrokers => AccountType::Investment,
-            self::Wise, self::EnableBanking => AccountType::Checking,
+            self::Wise, self::EnableBanking, self::Plaid => AccountType::Checking,
         };
     }
 
@@ -67,6 +71,7 @@ enum BankingProvider: string
                 new CredentialField('query_id', 'api_secret', ['required', 'string', 'min:3']),
             ],
             self::EnableBanking => [],
+            self::Plaid => [],
         };
     }
 

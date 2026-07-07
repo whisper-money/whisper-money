@@ -174,8 +174,144 @@ export function useConnectFlow(connections: BankingConnection[]) {
         [connections],
     );
 
+    const postToBackend = useCallback(
+        async (
+            url: string,
+            body: Record<string, unknown>,
+        ): Promise<{ redirect_url: string } | null> => {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                },
+                body: JSON.stringify(body),
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(
+                    (data as { message?: string }).message ||
+                        'Failed to start authorization',
+                );
+            }
+
+            return response.json();
+        },
+        [],
+    );
+
+    const handlePlaidLink = useCallback(async () => {
+        setIsSubmitting(true);
+        setError(null);
+
+        try {
+            // 1. Get link token from backend
+            const linkTokenResult = await postToBackend(
+                '/open-banking/plaid/link-token',
+                {},
+            );
+
+            if (!linkTokenResult) {
+                throw new Error('Failed to create Plaid link token');
+            }
+
+            // linkTokenResult might just be { link_token, expiration } — not a redirect response
+            // Re-fetch to get the link token directly
+            const tokenResponse = await fetch(
+                '/open-banking/plaid/link-token',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-XSRF-TOKEN': getCsrfToken(),
+                    },
+                    body: JSON.stringify({}),
+                },
+            );
+
+            if (!tokenResponse.ok) {
+                throw new Error('Failed to create Plaid link token');
+            }
+
+            const tokenData = await tokenResponse.json();
+            const linkToken = tokenData.link_token;
+
+            if (!linkToken) {
+                throw new Error('No link token returned from Plaid');
+            }
+
+            // 2. Open Plaid Link
+            const config: PlaidLinkConfig = {
+                token: linkToken,
+                onSuccess: async (publicToken: string) => {
+                    try {
+                        setIsSubmitting(true);
+                        const result = await postToBackend(
+                            '/open-banking/plaid/connect',
+                            { public_token: publicToken },
+                        );
+
+                        if (result?.redirect_url) {
+                            window.location.href = result.redirect_url;
+                        }
+                    } catch (e) {
+                        setError(
+                            e instanceof Error
+                                ? e.message
+                                : __('Failed to connect. Please try again.'),
+                        );
+                        setIsSubmitting(false);
+                    }
+                },
+                onExit: () => {
+                    setIsSubmitting(false);
+                },
+            };
+
+            const plaid = (window as unknown as PlaidWindow).Plaid;
+            if (plaid) {
+                plaid.create(config).open();
+            } else {
+                // Load Plaid Link script dynamically
+                const script = document.createElement('script');
+                script.src =
+                    'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+                script.onload = () => {
+                    const plaidLoaded = (window as unknown as PlaidWindow)
+                        .Plaid;
+                    if (plaidLoaded) {
+                        plaidLoaded.create(config).open();
+                    }
+                };
+                script.onerror = () => {
+                    setError(
+                        __('Failed to load Plaid. Please try again.'),
+                    );
+                    setIsSubmitting(false);
+                };
+                document.head.appendChild(script);
+            }
+        } catch (e) {
+            setError(
+                e instanceof Error
+                    ? e.message
+                    : __('Failed to connect. Please try again.'),
+            );
+            setIsSubmitting(false);
+        }
+    }, [postToBackend, __]);
+
     const handleAuthorize = useCallback(async () => {
         if (!selectedBank) {
+            return;
+        }
+
+        // Plaid uses its own SDK flow
+        if (provider?.usesSdk) {
+            await handlePlaidLink();
             return;
         }
 
@@ -198,25 +334,11 @@ export function useConnectFlow(connections: BankingConnection[]) {
                       logo: selectedBank.logo,
                   };
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'X-XSRF-TOKEN': getCsrfToken(),
-                },
-                body: JSON.stringify(body),
-            });
+            const result = await postToBackend(url, body);
 
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(
-                    data.message || 'Failed to start authorization',
-                );
+            if (result?.redirect_url) {
+                window.location.href = result.redirect_url;
             }
-
-            const data = await response.json();
-            window.location.href = data.redirect_url;
         } catch (e) {
             setError(
                 e instanceof Error
@@ -225,7 +347,15 @@ export function useConnectFlow(connections: BankingConnection[]) {
             );
             setIsSubmitting(false);
         }
-    }, [selectedBank, provider, credentials, country]);
+    }, [
+        selectedBank,
+        provider,
+        credentials,
+        country,
+        postToBackend,
+        handlePlaidLink,
+        __,
+    ]);
 
     const canSubmit =
         !isSubmitting &&
@@ -258,4 +388,20 @@ export function useConnectFlow(connections: BankingConnection[]) {
         reset,
         clearBankSelection,
     };
+}
+
+interface PlaidLinkConfig {
+    token: string;
+    onSuccess: (publicToken: string, metadata?: unknown) => void;
+    onExit?: (error?: unknown, metadata?: unknown) => void;
+    onLoad?: () => void;
+    onEvent?: (eventName: string, metadata: unknown) => void;
+}
+
+interface PlaidStatic {
+    create: (config: PlaidLinkConfig) => { open: () => void; destroy: () => void };
+}
+
+interface PlaidWindow {
+    Plaid: PlaidStatic | undefined;
 }

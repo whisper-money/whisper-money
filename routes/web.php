@@ -20,6 +20,7 @@ use App\Http\Controllers\OpenBanking\ConnectionAccountController;
 use App\Http\Controllers\OpenBanking\IndexaCapitalController;
 use App\Http\Controllers\OpenBanking\InstitutionController;
 use App\Http\Controllers\OpenBanking\InteractiveBrokersController;
+use App\Http\Controllers\OpenBanking\PlaidController;
 use App\Http\Controllers\OpenBanking\WiseController;
 use App\Http\Controllers\RealEstateDetailController;
 use App\Http\Controllers\ReEvaluateTransactionRulesController;
@@ -184,6 +185,10 @@ Route::middleware(['auth', 'verified'])->prefix('open-banking')->group(function 
         ->name('open-banking.wise.connect');
     Route::post('interactive-brokers/connect', [InteractiveBrokersController::class, 'store'])
         ->name('open-banking.interactive-brokers.connect');
+    Route::post('plaid/link-token', [PlaidController::class, 'createLinkToken'])
+        ->name('open-banking.plaid.link-token');
+    Route::post('plaid/connect', [PlaidController::class, 'store'])
+        ->name('open-banking.plaid.connect');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
