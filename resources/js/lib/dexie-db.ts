@@ -103,3 +103,47 @@ export const db = new Proxy({} as WhisperMoneyDB, {
         return dbInstance[prop as keyof WhisperMoneyDB];
     },
 });
+
+/**
+ * Whether IndexedDB is usable in the current context. Some browsers do not
+ * expose the `indexedDB` global at all — Chrome on iOS in certain webviews,
+ * private/locked-down modes — so any Dexie operation throws
+ * "ReferenceError: Can't find variable: indexedDB" (see PHP-LARAVEL-43). Checked
+ * via `globalThis` so referencing the global never throws, and wrapped
+ * defensively against exotic throwing getters.
+ */
+export function isIndexedDbAvailable(): boolean {
+    try {
+        return (
+            typeof globalThis.indexedDB !== 'undefined' &&
+            globalThis.indexedDB !== null
+        );
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Run a Dexie operation, degrading to `fallback` when IndexedDB is unavailable
+ * or the operation fails. IndexedDB is only an offline cache here (the API is
+ * the source of truth), so a missing or broken store must never crash the app —
+ * it just means no local cache. Pass ONLY Dexie work in `operation`; keep API
+ * calls outside so they always run. The closure defers `db` access (which lazily
+ * opens Dexie) until after the availability check passes.
+ */
+export async function withDb<T>(
+    operation: () => Promise<T>,
+    fallback: T,
+): Promise<T> {
+    if (!isIndexedDbAvailable()) {
+        return fallback;
+    }
+
+    try {
+        return await operation();
+    } catch (error) {
+        console.debug('IndexedDB operation failed; using fallback', error);
+
+        return fallback;
+    }
+}
