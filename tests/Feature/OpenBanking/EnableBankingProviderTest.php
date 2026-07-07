@@ -3,6 +3,7 @@
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\TransientBankingProviderException;
+use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Services\Banking\EnableBankingProvider;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\Client\ConnectionException;
@@ -156,6 +157,45 @@ test('getBalances wraps an inaccessible account 400 as a non-reportable error', 
     }
 
     test()->fail('Expected inaccessible bank account exception.');
+});
+
+test('getTransactions wraps a 422 wrong-period as a non-reportable error', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 422,
+            'message' => 'Wrong transactions period requested',
+            'detail' => [
+                'message' => 'Timestamp no en periodo de tiempo aceptable',
+            ],
+        ], 422),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getTransactions('ext-123', '2026-04-06', '2026-07-07');
+    } catch (WrongTransactionsPeriodException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected wrong transactions period exception.');
+});
+
+test('getTransactions keeps unrelated 422 validation errors reportable', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 422,
+            'message' => 'Invalid account identifier',
+        ], 422),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    expect(fn () => $provider->getTransactions('ext-123', '2026-04-06', '2026-07-07'))
+        ->toThrow(RequestException::class);
 });
 
 test('getTransactions keeps non-ASPSP client errors reportable', function () {

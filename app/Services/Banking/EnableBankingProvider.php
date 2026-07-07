@@ -6,6 +6,7 @@ use App\Contracts\BankingProviderInterface;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\TransientBankingProviderException;
+use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -115,6 +116,13 @@ class EnableBankingProvider implements BankingProviderInterface
             if ($this->isInaccessibleAccount($e)) {
                 throw new InaccessibleBankAccountException(
                     'EnableBanking account is no longer accessible while fetching transactions.',
+                    previous: $e,
+                );
+            }
+
+            if ($this->isWrongPeriod($e)) {
+                throw new WrongTransactionsPeriodException(
+                    'EnableBanking rejected the requested transactions period as too wide.',
                     previous: $e,
                 );
             }
@@ -243,6 +251,20 @@ class EnableBankingProvider implements BankingProviderInterface
             && $errorName === 'AccountNotAccessibleException';
     }
 
+    private function isWrongPeriod(RequestException $e): bool
+    {
+        $message = $this->errorBody($e)['message'] ?? null;
+
+        // The bank refused the requested date range as too wide ("Wrong
+        // transactions period requested"). Keyed on 422 + the stable "period"
+        // token so genuine validation 422s (e.g. malformed dates) still surface.
+        // ponytail: message match; if EnableBanking adds a stable error code for
+        // this, key on that instead.
+        return $e->response->status() === 422
+            && is_string($message)
+            && str_contains(strtolower($message), 'period');
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -264,7 +286,8 @@ class EnableBankingProvider implements BankingProviderInterface
                 $body = $response->json();
                 $error = is_array($body) ? ($body['error'] ?? null) : null;
                 $isExpected = ($response->status() === 400 && $error === 'ASPSP_ERROR')
-                    || ($response->status() === 401 && $error === 'EXPIRED_SESSION');
+                    || ($response->status() === 401 && $error === 'EXPIRED_SESSION')
+                    || $response->status() === 422;
 
                 Log::log($isExpected ? 'warning' : 'error', 'EnableBanking API error', [
                     'status' => $response->status(),

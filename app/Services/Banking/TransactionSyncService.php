@@ -4,12 +4,24 @@ namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
+use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Models\Account;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class TransactionSyncService
 {
+    /**
+     * Fallback lookback windows (in days back from date_to) tried in order when
+     * the bank rejects the requested transactions period as too wide. Ordered
+     * widest-first so the user keeps as much history as the bank will serve;
+     * the last step is the floor before the account is skipped.
+     *
+     * @var list<int>
+     */
+    private const array WRONG_PERIOD_LOOKBACK_DAYS = [90, 30, 7];
+
     public function __construct(
         private BankingProviderInterface $provider,
         private TransactionDescriptionFormatter $descriptionFormatter,
@@ -40,27 +52,59 @@ class TransactionSyncService
         // ever dwarfs its sync window, narrow this to the incoming batch's keys.
         [$knownFingerprints, $knownExternalIds] = $this->loadExistingDedupKeys($account);
 
-        do {
-            $result = $this->provider->getTransactions(
-                $account->external_account_id,
-                $dateFrom,
-                $dateTo,
-                $continuationKey,
-                $strategy,
-            );
+        // The bank can reject the requested window as too wide (HTTP 422). When
+        // that happens, restart the account from the first page with a
+        // progressively narrower window so the user still gets the history the
+        // bank is willing to serve, instead of crashing the whole connection
+        // sync. Re-fetched pages are idempotent (dedup skips already-imported
+        // rows; daily balances are keyed by date), and strategy is dropped on
+        // the narrowed retry so the explicit date_from is honoured rather than
+        // overridden by "longest".
+        while (true) {
+            try {
+                $continuationKey = null;
 
-            foreach ($result['transactions'] as $transaction) {
-                if ($this->importTransaction($account, $transaction, $bankName, $knownFingerprints, $knownExternalIds)) {
-                    $created++;
+                do {
+                    $result = $this->provider->getTransactions(
+                        $account->external_account_id,
+                        $dateFrom,
+                        $dateTo,
+                        $continuationKey,
+                        $strategy,
+                    );
+
+                    foreach ($result['transactions'] as $transaction) {
+                        if ($this->importTransaction($account, $transaction, $bankName, $knownFingerprints, $knownExternalIds)) {
+                            $created++;
+                        }
+
+                        if ($saveDailyBalances) {
+                            $this->trackDailyBalance($transaction, $dailyBalances);
+                        }
+                    }
+
+                    $continuationKey = $result['continuation_key'];
+                } while ($continuationKey);
+
+                break;
+            } catch (WrongTransactionsPeriodException $e) {
+                $narrowedDateFrom = $this->nextNarrowerDateFrom($dateFrom, $dateTo);
+
+                if ($narrowedDateFrom === null) {
+                    throw $e;
                 }
 
-                if ($saveDailyBalances) {
-                    $this->trackDailyBalance($transaction, $dailyBalances);
-                }
+                Log::warning('EnableBanking rejected the transactions period; retrying with a narrower window', [
+                    'account_id' => $account->id,
+                    'rejected_date_from' => $dateFrom,
+                    'retry_date_from' => $narrowedDateFrom,
+                    'date_to' => $dateTo,
+                ]);
+
+                $dateFrom = $narrowedDateFrom;
+                $strategy = null;
             }
-
-            $continuationKey = $result['continuation_key'];
-        } while ($continuationKey);
+        }
 
         if ($saveDailyBalances) {
             $this->saveDailyBalances($account, $dailyBalances);
@@ -74,6 +118,28 @@ class TransactionSyncService
         ]);
 
         return $created;
+    }
+
+    /**
+     * The next window start strictly narrower (later) than the current one,
+     * stepping down the bounded lookback ladder. Returns null when no ladder
+     * step narrows the current window, so the caller gives up on the account
+     * rather than looping forever. Candidates are always <= date_to, so the
+     * window never inverts. Dates are 'Y-m-d', where string order is date order.
+     */
+    private function nextNarrowerDateFrom(string $dateFrom, string $dateTo): ?string
+    {
+        $to = Carbon::parse($dateTo);
+
+        foreach (self::WRONG_PERIOD_LOOKBACK_DAYS as $days) {
+            $candidate = $to->copy()->subDays($days)->toDateString();
+
+            if ($candidate > $dateFrom) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
