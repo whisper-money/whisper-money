@@ -5,6 +5,7 @@ use App\Enums\BankingSyncLogStatus;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\TransientBankingProviderException;
+use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Mail\BankingConnectionExpiredEmail;
@@ -311,6 +312,50 @@ test('an inaccessible account is skipped and the rest of the connection still sy
     $job = new SyncBankingConnectionJob($connection);
 
     // One dead account must not break the whole connection sync or be reported.
+    runSync($job, $transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->error_message)->toBeNull();
+
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
+    expect($log->status)->toBe(BankingSyncLogStatus::Success);
+    expect($log->metadata['transactions_synced'])->toBe(2);
+});
+
+test('an account whose period the bank refuses is skipped, not crashed, and the rest still syncs', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'good-account',
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'narrow-refused-account',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(function ($account) {
+        if ($account->external_account_id === 'narrow-refused-account') {
+            throw new WrongTransactionsPeriodException('EnableBanking refused every window.');
+        }
+
+        return 2;
+    });
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+
+    $job = new SyncBankingConnectionJob($connection);
+
+    // The refused account must not break the connection sync, mark it Error, or
+    // be reported — same resilience as an inaccessible account.
     runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();

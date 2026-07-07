@@ -3,6 +3,7 @@
 namespace App\Services\Banking\Sync;
 
 use App\Exceptions\Banking\InaccessibleBankAccountException;
+use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
@@ -63,13 +64,15 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                         $this->balanceSync->calculateHistoricalBalances($account);
                     }
                 }
-            } catch (InaccessibleBankAccountException) {
-                // A single account the bank no longer exposes must not break the
+            } catch (InaccessibleBankAccountException|WrongTransactionsPeriodException $e) {
+                // A single account the bank no longer exposes, or whose history
+                // window it refuses even after narrowing, must not break the
                 // whole connection sync. Skip it; the user can stop syncing it
                 // from the manage-accounts screen.
-                Log::warning('Skipping inaccessible EnableBanking account during sync', [
+                Log::warning('Skipping unsyncable EnableBanking account during sync', [
                     'connection_id' => $connection->id,
                     'account_id' => $account->id,
+                    'reason' => $e::class,
                 ]);
 
                 continue;
