@@ -36,13 +36,15 @@ class DeleteEncryptedDataAccountsCommand extends Command
         $days = (int) $this->option('days');
         $cutoff = now()->subDays($days);
 
-        $users = $this->usersWithLegacyEncryption()
-            ->where('email', '!=', config('app.demo.email'))
-            ->where(function (Builder $query) use ($cutoff): void {
-                $query->whereNull('last_active_at')
-                    ->orWhere('last_active_at', '<', $cutoff);
-            })
-            ->get();
+        $users = $this->excludeBilledUsers(
+            $this->usersWithLegacyEncryption()
+                ->where('email', '!=', config('app.demo.email'))
+                ->where(function (Builder $query) use ($cutoff): void {
+                    $query->whereNull('last_active_at')
+                        ->orWhere('last_active_at', '<', $cutoff);
+                })
+                ->get()
+        );
 
         if ($users->isEmpty()) {
             $this->info('No accounts to delete.');

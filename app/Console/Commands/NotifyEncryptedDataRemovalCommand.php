@@ -39,7 +39,7 @@ class NotifyEncryptedDataRemovalCommand extends Command
      */
     public function handle(): int
     {
-        $users = $this->usersWithLegacyEncryption()->get();
+        $users = $this->excludeBilledUsers($this->usersWithLegacyEncryption()->get());
 
         if ($users->isEmpty()) {
             $this->info('No users with encrypted data found.');
