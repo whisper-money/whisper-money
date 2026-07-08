@@ -63,6 +63,26 @@ it('can create a real estate account with property details', function () {
     ]);
 });
 
+it('rejects a purchase date before the 1900 floor', function () {
+    actingAs($this->user);
+
+    // A pre-1900 (typically mistyped) date would make the historical balance
+    // generator build a multi-century monthly series and OOM the queue worker
+    // (PHP-LARAVEL-49). It must be rejected at validation.
+    $data = [
+        'name' => 'My Apartment',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_price' => 25000000,
+        'purchase_date' => '1899-12-31',
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+
+    $response->assertSessionHasErrors(['purchase_date']);
+});
+
 it('can create a real estate account with only required fields', function () {
     actingAs($this->user);
 

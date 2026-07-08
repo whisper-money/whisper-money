@@ -10,6 +10,15 @@ use Illuminate\Support\Str;
 class LoanBalanceGeneratorService
 {
     /**
+     * Upsert historical balances in batches of this size. An old loan start
+     * date (which has no lower bound in validation) can produce a very long
+     * monthly series; building and upserting it all at once exhausts the queue
+     * worker's memory in Arr::map/flatten (PHP-LARAVEL-49). Batching bounds
+     * peak memory.
+     */
+    private const UPSERT_CHUNK_SIZE = 500;
+
+    /**
      * Generate historical monthly balances from a loan's start date to today
      * using linear interpolation between the original amount owed and the
      * current balance owed.
@@ -73,6 +82,25 @@ class LoanBalanceGeneratorService
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
+
+            if (count($rows) >= self::UPSERT_CHUNK_SIZE) {
+                $this->upsertBalances($rows);
+                $rows = [];
+            }
+        }
+
+        $this->upsertBalances($rows);
+    }
+
+    /**
+     * Upsert a batch of balance rows, keyed by (account_id, balance_date).
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function upsertBalances(array $rows): void
+    {
+        if ($rows === []) {
+            return;
         }
 
         AccountBalance::upsert($rows, ['account_id', 'balance_date'], ['balance', 'updated_at']);
