@@ -28,8 +28,8 @@ import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
     AccountInfo,
-    getAccountSign,
     isLiabilityType,
+    netWorthContribution,
 } from '@/lib/chart-calculations';
 import { SharedData } from '@/types';
 import { formatDayFromDate } from '@/utils/date';
@@ -96,7 +96,7 @@ function calculateTrend(
 
         const account = accounts[id];
 
-        return sum + getAccountSign(account.type) * Math.abs(value);
+        return sum + netWorthContribution(account.type, value);
     }, 0);
 
     const previousTotal = accountIds.reduce((sum, id) => {
@@ -107,7 +107,7 @@ function calculateTrend(
 
         const account = accounts[id];
 
-        return sum + getAccountSign(account.type) * Math.abs(value);
+        return sum + netWorthContribution(account.type, value);
     }, 0);
 
     if (previousTotal === 0) return null;
@@ -316,7 +316,7 @@ export function NetWorthChart({
             chartAccountIds.forEach((id) => {
                 const value = point[id];
                 if (typeof value === 'number') {
-                    totalAssets += Math.abs(value);
+                    totalAssets += value;
                 }
             });
 
@@ -380,7 +380,7 @@ export function NetWorthChart({
                 const value = lastDataPoint[id];
                 if (typeof value === 'number') {
                     const account = includedAccounts[id];
-                    total += getAccountSign(account.type) * Math.abs(value);
+                    total += netWorthContribution(account.type, value);
                 }
             });
         }
