@@ -1,5 +1,5 @@
 import { useLocale } from '@/hooks/use-locale';
-import { getAccountSign } from '@/lib/chart-calculations';
+import { netWorthContribution } from '@/lib/chart-calculations';
 import { Account, AccountType, Bank } from '@/types/account';
 import { Category } from '@/types/category';
 import { formatMonthFromYearMonth } from '@/utils/date';
@@ -75,8 +75,10 @@ export function deriveAccountMetrics(
             date: formatMonthFromYearMonth(point.month as string, locale),
             value:
                 typeof point[account.id] === 'number'
-                    ? getAccountSign(account.type) *
-                      Math.abs(point[account.id] as number)
+                    ? netWorthContribution(
+                          account.type,
+                          point[account.id] as number,
+                      )
                     : 0,
             investedAmount:
                 investedKey in point

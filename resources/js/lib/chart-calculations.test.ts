@@ -8,6 +8,7 @@ import {
     getAccountSign,
     isLiabilityType,
     MonthDataPoint,
+    netWorthContribution,
 } from './chart-calculations';
 
 describe('isLiabilityType', () => {
@@ -52,6 +53,23 @@ describe('getAccountSign', () => {
         expect(getAccountSign('investment')).toBe(1);
         expect(getAccountSign('retirement')).toBe(1);
         expect(getAccountSign('others')).toBe(1);
+    });
+});
+
+describe('netWorthContribution', () => {
+    it('subtracts the magnitude of liabilities (stored as positive)', () => {
+        expect(netWorthContribution('credit_card', 5000)).toBe(-5000);
+        expect(netWorthContribution('loan', 80000)).toBe(-80000);
+    });
+
+    it('keeps the real sign of assets', () => {
+        expect(netWorthContribution('checking', 288399)).toBe(288399);
+        expect(netWorthContribution('savings', 0)).toBe(0);
+    });
+
+    it('lets a negative asset balance reduce net worth', () => {
+        // Regression: an overdrawn checking account must subtract, not add.
+        expect(netWorthContribution('checking', -23528)).toBe(-23528);
     });
 });
 

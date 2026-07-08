@@ -21,6 +21,21 @@ export function getAccountSign(type: AccountType): 1 | -1 {
 }
 
 /**
+ * Signed contribution of a raw account balance to net worth.
+ *
+ * Liabilities are stored as positive magnitudes, so they always subtract.
+ * Assets keep their real sign, so a genuinely negative asset balance (e.g. an
+ * overdrawn checking account) correctly reduces net worth instead of being
+ * flipped positive and added.
+ */
+export function netWorthContribution(
+    type: AccountType,
+    balance: number,
+): number {
+    return isLiabilityType(type) ? -Math.abs(balance) : balance;
+}
+
+/**
  * Data point representing net worth for a month
  */
 export interface MonthDataPoint {
