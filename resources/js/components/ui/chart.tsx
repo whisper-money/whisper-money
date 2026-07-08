@@ -58,16 +58,6 @@ const ChartContainer = React.forwardRef<
                 {...props}
             >
                 <ChartStyle id={chartId} config={config} />
-                {/*
-                 * Requires recharts >= 3.9.0. Earlier versions' internal
-                 * useElementOffset re-fired its measuring callback ref on every
-                 * setState and read viewport-relative getBoundingClientRect, so
-                 * on mobile (iOS URL-bar/scroll shifting the box mid-render) the
-                 * chart offset oscillated > 1px each commit and looped until
-                 * React aborted with "Maximum update depth exceeded"
-                 * (PHP-LARAVEL-47). 3.9.0 drives measurement off a ResizeObserver
-                 * with a stable ref, breaking the loop.
-                 */}
                 <RechartsPrimitive.ResponsiveContainer
                     initialDimension={{ width: 1, height: 1 }}
                 >
