@@ -10,6 +10,37 @@ beforeEach(function () {
     $this->service = app(LoanBalanceGeneratorService::class);
 });
 
+it('generates a long series across multiple upsert batches without gaps or duplicates', function () {
+    $this->travelTo(Carbon::parse('2026-06-15'));
+
+    $account = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    // ~46 years of monthly points is well over the internal upsert batch size,
+    // so this drives the chunked build/upsert path that stops the queue worker
+    // from exhausting memory on an ancient loan start date (PHP-LARAVEL-49).
+    $this->service->generateHistoricalBalances(
+        $account,
+        originalAmount: 15000000,
+        startDate: Carbon::parse('1980-01-15'),
+        currentBalance: 3000000,
+    );
+
+    $balances = $account->balances()->orderBy('balance_date')->get();
+    $dates = $balances->pluck('balance_date')->map->toDateString();
+
+    // Enough points to span more than one batch...
+    expect($balances->count())->toBeGreaterThan(500);
+    // ...and the batch boundaries must not drop or duplicate any date.
+    expect($dates->unique()->count())->toBe($balances->count());
+    // Endpoints stay anchored across the batched writes.
+    expect($dates->first())->toBe('1980-01-15');
+    expect($balances->first()->balance)->toBe(15000000);
+    expect($dates->last())->toBe('2026-06-15');
+    expect($balances->last()->balance)->toBe(3000000);
+});
+
 it('generates linearly interpolated balances from start date to today', function () {
     $this->travelTo(Carbon::parse('2026-03-15'));
 
