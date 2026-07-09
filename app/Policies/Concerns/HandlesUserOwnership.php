@@ -60,8 +60,9 @@ trait HandlesUserOwnership
             return $user->id === $model->getAttribute('user_id');
         }
 
-        return $user->current_space_id === $spaceId
-            || $user->accessibleSpaces()->contains('id', $spaceId);
+        // Authorize purely on live membership — never on current_space_id, which
+        // can still point at a space the user was just removed from.
+        return $user->accessibleSpaces()->contains('id', $spaceId);
     }
 
     /**

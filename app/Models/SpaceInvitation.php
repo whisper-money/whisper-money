@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $token
  * @property ?Carbon $expires_at
  * @property ?Carbon $accepted_at
+ * @property-read Space $space
+ * @property-read ?User $invitedBy
  */
 class SpaceInvitation extends Model
 {

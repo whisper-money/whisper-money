@@ -4,30 +4,28 @@ namespace App\Policies;
 
 use App\Models\RealEstateDetail;
 use App\Models\User;
+use App\Policies\Concerns\HandlesUserOwnership;
 
 class RealEstateDetailPolicy
 {
+    use HandlesUserOwnership;
+
     /**
-     * Determine whether the user can view the model.
+     * A real-estate detail has no space of its own — it inherits its account's,
+     * so access follows membership of the account's space.
      */
     public function view(User $user, RealEstateDetail $realEstateDetail): bool
     {
-        return $user->id === $realEstateDetail->account->user_id;
+        return $this->userCanAccess($user, $realEstateDetail->account);
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, RealEstateDetail $realEstateDetail): bool
     {
-        return $user->id === $realEstateDetail->account->user_id;
+        return $this->userCanAccess($user, $realEstateDetail->account);
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, RealEstateDetail $realEstateDetail): bool
     {
-        return $user->id === $realEstateDetail->account->user_id;
+        return $this->userCanAccess($user, $realEstateDetail->account);
     }
 }

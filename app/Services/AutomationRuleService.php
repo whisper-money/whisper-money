@@ -14,24 +14,24 @@ use JWadhams\JsonLogic;
 class AutomationRuleService
 {
     /**
-     * Per-user rule cache, memoized for the lifetime of this service instance.
+     * Per-space rule cache, memoized for the lifetime of this service instance.
      *
      * Bulk re-evaluation calls applyRules() once per transaction; without this
-     * every transaction re-queried the user's full rule set (an N+1). A service
+     * every transaction re-queried the space's full rule set (an N+1). A service
      * instance is short-lived (resolved fresh per job/request), so rules created
      * after it is built are never seen mid-run — which is the intended behaviour.
      *
      * @var array<string, EloquentCollection<int, AutomationRule>>
      */
-    private array $rulesByUser = [];
+    private array $rulesBySpace = [];
 
     public function applyRules(Transaction $transaction): void
     {
-        if ($transaction->description_iv !== null) {
+        if ($transaction->description_iv !== null || $transaction->space_id === null) {
             return;
         }
 
-        $rules = $this->rulesForUser($transaction->user_id);
+        $rules = $this->rulesForSpace($transaction->space_id);
 
         if ($rules->isEmpty()) {
             return;
@@ -250,10 +250,10 @@ class AutomationRuleService
     /**
      * @return EloquentCollection<int, AutomationRule>
      */
-    private function rulesForUser(string $userId): EloquentCollection
+    private function rulesForSpace(string $spaceId): EloquentCollection
     {
-        return $this->rulesByUser[$userId] ??= AutomationRule::query()
-            ->where('user_id', $userId)
+        return $this->rulesBySpace[$spaceId] ??= AutomationRule::query()
+            ->where('space_id', $spaceId)
             ->with('labels')
             ->orderBy('priority')
             ->get();

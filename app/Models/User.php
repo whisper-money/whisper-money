@@ -247,6 +247,47 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->resolvedActiveSpace = $space;
     }
 
+    /**
+     * Whether a paid feature is available while acting in the given space. The
+     * space owner's plan governs the space, so a member of a Business space gets
+     * its paid features without a plan of their own.
+     */
+    public function canUseFeatureInSpace(PlanFeature $feature, ?Space $space = null): bool
+    {
+        if (! $feature->requiresProPlan()) {
+            return true;
+        }
+
+        $space ??= $this->activeSpace();
+        $owner = $space->owner_id === $this->id ? $this : $space->owner;
+
+        return $owner->hasProPlan();
+    }
+
+    /**
+     * Unique users counted against the owner's subscription: the owner, every
+     * member across their spaces, and still-pending invitations. This is the
+     * seat count the Business plan caps.
+     */
+    public function seatsInUse(): int
+    {
+        $ownedSpaceIds = $this->ownedSpaces()->pluck('id');
+
+        $members = static::query()
+            ->whereHas('memberSpaces', fn (Builder $query) => $query->whereIn('spaces.id', $ownedSpaceIds))
+            ->get(['id', 'email']);
+
+        $pendingEmails = SpaceInvitation::query()
+            ->whereIn('space_id', $ownedSpaceIds)
+            ->whereNull('accepted_at')
+            ->where(fn (Builder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->pluck('email')
+            ->unique()
+            ->reject(fn (string $email): bool => $members->pluck('email')->contains($email));
+
+        return 1 + $members->count() + $pendingEmails->count();
+    }
+
     /** @return HasMany<AutomationRule, $this> */
     public function automationRules(): HasMany
     {

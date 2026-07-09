@@ -1,11 +1,16 @@
 import {
     destroy as destroySpace,
+    leave as leaveSpace,
     select as selectSpace,
     index as spacesIndex,
     store as storeSpace,
     update as updateSpace,
 } from '@/actions/App/Http/Controllers/SpaceController';
 import HeadingSmall from '@/components/heading-small';
+import {
+    ManageMembers,
+    type ManagedSpace,
+} from '@/components/spaces/manage-members';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -34,6 +39,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function Spaces() {
     const { spaces, currentSpace } = usePage<SharedData>().props;
+    const { managedSpaces, seatsInUse, maxSeats } = usePage<{
+        managedSpaces: ManagedSpace[];
+        seatsInUse: number;
+        maxSeats: number;
+    }>().props;
     const [createOpen, setCreateOpen] = useState(false);
     const [renaming, setRenaming] = useState<Space | null>(null);
     const [name, setName] = useState('');
@@ -176,11 +186,36 @@ export default function Spaces() {
                                                 </Button>
                                             </>
                                         )}
+                                        {!space.personal && !space.is_owner && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-destructive hover:text-destructive"
+                                                onClick={() =>
+                                                    router.post(
+                                                        leaveSpace(space.id)
+                                                            .url,
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                {__('Leave')}
+                                            </Button>
+                                        )}
                                     </div>
                                 </li>
                             );
                         })}
                     </ul>
+
+                    <ManageMembers
+                        managedSpaces={managedSpaces}
+                        seatsInUse={seatsInUse}
+                        maxSeats={maxSeats}
+                    />
                 </div>
             </SettingsLayout>
 

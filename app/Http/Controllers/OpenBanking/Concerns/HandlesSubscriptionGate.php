@@ -19,7 +19,7 @@ trait HandlesSubscriptionGate
             return false;
         }
 
-        return ! $user->canUseFeature(PlanFeature::ConnectedAccounts);
+        return ! $user->canUseFeatureInSpace(PlanFeature::ConnectedAccounts, $user->activeSpace());
     }
 
     private function subscribeJsonResponse(): JsonResponse

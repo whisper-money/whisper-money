@@ -16,6 +16,7 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Controllers\SpaceController;
+use App\Http\Controllers\SpaceInvitationController;
 use App\Http\Controllers\SubscriptionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -66,6 +67,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('settings/spaces/{space}', [SpaceController::class, 'update'])->name('spaces.update');
     Route::delete('settings/spaces/{space}', [SpaceController::class, 'destroy'])->name('spaces.destroy');
     Route::post('spaces/{space}/switch', [SpaceController::class, 'select'])->name('spaces.switch');
+    Route::post('spaces/{space}/leave', [SpaceController::class, 'leave'])->name('spaces.leave');
+    Route::delete('spaces/{space}/members/{member}', [SpaceController::class, 'removeMember'])->name('spaces.members.destroy');
+
+    Route::post('spaces/{space}/invitations', [SpaceInvitationController::class, 'store'])->name('spaces.invitations.store');
+    Route::delete('spaces/{space}/invitations/{invitation}', [SpaceInvitationController::class, 'destroy'])->name('spaces.invitations.destroy');
+    Route::get('spaces/invitations/{token}/accept', [SpaceInvitationController::class, 'accept'])->name('spaces.invitations.accept');
 
     Route::get('settings/automation-rules', [AutomationRuleController::class, 'index'])->name('automation-rules.index');
     Route::post('settings/automation-rules', [AutomationRuleController::class, 'store'])->name('automation-rules.store');

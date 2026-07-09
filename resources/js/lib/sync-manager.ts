@@ -148,7 +148,10 @@ export class TransactionSyncManager {
     }
 
     async clearAll(): Promise<void> {
-        await db.transactions.clear();
+        // Drop the cursor before the rows so a sync racing this flush (e.g. right
+        // after a space switch) reads no cursor and re-pulls the full set, rather
+        // than resuming from a stale cursor and missing the new space's history.
         await db.sync_metadata.delete(LAST_SYNC_KEY);
+        await db.transactions.clear();
     }
 }

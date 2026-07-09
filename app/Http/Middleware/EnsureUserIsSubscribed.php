@@ -18,12 +18,15 @@ class EnsureUserIsSubscribed
         }
 
         $user = $request->user();
+        $space = $user?->activeSpace();
 
-        if ($user?->hasProPlan()) {
+        // The active space's owner plan governs access: a member of a Business
+        // space gets in even without a plan of their own.
+        if ($space?->owner?->hasProPlan()) {
             return $next($request);
         }
 
-        if ($user && ! $user->bankingConnections()->exists() && ! $user->hasActiveAiConsent()) {
+        if ($space && ! $space->bankingConnections()->exists() && ! $user->hasActiveAiConsent()) {
             if (! $user->hasSeenPaywall()) {
                 return redirect()->route('subscribe');
             }
