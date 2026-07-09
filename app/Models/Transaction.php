@@ -9,6 +9,7 @@ use App\Enums\TransactionSource;
 use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
 use App\Events\TransactionUpdated;
+use App\Models\Concerns\BelongsToSpace;
 use App\Services\CategoryTree;
 use Carbon\Carbon;
 use Database\Factories\TransactionFactory;
@@ -35,7 +36,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Transaction extends Model
 {
     /** @use HasFactory<TransactionFactory> */
-    use HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     /** @var array<string, class-string> */
     protected $dispatchesEvents = [
@@ -46,6 +47,7 @@ class Transaction extends Model
 
     protected $fillable = [
         'user_id',
+        'space_id',
         'account_id',
         'category_id',
         'category_source',
@@ -77,6 +79,7 @@ class Transaction extends Model
      * @var list<string>
      */
     protected $hidden = [
+        'space_id',
         'original_description',
         'external_transaction_id',
         'dedup_fingerprint',
@@ -109,6 +112,26 @@ class Transaction extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
+    }
+
+    /**
+     * A transaction always lives in its account's space (the account is the
+     * tenant anchor), so bank-sync inserts land in the right space regardless of
+     * whichever space the syncing user is currently viewing.
+     */
+    protected function resolveDefaultSpaceId(): ?string
+    {
+        $accountId = $this->getAttribute('account_id');
+
+        if ($accountId !== null) {
+            $spaceId = Account::query()->whereKey($accountId)->value('space_id');
+
+            if ($spaceId !== null) {
+                return $spaceId;
+            }
+        }
+
+        return $this->spaceIdFromUser();
     }
 
     /** @return BelongsTo<Category, $this> */

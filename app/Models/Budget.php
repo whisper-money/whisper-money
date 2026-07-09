@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
+use App\Models\Concerns\BelongsToSpace;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,10 +19,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Budget extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
+        'space_id',
         'name',
         'period_type',
         'period_start_day',
@@ -32,6 +34,7 @@ class Budget extends Model
     /** @var list<string> */
     protected $hidden = [
         'period_duration',
+        'space_id',
     ];
 
     protected function casts(): array

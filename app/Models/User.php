@@ -10,8 +10,11 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -50,6 +53,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'currency_code',
         'locale',
         'timezone',
+        'current_space_id',
     ];
 
     /**
@@ -87,6 +91,18 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'transactions_last_visited_at' => 'datetime',
             'ai_consent_prompt_dismissed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Memoized active space for the current request lifecycle.
+     */
+    protected ?Space $resolvedActiveSpace = null;
+
+    protected static function booted(): void
+    {
+        static::created(function (User $user): void {
+            $user->provisionPersonalSpace();
+        });
     }
 
     public function isOnboarded(): bool
@@ -137,6 +153,97 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
                 $query->whereNull('user_id')
                     ->orWhere('banks.user_id', $this->id);
             });
+    }
+
+    /** @return BelongsTo<Space, $this> */
+    public function currentSpace(): BelongsTo
+    {
+        return $this->belongsTo(Space::class, 'current_space_id');
+    }
+
+    /** @return HasMany<Space, $this> */
+    public function ownedSpaces(): HasMany
+    {
+        return $this->hasMany(Space::class, 'owner_id');
+    }
+
+    /**
+     * The one personal space every user owns (created on registration).
+     *
+     * @return HasOne<Space, $this>
+     */
+    public function personalSpace(): HasOne
+    {
+        return $this->hasOne(Space::class, 'owner_id')->where('personal', true);
+    }
+
+    /**
+     * Spaces the user was invited into (excludes the ones they own).
+     *
+     * @return BelongsToMany<Space, $this>
+     */
+    public function memberSpaces(): BelongsToMany
+    {
+        return $this->belongsToMany(Space::class, 'space_user')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    /**
+     * Every space the user can access: the ones they own plus the ones they were
+     * invited into, ordered with the personal space first.
+     *
+     * @return Collection<int, Space>
+     */
+    public function accessibleSpaces(): Collection
+    {
+        return Space::query()
+            ->where('owner_id', $this->id)
+            ->orWhereHas('members', fn (Builder $query) => $query->whereKey($this->id))
+            ->orderByDesc('personal')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Idempotently ensure the user has a personal space and points at it.
+     */
+    public function provisionPersonalSpace(): Space
+    {
+        $space = $this->ownedSpaces()->firstOrCreate(
+            ['personal' => true],
+            ['name' => 'Personal'],
+        );
+
+        if ($this->current_space_id === null) {
+            $this->forceFill(['current_space_id' => $space->id])->saveQuietly();
+        }
+
+        return $space;
+    }
+
+    /**
+     * The space the user is currently working in. Falls back to (and repairs
+     * towards) the personal space when the pointer is missing or points at a
+     * space the user can no longer access — e.g. after a membership is revoked or
+     * a Business subscription lapses.
+     */
+    public function activeSpace(): Space
+    {
+        if ($this->resolvedActiveSpace !== null) {
+            return $this->resolvedActiveSpace;
+        }
+
+        $space = $this->current_space_id !== null
+            ? Space::query()->find($this->current_space_id)
+            : null;
+
+        if ($space === null || ! $space->hasMember($this)) {
+            $space = $this->provisionPersonalSpace();
+            $this->forceFill(['current_space_id' => $space->id])->saveQuietly();
+        }
+
+        return $this->resolvedActiveSpace = $space;
     }
 
     /** @return HasMany<AutomationRule, $this> */

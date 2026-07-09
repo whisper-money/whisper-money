@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSpace;
 use Database\Factories\LabelFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,12 +14,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Label extends Model
 {
     /** @use HasFactory<LabelFactory> */
-    use HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'name',
         'color',
         'user_id',
+        'space_id',
     ];
 
     /**
@@ -29,6 +31,7 @@ class Label extends Model
      */
     protected $hidden = [
         'pivot',
+        'space_id',
     ];
 
     /** @return BelongsTo<User, $this> */

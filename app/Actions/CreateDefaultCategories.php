@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Models\Category;
+use App\Models\Space;
 use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -13,14 +14,16 @@ class CreateDefaultCategories
 {
     /**
      * Create default categories for a newly registered user, nesting child
-     * categories under their configured parent.
+     * categories under their configured parent. Categories live in a space, so
+     * seeding targets the given space (defaulting to the user's active one).
      */
-    public function handle(User $user): void
+    public function handle(User $user, ?Space $space = null): void
     {
+        $space ??= $user->activeSpace();
         $locale = $user->locale ?? app()->getLocale();
         $defaultCategories = self::getDefaultCategories($locale);
 
-        $existingCategories = $user->categories()
+        $existingCategories = $space->categories()
             ->whereIn('name', array_column($defaultCategories, 'name'))
             ->pluck('id', 'name');
 
@@ -32,6 +35,7 @@ class CreateDefaultCategories
                 'cashflow_direction' => $category['cashflow_direction'] ?? CategoryCashflowDirection::Hidden->value,
                 'id' => (string) Str::uuid(),
                 'user_id' => $user->id,
+                'space_id' => $space->id,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);

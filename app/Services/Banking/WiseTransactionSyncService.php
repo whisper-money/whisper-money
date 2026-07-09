@@ -166,6 +166,7 @@ class WiseTransactionSyncService
         try {
             $account->transactions()->create([
                 'user_id' => $account->user_id,
+                'space_id' => $account->space_id,
                 'description' => $parsed['description'],
                 'description_iv' => null,
                 'original_description' => $parsed['description'],

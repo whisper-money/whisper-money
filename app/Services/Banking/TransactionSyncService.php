@@ -181,6 +181,7 @@ class TransactionSyncService
         try {
             $account->transactions()->create([
                 'user_id' => $account->user_id,
+                'space_id' => $account->space_id,
                 'description' => $formatted['description'],
                 'description_iv' => null,
                 'original_description' => $formatted['original_description'],

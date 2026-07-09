@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AccountType;
+use App\Models\Concerns\BelongsToSpace;
 use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -19,10 +20,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
-    use HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
+        'space_id',
         'name',
         'name_iv',
         'bank_id',
@@ -40,6 +42,7 @@ class Account extends Model
     /** @var list<string> */
     protected $hidden = [
         'user_id',
+        'space_id',
         'bank_id',
         'iban',
         'position',

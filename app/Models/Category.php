@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
+use App\Models\Concerns\BelongsToSpace;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
-    use HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     /**
      * Maximum allowed nesting depth (a root counts as level 1).
@@ -40,12 +41,14 @@ class Category extends Model
         'type',
         'cashflow_direction',
         'user_id',
+        'space_id',
         'parent_id',
     ];
 
     /** @var list<string> */
     protected $hidden = [
         'user_id',
+        'space_id',
         'created_at',
         'updated_at',
         'deleted_at',

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Models\Concerns\BelongsToSpace;
 use Carbon\Carbon;
 use Database\Factories\BankingConnectionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -28,10 +29,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class BankingConnection extends Model
 {
     /** @use HasFactory<BankingConnectionFactory> */
-    use HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
+        'space_id',
         'provider',
         'authorization_id',
         'state_token',
@@ -52,6 +54,7 @@ class BankingConnection extends Model
     ];
 
     protected $hidden = [
+        'space_id',
         'api_token',
         'api_secret',
         'pending_accounts_data',
