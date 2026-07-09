@@ -171,7 +171,7 @@ The template includes:
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=whisper-money/whisper-money&type=date&legend=top-left)](https://www.star-history.com/#whisper-money/whisper-money&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/chart?repos=whisper-money/whisper-money&type=date&legend=top-left&sealed_token=aCH1_aXcn3SWzmvWphdcfCvsm_6KewnWP3tJmVYtXio1ulzirYZDej6gnPuguhtXgvs-urR1q_t6r4-5PWBz8ecaY2G18_a75NOMb5iJVO91OGyBtst20bXRD_tv2p7dpvTDbv3HybWdqnve-rp14PvHDqxoZR-47g4IZusfNCz-5O8Gqv0TItLJBkaA)](https://www.star-history.com/?type=date&legend=top-left&repos=whisper-money%2Fwhisper-money)
 
 ## License
 
