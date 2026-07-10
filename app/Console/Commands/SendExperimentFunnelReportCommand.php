@@ -62,17 +62,19 @@ class SendExperimentFunnelReportCommand extends Command
     private function tableLines(array $report): array
     {
         $revenue = $report['revenueAvailable'];
-        $lines = [sprintf('%-8s %5s %4s %5s %5s %5s %5s %8s %8s', 'Variant', 'Assg', 'Sub', 'Actv', 'Cncl', 'Rfnd', 'Net%', 'MRR', 'ARPU')];
+        $lines = [sprintf('%-8s %5s %4s %5s %5s %5s %5s %5s %5s %8s %8s', 'Variant', 'Assg', 'Sub', 'Trl', 'TrlX', 'Actv', 'Cncl', 'Rfnd', 'Net%', 'MRR', 'ARPU')];
 
         foreach (self::LABELS as $key => $label) {
             $row = $report['variants'][$key];
             $mature = $row['assignedMature'] > 0;
 
             $lines[] = sprintf(
-                '%-8s %5d %4d %5d %5d %5d %5s %8s %8s',
+                '%-8s %5d %4d %5d %5d %5d %5d %5d %5s %8s %8s',
                 $label,
                 $row['assigned'],
                 $row['subscribed'],
+                $row['trialing'],
+                $row['trialingCanceling'],
                 $row['active'],
                 $row['canceled'],
                 $row['refunded'],
@@ -115,7 +117,7 @@ class SendExperimentFunnelReportCommand extends Command
                 ],
                 [
                     'name' => 'Legend',
-                    'value' => 'Assg = assigned · Sub = started a plan · Actv/Cncl = current status · Rfnd = self-service refunds (pay_now) · Net% = live, non-refunded subs ÷ assigned (mature users only) · MRR = monthly run-rate of those subs (yearly ÷ 12) · ARPU = MRR ÷ assigned · `pend`/`—` = no mature data yet.',
+                    'value' => 'Assg = assigned · Sub = started a plan · Trl = currently in trial · TrlX = of those, already scheduled to cancel at trial end (won\'t convert) · Actv/Cncl = current status · Rfnd = self-service refunds (pay_now) · Net% = live, non-refunded subs ÷ assigned (mature users only) · MRR = monthly run-rate of those subs (yearly ÷ 12) · ARPU = MRR ÷ assigned · `pend`/`—` = no mature data yet.',
                     'inline' => false,
                 ],
                 [
