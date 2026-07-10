@@ -199,7 +199,6 @@ export function UpdateBalanceDialog({
                                 value={balance}
                                 onChange={setBalance}
                                 currencyCode={account.currency_code}
-                                required
                             />
                         )}
                     </div>

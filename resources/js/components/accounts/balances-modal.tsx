@@ -441,7 +441,6 @@ export function BalancesModal({
                                 value={editAmount}
                                 onChange={setEditAmount}
                                 currencyCode={account.currency_code}
-                                required
                             />
                         </div>
 
