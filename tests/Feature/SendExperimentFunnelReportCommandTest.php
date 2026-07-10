@@ -93,6 +93,21 @@ it('attributes users and their subscription status to the right variant', functi
         ->and($variants[SubscriptionExperiment::PAY_NOW]['activeMature'])->toBe(1);
 });
 
+it('counts trials already scheduled to cancel separately from trials that will convert', function () {
+    $signup = CarbonImmutable::parse('2026-06-28'); // still trialing under the test clock
+
+    // A trial that will renew (no ends_at) and one the user already canceled (ends_at set).
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'trialing', 'at' => $signup]);
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'trialing', 'at' => $signup, 'endsAt' => $signup->addDays(15),
+    ]);
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['trialing'])->toBe(2)
+        ->and($control['trialingCanceling'])->toBe(1);
+});
+
 it('computes MRR and ARPU from the net-active subscriptions', function () {
     $signup = CarbonImmutable::parse('2026-06-05');
 

@@ -42,6 +42,7 @@ class ExperimentFunnelCollector
      *         assigned: int,
      *         subscribed: int,
      *         trialing: int,
+     *         trialingCanceling: int,
      *         active: int,
      *         canceled: int,
      *         pastDue: int,
@@ -102,6 +103,7 @@ class ExperimentFunnelCollector
                     if ($subscription !== null) {
                         $row['subscribed']++;
                         $row['trialing'] += $status === 'trialing' ? 1 : 0;
+                        $row['trialingCanceling'] += ($status === 'trialing' && $subscription->ends_at !== null) ? 1 : 0;
                         $row['active'] += $status === 'active' ? 1 : 0;
                         $row['canceled'] += $status === 'canceled' ? 1 : 0;
                         $row['pastDue'] += $status === 'past_due' ? 1 : 0;
@@ -143,7 +145,7 @@ class ExperimentFunnelCollector
     }
 
     /**
-     * @return array{assigned: int, subscribed: int, trialing: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activeMature: int, netActiveRate: ?float, mrrCents: int, arpuCents: ?int}
+     * @return array{assigned: int, subscribed: int, trialing: int, trialingCanceling: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activeMature: int, netActiveRate: ?float, mrrCents: int, arpuCents: ?int}
      */
     private function emptyRow(): array
     {
@@ -151,6 +153,7 @@ class ExperimentFunnelCollector
             'assigned' => 0,
             'subscribed' => 0,
             'trialing' => 0,
+            'trialingCanceling' => 0,
             'active' => 0,
             'canceled' => 0,
             'pastDue' => 0,
