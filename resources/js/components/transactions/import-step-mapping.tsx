@@ -428,7 +428,6 @@ export function ImportStepMapping({
                                         value={referenceBalance ?? 0}
                                         onChange={onReferenceBalanceChange}
                                         currencyCode={currencyCode}
-                                        required
                                     />
                                     {referenceBalancePrefilled && (
                                         <p className="text-xs text-muted-foreground">

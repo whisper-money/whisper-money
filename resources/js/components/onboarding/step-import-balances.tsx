@@ -24,11 +24,6 @@ export function StepImportBalances({
         e.preventDefault();
         setError(null);
 
-        if (balanceInCents === 0) {
-            setError(__('Please enter a balance'));
-            return;
-        }
-
         setIsSubmitting(true);
 
         try {
@@ -100,7 +95,6 @@ export function StepImportBalances({
                         onChange={setBalanceInCents}
                         currencyCode={account?.currencyCode || 'USD'}
                         disabled={isSubmitting}
-                        required
                     />
                 </div>
 
