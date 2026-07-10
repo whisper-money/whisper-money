@@ -27,19 +27,31 @@ class ExperimentFunnelCollector
      * subscription — an exact, heuristic-free metric that is comparable across
      * variants once each cohort clears its own decision window.
      *
+     * The funnel is assigned → activated → carded (subscribed) → net-paying:
+     * "activated" = the user connected a bank or enabled AI, i.e. triggered the
+     * paid infrastructure that costs us money, whether or not they ever paid. The
+     * gap activated → carded (completed Checkout with a card) is where a user
+     * connects a bank and walks away without paying — the exact leak the flat
+     * per-connection cost estimate quantifies.
+     *
      * Revenue is the monthly-recurring run-rate (MRR) of the mature, net-active
      * subscriptions, with yearly plans normalised to a monthly equivalent, plus
-     * ARPU = MRR ÷ assigned (mature) — the per-signup revenue each variant earns.
-     * This is run-rate, not realised cash, so it does not credit pay_now's yearly
-     * upfront payment any differently from a monthly one. Full LTV needs a churn
-     * rate the experiment is too young to have; ARPU is the proxy until then.
+     * ARPU = MRR ÷ assigned (mature). Cost is a flat estimate: connections of the
+     * mature cohort × `$costPerConnectionCents`; "wasted" cost is the same for
+     * mature users who did not convert (money burned). Contribution margin =
+     * MRR − cost, the decision metric once every variant has mature volume. This
+     * is run-rate, not realised cash, so it does not credit pay_now's yearly
+     * upfront payment any differently from a monthly one.
      *
+     * @param  int  $costPerConnectionCents  flat estimated cost per bank connection
      * @return array{
      *     startedAt: ?CarbonImmutable,
      *     currency: string,
      *     revenueAvailable: bool,
+     *     costPerConnectionCents: int,
      *     variants: array<string, array{
      *         assigned: int,
+     *         activated: int,
      *         subscribed: int,
      *         trialing: int,
      *         trialingCanceling: int,
@@ -48,14 +60,19 @@ class ExperimentFunnelCollector
      *         pastDue: int,
      *         refunded: int,
      *         assignedMature: int,
+     *         activatedMature: int,
      *         activeMature: int,
      *         netActiveRate: ?float,
+     *         activationToPaidRate: ?float,
      *         mrrCents: int,
      *         arpuCents: ?int,
+     *         costCents: int,
+     *         wastedCostCents: int,
+     *         contributionMarginCents: int,
      *     }>
      * }
      */
-    public function collect(): array
+    public function collect(int $costPerConnectionCents = 40): array
     {
         $startedValue = config('subscriptions.experiment.started_at');
         $startedAt = $startedValue !== null ? CarbonImmutable::parse($startedValue) : null;
@@ -68,7 +85,7 @@ class ExperimentFunnelCollector
         ];
 
         if ($startedAt === null) {
-            return ['startedAt' => null, 'currency' => $currency, 'revenueAvailable' => false, 'variants' => $variants];
+            return ['startedAt' => null, 'currency' => $currency, 'revenueAvailable' => false, 'costPerConnectionCents' => $costPerConnectionCents, 'variants' => $variants];
         }
 
         $now = CarbonImmutable::now('UTC');
@@ -81,7 +98,13 @@ class ExperimentFunnelCollector
             ->when($excluded !== [], fn ($query) => $query->whereNotIn('email', $excluded))
             ->with(['subscriptions' => fn ($query) => $query->where('type', 'default')])
             ->select(['id', 'created_at'])
-            ->chunkById(500, function ($users) use (&$variants, $windows, $now, $monthlyEquiv): void {
+            ->withCount([
+                // Cost is incurred by every connection ever opened, so count
+                // soft-deleted (revoked) ones too — they still cost us money.
+                'bankingConnections as connection_count' => fn ($query) => $query->withTrashed(),
+                'aiConsents as ai_consent_count',
+            ])
+            ->chunkById(500, function ($users) use (&$variants, $windows, $now, $monthlyEquiv, $costPerConnectionCents): void {
                 Feature::for($users)->load([SubscriptionExperiment::class]);
 
                 foreach ($users as $user) {
@@ -94,6 +117,13 @@ class ExperimentFunnelCollector
                     $row = &$variants[$variant];
 
                     $row['assigned']++;
+
+                    $connections = (int) ($user->connection_count ?? 0);
+                    $activated = $connections > 0 || (int) ($user->ai_consent_count ?? 0) > 0;
+
+                    if ($activated) {
+                        $row['activated']++;
+                    }
 
                     /** @var Subscription|null $subscription */
                     $subscription = $user->subscriptions->sortByDesc('created_at')->first();
@@ -117,9 +147,18 @@ class ExperimentFunnelCollector
                     if ($mature) {
                         $row['assignedMature']++;
 
+                        $connectionCostCents = $connections * $costPerConnectionCents;
+                        $row['costCents'] += $connectionCostCents;
+
+                        if ($activated) {
+                            $row['activatedMature']++;
+                        }
+
                         if ($netActive) {
                             $row['activeMature']++;
                             $row['mrrCents'] += (int) ($monthlyEquiv[$subscription->stripe_price] ?? 0);
+                        } else {
+                            $row['wastedCostCents'] += $connectionCostCents;
                         }
                     }
 
@@ -131,26 +170,32 @@ class ExperimentFunnelCollector
             $variants[$key]['netActiveRate'] = $row['assignedMature'] > 0
                 ? $row['activeMature'] / $row['assignedMature']
                 : null;
+            $variants[$key]['activationToPaidRate'] = $row['activatedMature'] > 0
+                ? $row['activeMature'] / $row['activatedMature']
+                : null;
             $variants[$key]['arpuCents'] = $row['assignedMature'] > 0
                 ? (int) round($row['mrrCents'] / $row['assignedMature'])
                 : null;
+            $variants[$key]['contributionMarginCents'] = $row['mrrCents'] - $row['costCents'];
         }
 
         return [
             'startedAt' => $startedAt,
             'currency' => $currency,
             'revenueAvailable' => $monthlyEquiv !== [],
+            'costPerConnectionCents' => $costPerConnectionCents,
             'variants' => $variants,
         ];
     }
 
     /**
-     * @return array{assigned: int, subscribed: int, trialing: int, trialingCanceling: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activeMature: int, netActiveRate: ?float, mrrCents: int, arpuCents: ?int}
+     * @return array{assigned: int, activated: int, subscribed: int, trialing: int, trialingCanceling: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activatedMature: int, activeMature: int, netActiveRate: ?float, activationToPaidRate: ?float, mrrCents: int, arpuCents: ?int, costCents: int, wastedCostCents: int, contributionMarginCents: int}
      */
     private function emptyRow(): array
     {
         return [
             'assigned' => 0,
+            'activated' => 0,
             'subscribed' => 0,
             'trialing' => 0,
             'trialingCanceling' => 0,
@@ -159,10 +204,15 @@ class ExperimentFunnelCollector
             'pastDue' => 0,
             'refunded' => 0,
             'assignedMature' => 0,
+            'activatedMature' => 0,
             'activeMature' => 0,
             'netActiveRate' => null,
+            'activationToPaidRate' => null,
             'mrrCents' => 0,
             'arpuCents' => null,
+            'costCents' => 0,
+            'wastedCostCents' => 0,
+            'contributionMarginCents' => 0,
         ];
     }
 

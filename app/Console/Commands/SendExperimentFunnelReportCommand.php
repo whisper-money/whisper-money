@@ -10,7 +10,9 @@ use Illuminate\Console\Command;
 
 class SendExperimentFunnelReportCommand extends Command
 {
-    protected $signature = 'stats:experiment-funnel {--no-discord : Print the report to the console only, without posting to Discord}';
+    protected $signature = 'stats:experiment-funnel
+        {--no-discord : Print the report to the console only, without posting to Discord}
+        {--cost-per-connection=0.4 : Estimated cost (in the Cashier currency) per bank connection, used for the Cost/Burn/CM columns}';
 
     protected $description = 'Post the trial/pricing experiment funnel (per variant) to Discord';
 
@@ -27,7 +29,8 @@ class SendExperimentFunnelReportCommand extends Command
 
     public function handle(): int
     {
-        $report = $this->collector->collect();
+        $costPerConnectionCents = (int) round(((float) $this->option('cost-per-connection')) * 100);
+        $report = $this->collector->collect($costPerConnectionCents);
 
         if ($report['startedAt'] === null) {
             $this->warn('Experiment not started — set SUBSCRIPTION_EXPERIMENT_STARTED_AT to begin.');
@@ -56,31 +59,31 @@ class SendExperimentFunnelReportCommand extends Command
     }
 
     /**
-     * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, variants: array<string, array<string, mixed>>}  $report
+     * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, variants: array<string, array<string, mixed>>}  $report
      * @return list<string>
      */
     private function tableLines(array $report): array
     {
         $revenue = $report['revenueAvailable'];
-        $lines = [sprintf('%-8s %5s %4s %5s %5s %5s %5s %5s %5s %8s %8s', 'Variant', 'Assg', 'Sub', 'Trl', 'TrlX', 'Actv', 'Cncl', 'Rfnd', 'Net%', 'MRR', 'ARPU')];
+        $currency = $report['currency'];
+        $lines = [sprintf('%-8s %5s %5s %5s %5s %6s %8s %8s %8s %8s', 'Variant', 'Assg', 'Actd', 'Card', 'Paid', 'A2P%', 'MRR', 'Cost', 'Burn', 'CM')];
 
         foreach (self::LABELS as $key => $label) {
             $row = $report['variants'][$key];
-            $mature = $row['assignedMature'] > 0;
+            $mature = $row['activatedMature'] > 0;
 
             $lines[] = sprintf(
-                '%-8s %5d %4d %5d %5d %5d %5d %5d %5s %8s %8s',
+                '%-8s %5d %5d %5d %5d %6s %8s %8s %8s %8s',
                 $label,
                 $row['assigned'],
+                $row['activated'],
                 $row['subscribed'],
-                $row['trialing'],
-                $row['trialingCanceling'],
-                $row['active'],
-                $row['canceled'],
-                $row['refunded'],
-                $mature ? ((int) round($row['netActiveRate'] * 100)).'%' : 'pend',
-                $revenue ? $this->money($row['mrrCents'], $report['currency']) : '—',
-                $revenue && $mature ? $this->money((int) $row['arpuCents'], $report['currency']) : '—',
+                $row['activeMature'],
+                $mature ? ((int) round($row['activationToPaidRate'] * 100)).'%' : 'pend',
+                $revenue ? $this->money($row['mrrCents'], $currency) : '—',
+                $mature ? $this->money($row['costCents'], $currency) : '—',
+                $mature ? $this->money($row['wastedCostCents'], $currency) : '—',
+                $revenue && $mature ? $this->money($row['contributionMarginCents'], $currency) : '—',
             );
         }
 
@@ -100,7 +103,7 @@ class SendExperimentFunnelReportCommand extends Command
     }
 
     /**
-     * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, variants: array<string, array<string, mixed>>}  $report
+     * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, variants: array<string, array<string, mixed>>}  $report
      * @return array<string, mixed>
      */
     private function buildEmbed(array $report): array
@@ -117,12 +120,15 @@ class SendExperimentFunnelReportCommand extends Command
                 ],
                 [
                     'name' => 'Legend',
-                    'value' => 'Assg = assigned · Sub = started a plan · Trl = currently in trial · TrlX = of those, already scheduled to cancel at trial end (won\'t convert) · Actv/Cncl = current status · Rfnd = self-service refunds (pay_now) · Net% = live, non-refunded subs ÷ assigned (mature users only) · MRR = monthly run-rate of those subs (yearly ÷ 12) · ARPU = MRR ÷ assigned · `pend`/`—` = no mature data yet.',
+                    'value' => sprintf(
+                        'Assg = signups · Actd = activated (connected a bank or enabled AI = cost triggered) · Card = completed checkout (card on file) · Paid = live non-refunded subs (mature) · A2P%% = Paid ÷ activated (mature) · MRR = monthly run-rate of paid subs (yearly ÷ 12) · Cost = est. connection cost of the mature cohort (%s/connection) · Burn = connection cost of mature users who never converted (money lost) · CM = MRR − Cost · `pend`/`—` = no mature data yet.',
+                        $this->money($report['costPerConnectionCents'], $report['currency']),
+                    ),
                     'inline' => false,
                 ],
                 [
                     'name' => '⚠️ How to read it',
-                    'value' => 'Each variant is gated by its own decision window (control 15d, reduced 7d, pay_now 3d), so pay_now matures first — compare only once all three have mature volume, and check significance before calling a winner. **ARPU is the revenue metric to compare.** MRR is run-rate, so it does not credit pay_now\'s yearly upfront cash; true LTV also needs a churn rate the experiment is too young to have.',
+                    'value' => 'Each variant is gated by its own decision window (control 15d, reduced 7d, pay_now 3d), so pay_now matures first — compare only once all three have mature volume, and check significance before calling a winner. **CM (contribution margin) is the decision metric.** Assg/Actd/Card are lifetime counts; A2P%/Cost/Burn/CM cover only the mature cohort, so the raw Actd→Card→Paid funnel mixes cohorts (immature carded users can\'t be Paid yet) — read it for volume, compare variants on A2P%/CM. Burn is what the connect-and-leave leak costs. Cost is a flat per-connection estimate across all providers, not per-provider billing.',
                     'inline' => false,
                 ],
             ],

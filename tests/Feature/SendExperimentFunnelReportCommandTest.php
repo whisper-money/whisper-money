@@ -1,6 +1,8 @@
 <?php
 
 use App\Features\SubscriptionExperiment;
+use App\Models\AiConsent;
+use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\Stats\ExperimentFunnelCollector;
 use Carbon\CarbonImmutable;
@@ -29,11 +31,12 @@ beforeEach(function () {
 
 /**
  * Create a user whose id buckets into the wanted variant, anchored to a signup,
- * with an optional default subscription.
+ * with an optional default subscription and any bank connections / AI consent
+ * that mark the user as "activated" and drive the connection-cost columns.
  *
  * @param  array{status: string, at: CarbonImmutable, endsAt?: CarbonImmutable, refundedAt?: CarbonImmutable}|null  $subscription
  */
-function experimentUser(string $variant, CarbonImmutable $signup, ?array $subscription = null): User
+function experimentUser(string $variant, CarbonImmutable $signup, ?array $subscription = null, int $connections = 0, bool $aiConsent = false): User
 {
     do {
         $id = (string) Str::uuid();
@@ -51,6 +54,14 @@ function experimentUser(string $variant, CarbonImmutable $signup, ?array $subscr
             'ends_at' => $subscription['endsAt'] ?? null,
             'refunded_at' => $subscription['refundedAt'] ?? null,
         ]);
+    }
+
+    if ($connections > 0) {
+        BankingConnection::factory()->count($connections)->for($user)->create();
+    }
+
+    if ($aiConsent) {
+        AiConsent::factory()->for($user)->create();
     }
 
     return $user;
@@ -129,6 +140,48 @@ it('computes MRR and ARPU from the net-active subscriptions', function () {
         ->and($control['arpuCents'])->toBe(200)          // 399 / 2 assigned, rounded
         ->and($payNow['mrrCents'])->toBe(0)              // refunded → no revenue
         ->and($payNow['arpuCents'])->toBe(0);
+});
+
+it('marks a user activated when they connect a bank or enable AI', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    experimentUser(SubscriptionExperiment::CONTROL, $signup);                       // neither → not activated
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, connections: 1);       // bank → activated
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, aiConsent: true);      // AI → activated
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['assigned'])->toBe(3)
+        ->and($control['activated'])->toBe(2)
+        ->and($control['activatedMature'])->toBe(2);
+});
+
+it('computes connection cost, wasted burn and contribution margin', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // Converted control user with 2 connections: cost 2×€0.40, no burn, MRR €3.99.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()], connections: 2);
+    // Activated non-payer with 3 connections: pure burn, no revenue.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, null, connections: 3);
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['costCents'])->toBe(200)                    // (2+3) × 40
+        ->and($control['wastedCostCents'])->toBe(120)           // 3 × 40, the non-payer
+        ->and($control['mrrCents'])->toBe(399)
+        ->and($control['contributionMarginCents'])->toBe(199)   // 399 − 200
+        ->and($control['activationToPaidRate'])->toBe(0.5);     // 1 paid ÷ 2 activated
+});
+
+it('scales connection cost by the cost-per-connection argument', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, null, connections: 2);
+
+    $control = app(ExperimentFunnelCollector::class)->collect(100)['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['costCents'])->toBe(200)             // 2 × 100
+        ->and($control['wastedCostCents'])->toBe(200);
 });
 
 it('marks revenue unavailable when Stripe prices cannot be loaded', function () {
