@@ -41,6 +41,41 @@ test('entry reference is the canonical fingerprint when transaction id is absent
         ->toBe(TransactionFingerprint::for($changedPayload));
 });
 
+test('positional entry reference is ignored so it matches the same transaction seen without one', function () {
+    $firstSync = baseEnableBankingPayload([
+        'transaction_id' => null,
+        'entry_reference' => null,
+    ]);
+
+    $laterSync = baseEnableBankingPayload([
+        'transaction_id' => null,
+        'entry_reference' => '2025-05-12.0',
+    ]);
+
+    expect(TransactionFingerprint::for($firstSync))
+        ->toBe(TransactionFingerprint::for($laterSync));
+});
+
+test('a non-positional entry reference is still the canonical fingerprint', function () {
+    // Only the exact `{date}.{index}` shape is treated as positional; anything
+    // else keeps keying on entry_reference so real bank references are honoured.
+    foreach (['2025-05-12', '2025-05-12.0.1', 'REF-2025-05-12.0', '2025-05-12.'] as $reference) {
+        $withReference = baseEnableBankingPayload([
+            'transaction_id' => null,
+            'entry_reference' => $reference,
+        ]);
+
+        $sameReferenceOtherContent = baseEnableBankingPayload([
+            'transaction_id' => null,
+            'entry_reference' => $reference,
+            'creditor' => ['name' => 'Different Merchant'],
+        ]);
+
+        expect(TransactionFingerprint::for($withReference))
+            ->toBe(TransactionFingerprint::for($sameReferenceOtherContent));
+    }
+});
+
 test('fallback fingerprint ignores volatile status and settlement dates', function () {
     $payload = baseEnableBankingPayload([
         'transaction_id' => null,
