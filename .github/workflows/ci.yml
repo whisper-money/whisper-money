@@ -235,6 +235,9 @@ jobs:
 
   linter:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
 
@@ -272,6 +275,33 @@ jobs:
 
       - name: Frontend Tests
         run: bun run test
+
+      # Gates merges on a Conventional-Commit PR title. Lives in the linter
+      # job (a required check) so a bad title blocks the merge, unlike the old
+      # standalone workflow whose check wasn't required. Skipped on push since
+      # there's no PR title to validate then.
+      - name: Conventional PR title
+        if: github.event_name == 'pull_request'
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            chore
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            revert
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            Subject must not start with uppercase. Use: feat: add checkout, fix(billing): handle retry.
 
   performance-tests:
     runs-on: ubuntu-latest
