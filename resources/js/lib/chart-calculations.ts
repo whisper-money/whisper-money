@@ -1,9 +1,13 @@
 import { AccountType } from '@/types/account';
 
 /**
- * Account types that reduce net worth (liabilities)
+ * Account types that reduce net worth (liabilities).
+ *
+ * A credit card is deliberately NOT a liability: its balance is spendable
+ * credit the user treats as an asset, so it adds to net worth like a regular
+ * account. Only loans (debt that must be repaid) subtract.
  */
-export const LIABILITY_TYPES: AccountType[] = ['credit_card', 'loan'];
+export const LIABILITY_TYPES: AccountType[] = ['loan'];
 
 /**
  * Check if an account type is a liability

@@ -23,7 +23,17 @@ enum AccountType: string
 
     public function reducesNetWorth(): bool
     {
-        return in_array($this, [self::CreditCard, self::Loan], true);
+        return $this === self::Loan;
+    }
+
+    /**
+     * Whether this account type is part of the net worth total at all. Credit
+     * cards are spending accounts, not wealth, so they are excluded entirely
+     * (neither added nor subtracted) while still being tracked on their own.
+     */
+    public function countsInNetWorth(): bool
+    {
+        return $this !== self::CreditCard;
     }
 
     /**

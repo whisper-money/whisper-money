@@ -209,6 +209,10 @@ export function NetWorthChart({
         // All accounts included based on the toggles – used for totals & trends.
         const includedAccounts = Object.fromEntries(
             Object.entries(accounts).filter(([, account]) => {
+                // Credit cards are spending accounts, never part of net worth.
+                if (account.type === 'credit_card') {
+                    return false;
+                }
                 if (!includeLoansInNetWorthChart && account.type === 'loan') {
                     return false;
                 }
