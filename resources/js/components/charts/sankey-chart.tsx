@@ -538,6 +538,11 @@ export function SankeyChart({
                         nodeWidth={NODE_WIDTH}
                         nodePadding={NODE_PADDING}
                         sort={false}
+                        // 'left' keeps sink nodes at their natural depth instead
+                        // of shoving them all into the last column, so an
+                        // expanded parent's subcategories get their own column
+                        // and line up beside it rather than crossing every flow.
+                        align="left"
                         margin={{
                             top: 12,
                             right: sideMargin,
