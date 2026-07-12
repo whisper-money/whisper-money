@@ -22,7 +22,7 @@ import {
     startOfQuarter,
     startOfYear,
 } from 'date-fns';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -125,7 +125,12 @@ export default function CashflowPage() {
         parsePeriodParam(initialPeriod, initialPeriodType),
     );
 
-    const period = getPeriodRange(currentDate, periodType);
+    // Memoized so children (e.g. the Sankey drill-down fetch) don't see a new
+    // object identity on every render.
+    const period = useMemo(
+        () => getPeriodRange(currentDate, periodType),
+        [currentDate, periodType],
+    );
 
     const {
         summary,
