@@ -38,6 +38,7 @@ vi.mock('@/hooks/use-chart-color-scheme', () => ({
     useChartColors: () => ({
         cashflowIncomeColor: '#22c55e',
         cashflowExpenseColor: '#ef4444',
+        categoryBarColor: (color: string) => color || '#999',
     }),
 }));
 

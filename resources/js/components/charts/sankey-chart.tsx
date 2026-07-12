@@ -85,7 +85,8 @@ export function SankeyChart({
     const containerRef = useRef<HTMLDivElement>(null);
     const locale = useLocale();
     const { isPrivacyModeEnabled } = usePrivacyMode();
-    const { cashflowIncomeColor, cashflowExpenseColor } = useChartColors();
+    const { cashflowIncomeColor, cashflowExpenseColor, categoryBarColor } =
+        useChartColors();
 
     const periodKey = period
         ? `${period.from.getTime()}-${period.to.getTime()}`
@@ -151,6 +152,13 @@ export function SankeyChart({
                 }
             })
             .catch((error) => {
+                // Collapse back so the node doesn't stay stuck "expanded" with
+                // no subcategories and no way forward.
+                if (!cancelled) {
+                    setExpandedId((current) =>
+                        current === expandedId ? null : current,
+                    );
+                }
                 console.error('Failed to fetch subcategories:', error);
             });
 
@@ -175,11 +183,15 @@ export function SankeyChart({
             total_income,
             groupingThreshold,
         );
-        groupedIncome.main.forEach((item) => {
+        groupedIncome.main.forEach((item, index) => {
+            if (item.amount <= 0) {
+                return;
+            }
+
             nodes.push({
                 name: item.category.name,
                 amount: item.amount,
-                color: item.category.color || cashflowIncomeColor,
+                color: categoryBarColor(item.category.color, index),
                 kind: 'income',
                 labelSide: 'left',
                 categoryId: item.category.id,
@@ -211,19 +223,30 @@ export function SankeyChart({
             total_expense,
             groupingThreshold,
         );
-        groupedExpense.main.forEach((item) => {
-            const expanded = item.category.id === expandedId;
+        groupedExpense.main.forEach((item, index) => {
+            if (item.amount <= 0) {
+                return;
+            }
+
+            const isExpanded = item.category.id === expandedId;
+            // Keep the label beside the bar until the subcategories actually
+            // load, so it doesn't jump onto the bar and back during the fetch.
+            const childrenLoaded =
+                isExpanded &&
+                (childrenById[item.category.id]?.expense_categories?.length ??
+                    0) > 0;
+
             nodes.push({
                 name: item.category.name,
                 amount: item.amount,
-                color: item.category.color || cashflowExpenseColor,
+                color: categoryBarColor(item.category.color, index),
                 kind: 'expense',
                 // An expanded parent sits between the hub and its subcategory
                 // column, so its label moves onto the bar to clear the way.
-                labelSide: expanded ? 'onbar' : 'right',
+                labelSide: childrenLoaded ? 'onbar' : 'right',
                 categoryId: item.category.id,
                 expandable: !!item.has_children,
-                expanded,
+                expanded: isExpanded,
             });
         });
         if (groupedExpense.other) {
@@ -268,7 +291,7 @@ export function SankeyChart({
             ].sort((a, b) => b.amount - a.amount);
 
             if (parentIndex >= 0) {
-                kids.forEach((kid) => {
+                kids.forEach((kid, index) => {
                     if (kid.amount <= 0) {
                         return;
                     }
@@ -277,7 +300,7 @@ export function SankeyChart({
                     nodes.push({
                         name: kid.category.name,
                         amount: kid.amount,
-                        color: kid.category.color || cashflowExpenseColor,
+                        color: categoryBarColor(kid.category.color, index),
                         kind: 'expense',
                         labelSide: 'right',
                         categoryId: kid.category.id,
@@ -303,14 +326,7 @@ export function SankeyChart({
             nodeRows: Math.max(incomeRows, expenseRows, subcatRows),
             subcatRows,
         };
-    }, [
-        data,
-        groupingThreshold,
-        cashflowIncomeColor,
-        cashflowExpenseColor,
-        expandedId,
-        childrenById,
-    ]);
+    }, [data, groupingThreshold, categoryBarColor, expandedId, childrenById]);
 
     if (isEmpty) {
         return (
@@ -382,22 +398,28 @@ export function SankeyChart({
             }
         };
 
-        const foHeight = isPill ? PILL_LABEL_HEIGHT : LABEL_HEIGHT;
-        const labelY = y + nodeHeight / 2 - foHeight / 2;
+        const labelBoxHeight = isPill ? PILL_LABEL_HEIGHT : LABEL_HEIGHT;
+        const labelY = y + nodeHeight / 2 - labelBoxHeight / 2;
         let labelX: number;
-        let foWidth: number;
+        let labelBoxWidth: number;
         let alignClass: string;
 
         if (node.labelSide === 'left') {
             labelX = 2;
-            foWidth = Math.max(0, x - LABEL_GAP - 2);
+            labelBoxWidth = Math.max(0, x - LABEL_GAP - 2);
             alignClass = 'items-end text-right';
         } else if (node.labelSide === 'right') {
             labelX = x + width + LABEL_GAP;
-            foWidth = Math.max(0, containerWidth - labelX - 2);
+            // Cap the width so a non-rightmost parent (one sitting to the left
+            // of an expanded subcategory column) can't stretch its label across
+            // that column.
+            labelBoxWidth = Math.max(
+                0,
+                Math.min(labelWidth, containerWidth - labelX - 2),
+            );
             alignClass = 'items-start text-left';
         } else {
-            foWidth = labelWidth;
+            labelBoxWidth = labelWidth;
             labelX = x + width / 2 - labelWidth / 2;
             alignClass = 'items-center text-center';
         }
@@ -443,8 +465,8 @@ export function SankeyChart({
                 <foreignObject
                     x={labelX}
                     y={labelY}
-                    width={foWidth}
-                    height={foHeight}
+                    width={labelBoxWidth}
+                    height={labelBoxHeight}
                     className="overflow-visible"
                 >
                     <div
