@@ -47,8 +47,15 @@ interface FlowLink {
 }
 
 const NODE_WIDTH = 12;
+const NODE_PADDING = 32;
 const LABEL_GAP = 6;
-const LABEL_HEIGHT = 34;
+const LABEL_HEIGHT = 30;
+// A Sankey is inherently horizontal, so on narrow screens we let it scroll
+// sideways (same pattern as the trend chart) rather than crushing the flows.
+const MIN_CHART_WIDTH = 560;
+// Guarantees enough vertical room per node that its two-line label never
+// collides with the next one, even when a category's bar is tiny.
+const ROW_HEIGHT = 54;
 const MUTED_COLOR = 'var(--color-muted)';
 const CENTER_COLOR = 'var(--color-chart-1)';
 
@@ -93,7 +100,7 @@ export function SankeyChart({
         return () => observer.disconnect();
     }, []);
 
-    const { chartData, isEmpty } = useMemo(() => {
+    const { chartData, isEmpty, nodeRows } = useMemo(() => {
         const {
             income_categories,
             expense_categories,
@@ -129,7 +136,9 @@ export function SankeyChart({
 
         const centerIndex = nodes.length;
         nodes.push({
-            name: __('Cashflow'),
+            // "Net" rather than "Cashflow": the card title already reads
+            // "Cashflow", so the hub only needs to carry the net amount.
+            name: __('Net'),
             amount: total_income - total_expense,
             color: CENTER_COLOR,
             kind: 'center',
@@ -178,7 +187,14 @@ export function SankeyChart({
             }
         });
 
-        return { chartData: { nodes, links }, isEmpty: links.length === 0 };
+        const incomeRows = nodes.filter((n) => n.kind === 'income').length;
+        const expenseRows = nodes.filter((n) => n.kind === 'expense').length;
+
+        return {
+            chartData: { nodes, links },
+            isEmpty: links.length === 0,
+            nodeRows: Math.max(incomeRows, expenseRows),
+        };
     }, [data, groupingThreshold, cashflowIncomeColor, cashflowExpenseColor]);
 
     if (isEmpty) {
@@ -200,6 +216,9 @@ export function SankeyChart({
         Math.min(140, Math.round(containerWidth * 0.26)),
     );
     const sideMargin = labelWidth + LABEL_GAP;
+    // Grow the canvas so crowded sides (many expense categories) keep their
+    // labels legible instead of overlapping.
+    const chartHeight = Math.max(height, nodeRows * ROW_HEIGHT + 24);
 
     const goToCategory = (categoryId: string) => {
         if (!period) {
@@ -301,7 +320,8 @@ export function SankeyChart({
                         className={cn(
                             'flex h-full flex-col justify-center gap-0.5 leading-tight',
                             alignClass,
-                            isCenter && 'rounded bg-background/85 px-1 py-0.5',
+                            isCenter &&
+                                'rounded-md border border-border bg-background/90 px-1.5 py-0.5 shadow-sm',
                         )}
                     >
                         <span
@@ -360,23 +380,29 @@ export function SankeyChart({
     };
 
     return (
-        <div ref={containerRef} className={cn('w-full', className)}>
-            <ResponsiveContainer width="100%" height={height}>
-                <Sankey
-                    data={chartData}
-                    node={renderNode as ComponentProps<typeof Sankey>['node']}
-                    link={renderLink as ComponentProps<typeof Sankey>['link']}
-                    nodeWidth={NODE_WIDTH}
-                    nodePadding={containerWidth < 420 ? 14 : 22}
-                    sort={false}
-                    margin={{
-                        top: 12,
-                        right: sideMargin,
-                        bottom: 12,
-                        left: sideMargin,
-                    }}
-                />
-            </ResponsiveContainer>
+        <div className={cn('w-full overflow-x-auto', className)}>
+            <div ref={containerRef} style={{ minWidth: MIN_CHART_WIDTH }}>
+                <ResponsiveContainer width="100%" height={chartHeight}>
+                    <Sankey
+                        data={chartData}
+                        node={
+                            renderNode as ComponentProps<typeof Sankey>['node']
+                        }
+                        link={
+                            renderLink as ComponentProps<typeof Sankey>['link']
+                        }
+                        nodeWidth={NODE_WIDTH}
+                        nodePadding={NODE_PADDING}
+                        sort={false}
+                        margin={{
+                            top: 12,
+                            right: sideMargin,
+                            bottom: 12,
+                            left: sideMargin,
+                        }}
+                    />
+                </ResponsiveContainer>
+            </div>
         </div>
     );
 }

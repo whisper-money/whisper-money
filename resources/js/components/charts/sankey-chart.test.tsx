@@ -93,7 +93,7 @@ describe('SankeyChart', () => {
         render(<SankeyChart data={data} period={period} />);
 
         expect(screen.getByText('Salary')).toBeInTheDocument();
-        expect(screen.getByText('Cashflow')).toBeInTheDocument();
+        expect(screen.getByText('Net')).toBeInTheDocument();
         expect(screen.getByText('Food')).toBeInTheDocument();
         expect(screen.getByText('Rent')).toBeInTheDocument();
     });
