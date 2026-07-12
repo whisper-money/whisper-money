@@ -47,15 +47,18 @@ interface FlowLink {
 }
 
 const NODE_WIDTH = 12;
-const NODE_PADDING = 32;
+const NODE_PADDING = 24;
 const LABEL_GAP = 6;
 const LABEL_HEIGHT = 30;
+// The center label is a bordered pill (name + amount), so it needs a little
+// more room than the plain side labels or it clips vertically.
+const CENTER_LABEL_HEIGHT = 44;
 // A Sankey is inherently horizontal, so on narrow screens we let it scroll
 // sideways (same pattern as the trend chart) rather than crushing the flows.
 const MIN_CHART_WIDTH = 560;
-// Guarantees enough vertical room per node that its two-line label never
-// collides with the next one, even when a category's bar is tiny.
-const ROW_HEIGHT = 54;
+// Gives each node enough vertical room that its two-line label stays legible
+// even when a category's bar is tiny.
+const ROW_HEIGHT = 46;
 const MUTED_COLOR = 'var(--color-muted)';
 const CENTER_COLOR = 'var(--color-chart-1)';
 
@@ -255,9 +258,10 @@ export function SankeyChart({
         const isCenter = node.kind === 'center';
         const navigable = !!node.categoryId && !!period;
 
+        const foHeight = isCenter ? CENTER_LABEL_HEIGHT : LABEL_HEIGHT;
+        const labelY = y + nodeHeight / 2 - foHeight / 2;
         let labelX: number;
         let foWidth: number;
-        let labelY = y + nodeHeight / 2 - LABEL_HEIGHT / 2;
         let alignClass: string;
 
         if (node.kind === 'income') {
@@ -273,7 +277,6 @@ export function SankeyChart({
             // the bar with a subtle background instead of sitting beside it.
             foWidth = labelWidth;
             labelX = x + width / 2 - labelWidth / 2;
-            labelY = y + nodeHeight / 2 - LABEL_HEIGHT / 2;
             alignClass = 'items-center text-center';
         }
 
@@ -313,7 +316,7 @@ export function SankeyChart({
                     x={labelX}
                     y={labelY}
                     width={foWidth}
-                    height={LABEL_HEIGHT}
+                    height={foHeight}
                     className="overflow-visible"
                 >
                     <div
