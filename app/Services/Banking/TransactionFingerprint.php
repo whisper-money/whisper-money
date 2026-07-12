@@ -5,10 +5,7 @@ namespace App\Services\Banking;
 /**
  * Builds a deterministic fingerprint for an EnableBanking transaction
  * payload so we can dedup even when the upstream bank omits a stable
- * id (transaction_id / entry_reference).
- *
- * Shared between the live sync path and the cleanup command so they
- * stay in lock-step.
+ * id (transaction_id / entry_reference), consumed by TransactionSyncService.
  */
 class TransactionFingerprint
 {
@@ -21,8 +18,24 @@ class TransactionFingerprint
             return self::hash(['transaction_id', $data['transaction_id']]);
         }
 
-        if (($data['entry_reference'] ?? null) !== null) {
-            return self::hash(['entry_reference', $data['entry_reference']]);
+        $entryReference = $data['entry_reference'] ?? null;
+
+        // Some ASPSPs emit a positional `{booking_date}.{index}` entry_reference
+        // that is absent the day a transaction first appears and only populated
+        // on a later sync. Keying on it fingerprints the same transaction
+        // differently across syncs, so it slips past dedup and imports twice.
+        // Treat that positional form as "no stable id" and fall through to the
+        // content hash, which is identical on both syncs.
+        //
+        // Trade-off: the index is also the only field that would tell apart two
+        // genuinely distinct same-day transactions with byte-identical content
+        // (e.g. two identical tolls). Dropping it collapses them to one
+        // fingerprint, so only the first is kept. We accept that here — a rare
+        // silent under-count over the systematic duplication it fixes. Fixing
+        // both needs occurrence-aware dedup in the consumer (a schema change),
+        // tracked as a follow-up.
+        if ($entryReference !== null && ! self::isPositionalReference($entryReference)) {
+            return self::hash(['entry_reference', $entryReference]);
         }
 
         return self::hash([
@@ -41,6 +54,11 @@ class TransactionFingerprint
             $data['reference_number'] ?? '',
             self::remittance($data['remittance_information'] ?? []),
         ]);
+    }
+
+    private static function isPositionalReference(string $reference): bool
+    {
+        return preg_match('/^\d{4}-\d{2}-\d{2}\.\d+$/D', $reference) === 1;
     }
 
     /**
