@@ -9,6 +9,7 @@ import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { format } from 'date-fns';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
     type ComponentProps,
     type KeyboardEvent,
@@ -29,6 +30,7 @@ interface SankeyChartProps {
 }
 
 type FlowKind = 'income' | 'center' | 'expense';
+type LabelSide = 'left' | 'right' | 'onbar';
 
 // Fields we attach to each node; recharts spreads these onto the payload it
 // hands back to the custom node renderer, alongside its own layout data.
@@ -37,7 +39,10 @@ interface FlowNode {
     amount: number;
     color: string;
     kind: FlowKind;
+    labelSide: LabelSide;
     categoryId?: string;
+    expandable?: boolean;
+    expanded?: boolean;
 }
 
 interface FlowLink {
@@ -50,12 +55,14 @@ const NODE_WIDTH = 12;
 const NODE_PADDING = 24;
 const LABEL_GAP = 6;
 const LABEL_HEIGHT = 30;
-// The center label is a bordered pill (name + amount), so it needs a little
-// more room than the plain side labels or it clips vertically.
-const CENTER_LABEL_HEIGHT = 44;
+// On-bar labels (the hub, and an expanded parent) are bordered pills with two
+// lines, so they need a little more room than the plain side labels.
+const PILL_LABEL_HEIGHT = 44;
 // A Sankey is inherently horizontal, so on narrow screens we let it scroll
 // sideways (same pattern as the trend chart) rather than crushing the flows.
 const MIN_CHART_WIDTH = 560;
+// A drill-down adds a fourth column, so widen the canvas to keep it readable.
+const EXPANDED_MIN_CHART_WIDTH = 760;
 // Gives each node enough vertical room that its two-line label stays legible
 // even when a category's bar is tiny.
 const ROW_HEIGHT = 46;
@@ -71,14 +78,28 @@ export function SankeyChart({
     period,
 }: SankeyChartProps) {
     const [containerWidth, setContainerWidth] = useState(600);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [childrenById, setChildrenById] = useState<
+        Record<string, SankeyData>
+    >({});
     const containerRef = useRef<HTMLDivElement>(null);
     const locale = useLocale();
     const { isPrivacyModeEnabled } = usePrivacyMode();
     const { cashflowIncomeColor, cashflowExpenseColor } = useChartColors();
 
+    const periodKey = period
+        ? `${period.from.getTime()}-${period.to.getTime()}`
+        : '';
+
     const maskIfPrivate = (value: number): string => {
         const formatted = formatCurrency(value, currency, locale, 0, 0);
         return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
+    };
+
+    const toggleExpand = (categoryId: string) => {
+        setExpandedId((previous) =>
+            previous === categoryId ? null : categoryId,
+        );
     };
 
     useEffect(() => {
@@ -103,7 +124,42 @@ export function SankeyChart({
         return () => observer.disconnect();
     }, []);
 
-    const { chartData, isEmpty, nodeRows } = useMemo(() => {
+    // A new period (or refreshed data) invalidates any open drill-down.
+    useEffect(() => {
+        setExpandedId(null);
+        setChildrenById({});
+    }, [periodKey]);
+
+    // Lazily fetch the subcategories of the expanded parent.
+    useEffect(() => {
+        if (!period || !expandedId || childrenById[expandedId]) {
+            return;
+        }
+
+        const from = format(period.from, 'yyyy-MM-dd');
+        const to = format(period.to, 'yyyy-MM-dd');
+        let cancelled = false;
+
+        fetch(`/api/cashflow/sankey?from=${from}&to=${to}&parent=${expandedId}`)
+            .then((response) => response.json())
+            .then((json: SankeyData) => {
+                if (!cancelled) {
+                    setChildrenById((previous) => ({
+                        ...previous,
+                        [expandedId]: json,
+                    }));
+                }
+            })
+            .catch((error) => {
+                console.error('Failed to fetch subcategories:', error);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [expandedId, childrenById, period, periodKey]);
+
+    const { chartData, isEmpty, nodeRows, subcatRows } = useMemo(() => {
         const {
             income_categories,
             expense_categories,
@@ -125,6 +181,7 @@ export function SankeyChart({
                 amount: item.amount,
                 color: item.category.color || cashflowIncomeColor,
                 kind: 'income',
+                labelSide: 'left',
                 categoryId: item.category.id,
             });
         });
@@ -134,6 +191,7 @@ export function SankeyChart({
                 amount: groupedIncome.other.total,
                 color: MUTED_COLOR,
                 kind: 'income',
+                labelSide: 'left',
             });
         }
 
@@ -145,6 +203,7 @@ export function SankeyChart({
             amount: total_income - total_expense,
             color: CENTER_COLOR,
             kind: 'center',
+            labelSide: 'onbar',
         });
 
         const groupedExpense = groupSmallCategories(
@@ -153,12 +212,18 @@ export function SankeyChart({
             groupingThreshold,
         );
         groupedExpense.main.forEach((item) => {
+            const expanded = item.category.id === expandedId;
             nodes.push({
                 name: item.category.name,
                 amount: item.amount,
                 color: item.category.color || cashflowExpenseColor,
                 kind: 'expense',
+                // An expanded parent sits between the hub and its subcategory
+                // column, so its label moves onto the bar to clear the way.
+                labelSide: expanded ? 'onbar' : 'right',
                 categoryId: item.category.id,
+                expandable: !!item.has_children,
+                expanded,
             });
         });
         if (groupedExpense.other) {
@@ -167,6 +232,7 @@ export function SankeyChart({
                 amount: groupedExpense.other.total,
                 color: MUTED_COLOR,
                 kind: 'expense',
+                labelSide: 'right',
             });
         }
 
@@ -190,15 +256,61 @@ export function SankeyChart({
             }
         });
 
-        const incomeRows = nodes.filter((n) => n.kind === 'income').length;
-        const expenseRows = nodes.filter((n) => n.kind === 'expense').length;
+        // Drill-down: split the expanded parent into its subcategory column.
+        let subcatRows = 0;
+        if (expandedId) {
+            const parentIndex = nodes.findIndex(
+                (node) =>
+                    node.kind === 'expense' && node.categoryId === expandedId,
+            );
+            const kids = [
+                ...(childrenById[expandedId]?.expense_categories ?? []),
+            ].sort((a, b) => b.amount - a.amount);
+
+            if (parentIndex >= 0) {
+                kids.forEach((kid) => {
+                    if (kid.amount <= 0) {
+                        return;
+                    }
+
+                    const childIndex = nodes.length;
+                    nodes.push({
+                        name: kid.category.name,
+                        amount: kid.amount,
+                        color: kid.category.color || cashflowExpenseColor,
+                        kind: 'expense',
+                        labelSide: 'right',
+                        categoryId: kid.category.id,
+                    });
+                    links.push({
+                        source: parentIndex,
+                        target: childIndex,
+                        value: kid.amount,
+                    });
+                    subcatRows += 1;
+                });
+            }
+        }
+
+        const incomeRows =
+            groupedIncome.main.length + (groupedIncome.other ? 1 : 0);
+        const expenseRows =
+            groupedExpense.main.length + (groupedExpense.other ? 1 : 0);
 
         return {
             chartData: { nodes, links },
             isEmpty: links.length === 0,
-            nodeRows: Math.max(incomeRows, expenseRows),
+            nodeRows: Math.max(incomeRows, expenseRows, subcatRows),
+            subcatRows,
         };
-    }, [data, groupingThreshold, cashflowIncomeColor, cashflowExpenseColor]);
+    }, [
+        data,
+        groupingThreshold,
+        cashflowIncomeColor,
+        cashflowExpenseColor,
+        expandedId,
+        childrenById,
+    ]);
 
     if (isEmpty) {
         return (
@@ -222,6 +334,8 @@ export function SankeyChart({
     // Grow the canvas so crowded sides (many expense categories) keep their
     // labels legible instead of overlapping.
     const chartHeight = Math.max(height, nodeRows * ROW_HEIGHT + 24);
+    const minChartWidth =
+        subcatRows > 0 ? EXPANDED_MIN_CHART_WIDTH : MIN_CHART_WIDTH;
 
     const goToCategory = (categoryId: string) => {
         if (!period) {
@@ -255,49 +369,63 @@ export function SankeyChart({
         payload: FlowNode;
     }) => {
         const node = payload;
-        const isCenter = node.kind === 'center';
-        const navigable = !!node.categoryId && !!period;
+        const isPill = node.labelSide === 'onbar';
+        const expandable = !!node.expandable && !!node.categoryId && !!period;
+        const navigable = !expandable && !!node.categoryId && !!period;
+        const interactive = expandable || navigable;
 
-        const foHeight = isCenter ? CENTER_LABEL_HEIGHT : LABEL_HEIGHT;
+        const activate = () => {
+            if (expandable) {
+                toggleExpand(node.categoryId!);
+            } else if (navigable) {
+                goToCategory(node.categoryId!);
+            }
+        };
+
+        const foHeight = isPill ? PILL_LABEL_HEIGHT : LABEL_HEIGHT;
         const labelY = y + nodeHeight / 2 - foHeight / 2;
         let labelX: number;
         let foWidth: number;
         let alignClass: string;
 
-        if (node.kind === 'income') {
+        if (node.labelSide === 'left') {
             labelX = 2;
             foWidth = Math.max(0, x - LABEL_GAP - 2);
             alignClass = 'items-end text-right';
-        } else if (node.kind === 'expense') {
+        } else if (node.labelSide === 'right') {
             labelX = x + width + LABEL_GAP;
             foWidth = Math.max(0, containerWidth - labelX - 2);
             alignClass = 'items-start text-left';
         } else {
-            // The center bar spans the full height, so its label rides on top of
-            // the bar with a subtle background instead of sitting beside it.
             foWidth = labelWidth;
             labelX = x + width / 2 - labelWidth / 2;
             alignClass = 'items-center text-center';
         }
 
+        const ChevronIcon = node.expanded ? ChevronDown : ChevronRight;
+
         return (
             <Layer
                 key={`node-${index}`}
-                className={cn(navigable && 'cursor-pointer')}
-                role={navigable ? 'link' : undefined}
-                tabIndex={navigable ? 0 : undefined}
+                className={cn(interactive && 'cursor-pointer')}
+                role={expandable ? 'button' : navigable ? 'link' : undefined}
+                tabIndex={interactive ? 0 : undefined}
                 aria-label={
-                    navigable ? `View ${node.name} transactions` : undefined
+                    expandable
+                        ? node.expanded
+                            ? `Collapse ${node.name}`
+                            : `Expand ${node.name}`
+                        : navigable
+                          ? `View ${node.name} transactions`
+                          : undefined
                 }
-                onClick={
-                    navigable ? () => goToCategory(node.categoryId!) : undefined
-                }
+                onClick={interactive ? activate : undefined}
                 onKeyDown={
-                    navigable
+                    interactive
                         ? (event: KeyboardEvent) => {
                               if (event.key === 'Enter' || event.key === ' ') {
                                   event.preventDefault();
-                                  goToCategory(node.categoryId!);
+                                  activate();
                               }
                           }
                         : undefined
@@ -323,16 +451,29 @@ export function SankeyChart({
                         className={cn(
                             'flex h-full flex-col justify-center gap-0.5 leading-tight',
                             alignClass,
-                            isCenter &&
+                            isPill &&
                                 'rounded-md border border-border bg-background/90 px-1.5 py-0.5 shadow-sm',
                         )}
                     >
-                        <span
-                            title={node.name}
-                            className="max-w-full truncate text-[11px] font-medium text-foreground"
+                        <div
+                            className={cn(
+                                'flex max-w-full items-center gap-1',
+                                node.labelSide === 'left' && 'flex-row-reverse',
+                            )}
                         >
-                            {node.name}
-                        </span>
+                            <span
+                                title={node.name}
+                                className="min-w-0 truncate text-[11px] font-medium text-foreground"
+                            >
+                                {node.name}
+                            </span>
+                            {expandable && (
+                                <ChevronIcon
+                                    aria-hidden="true"
+                                    className="size-3 shrink-0 text-muted-foreground"
+                                />
+                            )}
+                        </div>
                         <span className="text-[11px] text-muted-foreground">
                             {maskIfPrivate(node.amount)}
                         </span>
@@ -384,7 +525,7 @@ export function SankeyChart({
 
     return (
         <div className={cn('w-full overflow-x-auto', className)}>
-            <div ref={containerRef} style={{ minWidth: MIN_CHART_WIDTH }}>
+            <div ref={containerRef} style={{ minWidth: minChartWidth }}>
                 <ResponsiveContainer width="100%" height={chartHeight}>
                     <Sankey
                         data={chartData}

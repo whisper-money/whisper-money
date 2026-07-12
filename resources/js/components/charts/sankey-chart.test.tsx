@@ -1,8 +1,8 @@
 import { SankeyData } from '@/hooks/use-cashflow-data';
 import { Category } from '@/types/category';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SankeyChart } from './sankey-chart';
 
 // ResponsiveContainer measures its DOM parent, which is 0x0 in jsdom, so the
@@ -68,6 +68,7 @@ const data: SankeyData = {
             category: category('food', 'Food'),
             category_id: 'food',
             amount: 310,
+            has_children: true,
         },
         {
             category: category('rent', 'Rent'),
@@ -79,12 +80,36 @@ const data: SankeyData = {
     total_expense: 810,
 };
 
+const foodChildren: SankeyData = {
+    income_categories: [],
+    expense_categories: [
+        {
+            category: category('groceries', 'Groceries'),
+            category_id: 'groceries',
+            amount: 200,
+        },
+        {
+            category: category('eating-out', 'Eating out'),
+            category_id: 'eating-out',
+            amount: 110,
+        },
+    ],
+    total_income: 0,
+    total_expense: 310,
+};
+
 const period = {
     from: new Date('2026-06-01'),
     to: new Date('2026-06-30'),
 };
 
 describe('SankeyChart', () => {
+    beforeEach(() => {
+        global.fetch = vi.fn().mockResolvedValue({
+            json: async () => foodChildren,
+        }) as unknown as typeof fetch;
+    });
+
     afterEach(() => {
         vi.clearAllMocks();
     });
@@ -145,6 +170,36 @@ describe('SankeyChart', () => {
         expect(screen.getByText('Other')).toBeInTheDocument();
         // The tiny categories are folded away, not rendered individually.
         expect(screen.queryByText('Category 7')).not.toBeInTheDocument();
+    });
+
+    it('shows an expand affordance on expense categories with children', () => {
+        render(<SankeyChart data={data} period={period} />);
+
+        expect(
+            screen.getByRole('button', { name: 'Expand Food' }),
+        ).toBeInTheDocument();
+        // Rent has no children, so it links straight to its transactions.
+        expect(
+            screen.getByRole('link', { name: 'View Rent transactions' }),
+        ).toBeInTheDocument();
+    });
+
+    it('expands an expense category into its subcategories on click', async () => {
+        render(<SankeyChart data={data} period={period} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand Food' }));
+
+        await waitFor(() => {
+            expect(screen.getByText('Groceries')).toBeInTheDocument();
+        });
+
+        expect(screen.getByText('Eating out')).toBeInTheDocument();
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining('parent=food'),
+        );
+        // The rest of the chart stays in place.
+        expect(screen.getByText('Rent')).toBeInTheDocument();
+        expect(screen.getByText('Net')).toBeInTheDocument();
     });
 
     it('masks amounts in privacy mode', () => {
