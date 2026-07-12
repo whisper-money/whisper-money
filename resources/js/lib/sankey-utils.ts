@@ -74,11 +74,3 @@ export function groupSmallCategories(
     // Don't group - return all categories as main
     return { main: sortedCategories, other: null };
 }
-
-/**
- * Calculates the percentage of a value relative to a total
- */
-export function calculatePercentage(value: number, total: number): number {
-    if (total === 0) return 0;
-    return (value / total) * 100;
-}
