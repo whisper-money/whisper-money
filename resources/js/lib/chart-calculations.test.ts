@@ -12,12 +12,12 @@ import {
 } from './chart-calculations';
 
 describe('isLiabilityType', () => {
-    it('returns true for credit_card', () => {
-        expect(isLiabilityType('credit_card')).toBe(true);
-    });
-
     it('returns true for loan', () => {
         expect(isLiabilityType('loan')).toBe(true);
+    });
+
+    it('returns false for credit_card', () => {
+        expect(isLiabilityType('credit_card')).toBe(false);
     });
 
     it('returns false for checking', () => {
@@ -43,11 +43,11 @@ describe('isLiabilityType', () => {
 
 describe('getAccountSign', () => {
     it('returns -1 for liabilities', () => {
-        expect(getAccountSign('credit_card')).toBe(-1);
         expect(getAccountSign('loan')).toBe(-1);
     });
 
     it('returns 1 for assets', () => {
+        expect(getAccountSign('credit_card')).toBe(1);
         expect(getAccountSign('checking')).toBe(1);
         expect(getAccountSign('savings')).toBe(1);
         expect(getAccountSign('investment')).toBe(1);
@@ -58,7 +58,6 @@ describe('getAccountSign', () => {
 
 describe('netWorthContribution', () => {
     it('subtracts the magnitude of liabilities (stored as positive)', () => {
-        expect(netWorthContribution('credit_card', 5000)).toBe(-5000);
         expect(netWorthContribution('loan', 80000)).toBe(-80000);
     });
 
@@ -104,12 +103,10 @@ describe('computeNetWorthSeries', () => {
     });
 
     it('subtracts liabilities from net worth', () => {
-        const data = [
-            { month: '2025-01', checking: 50000, credit_card: 10000 },
-        ];
+        const data = [{ month: '2025-01', checking: 50000, loan: 10000 }];
         const accounts = createAccounts({
             checking: 'checking',
-            credit_card: 'credit_card',
+            loan: 'loan',
         });
 
         const result = computeNetWorthSeries(data, accounts);
@@ -123,21 +120,19 @@ describe('computeNetWorthSeries', () => {
                 month: '2025-01',
                 savings: 100000,
                 checking: 20000,
-                credit_card: 5000,
                 loan: 30000,
             },
         ];
         const accounts = createAccounts({
             savings: 'savings',
             checking: 'checking',
-            credit_card: 'credit_card',
             loan: 'loan',
         });
 
         const result = computeNetWorthSeries(data, accounts);
 
-        // Net worth = 100000 + 20000 - 5000 - 30000 = 85000
-        expect(result[0].value).toBe(85000);
+        // Net worth = 100000 + 20000 - 30000 = 90000
+        expect(result[0].value).toBe(90000);
     });
 
     it('handles negative net worth (more liabilities than assets)', () => {

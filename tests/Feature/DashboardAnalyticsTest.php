@@ -21,8 +21,7 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
-test('net worth calculates assets minus liabilities', function () {
-    // Assets
+test('net worth excludes credit card balances entirely', function () {
     $checking = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
@@ -34,7 +33,8 @@ test('net worth calculates assets minus liabilities', function () {
         'balance' => 500000, // $5,000.00
     ]);
 
-    // Liabilities
+    // A credit card is a spending account, not wealth: it must neither add to
+    // nor subtract from net worth.
     $creditCard = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::CreditCard,
@@ -43,7 +43,7 @@ test('net worth calculates assets minus liabilities', function () {
     AccountBalance::factory()->create([
         'account_id' => $creditCard->id,
         'balance_date' => now(),
-        'balance' => -100000, // -$1,000.00
+        'balance' => 100000, // $1,000.00
     ]);
 
     // Previous period data (30 days ago)
@@ -55,7 +55,7 @@ test('net worth calculates assets minus liabilities', function () {
     AccountBalance::factory()->create([
         'account_id' => $creditCard->id,
         'balance_date' => now()->subDays(30),
-        'balance' => -50000, // -$500.00
+        'balance' => 50000, // $500.00
     ]);
 
     $response = $this->getJson('/api/dashboard/net-worth?'.http_build_query([
@@ -65,8 +65,8 @@ test('net worth calculates assets minus liabilities', function () {
 
     $response->assertOk()
         ->assertJson([
-            'current' => 400000, // 5000 - 1000 = 4000
-            'previous' => 350000, // 4000 - 500 = 3500
+            'current' => 500000, // only the checking account counts
+            'previous' => 400000,
             'currency_code' => 'USD',
         ]);
 });

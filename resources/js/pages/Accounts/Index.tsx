@@ -9,6 +9,7 @@ import { SortableGrid } from '@/components/sortable-grid';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import { netWorthContribution } from '@/lib/chart-calculations';
 import { BreadcrumbItem, SharedData } from '@/types';
 import { Account } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -61,12 +62,25 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
     const accountsWithMetrics: AccountWithMetrics[] = useMemo(() => {
         return accounts.map((account) => {
             const metrics = accountMetrics?.[account.id];
+            // Apply the liability sign so the Accounts list agrees with the
+            // dashboard: loans render negative, everything else keeps its value.
+            const currentBalance = netWorthContribution(
+                account.type,
+                metrics?.currentBalance ?? 0,
+            );
+            const previousBalance = netWorthContribution(
+                account.type,
+                metrics?.previousBalance ?? 0,
+            );
             return {
                 ...account,
-                currentBalance: metrics?.currentBalance ?? 0,
-                previousBalance: metrics?.previousBalance ?? 0,
-                diff: metrics?.diff ?? 0,
-                history: metrics?.history ?? [],
+                currentBalance,
+                previousBalance,
+                diff: currentBalance - previousBalance,
+                history: (metrics?.history ?? []).map((point) => ({
+                    ...point,
+                    value: netWorthContribution(account.type, point.value),
+                })),
                 investedAmount: metrics?.investedAmount ?? null,
             };
         });
@@ -116,7 +130,10 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
         );
     }, []);
 
-    // Build a map of linked loan metrics keyed by real estate account ID
+    // Build a map of linked loan metrics keyed by real estate account ID.
+    // Intentionally reads the RAW (unsigned) accountMetrics prop, not the
+    // signed accountsWithMetrics: the equity math subtracts this owed amount
+    // (marketValue - mortgageOwed), so it must stay a positive magnitude.
     const linkedLoanMetricsMap = useMemo(() => {
         if (!accountMetrics) return {};
         const map: Record<

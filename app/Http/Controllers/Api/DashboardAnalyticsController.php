@@ -482,6 +482,10 @@ class DashboardAnalyticsController extends Controller
         $total = 0;
 
         foreach ($accounts as $account) {
+            if (! $account->type->countsInNetWorth()) {
+                continue;
+            }
+
             $balance = $lookup->getBalanceAt($account->id, $date);
 
             $convertedBalance = $this->exchangeRateService->convert(
