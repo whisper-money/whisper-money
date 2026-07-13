@@ -99,6 +99,44 @@ const foodChildren: SankeyData = {
     total_expense: 310,
 };
 
+const incomeData: SankeyData = {
+    income_categories: [
+        {
+            category: category('salary', 'Salary'),
+            category_id: 'salary',
+            amount: 1000,
+            has_children: true,
+        },
+    ],
+    expense_categories: [
+        {
+            category: category('rent', 'Rent'),
+            category_id: 'rent',
+            amount: 500,
+        },
+    ],
+    total_income: 1000,
+    total_expense: 500,
+};
+
+const salaryChildren: SankeyData = {
+    income_categories: [
+        {
+            category: category('base-salary', 'Base salary'),
+            category_id: 'base-salary',
+            amount: 700,
+        },
+        {
+            category: category('bonus', 'Bonus'),
+            category_id: 'bonus',
+            amount: 300,
+        },
+    ],
+    expense_categories: [],
+    total_income: 1000,
+    total_expense: 0,
+};
+
 const period = {
     from: new Date('2026-06-01'),
     to: new Date('2026-06-30'),
@@ -197,6 +235,28 @@ describe('SankeyChart', () => {
         expect(screen.getByText('Eating out')).toBeInTheDocument();
         expect(global.fetch).toHaveBeenCalledWith(
             expect.stringContaining('parent=food'),
+        );
+        // The rest of the chart stays in place.
+        expect(screen.getByText('Rent')).toBeInTheDocument();
+        expect(screen.getByText('Net')).toBeInTheDocument();
+    });
+
+    it('expands an income category into its subcategories on click', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            json: async () => salaryChildren,
+        }) as unknown as typeof fetch;
+
+        render(<SankeyChart data={incomeData} period={period} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand Salary' }));
+
+        await waitFor(() => {
+            expect(screen.getByText('Base salary')).toBeInTheDocument();
+        });
+
+        expect(screen.getByText('Bonus')).toBeInTheDocument();
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining('parent=salary'),
         );
         // The rest of the chart stays in place.
         expect(screen.getByText('Rent')).toBeInTheDocument();
