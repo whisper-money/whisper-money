@@ -1,6 +1,6 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
-import { SankeyData } from '@/hooks/use-cashflow-data';
+import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
 import { groupSmallCategories } from '@/lib/sankey-utils';
@@ -9,7 +9,7 @@ import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
     type ComponentProps,
     type KeyboardEvent,
@@ -52,9 +52,12 @@ interface FlowLink {
 }
 
 const NODE_WIDTH = 12;
-const NODE_PADDING = 24;
 const LABEL_GAP = 6;
 const LABEL_HEIGHT = 30;
+// recharts stacks same-column nodes with exactly this vertical gap, so tiny
+// bars end up NODE_PADDING apart regardless of the canvas height. Keep it above
+// LABEL_HEIGHT (+ breathing room) so two adjacent labels can never overlap.
+const NODE_PADDING = LABEL_HEIGHT + 6;
 // On-bar labels (the hub, and an expanded parent) are bordered pills with two
 // lines, so they need a little more room than the plain side labels.
 const PILL_LABEL_HEIGHT = 44;
@@ -78,7 +81,12 @@ export function SankeyChart({
     period,
 }: SankeyChartProps) {
     const [containerWidth, setContainerWidth] = useState(600);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+    // A category id can appear on both sides (in- and outflows), so the open
+    // drill-down is keyed by side too, not just id.
+    const [expanded, setExpanded] = useState<{
+        id: string;
+        kind: FlowKind;
+    } | null>(null);
     const [childrenById, setChildrenById] = useState<
         Record<string, SankeyData>
     >({});
@@ -97,9 +105,14 @@ export function SankeyChart({
         return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
     };
 
-    const toggleExpand = (categoryId: string) => {
-        setExpandedId((previous) =>
-            previous === categoryId ? null : categoryId,
+    const expandedId = expanded?.id ?? null;
+    const expandedKind = expanded?.kind ?? null;
+
+    const toggleExpand = (categoryId: string, kind: FlowKind) => {
+        setExpanded((previous) =>
+            previous?.id === categoryId && previous.kind === kind
+                ? null
+                : { id: categoryId, kind },
         );
     };
 
@@ -127,7 +140,7 @@ export function SankeyChart({
 
     // A new period (or refreshed data) invalidates any open drill-down.
     useEffect(() => {
-        setExpandedId(null);
+        setExpanded(null);
         setChildrenById({});
     }, [periodKey]);
 
@@ -155,8 +168,8 @@ export function SankeyChart({
                 // Collapse back so the node doesn't stay stuck "expanded" with
                 // no subcategories and no way forward.
                 if (!cancelled) {
-                    setExpandedId((current) =>
-                        current === expandedId ? null : current,
+                    setExpanded((current) =>
+                        current?.id === expandedId ? null : current,
                     );
                 }
                 console.error('Failed to fetch subcategories:', error);
@@ -183,20 +196,48 @@ export function SankeyChart({
             total_income,
             groupingThreshold,
         );
-        groupedIncome.main.forEach((item, index) => {
-            if (item.amount <= 0) {
-                return;
-            }
+        // Both sides build identical node shapes; only the children key and
+        // the collapsed-label side (income to the left of the hub, expense to
+        // the right) differ.
+        const pushCategoryNodes = (
+            items: SankeyCategory[],
+            kind: 'income' | 'expense',
+        ) => {
+            const collapsedSide: LabelSide =
+                kind === 'income' ? 'left' : 'right';
+            const childrenKey =
+                kind === 'income' ? 'income_categories' : 'expense_categories';
 
-            nodes.push({
-                name: item.category.name,
-                amount: item.amount,
-                color: categoryBarColor(item.category.color, index),
-                kind: 'income',
-                labelSide: 'left',
-                categoryId: item.category.id,
+            items.forEach((item, index) => {
+                if (item.amount <= 0) {
+                    return;
+                }
+
+                const isExpanded =
+                    expandedKind === kind && item.category.id === expandedId;
+                // Keep the label beside the bar until the subcategories
+                // actually load, so it doesn't jump onto the bar and back
+                // during the fetch; an expanded parent's label moves onto the
+                // bar to clear room for its subcategory column.
+                const childrenLoaded =
+                    isExpanded &&
+                    (childrenById[item.category.id]?.[childrenKey]?.length ??
+                        0) > 0;
+
+                nodes.push({
+                    name: item.category.name,
+                    amount: item.amount,
+                    color: categoryBarColor(item.category.color, index),
+                    kind,
+                    labelSide: childrenLoaded ? 'onbar' : collapsedSide,
+                    categoryId: item.category.id,
+                    expandable: !!item.has_children,
+                    expanded: isExpanded,
+                });
             });
-        });
+        };
+
+        pushCategoryNodes(groupedIncome.main, 'income');
         if (groupedIncome.other) {
             nodes.push({
                 name: __('Other'),
@@ -223,32 +264,7 @@ export function SankeyChart({
             total_expense,
             groupingThreshold,
         );
-        groupedExpense.main.forEach((item, index) => {
-            if (item.amount <= 0) {
-                return;
-            }
-
-            const isExpanded = item.category.id === expandedId;
-            // Keep the label beside the bar until the subcategories actually
-            // load, so it doesn't jump onto the bar and back during the fetch.
-            const childrenLoaded =
-                isExpanded &&
-                (childrenById[item.category.id]?.expense_categories?.length ??
-                    0) > 0;
-
-            nodes.push({
-                name: item.category.name,
-                amount: item.amount,
-                color: categoryBarColor(item.category.color, index),
-                kind: 'expense',
-                // An expanded parent sits between the hub and its subcategory
-                // column, so its label moves onto the bar to clear the way.
-                labelSide: childrenLoaded ? 'onbar' : 'right',
-                categoryId: item.category.id,
-                expandable: !!item.has_children,
-                expanded: isExpanded,
-            });
-        });
+        pushCategoryNodes(groupedExpense.main, 'expense');
         if (groupedExpense.other) {
             nodes.push({
                 name: __('Other'),
@@ -280,14 +296,20 @@ export function SankeyChart({
         });
 
         // Drill-down: split the expanded parent into its subcategory column.
+        // Expenses flow out of the hub (subcategories extend to the right);
+        // income flows into it (subcategories sit to the left), so the link
+        // direction and label side mirror by side.
         let subcatRows = 0;
-        if (expandedId) {
+        if (expandedId && expandedKind) {
             const parentIndex = nodes.findIndex(
                 (node) =>
-                    node.kind === 'expense' && node.categoryId === expandedId,
+                    node.kind === expandedKind &&
+                    node.categoryId === expandedId,
             );
             const kids = [
-                ...(childrenById[expandedId]?.expense_categories ?? []),
+                ...(expandedKind === 'income'
+                    ? (childrenById[expandedId]?.income_categories ?? [])
+                    : (childrenById[expandedId]?.expense_categories ?? [])),
             ].sort((a, b) => b.amount - a.amount);
 
             if (parentIndex >= 0) {
@@ -301,15 +323,23 @@ export function SankeyChart({
                         name: kid.category.name,
                         amount: kid.amount,
                         color: categoryBarColor(kid.category.color, index),
-                        kind: 'expense',
-                        labelSide: 'right',
+                        kind: expandedKind,
+                        labelSide: expandedKind === 'income' ? 'left' : 'right',
                         categoryId: kid.category.id,
                     });
-                    links.push({
-                        source: parentIndex,
-                        target: childIndex,
-                        value: kid.amount,
-                    });
+                    links.push(
+                        expandedKind === 'income'
+                            ? {
+                                  source: childIndex,
+                                  target: parentIndex,
+                                  value: kid.amount,
+                              }
+                            : {
+                                  source: parentIndex,
+                                  target: childIndex,
+                                  value: kid.amount,
+                              },
+                    );
                     subcatRows += 1;
                 });
             }
@@ -320,13 +350,31 @@ export function SankeyChart({
         const expenseRows =
             groupedExpense.main.length + (groupedExpense.other ? 1 : 0);
 
+        // An income drill-down links children -> parent, so the subcategories
+        // land in the same leftmost column as the (non-expanded) income
+        // siblings rather than in their own column. That combined column — not
+        // any single side — bounds the height; under-counting it would let
+        // recharts derive a negative row scale and break the whole chart.
+        // Expense subcategories get their own column, so the plain max holds.
+        const leftmostRows =
+            expandedKind === 'income'
+                ? incomeRows - 1 + subcatRows
+                : incomeRows;
+
         return {
             chartData: { nodes, links },
             isEmpty: links.length === 0,
-            nodeRows: Math.max(incomeRows, expenseRows, subcatRows),
+            nodeRows: Math.max(leftmostRows, expenseRows, subcatRows),
             subcatRows,
         };
-    }, [data, groupingThreshold, categoryBarColor, expandedId, childrenById]);
+    }, [
+        data,
+        groupingThreshold,
+        categoryBarColor,
+        expandedId,
+        expandedKind,
+        childrenById,
+    ]);
 
     if (isEmpty) {
         return (
@@ -392,7 +440,7 @@ export function SankeyChart({
 
         const activate = () => {
             if (expandable) {
-                toggleExpand(node.categoryId!);
+                toggleExpand(node.categoryId!, node.kind);
             } else if (navigable) {
                 goToCategory(node.categoryId!);
             }
@@ -424,7 +472,17 @@ export function SankeyChart({
             alignClass = 'items-center text-center';
         }
 
-        const ChevronIcon = node.expanded ? ChevronDown : ChevronRight;
+        // The chevron points the way the subcategory column will open: income
+        // expands to the left (`<`, then `>` once open), expense to the right
+        // (`>`, then a downward `v` once open).
+        const ChevronIcon =
+            node.kind === 'income'
+                ? node.expanded
+                    ? ChevronRight
+                    : ChevronLeft
+                : node.expanded
+                  ? ChevronDown
+                  : ChevronRight;
 
         return (
             <Layer
