@@ -15,6 +15,14 @@ composer run dev          # Start full dev environment (PHP server, queue, Vite,
 bun run dev               # Vite dev server only
 ```
 
+### Running the server for QA
+
+When a command or skill needs the user to open the app in Chrome to review a change:
+
+1. **First run in a worktree?** Prepare it: `./worktree.sh /path/to/main/repo` (copies `.env` + `storage/keys`, installs `bun` and `composer` deps). Skip if already set up.
+2. **Start the server** if it isn't running: `composer run dev`.
+3. **Get the URL** — it's dynamic per worktree, so don't guess it. On startup `composer run dev` prints and copies it to the clipboard (`✓ <URL> copied to clipboard`); read it from the `server` pane output. Ask the user to open that URL in Chrome to QA.
+
 ### Build & Quality
 
 ```bash
