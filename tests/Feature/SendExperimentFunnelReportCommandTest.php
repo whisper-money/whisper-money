@@ -173,6 +173,29 @@ it('computes connection cost, wasted burn and contribution margin', function () 
         ->and($control['activationToPaidRate'])->toBe(0.5);     // 1 paid ÷ 2 activated
 });
 
+it('reports a matured-cohort conversion capped at 100% and prints the matured denominator', function () {
+    $signup = CarbonImmutable::parse('2026-06-05'); // control matures by the test clock
+
+    // Two paid, matured control users; only one is "activated" (connected a bank).
+    // The old A2P% (Paid ÷ activated = 2 ÷ 1) would print a nonsensical 200%.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()], connections: 1);
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['assignedMature'])->toBe(2)
+        ->and($control['activatedMature'])->toBe(1)
+        ->and($control['activeMature'])->toBe(2)
+        ->and($control['netActiveRate'])->toBe(1.0); // Conv% = Paid ÷ MatU, always ≤ 100%
+
+    artisan('stats:experiment-funnel', ['--no-discord' => true])
+        ->expectsOutputToContain('Conv%')
+        ->expectsOutputToContain('MatU')
+        ->expectsOutputToContain('ARPU')
+        ->expectsOutputToContain('100%')
+        ->assertSuccessful();
+});
+
 it('scales connection cost by the cost-per-connection argument', function () {
     $signup = CarbonImmutable::parse('2026-06-05');
 
