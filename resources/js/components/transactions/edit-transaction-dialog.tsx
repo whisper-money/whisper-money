@@ -753,9 +753,10 @@ export function EditTransactionDialog({
                                             selectedAccount?.currency_code ||
                                             'USD'
                                         }
-                                        placeholder="-25.00"
+                                        placeholder="25.00"
                                         disabled={isSubmitting}
                                         required
+                                        allowNegative
                                     />
 
                                     {!selectedAccount?.banking_connection_id && (
