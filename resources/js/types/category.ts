@@ -235,7 +235,7 @@ export function getCategoryColorClasses(color: CategoryColor): {
         },
     };
 
-    return colorMap[color];
+    return colorMap[color] ?? colorMap.gray;
 }
 
 export function getCategoryChartColor(color: CategoryColor): string {
