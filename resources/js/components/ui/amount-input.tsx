@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
 
 interface AmountInputProps {
     value: number;
@@ -13,6 +14,7 @@ interface AmountInputProps {
     placeholder?: string;
     id?: string;
     className?: string;
+    allowNegative?: boolean;
 }
 
 const getCurrencyInfo = (
@@ -153,6 +155,9 @@ const evaluateMathExpression = (input: string): number | null => {
     }
 };
 
+const resolveCents = (input: string): number =>
+    evaluateMathExpression(input) ?? parseInputValue(input);
+
 export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
     (
         {
@@ -164,6 +169,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             placeholder = '0.00',
             id,
             className = '',
+            allowNegative = false,
         },
         ref,
     ) => {
@@ -186,19 +192,15 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             if (value !== 0) {
                 const amount = (value / 100).toFixed(2);
                 setDisplayValue(amount);
-            } else {
+            } else if (!displayValue.startsWith('-')) {
+                // Keep a lone '-' the user set via the toggle before typing.
                 setDisplayValue('');
             }
         };
 
         const handleBlur = () => {
             setIsFocused(false);
-
-            // Try to evaluate as math expression first
-            const mathResult = evaluateMathExpression(displayValue);
-            const valueInCents = mathResult !== null ? mathResult : parseInputValue(displayValue);
-
-            onChange(valueInCents);
+            onChange(resolveCents(displayValue));
         };
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,20 +209,35 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
 
         const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
-                // Try to evaluate as math expression first
-                const mathResult = evaluateMathExpression(displayValue);
-                const valueInCents = mathResult !== null ? mathResult : parseInputValue(displayValue);
-
-                onChange(valueInCents);
+                onChange(resolveCents(displayValue));
             }
         };
+
+        // iOS numeric keypads (inputMode="decimal") have no minus key, so
+        // negative amounts need an explicit toggle. onClick handles both pointer
+        // and keyboard; onPointerDown preventDefault keeps the input focused,
+        // avoiding the blur/reformat race with the effect above.
+        const toggleSign = () => {
+            const next = displayValue.trim().startsWith('-')
+                ? displayValue.replace('-', '')
+                : `-${displayValue}`;
+            setDisplayValue(next);
+            onChange(resolveCents(next));
+        };
+
+        const isNegative = displayValue.trim().startsWith('-');
 
         const { symbol: currencySymbol, position: symbolPosition } = getCurrencyInfo(currencyCode, locale);
 
         return (
             <div className="relative">
                 {symbolPosition === 'prefix' && (
-                    <span className="-translate-y-1/2 absolute top-1/2 left-3 text-muted-foreground text-sm">
+                    <span
+                        className={cn([
+                            '-translate-y-1/2 absolute top-1/2 text-muted-foreground text-sm',
+                            allowNegative ? 'left-10' : 'left-3',
+                        ])}
+                    >
                         {currencySymbol}
                     </span>
                 )}
@@ -239,7 +256,12 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     required={required}
                     className={cn([
                         'bg-background',
-                        symbolPosition === 'prefix' ? 'pl-9' : 'pr-9',
+                        symbolPosition === 'suffix' && 'pr-9',
+                        allowNegative
+                            ? symbolPosition === 'prefix'
+                                ? 'pl-14'
+                                : 'pl-11'
+                            : symbolPosition === 'prefix' && 'pl-9',
                         className,
                     ])}
                 />
@@ -247,6 +269,24 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     <span className="-translate-y-1/2 absolute top-1/2 right-3 text-muted-foreground text-sm">
                         {currencySymbol}
                     </span>
+                )}
+                {allowNegative && (
+                    <button
+                        type="button"
+                        onPointerDown={(e) => e.preventDefault()}
+                        onClick={toggleSign}
+                        disabled={disabled}
+                        aria-label={isNegative ? __('Make amount positive') : __('Make amount negative')}
+                        aria-pressed={isNegative}
+                        className={cn([
+                            '-translate-y-1/2 absolute top-1/2 left-[0.35rem] flex h-7 w-7 items-center justify-center rounded-sm border font-semibold text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+                            isNegative
+                                ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                                : 'border-input bg-muted text-foreground hover:bg-accent',
+                        ])}
+                    >
+                        {isNegative ? '−' : '+'}
+                    </button>
                 )}
             </div>
         );
