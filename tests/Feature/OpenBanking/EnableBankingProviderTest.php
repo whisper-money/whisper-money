@@ -59,6 +59,54 @@ test('getTransactions wraps connection failures as non-reportable transient erro
     test()->fail('Expected transient banking provider exception.');
 });
 
+test('getTransactions wraps an upstream 500 as a non-reportable transient error', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 500,
+            'message' => 'Internal server error',
+        ], 500),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
+    } catch (TransientBankingProviderException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->provider)->toBe('enablebanking')
+            ->and($e->statusCode)->toBe(500)
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected transient banking provider exception.');
+});
+
+test('getBalances wraps an upstream 500 as a non-reportable transient error', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/balances*' => Http::response([
+            'code' => 500,
+            'message' => 'Internal server error',
+        ], 500),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getBalances('ext-123');
+    } catch (TransientBankingProviderException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->provider)->toBe('enablebanking')
+            ->and($e->statusCode)->toBe(500)
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected transient banking provider exception.');
+});
+
 test('getTransactions wraps an expired session 401 as a non-reportable expired session error', function () {
     Http::fake([
         'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([

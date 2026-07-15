@@ -127,6 +127,15 @@ class EnableBankingProvider implements BankingProviderInterface
                 );
             }
 
+            if ($this->isTransientServerError($e)) {
+                throw new TransientBankingProviderException(
+                    'EnableBanking returned a server error while fetching account transactions.',
+                    provider: 'enablebanking',
+                    statusCode: $e->response->status(),
+                    previous: $e,
+                );
+            }
+
             if (! $this->isAspspError($e)) {
                 throw $e;
             }
@@ -174,6 +183,15 @@ class EnableBankingProvider implements BankingProviderInterface
             if ($this->isInaccessibleAccount($e)) {
                 throw new InaccessibleBankAccountException(
                     'EnableBanking account is no longer accessible while fetching balances.',
+                    previous: $e,
+                );
+            }
+
+            if ($this->isTransientServerError($e)) {
+                throw new TransientBankingProviderException(
+                    'EnableBanking returned a server error while fetching account balances.',
+                    provider: 'enablebanking',
+                    statusCode: $e->response->status(),
                     previous: $e,
                 );
             }
@@ -228,6 +246,14 @@ class EnableBankingProvider implements BankingProviderInterface
 
         return $e->response->status() === 400
             && ($body['error'] ?? null) === 'ASPSP_ERROR';
+    }
+
+    private function isTransientServerError(RequestException $e): bool
+    {
+        // Any upstream 5xx (EnableBanking itself or the ASPSP behind it) is a
+        // transient server-side failure — same class as a ConnectionException,
+        // so retry/self-heal rather than report it as an app error.
+        return $e->response->status() >= 500;
     }
 
     private function isExpiredSession(RequestException $e): bool
