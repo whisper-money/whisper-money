@@ -173,6 +173,21 @@ it('computes connection cost, wasted burn and contribution margin', function () 
         ->and($control['activationToPaidRate'])->toBe(0.5);     // 1 paid ÷ 2 activated
 });
 
+it('still counts soft-deleted users so their assignment and connection cost survive', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    $user = experimentUser(SubscriptionExperiment::CONTROL, $signup, null, connections: 2);
+    $user->delete(); // soft delete the account
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['assigned'])->toBe(1)
+        ->and($control['assignedMature'])->toBe(1)
+        ->and($control['activated'])->toBe(1)     // 2 connections
+        ->and($control['costCents'])->toBe(80)    // 2 × 40, still charged
+        ->and($control['wastedCostCents'])->toBe(80); // never paid → pure burn
+});
+
 it('reports a matured-cohort conversion capped at 100% and prints the matured denominator', function () {
     $signup = CarbonImmutable::parse('2026-06-05'); // control matures by the test clock
 

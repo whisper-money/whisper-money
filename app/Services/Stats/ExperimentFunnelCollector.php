@@ -94,6 +94,10 @@ class ExperimentFunnelCollector
         $monthlyEquiv = $this->monthlyEquivByPriceId();
 
         User::query()
+            // Soft-deleted accounts still count: they were assigned a variant and
+            // their bank connections incurred real cost, and deleting the account
+            // is itself an experiment outcome (the strongest "connect and leave").
+            ->withTrashed()
             ->where('users.created_at', '>=', $startedAt)
             ->when($excluded !== [], fn ($query) => $query->whereNotIn('email', $excluded))
             ->with(['subscriptions' => fn ($query) => $query->where('type', 'default')])
