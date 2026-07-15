@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Money;
 use Illuminate\Console\Command;
 use Laravel\Cashier\Cashier;
 use Stripe\Exception\ApiErrorException;
@@ -50,6 +51,7 @@ class SyncStripePricesCommand extends Command
             $amountInCents = (int) round($plan['price'] * 100);
             $billingPeriod = $plan['billing_period'] ?? null;
             $productId = config('subscriptions.products.pro');
+            $formattedAmount = Money::format($amountInCents, $currency);
 
             $this->line("  <options=bold>{$plan['name']}</>");
 
@@ -68,7 +70,7 @@ class SyncStripePricesCommand extends Command
 
                     if (! $dryRun) {
                         $price = $this->createPrice($productId, $amountInCents, $currency, $billingPeriod, $lookupKey, transferLookupKey: true);
-                        $this->line("    <fg=green>✓</> Transferred to {$price->id} ({$this->formatAmount($amountInCents, $currency)}/{$billingPeriod})");
+                        $this->line("    <fg=green>✓</> Transferred to {$price->id} ({$formattedAmount}/{$billingPeriod})");
                     } else {
                         $this->line("    <fg=cyan>[dry-run]</> Would create new price and transfer lookup key '{$lookupKey}'");
                     }
@@ -79,9 +81,9 @@ class SyncStripePricesCommand extends Command
 
                     if (! $dryRun) {
                         $price = $this->createPrice($productId, $amountInCents, $currency, $billingPeriod, $lookupKey, transferLookupKey: false);
-                        $this->line("    <fg=green>✓</> Created {$price->id} ({$this->formatAmount($amountInCents, $currency)}/{$billingPeriod})");
+                        $this->line("    <fg=green>✓</> Created {$price->id} ({$formattedAmount}/{$billingPeriod})");
                     } else {
-                        $this->line("    <fg=cyan>[dry-run]</> Would create price '{$lookupKey}' at {$this->formatAmount($amountInCents, $currency)}/{$billingPeriod}");
+                        $this->line("    <fg=cyan>[dry-run]</> Would create price '{$lookupKey}' at {$formattedAmount}/{$billingPeriod}");
                     }
 
                     $created++;
@@ -147,17 +149,5 @@ class SyncStripePricesCommand extends Command
         $intervalMatches = $price->recurring?->interval === $billingPeriod;
 
         return $currencyMatches && $amountMatches && $intervalMatches;
-    }
-
-    private function formatAmount(int $amountInCents, string $currency): string
-    {
-        $symbol = match (strtolower($currency)) {
-            'eur' => '€',
-            'gbp' => '£',
-            'jpy' => '¥',
-            default => strtoupper($currency).' ',
-        };
-
-        return $symbol.number_format($amountInCents / 100, 2);
     }
 }
