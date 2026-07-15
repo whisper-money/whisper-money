@@ -174,6 +174,23 @@ it('computes connection cost, wasted burn and contribution margin', function () 
         ->and($control['activationToPaidRate'])->toBe(0.5);     // 1 paid ÷ 2 activated
 });
 
+it('keeps the A/B/C split even when a winner is forced, instead of collapsing onto one variant', function () {
+    // force_variant pins the runtime to one variant; the report must still show
+    // the real historical split, not attribute everyone to the forced winner.
+    config(['subscriptions.experiment.force_variant' => SubscriptionExperiment::PAY_NOW]);
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    experimentUser(SubscriptionExperiment::CONTROL, $signup);
+    experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup);
+    experimentUser(SubscriptionExperiment::PAY_NOW, $signup);
+
+    $variants = app(ExperimentFunnelCollector::class)->collect()['variants'];
+
+    expect($variants[SubscriptionExperiment::CONTROL]['assigned'])->toBe(1)
+        ->and($variants[SubscriptionExperiment::REDUCED_TRIAL]['assigned'])->toBe(1)
+        ->and($variants[SubscriptionExperiment::PAY_NOW]['assigned'])->toBe(1);
+});
+
 it('warns instead of silently zeroing MRR when a paid sub is on an unmapped (rotated) price', function () {
     Log::spy();
     $signup = CarbonImmutable::parse('2026-06-05');

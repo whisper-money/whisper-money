@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Subscription;
-use Laravel\Pennant\Feature;
 
 class ExperimentFunnelCollector
 {
@@ -21,12 +20,13 @@ class ExperimentFunnelCollector
 
     /**
      * Per-variant funnel for the trial/pricing experiment. Users are attributed
-     * by the variant Pennant resolved for them — the same value the runtime
-     * served at checkout/paywall — so the report can't drift from what users
-     * actually experienced (including any QA override or a legacy bucket that
-     * predates the experiment). "Net active" is a live, non-refunded
-     * subscription — an exact, heuristic-free metric that is comparable across
-     * variants once each cohort clears its own decision window.
+     * by SubscriptionExperiment::bucket() — the deterministic crc32 split that is
+     * the single source of truth for assignment — over the in-window signups the
+     * query selects, so it matches the variant each user was served without being
+     * perturbed by the force_variant rollout hook (which pins every user to the
+     * winner once decided) or by Pennant store drift. "Net active" is a live,
+     * non-refunded subscription — an exact, heuristic-free metric that is
+     * comparable across variants once each cohort clears its own decision window.
      *
      * The funnel is assigned → activated → carded (subscribed) → net-paying:
      * "activated" = the user connected a bank or enabled AI, i.e. triggered the
@@ -111,10 +111,15 @@ class ExperimentFunnelCollector
                 'aiConsents as ai_consent_count',
             ])
             ->chunkById(500, function ($users) use (&$variants, &$missingPrices, $windows, $now, $monthlyEquiv, $costPerConnectionCents): void {
-                Feature::for($users)->load([SubscriptionExperiment::class]);
-
                 foreach ($users as $user) {
-                    $variant = Feature::for($user)->value(SubscriptionExperiment::class);
+                    // Attribute by the deterministic bucket (the single source of
+                    // truth in SubscriptionExperiment), not the resolved Pennant
+                    // value: the latter is short-circuited by the force_variant
+                    // rollout hook, which would collapse every user onto one
+                    // variant once a winner is pinned. Every queried user is
+                    // in-window, so bucket() equals the variant they were served,
+                    // and reading it avoids writing Pennant rows as a side effect.
+                    $variant = SubscriptionExperiment::bucket((string) $user->id);
 
                     if (! isset($variants[$variant])) {
                         continue;
