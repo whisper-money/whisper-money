@@ -174,7 +174,12 @@ class ExperimentFunnelCollector
                             }
 
                             $row['mrrCents'] += (int) ($monthlyEquiv[$priceId] ?? 0);
-                        } else {
+                        } elseif ($subscription === null || $subscription->refunded_at !== null) {
+                            // Burn = connections of matured users who never earned
+                            // net revenue: connected a bank but never carded, or
+                            // paid and got refunded. A user who paid and later
+                            // churned (canceled, not refunded) did convert, so
+                            // their connection cost is not burn.
                             $row['wastedCostCents'] += $connectionCostCents;
                         }
                     }

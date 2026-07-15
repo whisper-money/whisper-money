@@ -248,6 +248,25 @@ it('reports a matured-cohort conversion capped at 100% and prints the matured de
         ->assertSuccessful();
 });
 
+it('excludes churned payers from burn but keeps refunds as burn', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // Paid then canceled (not refunded): converted, so its cost is NOT burn.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'endsAt' => $signup->addDays(20),
+    ], connections: 2);
+    // Paid then refunded: zero net revenue, so its cost IS burn.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'endsAt' => $signup->addDay(), 'refundedAt' => $signup->addDay(),
+    ], connections: 3);
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['costCents'])->toBe(200)          // (2 + 3) × 40, all mature connections
+        ->and($control['wastedCostCents'])->toBe(120) // only the refunded user's 3 × 40
+        ->and($control['refunded'])->toBe(1);
+});
+
 it('scales connection cost by the cost-per-connection argument', function () {
     $signup = CarbonImmutable::parse('2026-06-05');
 

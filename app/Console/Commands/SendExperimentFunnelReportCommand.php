@@ -127,7 +127,7 @@ class SendExperimentFunnelReportCommand extends Command
                 [
                     'name' => 'Legend',
                     'value' => sprintf(
-                        'Assg = signups · Actd = activated (connected a bank or enabled AI = cost triggered) · Card = completed checkout (card on file) · MatU = matured assigned (cohort old enough to score for this variant) · Paid = live non-refunded subs among MatU · Conv%% = Paid ÷ MatU (net conversion, always ≤100%%, comparable across variants) · ARPU = MRR ÷ MatU (revenue per matured user) · MRR = monthly run-rate of paid subs (yearly ÷ 12) · Cost = est. connection cost of MatU (%s/connection) · Burn = connection cost of matured users not currently paying · CM = MRR − Cost · `pend`/`—` = no matured data yet.',
+                        'Assg = signups · Actd = activated (connected a bank or enabled AI = cost triggered) · Card = completed checkout (card on file) · MatU = matured assigned (cohort old enough to score for this variant) · Paid = live non-refunded subs among MatU · Conv%% = Paid ÷ MatU (net conversion, always ≤100%%, comparable across variants) · ARPU = MRR ÷ MatU (revenue per matured user) · MRR = monthly run-rate of paid subs (yearly ÷ 12) · Cost = est. connection cost of MatU (%s/connection) · Burn = connection cost of matured users who never earned net revenue (connected a bank but never paid, or paid then refunded) · CM = MRR − Cost · `pend`/`—` = no matured data yet.',
                         $this->money($report['costPerConnectionCents'], $report['currency']),
                     ),
                     'inline' => false,
