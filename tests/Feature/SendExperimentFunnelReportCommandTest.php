@@ -265,7 +265,26 @@ it('reports a Wilson confidence interval and defers the verdict while samples ar
 
     expect($output)->toContain('Significance')
         ->toContain('Wilson')
-        ->toContain('too small'); // n = 2 per arm → verdict deferred
+        ->toContain('Fisher exact')       // verdict uses the exact test, not the z-approx
+        ->toContain('not significant')    // equal 50/50 rates, n=2 per arm → nowhere near
+        ->toContain('Small sample');      // min expected conversions < 5
+});
+
+it('declares significance via the exact test when the separation is real', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // reduced: 5 matured converters; pay_now: 5 matured non-converters (no sub).
+    // Fisher exact on [[5,0],[0,5]] gives p≈0.008 < 0.0167 (Bonferroni) → significant.
+    for ($i = 0; $i < 5; $i++) {
+        experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+        experimentUser(SubscriptionExperiment::PAY_NOW, $signup);
+    }
+
+    Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('Fisher exact')
+        ->not->toContain('not significant'); // the exact test clears the corrected bar
 });
 
 it('measures conversion as ever-charged, not active-now, so churn does not bias it', function () {

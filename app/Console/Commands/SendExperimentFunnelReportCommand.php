@@ -140,25 +140,38 @@ class SendExperimentFunnelReportCommand extends Command
         usort($scored, fn (array $a, array $b): int => $b['rate'] <=> $a['rate']);
         [$leader, $runnerUp] = [$scored[0], $scored[1]];
 
-        if (min($leader['n'], $runnerUp['n']) < 30) {
-            $lines[] = sprintf(
-                'Leader %s (%s) vs %s (%s): samples still too small for a reliable test — keep running.',
-                $leader['label'], $this->percent($leader['rate']), $runnerUp['label'], $this->percent($runnerUp['rate']),
-            );
-
-            return $lines;
-        }
-
-        $zStat = $this->twoProportionZ($leader['k'], $leader['n'], $runnerUp['k'], $runnerUp['n']);
-        $threshold = 2.39; // Bonferroni: 0.05 / 3 pairwise comparisons, two-sided
-        $significant = abs($zStat) >= $threshold;
+        // Decide with Fisher's exact test, not a normal-approximation z: at the
+        // small conversion counts this report has, the pooled z overstates the
+        // evidence (expected cell counts fall below the np>=5 the z-test needs).
+        // Fisher is exact at any n. Bonferroni-correct for the 3 pairwise arms.
+        $alpha = 0.05 / 3;
+        $delta = ($leader['rate'] - $runnerUp['rate']) * 100;
+        [$diffLow, $diffHigh] = $this->newcombeDiffInterval($leader['k'], $leader['n'], $runnerUp['k'], $runnerUp['n'], $z);
+        $fisherP = $this->fisherExactTwoSided(
+            $leader['k'], $leader['n'] - $leader['k'],
+            $runnerUp['k'], $runnerUp['n'] - $runnerUp['k'],
+        );
+        $significant = $fisherP < $alpha;
 
         $lines[] = sprintf(
-            'Leader %s vs %s: Δ %+.1f pts, z=%.2f — %s (need |z|≥%.2f, Bonferroni×3).%s',
-            $leader['label'], $runnerUp['label'], ($leader['rate'] - $runnerUp['rate']) * 100, $zStat,
-            $significant ? 'significant' : 'not significant', $threshold,
+            'Leader %s vs %s: Δ %+.1f pts (95%% CI %+.1f … %+.1f pts, Newcombe).',
+            $leader['label'], $runnerUp['label'], $delta, $diffLow * 100, $diffHigh * 100,
+        );
+        $lines[] = sprintf(
+            'Fisher exact p=%.3f %s α=%.3f (Bonferroni×3) -> %s.%s',
+            $fisherP, $significant ? '<' : '≥', $alpha,
+            $significant ? 'significant' : 'not significant',
             $significant ? '' : ' Keep running.',
         );
+
+        $pooled = ($leader['k'] + $runnerUp['k']) / ($leader['n'] + $runnerUp['n']);
+        $minExpected = min($leader['n'], $runnerUp['n']) * min($pooled, 1 - $pooled);
+        if ($minExpected < 5.0) {
+            $lines[] = sprintf(
+                '(Small sample: min expected conversions %.1f < 5, so the normal-approx z=%.2f overstates — exact test used.)',
+                $minExpected, $this->twoProportionZ($leader['k'], $leader['n'], $runnerUp['k'], $runnerUp['n']),
+            );
+        }
 
         return $lines;
     }
@@ -186,6 +199,79 @@ class SendExperimentFunnelReportCommand extends Command
         $se = sqrt($pooled * (1 - $pooled) * (1 / $nA + 1 / $nB));
 
         return $se > 0.0 ? (($kA / $nA) - ($kB / $nB)) / $se : 0.0;
+    }
+
+    /**
+     * Newcombe (Wilson-based) 95% interval for the difference of two proportions
+     * pA − pB. The correct object when asking "is A better than B" — overlapping
+     * marginal intervals do NOT imply the difference includes 0.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function newcombeDiffInterval(int $kA, int $nA, int $kB, int $nB, float $z): array
+    {
+        $pA = $kA / $nA;
+        $pB = $kB / $nB;
+        [$lA, $uA] = $this->wilsonInterval($kA, $nA, $z);
+        [$lB, $uB] = $this->wilsonInterval($kB, $nB, $z);
+
+        $lower = ($pA - $pB) - sqrt(($pA - $lA) ** 2 + ($uB - $pB) ** 2);
+        $upper = ($pA - $pB) + sqrt(($uA - $pA) ** 2 + ($pB - $lB) ** 2);
+
+        return [$lower, $upper];
+    }
+
+    /**
+     * Two-sided Fisher exact test p-value for the 2x2 table [[a, b], [c, d]]
+     * (a/c = conversions, b/d = non-conversions). Sums the hypergeometric
+     * probabilities of every table, with the same margins, no more likely than
+     * the observed one. Exact at any sample size — no normal approximation.
+     */
+    private function fisherExactTwoSided(int $a, int $b, int $c, int $d): float
+    {
+        $rowA = $a + $b;
+        $rowB = $c + $d;
+        $col = $a + $c;
+        $total = $rowA + $rowB;
+
+        if ($rowA === 0 || $rowB === 0 || $col === 0 || $col === $total) {
+            return 1.0;
+        }
+
+        $logProbObserved = $this->hypergeometricLogProb($a, $rowA, $rowB, $col);
+        $p = 0.0;
+        for ($x = max(0, $col - $rowB); $x <= min($col, $rowA); $x++) {
+            $logProb = $this->hypergeometricLogProb($x, $rowA, $rowB, $col);
+            if ($logProb <= $logProbObserved + 1e-7) {
+                $p += exp($logProb);
+            }
+        }
+
+        return min(1.0, $p);
+    }
+
+    private function hypergeometricLogProb(int $x, int $rowA, int $rowB, int $col): float
+    {
+        return $this->logChoose($rowA, $x) + $this->logChoose($rowB, $col - $x) - $this->logChoose($rowA + $rowB, $col);
+    }
+
+    private function logChoose(int $n, int $k): float
+    {
+        if ($k < 0 || $k > $n) {
+            return -INF;
+        }
+
+        return $this->logFactorial($n) - $this->logFactorial($k) - $this->logFactorial($n - $k);
+    }
+
+    private function logFactorial(int $n): float
+    {
+        $sum = 0.0;
+        for ($i = 2; $i <= $n; $i++) {
+            $sum += log($i);
+        }
+
+        return $sum;
     }
 
     private function percent(float $rate): string
