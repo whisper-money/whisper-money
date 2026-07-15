@@ -6,6 +6,7 @@ use App\Features\SubscriptionExperiment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Subscription;
 use Laravel\Pennant\Feature;
@@ -92,6 +93,7 @@ class ExperimentFunnelCollector
         $excluded = (array) config('ai_suggestions.report.excluded_emails', []);
         $windows = $this->decisionWindows();
         $monthlyEquiv = $this->monthlyEquivByPriceId();
+        $missingPrices = [];
 
         User::query()
             // Soft-deleted accounts still count: they were assigned a variant and
@@ -108,7 +110,7 @@ class ExperimentFunnelCollector
                 'bankingConnections as connection_count' => fn ($query) => $query->withTrashed(),
                 'aiConsents as ai_consent_count',
             ])
-            ->chunkById(500, function ($users) use (&$variants, $windows, $now, $monthlyEquiv, $costPerConnectionCents): void {
+            ->chunkById(500, function ($users) use (&$variants, &$missingPrices, $windows, $now, $monthlyEquiv, $costPerConnectionCents): void {
                 Feature::for($users)->load([SubscriptionExperiment::class]);
 
                 foreach ($users as $user) {
@@ -160,7 +162,13 @@ class ExperimentFunnelCollector
 
                         if ($netActive) {
                             $row['activeMature']++;
-                            $row['mrrCents'] += (int) ($monthlyEquiv[$subscription->stripe_price] ?? 0);
+                            $priceId = (string) $subscription->stripe_price;
+
+                            if ($monthlyEquiv !== [] && ! isset($monthlyEquiv[$priceId])) {
+                                $missingPrices[$priceId] = true;
+                            }
+
+                            $row['mrrCents'] += (int) ($monthlyEquiv[$priceId] ?? 0);
                         } else {
                             $row['wastedCostCents'] += $connectionCostCents;
                         }
@@ -169,6 +177,12 @@ class ExperimentFunnelCollector
                     unset($row);
                 }
             });
+
+        if ($missingPrices !== []) {
+            Log::warning('Experiment funnel: net-active subscriptions on prices absent from the monthly-equivalent map — their MRR is undercounted as 0.', [
+                'price_ids' => array_keys($missingPrices),
+            ]);
+        }
 
         foreach ($variants as $key => $row) {
             $variants[$key]['netActiveRate'] = $row['assignedMature'] > 0
@@ -222,8 +236,13 @@ class ExperimentFunnelCollector
 
     /**
      * Monthly-equivalent amount (in cents) for each plan price id, from Stripe.
-     * Yearly prices are divided by 12. Cached for an hour; returns [] (revenue
-     * unavailable) if Stripe can't be reached, without caching the failure.
+     * Yearly prices are divided by 12. Fetched by product so that archived,
+     * rotated price ids (Stripe mints a new id and transfers the lookup key on
+     * any amount change) still resolve — otherwise subscriptions on an old id
+     * would silently contribute 0 to MRR. Falls back to the current lookup keys
+     * when no product is configured. Foreign-currency and one-off prices are
+     * skipped. Cached for an hour; returns [] (revenue unavailable) if Stripe
+     * can't be reached, without caching the failure.
      *
      * @return array<string, int>
      */
@@ -235,26 +254,40 @@ class ExperimentFunnelCollector
             return Cache::get($key);
         }
 
+        $productId = config('subscriptions.products.pro');
         $lookups = array_values(array_filter([
             config('subscriptions.plans.monthly.stripe_lookup_key'),
             config('subscriptions.plans.yearly.stripe_lookup_key'),
         ]));
 
-        if ($lookups === []) {
+        if ($productId === null && $lookups === []) {
             return [];
         }
 
+        $params = $productId !== null
+            ? ['product' => $productId, 'limit' => 100]
+            : ['lookup_keys' => $lookups, 'limit' => 10];
+
         try {
-            $prices = Cashier::stripe()->prices->all(['lookup_keys' => $lookups, 'limit' => 10]);
+            $prices = Cashier::stripe()->prices->all($params);
         } catch (\Throwable) {
             return [];
         }
 
+        $currency = strtolower((string) config('cashier.currency', 'eur'));
         $map = [];
         foreach ($prices->data as $price) {
+            if ($price->recurring === null) {
+                continue;
+            }
+
+            if (strtolower((string) ($price->currency ?? $currency)) !== $currency) {
+                continue;
+            }
+
             $amount = (int) ($price->unit_amount ?? 0);
             $map[$price->id] = ($price->recurring->interval ?? 'month') === 'year'
-                ? intdiv($amount, 12)
+                ? (int) round($amount / 12)
                 : $amount;
         }
 

@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 use function Pest\Laravel\artisan;
@@ -171,6 +172,25 @@ it('computes connection cost, wasted burn and contribution margin', function () 
         ->and($control['mrrCents'])->toBe(399)
         ->and($control['contributionMarginCents'])->toBe(199)   // 399 − 200
         ->and($control['activationToPaidRate'])->toBe(0.5);     // 1 paid ÷ 2 activated
+});
+
+it('warns instead of silently zeroing MRR when a paid sub is on an unmapped (rotated) price', function () {
+    Log::spy();
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // The seeded map only knows 'price_test'; move this paid sub onto a rotated id.
+    $user = experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup, ['status' => 'active', 'at' => $signup]);
+    $user->subscriptions()->first()->update(['stripe_price' => 'price_rotated_old']);
+
+    $reduced = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::REDUCED_TRIAL];
+
+    expect($reduced['activeMature'])->toBe(1)
+        ->and($reduced['mrrCents'])->toBe(0); // unmapped price → 0, but now loudly
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message, array $context = []) => str_contains($message, 'absent from the monthly-equivalent map')
+            && in_array('price_rotated_old', $context['price_ids'] ?? [], true))
+        ->once();
 });
 
 it('still counts soft-deleted users so their assignment and connection cost survive', function () {
