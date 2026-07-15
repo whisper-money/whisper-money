@@ -7,8 +7,10 @@ use App\Models\User;
 use App\Services\Stats\ExperimentFunnelCollector;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 use function Pest\Laravel\artisan;
@@ -34,7 +36,7 @@ beforeEach(function () {
  * with an optional default subscription and any bank connections / AI consent
  * that mark the user as "activated" and drive the connection-cost columns.
  *
- * @param  array{status: string, at: CarbonImmutable, endsAt?: CarbonImmutable, refundedAt?: CarbonImmutable}|null  $subscription
+ * @param  array{status: string, at: CarbonImmutable, endsAt?: CarbonImmutable, trialEndsAt?: CarbonImmutable, refundedAt?: CarbonImmutable}|null  $subscription
  */
 function experimentUser(string $variant, CarbonImmutable $signup, ?array $subscription = null, int $connections = 0, bool $aiConsent = false): User
 {
@@ -52,6 +54,7 @@ function experimentUser(string $variant, CarbonImmutable $signup, ?array $subscr
             'stripe_price' => 'price_test',
             'created_at' => $subscription['at'],
             'ends_at' => $subscription['endsAt'] ?? null,
+            'trial_ends_at' => $subscription['trialEndsAt'] ?? null,
             'refunded_at' => $subscription['refundedAt'] ?? null,
         ]);
     }
@@ -171,6 +174,162 @@ it('computes connection cost, wasted burn and contribution margin', function () 
         ->and($control['mrrCents'])->toBe(399)
         ->and($control['contributionMarginCents'])->toBe(199)   // 399 − 200
         ->and($control['activationToPaidRate'])->toBe(0.5);     // 1 paid ÷ 2 activated
+});
+
+it('keeps the A/B/C split even when a winner is forced, instead of collapsing onto one variant', function () {
+    // force_variant pins the runtime to one variant; the report must still show
+    // the real historical split, not attribute everyone to the forced winner.
+    config(['subscriptions.experiment.force_variant' => SubscriptionExperiment::PAY_NOW]);
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    experimentUser(SubscriptionExperiment::CONTROL, $signup);
+    experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup);
+    experimentUser(SubscriptionExperiment::PAY_NOW, $signup);
+
+    $variants = app(ExperimentFunnelCollector::class)->collect()['variants'];
+
+    expect($variants[SubscriptionExperiment::CONTROL]['assigned'])->toBe(1)
+        ->and($variants[SubscriptionExperiment::REDUCED_TRIAL]['assigned'])->toBe(1)
+        ->and($variants[SubscriptionExperiment::PAY_NOW]['assigned'])->toBe(1);
+});
+
+it('warns instead of silently zeroing MRR when a paid sub is on an unmapped (rotated) price', function () {
+    Log::spy();
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // The seeded map only knows 'price_test'; move this paid sub onto a rotated id.
+    $user = experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup, ['status' => 'active', 'at' => $signup]);
+    $user->subscriptions()->first()->update(['stripe_price' => 'price_rotated_old']);
+
+    $reduced = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::REDUCED_TRIAL];
+
+    expect($reduced['activeMature'])->toBe(1)
+        ->and($reduced['mrrCents'])->toBe(0); // unmapped price → 0, but now loudly
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message, array $context = []) => str_contains($message, 'absent from the monthly-equivalent map')
+            && in_array('price_rotated_old', $context['price_ids'] ?? [], true))
+        ->once();
+});
+
+it('still counts soft-deleted users so their assignment and connection cost survive', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    $user = experimentUser(SubscriptionExperiment::CONTROL, $signup, null, connections: 2);
+    $user->delete(); // soft delete the account
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['assigned'])->toBe(1)
+        ->and($control['assignedMature'])->toBe(1)
+        ->and($control['activated'])->toBe(1)     // 2 connections
+        ->and($control['costCents'])->toBe(80)    // 2 × 40, still charged
+        ->and($control['wastedCostCents'])->toBe(80); // never paid → pure burn
+});
+
+it('reports a matured-cohort conversion capped at 100% and prints the matured denominator', function () {
+    $signup = CarbonImmutable::parse('2026-06-05'); // control matures by the test clock
+
+    // Two paid, matured control users; only one is "activated" (connected a bank).
+    // The old A2P% (Paid ÷ activated = 2 ÷ 1) would print a nonsensical 200%.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()], connections: 1);
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['assignedMature'])->toBe(2)
+        ->and($control['activatedMature'])->toBe(1)
+        ->and($control['activeMature'])->toBe(2)
+        ->and($control['convertedMature'])->toBe(2)
+        ->and($control['conversionRate'])->toBe(1.0); // Conv% = Conv ÷ MatU, always ≤ 100%
+
+    Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('MatU')  // matured denominator column is printed
+        ->toContain('Conv%')
+        ->toContain('100%')             // capped, not the old 200% A2P%
+        ->not->toContain('200%');
+});
+
+it('reports a Wilson confidence interval and defers the verdict while samples are small', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+    experimentUser(SubscriptionExperiment::CONTROL, $signup);
+    experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+    experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup);
+
+    Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('Significance')
+        ->toContain('Wilson')
+        ->toContain('Fisher exact')       // verdict uses the exact test, not the z-approx
+        ->toContain('not significant')    // equal 50/50 rates, n=2 per arm → nowhere near
+        ->toContain('Small sample');      // min expected conversions < 5
+});
+
+it('declares significance via the exact test when the separation is real', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // reduced: 5 matured converters; pay_now: 5 matured non-converters (no sub).
+    // Fisher exact on [[5,0],[0,5]] gives p≈0.008 < 0.0167 (Bonferroni) → significant.
+    for ($i = 0; $i < 5; $i++) {
+        experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+        experimentUser(SubscriptionExperiment::PAY_NOW, $signup);
+    }
+
+    Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('Fisher exact')
+        ->not->toContain('not significant'); // the exact test clears the corrected bar
+});
+
+it('measures conversion as ever-charged, not active-now, so churn does not bias it', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // 1) Still active → converted.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+    // 2) Paid then churned after the trial (charged, not refunded) → converted.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'trialEndsAt' => $signup->addDays(15), 'endsAt' => $signup->addDays(40),
+    ]);
+    // 3) Canceled on/before the trial end (never charged) → NOT converted.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'trialEndsAt' => $signup->addDays(15), 'endsAt' => $signup->addDays(10),
+    ]);
+    // 4) Refunded → NOT converted.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'endsAt' => $signup->addDay(), 'refundedAt' => $signup->addDay(),
+    ]);
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['assignedMature'])->toBe(4)
+        ->and($control['convertedMature'])->toBe(2)   // #1 active + #2 churned-after-paying
+        ->and($control['activeMature'])->toBe(1)      // only #1 is active now
+        ->and($control['conversionRate'])->toBe(0.5); // 2 ÷ 4, time-invariant
+});
+
+it('excludes churned payers from burn but keeps refunds as burn', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // Paid then canceled (not refunded): converted, so its cost is NOT burn.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'endsAt' => $signup->addDays(20),
+    ], connections: 2);
+    // Paid then refunded: zero net revenue, so its cost IS burn.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'endsAt' => $signup->addDay(), 'refundedAt' => $signup->addDay(),
+    ], connections: 3);
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['costCents'])->toBe(200)          // (2 + 3) × 40, all mature connections
+        ->and($control['wastedCostCents'])->toBe(120) // only the refunded user's 3 × 40
+        ->and($control['refunded'])->toBe(1);
 });
 
 it('scales connection cost by the cost-per-connection argument', function () {

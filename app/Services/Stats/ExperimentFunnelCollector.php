@@ -6,9 +6,9 @@ use App\Features\SubscriptionExperiment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Subscription;
-use Laravel\Pennant\Feature;
 
 class ExperimentFunnelCollector
 {
@@ -20,12 +20,13 @@ class ExperimentFunnelCollector
 
     /**
      * Per-variant funnel for the trial/pricing experiment. Users are attributed
-     * by the variant Pennant resolved for them — the same value the runtime
-     * served at checkout/paywall — so the report can't drift from what users
-     * actually experienced (including any QA override or a legacy bucket that
-     * predates the experiment). "Net active" is a live, non-refunded
-     * subscription — an exact, heuristic-free metric that is comparable across
-     * variants once each cohort clears its own decision window.
+     * by SubscriptionExperiment::bucket() — the deterministic crc32 split that is
+     * the single source of truth for assignment — over the in-window signups the
+     * query selects, so it matches the variant each user was served without being
+     * perturbed by the force_variant rollout hook (which pins every user to the
+     * winner once decided) or by Pennant store drift. "Net active" is a live,
+     * non-refunded subscription — an exact, heuristic-free metric that is
+     * comparable across variants once each cohort clears its own decision window.
      *
      * The funnel is assigned → activated → carded (subscribed) → net-paying:
      * "activated" = the user connected a bank or enabled AI, i.e. triggered the
@@ -61,7 +62,9 @@ class ExperimentFunnelCollector
      *         refunded: int,
      *         assignedMature: int,
      *         activatedMature: int,
+     *         convertedMature: int,
      *         activeMature: int,
+     *         conversionRate: ?float,
      *         netActiveRate: ?float,
      *         activationToPaidRate: ?float,
      *         mrrCents: int,
@@ -92,8 +95,13 @@ class ExperimentFunnelCollector
         $excluded = (array) config('ai_suggestions.report.excluded_emails', []);
         $windows = $this->decisionWindows();
         $monthlyEquiv = $this->monthlyEquivByPriceId();
+        $missingPrices = [];
 
         User::query()
+            // Soft-deleted accounts still count: they were assigned a variant and
+            // their bank connections incurred real cost, and deleting the account
+            // is itself an experiment outcome (the strongest "connect and leave").
+            ->withTrashed()
             ->where('users.created_at', '>=', $startedAt)
             ->when($excluded !== [], fn ($query) => $query->whereNotIn('email', $excluded))
             ->with(['subscriptions' => fn ($query) => $query->where('type', 'default')])
@@ -104,11 +112,16 @@ class ExperimentFunnelCollector
                 'bankingConnections as connection_count' => fn ($query) => $query->withTrashed(),
                 'aiConsents as ai_consent_count',
             ])
-            ->chunkById(500, function ($users) use (&$variants, $windows, $now, $monthlyEquiv, $costPerConnectionCents): void {
-                Feature::for($users)->load([SubscriptionExperiment::class]);
-
+            ->chunkById(500, function ($users) use (&$variants, &$missingPrices, $windows, $now, $monthlyEquiv, $costPerConnectionCents): void {
                 foreach ($users as $user) {
-                    $variant = Feature::for($user)->value(SubscriptionExperiment::class);
+                    // Attribute by the deterministic bucket (the single source of
+                    // truth in SubscriptionExperiment), not the resolved Pennant
+                    // value: the latter is short-circuited by the force_variant
+                    // rollout hook, which would collapse every user onto one
+                    // variant once a winner is pinned. Every queried user is
+                    // in-window, so bucket() equals the variant they were served,
+                    // and reading it avoids writing Pennant rows as a side effect.
+                    $variant = SubscriptionExperiment::bucket((string) $user->id);
 
                     if (! isset($variants[$variant])) {
                         continue;
@@ -129,6 +142,21 @@ class ExperimentFunnelCollector
                     $subscription = $user->subscriptions->sortByDesc('created_at')->first();
                     $status = $subscription?->stripe_status;
                     $netActive = $status === 'active' && $subscription->refunded_at === null;
+
+                    // "Converted" is time-invariant: the user was ever charged and
+                    // not refunded — currently active, or churned after the trial.
+                    // Unlike $netActive (a live snapshot), it does not shrink as an
+                    // older cohort has more time to cancel, so it is comparable
+                    // across variants that matured at different times. Excludes
+                    // trial-only cancels (ended on/before the trial → never charged).
+                    $converted = $subscription !== null
+                        && $subscription->refunded_at === null
+                        && $status !== 'trialing'
+                        && (
+                            $subscription->trial_ends_at === null
+                            || $subscription->ends_at === null
+                            || $subscription->ends_at->greaterThan($subscription->trial_ends_at)
+                        );
 
                     if ($subscription !== null) {
                         $row['subscribed']++;
@@ -154,10 +182,25 @@ class ExperimentFunnelCollector
                             $row['activatedMature']++;
                         }
 
+                        if ($converted) {
+                            $row['convertedMature']++;
+                        }
+
                         if ($netActive) {
                             $row['activeMature']++;
-                            $row['mrrCents'] += (int) ($monthlyEquiv[$subscription->stripe_price] ?? 0);
-                        } else {
+                            $priceId = (string) $subscription->stripe_price;
+
+                            if ($monthlyEquiv !== [] && ! isset($monthlyEquiv[$priceId])) {
+                                $missingPrices[$priceId] = true;
+                            }
+
+                            $row['mrrCents'] += (int) ($monthlyEquiv[$priceId] ?? 0);
+                        } elseif ($subscription === null || $subscription->refunded_at !== null) {
+                            // Burn = connections of matured users who never earned
+                            // net revenue: connected a bank but never carded, or
+                            // paid and got refunded. A user who paid and later
+                            // churned (canceled, not refunded) did convert, so
+                            // their connection cost is not burn.
                             $row['wastedCostCents'] += $connectionCostCents;
                         }
                     }
@@ -166,12 +209,21 @@ class ExperimentFunnelCollector
                 }
             });
 
+        if ($missingPrices !== []) {
+            Log::warning('Experiment funnel: net-active subscriptions on prices absent from the monthly-equivalent map — their MRR is undercounted as 0.', [
+                'price_ids' => array_keys($missingPrices),
+            ]);
+        }
+
         foreach ($variants as $key => $row) {
+            $variants[$key]['conversionRate'] = $row['assignedMature'] > 0
+                ? (float) $row['convertedMature'] / $row['assignedMature']
+                : null;
             $variants[$key]['netActiveRate'] = $row['assignedMature'] > 0
-                ? $row['activeMature'] / $row['assignedMature']
+                ? (float) $row['activeMature'] / $row['assignedMature']
                 : null;
             $variants[$key]['activationToPaidRate'] = $row['activatedMature'] > 0
-                ? $row['activeMature'] / $row['activatedMature']
+                ? (float) $row['activeMature'] / $row['activatedMature']
                 : null;
             $variants[$key]['arpuCents'] = $row['assignedMature'] > 0
                 ? (int) round($row['mrrCents'] / $row['assignedMature'])
@@ -189,7 +241,7 @@ class ExperimentFunnelCollector
     }
 
     /**
-     * @return array{assigned: int, activated: int, subscribed: int, trialing: int, trialingCanceling: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activatedMature: int, activeMature: int, netActiveRate: ?float, activationToPaidRate: ?float, mrrCents: int, arpuCents: ?int, costCents: int, wastedCostCents: int, contributionMarginCents: int}
+     * @return array{assigned: int, activated: int, subscribed: int, trialing: int, trialingCanceling: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activatedMature: int, convertedMature: int, activeMature: int, conversionRate: ?float, netActiveRate: ?float, activationToPaidRate: ?float, mrrCents: int, arpuCents: ?int, costCents: int, wastedCostCents: int, contributionMarginCents: int}
      */
     private function emptyRow(): array
     {
@@ -205,7 +257,9 @@ class ExperimentFunnelCollector
             'refunded' => 0,
             'assignedMature' => 0,
             'activatedMature' => 0,
+            'convertedMature' => 0,
             'activeMature' => 0,
+            'conversionRate' => null,
             'netActiveRate' => null,
             'activationToPaidRate' => null,
             'mrrCents' => 0,
@@ -218,8 +272,13 @@ class ExperimentFunnelCollector
 
     /**
      * Monthly-equivalent amount (in cents) for each plan price id, from Stripe.
-     * Yearly prices are divided by 12. Cached for an hour; returns [] (revenue
-     * unavailable) if Stripe can't be reached, without caching the failure.
+     * Yearly prices are divided by 12. Fetched by product so that archived,
+     * rotated price ids (Stripe mints a new id and transfers the lookup key on
+     * any amount change) still resolve — otherwise subscriptions on an old id
+     * would silently contribute 0 to MRR. Falls back to the current lookup keys
+     * when no product is configured. Foreign-currency and one-off prices are
+     * skipped. Cached for an hour; returns [] (revenue unavailable) if Stripe
+     * can't be reached, without caching the failure.
      *
      * @return array<string, int>
      */
@@ -231,26 +290,40 @@ class ExperimentFunnelCollector
             return Cache::get($key);
         }
 
+        $productId = config('subscriptions.products.pro');
         $lookups = array_values(array_filter([
             config('subscriptions.plans.monthly.stripe_lookup_key'),
             config('subscriptions.plans.yearly.stripe_lookup_key'),
         ]));
 
-        if ($lookups === []) {
+        if ($productId === null && $lookups === []) {
             return [];
         }
 
+        $params = $productId !== null
+            ? ['product' => $productId, 'limit' => 100]
+            : ['lookup_keys' => $lookups, 'limit' => 10];
+
         try {
-            $prices = Cashier::stripe()->prices->all(['lookup_keys' => $lookups, 'limit' => 10]);
+            $prices = Cashier::stripe()->prices->all($params);
         } catch (\Throwable) {
             return [];
         }
 
+        $currency = strtolower((string) config('cashier.currency', 'eur'));
         $map = [];
         foreach ($prices->data as $price) {
+            if ($price->recurring === null) {
+                continue;
+            }
+
+            if (strtolower((string) ($price->currency ?? $currency)) !== $currency) {
+                continue;
+            }
+
             $amount = (int) ($price->unit_amount ?? 0);
             $map[$price->id] = ($price->recurring->interval ?? 'month') === 'year'
-                ? intdiv($amount, 12)
+                ? (int) round($amount / 12)
                 : $amount;
         }
 
