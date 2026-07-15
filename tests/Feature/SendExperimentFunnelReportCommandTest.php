@@ -35,7 +35,7 @@ beforeEach(function () {
  * with an optional default subscription and any bank connections / AI consent
  * that mark the user as "activated" and drive the connection-cost columns.
  *
- * @param  array{status: string, at: CarbonImmutable, endsAt?: CarbonImmutable, refundedAt?: CarbonImmutable}|null  $subscription
+ * @param  array{status: string, at: CarbonImmutable, endsAt?: CarbonImmutable, trialEndsAt?: CarbonImmutable, refundedAt?: CarbonImmutable}|null  $subscription
  */
 function experimentUser(string $variant, CarbonImmutable $signup, ?array $subscription = null, int $connections = 0, bool $aiConsent = false): User
 {
@@ -53,6 +53,7 @@ function experimentUser(string $variant, CarbonImmutable $signup, ?array $subscr
             'stripe_price' => 'price_test',
             'created_at' => $subscription['at'],
             'ends_at' => $subscription['endsAt'] ?? null,
+            'trial_ends_at' => $subscription['trialEndsAt'] ?? null,
             'refunded_at' => $subscription['refundedAt'] ?? null,
         ]);
     }
@@ -246,6 +247,32 @@ it('reports a matured-cohort conversion capped at 100% and prints the matured de
         ->expectsOutputToContain('ARPU')
         ->expectsOutputToContain('100%')
         ->assertSuccessful();
+});
+
+it('measures conversion as ever-charged, not active-now, so churn does not bias it', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // 1) Still active → converted.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+    // 2) Paid then churned after the trial (charged, not refunded) → converted.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'trialEndsAt' => $signup->addDays(15), 'endsAt' => $signup->addDays(40),
+    ]);
+    // 3) Canceled on/before the trial end (never charged) → NOT converted.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'trialEndsAt' => $signup->addDays(15), 'endsAt' => $signup->addDays(10),
+    ]);
+    // 4) Refunded → NOT converted.
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'endsAt' => $signup->addDay(), 'refundedAt' => $signup->addDay(),
+    ]);
+
+    $control = app(ExperimentFunnelCollector::class)->collect()['variants'][SubscriptionExperiment::CONTROL];
+
+    expect($control['assignedMature'])->toBe(4)
+        ->and($control['convertedMature'])->toBe(2)   // #1 active + #2 churned-after-paying
+        ->and($control['activeMature'])->toBe(1)      // only #1 is active now
+        ->and($control['conversionRate'])->toBe(0.5); // 2 ÷ 4, time-invariant
 });
 
 it('excludes churned payers from burn but keeps refunds as burn', function () {

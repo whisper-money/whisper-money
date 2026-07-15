@@ -62,7 +62,9 @@ class ExperimentFunnelCollector
      *         refunded: int,
      *         assignedMature: int,
      *         activatedMature: int,
+     *         convertedMature: int,
      *         activeMature: int,
+     *         conversionRate: ?float,
      *         netActiveRate: ?float,
      *         activationToPaidRate: ?float,
      *         mrrCents: int,
@@ -141,6 +143,21 @@ class ExperimentFunnelCollector
                     $status = $subscription?->stripe_status;
                     $netActive = $status === 'active' && $subscription->refunded_at === null;
 
+                    // "Converted" is time-invariant: the user was ever charged and
+                    // not refunded — currently active, or churned after the trial.
+                    // Unlike $netActive (a live snapshot), it does not shrink as an
+                    // older cohort has more time to cancel, so it is comparable
+                    // across variants that matured at different times. Excludes
+                    // trial-only cancels (ended on/before the trial → never charged).
+                    $converted = $subscription !== null
+                        && $subscription->refunded_at === null
+                        && $status !== 'trialing'
+                        && (
+                            $subscription->trial_ends_at === null
+                            || $subscription->ends_at === null
+                            || $subscription->ends_at->greaterThan($subscription->trial_ends_at)
+                        );
+
                     if ($subscription !== null) {
                         $row['subscribed']++;
                         $row['trialing'] += $status === 'trialing' ? 1 : 0;
@@ -163,6 +180,10 @@ class ExperimentFunnelCollector
 
                         if ($activated) {
                             $row['activatedMature']++;
+                        }
+
+                        if ($converted) {
+                            $row['convertedMature']++;
                         }
 
                         if ($netActive) {
@@ -195,6 +216,9 @@ class ExperimentFunnelCollector
         }
 
         foreach ($variants as $key => $row) {
+            $variants[$key]['conversionRate'] = $row['assignedMature'] > 0
+                ? $row['convertedMature'] / $row['assignedMature']
+                : null;
             $variants[$key]['netActiveRate'] = $row['assignedMature'] > 0
                 ? $row['activeMature'] / $row['assignedMature']
                 : null;
@@ -217,7 +241,7 @@ class ExperimentFunnelCollector
     }
 
     /**
-     * @return array{assigned: int, activated: int, subscribed: int, trialing: int, trialingCanceling: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activatedMature: int, activeMature: int, netActiveRate: ?float, activationToPaidRate: ?float, mrrCents: int, arpuCents: ?int, costCents: int, wastedCostCents: int, contributionMarginCents: int}
+     * @return array{assigned: int, activated: int, subscribed: int, trialing: int, trialingCanceling: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activatedMature: int, convertedMature: int, activeMature: int, conversionRate: ?float, netActiveRate: ?float, activationToPaidRate: ?float, mrrCents: int, arpuCents: ?int, costCents: int, wastedCostCents: int, contributionMarginCents: int}
      */
     private function emptyRow(): array
     {
@@ -233,7 +257,9 @@ class ExperimentFunnelCollector
             'refunded' => 0,
             'assignedMature' => 0,
             'activatedMature' => 0,
+            'convertedMature' => 0,
             'activeMature' => 0,
+            'conversionRate' => null,
             'netActiveRate' => null,
             'activationToPaidRate' => null,
             'mrrCents' => 0,

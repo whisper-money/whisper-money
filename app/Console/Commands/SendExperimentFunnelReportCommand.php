@@ -68,7 +68,7 @@ class SendExperimentFunnelReportCommand extends Command
         $currency = $report['currency'];
         $lines = [sprintf(
             '%-8s %5s %5s %5s %5s %5s %6s %7s %7s %7s %7s %7s',
-            'Variant', 'Assg', 'Actd', 'Card', 'MatU', 'Paid', 'Conv%', 'ARPU', 'MRR', 'Cost', 'Burn', 'CM',
+            'Variant', 'Assg', 'Actd', 'Card', 'MatU', 'Conv', 'Conv%', 'ARPU', 'MRR', 'Cost', 'Burn', 'CM',
         )];
 
         foreach (self::LABELS as $key => $label) {
@@ -83,8 +83,8 @@ class SendExperimentFunnelReportCommand extends Command
                 $row['activated'],
                 $row['subscribed'],
                 $row['assignedMature'],
-                $row['activeMature'],
-                $mature ? ((int) round($row['netActiveRate'] * 100)).'%' : 'pend',
+                $row['convertedMature'],
+                $mature ? ((int) round($row['conversionRate'] * 100)).'%' : 'pend',
                 $money && $row['arpuCents'] !== null ? $this->money($row['arpuCents'], $currency) : '—',
                 $money ? $this->money($row['mrrCents'], $currency) : '—',
                 $mature ? $this->money($row['costCents'], $currency) : '—',
@@ -127,14 +127,14 @@ class SendExperimentFunnelReportCommand extends Command
                 [
                     'name' => 'Legend',
                     'value' => sprintf(
-                        'Assg = signups · Actd = activated (connected a bank or enabled AI = cost triggered) · Card = completed checkout (card on file) · MatU = matured assigned (cohort old enough to score for this variant) · Paid = live non-refunded subs among MatU · Conv%% = Paid ÷ MatU (net conversion, always ≤100%%, comparable across variants) · ARPU = MRR ÷ MatU (revenue per matured user) · MRR = monthly run-rate of paid subs (yearly ÷ 12) · Cost = est. connection cost of MatU (%s/connection) · Burn = connection cost of matured users who never earned net revenue (connected a bank but never paid, or paid then refunded) · CM = MRR − Cost · `pend`/`—` = no matured data yet.',
+                        'Assg = signups · Actd = activated (connected a bank or enabled AI = cost triggered) · Card = completed checkout (card on file) · MatU = matured assigned (cohort old enough to score for this variant) · Conv = matured users who ever converted (were charged, net of refund) — time-invariant, so it does not shrink as an older cohort has longer to churn · Conv%% = Conv ÷ MatU (always ≤100%%, comparable across variants) · ARPU = MRR ÷ MatU (revenue per matured user) · MRR = monthly run-rate of *currently* paying subs (yearly ÷ 12); Conv above MRR is churn · Cost = est. connection cost of MatU (%s/connection) · Burn = connection cost of matured users who never earned net revenue (connected a bank but never paid, or paid then refunded) · CM = MRR − Cost · `pend`/`—` = no matured data yet.',
                         $this->money($report['costPerConnectionCents'], $report['currency']),
                     ),
                     'inline' => false,
                 ],
                 [
                     'name' => '⚠️ How to read it',
-                    'value' => 'Each variant matures on its own decision window (control 15d, reduced 7d, pay_now 3d, +3d settle), so at any moment MatU differs a lot between variants (pay_now matures first). **Compare variants on Conv% and ARPU — normalized per matured user — not on the absolute MRR/Cost/Burn/CM totals, which scale with MatU and so mechanically favour whichever variant has matured more.** Assg/Actd/Card are lifetime counts; everything from MatU rightward covers the matured cohort only, so the raw Actd→Card→Paid funnel mixes cohorts (immature carded users can\'t be Paid yet) — read it for volume. Per-user CM is sub-cent at current volume, so treat CM as directional context, not the decision. Check significance (sample size = MatU) before calling a winner. Cost is a flat per-connection estimate across all providers, not per-provider billing.',
+                    'value' => 'Each variant matures on its own decision window (control 15d, reduced 7d, pay_now 3d, +3d settle), so at any moment MatU differs a lot between variants (pay_now matures first). **Compare variants on Conv% and ARPU — normalized per matured user — not on the absolute MRR/Cost/Burn/CM totals, which scale with MatU and so mechanically favour whichever variant has matured more.** Assg/Actd/Card are lifetime counts; everything from MatU rightward covers the matured cohort only, so the raw Actd→Card→Conv funnel mixes cohorts (immature carded users can\'t have matured yet) — read it for volume. Conv counts anyone ever charged (net of refund), so it is not depressed for older cohorts the way a live-active snapshot would be. Per-user CM is sub-cent at current volume, so treat CM as directional context, not the decision. Check significance (sample size = MatU) before calling a winner. Cost is a flat per-connection estimate across all providers, not per-provider billing.',
                     'inline' => false,
                 ],
             ],
