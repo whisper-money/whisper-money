@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Services\Discord\DiscordWebhook;
 use App\Services\Stripe\StripeCustomerResolver;
+use App\Support\Money;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Cashier\Events\WebhookReceived;
@@ -171,7 +172,7 @@ class PostStripeEventToDiscord implements ShouldQueue
         $email = $this->stringOrNull($object['customer_email'] ?? null);
 
         $fields = [
-            $this->field('Amount', $this->money((int) $meta['amount'], (string) ($object['currency'] ?? 'usd')), true),
+            $this->field('Amount', Money::format((int) $meta['amount'], (string) ($object['currency'] ?? 'usd')), true),
             $this->field('Customer', $email ?? $this->customers->label($this->stringOrNull($object['customer'] ?? null)), true),
         ];
 
@@ -237,7 +238,7 @@ class PostStripeEventToDiscord implements ShouldQueue
             return null;
         }
 
-        $label = $this->money((int) $amount, (string) ($price['currency'] ?? 'usd'));
+        $label = Money::format((int) $amount, (string) ($price['currency'] ?? 'usd'));
         $recurring = is_array($price['recurring'] ?? null) ? $price['recurring'] : $price;
 
         if (! isset($recurring['interval'])) {
@@ -258,20 +259,6 @@ class PostStripeEventToDiscord implements ShouldQueue
         $reason = $object['cancellation_details']['reason'] ?? null;
 
         return is_string($reason) ? str_replace('_', ' ', $reason) : null;
-    }
-
-    private function money(int $amount, string $currency): string
-    {
-        $symbol = match (strtolower($currency)) {
-            'eur' => '€',
-            'gbp' => '£',
-            'usd' => '$',
-            'jpy' => '¥',
-            'brl' => 'R$',
-            default => strtoupper($currency).' ',
-        };
-
-        return $symbol.number_format($amount / 100, 2);
     }
 
     private function timestamp(mixed $value): ?string

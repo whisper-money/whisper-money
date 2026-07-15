@@ -7,6 +7,7 @@ use App\Services\Discord\DiscordWebhook;
 use App\Services\Stats\BinomialProportion;
 use App\Services\Stats\ExperimentFunnelCollector;
 use App\Services\Stats\ProportionSignificance;
+use App\Support\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 
@@ -93,11 +94,11 @@ class SendExperimentFunnelReportCommand extends Command
                 $row['assignedMature'],
                 $row['convertedMature'],
                 $mature ? ((int) round($row['conversionRate'] * 100)).'%' : 'pend',
-                $showMoney && $row['arpuCents'] !== null ? $this->money($row['arpuCents'], $currency) : '—',
-                $showMoney ? $this->money($row['mrrCents'], $currency) : '—',
-                $mature ? $this->money($row['costCents'], $currency) : '—',
-                $mature ? $this->money($row['wastedCostCents'], $currency) : '—',
-                $showMoney ? $this->money($row['contributionMarginCents'], $currency) : '—',
+                $showMoney && $row['arpuCents'] !== null ? Money::format($row['arpuCents'], $currency) : '—',
+                $showMoney ? Money::format($row['mrrCents'], $currency) : '—',
+                $mature ? Money::format($row['costCents'], $currency) : '—',
+                $mature ? Money::format($row['wastedCostCents'], $currency) : '—',
+                $showMoney ? Money::format($row['contributionMarginCents'], $currency) : '—',
             );
         }
 
@@ -171,18 +172,6 @@ class SendExperimentFunnelReportCommand extends Command
         return number_format($rate * 100, 1).'%';
     }
 
-    private function money(int $cents, string $currency): string
-    {
-        $symbol = match (strtolower($currency)) {
-            'eur' => '€',
-            'gbp' => '£',
-            'usd' => '$',
-            default => $currency.' ',
-        };
-
-        return $symbol.number_format($cents / 100, 2);
-    }
-
     /**
      * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, variants: array<string, array<string, mixed>>}  $report
      * @return array<string, mixed>
@@ -208,7 +197,7 @@ class SendExperimentFunnelReportCommand extends Command
                     'name' => 'Legend',
                     'value' => sprintf(
                         'Assg = signups · Actd = activated (connected a bank or enabled AI = cost triggered) · Card = completed checkout (card on file) · MatU = matured assigned (cohort old enough to score for this variant) · Conv = matured users who ever converted (were charged, net of refund) — time-invariant, so it does not shrink as an older cohort has longer to churn · Conv%% = Conv ÷ MatU (always ≤100%%, comparable across variants) · ARPU = MRR ÷ MatU (revenue per matured user) · MRR = monthly run-rate of *currently* paying subs (yearly ÷ 12); Conv above MRR is churn · Cost = est. connection cost of MatU (%s/connection) · Burn = connection cost of matured users who never earned net revenue (connected a bank but never paid, or paid then refunded) · CM = MRR − Cost · `pend`/`—` = no matured data yet.',
-                        $this->money($report['costPerConnectionCents'], $report['currency']),
+                        Money::format($report['costPerConnectionCents'], $report['currency']),
                     ),
                     'inline' => false,
                 ],

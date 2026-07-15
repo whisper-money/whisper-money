@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Stripe\SubscriptionStatsCollector;
+use App\Support\Money;
 use Illuminate\Console\Command;
 use Stripe\Exception\ApiErrorException;
 
@@ -77,17 +78,12 @@ class StripeSubscriptionStatsCommand extends Command
         $this->newLine();
     }
 
+    /**
+     * MRR figures are held in major units (e.g. euros), so convert to cents for
+     * the shared formatter.
+     */
     private function format(float $amount, string $currency): string
     {
-        $symbol = match (strtolower($currency)) {
-            'eur' => '€',
-            'gbp' => '£',
-            'usd' => '$',
-            'jpy' => '¥',
-            'brl' => 'R$',
-            default => strtoupper($currency).' ',
-        };
-
-        return $symbol.number_format($amount, 2);
+        return Money::format((int) round($amount * 100), $currency);
     }
 }
