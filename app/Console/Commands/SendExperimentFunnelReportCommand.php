@@ -42,6 +42,10 @@ class SendExperimentFunnelReportCommand extends Command
             $this->line($line);
         }
 
+        foreach ($this->significanceLines($report) as $line) {
+            $this->line($line);
+        }
+
         if ($this->option('no-discord')) {
             $this->info('Skipped Discord (--no-discord).');
 
@@ -96,6 +100,99 @@ class SendExperimentFunnelReportCommand extends Command
         return $lines;
     }
 
+    /**
+     * Conversion-rate uncertainty per variant (95% Wilson interval) plus a
+     * two-proportion z-test between the two leaders, Bonferroni-corrected for
+     * the three pairwise comparisons, so "check significance before calling a
+     * winner" has the numbers behind it instead of just the warning.
+     *
+     * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, variants: array<string, array<string, mixed>>}  $report
+     * @return list<string>
+     */
+    private function significanceLines(array $report): array
+    {
+        $z = 1.96; // two-sided 95%
+        $lines = ['', 'Significance (95% Wilson CI on Conv%, n = MatU):'];
+        $scored = [];
+
+        foreach (self::LABELS as $key => $label) {
+            $row = $report['variants'][$key];
+            $n = (int) $row['assignedMature'];
+            $k = (int) $row['convertedMature'];
+
+            if ($n <= 0) {
+                $lines[] = sprintf('  %-8s pend (n=0)', $label);
+
+                continue;
+            }
+
+            [$low, $high] = $this->wilsonInterval($k, $n, $z);
+            $lines[] = sprintf('  %-8s %6s  [%6s – %6s]  (n=%d)', $label, $this->percent($k / $n), $this->percent($low), $this->percent($high), $n);
+            $scored[] = ['label' => $label, 'k' => $k, 'n' => $n, 'rate' => $k / $n];
+        }
+
+        if (count($scored) < 2) {
+            $lines[] = 'Not enough matured variants to compare yet.';
+
+            return $lines;
+        }
+
+        usort($scored, fn (array $a, array $b): int => $b['rate'] <=> $a['rate']);
+        [$leader, $runnerUp] = [$scored[0], $scored[1]];
+
+        if (min($leader['n'], $runnerUp['n']) < 30) {
+            $lines[] = sprintf(
+                'Leader %s (%s) vs %s (%s): samples still too small for a reliable test — keep running.',
+                $leader['label'], $this->percent($leader['rate']), $runnerUp['label'], $this->percent($runnerUp['rate']),
+            );
+
+            return $lines;
+        }
+
+        $zStat = $this->twoProportionZ($leader['k'], $leader['n'], $runnerUp['k'], $runnerUp['n']);
+        $threshold = 2.39; // Bonferroni: 0.05 / 3 pairwise comparisons, two-sided
+        $significant = abs($zStat) >= $threshold;
+
+        $lines[] = sprintf(
+            'Leader %s vs %s: Δ %+.1f pts, z=%.2f — %s (need |z|≥%.2f, Bonferroni×3).%s',
+            $leader['label'], $runnerUp['label'], ($leader['rate'] - $runnerUp['rate']) * 100, $zStat,
+            $significant ? 'significant' : 'not significant', $threshold,
+            $significant ? '' : ' Keep running.',
+        );
+
+        return $lines;
+    }
+
+    /**
+     * Wilson score interval for a binomial proportion — accurate for small n
+     * and near 0/1, where the normal approximation misbehaves.
+     *
+     * @return array{0: float, 1: float} lower and upper bound, clamped to [0, 1]
+     */
+    private function wilsonInterval(int $k, int $n, float $z): array
+    {
+        $p = $k / $n;
+        $z2 = $z * $z;
+        $denom = 1 + $z2 / $n;
+        $center = ($p + $z2 / (2 * $n)) / $denom;
+        $margin = ($z / $denom) * sqrt($p * (1 - $p) / $n + $z2 / (4 * $n * $n));
+
+        return [max(0.0, $center - $margin), min(1.0, $center + $margin)];
+    }
+
+    private function twoProportionZ(int $kA, int $nA, int $kB, int $nB): float
+    {
+        $pooled = ($kA + $kB) / ($nA + $nB);
+        $se = sqrt($pooled * (1 - $pooled) * (1 / $nA + 1 / $nB));
+
+        return $se > 0.0 ? (($kA / $nA) - ($kB / $nB)) / $se : 0.0;
+    }
+
+    private function percent(float $rate): string
+    {
+        return number_format($rate * 100, 1).'%';
+    }
+
     private function money(int $cents, string $currency): string
     {
         $symbol = match (strtolower($currency)) {
@@ -122,6 +219,11 @@ class SendExperimentFunnelReportCommand extends Command
                 [
                     'name' => 'Started',
                     'value' => $report['startedAt']->format('D, d M Y').' · new signups split evenly into the three variants.',
+                    'inline' => false,
+                ],
+                [
+                    'name' => '📊 Significance',
+                    'value' => "```\n".implode("\n", $this->significanceLines($report))."\n```",
                     'inline' => false,
                 ],
                 [

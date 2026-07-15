@@ -249,6 +249,21 @@ it('reports a matured-cohort conversion capped at 100% and prints the matured de
         ->assertSuccessful();
 });
 
+it('reports a Wilson confidence interval and defers the verdict while samples are small', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+    experimentUser(SubscriptionExperiment::CONTROL, $signup);
+    experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+    experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup);
+
+    artisan('stats:experiment-funnel', ['--no-discord' => true])
+        ->expectsOutputToContain('Significance')
+        ->expectsOutputToContain('Wilson')
+        ->expectsOutputToContain('too small') // n = 2 per arm → verdict deferred
+        ->assertSuccessful();
+});
+
 it('measures conversion as ever-charged, not active-now, so churn does not bias it', function () {
     $signup = CarbonImmutable::parse('2026-06-05');
 
