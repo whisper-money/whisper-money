@@ -217,13 +217,13 @@ class ExperimentFunnelCollector
 
         foreach ($variants as $key => $row) {
             $variants[$key]['conversionRate'] = $row['assignedMature'] > 0
-                ? $row['convertedMature'] / $row['assignedMature']
+                ? (float) $row['convertedMature'] / $row['assignedMature']
                 : null;
             $variants[$key]['netActiveRate'] = $row['assignedMature'] > 0
-                ? $row['activeMature'] / $row['assignedMature']
+                ? (float) $row['activeMature'] / $row['assignedMature']
                 : null;
             $variants[$key]['activationToPaidRate'] = $row['activatedMature'] > 0
-                ? $row['activeMature'] / $row['activatedMature']
+                ? (float) $row['activeMature'] / $row['activatedMature']
                 : null;
             $variants[$key]['arpuCents'] = $row['assignedMature'] > 0
                 ? (int) round($row['mrrCents'] / $row['assignedMature'])

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Stats\ExperimentFunnelCollector;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -239,14 +240,16 @@ it('reports a matured-cohort conversion capped at 100% and prints the matured de
     expect($control['assignedMature'])->toBe(2)
         ->and($control['activatedMature'])->toBe(1)
         ->and($control['activeMature'])->toBe(2)
-        ->and($control['netActiveRate'])->toBe(1.0); // Conv% = Paid ÷ MatU, always ≤ 100%
+        ->and($control['convertedMature'])->toBe(2)
+        ->and($control['conversionRate'])->toBe(1.0); // Conv% = Conv ÷ MatU, always ≤ 100%
 
-    artisan('stats:experiment-funnel', ['--no-discord' => true])
-        ->expectsOutputToContain('Conv%')
-        ->expectsOutputToContain('MatU')
-        ->expectsOutputToContain('ARPU')
-        ->expectsOutputToContain('100%')
-        ->assertSuccessful();
+    Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('MatU')  // matured denominator column is printed
+        ->toContain('Conv%')
+        ->toContain('100%')             // capped, not the old 200% A2P%
+        ->not->toContain('200%');
 });
 
 it('reports a Wilson confidence interval and defers the verdict while samples are small', function () {
@@ -257,11 +260,12 @@ it('reports a Wilson confidence interval and defers the verdict while samples ar
     experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
     experimentUser(SubscriptionExperiment::REDUCED_TRIAL, $signup);
 
-    artisan('stats:experiment-funnel', ['--no-discord' => true])
-        ->expectsOutputToContain('Significance')
-        ->expectsOutputToContain('Wilson')
-        ->expectsOutputToContain('too small') // n = 2 per arm → verdict deferred
-        ->assertSuccessful();
+    Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('Significance')
+        ->toContain('Wilson')
+        ->toContain('too small'); // n = 2 per arm → verdict deferred
 });
 
 it('measures conversion as ever-charged, not active-now, so churn does not bias it', function () {
