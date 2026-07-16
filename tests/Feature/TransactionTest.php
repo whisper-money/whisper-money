@@ -290,19 +290,18 @@ test('deleting a manual account income decreases the current balance when reques
     ]);
 });
 
-test('deleting a transaction creates a current balance from the latest known balance', function () {
+test('deleting a past-dated transaction reverses it on that date and every later balance', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
-    $account->balances()->create([
-        'balance_date' => now()->subDays(5)->toDateString(),
-        'balance' => 50000,
-    ]);
+    $account->balances()->create(['balance_date' => '2025-11-10', 'balance' => 5000]);
+    $account->balances()->create(['balance_date' => '2025-11-11', 'balance' => 5000]);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'amount' => -1500,
+        'transaction_date' => '2025-11-10',
     ]);
 
     actingAs($user)
@@ -311,8 +310,13 @@ test('deleting a transaction creates a current balance from the latest known bal
 
     $this->assertDatabaseHas('account_balances', [
         'account_id' => $account->id,
-        'balance_date' => now()->toDateString(),
-        'balance' => 51500,
+        'balance_date' => '2025-11-10',
+        'balance' => 6500,
+    ]);
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 6500,
     ]);
 });
 
@@ -418,6 +422,35 @@ test('creating a transaction creates a balance on its date from the closest earl
         'account_id' => $account->id,
         'balance_date' => '2025-11-11',
         'balance' => 48500,
+    ]);
+});
+
+test('creating a past-dated transaction updates that date and every later balance', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create(['balance_date' => '2025-11-10', 'balance' => 1000]);
+    $account->balances()->create(['balance_date' => '2025-11-11', 'balance' => 1000]);
+
+    actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'transaction_date' => '2025-11-10',
+        'amount' => -500,
+        'currency_code' => 'USD',
+        'source' => 'manually_created',
+        'update_balance' => true,
+    ])->assertCreated();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-10',
+        'balance' => 500,
+    ]);
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 500,
     ]);
 });
 
