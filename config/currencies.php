@@ -170,5 +170,11 @@ return [
             'allows_primary' => true,
             'allows_account' => true,
         ],
+        [
+            'code' => 'GTQ',
+            'name' => 'Guatemalan Quetzal',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];
