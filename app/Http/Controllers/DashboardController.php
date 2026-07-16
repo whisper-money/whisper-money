@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CategoryType;
-use App\Models\Account;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
@@ -39,8 +38,7 @@ class DashboardController extends Controller
         $start = $now->copy()->subMonths(12);
         $end = $now->copy();
 
-        $accounts = Account::query()
-            ->where('user_id', $user->id)
+        $accounts = $user->activeSpace()->accounts()
             ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
             ->orderBy('position')
             ->orderBy('name')
@@ -59,8 +57,9 @@ class DashboardController extends Controller
         $period = new PeriodComparator($from, $to);
         $previousPeriod = $period->previous();
 
-        $currentSpending = $this->categorySpendingService->forPeriod($user->id, $period->from, $period->to);
-        $previousSpending = $this->categorySpendingService->forPeriod($user->id, $previousPeriod->from, $previousPeriod->to);
+        $spaceId = $user->activeSpace()->id;
+        $currentSpending = $this->categorySpendingService->forPeriod($spaceId, $period->from, $period->to);
+        $previousSpending = $this->categorySpendingService->forPeriod($spaceId, $previousPeriod->from, $previousPeriod->to);
 
         $totalAmount = $currentSpending->sum('amount');
 
@@ -94,24 +93,26 @@ class DashboardController extends Controller
         $period = new PeriodComparator($from, $to);
         $previousPeriod = $period->previous();
 
+        $spaceId = $user->activeSpace()->id;
+
         return [
-            'current' => $this->calculateCashflowSummary($user->id, $period->from, $period->to),
-            'previous' => $this->calculateCashflowSummary($user->id, $previousPeriod->from, $previousPeriod->to),
+            'current' => $this->calculateCashflowSummary($spaceId, $period->from, $period->to),
+            'previous' => $this->calculateCashflowSummary($spaceId, $previousPeriod->from, $previousPeriod->to),
         ];
     }
 
-    private function calculateCashflowSummary(string $userId, Carbon $from, Carbon $to): array
+    private function calculateCashflowSummary(string $spaceId, Carbon $from, Carbon $to): array
     {
-        $income = max(0, $this->getTransactionSum($userId, $from, $to, CategoryType::Income));
-        $expense = max(0, -$this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
+        $income = max(0, $this->getTransactionSum($spaceId, $from, $to, CategoryType::Income));
+        $expense = max(0, -$this->getTransactionSum($spaceId, $from, $to, CategoryType::Expense));
 
         return CashflowSummaryService::summarize($income, $expense);
     }
 
-    private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
+    private function getTransactionSum(string $spaceId, Carbon $from, Carbon $to, CategoryType $type): int
     {
         return Transaction::query()
-            ->where('transactions.user_id', $userId)
+            ->where('transactions.space_id', $spaceId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->where(function ($q) use ($type) {
                 $q->whereExists(function ($sub) use ($type) {

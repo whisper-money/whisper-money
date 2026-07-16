@@ -42,6 +42,14 @@ export interface NavDivider {
 export interface Features {
     cashflow: boolean;
     calculateBalancesOnImport: boolean;
+    spaces: boolean;
+}
+
+export interface Space {
+    id: UUID;
+    name: string;
+    personal: boolean;
+    is_owner: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {
@@ -82,6 +90,8 @@ export interface SharedData {
     pricing: PricingConfig;
     sidebarOpen: boolean;
     features: Features;
+    currentSpace: Space | null;
+    spaces: Space[];
     expiredBankingConnections: ExpiredBankingConnectionNotification[];
     hasEncryptedAccounts: boolean;
     hasEncryptedTransactions: boolean;

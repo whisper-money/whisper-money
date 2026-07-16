@@ -5,11 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
 use App\Jobs\AssignHistoricalTransactionsToBudget;
-use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Budget;
-use App\Models\Category;
-use App\Models\Label;
 use App\Services\BudgetPeriodService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -27,7 +24,7 @@ class BudgetController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $budgets = $user
+        $budgets = $user->activeSpace()
             ->budgets()
             ->with(['categories', 'labels', 'periods' => function ($query) {
                 $query->where('start_date', '<=', today())
@@ -83,13 +80,13 @@ class BudgetController extends Controller
 
         $budget->load(['categories', 'labels']);
 
-        $categories = Category::query()
-            ->where('user_id', $user->id)
+        $space = $user->activeSpace();
+
+        $categories = $space->categories()
             ->forDisplay()
             ->get();
 
-        $accounts = Account::query()
-            ->where('user_id', $user->id)
+        $accounts = $space->accounts()
             ->with('bank')
             ->orderBy('name')
             ->get();
@@ -99,8 +96,7 @@ class BudgetController extends Controller
             ->orderBy('name')
             ->get();
 
-        $labels = Label::query()
-            ->where('user_id', $user->id)
+        $labels = $space->labels()
             ->orderBy('name')
             ->get();
 

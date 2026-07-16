@@ -13,19 +13,20 @@ class ImportDataController extends Controller
     public function index(): JsonResponse
     {
         $user = auth()->user();
+        $space = $user->activeSpace();
 
         return response()->json([
-            'accounts' => $user->accounts()
+            'accounts' => $space->accounts()
                 ->with('bank')
                 ->orderBy('name')
                 ->get(),
-            'categories' => $user->categories()
+            'categories' => $space->categories()
                 ->forDisplay()
                 ->get(),
             'banks' => $user->banks()
                 ->orderBy('name')
                 ->get(),
-            'automationRules' => $user->automationRules()
+            'automationRules' => $space->automationRules()
                 ->with(['category', 'labels'])
                 ->orderBy('priority')
                 ->get(),

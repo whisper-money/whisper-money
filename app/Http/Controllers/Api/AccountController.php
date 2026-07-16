@@ -20,7 +20,9 @@ class AccountController extends Controller
     {
         // The decryption-migration flow needs bank_id, which Account hides by
         // default; opt it back in explicitly here.
-        $accounts = $request->user()
+        $space = $request->user()->activeSpace();
+
+        $accounts = $space
             ->accounts()
             ->get()
             ->makeVisible('bank_id');

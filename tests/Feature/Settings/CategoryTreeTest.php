@@ -210,7 +210,7 @@ test('the tree service expands a parent id to include all descendants', function
     $grandchild = Category::factory()->childOf($child)->create(['user_id' => $user->id]);
     $unrelated = Category::factory()->create(['user_id' => $user->id]);
 
-    $expanded = (new CategoryTree)->expand($user->id, [$root->id]);
+    $expanded = (new CategoryTree)->expand($user->current_space_id, [$root->id]);
 
     expect($expanded)->toContain($root->id, $child->id, $grandchild->id)
         ->not->toContain($unrelated->id);

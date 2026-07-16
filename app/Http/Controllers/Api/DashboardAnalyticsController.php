@@ -38,9 +38,8 @@ class DashboardAnalyticsController extends Controller
 
         $userCurrency = $request->user()->currency_code;
 
-        $accounts = Account::query()
-            ->where('user_id', $request->user()->id)
-            ->get();
+        $space = $request->user()->activeSpace();
+        $accounts = $space->accounts()->get();
 
         // Load every account's balance history for the compared range in a
         // fixed number of queries instead of one balance lookup per account.
@@ -101,8 +100,8 @@ class DashboardAnalyticsController extends Controller
 
         $userCurrency = $request->user()->currency_code;
 
-        $accounts = Account::query()
-            ->where('user_id', $request->user()->id)
+        $space = $request->user()->activeSpace();
+        $accounts = $space->accounts()
             ->with(['bank:id,name,logo'])
             ->get();
 
@@ -113,7 +112,7 @@ class DashboardAnalyticsController extends Controller
 
     public function accountBalanceEvolution(Request $request, Account $account)
     {
-        if ($account->user_id !== $request->user()->id) {
+        if ($account->space_id !== $request->user()->activeSpace()->id) {
             abort(403);
         }
 
@@ -319,7 +318,7 @@ class DashboardAnalyticsController extends Controller
 
     public function accountDailyBalanceEvolution(Request $request, Account $account)
     {
-        if ($account->user_id !== $request->user()->id) {
+        if ($account->space_id !== $request->user()->activeSpace()->id) {
             abort(403);
         }
 
@@ -426,8 +425,8 @@ class DashboardAnalyticsController extends Controller
 
         $userCurrency = $request->user()->currency_code;
 
-        $accounts = Account::query()
-            ->where('user_id', $request->user()->id)
+        $space = $request->user()->activeSpace();
+        $accounts = $space->accounts()
             ->with(['bank:id,name,logo'])
             ->get();
 
@@ -448,8 +447,9 @@ class DashboardAnalyticsController extends Controller
         $previousPeriod = $period->previous();
         $drillParentId = $validated['parent'] ?? null;
 
-        $currentSpending = $this->categorySpendingService->forPeriod($request->user()->id, $period->from, $period->to, $drillParentId);
-        $previousSpending = $this->categorySpendingService->forPeriod($request->user()->id, $previousPeriod->from, $previousPeriod->to, $drillParentId);
+        $space = $request->user()->activeSpace();
+        $currentSpending = $this->categorySpendingService->forPeriod($space->id, $period->from, $period->to, $drillParentId);
+        $previousSpending = $this->categorySpendingService->forPeriod($space->id, $previousPeriod->from, $previousPeriod->to, $drillParentId);
 
         $totalAmount = $currentSpending->sum('amount');
 
@@ -505,8 +505,10 @@ class DashboardAnalyticsController extends Controller
 
     private function calculateSpending(Carbon $from, Carbon $to): int
     {
+        $space = request()->user()->activeSpace();
+
         $spending = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
+            ->where('transactions.space_id', $space->id)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
@@ -520,8 +522,10 @@ class DashboardAnalyticsController extends Controller
 
     private function calculateCashFlow(Carbon $from, Carbon $to): array
     {
+        $space = request()->user()->activeSpace();
+
         $income = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
+            ->where('transactions.space_id', $space->id)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
@@ -531,7 +535,7 @@ class DashboardAnalyticsController extends Controller
             ->sum('transactions.amount');
 
         $expense = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
+            ->where('transactions.space_id', $space->id)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')

@@ -32,8 +32,9 @@ class AccountController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
+        $space = $user->activeSpace();
 
-        $accounts = $user
+        $accounts = $space
             ->accounts()
             ->with(['bank', 'loanDetail', 'realEstateDetail'])
             ->orderBy('name')
@@ -51,6 +52,7 @@ class AccountController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
+        $space = $user->activeSpace();
         $validated = $request->validated();
         $balance = $validated['balance'] ?? null;
 
@@ -157,7 +159,7 @@ class AccountController extends Controller
             $linkedRealEstateAccountId = $validated['linked_real_estate_account_id'] ?? null;
 
             if ($linkedRealEstateAccountId !== null) {
-                $realEstateAccount = $user->accounts()
+                $realEstateAccount = $space->accounts()
                     ->whereKey($linkedRealEstateAccountId)
                     ->where('type', AccountType::RealEstate->value)
                     ->with('realEstateDetail')

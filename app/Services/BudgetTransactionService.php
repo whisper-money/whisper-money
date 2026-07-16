@@ -16,9 +16,9 @@ class BudgetTransactionService
 
     public function assignTransaction(Transaction $transaction): void
     {
-        $userId = $transaction->user_id;
+        $spaceId = $transaction->space_id;
 
-        if (! $userId) {
+        if (! $spaceId) {
             return;
         }
 
@@ -31,13 +31,13 @@ class BudgetTransactionService
         // transaction matches a budget when any of its category's ancestors
         // (or itself) is attached to that budget.
         $categoryMatchIds = $transaction->category_id
-            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id)
+            ? $this->tree->ancestorAndSelfIds($spaceId, $transaction->category_id)
             : [];
 
         // Find budget periods that potentially match this transaction.
         $budgetPeriods = BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $userId) {
-                $query->where('user_id', $userId)
+            ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $spaceId) {
+                $query->where('space_id', $spaceId)
                     ->where(function ($q) use ($categoryMatchIds, $transactionLabelIds) {
                         $q->whereHas('categories', function ($cq) use ($categoryMatchIds) {
                             $cq->whereIn('categories.id', $categoryMatchIds);
@@ -72,7 +72,7 @@ class BudgetTransactionService
 
         $matchingPeriodIds = array_merge(
             $matchingPeriodIds,
-            $this->catchAllPeriodIds($transaction, $userId, $categoryMatchIds),
+            $this->catchAllPeriodIds($transaction, $spaceId, $categoryMatchIds),
         );
 
         // Apply changes atomically so concurrent workers cannot leave the
@@ -122,11 +122,11 @@ class BudgetTransactionService
         $assignedCount = 0;
 
         // Tracking a parent category also tracks its children's spending.
-        $categoryIds = collect($this->tree->expand($budget->user_id, $budget->categories->pluck('id')->all()));
+        $categoryIds = collect($this->tree->expand($budget->space_id, $budget->categories->pluck('id')->all()));
         $labelIds = $budget->labels->pluck('id');
 
         Log::info('Building query for historical transactions', [
-            'user_id' => $budget->user_id,
+            'space_id' => $budget->space_id,
             'category_ids' => $categoryIds->all(),
             'label_ids' => $labelIds->all(),
             'start_date' => $period->start_date->toDateString(),
@@ -135,16 +135,16 @@ class BudgetTransactionService
 
         // Build the query for matching transactions
         $query = Transaction::query()
-            ->where('user_id', $budget->user_id)
+            ->where('space_id', $budget->space_id)
             ->whereBetween('transaction_date', [$period->start_date, $period->end_date])
             ->withoutTrashed();
 
         if ($budget->is_catch_all) {
             // A catch-all budget absorbs every expense whose category is not
-            // already tracked by one of the user's other budgets.
+            // already tracked by one of the space's other budgets.
             $claimedCategoryIds = $this->tree->expand(
-                $budget->user_id,
-                $this->claimedCategoryIds($budget->user_id),
+                $budget->space_id,
+                $this->claimedCategoryIds($budget->space_id),
             );
 
             $query->whereNotNull('category_id')
@@ -200,7 +200,7 @@ class BudgetTransactionService
      * @param  array<int, string>  $categoryMatchIds  the transaction category and its ancestors
      * @return array<int, string>
      */
-    private function catchAllPeriodIds(Transaction $transaction, string $userId, array $categoryMatchIds): array
+    private function catchAllPeriodIds(Transaction $transaction, string $spaceId, array $categoryMatchIds): array
     {
         if ($transaction->category_id === null) {
             return [];
@@ -212,13 +212,13 @@ class BudgetTransactionService
             return [];
         }
 
-        if (array_intersect($categoryMatchIds, $this->claimedCategoryIds($userId)) !== []) {
+        if (array_intersect($categoryMatchIds, $this->claimedCategoryIds($spaceId)) !== []) {
             return [];
         }
 
         return BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($userId) {
-                $query->where('user_id', $userId)->where('is_catch_all', true);
+            ->whereHas('budget', function ($query) use ($spaceId) {
+                $query->where('space_id', $spaceId)->where('is_catch_all', true);
             })
             ->where('start_date', '<=', $transaction->transaction_date)
             ->where('end_date', '>=', $transaction->transaction_date)
@@ -227,14 +227,14 @@ class BudgetTransactionService
     }
 
     /**
-     * Category ids directly tracked by the user's non-catch-all budgets.
+     * Category ids directly tracked by the space's non-catch-all budgets.
      *
      * @return array<int, string>
      */
-    private function claimedCategoryIds(string $userId): array
+    private function claimedCategoryIds(string $spaceId): array
     {
         return Budget::query()
-            ->where('user_id', $userId)
+            ->where('space_id', $spaceId)
             ->where('is_catch_all', false)
             ->with('categories:id')
             ->get()

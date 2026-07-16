@@ -1,10 +1,10 @@
 <?php
 
 use App\Actions\CreateDefaultCategories;
+use App\Enums\TransactionSource;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Space;
-use App\Models\Transaction;
 use App\Models\User;
 
 it('provisions a personal space when a user is created', function () {
@@ -24,14 +24,20 @@ it('stamps owned rows with the owner\'s current space by default', function () {
     expect($account->space_id)->toBe($user->current_space_id);
 });
 
-it('inherits a transaction\'s space from its account, not the acting user', function () {
+it('inherits a transaction\'s space from its account (the tenant anchor)', function () {
     $owner = User::factory()->create();
     $account = Account::factory()->for($owner)->create();
 
-    // A transaction created with a different acting user still lands in the
-    // account's space (the account is the tenant anchor).
-    $other = User::factory()->create();
-    $transaction = Transaction::factory()->for($account)->create(['user_id' => $other->id]);
+    // Mirrors bank sync: the row is created straight off the account with no
+    // explicit space_id, so the model resolves it from the account.
+    $transaction = $account->transactions()->create([
+        'user_id' => $owner->id,
+        'description' => 'Coffee',
+        'transaction_date' => now(),
+        'amount' => -350,
+        'currency_code' => 'EUR',
+        'source' => TransactionSource::EnableBanking,
+    ]);
 
     expect($transaction->space_id)->toBe($account->space_id);
 });

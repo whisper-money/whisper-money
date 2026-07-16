@@ -37,6 +37,7 @@ class TransactionAnalysisController extends Controller
     public function summary(IndexTransactionRequest $request): JsonResponse
     {
         $user = $request->user();
+        $space = $user->activeSpace();
 
         $validated = $request->validated();
         $currency = $user->currency_code;
@@ -54,15 +55,14 @@ class TransactionAnalysisController extends Controller
             'search' => $validated['search'] ?? null,
         ], fn ($value) => $value !== null);
 
-        $transactions = Transaction::query()
-            ->where('user_id', $user->id)
+        $transactions = $space->transactions()
             ->with(['account.bank', 'category', 'labels'])
             ->applyFilters($filters)
             ->get();
 
         $this->preloadExchangeRates($transactions, $currency);
 
-        $byCategory = $this->categoryBreakdown($transactions, $currency, $user->id);
+        $byCategory = $this->categoryBreakdown($transactions, $currency, $space->id);
         $byTag = $this->tagBreakdown($transactions, $currency);
         $byPayee = $this->payeeBreakdown($transactions, $currency);
         $byAccount = $this->accountBreakdown($transactions, $currency);
@@ -124,7 +124,7 @@ class TransactionAnalysisController extends Controller
      * that carry spending nested beneath each parent so the split is visible
      * instead of folded into the parent total.
      */
-    private function categoryBreakdown(Collection $transactions, string $currency, string $userId): Collection
+    private function categoryBreakdown(Collection $transactions, string $currency, string $spaceId): Collection
     {
         $expenses = $transactions->filter(
             fn (Transaction $transaction): bool => $transaction->isExpenseSide(),
@@ -154,7 +154,7 @@ class TransactionAnalysisController extends Controller
                 'icon' => $child['category']->icon,
                 'amount' => $child['amount'],
             ], $node['children']),
-        ], $this->tree->spendingBreakdown($grouped, $userId));
+        ], $this->tree->spendingBreakdown($grouped, $spaceId));
 
         $uncategorized = -$expenses
             ->filter(fn (Transaction $transaction): bool => $transaction->category_id === null)

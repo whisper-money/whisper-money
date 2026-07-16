@@ -15,6 +15,7 @@ use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
+use App\Http\Controllers\SpaceController;
 use App\Http\Controllers\SubscriptionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -59,6 +60,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('settings/labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
 
     Route::redirect('settings/budgets', '/budgets')->name('budgets.settings');
+
+    Route::get('settings/spaces', [SpaceController::class, 'index'])->name('spaces.index');
+    Route::post('settings/spaces', [SpaceController::class, 'store'])->name('spaces.store');
+    Route::patch('settings/spaces/{space}', [SpaceController::class, 'update'])->name('spaces.update');
+    Route::delete('settings/spaces/{space}', [SpaceController::class, 'destroy'])->name('spaces.destroy');
+    Route::post('spaces/{space}/switch', [SpaceController::class, 'select'])->name('spaces.switch');
 
     Route::get('settings/automation-rules', [AutomationRuleController::class, 'index'])->name('automation-rules.index');
     Route::post('settings/automation-rules', [AutomationRuleController::class, 'store'])->name('automation-rules.store');

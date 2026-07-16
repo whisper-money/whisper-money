@@ -17,7 +17,7 @@ class CategoryTree
      * @param  array<int, string>  $ids
      * @return array<int, string>
      */
-    public function expand(string $userId, array $ids): array
+    public function expand(string $spaceId, array $ids): array
     {
         $ids = array_values(array_unique(array_filter($ids)));
 
@@ -30,7 +30,7 @@ class CategoryTree
 
         for ($level = 1; $level < Category::MAX_DEPTH; $level++) {
             $childIds = Category::query()
-                ->where('user_id', $userId)
+                ->where('space_id', $spaceId)
                 ->whereIn('parent_id', $frontier)
                 ->pluck('id')
                 ->all();
@@ -56,7 +56,7 @@ class CategoryTree
     public function descendantIds(Category $category): array
     {
         return array_values(array_diff(
-            $this->expand($category->user_id, [$category->id]),
+            $this->expand($category->space_id, [$category->id]),
             [$category->id],
         ));
     }
@@ -66,11 +66,11 @@ class CategoryTree
      *
      * @return array<int, string>
      */
-    public function ancestorAndSelfIds(string $userId, string $categoryId): array
+    public function ancestorAndSelfIds(string $spaceId, string $categoryId): array
     {
         $ids = [$categoryId];
         $parentId = Category::query()
-            ->where('user_id', $userId)
+            ->where('space_id', $spaceId)
             ->whereKey($categoryId)
             ->value('parent_id');
 
@@ -79,7 +79,7 @@ class CategoryTree
         while ($parentId !== null && $guard++ < Category::MAX_DEPTH) {
             $ids[] = $parentId;
             $parentId = Category::query()
-                ->where('user_id', $userId)
+                ->where('space_id', $spaceId)
                 ->whereKey($parentId)
                 ->value('parent_id');
         }
@@ -97,7 +97,7 @@ class CategoryTree
 
         while ($parentId !== null && $depth <= Category::MAX_DEPTH) {
             $parentId = Category::query()
-                ->where('user_id', $category->user_id)
+                ->where('space_id', $category->space_id)
                 ->where('id', $parentId)
                 ->value('parent_id');
 
@@ -118,7 +118,7 @@ class CategoryTree
 
         for ($level = 1; $level < Category::MAX_DEPTH; $level++) {
             $childIds = Category::query()
-                ->where('user_id', $category->user_id)
+                ->where('space_id', $category->space_id)
                 ->whereIn('parent_id', $frontier)
                 ->pluck('id')
                 ->all();
@@ -145,10 +145,10 @@ class CategoryTree
      * @param  array<int, array{category_id: ?string, category: Category|null, amount: int}>  $categorized
      * @return array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>
      */
-    public function rollUp(array $categorized, string $userId, ?string $drillParentId): array
+    public function rollUp(array $categorized, string $spaceId, ?string $drillParentId): array
     {
         $categories = Category::query()
-            ->where('user_id', $userId)
+            ->where('space_id', $spaceId)
             ->forDisplay()
             ->get()
             ->keyBy('id');
@@ -230,10 +230,10 @@ class CategoryTree
      * @param  array<int, array{category_id: ?string, amount: int}>  $categorized
      * @return array<int, array{category_id: string, category: Category, amount: int, children: array<int, array{category_id: string, category: Category, amount: int}>}>
      */
-    public function spendingBreakdown(array $categorized, string $userId): array
+    public function spendingBreakdown(array $categorized, string $spaceId): array
     {
         $categories = Category::query()
-            ->where('user_id', $userId)
+            ->where('space_id', $spaceId)
             ->forDisplay()
             ->get()
             ->keyBy('id');
@@ -380,7 +380,7 @@ class CategoryTree
         }
 
         Category::query()
-            ->where('user_id', $category->user_id)
+            ->where('space_id', $category->space_id)
             ->whereIn('id', $descendantIds)
             ->update([
                 'type' => $category->type,
@@ -397,12 +397,12 @@ class CategoryTree
         $ids = [$category->id, ...$this->descendantIds($category)];
 
         Transaction::query()
-            ->where('user_id', $category->user_id)
+            ->where('space_id', $category->space_id)
             ->whereIn('category_id', $ids)
             ->update(['category_id' => null]);
 
         Category::query()
-            ->where('user_id', $category->user_id)
+            ->where('space_id', $category->space_id)
             ->whereIn('id', $ids)
             ->delete();
     }

@@ -7,11 +7,7 @@ use App\Http\Requests\BulkUpdateTransactionsRequest;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
-use App\Models\Account;
-use App\Models\AutomationRule;
 use App\Models\Bank;
-use App\Models\Category;
-use App\Models\Label;
 use App\Models\Transaction;
 use App\Services\Ai\CategoryOverrideHandler;
 use App\Services\ManualBalanceAdjuster;
@@ -28,6 +24,7 @@ class TransactionController extends Controller
     public function index(IndexTransactionRequest $request): Response
     {
         $user = $request->user();
+        $space = $user->activeSpace();
         $validated = $request->validated();
 
         $lastVisitAt = $user->transactions_last_visited_at;
@@ -53,8 +50,9 @@ class TransactionController extends Controller
             'search' => $validated['search'] ?? null,
         ], fn ($value) => $value !== null);
 
-        $query = Transaction::query()
-            ->where('user_id', $user->id)
+        $filters['space_id'] = $space->id;
+
+        $query = $space->transactions()
             ->with(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin'])
             ->applyFilters($filters);
 
@@ -99,13 +97,11 @@ class TransactionController extends Controller
             'sort' => $sortParam,
         ];
 
-        $categories = Category::query()
-            ->where('user_id', $user->id)
+        $categories = $space->categories()
             ->forDisplay()
             ->get();
 
-        $accounts = Account::query()
-            ->where('user_id', $user->id)
+        $accounts = $space->accounts()
             ->with('bank')
             ->orderBy('name')
             ->get();
@@ -115,13 +111,11 @@ class TransactionController extends Controller
             ->orderBy('name')
             ->get();
 
-        $labels = Label::query()
-            ->where('user_id', $user->id)
+        $labels = $space->labels()
             ->orderBy('name')
             ->get();
 
-        $automationRules = AutomationRule::query()
-            ->where('user_id', $user->id)
+        $automationRules = $space->automationRules()
             ->with(['category', 'labels'])
             ->orderBy('priority')
             ->get();
@@ -143,14 +137,13 @@ class TransactionController extends Controller
     public function categorize(Request $request): Response
     {
         $user = $request->user();
+        $space = $user->activeSpace();
 
-        $categories = Category::query()
-            ->where('user_id', $user->id)
+        $categories = $space->categories()
             ->forDisplay()
             ->get();
 
-        $accounts = Account::query()
-            ->where('user_id', $user->id)
+        $accounts = $space->accounts()
             ->with('bank')
             ->orderBy('name')
             ->get();
@@ -160,13 +153,11 @@ class TransactionController extends Controller
             ->orderBy('name')
             ->get();
 
-        $labels = Label::query()
-            ->where('user_id', $user->id)
+        $labels = $space->labels()
             ->orderBy('name')
             ->get();
 
-        $transactions = Transaction::query()
-            ->where('user_id', $user->id)
+        $transactions = $space->transactions()
             ->whereNull('category_id')
             ->with(['account.bank', 'labels'])
             ->orderBy('transaction_date', 'desc')
@@ -304,10 +295,15 @@ class TransactionController extends Controller
     public function bulkUpdate(BulkUpdateTransactionsRequest $request): JsonResponse
     {
         $user = $request->user();
+        $space = $user->activeSpace();
         $transactionIds = $request->input('transaction_ids');
         $filters = $request->input('filters');
 
-        $query = Transaction::query()->where('user_id', $user->id);
+        if (is_array($filters)) {
+            $filters['space_id'] = $space->id;
+        }
+
+        $query = $space->transactions();
 
         if ($transactionIds && count($transactionIds) > 0) {
             $query->whereIn('id', $transactionIds);
@@ -357,7 +353,7 @@ class TransactionController extends Controller
         }
 
         if (! empty($updateData)) {
-            $updateQuery = Transaction::query()->where('user_id', $user->id);
+            $updateQuery = $space->transactions();
             if ($transactionIds && count($transactionIds) > 0) {
                 $updateQuery->whereIn('id', $transactionIds);
             } elseif ($filters !== null) {

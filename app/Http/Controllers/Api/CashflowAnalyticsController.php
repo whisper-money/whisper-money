@@ -39,9 +39,10 @@ class CashflowAnalyticsController extends Controller
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
         $user = $request->user();
+        $space = $user->activeSpace();
 
         return $this->cashflowJson(
-            $this->calculateCashflowSummaries($user->id, $user->currency_code, $period, $previousPeriod)
+            $this->calculateCashflowSummaries($space->id, $user->currency_code, $period, $previousPeriod)
         );
     }
 
@@ -56,12 +57,13 @@ class CashflowAnalyticsController extends Controller
         $from = Carbon::parse($validated['from']);
         $to = Carbon::parse($validated['to']);
         $user = $request->user();
+        $space = $user->activeSpace();
         $drillParentId = $validated['parent'] ?? null;
 
         // Split by sign, not by category type: a single category can appear on
         // both sides when it has both incoming and outgoing transactions.
-        $incomeCategories = $this->getSankeyBreakdown($user->id, $user->currency_code, $from, $to, '>', $drillParentId);
-        $expenseCategories = $this->getSankeyBreakdown($user->id, $user->currency_code, $from, $to, '<', $drillParentId);
+        $incomeCategories = $this->getSankeyBreakdown($space->id, $user->currency_code, $from, $to, '>', $drillParentId);
+        $expenseCategories = $this->getSankeyBreakdown($space->id, $user->currency_code, $from, $to, '<', $drillParentId);
 
         $totalIncome = $incomeCategories->sum('amount');
         $totalExpense = $expenseCategories->sum('amount');
@@ -83,6 +85,7 @@ class CashflowAnalyticsController extends Controller
         ]);
 
         $user = $request->user();
+        $space = $user->activeSpace();
 
         if (isset($validated['from'], $validated['to'])) {
             $start = Carbon::parse($validated['from'])->startOfMonth();
@@ -104,7 +107,7 @@ class CashflowAnalyticsController extends Controller
             $start = $earliestStart;
         }
 
-        $monthlyTotals = $this->getMonthlyTrendTotals($user->id, $user->currency_code, $start, $end);
+        $monthlyTotals = $this->getMonthlyTrendTotals($space->id, $user->currency_code, $start, $end);
 
         $data = [];
         $current = $start->copy();
@@ -142,12 +145,13 @@ class CashflowAnalyticsController extends Controller
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
         $user = $request->user();
+        $space = $user->activeSpace();
         $drillParentId = $validated['parent'] ?? null;
 
         $categoryType = $validated['type'] === 'income' ? CategoryType::Income : CategoryType::Expense;
 
-        $current = $this->getCategoryBreakdown($user->id, $user->currency_code, $period->from, $period->to, $categoryType, $drillParentId);
-        $previous = $this->getCategoryBreakdown($user->id, $user->currency_code, $previousPeriod->from, $previousPeriod->to, $categoryType, $drillParentId);
+        $current = $this->getCategoryBreakdown($space->id, $user->currency_code, $period->from, $period->to, $categoryType, $drillParentId);
+        $previous = $this->getCategoryBreakdown($space->id, $user->currency_code, $previousPeriod->from, $previousPeriod->to, $categoryType, $drillParentId);
 
         $currentTotal = $current->sum('amount');
         $previousTotal = $previous->sum('amount');
@@ -181,10 +185,10 @@ class CashflowAnalyticsController extends Controller
             ->header('Cache-Control', 'no-store, private');
     }
 
-    private function calculateCashflowSummaries(string $userId, string $userCurrency, PeriodComparator $period, PeriodComparator $previousPeriod): array
+    private function calculateCashflowSummaries(string $spaceId, string $userCurrency, PeriodComparator $period, PeriodComparator $previousPeriod): array
     {
         $transactions = Transaction::query()
-            ->where('transactions.user_id', $userId)
+            ->where('transactions.space_id', $spaceId)
             ->whereBetween('transactions.transaction_date', [$previousPeriod->from, $period->to])
             ->with(['account', 'category'])
             ->get();
@@ -238,12 +242,12 @@ class CashflowAnalyticsController extends Controller
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency)));
     }
 
-    private function getSankeyBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, string $operator, ?string $drillParentId = null): Collection
+    private function getSankeyBreakdown(string $spaceId, string $userCurrency, Carbon $from, Carbon $to, string $operator, ?string $drillParentId = null): Collection
     {
         $isIncome = $operator === '>';
         $type = $isIncome ? CategoryType::Income : CategoryType::Expense;
         $transactions = Transaction::query()
-            ->where('transactions.user_id', $userId)
+            ->where('transactions.space_id', $spaceId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->with(['account', 'category'])
             ->get();
@@ -305,7 +309,7 @@ class CashflowAnalyticsController extends Controller
 
         $categorized = collect($this->tree->rollUp(
             $regularCategories->concat($transferCategories)->values()->all(),
-            $userId,
+            $spaceId,
             $drillParentId,
         ));
 
@@ -335,10 +339,10 @@ class CashflowAnalyticsController extends Controller
         return $categorized;
     }
 
-    private function getMonthlyTrendTotals(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
+    private function getMonthlyTrendTotals(string $spaceId, string $userCurrency, Carbon $from, Carbon $to): Collection
     {
         $transactions = Transaction::query()
-            ->where('transactions.user_id', $userId)
+            ->where('transactions.space_id', $spaceId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->with(['account', 'category'])
             ->get();
@@ -393,10 +397,10 @@ class CashflowAnalyticsController extends Controller
             });
     }
 
-    private function getCategoryBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, CategoryType $type, ?string $drillParentId = null): Collection
+    private function getCategoryBreakdown(string $spaceId, string $userCurrency, Carbon $from, Carbon $to, CategoryType $type, ?string $drillParentId = null): Collection
     {
         $transactions = Transaction::query()
-            ->where('transactions.user_id', $userId)
+            ->where('transactions.space_id', $spaceId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->with(['account', 'category'])
             ->get();
@@ -423,7 +427,7 @@ class CashflowAnalyticsController extends Controller
                 'amount' => $item['amount'],
             ]);
 
-        $categorized = collect($this->tree->rollUp($categorized->values()->all(), $userId, $drillParentId));
+        $categorized = collect($this->tree->rollUp($categorized->values()->all(), $spaceId, $drillParentId));
 
         $uncategorized = $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {

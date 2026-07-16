@@ -97,7 +97,7 @@ class AutomationRuleApplicationController extends Controller
 
         if ($total <= self::SYNC_THRESHOLD) {
             $transactions = Transaction::query()
-                ->where('user_id', $automationRule->user_id)
+                ->where('space_id', $automationRule->space_id)
                 ->whereIn('id', $matchingIds)
                 ->whereNull('description_iv')
                 ->with(['account.bank', 'category', 'labels'])
@@ -177,7 +177,7 @@ class AutomationRuleApplicationController extends Controller
         }
 
         Transaction::query()
-            ->where('user_id', $rule->user_id)
+            ->where('space_id', $rule->space_id)
             ->whereNull('description_iv')
             ->with(array_values(array_unique($eagerLoads)))
             ->orderByDesc('transaction_date')

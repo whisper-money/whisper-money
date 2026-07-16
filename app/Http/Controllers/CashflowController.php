@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Account;
 use App\Models\Bank;
-use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,14 +12,13 @@ class CashflowController extends Controller
     public function __invoke(Request $request): Response
     {
         $user = $request->user();
+        $space = $user->activeSpace();
 
-        $categories = Category::query()
-            ->where('user_id', $user->id)
+        $categories = $space->categories()
             ->forDisplay()
             ->get();
 
-        $accounts = Account::query()
-            ->where('user_id', $user->id)
+        $accounts = $space->accounts()
             ->with('bank')
             ->orderBy('name')
             ->get();

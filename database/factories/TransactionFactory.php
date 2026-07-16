@@ -36,6 +36,33 @@ class TransactionFactory extends Factory
         ];
     }
 
+    /**
+     * Keep fixtures coherent with the multi-tenant model: a transaction, its
+     * account and its space share one owner. When a caller sets a user_id but
+     * lets the account default (or wires an account owned by someone else), we
+     * realign the account to that user so space scoping in tests mirrors
+     * production, where transaction.space_id always equals account.space_id.
+     */
+    public function configure(): static
+    {
+        return $this->afterMaking(function (Transaction $transaction): void {
+            if ($transaction->user_id === null) {
+                return;
+            }
+
+            $account = $transaction->account;
+
+            if ($account !== null && $account->user_id !== $transaction->user_id) {
+                $account->forceFill([
+                    'user_id' => $transaction->user_id,
+                    'space_id' => User::query()->whereKey($transaction->user_id)->value('current_space_id'),
+                ])->save();
+
+                $transaction->setRelation('account', $account);
+            }
+        });
+    }
+
     public function imported(): static
     {
         return $this->state(fn (array $attributes) => [

@@ -16,7 +16,9 @@ class TransactionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = $request->user()
+        $space = $request->user()->activeSpace();
+
+        $query = $space
             ->transactions()
             ->with('labels');
 
@@ -48,7 +50,8 @@ class TransactionController extends Controller
     public function checkDuplicates(CheckDuplicateTransactionsRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $account = $request->user()->accounts()->findOrFail($validated['account_id']);
+        $space = $request->user()->activeSpace();
+        $account = $space->accounts()->findOrFail($validated['account_id']);
         $incoming = $validated['transactions'];
 
         $dates = array_map(fn (array $t): string => substr($t['transaction_date'], 0, 10), $incoming);
@@ -103,7 +106,9 @@ class TransactionController extends Controller
 
         $transactionIds = collect($validated['transactions'])->pluck('id');
 
-        $userTransactionIds = $request->user()
+        $space = $request->user()->activeSpace();
+
+        $userTransactionIds = $space
             ->transactions()
             ->whereIn('id', $transactionIds)
             ->pluck('id');

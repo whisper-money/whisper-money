@@ -6,7 +6,6 @@ use App\Enums\CategoryType;
 use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
-use App\Models\Transaction;
 use App\Services\ExchangeRateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -35,19 +34,18 @@ class CategoryMonthlyBreakdownController extends Controller
     public function __invoke(Request $request, Category $category): JsonResponse
     {
         $user = $request->user();
+        $space = $user->activeSpace();
 
-        abort_unless($category->user_id === $user->id, 403);
+        abort_unless($category->space_id === $space->id, 403);
 
         $currency = $user->currency_code;
         $start = Carbon::now()->startOfMonth()->subMonths(self::MONTHS - 1);
 
-        $parentMap = Category::query()
-            ->where('user_id', $user->id)
+        $parentMap = $space->categories()
             ->pluck('parent_id', 'id')
             ->all();
 
-        $children = Category::query()
-            ->where('user_id', $user->id)
+        $children = $space->categories()
             ->where('parent_id', $category->id)
             ->orderBy('name')
             ->get()
@@ -58,8 +56,7 @@ class CategoryMonthlyBreakdownController extends Controller
             fn (string $id): bool => $this->belongsToSubtree($id, $category->id, $parentMap),
         ));
 
-        $transactions = Transaction::query()
-            ->where('user_id', $user->id)
+        $transactions = $space->transactions()
             ->whereIn('category_id', $subtreeIds)
             ->where('transaction_date', '>=', $start->toDateString())
             ->with('account')

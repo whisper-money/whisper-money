@@ -20,10 +20,10 @@ class CategorySpendingService
      * become the rows (plus a direct node for transactions sitting on the
      * parent itself). Soft-deleted categories are excluded.
      */
-    public function forPeriod(string $userId, Carbon $from, Carbon $to, ?string $drillParentId = null): Collection
+    public function forPeriod(string $spaceId, Carbon $from, Carbon $to, ?string $drillParentId = null): Collection
     {
         $perCategory = Transaction::query()
-            ->where('transactions.user_id', $userId)
+            ->where('transactions.space_id', $spaceId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
@@ -41,7 +41,7 @@ class CategorySpendingService
             ->values()
             ->all();
 
-        return collect($this->tree->rollUp($perCategory, $userId, $drillParentId))
+        return collect($this->tree->rollUp($perCategory, $spaceId, $drillParentId))
             ->filter(fn (array $item): bool => $item['amount'] > 0)
             ->values();
     }

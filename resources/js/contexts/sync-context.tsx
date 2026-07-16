@@ -1,5 +1,6 @@
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { identifyUser, resetPostHog } from '@/lib/posthog';
+import { transactionSyncService } from '@/services/transaction-sync';
 import type { User } from '@/types/index.d';
 import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
@@ -47,16 +48,30 @@ export function SyncProvider({
     const [error, setError] = useState<string | null>(null);
     const [wasOffline, setWasOffline] = useState(!isOnline);
     const lastUserIdRef = useRef<string | null>(null);
+    const lastSpaceIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         const unsubscribe = router.on('navigate', (event) => {
             const page = event.detail.page as Page<{
                 auth?: { user?: User };
+                currentSpace?: { id: string } | null;
             }>;
 
             const user = page.props?.auth?.user ?? null;
             setIsAuthenticated(Boolean(user));
             setCurrentUser(user);
+
+            // The offline cache is a per-space mirror. When the active space
+            // changes (switch or logout), drop it so stale rows from the
+            // previous space never surface and the next sync starts clean.
+            const spaceId = page.props?.currentSpace?.id ?? null;
+            if (
+                lastSpaceIdRef.current !== null &&
+                lastSpaceIdRef.current !== spaceId
+            ) {
+                void transactionSyncService.clearAll();
+            }
+            lastSpaceIdRef.current = spaceId;
         });
 
         return () => {

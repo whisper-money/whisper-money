@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ResolveActiveSpace;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\SetSentryUser;
 use App\Http\Middleware\TrackLastActiveAt;
@@ -44,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             SetLocale::class,
             SetSentryUser::class,
+            ResolveActiveSpace::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             TrackLastActiveAt::class,

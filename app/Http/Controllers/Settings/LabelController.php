@@ -22,6 +22,7 @@ class LabelController extends Controller
     public function index(): Response
     {
         $labels = auth()->user()
+            ->activeSpace()
             ->labels()
             ->orderBy('name')
             ->get();

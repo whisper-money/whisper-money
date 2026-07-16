@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
+use App\Features\Spaces;
 use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
@@ -48,6 +49,7 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
+        $space = $user?->activeSpace();
         $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local');
         $isDemoQuery = $request->query('demo') === '1';
 
@@ -105,7 +107,24 @@ class HandleInertiaRequests extends Middleware
             'includeRealEstateInNetWorthChart' => $user?->setting->include_real_estate_in_net_worth_chart ?? true,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => $this->resolveFeatureFlags(),
-            'expiredBankingConnections' => fn () => $user ? $user->bankingConnections()
+            'currentSpace' => $space ? [
+                'id' => $space->id,
+                'name' => $space->personal ? __('Personal') : $space->name,
+                'personal' => $space->personal,
+                'is_owner' => $space->owner_id === $user->id,
+            ] : null,
+            // Only the spaces UI needs the full list; skip the query entirely for
+            // everyone still on their single, invisible personal space.
+            'spaces' => fn () => $user && Feature::for($user)->active(Spaces::class)
+                ? $user->accessibleSpaces()
+                    ->map(fn ($accessibleSpace): array => [
+                        'id' => $accessibleSpace->id,
+                        'name' => $accessibleSpace->personal ? __('Personal') : $accessibleSpace->name,
+                        'personal' => $accessibleSpace->personal,
+                        'is_owner' => $accessibleSpace->owner_id === $user->id,
+                    ])->all()
+                : [],
+            'expiredBankingConnections' => fn () => $space ? $space->bankingConnections()
                 ->where('provider', BankingProvider::EnableBanking)
                 ->where(function ($query) {
                     $query->where('status', BankingConnectionStatus::Expired)
@@ -124,7 +143,7 @@ class HandleInertiaRequests extends Middleware
                     'valid_until' => $connection->valid_until?->toIso8601String(),
                     'reconnect_url' => route('open-banking.reconnect', $connection),
                 ]) : [],
-            'bankingConnections' => fn () => $user ? $user->bankingConnections()
+            'bankingConnections' => fn () => $space ? $space->bankingConnections()
                 ->get(['id', 'aspsp_name', 'provider', 'status'])
                 ->map(fn (BankingConnection $connection): array => [
                     'id' => $connection->id,
@@ -132,28 +151,28 @@ class HandleInertiaRequests extends Middleware
                     'provider' => $connection->provider->value,
                     'status' => $connection->status->value,
                 ]) : [],
-            'accounts' => fn () => $user ? $user->accounts()
+            'accounts' => fn () => $space ? $space->accounts()
                 ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
                 ->orderBy('name')
                 ->get()
                 ->makeHidden('realEstateDetail') : [],
-            'categories' => fn () => $user ? $user->categories()
+            'categories' => fn () => $space ? $space->categories()
                 ->forDisplay()
                 ->get() : [],
             'banks' => fn () => $user ? $user->banks()
                 ->orderBy('name')
                 ->get() : [],
-            'automationRules' => function () use ($user) {
-                if (! $user) {
+            'automationRules' => function () use ($space) {
+                if (! $space) {
                     return [];
                 }
 
-                return $user->automationRules()
+                return $space->automationRules()
                     ->with(['category', 'labels'])
                     ->orderBy('priority')
                     ->get();
             },
-            'labels' => fn () => $user ? $user->labels()
+            'labels' => fn () => $space ? $space->labels()
                 ->orderBy('name')
                 ->get() : [],
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
@@ -179,16 +198,19 @@ class HandleInertiaRequests extends Middleware
             return [
                 'cashflow' => true,
                 'calculateBalancesOnImport' => false,
+                'spaces' => false,
             ];
         }
 
         $features = Feature::for($user)->values([
             CalculateBalancesOnImport::class,
+            Spaces::class,
         ]);
 
         return [
             'cashflow' => true,
             'calculateBalancesOnImport' => $features[CalculateBalancesOnImport::class] !== false,
+            'spaces' => $features[Spaces::class] !== false,
         ];
     }
 

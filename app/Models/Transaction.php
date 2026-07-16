@@ -282,10 +282,10 @@ class Transaction extends Model
                 $realIds = $ids->reject(fn ($id) => $id === 'uncategorized')->values()->all();
 
                 if ($realIds !== []) {
-                    $userId = $filters['user_id'] ?? Category::query()->whereIn('id', $realIds)->value('user_id');
+                    $spaceId = $filters['space_id'] ?? Category::query()->whereIn('id', $realIds)->value('space_id');
 
-                    if ($userId !== null) {
-                        $realIds = app(CategoryTree::class)->expand($userId, $realIds);
+                    if ($spaceId !== null) {
+                        $realIds = app(CategoryTree::class)->expand($spaceId, $realIds);
                     }
                 }
             }

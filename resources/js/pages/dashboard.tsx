@@ -311,21 +311,27 @@ export default function Dashboard() {
                         )}
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {gridAccounts.map((account) => (
-                            <AccountBalanceCard
-                                key={account.id}
-                                account={account}
-                                onBalanceUpdated={refetch}
-                                linkedLoanMetrics={
-                                    linkedLoanMetricsMap[account.id]
-                                }
-                                displayCurrencyCode={
-                                    netWorthEvolution.currency_code
-                                }
-                            />
-                        ))}
-                    </div>
+                    {gridAccounts.length === 0 ? (
+                        <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+                            {__('This space has no accounts yet.')}
+                        </p>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {gridAccounts.map((account) => (
+                                <AccountBalanceCard
+                                    key={account.id}
+                                    account={account}
+                                    onBalanceUpdated={refetch}
+                                    linkedLoanMetrics={
+                                        linkedLoanMetricsMap[account.id]
+                                    }
+                                    displayCurrencyCode={
+                                        netWorthEvolution.currency_code
+                                    }
+                                />
+                            ))}
+                        </div>
+                    )}
 
                     <AccountsManagerDialog
                         open={editOpen}

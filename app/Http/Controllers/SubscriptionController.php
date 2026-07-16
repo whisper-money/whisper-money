@@ -33,7 +33,8 @@ class SubscriptionController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $hasBankConnections = $user->bankingConnections()->exists();
+        $space = $user->activeSpace();
+        $hasBankConnections = $space->bankingConnections()->exists();
         $canUseFreePlan = ! $hasBankConnections && ! $user->hasActiveAiConsent();
 
         // Mark the paywall as seen so the middleware stops redirecting here.
@@ -56,7 +57,8 @@ class SubscriptionController extends Controller
      */
     private function getUserStats(User $user): array
     {
-        $accounts = $user->accounts()->get();
+        $space = $user->activeSpace();
+        $accounts = $space->accounts()->get();
 
         $balancesByCurrency = [];
         foreach ($accounts as $account) {
@@ -74,9 +76,9 @@ class SubscriptionController extends Controller
 
         return [
             'accountsCount' => $accounts->count(),
-            'transactionsCount' => $user->transactions()->count(),
-            'categoriesCount' => $user->categories()->count(),
-            'automationRulesCount' => $user->automationRules()->count(),
+            'transactionsCount' => $space->transactions()->count(),
+            'categoriesCount' => $space->categories()->count(),
+            'automationRulesCount' => $space->automationRules()->count(),
             'balancesByCurrency' => $balancesByCurrency,
         ];
     }

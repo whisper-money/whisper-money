@@ -28,6 +28,7 @@ class CategoryController extends Controller
     public function index(): Response
     {
         $categories = auth()->user()
+            ->activeSpace()
             ->categories()
             ->forDisplay()
             ->get();
@@ -106,7 +107,8 @@ class CategoryController extends Controller
     {
         if (! str_contains($exception->getMessage(), 'categories_user_id_name_unique')
             && ! str_contains($exception->getMessage(), 'categories_user_id_name_active_unique')
-            && ! str_contains($exception->getMessage(), 'categories_user_id_parent_name_active_unique')) {
+            && ! str_contains($exception->getMessage(), 'categories_user_id_parent_name_active_unique')
+            && ! str_contains($exception->getMessage(), 'categories_space_id_parent_name_active_unique')) {
             throw $exception;
         }
 

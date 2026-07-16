@@ -230,7 +230,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      */
     public function activeSpace(): Space
     {
-        if ($this->resolvedActiveSpace !== null) {
+        if ($this->resolvedActiveSpace !== null
+            && $this->resolvedActiveSpace->id === $this->current_space_id) {
             return $this->resolvedActiveSpace;
         }
 

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Sync;
 
 use App\Http\Controllers\Controller;
-use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,8 +14,7 @@ class TransactionSyncController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Transaction::query()
-            ->where('user_id', $request->user()->id);
+        $query = $request->user()->activeSpace()->transactions();
 
         if ($request->has('since')) {
             $query->where('updated_at', '>', $request->input('since'));

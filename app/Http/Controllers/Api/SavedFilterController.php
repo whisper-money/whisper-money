@@ -15,8 +15,8 @@ class SavedFilterController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $savedFilters = SavedFilter::query()
-            ->where('user_id', $request->user()->id)
+        $savedFilters = $request->user()->activeSpace()
+            ->savedFilters()
             ->orderBy('name')
             ->get();
 
@@ -38,7 +38,7 @@ class SavedFilterController extends Controller
 
     public function update(UpdateSavedFilterRequest $request, SavedFilter $savedFilter): JsonResponse
     {
-        abort_unless($savedFilter->user_id === $request->user()->id, 403);
+        abort_unless($savedFilter->space_id === $request->user()->activeSpace()->id, 403);
 
         $savedFilter->update(['filters' => $request->validated('filters')]);
 
@@ -49,7 +49,7 @@ class SavedFilterController extends Controller
 
     public function destroy(Request $request, SavedFilter $savedFilter): JsonResponse
     {
-        abort_unless($savedFilter->user_id === $request->user()->id, 403);
+        abort_unless($savedFilter->space_id === $request->user()->activeSpace()->id, 403);
 
         $savedFilter->delete();
 
@@ -58,7 +58,7 @@ class SavedFilterController extends Controller
 
     public function updateAnalysisDays(Request $request, SavedFilter $savedFilter): JsonResponse
     {
-        abort_unless($savedFilter->user_id === $request->user()->id, 403);
+        abort_unless($savedFilter->space_id === $request->user()->activeSpace()->id, 403);
 
         $validated = $request->validate([
             'analysis_days' => ['nullable', 'integer', 'min:1', 'max:36500'],
@@ -73,7 +73,7 @@ class SavedFilterController extends Controller
 
     public function updateAnalysisMode(Request $request, SavedFilter $savedFilter): JsonResponse
     {
-        abort_unless($savedFilter->user_id === $request->user()->id, 403);
+        abort_unless($savedFilter->space_id === $request->user()->activeSpace()->id, 403);
 
         $validated = $request->validate([
             'analysis_mode' => ['nullable', Rule::enum(AnalysisMode::class)],

@@ -29,8 +29,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        $accounts = Account::query()
-            ->where('user_id', $user->id)
+        $accounts = $user->activeSpace()->accounts()
             ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
             ->orderBy('position')
             ->orderBy('name')
@@ -50,10 +49,11 @@ class AccountController extends Controller
     {
         // ponytail: one update per account; fine for the handful of accounts a
         // user has. Switch to a single CASE update if that ever grows large.
+        $space = $request->user()->activeSpace();
+
         foreach (array_values($request->validated('ids')) as $position => $id) {
-            Account::query()
+            $space->accounts()
                 ->whereKey($id)
-                ->where('user_id', $request->user()->id)
                 ->update(['position' => $position]);
         }
 
@@ -105,7 +105,7 @@ class AccountController extends Controller
             }
 
             // Provide available loan accounts for linking
-            $data['available_loan_accounts'] = $request->user()
+            $data['available_loan_accounts'] = $request->user()->activeSpace()
                 ->accounts()
                 ->where('type', AccountType::Loan->value)
                 ->with('bank')

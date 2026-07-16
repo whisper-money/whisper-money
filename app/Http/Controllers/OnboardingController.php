@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\BankingConnectionStatus;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Bank;
-use App\Models\Category;
-use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,23 +36,22 @@ class OnboardingController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        $space = $user->activeSpace();
 
         $banks = Bank::query()
             ->availableForUser($user)
             ->orderBy('name')
             ->get();
 
-        $accounts = $user->accounts()
+        $accounts = $space->accounts()
             ->with('bank')
             ->get();
 
-        $categories = Category::query()
-            ->where('user_id', $user->id)
+        $categories = $space->categories()
             ->forDisplay()
             ->get();
 
-        $transactions = Transaction::query()
-            ->where('user_id', $user->id)
+        $transactions = $space->transactions()
             ->whereNull('category_id')
             ->with(['account.bank', 'labels'])
             ->orderBy('transaction_date', 'desc')
@@ -77,7 +74,9 @@ class OnboardingController extends Controller
 
     public function syncStatus(Request $request): JsonResponse
     {
-        $pending = $request->user()
+        $space = $request->user()->activeSpace();
+
+        $pending = $space
             ->bankingConnections()
             ->where('status', BankingConnectionStatus::Active)
             ->whereNull('last_synced_at')

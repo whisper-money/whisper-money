@@ -36,7 +36,7 @@ trait HandlesUserOwnership
      */
     public function update(User $user, Model $model): bool
     {
-        return $user->id === $model->getAttribute('user_id');
+        return $this->userCanAccess($user, $model);
     }
 
     /**
@@ -44,7 +44,24 @@ trait HandlesUserOwnership
      */
     public function delete(User $user, Model $model): bool
     {
-        return $user->id === $model->getAttribute('user_id');
+        return $this->userCanAccess($user, $model);
+    }
+
+    /**
+     * A space-owned model is accessible to any member of its space; models that
+     * predate spaces (or child records without a space_id) fall back to the
+     * legacy creator check.
+     */
+    protected function userCanAccess(User $user, Model $model): bool
+    {
+        $spaceId = $model->getAttribute('space_id');
+
+        if ($spaceId === null) {
+            return $user->id === $model->getAttribute('user_id');
+        }
+
+        return $user->current_space_id === $spaceId
+            || $user->accessibleSpaces()->contains('id', $spaceId);
     }
 
     /**
