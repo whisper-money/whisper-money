@@ -264,15 +264,15 @@ class TransactionController extends Controller
             $transaction->save();
         }
 
-        // Move the manual account balance to match an edited amount/date/account.
-        // ponytail: like create/delete, this trusts the opt-in flag and nudges a
-        // single dated snapshot — it does not cascade to later snapshots and keeps
-        // no record of whether creation adjusted the balance. So it is exact for
-        // the common case (recent transaction, flag used consistently) and can
-        // drift otherwise; upgrade to a transaction-derived balance if that drift
-        // ever matters. Connected accounts are skipped inside the adjuster.
+        // Move the manual account balance to match an edited amount/date/account:
+        // strip the pre-edit contribution (exactly as a deletion would) and apply
+        // the new one (exactly as a creation would), both cascading forward.
+        // ponytail: like create/delete, this trusts the opt-in flag and keeps no
+        // record of whether creation adjusted the balance, so mixing the flag
+        // across create and edit can drift; a transaction-derived balance would
+        // remove that trust. Connected accounts are skipped inside the adjuster.
         if ($request->boolean('update_balance') && $transaction->wasChanged(['amount', 'transaction_date', 'account_id'])) {
-            $balanceAdjuster->reverseCreatedTransaction($originalSnapshot);
+            $balanceAdjuster->reverseDeletedTransaction($originalSnapshot);
             $balanceAdjuster->applyCreatedTransaction($transaction->load('account'));
         }
 

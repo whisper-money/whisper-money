@@ -269,7 +269,9 @@ describe('EditTransactionDialog', () => {
         expect(
             screen.getByPlaceholderText('Transaction description'),
         ).toBeInTheDocument();
-        expect(document.querySelector('input[type="date"]')).toBeInTheDocument();
+        expect(
+            document.querySelector('input[type="date"]'),
+        ).toBeInTheDocument();
     });
 
     it('keeps amount and description read-only for an imported transaction', () => {
