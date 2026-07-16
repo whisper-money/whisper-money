@@ -164,5 +164,11 @@ return [
             'allows_primary' => true,
             'allows_account' => true,
         ],
+        [
+            'code' => 'SEK',
+            'name' => 'Swedish Krona',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];

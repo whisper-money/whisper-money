@@ -26,6 +26,7 @@ export function getCurrencySymbol(currencyCode: string): string {
         NZD: 'NZ$',
         DOP: 'RD$',
         NGN: '₦',
+        SEK: 'kr',
     };
     return symbols[currencyCode] || currencyCode;
 }
