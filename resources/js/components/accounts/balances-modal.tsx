@@ -312,7 +312,10 @@ export function BalancesModal({
                                         </TableRow>
                                     ) : (
                                         balances.map((balance) => (
-                                            <TableRow key={balance.id}>
+                                            <TableRow
+                                                key={balance.id}
+                                                className="[&>td]:align-middle"
+                                            >
                                                 <TableCell>
                                                     {formatDate(
                                                         balance.balance_date,
