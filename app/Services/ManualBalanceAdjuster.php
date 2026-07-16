@@ -17,28 +17,7 @@ class ManualBalanceAdjuster
      */
     public function reverseDeletedTransaction(Transaction $transaction): void
     {
-        $account = $transaction->account;
-
-        if ($account === null || $account->isConnected()) {
-            return;
-        }
-
-        $today = Carbon::now()->toDateString();
-
-        $currentBalance = $account->balances()
-            ->where('balance_date', '<=', $today)
-            ->orderByDesc('balance_date')
-            ->value('balance') ?? 0;
-
-        AccountBalance::updateOrCreate(
-            [
-                'account_id' => $account->id,
-                'balance_date' => $today,
-            ],
-            [
-                'balance' => $currentBalance - $transaction->amount,
-            ],
-        );
+        $this->adjust($transaction, Carbon::now()->toDateString(), -$transaction->amount);
     }
 
     /**
@@ -51,26 +30,43 @@ class ManualBalanceAdjuster
      */
     public function applyCreatedTransaction(Transaction $transaction): void
     {
+        $this->adjust($transaction, $transaction->transaction_date->toDateString(), $transaction->amount);
+    }
+
+    /**
+     * Reverse a transaction's effect on its manual account's balance on the
+     * transaction's own date. Pair with applyCreatedTransaction to move the
+     * balance when an existing manual transaction is edited.
+     */
+    public function reverseCreatedTransaction(Transaction $transaction): void
+    {
+        $this->adjust($transaction, $transaction->transaction_date->toDateString(), -$transaction->amount);
+    }
+
+    /**
+     * Nudge the manual account's stored balance on a given date by a delta.
+     * Connected accounts are skipped because their balances come from bank sync.
+     */
+    private function adjust(Transaction $transaction, string $balanceDate, int $delta): void
+    {
         $account = $transaction->account;
 
         if ($account === null || $account->isConnected()) {
             return;
         }
 
-        $transactionDate = $transaction->transaction_date->toDateString();
-
         $baseBalance = $account->balances()
-            ->where('balance_date', '<=', $transactionDate)
+            ->where('balance_date', '<=', $balanceDate)
             ->orderByDesc('balance_date')
             ->value('balance') ?? 0;
 
         AccountBalance::updateOrCreate(
             [
                 'account_id' => $account->id,
-                'balance_date' => $transactionDate,
+                'balance_date' => $balanceDate,
             ],
             [
-                'balance' => $baseBalance + $transaction->amount,
+                'balance' => $baseBalance + $delta,
             ],
         );
     }

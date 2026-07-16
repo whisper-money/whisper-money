@@ -105,6 +105,11 @@ export function EditTransactionDialog({
         return true;
     });
 
+    // Manually created transactions can edit every field (account, date, amount,
+    // description) both on creation and afterwards. Imported ones keep those locked.
+    const canEditAllFields =
+        mode === 'create' || transaction?.source === 'manually_created';
+
     useEffect(() => {
         if (mode === 'edit' && transaction) {
             setTransactionDate(transaction.transaction_date);
@@ -135,7 +140,7 @@ export function EditTransactionDialog({
     }, [mode, transaction, open, accounts, initialAccountId]);
 
     useEffect(() => {
-        if (!open || mode !== 'create') return;
+        if (!open || !canEditAllFields) return;
 
         async function decryptAccountNames() {
             const keyString = getStoredKey();
@@ -185,7 +190,7 @@ export function EditTransactionDialog({
         }
 
         decryptAccountNames();
-    }, [open, mode, accounts]);
+    }, [open, canEditAllFields, accounts]);
 
     async function checkAndApplyAutomationRules() {
         if (mode !== 'create' || automationRules.length === 0) {
@@ -273,7 +278,7 @@ export function EditTransactionDialog({
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
 
-        if (mode === 'create') {
+        if (canEditAllFields) {
             if (!description.trim()) {
                 toast.error(__('Description is required'));
                 return;
@@ -288,14 +293,6 @@ export function EditTransactionDialog({
             }
             if (!transactionDate) {
                 toast.error(__('Date is required'));
-                return;
-            }
-        } else if (
-            mode === 'edit' &&
-            transaction?.source === 'manually_created'
-        ) {
-            if (!description.trim()) {
-                toast.error(__('Description is required'));
                 return;
             }
         }
@@ -423,6 +420,10 @@ export function EditTransactionDialog({
                     description?: string;
                     description_iv?: string | null;
                     label_ids?: string[];
+                    amount?: number;
+                    transaction_date?: string;
+                    account_id?: string;
+                    currency_code?: string;
                 } = {
                     category_id: selectedCategoryId,
                     notes: encryptedNotes,
@@ -433,18 +434,34 @@ export function EditTransactionDialog({
                 let finalDecryptedDescription =
                     transaction.decryptedDescription;
 
-                if (
-                    transaction.source === 'manually_created' &&
-                    trimmedDescription
-                ) {
+                const editedAccount = accounts.find(
+                    (acc) => acc.id === accountId,
+                );
+                const editedCurrencyCode =
+                    editedAccount?.currency_code ?? transaction.currency_code;
+
+                if (canEditAllFields) {
                     updateData.description = trimmedDescription;
                     updateData.description_iv = null;
                     finalDecryptedDescription = trimmedDescription;
+                    updateData.amount = amount;
+                    updateData.transaction_date = transactionDate;
+                    updateData.account_id = accountId;
+                    updateData.currency_code = editedCurrencyCode;
                 }
 
                 const result = await transactionSyncService.update(
                     transaction.id,
                     updateData,
+                    {
+                        // Gate on the transaction being manual, not on the target
+                        // account: the backend adjuster skips connected accounts
+                        // per-account, so this still reverses the old manual
+                        // account when the edit moves it onto a connected one.
+                        updateBalance: canEditAllFields
+                            ? updateAccountBalance
+                            : false,
+                    },
                 );
 
                 const updatedRecord = await transactionSyncService.getById(
@@ -476,6 +493,20 @@ export function EditTransactionDialog({
                     labels: selectedLabels,
                     updated_at:
                         updatedRecord?.updated_at ?? transaction.updated_at,
+                    ...(canEditAllFields
+                        ? {
+                              amount,
+                              transaction_date: transactionDate,
+                              account_id: accountId,
+                              currency_code: editedCurrencyCode,
+                              account: editedAccount ?? transaction.account,
+                              bank: editedAccount?.bank?.id
+                                  ? banks.find(
+                                        (b) => b.id === editedAccount.bank?.id,
+                                    )
+                                  : transaction.bank,
+                          }
+                        : {}),
                 };
 
                 toast.success(__('Transaction updated successfully'));
@@ -549,15 +580,17 @@ export function EditTransactionDialog({
                     <DialogDescription>
                         {mode === 'create'
                             ? __('Create a new transaction.')
-                            : __(
-                                  'Update the category and notes for this transaction.',
-                              )}
+                            : canEditAllFields
+                              ? __('Update this transaction.')
+                              : __(
+                                    'Update the category and notes for this transaction.',
+                                )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4 py-4">
-                        {mode === 'create' && (
+                        {canEditAllFields && (
                             <div className="space-y-2">
                                 <FormLabel htmlFor="account">
                                     {__('Account')}
@@ -597,14 +630,14 @@ export function EditTransactionDialog({
                             <FormLabel
                                 htmlFor="date"
                                 className={
-                                    mode === 'edit'
-                                        ? 'text-sm text-muted-foreground'
-                                        : ''
+                                    canEditAllFields
+                                        ? ''
+                                        : 'text-sm text-muted-foreground'
                                 }
                             >
                                 {__('Date')}
                             </FormLabel>
-                            {mode === 'create' ? (
+                            {canEditAllFields ? (
                                 <Input
                                     id="date"
                                     type="date"
@@ -652,17 +685,14 @@ export function EditTransactionDialog({
                             <FormLabel
                                 htmlFor="description"
                                 className={
-                                    mode === 'edit' &&
-                                    transaction?.source === 'imported'
-                                        ? 'text-sm text-muted-foreground'
-                                        : ''
+                                    canEditAllFields
+                                        ? ''
+                                        : 'text-sm text-muted-foreground'
                                 }
                             >
                                 {__('Description')}
                             </FormLabel>
-                            {mode === 'create' ||
-                            (mode === 'edit' &&
-                                transaction?.source === 'manually_created') ? (
+                            {canEditAllFields ? (
                                 <Textarea
                                     id="description"
                                     value={description}
@@ -736,14 +766,14 @@ export function EditTransactionDialog({
                             <FormLabel
                                 htmlFor="amount"
                                 className={
-                                    mode === 'edit'
-                                        ? 'text-sm text-muted-foreground'
-                                        : ''
+                                    canEditAllFields
+                                        ? ''
+                                        : 'text-sm text-muted-foreground'
                                 }
                             >
                                 {__('Amount')}
                             </FormLabel>
-                            {mode === 'create' ? (
+                            {canEditAllFields ? (
                                 <>
                                     <AmountInput
                                         id="amount"

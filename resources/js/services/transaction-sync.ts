@@ -102,12 +102,14 @@ class TransactionSyncService {
     async update(
         id: string,
         data: TransactionUpdateData,
+        options?: { updateBalance?: boolean },
     ): Promise<UpdatedTransaction> {
         const { label_ids, ...transactionData } = data;
 
         const response = await axios.patch(`/transactions/${id}`, {
             ...transactionData,
             label_ids,
+            ...(options?.updateBalance ? { update_balance: true } : {}),
         });
 
         const serverData = response.data.data || response.data;
