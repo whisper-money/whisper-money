@@ -229,6 +229,95 @@ describe('EditTransactionDialog', () => {
         expect(screen.getByRole('checkbox')).toBeChecked();
     });
 
+    it('lets you edit every field of a manually created transaction', () => {
+        render(
+            <EditTransactionDialog
+                transaction={{
+                    id: 'tx-manual',
+                    user_id: 'user-1',
+                    account_id: 'account-1',
+                    category_id: null,
+                    description: 'Groceries',
+                    description_iv: null,
+                    transaction_date: '2026-05-27',
+                    amount: -1200,
+                    currency_code: 'EUR',
+                    notes: null,
+                    notes_iv: null,
+                    creditor_name: null,
+                    debtor_name: null,
+                    source: 'manually_created',
+                    created_at: '2026-05-27T00:00:00Z',
+                    updated_at: '2026-05-27T00:00:00Z',
+                    decryptedDescription: 'Groceries',
+                    decryptedNotes: null,
+                    label_ids: [],
+                }}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        // Amount, date and description render as editable inputs, not read-only text.
+        expect(screen.getByPlaceholderText('25.00')).toBeInTheDocument();
+        expect(
+            screen.getByPlaceholderText('Transaction description'),
+        ).toBeInTheDocument();
+        expect(
+            document.querySelector('input[type="date"]'),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps amount and description read-only for an imported transaction', () => {
+        render(
+            <EditTransactionDialog
+                transaction={{
+                    id: 'tx-imported',
+                    user_id: 'user-1',
+                    account_id: 'account-1',
+                    category_id: null,
+                    description: 'Card payment',
+                    description_iv: null,
+                    transaction_date: '2026-05-27',
+                    amount: -1200,
+                    currency_code: 'EUR',
+                    notes: null,
+                    notes_iv: null,
+                    creditor_name: null,
+                    debtor_name: null,
+                    source: 'imported',
+                    created_at: '2026-05-27T00:00:00Z',
+                    updated_at: '2026-05-27T00:00:00Z',
+                    decryptedDescription: 'Card payment',
+                    decryptedNotes: null,
+                    label_ids: [],
+                }}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(screen.queryByPlaceholderText('25.00')).not.toBeInTheDocument();
+        expect(
+            screen.queryByPlaceholderText('Transaction description'),
+        ).not.toBeInTheDocument();
+        expect(
+            document.querySelector('input[type="date"]'),
+        ).not.toBeInTheDocument();
+    });
+
     it('hides "update account balance" for a connected account', () => {
         const connectedAccount = {
             ...checkingAccount,

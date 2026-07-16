@@ -213,7 +213,7 @@ class TransactionController extends Controller
         ], 201);
     }
 
-    public function update(UpdateTransactionRequest $request, Transaction $transaction): JsonResponse
+    public function update(UpdateTransactionRequest $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
     {
         $this->authorize('update', $transaction);
 
@@ -238,6 +238,10 @@ class TransactionController extends Controller
             }
         }
 
+        // Snapshot the pre-edit account/date/amount before filling, so a manual
+        // account balance can be moved off the old values if the edit changes them.
+        $originalSnapshot = clone $transaction;
+
         // Update attributes directly without firing events yet
         if (! empty($data)) {
             $transaction->fill($data);
@@ -258,6 +262,18 @@ class TransactionController extends Controller
                 $transaction->touch();
             }
             $transaction->save();
+        }
+
+        // Move the manual account balance to match an edited amount/date/account:
+        // strip the pre-edit contribution (exactly as a deletion would) and apply
+        // the new one (exactly as a creation would), both cascading forward.
+        // ponytail: like create/delete, this trusts the opt-in flag and keeps no
+        // record of whether creation adjusted the balance, so mixing the flag
+        // across create and edit can drift; a transaction-derived balance would
+        // remove that trust. Connected accounts are skipped inside the adjuster.
+        if ($request->boolean('update_balance') && $transaction->wasChanged(['amount', 'transaction_date', 'account_id'])) {
+            $balanceAdjuster->reverseDeletedTransaction($originalSnapshot);
+            $balanceAdjuster->applyCreatedTransaction($transaction->load('account'));
         }
 
         return response()->json([

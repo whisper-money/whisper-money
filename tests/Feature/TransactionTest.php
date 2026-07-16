@@ -202,6 +202,66 @@ test('notes_iv must be exactly 16 characters', function () {
     $response->assertJsonValidationErrors(['notes_iv']);
 });
 
+test('users can edit the amount, date and account of a manually created transaction', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'USD']);
+    $otherAccount = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 2500,
+        'transaction_date' => '2026-01-01',
+        'currency_code' => 'USD',
+        'source' => 'manually_created',
+    ]);
+
+    $response = actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'description' => 'updated_description',
+        'amount' => 9900,
+        'transaction_date' => '2026-02-15',
+        'account_id' => $otherAccount->id,
+        'currency_code' => 'EUR',
+    ]);
+
+    $response->assertSuccessful();
+    $this->assertDatabaseHas('transactions', [
+        'id' => $transaction->id,
+        'description' => 'updated_description',
+        'amount' => 9900,
+        'transaction_date' => '2026-02-15',
+        'account_id' => $otherAccount->id,
+        'currency_code' => 'EUR',
+    ]);
+});
+
+test('users cannot edit the amount, date or account of an imported transaction', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $otherAccount = Account::factory()->create(['user_id' => $user->id]);
+
+    $transaction = Transaction::factory()->imported()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 2500,
+        'transaction_date' => '2026-01-01',
+    ]);
+
+    $response = actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'amount' => 9900,
+        'transaction_date' => '2026-02-15',
+        'account_id' => $otherAccount->id,
+    ]);
+
+    $response->assertSuccessful();
+    $this->assertDatabaseHas('transactions', [
+        'id' => $transaction->id,
+        'amount' => 2500,
+        'transaction_date' => '2026-01-01',
+        'account_id' => $account->id,
+    ]);
+});
+
 test('users can soft delete their own transactions', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
@@ -511,6 +571,154 @@ test('creating a connected account transaction never changes the balance', funct
     ])->assertCreated();
 
     $this->assertDatabaseCount('account_balances', 1);
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 100000,
+    ]);
+});
+
+test('editing a manual transaction amount moves the balance by the delta when requested', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    // Balance already reflects the transaction's original 2500 amount (100000 base + 2500).
+    $account->balances()->create([
+        'balance_date' => '2025-11-11',
+        'balance' => 102500,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 2500,
+        'transaction_date' => '2025-11-11',
+        'source' => 'manually_created',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'amount' => 5000,
+        'update_balance' => true,
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 105000,
+    ]);
+});
+
+test('editing a manual transaction amount does not change the balance when not requested', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => '2025-11-11',
+        'balance' => 102500,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 2500,
+        'transaction_date' => '2025-11-11',
+        'source' => 'manually_created',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'amount' => 5000,
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 102500,
+    ]);
+});
+
+test('moving a manual transaction between accounts reverses the old balance and credits the new one', function () {
+    $user = User::factory()->onboarded()->create();
+    $fromAccount = Account::factory()->create(['user_id' => $user->id]);
+    $toAccount = Account::factory()->create(['user_id' => $user->id]);
+
+    // Origin balance embeds the transaction's 2500; destination starts flat.
+    $fromAccount->balances()->create(['balance_date' => '2025-11-11', 'balance' => 102500]);
+    $toAccount->balances()->create(['balance_date' => '2025-11-11', 'balance' => 50000]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $fromAccount->id,
+        'amount' => 2500,
+        'transaction_date' => '2025-11-11',
+        'source' => 'manually_created',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'account_id' => $toAccount->id,
+        'update_balance' => true,
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $fromAccount->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 100000,
+    ]);
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $toAccount->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 52500,
+    ]);
+});
+
+test('editing only the currency of a manual transaction does not change the balance', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create(['balance_date' => '2025-11-11', 'balance' => 102500]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 2500,
+        'transaction_date' => '2025-11-11',
+        'currency_code' => 'USD',
+        'source' => 'manually_created',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'currency_code' => 'EUR',
+        'update_balance' => true,
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 102500,
+    ]);
+});
+
+test('editing a connected account transaction never changes the balance', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->connected()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => '2025-11-11',
+        'balance' => 100000,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 2500,
+        'transaction_date' => '2025-11-11',
+        'source' => 'manually_created',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'amount' => 5000,
+        'update_balance' => true,
+    ])->assertSuccessful();
+
     $this->assertDatabaseHas('account_balances', [
         'account_id' => $account->id,
         'balance_date' => '2025-11-11',
