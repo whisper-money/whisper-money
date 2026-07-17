@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Pennant\Concerns\HasFeatures;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property ?Carbon $last_logged_in_at
@@ -36,7 +37,7 @@ use Laravel\Pennant\Concerns\HasFeatures;
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use Billable, HasFactory, HasFeatures, HasUuids, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+    use Billable, HasApiTokens, HasFactory, HasFeatures, HasUuids, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.

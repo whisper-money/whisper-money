@@ -2,6 +2,7 @@ import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
+import { index as mcpIndex } from '@/actions/App/Http/Controllers/Settings/McpTokenController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +64,12 @@ const getNavItems = (
         type: 'nav-item' as const,
         title: 'Labels',
         href: labelsIndex(),
+        icon: null,
+    },
+    {
+        type: 'nav-item' as const,
+        title: 'MCP access',
+        href: mcpIndex(),
         icon: null,
     },
     { type: 'divider' },
