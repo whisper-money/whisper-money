@@ -48,12 +48,17 @@ class McpTokenController extends Controller implements HasMiddleware
 
     /**
      * Create a new MCP token. The plaintext secret is flashed once; only its
-     * hash is stored, so it can never be shown again. Tokens are read-only for
-     * now (the `mcp:write` ability is introduced alongside the write tools).
+     * hash is stored, so it can never be shown again. A "read" token can only
+     * analyse data; a "read_write" token additionally carries `mcp:write`,
+     * unlocking the write tools.
      */
     public function store(StoreMcpTokenRequest $request): RedirectResponse
     {
-        $token = $request->user()->createToken($request->validated('name'), ['mcp:read']);
+        $abilities = $request->validated('scope') === 'read_write'
+            ? ['mcp:read', 'mcp:write']
+            : ['mcp:read'];
+
+        $token = $request->user()->createToken($request->validated('name'), $abilities);
 
         return to_route('mcp.index')->with('mcp_token', $token->plainTextToken);
     }

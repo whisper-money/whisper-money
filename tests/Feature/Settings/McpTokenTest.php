@@ -38,7 +38,7 @@ it('creates a read-only token and flashes the secret once', function () {
     $user = mcpUser();
 
     actingAs($user)
-        ->post(route('mcp.tokens.store'), ['name' => 'Claude Desktop'])
+        ->post(route('mcp.tokens.store'), ['name' => 'Claude Desktop', 'scope' => 'read'])
         ->assertRedirect(route('mcp.index'))
         ->assertSessionHas('mcp_token');
 
@@ -48,10 +48,31 @@ it('creates a read-only token and flashes the secret once', function () {
     expect($token->abilities)->toBe(['mcp:read']);
 });
 
+it('creates a read & write token carrying the mcp:write ability', function () {
+    $user = mcpUser();
+
+    actingAs($user)
+        ->post(route('mcp.tokens.store'), ['name' => 'Claude Code', 'scope' => 'read_write'])
+        ->assertRedirect(route('mcp.index'))
+        ->assertSessionHas('mcp_token');
+
+    expect($user->tokens()->first()->abilities)->toBe(['mcp:read', 'mcp:write']);
+});
+
 it('requires a token name', function () {
     actingAs(mcpUser())
-        ->post(route('mcp.tokens.store'), ['name' => ''])
+        ->post(route('mcp.tokens.store'), ['name' => '', 'scope' => 'read'])
         ->assertSessionHasErrors('name');
+});
+
+it('requires a valid scope', function () {
+    actingAs(mcpUser())
+        ->post(route('mcp.tokens.store'), ['name' => 'Bad', 'scope' => 'admin'])
+        ->assertSessionHasErrors('scope');
+
+    actingAs(mcpUser())
+        ->post(route('mcp.tokens.store'), ['name' => 'Missing'])
+        ->assertSessionHasErrors('scope');
 });
 
 it('lets a free account create a token (gating happens at request time)', function () {
@@ -59,7 +80,7 @@ it('lets a free account create a token (gating happens at request time)', functi
     $user = mcpUser();
 
     actingAs($user)
-        ->post(route('mcp.tokens.store'), ['name' => 'Free'])
+        ->post(route('mcp.tokens.store'), ['name' => 'Free', 'scope' => 'read'])
         ->assertSessionHas('mcp_token');
 
     expect($user->tokens()->count())->toBe(1);

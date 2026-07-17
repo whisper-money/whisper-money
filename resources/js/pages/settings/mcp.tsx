@@ -29,6 +29,13 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { useClipboard } from '@/hooks/use-clipboard';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -67,7 +74,10 @@ export default function Mcp() {
     >().props;
     const [, copy] = useClipboard();
 
-    const form = useForm({ name: '' });
+    const form = useForm<{ name: string; scope: 'read' | 'read_write' }>({
+        name: '',
+        scope: 'read',
+    });
 
     function createToken(event: React.FormEvent) {
         event.preventDefault();
@@ -168,7 +178,7 @@ export default function Mcp() {
                             <CardTitle>{__('Create a token')}</CardTitle>
                             <CardDescription>
                                 {__(
-                                    'Tokens can read and analyse your data, but never change it.',
+                                    'Read-only tokens can analyse your data. Read & write tokens can also create, edit and delete transactions, categories, labels and automation rules.',
                                 )}
                             </CardDescription>
                         </CardHeader>
@@ -190,6 +200,42 @@ export default function Mcp() {
                                         placeholder={__('e.g. Claude Desktop')}
                                         required
                                     />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="token-scope">
+                                        {__('Access')}
+                                    </Label>
+                                    {/* Radix Select renders a hidden native <select> next to the
+                                        trigger; wrap it so the parent's space-y never pushes that
+                                        hidden node below the trigger and breaks the row alignment. */}
+                                    <div className="w-full sm:w-48">
+                                        <Select
+                                            value={form.data.scope}
+                                            onValueChange={(value) =>
+                                                form.setData(
+                                                    'scope',
+                                                    value as
+                                                        | 'read'
+                                                        | 'read_write',
+                                                )
+                                            }
+                                        >
+                                            <SelectTrigger
+                                                id="token-scope"
+                                                className="w-full"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="read">
+                                                    {__('Read only')}
+                                                </SelectItem>
+                                                <SelectItem value="read_write">
+                                                    {__('Read & write')}
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                                 <Button
                                     type="submit"
