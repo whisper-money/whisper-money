@@ -13,6 +13,7 @@ use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Attributes\Version;
+use Laravel\Mcp\Server\Tool;
 
 #[Name('Whisper Money')]
 #[Version('1.0.0')]
@@ -30,7 +31,7 @@ analysing spending, cashflow and net worth.
 MARKDOWN)]
 class WhisperMoneyServer extends Server
 {
-    /** @var array<int, class-string> */
+    /** @var array<int, class-string<Tool>> */
     protected array $tools = [
         SearchTransactions::class,
         SpendingByCategory::class,

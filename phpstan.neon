@@ -23,6 +23,12 @@ parameters:
           path: app/Http/Controllers/*
         - identifier: public.method.unused
           path: app/Http/Controllers/**/*
+        # MCP servers and tools are entry points invoked by laravel/mcp via
+        # reflection, not called from PHP code.
+        - identifier: public.method.unused
+          path: app/Mcp/*
+        - identifier: public.method.unused
+          path: app/Mcp/**/*
         - identifier: public.method.unused
           path: app/Http/Middleware/*
         - identifier: public.property.unused

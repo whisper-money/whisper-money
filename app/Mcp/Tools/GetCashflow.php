@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 class GetCashflow extends McpTool
 {
     /**
-     * @return array<string, JsonSchema>
+     * @return array<string, mixed>
      */
     public function schema(JsonSchema $schema): array
     {

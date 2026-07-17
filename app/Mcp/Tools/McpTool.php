@@ -31,7 +31,7 @@ abstract class McpTool extends Tool
     {
         $user = $request->user();
 
-        if ($user === null) {
+        if (! $user instanceof User) {
             return Response::error('Authentication required.');
         }
 
