@@ -38,7 +38,7 @@ import { Copy, KeyRound, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TokenRow {
-    id: number | string;
+    id: number;
     name: string;
     scope: 'read' | 'read_write';
     created_at: string | null;
@@ -61,8 +61,9 @@ function formatDate(value: string | null): string {
 }
 
 export default function Mcp() {
-    const { tokens, serverUrl, subscribeUrl, newToken, auth } =
-        usePage<SharedData & McpPageProps>().props;
+    const { tokens, serverUrl, subscribeUrl, newToken, auth } = usePage<
+        SharedData & McpPageProps
+    >().props;
     const [, copy] = useClipboard();
 
     const form = useForm({ name: '' });
@@ -103,7 +104,9 @@ export default function Mcp() {
 
                     {!auth.hasProPlan && (
                         <Alert>
-                            <AlertTitle>{__('This is a Pro feature')}</AlertTitle>
+                            <AlertTitle>
+                                {__('This is a Pro feature')}
+                            </AlertTitle>
                             <AlertDescription>
                                 {__(
                                     'You can create a token now, but MCP requests only work on a paid plan.',
@@ -119,7 +122,9 @@ export default function Mcp() {
                     )}
 
                     <Alert variant="destructive">
-                        <AlertTitle>{__('Your data leaves Whisper Money')}</AlertTitle>
+                        <AlertTitle>
+                            {__('Your data leaves Whisper Money')}
+                        </AlertTitle>
                         <AlertDescription>
                             {__(
                                 'The data you query is sent to whichever AI client you connect. Whisper Money cannot control what that client does with it. By connecting, you accept this. Revoke a token at any time to cut off access.',
@@ -130,7 +135,9 @@ export default function Mcp() {
                     {newToken && (
                         <Alert>
                             <KeyRound className="h-4 w-4" />
-                            <AlertTitle>{__('Copy your new token now')}</AlertTitle>
+                            <AlertTitle>
+                                {__('Copy your new token now')}
+                            </AlertTitle>
                             <AlertDescription>
                                 <p className="mb-2">
                                     {__(
@@ -280,8 +287,7 @@ export default function Mcp() {
                                                                         ).url,
                                                                         {},
                                                                         {
-                                                                            preserveScroll:
-                                                                                true,
+                                                                            preserveScroll: true,
                                                                         },
                                                                     )
                                                                 }
@@ -326,8 +332,7 @@ export default function Mcp() {
                                                                             token.id,
                                                                         ).url,
                                                                         {
-                                                                            preserveScroll:
-                                                                                true,
+                                                                            preserveScroll: true,
                                                                         },
                                                                     )
                                                                 }
