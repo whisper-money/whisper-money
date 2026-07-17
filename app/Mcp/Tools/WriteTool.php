@@ -10,6 +10,7 @@ use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -27,6 +28,16 @@ abstract class WriteTool extends McpTool
 {
     protected function respond(Request $request, User $user): Response
     {
+        // OAuth connections (Claude Desktop / ChatGPT) authenticate through the
+        // `api` (Passport) guard and are read-only in this iteration, whatever
+        // scope a client requests: writes need a Claude Code read & write
+        // personal access token. Clamping on the resolving guard keeps the
+        // guarantee server-side instead of trusting the client to request a
+        // narrow scope (Passport always honours the `*` wildcard scope).
+        if (Auth::getDefaultDriver() === 'api') {
+            return Response::error('OAuth connections are read-only. Use a Claude Code read & write token to make changes.');
+        }
+
         if (! $user->tokenCan('mcp:write')) {
             return Response::error('This token is read-only. Create a read & write token to make changes.');
         }
