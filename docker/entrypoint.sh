@@ -109,6 +109,13 @@ chown -R www-data:www-data /app/storage /app/bootstrap/cache
 chmod -R 775 /app/storage /app/bootstrap/cache
 chmod 664 /app/storage/logs/laravel.log
 
+# Passport signing keys must stay private: the recursive chmod above widens them
+# to 775, but league/oauth2-server rejects any mode other than 600/660 and logs a
+# warning on every /oauth/authorize and /mcp/oauth request. Lock them back down.
+if [ -f /app/storage/oauth-private.key ]; then
+    chmod 600 /app/storage/oauth-private.key /app/storage/oauth-public.key
+fi
+
 echo "=== Startup complete, launching services ==="
 
 # Start supervisor
