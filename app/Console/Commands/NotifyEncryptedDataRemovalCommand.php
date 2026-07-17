@@ -39,15 +39,21 @@ class NotifyEncryptedDataRemovalCommand extends Command
      */
     public function handle(): int
     {
-        $users = $this->excludeBilledUsers($this->usersWithLegacyEncryption()->get());
+        $encryptedUsers = $this->usersWithLegacyEncryption()->get();
+
+        // Always report the total scope of legacy encrypted data (soft-deleted users are
+        // excluded by the model's default scope). This is the signal for deciding whether
+        // the browser-side encryption code can finally be removed, independent of who we
+        // actually email below.
+        $this->info("{$encryptedUsers->count()} non-deleted user(s) still have encrypted data.");
+
+        $users = $this->excludeBilledUsers($encryptedUsers);
 
         if ($users->isEmpty()) {
-            $this->info('No users with encrypted data found.');
+            $this->info('No users to warn.');
 
             return self::SUCCESS;
         }
-
-        $this->info("Found {$users->count()} user(s) with encrypted data.");
 
         if ($this->option('dry-run')) {
             $this->renderTable($users);

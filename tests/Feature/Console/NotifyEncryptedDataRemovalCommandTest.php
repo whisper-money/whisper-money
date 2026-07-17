@@ -45,6 +45,39 @@ test('it never warns a subscribed user', function () {
     Queue::assertNotPushed(SendUpdateEmailJob::class);
 });
 
+test('it always reports the total count of non-deleted encrypted users, including subscribed ones', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $subscribed = User::factory()->create();
+    Transaction::factory()->for($subscribed)->create();
+    $subscribed->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $unsubscribed = User::factory()->create();
+    Transaction::factory()->for($unsubscribed)->create();
+
+    $deleted = User::factory()->create();
+    Transaction::factory()->for($deleted)->create();
+    $deleted->delete();
+
+    $clean = User::factory()->create();
+    Transaction::factory()->for($clean)->plaintext()->create();
+
+    // The count spans everyone still holding encrypted data (subscribed included); the
+    // soft-deleted and plaintext users are excluded.
+    artisan('encryption:notify-removal', ['--force' => true])
+        ->expectsOutputToContain('2 non-deleted user(s) still have encrypted data.')
+        ->assertSuccessful();
+
+    // Sending is unchanged: the subscribed user is counted but never emailed.
+    Queue::assertPushed(SendUpdateEmailJob::class, 1);
+    Queue::assertPushed(SendUpdateEmailJob::class, fn (SendUpdateEmailJob $job) => $job->user->is($unsubscribed));
+});
+
 test('it queues on the emails queue', function () {
     $user = User::factory()->create();
     Transaction::factory()->for($user)->create();
