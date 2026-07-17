@@ -56,6 +56,7 @@ interface TokenRow {
 interface McpPageProps {
     tokens: TokenRow[];
     serverUrl: string;
+    oauthUrl: string;
     subscribeUrl: string;
     newToken: string | null;
 }
@@ -69,9 +70,8 @@ function formatDate(value: string | null): string {
 }
 
 export default function Mcp() {
-    const { tokens, serverUrl, subscribeUrl, newToken, auth } = usePage<
-        SharedData & McpPageProps
-    >().props;
+    const { tokens, serverUrl, oauthUrl, subscribeUrl, newToken, auth } =
+        usePage<SharedData & McpPageProps>().props;
     const [, copy] = useClipboard();
 
     const form = useForm<{ name: string; scope: 'read' | 'read_write' }>({
@@ -442,7 +442,26 @@ export default function Mcp() {
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
                                     {__(
-                                        'Coming soon. These apps sign in with OAuth, which we are still building, so a token will not work with them yet. Use Claude Code for now.',
+                                        'These apps sign in instead of using a token. Add a custom connector pointing at the URL below, then approve the connection on the Whisper Money screen that opens. No token needed.',
+                                    )}
+                                </p>
+                                <div className="flex items-center gap-2 pt-1">
+                                    <code className="flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
+                                        {oauthUrl}
+                                    </code>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => copyValue(oauthUrl)}
+                                        aria-label={__('Copy')}
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <p className="pt-1 text-sm text-muted-foreground">
+                                    {__(
+                                        'Connected apps can read and analyse your data, but cannot change it.',
                                     )}
                                 </p>
                             </div>
