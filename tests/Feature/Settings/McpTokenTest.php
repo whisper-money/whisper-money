@@ -1,22 +1,41 @@
 <?php
 
+use App\Features\Mcp;
 use App\Models\User;
+use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
+
+/**
+ * A user with the MCP rollout feature flag enabled.
+ */
+function mcpUser(): User
+{
+    $user = User::factory()->create();
+    Feature::for($user)->activate(Mcp::class);
+
+    return $user;
+}
 
 it('requires authentication to view the MCP page', function () {
     get(route('mcp.index'))->assertRedirect();
 });
 
-it('renders the MCP settings page', function () {
+it('hides the MCP settings page when the feature flag is off', function () {
     actingAs(User::factory()->create())
+        ->get(route('mcp.index'))
+        ->assertNotFound();
+});
+
+it('renders the MCP settings page', function () {
+    actingAs(mcpUser())
         ->get(route('mcp.index'))
         ->assertOk();
 });
 
 it('creates a read-only token and flashes the secret once', function () {
-    $user = User::factory()->create();
+    $user = mcpUser();
 
     actingAs($user)
         ->post(route('mcp.tokens.store'), ['name' => 'Claude Desktop'])
@@ -30,14 +49,14 @@ it('creates a read-only token and flashes the secret once', function () {
 });
 
 it('requires a token name', function () {
-    actingAs(User::factory()->create())
+    actingAs(mcpUser())
         ->post(route('mcp.tokens.store'), ['name' => ''])
         ->assertSessionHasErrors('name');
 });
 
 it('lets a free account create a token (gating happens at request time)', function () {
     config(['subscriptions.enabled' => true]);
-    $user = User::factory()->create();
+    $user = mcpUser();
 
     actingAs($user)
         ->post(route('mcp.tokens.store'), ['name' => 'Free'])
@@ -47,7 +66,7 @@ it('lets a free account create a token (gating happens at request time)', functi
 });
 
 it('revokes a token the user owns', function () {
-    $user = User::factory()->create();
+    $user = mcpUser();
     $token = $user->createToken('X', ['mcp:read'])->accessToken;
 
     actingAs($user)
@@ -58,7 +77,7 @@ it('revokes a token the user owns', function () {
 });
 
 it('cannot revoke another user\'s token', function () {
-    $user = User::factory()->create();
+    $user = mcpUser();
     $other = User::factory()->create();
     $token = $other->createToken('X', ['mcp:read'])->accessToken;
 
@@ -70,7 +89,7 @@ it('cannot revoke another user\'s token', function () {
 });
 
 it('rotates a token, replacing the secret but keeping the scope', function () {
-    $user = User::factory()->create();
+    $user = mcpUser();
     $token = $user->createToken('X', ['mcp:read'])->accessToken;
 
     actingAs($user)

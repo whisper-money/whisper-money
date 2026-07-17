@@ -2258,5 +2258,17 @@
     "This is the only time it is shown. Store it somewhere safe — you won't be able to see it again.": "Es la única vez que se muestra. Guárdalo en un lugar seguro: no podrás verlo de nuevo.",
     "Tokens are read-only: they can analyse your data but never change it.": "Los tokens son de solo lectura: pueden analizar tus datos pero nunca modificarlos.",
     "Rotate this token?": "¿Rotar este token?",
-    "Rotating replaces the secret. Any AI client using the current token will stop working until you reconnect it with the new one.": "Rotar reemplaza el secreto. Cualquier cliente de IA que use el token actual dejará de funcionar hasta que lo reconectes con el nuevo."
+    "Rotating replaces the secret. Any AI client using the current token will stop working until you reconnect it with the new one.": "Rotar reemplaza el secreto. Cualquier cliente de IA que use el token actual dejará de funcionar hasta que lo reconectes con el nuevo.",
+    "AI Connector": "Conector de IA",
+    "You can create a token now, but it only works on a paid plan.": "Puedes crear un token ahora, pero solo funciona con un plan de pago.",
+    "Anything you ask about is sent to the AI app you connect, and we cannot control what it does with your data. Connect one only if you are comfortable with that. You can revoke a token any time to cut off access.": "Todo lo que consultes se envía a la app de IA que conectes, y no podemos controlar qué hace con tus datos. Conéctala solo si te parece bien. Puedes revocar un token cuando quieras para cortar el acceso.",
+    "This is the only time you will see it, so copy it somewhere safe now.": "Es la única vez que lo verás, así que cópialo ahora en un lugar seguro.",
+    "Tokens can read and analyse your data, but never change it.": "Los tokens pueden leer y analizar tus datos, pero nunca modificarlos.",
+    "Rotate a token if it leaks, or revoke it to cut off access.": "Rota un token si se filtra, o revócalo para cortar el acceso.",
+    "Rotating gives you a new secret and cancels the old one. Anything using the current token stops working until you reconnect it with the new secret.": "Al rotar obtienes un secreto nuevo y se cancela el anterior. Lo que use el token actual dejará de funcionar hasta que lo reconectes con el nuevo secreto.",
+    "Anything using this token loses access right away, and you cannot undo it.": "Cualquier cosa que use este token pierde el acceso al instante, y no se puede deshacer.",
+    "Here is your connection URL. Use it with a token you created above.": "Esta es tu URL de conexión. Úsala con un token que hayas creado arriba.",
+    "Run this, using one of your tokens in place of <token>.": "Ejecuta esto, usando uno de tus tokens en lugar de <token>.",
+    "Claude Desktop & ChatGPT": "Claude Desktop y ChatGPT",
+    "Coming soon. These apps sign in with OAuth, which we are still building, so a token will not work with them yet. Use Claude Code for now.": "Muy pronto. Estas apps inician sesión con OAuth, que todavía estamos construyendo, así que de momento un token no funciona con ellas. Usa Claude Code por ahora."
 }

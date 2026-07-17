@@ -5,6 +5,7 @@ import {
     store,
 } from '@/actions/App/Http/Controllers/Settings/McpTokenController';
 import HeadingSmall from '@/components/heading-small';
+import { ProBadge } from '@/components/pro-badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
     AlertDialog,
@@ -34,7 +35,7 @@ import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { Copy, KeyRound, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, KeyRound, RefreshCw, ShieldAlert, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TokenRow {
@@ -53,7 +54,7 @@ interface McpPageProps {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'MCP access', href: mcpIndex().url },
+    { title: 'AI Connector', href: mcpIndex().url },
 ];
 
 function formatDate(value: string | null): string {
@@ -86,20 +87,18 @@ export default function Mcp() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={__('MCP access')} />
+            <Head title={__('AI Connector')} />
 
             <SettingsLayout>
                 <div className="space-y-6">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start justify-between gap-4">
                         <HeadingSmall
-                            title={__('MCP access')}
+                            title={__('AI Connector')}
                             description={__(
                                 'Connect Whisper Money to your AI assistant (Claude, ChatGPT) to analyse your finances.',
                             )}
                         />
-                        <Badge variant="secondary" className="tracking-widest">
-                            {__('PRO')}
-                        </Badge>
+                        <ProBadge className="mt-1 shrink-0" />
                     </div>
 
                     {!auth.hasProPlan && (
@@ -109,7 +108,7 @@ export default function Mcp() {
                             </AlertTitle>
                             <AlertDescription>
                                 {__(
-                                    'You can create a token now, but MCP requests only work on a paid plan.',
+                                    'You can create a token now, but it only works on a paid plan.',
                                 )}{' '}
                                 <Link
                                     href={subscribeUrl}
@@ -121,13 +120,14 @@ export default function Mcp() {
                         </Alert>
                     )}
 
-                    <Alert variant="destructive">
+                    <Alert>
+                        <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                         <AlertTitle>
                             {__('Your data leaves Whisper Money')}
                         </AlertTitle>
                         <AlertDescription>
                             {__(
-                                'The data you query is sent to whichever AI client you connect. Whisper Money cannot control what that client does with it. By connecting, you accept this. Revoke a token at any time to cut off access.',
+                                'Anything you ask about is sent to the AI app you connect, and we cannot control what it does with your data. Connect one only if you are comfortable with that. You can revoke a token any time to cut off access.',
                             )}
                         </AlertDescription>
                     </Alert>
@@ -141,7 +141,7 @@ export default function Mcp() {
                             <AlertDescription>
                                 <p className="mb-2">
                                     {__(
-                                        "This is the only time it is shown. Store it somewhere safe — you won't be able to see it again.",
+                                        'This is the only time you will see it, so copy it somewhere safe now.',
                                     )}
                                 </p>
                                 <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export default function Mcp() {
                             <CardTitle>{__('Create a token')}</CardTitle>
                             <CardDescription>
                                 {__(
-                                    'Tokens are read-only: they can analyse your data but never change it.',
+                                    'Tokens can read and analyse your data, but never change it.',
                                 )}
                             </CardDescription>
                         </CardHeader>
@@ -212,7 +212,7 @@ export default function Mcp() {
                             <CardTitle>{__('Your tokens')}</CardTitle>
                             <CardDescription>
                                 {__(
-                                    'Rotate a token to replace a leaked secret, or revoke it to cut off access.',
+                                    'Rotate a token if it leaks, or revoke it to cut off access.',
                                 )}
                             </CardDescription>
                         </CardHeader>
@@ -271,7 +271,7 @@ export default function Mcp() {
                                                             </AlertDialogTitle>
                                                             <AlertDialogDescription>
                                                                 {__(
-                                                                    'Rotating replaces the secret. Any AI client using the current token will stop working until you reconnect it with the new one.',
+                                                                    'Rotating gives you a new secret and cancels the old one. Anything using the current token stops working until you reconnect it with the new secret.',
                                                                 )}
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
@@ -317,7 +317,7 @@ export default function Mcp() {
                                                             </AlertDialogTitle>
                                                             <AlertDialogDescription>
                                                                 {__(
-                                                                    'Any AI client using this token will immediately lose access. This cannot be undone.',
+                                                                    'Anything using this token loses access right away, and you cannot undo it.',
                                                                 )}
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
@@ -356,7 +356,7 @@ export default function Mcp() {
                             <CardTitle>{__('How to connect')}</CardTitle>
                             <CardDescription>
                                 {__(
-                                    'Your MCP server URL is below. Use it with a token you created above.',
+                                    'Here is your connection URL. Use it with a token you created above.',
                                 )}
                             </CardDescription>
                         </CardHeader>
@@ -378,19 +378,13 @@ export default function Mcp() {
 
                             <div className="space-y-1">
                                 <h3 className="text-sm font-medium">
-                                    {__('Claude (web & desktop)')}
+                                    {__('Claude Code')}
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
                                     {__(
-                                        'Settings → Connectors → Add custom connector. Paste the URL above, choose "API key" authentication and paste your token.',
+                                        'Run this, using one of your tokens in place of <token>.',
                                     )}
                                 </p>
-                            </div>
-
-                            <div className="space-y-1">
-                                <h3 className="text-sm font-medium">
-                                    {__('Claude Code')}
-                                </h3>
                                 <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
                                     {`claude mcp add --transport http whisper-money ${serverUrl} --header "Authorization: Bearer <token>"`}
                                 </code>
@@ -398,11 +392,11 @@ export default function Mcp() {
 
                             <div className="space-y-1">
                                 <h3 className="text-sm font-medium">
-                                    {__('ChatGPT')}
+                                    {__('Claude Desktop & ChatGPT')}
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
                                     {__(
-                                        'Enable developer mode, then Settings → Connectors → Create. Paste the URL above and add an "Authorization: Bearer <token>" header.',
+                                        'Coming soon. These apps sign in with OAuth, which we are still building, so a token will not work with them yet. Use Claude Code for now.',
                                     )}
                                 </p>
                             </div>

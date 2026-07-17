@@ -1,6 +1,6 @@
 import HeadingSmall from '@/components/heading-small';
+import { ProBadge } from '@/components/pro-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import AppLayout from '@/layouts/app-layout';
@@ -427,12 +427,7 @@ function AiConsentSection({
                     <h3 className="text-base font-medium">
                         {__('AI Categorization')}
                     </h3>
-                    <Badge
-                        variant="secondary"
-                        className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                    >
-                        PRO
-                    </Badge>
+                    <ProBadge />
                 </div>
                 <p className="text-sm text-muted-foreground">
                     {__(
