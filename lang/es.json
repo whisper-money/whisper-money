@@ -2273,5 +2273,14 @@
     "Here is your connection URL. Use it with a token you created above.": "Esta es tu URL de conexión. Úsala con un token que hayas creado arriba.",
     "Run this, using one of your tokens in place of <token>.": "Ejecuta esto, usando uno de tus tokens en lugar de <token>.",
     "Claude Desktop & ChatGPT": "Claude Desktop y ChatGPT",
-    "Coming soon. These apps sign in with OAuth, which we are still building, so a token will not work with them yet. Use Claude Code for now.": "Muy pronto. Estas apps inician sesión con OAuth, que todavía estamos construyendo, así que de momento un token no funciona con ellas. Usa Claude Code por ahora."
+    "Coming soon. These apps sign in with OAuth, which we are still building, so a token will not work with them yet. Use Claude Code for now.": "Muy pronto. Estas apps inician sesión con OAuth, que todavía estamos construyendo, así que de momento un token no funciona con ellas. Usa Claude Code por ahora.",
+    "Connect to :app": "Conectar con :app",
+    "Connect :client to :app": "Conectar :client con :app",
+    ":client is asking to read and analyse your finance data.": ":client solicita leer y analizar tus datos financieros.",
+    "Signed in as": "Sesión iniciada como",
+    "Sends you back to": "Te devuelve a",
+    "This connection can:": "Esta conexión puede:",
+    "Read and analyse your transactions, balances, categories and spending.": "Leer y analizar tus transacciones, saldos, categorías y gastos.",
+    "It cannot create, edit or delete anything. You can disconnect it at any time from your account settings.": "No puede crear, editar ni eliminar nada. Puedes desconectarla cuando quieras desde los ajustes de tu cuenta.",
+    "Connecting…": "Conectando…"
 }
