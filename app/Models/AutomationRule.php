@@ -69,6 +69,7 @@ class AutomationRule extends Model
         return $this->belongsTo(Category::class, 'action_category_id');
     }
 
+    /** @return BelongsToMany<Label, $this, AutomationRuleLabel, 'pivot'> */
     public function labels(): BelongsToMany
     {
         return $this->belongsToMany(Label::class, 'automation_rule_labels')
