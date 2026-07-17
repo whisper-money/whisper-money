@@ -205,30 +205,37 @@ export default function Mcp() {
                                     <Label htmlFor="token-scope">
                                         {__('Access')}
                                     </Label>
-                                    <Select
-                                        value={form.data.scope}
-                                        onValueChange={(value) =>
-                                            form.setData(
-                                                'scope',
-                                                value as 'read' | 'read_write',
-                                            )
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="token-scope"
-                                            className="w-full sm:w-48"
+                                    {/* Radix Select renders a hidden native <select> next to the
+                                        trigger; wrap it so the parent's space-y never pushes that
+                                        hidden node below the trigger and breaks the row alignment. */}
+                                    <div className="w-full sm:w-48">
+                                        <Select
+                                            value={form.data.scope}
+                                            onValueChange={(value) =>
+                                                form.setData(
+                                                    'scope',
+                                                    value as
+                                                        | 'read'
+                                                        | 'read_write',
+                                                )
+                                            }
                                         >
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="read">
-                                                {__('Read only')}
-                                            </SelectItem>
-                                            <SelectItem value="read_write">
-                                                {__('Read & write')}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                            <SelectTrigger
+                                                id="token-scope"
+                                                className="w-full"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="read">
+                                                    {__('Read only')}
+                                                </SelectItem>
+                                                <SelectItem value="read_write">
+                                                    {__('Read & write')}
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                                 <Button
                                     type="submit"
