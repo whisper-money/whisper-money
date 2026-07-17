@@ -82,6 +82,16 @@ echo "MySQL is ready!"
 echo "Running migrations..."
 php artisan migrate --force
 
+# Ensure Passport signing keys exist (OAuth for MCP connectors). Keys provided
+# via PASSPORT_PRIVATE_KEY/PASSPORT_PUBLIC_KEY env take precedence; otherwise
+# generate them into storage/ (a persisted volume) so issued tokens survive
+# restarts. NOTE: for a multi-instance deployment, provide the keys via env so
+# every instance validates tokens with the same key.
+if [ -z "$PASSPORT_PRIVATE_KEY" ] && [ ! -f /app/storage/oauth-private.key ]; then
+    echo "Generating Passport keys..."
+    php artisan passport:keys --force
+fi
+
 # Cache configuration
 echo "Caching configuration..."
 php artisan config:cache

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -55,5 +56,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('emails', function (object $job): Limit {
             return Limit::perSecond(30);
         });
+
+        // Render the OAuth consent screen (Claude Desktop / ChatGPT connecting
+        // to the MCP server) with our own on-brand Blade view.
+        Passport::authorizationView(fn (array $parameters) => response()->view('mcp.authorize', $parameters));
     }
 }

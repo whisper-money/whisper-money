@@ -10,14 +10,16 @@ use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 
 /**
  * Base for every Whisper Money write tool. On top of the McpTool Pro-plan gate
- * it requires the calling token to carry the `mcp:write` ability, so a
- * read-only token can analyse data but never change it.
+ * it gates write access: OAuth connections (Claude Desktop / ChatGPT) get
+ * read+write, and Sanctum personal access tokens must carry the `mcp:write`
+ * ability, so a read-only PAT can analyse data but never change it.
  *
  * Each concrete write tool must additionally carry the #[IsDestructive]
  * annotation. PHP attributes are not inherited, so the framework only reports
@@ -27,7 +29,13 @@ abstract class WriteTool extends McpTool
 {
     protected function respond(Request $request, User $user): Response
     {
-        if (! $user->tokenCan('mcp:write')) {
+        // Write access is granted to OAuth connections (Claude Desktop /
+        // ChatGPT, resolved via the `api` guard — the user approves the
+        // connection on the consent screen) and to Sanctum personal access
+        // tokens carrying the mcp:write ability. A read-only Sanctum token is
+        // rejected. Bank-connected data stays protected for both (see the
+        // writableAccount / transaction helpers below).
+        if (Auth::getDefaultDriver() !== 'api' && ! $user->tokenCan('mcp:write')) {
             return Response::error('This token is read-only. Create a read & write token to make changes.');
         }
 

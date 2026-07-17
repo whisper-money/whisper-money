@@ -56,6 +56,7 @@ interface TokenRow {
 interface McpPageProps {
     tokens: TokenRow[];
     serverUrl: string;
+    oauthUrl: string;
     subscribeUrl: string;
     newToken: string | null;
 }
@@ -69,9 +70,8 @@ function formatDate(value: string | null): string {
 }
 
 export default function Mcp() {
-    const { tokens, serverUrl, subscribeUrl, newToken, auth } = usePage<
-        SharedData & McpPageProps
-    >().props;
+    const { tokens, serverUrl, oauthUrl, subscribeUrl, newToken, auth } =
+        usePage<SharedData & McpPageProps>().props;
     const [, copy] = useClipboard();
 
     const form = useForm<{ name: string; scope: 'read' | 'read_write' }>({
@@ -402,24 +402,39 @@ export default function Mcp() {
                             <CardTitle>{__('How to connect')}</CardTitle>
                             <CardDescription>
                                 {__(
-                                    'Here is your connection URL. Use it with a token you created above.',
+                                    'Connect your AI assistant using the details for it below.',
                                 )}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="flex items-center gap-2">
-                                <code className="flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
-                                    {serverUrl}
-                                </code>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => copyValue(serverUrl)}
-                                    aria-label={__('Copy')}
-                                >
-                                    <Copy className="h-4 w-4" />
-                                </Button>
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-medium">
+                                    {__('Claude Desktop & ChatGPT')}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {__(
+                                        'These apps sign in instead of using a token. Add a custom connector pointing at the URL below, then approve the connection on the Whisper Money screen that opens. No token needed.',
+                                    )}
+                                </p>
+                                <div className="flex items-center gap-2 pt-1">
+                                    <code className="flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
+                                        {oauthUrl}
+                                    </code>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => copyValue(oauthUrl)}
+                                        aria-label={__('Copy')}
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <p className="pt-1 text-sm text-muted-foreground">
+                                    {__(
+                                        'Connected apps can read, analyse and make changes to your data (bank-connected accounts stay read-only). You approve the connection on the Whisper Money screen.',
+                                    )}
+                                </p>
                             </div>
 
                             <div className="space-y-1">
@@ -434,17 +449,6 @@ export default function Mcp() {
                                 <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
                                     {`claude mcp add --transport http whisper-money ${serverUrl} --header "Authorization: Bearer <token>"`}
                                 </code>
-                            </div>
-
-                            <div className="space-y-1">
-                                <h3 className="text-sm font-medium">
-                                    {__('Claude Desktop & ChatGPT')}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {__(
-                                        'Coming soon. These apps sign in with OAuth, which we are still building, so a token will not work with them yet. Use Claude Code for now.',
-                                    )}
-                                </p>
                             </div>
                         </CardContent>
                     </Card>

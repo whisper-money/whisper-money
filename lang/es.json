@@ -2270,8 +2270,19 @@
     "Rotate a token if it leaks, or revoke it to cut off access.": "Rota un token si se filtra, o revócalo para cortar el acceso.",
     "Rotating gives you a new secret and cancels the old one. Anything using the current token stops working until you reconnect it with the new secret.": "Al rotar obtienes un secreto nuevo y se cancela el anterior. Lo que use el token actual dejará de funcionar hasta que lo reconectes con el nuevo secreto.",
     "Anything using this token loses access right away, and you cannot undo it.": "Cualquier cosa que use este token pierde el acceso al instante, y no se puede deshacer.",
-    "Here is your connection URL. Use it with a token you created above.": "Esta es tu URL de conexión. Úsala con un token que hayas creado arriba.",
+    "Connect your AI assistant using the details for it below.": "Conecta tu asistente de IA usando los datos correspondientes de abajo.",
     "Run this, using one of your tokens in place of <token>.": "Ejecuta esto, usando uno de tus tokens en lugar de <token>.",
     "Claude Desktop & ChatGPT": "Claude Desktop y ChatGPT",
-    "Coming soon. These apps sign in with OAuth, which we are still building, so a token will not work with them yet. Use Claude Code for now.": "Muy pronto. Estas apps inician sesión con OAuth, que todavía estamos construyendo, así que de momento un token no funciona con ellas. Usa Claude Code por ahora."
+    "These apps sign in instead of using a token. Add a custom connector pointing at the URL below, then approve the connection on the Whisper Money screen that opens. No token needed.": "Estas apps inician sesión en lugar de usar un token. Añade un conector personalizado que apunte a la URL de abajo y luego aprueba la conexión en la pantalla de Whisper Money que se abre. No hace falta ningún token.",
+    "Connected apps can read, analyse and make changes to your data (bank-connected accounts stay read-only). You approve the connection on the Whisper Money screen.": "Las apps conectadas pueden leer, analizar y modificar tus datos (las cuentas conectadas a un banco siguen siendo de solo lectura). Tú apruebas la conexión en la pantalla de Whisper Money.",
+    "Connect to :app": "Conectar con :app",
+    "Connect :client to :app": "Conectar :client con :app",
+    ":client is asking to read and make changes to your finance data.": ":client solicita leer y modificar tus datos financieros.",
+    "Signed in as": "Sesión iniciada como",
+    "Sends you back to": "Te devuelve a",
+    "This connection can:": "Esta conexión puede:",
+    "Read and analyse your transactions, balances, categories and spending.": "Leer y analizar tus transacciones, saldos, categorías y gastos.",
+    "Create, edit and delete transactions, categories, labels and automation rules.": "Crear, editar y eliminar transacciones, categorías, etiquetas y reglas de automatización.",
+    "Bank-connected accounts and their transactions stay read-only. You can disconnect it at any time from the connected app.": "Las cuentas conectadas a un banco y sus transacciones siguen siendo de solo lectura. Puedes desconectarla cuando quieras desde la app conectada.",
+    "Connecting…": "Conectando…"
 }

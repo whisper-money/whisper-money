@@ -20,6 +20,7 @@
         "laravel/fortify": "^1.30",
         "laravel/framework": "^13.0",
         "laravel/mcp": "^0.6.7",
+        "laravel/passport": "^13.0",
         "laravel/pennant": "^1.18",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",

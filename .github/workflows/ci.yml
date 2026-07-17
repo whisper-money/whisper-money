@@ -64,6 +64,9 @@ jobs:
       - name: Generate Application Key
         run: php artisan key:generate
 
+      - name: Generate Passport Keys
+        run: php artisan passport:keys --force
+
       - name: Tests
         # --parallel splits the suite across workers via paratest. Each
         # worker creates its own "testing_test_<N>" database; the mysql
@@ -143,6 +146,9 @@ jobs:
 
       - name: Generate Application Key
         run: php artisan key:generate
+
+      - name: Generate Passport Keys
+        run: php artisan passport:keys --force
 
       - name: Browser Tests
         run: ./vendor/bin/pest --testsuite=Browser --ci --shard=${{ matrix.shard }}/6

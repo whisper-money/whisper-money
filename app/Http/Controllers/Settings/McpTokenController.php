@@ -41,6 +41,7 @@ class McpTokenController extends Controller implements HasMiddleware
         return Inertia::render('settings/mcp', [
             'tokens' => $this->tokensFor($request),
             'serverUrl' => url('/mcp'),
+            'oauthUrl' => url('/mcp/oauth'),
             'subscribeUrl' => route('subscribe'),
             'newToken' => $request->session()->get('mcp_token'),
         ]);
