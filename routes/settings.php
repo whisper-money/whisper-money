@@ -8,6 +8,7 @@ use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\ChartColorSchemeController;
 use App\Http\Controllers\Settings\LabelController;
+use App\Http\Controllers\Settings\McpTokenController;
 use App\Http\Controllers\Settings\NetWorthChartLoanPreferenceController;
 use App\Http\Controllers\Settings\NetWorthChartRealEstatePreferenceController;
 use App\Http\Controllers\Settings\NotificationPreferenceController;
@@ -57,6 +58,17 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/labels', [LabelController::class, 'store'])->name('labels.store');
     Route::patch('settings/labels/{label}', [LabelController::class, 'update'])->name('labels.update');
     Route::delete('settings/labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
+
+    Route::get('settings/mcp', [McpTokenController::class, 'index'])->name('mcp.index');
+    Route::post('settings/mcp/tokens', [McpTokenController::class, 'store'])
+        ->middleware('block-demo')
+        ->name('mcp.tokens.store');
+    Route::post('settings/mcp/tokens/{token}/rotate', [McpTokenController::class, 'rotate'])
+        ->middleware('block-demo')
+        ->name('mcp.tokens.rotate');
+    Route::delete('settings/mcp/tokens/{token}', [McpTokenController::class, 'destroy'])
+        ->middleware('block-demo')
+        ->name('mcp.tokens.destroy');
 
     Route::redirect('settings/budgets', '/budgets')->name('budgets.settings');
 
