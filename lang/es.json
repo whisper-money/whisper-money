@@ -2239,6 +2239,8 @@
     "Scope": "Alcance",
     "Read only": "Solo lectura",
     "Read & write": "Lectura y escritura",
+    "Access": "Acceso",
+    "Read-only tokens can analyse your data. Read & write tokens can also create, edit and delete transactions, categories, labels and automation rules.": "Los tokens de solo lectura pueden analizar tus datos. Los tokens de lectura y escritura también pueden crear, editar y eliminar transacciones, categorías, etiquetas y reglas de automatización.",
     "Create token": "Crear token",
     "Your tokens": "Tus tokens",
     "Rotate a token to replace a leaked secret, or revoke it to cut off access.": "Rota un token para reemplazar un secreto filtrado, o revócalo para cortar el acceso.",
