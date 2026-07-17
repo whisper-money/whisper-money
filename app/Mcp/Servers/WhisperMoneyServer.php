@@ -35,8 +35,8 @@ use Laravel\Mcp\Server\Tool;
 #[Version('1.0.0')]
 #[Instructions(<<<'MARKDOWN'
 Access to the authenticated user's Whisper Money finance data, for analysing
-spending, cashflow and net worth — and, with a read & write token, for editing
-that data.
+spending, cashflow and net worth — and, with write access, for editing that
+data.
 
 - All amounts are integers in minor units (cents). Divide by 100 for a display value.
 - Data is organised into "spaces" (the personal space and any shared spaces).

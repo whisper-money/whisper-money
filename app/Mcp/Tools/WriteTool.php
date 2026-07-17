@@ -17,8 +17,9 @@ use Laravel\Mcp\Response;
 
 /**
  * Base for every Whisper Money write tool. On top of the McpTool Pro-plan gate
- * it requires the calling token to carry the `mcp:write` ability, so a
- * read-only token can analyse data but never change it.
+ * it gates write access: OAuth connections (Claude Desktop / ChatGPT) get
+ * read+write, and Sanctum personal access tokens must carry the `mcp:write`
+ * ability, so a read-only PAT can analyse data but never change it.
  *
  * Each concrete write tool must additionally carry the #[IsDestructive]
  * annotation. PHP attributes are not inherited, so the framework only reports
@@ -28,17 +29,13 @@ abstract class WriteTool extends McpTool
 {
     protected function respond(Request $request, User $user): Response
     {
-        // OAuth connections (Claude Desktop / ChatGPT) authenticate through the
-        // `api` (Passport) guard and are read-only in this iteration, whatever
-        // scope a client requests: writes need a Claude Code read & write
-        // personal access token. Clamping on the resolving guard keeps the
-        // guarantee server-side instead of trusting the client to request a
-        // narrow scope (Passport always honours the `*` wildcard scope).
-        if (Auth::getDefaultDriver() === 'api') {
-            return Response::error('OAuth connections are read-only. Use a Claude Code read & write token to make changes.');
-        }
-
-        if (! $user->tokenCan('mcp:write')) {
+        // Write access is granted to OAuth connections (Claude Desktop /
+        // ChatGPT, resolved via the `api` guard — the user approves the
+        // connection on the consent screen) and to Sanctum personal access
+        // tokens carrying the mcp:write ability. A read-only Sanctum token is
+        // rejected. Bank-connected data stays protected for both (see the
+        // writableAccount / transaction helpers below).
+        if (Auth::getDefaultDriver() !== 'api' && ! $user->tokenCan('mcp:write')) {
             return Response::error('This token is read-only. Create a read & write token to make changes.');
         }
 

@@ -64,7 +64,7 @@
                 </h3>
 
                 <p class="text-sm text-muted-foreground text-center">
-                    {{ __(':client is asking to read and analyse your finance data.', ['client' => $client->name]) }}
+                    {{ __(':client is asking to read and make changes to your finance data.', ['client' => $client->name]) }}
                 </p>
             </div>
 
@@ -93,10 +93,18 @@
                                 {{ __('Read and analyse your transactions, balances, categories and spending.') }}
                             </span>
                         </li>
+                        <li class="flex items-start gap-2">
+                            <div class="rounded-full bg-primary/10 p-1 mt-0.5">
+                                <div class="h-1.5 w-1.5 rounded-full bg-primary"></div>
+                            </div>
+                            <span class="text-sm text-muted-foreground">
+                                {{ __('Create, edit and delete transactions, categories, labels and automation rules.') }}
+                            </span>
+                        </li>
                     </ul>
 
                     <p class="text-sm text-muted-foreground pt-1">
-                        {{ __('It cannot create, edit or delete anything. You can disconnect it at any time from the connected app.') }}
+                        {{ __('Bank-connected accounts and their transactions stay read-only. You can disconnect it at any time from the connected app.') }}
                     </p>
                 </div>
             </div>

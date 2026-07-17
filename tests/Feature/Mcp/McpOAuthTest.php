@@ -178,11 +178,11 @@ it('authenticates a full Authorization Code + PKCE flow and serves read tools', 
 
 /*
 |--------------------------------------------------------------------------
-| Read-only guardrail (decision #1: OAuth connections cannot write)
+| Write access over OAuth (Claude Desktop / ChatGPT connections can write)
 |--------------------------------------------------------------------------
 */
 
-it('blocks write tools for an OAuth (read-only) connection and creates no row', function () {
+it('lets an OAuth connection use write tools', function () {
     $user = User::factory()->create();
     $token = issueOAuthToken($user);
 
@@ -197,7 +197,9 @@ it('blocks write tools for an OAuth (read-only) connection and creates no row', 
             ],
         ])
         ->assertOk()
-        ->assertSee('read-only', false);
+        ->assertSee('Groceries', false);
 
-    expect(Label::query()->count())->toBe(0);
+    $label = Label::query()->where('user_id', $user->id)->first();
+    expect($label)->not->toBeNull();
+    expect($label->name)->toBe('Groceries');
 });

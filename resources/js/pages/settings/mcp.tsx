@@ -407,35 +407,6 @@ export default function Mcp() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="flex items-center gap-2">
-                                <code className="flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
-                                    {serverUrl}
-                                </code>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => copyValue(serverUrl)}
-                                    aria-label={__('Copy')}
-                                >
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                            </div>
-
-                            <div className="space-y-1">
-                                <h3 className="text-sm font-medium">
-                                    {__('Claude Code')}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {__(
-                                        'Run this, using one of your tokens in place of <token>.',
-                                    )}
-                                </p>
-                                <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
-                                    {`claude mcp add --transport http whisper-money ${serverUrl} --header "Authorization: Bearer <token>"`}
-                                </code>
-                            </div>
-
                             <div className="space-y-1">
                                 <h3 className="text-sm font-medium">
                                     {__('Claude Desktop & ChatGPT')}
@@ -461,9 +432,23 @@ export default function Mcp() {
                                 </div>
                                 <p className="pt-1 text-sm text-muted-foreground">
                                     {__(
-                                        'Connected apps can read and analyse your data, but cannot change it.',
+                                        'Connected apps can read, analyse and make changes to your data (bank-connected accounts stay read-only). You approve the connection on the Whisper Money screen.',
                                     )}
                                 </p>
+                            </div>
+
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-medium">
+                                    {__('Claude Code')}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {__(
+                                        'Run this, using one of your tokens in place of <token>.',
+                                    )}
+                                </p>
+                                <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
+                                    {`claude mcp add --transport http whisper-money ${serverUrl} --header "Authorization: Bearer <token>"`}
+                                </code>
                             </div>
                         </CardContent>
                     </Card>
