@@ -24,7 +24,6 @@ class StoreMcpTokenRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'scope' => ['required', 'in:read,read_write'],
         ];
     }
 }

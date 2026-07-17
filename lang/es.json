@@ -2255,5 +2255,8 @@
     "Claude Code": "Claude Code",
     "ChatGPT": "ChatGPT",
     "Enable developer mode, then Settings → Connectors → Create. Paste the URL above and add an \"Authorization: Bearer <token>\" header.": "Activa el modo desarrollador, luego Ajustes → Conectores → Crear. Pega la URL de arriba y añade una cabecera «Authorization: Bearer <token>».",
-    "This is the only time it is shown. Store it somewhere safe — you won't be able to see it again.": "Es la única vez que se muestra. Guárdalo en un lugar seguro: no podrás verlo de nuevo."
+    "This is the only time it is shown. Store it somewhere safe — you won't be able to see it again.": "Es la única vez que se muestra. Guárdalo en un lugar seguro: no podrás verlo de nuevo.",
+    "Tokens are read-only: they can analyse your data but never change it.": "Los tokens son de solo lectura: pueden analizar tus datos pero nunca modificarlos.",
+    "Rotate this token?": "¿Rotar este token?",
+    "Rotating replaces the secret. Any AI client using the current token will stop working until you reconnect it with the new one.": "Rotar reemplaza el secreto. Cualquier cliente de IA que use el token actual dejará de funcionar hasta que lo reconectes con el nuevo."
 }

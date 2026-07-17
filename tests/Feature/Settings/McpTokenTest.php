@@ -15,11 +15,11 @@ it('renders the MCP settings page', function () {
         ->assertOk();
 });
 
-it('creates a read-only token by default and flashes the secret once', function () {
+it('creates a read-only token and flashes the secret once', function () {
     $user = User::factory()->create();
 
     actingAs($user)
-        ->post(route('mcp.tokens.store'), ['name' => 'Claude Desktop', 'scope' => 'read'])
+        ->post(route('mcp.tokens.store'), ['name' => 'Claude Desktop'])
         ->assertRedirect(route('mcp.index'))
         ->assertSessionHas('mcp_token');
 
@@ -29,18 +29,10 @@ it('creates a read-only token by default and flashes the secret once', function 
     expect($token->abilities)->toBe(['mcp:read']);
 });
 
-it('creates a read-write token when requested', function () {
-    $user = User::factory()->create();
-
-    actingAs($user)->post(route('mcp.tokens.store'), ['name' => 'CC', 'scope' => 'read_write']);
-
-    expect($user->tokens()->first()->abilities)->toBe(['mcp:read', 'mcp:write']);
-});
-
-it('validates the token scope', function () {
+it('requires a token name', function () {
     actingAs(User::factory()->create())
-        ->post(route('mcp.tokens.store'), ['name' => 'X', 'scope' => 'admin'])
-        ->assertSessionHasErrors('scope');
+        ->post(route('mcp.tokens.store'), ['name' => ''])
+        ->assertSessionHasErrors('name');
 });
 
 it('lets a free account create a token (gating happens at request time)', function () {
@@ -48,7 +40,7 @@ it('lets a free account create a token (gating happens at request time)', functi
     $user = User::factory()->create();
 
     actingAs($user)
-        ->post(route('mcp.tokens.store'), ['name' => 'Free', 'scope' => 'read'])
+        ->post(route('mcp.tokens.store'), ['name' => 'Free'])
         ->assertSessionHas('mcp_token');
 
     expect($user->tokens()->count())->toBe(1);
@@ -79,7 +71,7 @@ it('cannot revoke another user\'s token', function () {
 
 it('rotates a token, replacing the secret but keeping the scope', function () {
     $user = User::factory()->create();
-    $token = $user->createToken('X', ['mcp:read', 'mcp:write'])->accessToken;
+    $token = $user->createToken('X', ['mcp:read'])->accessToken;
 
     actingAs($user)
         ->post(route('mcp.tokens.rotate', $token->id))
@@ -89,5 +81,5 @@ it('rotates a token, replacing the secret but keeping the scope', function () {
 
     expect($tokens)->toHaveCount(1);
     expect($tokens->first()->id)->not->toBe($token->id);
-    expect($tokens->first()->abilities)->toBe(['mcp:read', 'mcp:write']);
+    expect($tokens->first()->abilities)->toBe(['mcp:read']);
 });

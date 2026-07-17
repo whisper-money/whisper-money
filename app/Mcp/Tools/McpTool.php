@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Enums\PlanFeature;
 use App\Models\Space;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -34,7 +35,7 @@ abstract class McpTool extends Tool
             return Response::error('Authentication required.');
         }
 
-        if (! $user->hasProPlan()) {
+        if (! $user->canUseFeature(PlanFeature::McpAccess)) {
             return Response::error(
                 'A paid (Pro) plan is required to use the Whisper Money MCP. Upgrade your account at '.route('subscribe')
             );
@@ -58,8 +59,12 @@ abstract class McpTool extends Tool
      * a synthesized GET request bound to the MCP user, returning its JSON body.
      * Keeps the (user-scoped) dashboard maths in exactly one place.
      *
+     * ponytail: couples to the controllers returning a JsonResponse; acceptable
+     * while they're stable. Extract the orchestration into a shared service if a
+     * controller stops returning JSON or a third tool needs the same maths.
+     *
      * @param  array<string, mixed>  $query
-     * @return array<string, mixed>
+     * @return array<array-key, mixed>
      */
     protected function callController(object $controller, string $method, User $user, array $query): array
     {
@@ -72,6 +77,11 @@ abstract class McpTool extends Tool
     /**
      * The space a tool operates on: the optional `space` argument (validated
      * against the spaces the user can access) or the user's personal space.
+     *
+     * Scoping is by `space_id` only, gated by membership (`accessibleSpaces`): a
+     * space is a shared tenant, so a member is meant to see every row in it. The
+     * security boundary is the membership check here, not a per-row `user_id`
+     * filter.
      */
     protected function resolveSpace(Request $request, User $user): Space
     {

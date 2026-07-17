@@ -28,13 +28,6 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { useClipboard } from '@/hooks/use-clipboard';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -42,7 +35,6 @@ import { type BreadcrumbItem, type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { Copy, KeyRound, RefreshCw, Trash2 } from 'lucide-react';
-import { useEffect } from 'react';
 import { toast } from 'sonner';
 
 interface TokenRow {
@@ -73,19 +65,7 @@ export default function Mcp() {
         usePage<SharedData & McpPageProps>().props;
     const [, copy] = useClipboard();
 
-    const form = useForm({ name: '', scope: 'read' });
-
-    useEffect(() => {
-        if (newToken) {
-            copy(newToken).then((ok) => {
-                if (ok) {
-                    toast.success(__('Token copied to clipboard'));
-                }
-            });
-        }
-        // Only react to a freshly created token.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [newToken]);
+    const form = useForm({ name: '' });
 
     function createToken(event: React.FormEvent) {
         event.preventDefault();
@@ -138,7 +118,7 @@ export default function Mcp() {
                         </Alert>
                     )}
 
-                    <Alert>
+                    <Alert variant="destructive">
                         <AlertTitle>{__('Your data leaves Whisper Money')}</AlertTitle>
                         <AlertDescription>
                             {__(
@@ -181,7 +161,7 @@ export default function Mcp() {
                             <CardTitle>{__('Create a token')}</CardTitle>
                             <CardDescription>
                                 {__(
-                                    'Read-only tokens can only analyse data. Read & write tokens can also create and edit data.',
+                                    'Tokens are read-only: they can analyse your data but never change it.',
                                 )}
                             </CardDescription>
                         </CardHeader>
@@ -203,32 +183,6 @@ export default function Mcp() {
                                         placeholder={__('e.g. Claude Desktop')}
                                         required
                                     />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="token-scope">
-                                        {__('Scope')}
-                                    </Label>
-                                    <Select
-                                        value={form.data.scope}
-                                        onValueChange={(value) =>
-                                            form.setData('scope', value)
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="token-scope"
-                                            className="w-full sm:w-56"
-                                        >
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="read">
-                                                {__('Read only')}
-                                            </SelectItem>
-                                            <SelectItem value="read_write">
-                                                {__('Read & write')}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
                                 </div>
                                 <Button
                                     type="submit"
@@ -291,23 +245,52 @@ export default function Mcp() {
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        router.post(
-                                                            rotate(token.id).url,
-                                                            {},
-                                                            {
-                                                                preserveScroll:
-                                                                    true,
-                                                            },
-                                                        )
-                                                    }
-                                                >
-                                                    <RefreshCw className="h-4 w-4" />
-                                                    {__('Rotate')}
-                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                        >
+                                                            <RefreshCw className="h-4 w-4" />
+                                                            {__('Rotate')}
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>
+                                                                {__(
+                                                                    'Rotate this token?',
+                                                                )}
+                                                            </AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                {__(
+                                                                    'Rotating replaces the secret. Any AI client using the current token will stop working until you reconnect it with the new one.',
+                                                                )}
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>
+                                                                {__('Cancel')}
+                                                            </AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                                onClick={() =>
+                                                                    router.post(
+                                                                        rotate(
+                                                                            token.id,
+                                                                        ).url,
+                                                                        {},
+                                                                        {
+                                                                            preserveScroll:
+                                                                                true,
+                                                                        },
+                                                                    )
+                                                                }
+                                                            >
+                                                                {__('Rotate')}
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <Button

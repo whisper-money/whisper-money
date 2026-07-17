@@ -29,9 +29,7 @@ class ListSpaces extends McpTool
                 'id' => $space->id,
                 'name' => $space->name,
                 'personal' => $space->personal,
-                'is_default' => $space->personal,
                 'is_current' => $space->id === $user->current_space_id,
-                'role' => $space->roleFor($user),
             ]);
 
         return $this->json(['spaces' => $spaces]);

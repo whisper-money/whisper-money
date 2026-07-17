@@ -28,15 +28,12 @@ class McpTokenController extends Controller
 
     /**
      * Create a new MCP token. The plaintext secret is flashed once; only its
-     * hash is stored, so it can never be shown again.
+     * hash is stored, so it can never be shown again. Tokens are read-only for
+     * now (the `mcp:write` ability is introduced alongside the write tools).
      */
     public function store(StoreMcpTokenRequest $request): RedirectResponse
     {
-        $abilities = $request->validated('scope') === 'read_write'
-            ? ['mcp:read', 'mcp:write']
-            : ['mcp:read'];
-
-        $token = $request->user()->createToken($request->validated('name'), $abilities);
+        $token = $request->user()->createToken($request->validated('name'), ['mcp:read']);
 
         return to_route('mcp.index')->with('mcp_token', $token->plainTextToken);
     }
@@ -46,11 +43,7 @@ class McpTokenController extends Controller
      */
     public function destroy(Request $request, PersonalAccessToken $token): RedirectResponse
     {
-        abort_unless(
-            $token->tokenable_id === $request->user()->getKey()
-                && $token->tokenable_type === $request->user()->getMorphClass(),
-            403
-        );
+        $this->authorizeOwnership($request, $token);
 
         $token->delete();
 
@@ -63,16 +56,24 @@ class McpTokenController extends Controller
      */
     public function rotate(Request $request, PersonalAccessToken $token): RedirectResponse
     {
-        abort_unless(
-            $token->tokenable_id === $request->user()->getKey()
-                && $token->tokenable_type === $request->user()->getMorphClass(),
-            403
-        );
+        $this->authorizeOwnership($request, $token);
 
         $fresh = $request->user()->createToken($token->name, $token->abilities);
         $token->delete();
 
         return to_route('mcp.index')->with('mcp_token', $fresh->plainTextToken);
+    }
+
+    /**
+     * Ensure the token belongs to the requesting user before mutating it.
+     */
+    private function authorizeOwnership(Request $request, PersonalAccessToken $token): void
+    {
+        abort_unless(
+            $token->tokenable_id === $request->user()->getKey()
+                && $token->tokenable_type === $request->user()->getMorphClass(),
+            403
+        );
     }
 
     /**
