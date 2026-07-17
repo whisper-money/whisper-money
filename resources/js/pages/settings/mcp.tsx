@@ -402,7 +402,7 @@ export default function Mcp() {
                             <CardTitle>{__('How to connect')}</CardTitle>
                             <CardDescription>
                                 {__(
-                                    'Here is your connection URL. Use it with a token you created above.',
+                                    'Connect your AI assistant using the details for it below.',
                                 )}
                             </CardDescription>
                         </CardHeader>
