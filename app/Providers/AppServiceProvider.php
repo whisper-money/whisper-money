@@ -59,6 +59,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Render the OAuth consent screen (Claude Desktop / ChatGPT connecting
         // to the MCP server) with our own on-brand Blade view.
-        Passport::authorizationView(fn (array $parameters) => view('mcp.authorize', $parameters));
+        Passport::authorizationView(fn (array $parameters) => response()->view('mcp.authorize', $parameters));
     }
 }
