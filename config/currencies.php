@@ -176,5 +176,11 @@ return [
             'allows_primary' => true,
             'allows_account' => true,
         ],
+        [
+            'code' => 'HKD',
+            'name' => 'Hong Kong Dollar',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];
