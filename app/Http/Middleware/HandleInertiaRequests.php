@@ -6,6 +6,7 @@ use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
 use App\Features\Mcp;
+use App\Features\PriceExperiment;
 use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
@@ -68,6 +69,18 @@ class HandleInertiaRequests extends Middleware
         // idempotent, so dispatching it on repeat requests is harmless.
         if (! $request->is('api/*') && $user?->encryption_salt !== null && ! $hasEncryptedAccounts && ! $hasEncryptedTransactions) {
             PurgeResidualEncryptionArtifactsJob::dispatch($user);
+        }
+
+        // Warm every Pennant feature this response reads in a single round-trip, so
+        // the per-feature reads below (the price-experiment pricing variant and the
+        // feature flags) hit Pennant's in-memory cache instead of each issuing its
+        // own select + insert.
+        if ($user) {
+            Feature::for($user)->values([
+                CalculateBalancesOnImport::class,
+                Mcp::class,
+                PriceExperiment::class,
+            ]);
         }
 
         return [
