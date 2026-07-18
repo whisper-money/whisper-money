@@ -31,7 +31,6 @@ export function PlanCard({
     currency,
     locale,
 }: {
-    planKey: string;
     plan: Plan;
     isSelected: boolean;
     onSelect: () => void;
@@ -123,7 +122,6 @@ export function UpgradeDialog({
                     {planEntries.map(([key, plan]) => (
                         <PlanCard
                             key={key}
-                            planKey={key}
                             plan={plan}
                             isSelected={key === selectedPlan}
                             onSelect={() => setSelectedPlan(key)}

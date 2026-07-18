@@ -139,7 +139,6 @@ function UpgradeSection({
                     {planEntries.map(([key, plan]) => (
                         <PlanCard
                             key={key}
-                            planKey={key}
                             plan={plan}
                             isSelected={key === selectedPlan}
                             onSelect={() => setSelectedPlan(key)}
