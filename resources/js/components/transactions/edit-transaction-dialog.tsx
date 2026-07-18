@@ -879,7 +879,7 @@ export function EditTransactionDialog({
                                     onDelete(transaction);
                                 }}
                                 disabled={isSubmitting}
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto dark:hover:bg-destructive/20"
                             >
                                 <Trash2 />
                                 {__('Delete')}
