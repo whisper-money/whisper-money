@@ -3,6 +3,14 @@ import { ProBadge } from '@/components/pro-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { cn } from '@/lib/utils';
@@ -389,17 +397,96 @@ function SubscribedSection({
     );
 }
 
+function AiUpgradeDialog({
+    open,
+    onOpenChange,
+    planEntries,
+    defaultPlan,
+    currency,
+    locale,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    planEntries: [string, Plan][];
+    defaultPlan: string;
+    currency: string;
+    locale: string;
+}) {
+    const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>
+                        {__('AI categorization is a paid feature')}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {__(
+                            'Subscribe to a plan to let AI categorize your transactions automatically. You can enable AI right after subscribing.',
+                        )}
+                    </DialogDescription>
+                </DialogHeader>
+
+                {/* ponytail: plan cards + checkout button mirror UpgradeSection;
+                    PlanCard is the shared unit — not worth a further abstraction
+                    for two call sites. Extract a PlanPicker only if paywall.tsx's
+                    third copy is unified too. */}
+                <div className="flex gap-3">
+                    {planEntries.map(([key, plan]) => (
+                        <PlanCard
+                            key={key}
+                            planKey={key}
+                            plan={plan}
+                            isSelected={key === selectedPlan}
+                            onSelect={() => setSelectedPlan(key)}
+                            currency={currency}
+                            locale={locale}
+                        />
+                    ))}
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        {__('Maybe later')}
+                    </Button>
+                    <a href={checkout.url({ query: { plan: selectedPlan } })}>
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700">
+                            <ZapIcon className="size-4" />
+                            {__('Upgrade to Standard Plan')}
+                        </Button>
+                    </a>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function AiConsentSection({
     initialConsent,
     hasProPlan,
+    onUpgradeNeeded,
 }: {
     initialConsent: boolean;
     hasProPlan: boolean;
+    onUpgradeNeeded: () => void;
 }) {
     const [consented, setConsented] = useState(initialConsent);
     const [saving, setSaving] = useState(false);
 
     const handleToggle = async (checked: boolean) => {
+        // Free users can't enable AI directly — it needs a paid plan. Prompt
+        // them to subscribe instead of recording consent (which would silently
+        // lock them behind the paywall on the next navigation).
+        if (checked && !hasProPlan) {
+            onUpgradeNeeded();
+            return;
+        }
+
         setSaving(true);
         try {
             if (checked) {
@@ -457,14 +544,6 @@ function AiConsentSection({
                         </p>
                     </div>
                 </label>
-
-                {!hasProPlan && (
-                    <p className="mt-3 border-t pt-3 text-sm text-amber-600 dark:text-amber-400">
-                        {__(
-                            'You can give consent now, but AI categorization only runs while you have a paid plan.',
-                        )}
-                    </p>
-                )}
             </div>
         </div>
     );
@@ -478,6 +557,7 @@ export default function Billing() {
     const hasProPlan = auth?.hasProPlan ?? false;
     const planEntries = Object.entries(pricing.plans);
     const defaultPlan = pricing.plans[pricing.defaultPlan];
+    const [showAiUpgrade, setShowAiUpgrade] = useState(false);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -505,7 +585,19 @@ export default function Billing() {
                     <AiConsentSection
                         initialConsent={hasAiConsent}
                         hasProPlan={hasProPlan}
+                        onUpgradeNeeded={() => setShowAiUpgrade(true)}
                     />
+
+                    {!hasProPlan && (
+                        <AiUpgradeDialog
+                            open={showAiUpgrade}
+                            onOpenChange={setShowAiUpgrade}
+                            planEntries={planEntries}
+                            defaultPlan={pricing.defaultPlan}
+                            currency={pricing.currency}
+                            locale={locale}
+                        />
+                    )}
                 </div>
             </SettingsLayout>
         </AppLayout>
