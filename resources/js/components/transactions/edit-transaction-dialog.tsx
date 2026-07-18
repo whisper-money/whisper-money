@@ -42,6 +42,7 @@ import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
+import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -61,6 +62,7 @@ interface EditTransactionDialogProps {
         source: 'edit_transaction_modal',
     ) => void;
     onLabelCreated?: (label: Label) => void;
+    onDelete?: (transaction: DecryptedTransaction) => void;
     mode: 'create' | 'edit';
     initialAccountId?: string | null;
 }
@@ -77,6 +79,7 @@ export function EditTransactionDialog({
     onSuccess,
     onCategorized,
     onLabelCreated,
+    onDelete,
     mode,
     initialAccountId = null,
 }: EditTransactionDialogProps) {
@@ -867,6 +870,21 @@ export function EditTransactionDialog({
                     </div>
 
                     <DialogFooter>
+                        {mode === 'edit' && onDelete && transaction && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => {
+                                    onOpenChange(false);
+                                    onDelete(transaction);
+                                }}
+                                disabled={isSubmitting}
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto dark:hover:bg-destructive/20"
+                            >
+                                <Trash2 />
+                                {__('Delete')}
+                            </Button>
+                        )}
                         <Button
                             type="button"
                             variant="outline"

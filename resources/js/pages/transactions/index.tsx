@@ -1542,6 +1542,7 @@ export default function Transactions({
                 onSuccess={updateTransaction}
                 onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
+                onDelete={setDeleteTransaction}
                 mode="edit"
             />
 
