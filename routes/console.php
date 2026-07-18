@@ -14,3 +14,4 @@ Schedule::command('stats:daily-report')->dailyAt('09:00')->timezone('Europe/Madr
 Schedule::command('stats:ai-cohort-report')->monthlyOn(1, '09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:subscription-funnel')->weekly()->mondays()->at('09:15')->timezone('Europe/Madrid');
 Schedule::command('stats:experiment-funnel')->weekly()->mondays()->at('09:30')->timezone('Europe/Madrid');
+Schedule::command('stats:price-experiment-funnel')->weekly()->mondays()->at('09:45')->timezone('Europe/Madrid');
