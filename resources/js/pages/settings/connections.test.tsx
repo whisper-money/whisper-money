@@ -57,8 +57,8 @@ vi.mock('@/components/open-banking/update-credentials-dialog', () => ({
     UpdateCredentialsDialog: () => null,
 }));
 
-vi.mock('@/components/open-banking/upgrade-connection-dialog', () => ({
-    UpgradeConnectionDialog: () => null,
+vi.mock('@/components/subscription/upgrade-dialog', () => ({
+    UpgradeDialog: () => null,
 }));
 
 vi.mock('@/components/open-banking/connection-status-badge', () => ({

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Subscription\RefundSelfServe;
+use App\Enums\UpsellSource;
 use App\Features\SubscriptionExperiment;
 use App\Models\User;
 use App\Models\UserLead;
@@ -85,6 +86,14 @@ class SubscriptionController extends Controller
         $trialDays = $this->experimentOffer->trialDaysFor($request->user(), $planKey);
         if ($trialDays > 0) {
             $subscriptionBuilder->trialDays($trialDays);
+        }
+
+        // Attribute revenue to the upsell point the checkout started from. The
+        // value rides along as Stripe subscription metadata and is persisted
+        // locally when the subscription webhook lands (see
+        // PersistUpsellSourceFromStripe).
+        if ($source = UpsellSource::tryFrom((string) $request->query('source', ''))) {
+            $subscriptionBuilder->withMetadata(['upsell_source' => $source->value]);
         }
 
         return $subscriptionBuilder->checkout([

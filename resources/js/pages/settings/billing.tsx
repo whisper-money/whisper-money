@@ -1,19 +1,14 @@
 import HeadingSmall from '@/components/heading-small';
 import { ProBadge } from '@/components/pro-badge';
+import {
+    PlanCard,
+    UpgradeDialog,
+} from '@/components/subscription/upgrade-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { cn } from '@/lib/utils';
 import {
     destroy as revokeConsent,
     store as storeConsent,
@@ -105,71 +100,6 @@ function BenefitsGrid() {
                 </div>
             ))}
         </div>
-    );
-}
-
-function PlanCard({
-    plan,
-    isSelected,
-    onSelect,
-    currency,
-    locale,
-}: {
-    planKey: string;
-    plan: Plan;
-    isSelected: boolean;
-    onSelect: () => void;
-    currency: string;
-    locale: string;
-}) {
-    const savingsPercent =
-        plan.original_price && plan.billing_period === 'year'
-            ? Math.round(
-                  ((plan.original_price - plan.price) / plan.original_price) *
-                      100,
-              )
-            : null;
-    const monthlyEquivalent =
-        plan.billing_period === 'year' ? plan.price / 12 : plan.price;
-
-    return (
-        <button
-            type="button"
-            onClick={onSelect}
-            className={cn(
-                'flex flex-1 flex-col rounded-lg border p-3 text-left transition-all',
-                isSelected
-                    ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 dark:bg-emerald-950/30'
-                    : 'border-border bg-card hover:border-muted-foreground/50',
-            )}
-        >
-            <div className="flex items-center gap-2">
-                <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    {plan.billing_period === 'year'
-                        ? __('Annual')
-                        : __('Monthly')}
-                </span>
-                {savingsPercent && savingsPercent > 0 && (
-                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        {__('Saving')} {savingsPercent}%
-                    </span>
-                )}
-            </div>
-            <div className="mt-1 flex items-baseline gap-1">
-                <span className="text-xl font-bold">
-                    {formatCurrency(monthlyEquivalent * 100, currency, locale)}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                    {__('/month')}
-                </span>
-            </div>
-            {plan.billing_period === 'year' && (
-                <span className="mt-2 text-xs text-muted-foreground">
-                    {__('Billed annually at')}{' '}
-                    {formatCurrency(plan.price * 100, currency, locale)}
-                </span>
-            )}
-        </button>
     );
 }
 
@@ -397,75 +327,6 @@ function SubscribedSection({
     );
 }
 
-function AiUpgradeDialog({
-    open,
-    onOpenChange,
-    planEntries,
-    defaultPlan,
-    currency,
-    locale,
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    planEntries: [string, Plan][];
-    defaultPlan: string;
-    currency: string;
-    locale: string;
-}) {
-    const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>
-                        {__('AI categorization is a paid feature')}
-                    </DialogTitle>
-                    <DialogDescription>
-                        {__(
-                            'Subscribe to a plan to let AI categorize your transactions automatically. You can enable AI right after subscribing.',
-                        )}
-                    </DialogDescription>
-                </DialogHeader>
-
-                {/* ponytail: plan cards + checkout button mirror UpgradeSection;
-                    PlanCard is the shared unit — not worth a further abstraction
-                    for two call sites. Extract a PlanPicker only if paywall.tsx's
-                    third copy is unified too. */}
-                <div className="flex gap-3">
-                    {planEntries.map(([key, plan]) => (
-                        <PlanCard
-                            key={key}
-                            planKey={key}
-                            plan={plan}
-                            isSelected={key === selectedPlan}
-                            onSelect={() => setSelectedPlan(key)}
-                            currency={currency}
-                            locale={locale}
-                        />
-                    ))}
-                </div>
-
-                <DialogFooter>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                    >
-                        {__('Maybe later')}
-                    </Button>
-                    <a href={checkout.url({ query: { plan: selectedPlan } })}>
-                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700">
-                            <ZapIcon className="size-4" />
-                            {__('Upgrade to Standard Plan')}
-                        </Button>
-                    </a>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 function AiConsentSection({
     initialConsent,
     hasProPlan,
@@ -589,13 +450,14 @@ export default function Billing() {
                     />
 
                     {!hasProPlan && (
-                        <AiUpgradeDialog
+                        <UpgradeDialog
                             open={showAiUpgrade}
                             onOpenChange={setShowAiUpgrade}
-                            planEntries={planEntries}
-                            defaultPlan={pricing.defaultPlan}
-                            currency={pricing.currency}
-                            locale={locale}
+                            title={__('AI categorization is a paid feature')}
+                            description={__(
+                                'Subscribe to a plan to let AI categorize your transactions automatically. You can enable AI right after subscribing.',
+                            )}
+                            source="ai_categorization"
                         />
                     )}
                 </div>
