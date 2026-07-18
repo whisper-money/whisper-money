@@ -1,3 +1,4 @@
+import { SupportDialog } from '@/components/support-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCountUp } from '@/hooks/use-count-up';
@@ -15,6 +16,7 @@ import {
     CheckIcon,
     FolderIcon,
     LandmarkIcon,
+    LifeBuoy,
     LockIcon,
     PiggyBankIcon,
     ReceiptIcon,
@@ -363,8 +365,10 @@ function PricingSection({
     canManageConnectionsForFreePlan: boolean;
     offer: ExperimentOffer;
 }) {
+    const { auth } = usePage<SharedData>().props;
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
-    const [freeButtonVisible, setFreeButtonVisible] = useState(false);
+    const [escapeVisible, setEscapeVisible] = useState(false);
+    const [supportOpen, setSupportOpen] = useState(false);
     const locale = useLocale();
 
     const selectedPlanData = planEntries.find(
@@ -376,25 +380,23 @@ function PricingSection({
         : '';
 
     useEffect(() => {
-        if (!canUseFreePlan) {
-            return;
-        }
-        const timer = setTimeout(() => setFreeButtonVisible(true), 5000);
+        const delay = canUseFreePlan ? 5000 : 7000;
+        const timer = setTimeout(() => setEscapeVisible(true), delay);
         return () => clearTimeout(timer);
     }, [canUseFreePlan]);
 
     const continueForFree = () => router.visit(dashboard().url);
-    const freeRevealClasses = freeButtonVisible
+    const revealClasses = escapeVisible
         ? 'opacity-100'
         : 'pointer-events-none opacity-0';
 
     return (
         <div className="flex flex-col gap-4">
-            {canUseFreePlan && (
+            {canUseFreePlan ? (
                 <div
                     className={cn(
                         'fixed top-4 right-4 z-50 transition-opacity duration-1000 md:hidden',
-                        freeRevealClasses,
+                        revealClasses,
                     )}
                 >
                     <button
@@ -403,6 +405,21 @@ function PricingSection({
                         className="flex size-11 items-center justify-center rounded-full border border-border/75 bg-sidebar/50 text-primary shadow-lg shadow-black/20 backdrop-blur transition-all duration-200 hover:bg-sidebar/80 active:scale-95"
                     >
                         <XIcon className="size-5" />
+                    </button>
+                </div>
+            ) : (
+                <div
+                    className={cn(
+                        'fixed top-4 right-4 z-50 transition-opacity duration-1000 md:hidden',
+                        revealClasses,
+                    )}
+                >
+                    <button
+                        onClick={() => setSupportOpen(true)}
+                        aria-label={__('Need help?')}
+                        className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        <LifeBuoy className="size-5" />
                     </button>
                 </div>
             )}
@@ -459,11 +476,11 @@ function PricingSection({
                 </div>
             )}
 
-            {canUseFreePlan && (
+            {canUseFreePlan ? (
                 <div
                     className={cn(
                         'hidden transition-opacity duration-1000 md:block',
-                        freeRevealClasses,
+                        revealClasses,
                     )}
                 >
                     <Button
@@ -474,7 +491,30 @@ function PricingSection({
                         {__('Continue for free')}
                     </Button>
                 </div>
+            ) : (
+                <div
+                    className={cn(
+                        'hidden transition-opacity duration-1000 md:block',
+                        revealClasses,
+                    )}
+                >
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-muted-foreground"
+                        onClick={() => setSupportOpen(true)}
+                    >
+                        <LifeBuoy className="size-4" />
+                        {__('Need help?')}
+                    </Button>
+                </div>
             )}
+
+            <SupportDialog
+                open={supportOpen}
+                onOpenChange={setSupportOpen}
+                user={auth.user}
+            />
         </div>
     );
 }
