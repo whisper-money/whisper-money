@@ -26,6 +26,12 @@ class SendPriceExperimentFunnelReportCommand extends Command
         PriceExperiment::HIGH => 'high',
     ];
 
+    /**
+     * Per-arm matured floor below which the Welch p-value (normal approximation to
+     * Student's t) is too anti-conservative to trust, so the verdict is withheld.
+     */
+    private const MIN_WELCH_N = 30;
+
     public function __construct(
         private PriceExperimentFunnelCollector $collector,
         private ProportionSignificance $significance,
@@ -193,14 +199,27 @@ class SendPriceExperimentFunnelReportCommand extends Command
                 $this->cmMean($high), $this->cmVariance($high), $high['assignedMature'],
                 $this->cmMean($control), $this->cmVariance($control), $control['assignedMature'],
             );
-            $significant = $welch['p'] < 0.05;
-            $lines[] = sprintf(
-                '  Δ high−control: %s/user  t=%.2f  p=%.3f %s α=0.05 -> %s.%s',
-                Money::format((int) round($welch['diff']), $currency),
-                $welch['t'], $welch['p'], $significant ? '<' : '≥',
-                $significant ? 'significant' : 'not significant',
-                $significant ? '' : ' Keep running.',
-            );
+            $delta = Money::format((int) round($welch['diff']), $currency);
+            $minN = min((int) $control['assignedMature'], (int) $high['assignedMature']);
+
+            if ($minN < self::MIN_WELCH_N) {
+                // The p-value uses a normal approximation to Student's t; below a
+                // per-arm floor its tails are too thin (anti-conservative), so we
+                // show the effect size but withhold the verdict rather than risk a
+                // small-sample false positive.
+                $lines[] = sprintf(
+                    '  Δ high−control: %s/user  t=%.2f  (small sample: min n=%d < %d → p unreliable, verdict withheld)',
+                    $delta, $welch['t'], $minN, self::MIN_WELCH_N,
+                );
+            } else {
+                $significant = $welch['p'] < 0.05;
+                $lines[] = sprintf(
+                    '  Δ high−control: %s/user  t=%.2f  p=%.3f %s α=0.05 -> %s.%s',
+                    $delta, $welch['t'], $welch['p'], $significant ? '<' : '≥',
+                    $significant ? 'significant' : 'not significant',
+                    $significant ? '' : ' Keep running.',
+                );
+            }
         }
 
         $lines[] = '';

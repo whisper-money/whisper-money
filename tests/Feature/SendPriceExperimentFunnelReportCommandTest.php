@@ -159,7 +159,7 @@ it('keeps the split even when a winner is forced, instead of collapsing onto one
         ->and($variants[PriceExperiment::HIGH]['assigned'])->toBe(1);
 });
 
-it('prints the primary CM/user (Welch) and conversion guardrail blocks', function () {
+it('prints the primary CM/user (Welch) and conversion guardrail blocks but withholds the verdict at small n', function () {
     $signup = CarbonImmutable::parse('2026-06-05');
 
     for ($i = 0; $i < 3; $i++) {
@@ -169,11 +169,31 @@ it('prints the primary CM/user (Welch) and conversion guardrail blocks', functio
         priceUser(PriceExperiment::HIGH, $signup);
     }
 
-    artisan('stats:price-experiment-funnel', ['--no-discord' => true])
-        ->expectsOutputToContain('PRIMARY')
-        ->expectsOutputToContain('GUARDRAIL')
-        ->expectsOutputToContain('Fisher exact')
-        ->assertSuccessful();
+    Artisan::call('stats:price-experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('PRIMARY')
+        ->and($output)->toContain('GUARDRAIL')
+        ->and($output)->toContain('Fisher exact')
+        ->and($output)->toContain('verdict withheld') // 6 per arm < MIN_WELCH_N
+        ->and($output)->not->toContain('α=0.05 ->'); // no significance verdict at small n
+});
+
+it('emits a Welch significance verdict once both arms clear the small-sample floor', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // 30 per arm (== MIN_WELCH_N), half net-active payers, so there is real variance.
+    for ($i = 0; $i < 30; $i++) {
+        $sub = $i % 2 === 0 ? ['status' => 'active', 'at' => $signup] : null;
+        priceUser(PriceExperiment::CONTROL, $signup, $sub === null ? null : [...$sub, 'price' => 'price_control']);
+        priceUser(PriceExperiment::HIGH, $signup, $sub === null ? null : [...$sub, 'price' => 'price_high']);
+    }
+
+    Artisan::call('stats:price-experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('α=0.05 ->')
+        ->and($output)->not->toContain('verdict withheld');
 });
 
 it('surfaces an unmapped-price warning in the report, not just the logs', function () {
