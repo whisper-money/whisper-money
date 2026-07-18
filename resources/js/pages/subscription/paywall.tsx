@@ -383,23 +383,28 @@ function PricingSection({
         return () => clearTimeout(timer);
     }, [canUseFreePlan]);
 
+    const continueForFree = () => router.visit(dashboard().url);
+    const freeRevealClasses = freeButtonVisible
+        ? 'opacity-100'
+        : 'pointer-events-none opacity-0';
+
     return (
         <div className="flex flex-col gap-4">
             {canUseFreePlan && (
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={__('Continue for free')}
-                    onClick={() => router.visit(dashboard().url)}
+                <div
                     className={cn(
                         'fixed top-4 right-4 z-50 transition-opacity duration-1000 md:hidden',
-                        freeButtonVisible
-                            ? 'opacity-100'
-                            : 'pointer-events-none opacity-0',
+                        freeRevealClasses,
                     )}
                 >
-                    <XIcon className="size-5" />
-                </Button>
+                    <button
+                        onClick={continueForFree}
+                        aria-label={__('Continue for free')}
+                        className="flex size-11 items-center justify-center rounded-full border border-border/75 bg-sidebar/50 text-primary shadow-lg shadow-black/20 backdrop-blur transition-all duration-200 hover:bg-sidebar/80 active:scale-95"
+                    >
+                        <XIcon className="size-5" />
+                    </button>
+                </div>
             )}
 
             {selectedPlanData && (
@@ -458,15 +463,13 @@ function PricingSection({
                 <div
                     className={cn(
                         'hidden transition-opacity duration-1000 md:block',
-                        freeButtonVisible
-                            ? 'opacity-100'
-                            : 'pointer-events-none opacity-0',
+                        freeRevealClasses,
                     )}
                 >
                     <Button
                         variant="ghost"
                         className="w-full"
-                        onClick={() => router.visit(dashboard().url)}
+                        onClick={continueForFree}
                     >
                         {__('Continue for free')}
                     </Button>
