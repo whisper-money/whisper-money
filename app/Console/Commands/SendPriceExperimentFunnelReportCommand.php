@@ -46,7 +46,7 @@ class SendPriceExperimentFunnelReportCommand extends Command
             return self::SUCCESS;
         }
 
-        foreach ([...$this->tableLines($report), ...$this->srmLines($report), ...$this->significanceLines($report)] as $line) {
+        foreach ([...$this->tableLines($report), ...$this->integrityLines($report), ...$this->srmLines($report), ...$this->significanceLines($report)] as $line) {
             $this->line($line);
         }
 
@@ -98,6 +98,35 @@ class SendPriceExperimentFunnelReportCommand extends Command
                 $showMoney && $row['cmPerAssignedCents'] !== null ? Money::format($row['cmPerAssignedCents'], $currency) : '—',
                 $row['connectionsPerPayer'] !== null ? number_format($row['connectionsPerPayer'], 1) : '—',
             );
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Revenue-map integrity warnings, surfaced in the report the decision-maker
+     * reads (not just the logs): Stripe unreachable, or net-active subscriptions on
+     * price ids missing from the monthly-equivalent map — which would silently
+     * undercount MRR/CM as 0 and bias the comparison against whichever arm's price
+     * is unmapped. Empty (no lines) when everything resolves.
+     *
+     * @param  array{revenueAvailable: bool, unmappedPriceIds: list<string>}  $report
+     * @return list<string>
+     */
+    private function integrityLines(array $report): array
+    {
+        $lines = [];
+
+        if (! $report['revenueAvailable']) {
+            $lines[] = '';
+            $lines[] = '⚠ REVENUE UNAVAILABLE — Stripe prices could not be loaded; MRR/CM are blank this run.';
+        }
+
+        if (($report['unmappedPriceIds'] ?? []) !== []) {
+            $lines[] = '';
+            $lines[] = '⚠ UNMAPPED PRICES — net-active subs on price ids absent from the revenue map '
+                .'(MRR undercounted as 0): '.implode(', ', $report['unmappedPriceIds'])
+                .'. Confirm both arm prices are synced under the pro product (stripe:sync-prices).';
         }
 
         return $lines;
@@ -238,14 +267,14 @@ class SendPriceExperimentFunnelReportCommand extends Command
     }
 
     /**
-     * @param  array{startedAt: CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, decisionWindowDays: int, variants: array<string, array<string, mixed>>}  $report
+     * @param  array{startedAt: CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, decisionWindowDays: int, unmappedPriceIds: list<string>, variants: array<string, array<string, mixed>>}  $report
      * @return array<string, mixed>
      */
     private function buildEmbed(array $report): array
     {
         return [
             'title' => '💶 Price Experiment — Funnel (control vs high)',
-            'description' => "```\n".implode("\n", [...$this->tableLines($report), ...$this->srmLines($report), ...$this->significanceLines($report)])."\n```",
+            'description' => "```\n".implode("\n", [...$this->tableLines($report), ...$this->integrityLines($report), ...$this->srmLines($report), ...$this->significanceLines($report)])."\n```",
             'color' => 0x57F287,
             'fields' => [
                 [

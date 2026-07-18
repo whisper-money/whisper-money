@@ -47,6 +47,7 @@ class PriceExperimentFunnelCollector
      *     revenueAvailable: bool,
      *     costPerConnectionCents: int,
      *     decisionWindowDays: int,
+     *     unmappedPriceIds: list<string>,
      *     variants: array<string, array{
      *         assigned: int, activated: int, subscribed: int,
      *         assignedMature: int, activatedMature: int, convertedMature: int, activeMature: int,
@@ -76,6 +77,7 @@ class PriceExperimentFunnelCollector
                 'revenueAvailable' => false,
                 'costPerConnectionCents' => $costPerConnectionCents,
                 'decisionWindowDays' => $window,
+                'unmappedPriceIds' => [],
                 'variants' => $variants,
             ];
         }
@@ -209,6 +211,7 @@ class PriceExperimentFunnelCollector
             'revenueAvailable' => $monthlyEquiv !== [],
             'costPerConnectionCents' => $costPerConnectionCents,
             'decisionWindowDays' => $window,
+            'unmappedPriceIds' => array_keys($missingPrices),
             'variants' => $variants,
         ];
     }

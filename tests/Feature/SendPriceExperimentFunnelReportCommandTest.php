@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Stats\PriceExperimentFunnelCollector;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -173,6 +174,19 @@ it('prints the primary CM/user (Welch) and conversion guardrail blocks', functio
         ->expectsOutputToContain('GUARDRAIL')
         ->expectsOutputToContain('Fisher exact')
         ->assertSuccessful();
+});
+
+it('surfaces an unmapped-price warning in the report, not just the logs', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // Net-active sub on a price id the seeded map does not know → MRR silently 0.
+    priceUser(PriceExperiment::HIGH, $signup, ['status' => 'active', 'at' => $signup, 'price' => 'price_rotated_old']);
+
+    Artisan::call('stats:price-experiment-funnel', ['--no-discord' => true]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('UNMAPPED PRICES')
+        ->and($output)->toContain('price_rotated_old');
 });
 
 it('flags a sample-ratio mismatch when the assignment split is lopsided', function () {
