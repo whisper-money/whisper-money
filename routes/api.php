@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountBalanceController;
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AccountImportConfigController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\CategoryMonthlyBreakdownController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
@@ -37,6 +38,10 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     // Accounts
     Route::get('accounts', [AccountController::class, 'index'])->name('api.accounts.index');
     Route::put('accounts/{account}', [AccountController::class, 'update'])->name('api.accounts.update');
+
+    // Account import configuration (per-account column mapping, synced across devices)
+    Route::get('accounts/{account}/import-config', [AccountImportConfigController::class, 'show'])->name('api.accounts.import-config.show');
+    Route::put('accounts/{account}/import-config', [AccountImportConfigController::class, 'update'])->name('api.accounts.import-config.update');
 
     // Account Balances
     Route::put('accounts/{account}/balance/current', [AccountBalanceController::class, 'updateCurrent'])->name('api.accounts.balance.update-current');

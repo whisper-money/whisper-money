@@ -104,6 +104,12 @@ class Account extends Model
         return $this->hasMany(AccountBalance::class);
     }
 
+    /** @return HasMany<AccountImportConfig, $this> */
+    public function importConfigs(): HasMany
+    {
+        return $this->hasMany(AccountImportConfig::class);
+    }
+
     /** @return BelongsTo<BankingConnection, $this> */
     public function bankingConnection(): BelongsTo
     {

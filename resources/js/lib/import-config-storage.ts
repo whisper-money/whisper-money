@@ -1,55 +1,81 @@
+import type { BalanceColumnMapping } from '@/types/balance-import';
 import { type ColumnMapping, DateFormat } from '@/types/import';
 import { type UUID } from '@/types/uuid';
+import axios from 'axios';
 
 interface ImportConfig {
     columnMapping: ColumnMapping;
     dateFormat: DateFormat;
 }
 
-const STORAGE_KEY_PREFIX = 'import_config_account_';
+interface BalanceImportConfig {
+    columnMapping: BalanceColumnMapping;
+    dateFormat: DateFormat;
+}
 
-export function saveImportConfig(accountId: UUID, config: ImportConfig): void {
-    if (typeof window === 'undefined') return;
+type ImportConfigType = 'transaction' | 'balance';
 
+function configUrl(accountId: UUID): string {
+    return `/api/accounts/${accountId}/import-config`;
+}
+
+async function saveConfig(
+    accountId: UUID,
+    type: ImportConfigType,
+    config: ImportConfig | BalanceImportConfig,
+): Promise<void> {
     try {
-        const key = `${STORAGE_KEY_PREFIX}${accountId}`;
-        localStorage.setItem(key, JSON.stringify(config));
+        await axios.put(configUrl(accountId), { type, config });
     } catch (error) {
-        console.error('Failed to save import configuration:', error);
+        console.error(`Failed to save ${type} import configuration:`, error);
     }
 }
 
-export function loadImportConfig(accountId: UUID): ImportConfig | null {
-    if (typeof window === 'undefined') return null;
-
+async function loadConfig<T extends ImportConfig | BalanceImportConfig>(
+    accountId: UUID,
+    type: ImportConfigType,
+): Promise<T | null> {
     try {
-        const key = `${STORAGE_KEY_PREFIX}${accountId}`;
-        const stored = localStorage.getItem(key);
+        const { data } = await axios.get<{ data: T | null }>(
+            configUrl(accountId),
+            { params: { type } },
+        );
 
-        if (!stored) {
-            return null;
-        }
+        const config = data.data;
 
-        const config = JSON.parse(stored) as ImportConfig;
-
-        if (!config.columnMapping || !config.dateFormat) {
+        if (!config || !config.columnMapping || !config.dateFormat) {
             return null;
         }
 
         return config;
     } catch (error) {
-        console.error('Failed to load import configuration:', error);
+        console.error(`Failed to load ${type} import configuration:`, error);
         return null;
     }
 }
 
-export function clearImportConfig(accountId: UUID): void {
-    if (typeof window === 'undefined') return;
+export function saveImportConfig(
+    accountId: UUID,
+    config: ImportConfig,
+): Promise<void> {
+    return saveConfig(accountId, 'transaction', config);
+}
 
-    try {
-        const key = `${STORAGE_KEY_PREFIX}${accountId}`;
-        localStorage.removeItem(key);
-    } catch (error) {
-        console.error('Failed to clear import configuration:', error);
-    }
+export function loadImportConfig(
+    accountId: UUID,
+): Promise<ImportConfig | null> {
+    return loadConfig<ImportConfig>(accountId, 'transaction');
+}
+
+export function saveBalanceImportConfig(
+    accountId: UUID,
+    config: BalanceImportConfig,
+): Promise<void> {
+    return saveConfig(accountId, 'balance', config);
+}
+
+export function loadBalanceImportConfig(
+    accountId: UUID,
+): Promise<BalanceImportConfig | null> {
+    return loadConfig<BalanceImportConfig>(accountId, 'balance');
 }

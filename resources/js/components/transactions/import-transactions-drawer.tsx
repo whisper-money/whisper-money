@@ -223,11 +223,23 @@ export function ImportTransactionsDrawer({
                 }
             }
 
-            let finalMapping = autoMapping;
-            let finalDateFormat = detectedFormat;
+            // Show the parsed file immediately with auto-detected columns; the
+            // saved per-account config is fetched off the critical path so a
+            // slow or hanging network never blocks the preview or Next button.
+            setState((prev) => ({
+                ...prev,
+                file,
+                parsedData: data,
+                columnHeaders: headers,
+                columnOptions,
+                columnMapping: autoMapping,
+                dateFormat: detectedFormat,
+                dateFormatDetected: formatDetected,
+            }));
 
-            if (state.selectedAccountId) {
-                const savedConfig = loadImportConfig(state.selectedAccountId);
+            const accountId = state.selectedAccountId;
+            if (accountId) {
+                const savedConfig = await loadImportConfig(accountId);
 
                 if (savedConfig) {
                     const isValidMapping = (
@@ -247,26 +259,24 @@ export function ImportTransactionsDrawer({
                     };
 
                     if (isValidMapping(savedConfig.columnMapping)) {
-                        finalMapping = savedConfig.columnMapping;
-                        finalDateFormat = savedConfig.dateFormat;
-                        // Keep the saved format as the default, but still show
-                        // the selector when the dates are ambiguous so a
+                        // Only apply if this file is still the selected one, so a
+                        // slow load can't clobber a file picked afterwards. Keep
+                        // the saved format as the default, but still show the
+                        // selector when the dates are ambiguous so a
                         // previously-saved wrong format can be corrected.
-                        formatDetected = !formatAmbiguous;
+                        setState((prev) =>
+                            prev.file === file
+                                ? {
+                                      ...prev,
+                                      columnMapping: savedConfig.columnMapping,
+                                      dateFormat: savedConfig.dateFormat,
+                                      dateFormatDetected: !formatAmbiguous,
+                                  }
+                                : prev,
+                        );
                     }
                 }
             }
-
-            setState((prev) => ({
-                ...prev,
-                file,
-                parsedData: data,
-                columnHeaders: headers,
-                columnOptions,
-                columnMapping: finalMapping,
-                dateFormat: finalDateFormat,
-                dateFormatDetected: formatDetected,
-            }));
         } catch (err) {
             setError(
                 err instanceof Error ? err.message : 'Failed to parse file',
@@ -458,7 +468,7 @@ export function ImportTransactionsDrawer({
             }
 
             if (state.selectedAccountId) {
-                saveImportConfig(state.selectedAccountId, {
+                void saveImportConfig(state.selectedAccountId, {
                     columnMapping: state.columnMapping,
                     dateFormat: state.dateFormat,
                 });
