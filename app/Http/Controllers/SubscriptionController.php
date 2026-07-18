@@ -72,7 +72,10 @@ class SubscriptionController extends Controller
             abort(400, 'Invalid plan selected');
         }
 
-        $priceId = $this->resolvePriceIdByLookupKey($plan['stripe_lookup_key']);
+        // The price tier is resolved server-side from the user's assigned variant,
+        // never from the request, so a user can't pick the cheaper price.
+        $lookupKey = $this->experimentOffer->lookupKeyFor($request->user(), $planKey);
+        $priceId = $this->resolvePriceIdByLookupKey($lookupKey);
 
         $subscriptionBuilder = $request->user()
             ->newSubscription('default', $priceId);
