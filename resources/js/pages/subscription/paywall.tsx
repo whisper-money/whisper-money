@@ -1,3 +1,4 @@
+import { SupportDialog } from '@/components/support-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCountUp } from '@/hooks/use-count-up';
@@ -15,12 +16,13 @@ import {
     CheckIcon,
     FolderIcon,
     LandmarkIcon,
+    LifeBuoy,
     LockIcon,
     PiggyBankIcon,
     ReceiptIcon,
     TrendingUpIcon,
     UsersIcon,
-    WalletIcon,
+    XIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -28,8 +30,6 @@ interface PaywallStats {
     accountsCount: number;
     transactionsCount: number;
     categoriesCount: number;
-    automationRulesCount: number;
-    balancesByCurrency: Record<string, number>;
 }
 
 interface ExperimentOffer {
@@ -114,12 +114,12 @@ const socialProofs = [
     {
         icon: TrendingUpIcon,
         highlightKey: '15% more savings',
-        textKey: 'after 3 months with Whisper Money',
+        textKey: 'after 3 months',
     },
     {
         icon: PiggyBankIcon,
         highlightKey: '23% better',
-        textKey: 'spending awareness reported',
+        textKey: 'spending awareness',
     },
     {
         icon: LockIcon,
@@ -128,8 +128,8 @@ const socialProofs = [
     },
     {
         icon: UsersIcon,
-        highlightKey: '1,200+ users',
-        textKey: 'taking control of their finances',
+        highlightKey: '2,500+ users',
+        textKey: 'trusting us',
     },
 ];
 
@@ -150,7 +150,7 @@ function SocialProofSlider() {
         <div className="flex flex-col items-center gap-4">
             <div
                 key={`icon-${currentIndex}`}
-                className="flex h-16 w-16 animate-in items-center justify-center rounded-full bg-emerald-100 duration-500 zoom-in-95 fade-in dark:bg-emerald-900/30"
+                className="flex h-14 w-14 animate-in items-center justify-center rounded-full bg-emerald-100 duration-500 zoom-in-95 fade-in dark:bg-emerald-900/30"
             >
                 <Icon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
             </div>
@@ -210,41 +210,6 @@ function StatItem({
     );
 }
 
-function BalanceDisplay({
-    balancesByCurrency,
-}: {
-    balancesByCurrency: Record<string, number>;
-}) {
-    const locale = useLocale();
-    const entries = Object.entries(balancesByCurrency);
-
-    if (entries.length === 0) {
-        return null;
-    }
-
-    return (
-        <div className="flex flex-1 flex-col items-center gap-0.5">
-            <WalletIcon className="mb-1.5 h-4 w-4 text-emerald-500" />
-            <div className="flex flex-col items-center">
-                {entries.map(([currency, amount]) => (
-                    <span key={currency} className="text-xl font-bold">
-                        {formatCurrency(
-                            Math.abs(amount),
-                            currency,
-                            locale,
-                            0,
-                            0,
-                        )}
-                    </span>
-                ))}
-            </div>
-            <span className="text-xs text-muted-foreground">
-                {__('Balance')}
-            </span>
-        </div>
-    );
-}
-
 function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
     const hasData =
         stats.accountsCount > 0 ||
@@ -280,11 +245,6 @@ function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
                         value={stats.categoriesCount}
                         label={__('Categories')}
                         delay={300}
-                    />
-                )}
-                {Object.keys(stats.balancesByCurrency).length > 0 && (
-                    <BalanceDisplay
-                        balancesByCurrency={stats.balancesByCurrency}
                     />
                 )}
             </CardContent>
@@ -405,8 +365,10 @@ function PricingSection({
     canManageConnectionsForFreePlan: boolean;
     offer: ExperimentOffer;
 }) {
+    const { auth } = usePage<SharedData>().props;
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
-    const [freeButtonVisible, setFreeButtonVisible] = useState(false);
+    const [escapeVisible, setEscapeVisible] = useState(false);
+    const [supportOpen, setSupportOpen] = useState(false);
     const locale = useLocale();
 
     const selectedPlanData = planEntries.find(
@@ -418,15 +380,50 @@ function PricingSection({
         : '';
 
     useEffect(() => {
-        if (!canUseFreePlan) {
-            return;
-        }
-        const timer = setTimeout(() => setFreeButtonVisible(true), 5000);
+        const delay = canUseFreePlan ? 5000 : 7000;
+        const timer = setTimeout(() => setEscapeVisible(true), delay);
         return () => clearTimeout(timer);
     }, [canUseFreePlan]);
 
+    const continueForFree = () => router.visit(dashboard().url);
+    const revealClasses = escapeVisible
+        ? 'opacity-100'
+        : 'pointer-events-none opacity-0';
+
     return (
         <div className="flex flex-col gap-4">
+            {canUseFreePlan ? (
+                <div
+                    className={cn(
+                        'fixed top-4 right-4 z-50 transition-opacity duration-1000 md:hidden',
+                        revealClasses,
+                    )}
+                >
+                    <button
+                        onClick={continueForFree}
+                        aria-label={__('Continue for free')}
+                        className="flex size-11 items-center justify-center rounded-full border border-border/75 bg-sidebar/50 text-primary shadow-lg shadow-black/20 backdrop-blur transition-all duration-200 hover:bg-sidebar/80 active:scale-95"
+                    >
+                        <XIcon className="size-5" />
+                    </button>
+                </div>
+            ) : (
+                <div
+                    className={cn(
+                        'fixed top-4 right-4 z-50 transition-opacity duration-1000 md:hidden',
+                        revealClasses,
+                    )}
+                >
+                    <button
+                        onClick={() => setSupportOpen(true)}
+                        aria-label={__('Need help?')}
+                        className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        <LifeBuoy className="size-5" />
+                    </button>
+                </div>
+            )}
+
             {selectedPlanData && (
                 <FeaturesSection
                     features={selectedPlanData.features.filter(
@@ -479,24 +476,45 @@ function PricingSection({
                 </div>
             )}
 
-            {canUseFreePlan && (
+            {canUseFreePlan ? (
                 <div
                     className={cn(
-                        'transition-opacity duration-1000',
-                        freeButtonVisible
-                            ? 'opacity-100'
-                            : 'pointer-events-none opacity-0',
+                        'hidden transition-opacity duration-1000 md:block',
+                        revealClasses,
                     )}
                 >
                     <Button
                         variant="ghost"
                         className="w-full"
-                        onClick={() => router.visit(dashboard().url)}
+                        onClick={continueForFree}
                     >
                         {__('Continue for free')}
                     </Button>
                 </div>
+            ) : (
+                <div
+                    className={cn(
+                        'hidden transition-opacity duration-1000 md:block',
+                        revealClasses,
+                    )}
+                >
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-muted-foreground"
+                        onClick={() => setSupportOpen(true)}
+                    >
+                        <LifeBuoy className="size-4" />
+                        {__('Need help?')}
+                    </Button>
+                </div>
             )}
+
+            <SupportDialog
+                open={supportOpen}
+                onOpenChange={setSupportOpen}
+                user={auth.user}
+            />
         </div>
     );
 }
