@@ -20,6 +20,7 @@ import {
     ReceiptIcon,
     TrendingUpIcon,
     UsersIcon,
+    XIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -125,7 +126,7 @@ const socialProofs = [
     },
     {
         icon: UsersIcon,
-        highlightKey: '1,200+ users',
+        highlightKey: '2,500+ users',
         textKey: 'taking control of their finances',
     },
 ];
@@ -384,6 +385,23 @@ function PricingSection({
 
     return (
         <div className="flex flex-col gap-4">
+            {canUseFreePlan && (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={__('Continue for free')}
+                    onClick={() => router.visit(dashboard().url)}
+                    className={cn(
+                        'fixed top-4 right-4 z-50 transition-opacity duration-1000 md:hidden',
+                        freeButtonVisible
+                            ? 'opacity-100'
+                            : 'pointer-events-none opacity-0',
+                    )}
+                >
+                    <XIcon className="size-5" />
+                </Button>
+            )}
+
             {selectedPlanData && (
                 <FeaturesSection
                     features={selectedPlanData.features.filter(
@@ -439,7 +457,7 @@ function PricingSection({
             {canUseFreePlan && (
                 <div
                     className={cn(
-                        'transition-opacity duration-1000',
+                        'hidden transition-opacity duration-1000 md:block',
                         freeButtonVisible
                             ? 'opacity-100'
                             : 'pointer-events-none opacity-0',
