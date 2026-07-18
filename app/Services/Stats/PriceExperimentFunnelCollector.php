@@ -31,23 +31,6 @@ use Laravel\Cashier\Subscription;
  * Enable Banking actually bills us; API-key providers are free). It is symmetric
  * across arms, so it biases absolute CM but not the between-arm comparison. Make it
  * per-provider only if absolute margin ever needs to be trusted.
- *
- * @param  int  $costPerConnectionCents  flat estimated monthly cost per active connection
- * @return array{
- *     startedAt: ?CarbonImmutable,
- *     currency: string,
- *     revenueAvailable: bool,
- *     costPerConnectionCents: int,
- *     decisionWindowDays: int,
- *     variants: array<string, array{
- *         assigned: int, activated: int, subscribed: int,
- *         assignedMature: int, activatedMature: int, convertedMature: int, activeMature: int,
- *         payerCount: int, payerConnectionSum: int,
- *         conversionRate: ?float,
- *         mrrCents: int, costCents: int, contributionMarginCents: int,
- *         cmPerAssignedCents: ?int, cmSumSq: float, connectionsPerPayer: ?float,
- *     }>
- * }
  */
 class PriceExperimentFunnelCollector
 {
@@ -56,6 +39,24 @@ class PriceExperimentFunnelCollector
 
     public function __construct(private MonthlyEquivalentPrices $prices) {}
 
+    /**
+     * @param  int  $costPerConnectionCents  flat estimated monthly cost per active connection
+     * @return array{
+     *     startedAt: ?CarbonImmutable,
+     *     currency: string,
+     *     revenueAvailable: bool,
+     *     costPerConnectionCents: int,
+     *     decisionWindowDays: int,
+     *     variants: array<string, array{
+     *         assigned: int, activated: int, subscribed: int,
+     *         assignedMature: int, activatedMature: int, convertedMature: int, activeMature: int,
+     *         payerCount: int, payerConnectionSum: int,
+     *         conversionRate: ?float,
+     *         mrrCents: int, costCents: int, contributionMarginCents: int,
+     *         cmPerAssignedCents: ?int, cmSumSq: float, connectionsPerPayer: ?float,
+     *     }>
+     * }
+     */
     public function collect(int $costPerConnectionCents = 40): array
     {
         $startedValue = config('subscriptions.price_experiment.started_at');

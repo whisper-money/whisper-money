@@ -154,8 +154,8 @@ class SendPriceExperimentFunnelReportCommand extends Command
                 continue;
             }
 
-            [$low, $high2] = $this->significance->wilsonInterval($k, $n);
-            $lines[] = sprintf('  %-8s %6s  [%6s – %6s]  (n=%d)', $label, $this->percent($k / $n), $this->percent($low), $this->percent($high2), $n);
+            [$lower, $upper] = $this->significance->wilsonInterval($k, $n);
+            $lines[] = sprintf('  %-8s %6s  [%6s – %6s]  (n=%d)', $label, $this->percent($k / $n), $this->percent($lower), $this->percent($upper), $n);
             $arms[$key] = new BinomialProportion($label, $k, $n);
         }
 
@@ -171,12 +171,19 @@ class SendPriceExperimentFunnelReportCommand extends Command
         return $lines;
     }
 
+    /**
+     * @param  array<string, mixed>  $row
+     */
     private function cmMean(array $row): float
     {
         return $row['assignedMature'] > 0 ? (float) $row['contributionMarginCents'] / $row['assignedMature'] : 0.0;
     }
 
-    /** Sample variance (n−1) of per-user CM, from the accumulated moments. */
+    /**
+     * Sample variance (n−1) of per-user CM, from the accumulated moments.
+     *
+     * @param  array<string, mixed>  $row
+     */
     private function cmVariance(array $row): float
     {
         $n = (int) $row['assignedMature'];
