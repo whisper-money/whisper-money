@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditTransactionDialog } from './edit-transaction-dialog';
@@ -341,5 +341,93 @@ describe('EditTransactionDialog', () => {
         );
 
         expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
+    const manualTransaction = {
+        id: 'tx-manual',
+        user_id: 'user-1',
+        account_id: 'account-1',
+        category_id: null,
+        description: 'Groceries',
+        description_iv: null,
+        transaction_date: '2026-05-27',
+        amount: -1200,
+        currency_code: 'EUR',
+        notes: null,
+        notes_iv: null,
+        creditor_name: null,
+        debtor_name: null,
+        source: 'manually_created' as const,
+        created_at: '2026-05-27T00:00:00Z',
+        updated_at: '2026-05-27T00:00:00Z',
+        decryptedDescription: 'Groceries',
+        decryptedNotes: null,
+        label_ids: [],
+    };
+
+    it('closes the dialog and asks the parent to delete when Delete is clicked', () => {
+        const onDelete = vi.fn();
+        const onOpenChange = vi.fn();
+
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={onOpenChange}
+                onSuccess={vi.fn()}
+                onDelete={onDelete}
+                mode="edit"
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+        expect(onDelete).toHaveBeenCalledWith(manualTransaction);
+    });
+
+    it('hides the Delete button when no onDelete handler is provided', () => {
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'Delete' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('hides the Delete button in create mode', () => {
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                onDelete={vi.fn()}
+                mode="create"
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'Delete' }),
+        ).not.toBeInTheDocument();
     });
 });

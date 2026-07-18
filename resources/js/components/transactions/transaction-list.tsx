@@ -1111,6 +1111,7 @@ export function TransactionList({
                 onSuccess={updateTransaction}
                 onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
+                onDelete={setDeleteTransaction}
                 mode="edit"
             />
 
