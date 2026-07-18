@@ -128,7 +128,7 @@ class SendPriceExperimentFunnelReportCommand extends Command
             $lines[] = '⚠ REVENUE UNAVAILABLE — Stripe prices could not be loaded; MRR/CM are blank this run.';
         }
 
-        if (($report['unmappedPriceIds'] ?? []) !== []) {
+        if ($report['unmappedPriceIds'] !== []) {
             $lines[] = '';
             $lines[] = '⚠ UNMAPPED PRICES — net-active subs on price ids absent from the revenue map '
                 .'(MRR undercounted as 0): '.implode(', ', $report['unmappedPriceIds'])
