@@ -20,7 +20,6 @@ import {
     ReceiptIcon,
     TrendingUpIcon,
     UsersIcon,
-    WalletIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -28,8 +27,6 @@ interface PaywallStats {
     accountsCount: number;
     transactionsCount: number;
     categoriesCount: number;
-    automationRulesCount: number;
-    balancesByCurrency: Record<string, number>;
 }
 
 interface ExperimentOffer {
@@ -210,41 +207,6 @@ function StatItem({
     );
 }
 
-function BalanceDisplay({
-    balancesByCurrency,
-}: {
-    balancesByCurrency: Record<string, number>;
-}) {
-    const locale = useLocale();
-    const entries = Object.entries(balancesByCurrency);
-
-    if (entries.length === 0) {
-        return null;
-    }
-
-    return (
-        <div className="flex flex-1 flex-col items-center gap-0.5">
-            <WalletIcon className="mb-1.5 h-4 w-4 text-emerald-500" />
-            <div className="flex flex-col items-center">
-                {entries.map(([currency, amount]) => (
-                    <span key={currency} className="text-xl font-bold">
-                        {formatCurrency(
-                            Math.abs(amount),
-                            currency,
-                            locale,
-                            0,
-                            0,
-                        )}
-                    </span>
-                ))}
-            </div>
-            <span className="text-xs text-muted-foreground">
-                {__('Balance')}
-            </span>
-        </div>
-    );
-}
-
 function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
     const hasData =
         stats.accountsCount > 0 ||
@@ -280,11 +242,6 @@ function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
                         value={stats.categoriesCount}
                         label={__('Categories')}
                         delay={300}
-                    />
-                )}
-                {Object.keys(stats.balancesByCurrency).length > 0 && (
-                    <BalanceDisplay
-                        balancesByCurrency={stats.balancesByCurrency}
                     />
                 )}
             </CardContent>

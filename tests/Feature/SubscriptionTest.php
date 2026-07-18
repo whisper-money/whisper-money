@@ -2,7 +2,6 @@
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Account;
-use App\Models\AccountBalance;
 use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
@@ -50,7 +49,6 @@ test('paywall page includes user stats', function () {
     $user = User::factory()->onboarded()->create();
 
     $account = Account::factory()->for($user)->create(['currency_code' => 'USD']);
-    AccountBalance::factory()->for($account)->create(['balance' => 150000]);
     Transaction::factory()->count(3)->for($user)->for($account)->create();
     Category::factory()->count(2)->for($user)->create();
 
@@ -64,11 +62,8 @@ test('paywall page includes user stats', function () {
             ->has('stats.accountsCount')
             ->has('stats.transactionsCount')
             ->has('stats.categoriesCount')
-            ->has('stats.automationRulesCount')
-            ->has('stats.balancesByCurrency')
             ->where('stats.accountsCount', 1)
             ->where('stats.transactionsCount', 3)
-            ->where('stats.balancesByCurrency.USD', 150000)
         );
 });
 

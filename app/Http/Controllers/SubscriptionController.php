@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\Subscription\RefundSelfServe;
 use App\Features\SubscriptionExperiment;
-use App\Models\AccountBalance;
 use App\Models\User;
 use App\Models\UserLead;
 use App\Services\Discord\DiscordWebhook;
@@ -52,32 +51,14 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int, automationRulesCount: int, balancesByCurrency: array<string, int>}
+     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int}
      */
     private function getUserStats(User $user): array
     {
-        $accounts = $user->accounts()->get();
-
-        $balancesByCurrency = [];
-        foreach ($accounts as $account) {
-            $latestBalance = AccountBalance::query()
-                ->where('account_id', $account->id)
-                ->orderBy('balance_date', 'desc')
-                ->value('balance') ?? 0;
-
-            $currency = $account->currency_code;
-            if (! isset($balancesByCurrency[$currency])) {
-                $balancesByCurrency[$currency] = 0;
-            }
-            $balancesByCurrency[$currency] += $latestBalance;
-        }
-
         return [
-            'accountsCount' => $accounts->count(),
+            'accountsCount' => $user->accounts()->count(),
             'transactionsCount' => $user->transactions()->count(),
             'categoriesCount' => $user->categories()->count(),
-            'automationRulesCount' => $user->automationRules()->count(),
-            'balancesByCurrency' => $balancesByCurrency,
         ];
     }
 
