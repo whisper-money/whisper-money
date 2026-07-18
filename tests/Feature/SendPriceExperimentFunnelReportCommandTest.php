@@ -175,6 +175,34 @@ it('prints the primary CM/user (Welch) and conversion guardrail blocks', functio
         ->assertSuccessful();
 });
 
+it('flags a sample-ratio mismatch when the assignment split is lopsided', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    for ($i = 0; $i < 10; $i++) {
+        priceUser(PriceExperiment::CONTROL, $signup);
+    }
+    priceUser(PriceExperiment::HIGH, $signup);
+
+    artisan('stats:price-experiment-funnel', ['--no-discord' => true])
+        ->expectsOutputToContain('SRM')
+        ->expectsOutputToContain('IMBALANCE')
+        ->assertSuccessful();
+});
+
+it('does not flag SRM when the split is balanced', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    for ($i = 0; $i < 4; $i++) {
+        priceUser(PriceExperiment::CONTROL, $signup);
+        priceUser(PriceExperiment::HIGH, $signup);
+    }
+
+    artisan('stats:price-experiment-funnel', ['--no-discord' => true])
+        ->expectsOutputToContain('SRM')
+        ->doesntExpectOutputToContain('IMBALANCE')
+        ->assertSuccessful();
+});
+
 it('posts the price experiment embed to discord with the monitoring-only warning', function () {
     config(['services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook']);
     Http::fake(['discord.test/*' => Http::response('', 204)]);

@@ -7,6 +7,7 @@ use App\Services\Discord\DiscordWebhook;
 use App\Services\Stats\BinomialProportion;
 use App\Services\Stats\PriceExperimentFunnelCollector;
 use App\Services\Stats\ProportionSignificance;
+use App\Services\Stats\SampleRatioMismatch;
 use App\Services\Stats\WelchTTest;
 use App\Support\Money;
 use Carbon\CarbonImmutable;
@@ -29,6 +30,7 @@ class SendPriceExperimentFunnelReportCommand extends Command
         private PriceExperimentFunnelCollector $collector,
         private ProportionSignificance $significance,
         private WelchTTest $welch,
+        private SampleRatioMismatch $srm,
     ) {
         parent::__construct();
     }
@@ -44,7 +46,7 @@ class SendPriceExperimentFunnelReportCommand extends Command
             return self::SUCCESS;
         }
 
-        foreach ([...$this->tableLines($report), ...$this->significanceLines($report)] as $line) {
+        foreach ([...$this->tableLines($report), ...$this->srmLines($report), ...$this->significanceLines($report)] as $line) {
             $this->line($line);
         }
 
@@ -96,6 +98,39 @@ class SendPriceExperimentFunnelReportCommand extends Command
                 $showMoney && $row['cmPerAssignedCents'] !== null ? Money::format($row['cmPerAssignedCents'], $currency) : '—',
                 $row['connectionsPerPayer'] !== null ? number_format($row['connectionsPerPayer'], 1) : '—',
             );
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Sample-ratio-mismatch check: the split must be ~50/50. A low p means the
+     * assignment (or the pipeline that filters it) is broken, which invalidates
+     * every comparison below — so this is checked first, on the raw assigned counts
+     * and on the matured subset (to catch differential attrition).
+     *
+     * @param  array{variants: array<string, array<string, mixed>>}  $report
+     * @return list<string>
+     */
+    private function srmLines(array $report): array
+    {
+        $control = $report['variants'][PriceExperiment::CONTROL];
+        $high = $report['variants'][PriceExperiment::HIGH];
+        $lines = ['', 'SRM (assignment balance, expect 50/50 — a low p means the split is broken):'];
+
+        foreach (['assigned' => 'assigned', 'assignedMature' => 'matured'] as $field => $label) {
+            $c = (int) $control[$field];
+            $h = (int) $high[$field];
+
+            if ($c + $h === 0) {
+                $lines[] = sprintf('  %-8s control %d / high %d  (n=0)', $label, $c, $h);
+
+                continue;
+            }
+
+            $srm = $this->srm->evenSplit($c, $h);
+            $flag = $srm['p'] < 0.01 ? '  ⚠ IMBALANCE — investigate before trusting results' : '';
+            $lines[] = sprintf('  %-8s control %d / high %d  χ²=%.2f p=%.3f%s', $label, $c, $h, $srm['chiSq'], $srm['p'], $flag);
         }
 
         return $lines;
@@ -210,7 +245,7 @@ class SendPriceExperimentFunnelReportCommand extends Command
     {
         return [
             'title' => '💶 Price Experiment — Funnel (control vs high)',
-            'description' => "```\n".implode("\n", [...$this->tableLines($report), ...$this->significanceLines($report)])."\n```",
+            'description' => "```\n".implode("\n", [...$this->tableLines($report), ...$this->srmLines($report), ...$this->significanceLines($report)])."\n```",
             'color' => 0x57F287,
             'fields' => [
                 [
