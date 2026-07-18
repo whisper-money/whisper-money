@@ -47,6 +47,43 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Price Experiment
+    |--------------------------------------------------------------------------
+    |
+    | A/B test on the *price* of the paid plan, independent of the trial
+    | experiment above. Users who register on or after `started_at` are split
+    | evenly into `control` (the plans.* prices) and `high` (the variant prices
+    | below); earlier users stay "legacy" and keep the control price. While
+    | `started_at` is null the experiment is off and everyone gets control, so
+    | this is a no-op until activated. Each variant needs its own Stripe prices —
+    | run `php artisan stripe:sync-prices` before setting `started_at`. The yearly
+    | price is the monthly × 6, matching the control plan structure.
+    |
+    */
+
+    'price_experiment' => [
+        'started_at' => env('PRICE_EXPERIMENT_STARTED_AT'),
+        // Once a winner is chosen, set this to control / high to give every user
+        // that price and end the split (env-only, no deploy).
+        'force_variant' => env('PRICE_EXPERIMENT_FORCE_VARIANT'),
+        'variants' => [
+            'high' => [
+                'monthly' => [
+                    'price' => (float) env('PRICE_EXPERIMENT_HIGH_MONTHLY', 8.99),
+                    'original_price' => null,
+                    'lookup' => env('PRICE_EXPERIMENT_HIGH_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly_v9'),
+                ],
+                'yearly' => [
+                    'price' => (float) env('PRICE_EXPERIMENT_HIGH_YEARLY', 53.94),
+                    'original_price' => (float) env('PRICE_EXPERIMENT_HIGH_YEARLY_ORIGINAL', 107.88),
+                    'lookup' => env('PRICE_EXPERIMENT_HIGH_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly_v9'),
+                ],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Stripe Product IDs
     |--------------------------------------------------------------------------
     |

@@ -9,6 +9,7 @@ use App\Features\Mcp;
 use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
+use App\Services\Subscriptions\ExperimentOffer;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -16,7 +17,10 @@ use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
-    public function __construct(private CurrencyOptions $currencyOptions) {}
+    public function __construct(
+        private CurrencyOptions $currencyOptions,
+        private ExperimentOffer $experimentOffer,
+    ) {}
 
     /**
      * The root template that's loaded on the first page visit.
@@ -95,7 +99,9 @@ class HandleInertiaRequests extends Middleware
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
             'pricing' => [
-                'plans' => config('subscriptions.plans', []),
+                'plans' => $user
+                    ? $this->experimentOffer->pricingPlansFor($user)
+                    : config('subscriptions.plans', []),
                 'defaultPlan' => config('subscriptions.default_plan', 'monthly'),
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),

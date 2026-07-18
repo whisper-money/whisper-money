@@ -2,6 +2,7 @@
 
 namespace App\Services\Subscriptions;
 
+use App\Features\PriceExperiment;
 use App\Features\SubscriptionExperiment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -9,16 +10,60 @@ use Laravel\Cashier\Subscription;
 use Laravel\Pennant\Feature;
 
 /**
- * Translates a user's experiment variant into the concrete offer they get:
- * how many trial days per plan, whether they pay immediately, and whether they
- * can still trigger the self-service refund. Single source of truth shared by
- * the checkout, the paywall and the billing settings screen.
+ * Translates a user's experiment variants into the concrete offer they get: the
+ * plan prices (price experiment), how many trial days per plan, whether they pay
+ * immediately, and whether they can still trigger the self-service refund. Single
+ * source of truth shared by the checkout, the paywall and the billing settings
+ * screen, so a user is always shown exactly the price and terms they are charged.
  */
 class ExperimentOffer
 {
     public function variantFor(User $user): string
     {
         return Feature::for($user)->value(SubscriptionExperiment::class);
+    }
+
+    public function priceVariantFor(User $user): string
+    {
+        return Feature::for($user)->value(PriceExperiment::class);
+    }
+
+    /**
+     * The plans config with the user's price-experiment variant applied: price,
+     * original_price and Stripe lookup key swapped for the assigned tier. Control
+     * and legacy users get the unchanged config. Drives both the paywall display
+     * and the checkout charge, so the shown price always equals the charged one.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function pricingPlansFor(User $user): array
+    {
+        $plans = (array) config('subscriptions.plans', []);
+        $overrides = (array) config('subscriptions.price_experiment.variants.'.$this->priceVariantFor($user), []);
+
+        foreach ($overrides as $planKey => $override) {
+            if (! isset($plans[$planKey])) {
+                continue;
+            }
+
+            $plans[$planKey]['price'] = $override['price'];
+            $plans[$planKey]['original_price'] = $override['original_price'] ?? null;
+            $plans[$planKey]['stripe_lookup_key'] = $override['lookup'];
+        }
+
+        return $plans;
+    }
+
+    /**
+     * Stripe lookup key to charge for the given plan and the user's price variant.
+     * Falls back to the control plan's key for control/legacy users.
+     */
+    public function lookupKeyFor(User $user, string $planKey): string
+    {
+        return (string) config(
+            "subscriptions.price_experiment.variants.{$this->priceVariantFor($user)}.{$planKey}.lookup",
+            config("subscriptions.plans.{$planKey}.stripe_lookup_key"),
+        );
     }
 
     /**

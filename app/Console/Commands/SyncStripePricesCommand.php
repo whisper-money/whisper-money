@@ -17,7 +17,7 @@ class SyncStripePricesCommand extends Command
 
     public function handle(): int
     {
-        $plans = config('subscriptions.plans', []);
+        $plans = $this->plansToSync();
         $currency = config('cashier.currency', 'eur');
         $dryRun = $this->option('dry-run');
 
@@ -101,6 +101,33 @@ class SyncStripePricesCommand extends Command
         $this->info("{$created} created, {$transferred} updated, {$skipped} skipped{$suffix}.");
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The base plans plus the price-experiment variant tiers, flattened into one
+     * list of pseudo-plans so each gets its own Stripe price + lookup key. The
+     * variant billing period and name are inherited from the matching base plan.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function plansToSync(): array
+    {
+        $plans = (array) config('subscriptions.plans', []);
+
+        foreach ((array) config('subscriptions.price_experiment.variants', []) as $variantKey => $variantPlans) {
+            foreach ((array) $variantPlans as $planKey => $spec) {
+                $base = $plans[$planKey] ?? [];
+
+                $plans["price_experiment.{$variantKey}.{$planKey}"] = [
+                    'name' => ($base['name'] ?? ucfirst((string) $planKey))." (price: {$variantKey})",
+                    'price' => $spec['price'],
+                    'billing_period' => $base['billing_period'] ?? ($planKey === 'yearly' ? 'year' : 'month'),
+                    'stripe_lookup_key' => $spec['lookup'] ?? null,
+                ];
+            }
+        }
+
+        return $plans;
     }
 
     /**
