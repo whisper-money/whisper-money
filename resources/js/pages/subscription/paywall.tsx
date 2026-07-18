@@ -112,12 +112,12 @@ const socialProofs = [
     {
         icon: TrendingUpIcon,
         highlightKey: '15% more savings',
-        textKey: 'after 3 months with Whisper Money',
+        textKey: 'after 3 months',
     },
     {
         icon: PiggyBankIcon,
         highlightKey: '23% better',
-        textKey: 'spending awareness reported',
+        textKey: 'spending awareness',
     },
     {
         icon: LockIcon,
@@ -127,7 +127,7 @@ const socialProofs = [
     {
         icon: UsersIcon,
         highlightKey: '2,500+ users',
-        textKey: 'taking control of their finances',
+        textKey: 'trusting us',
     },
 ];
 
@@ -148,7 +148,7 @@ function SocialProofSlider() {
         <div className="flex flex-col items-center gap-4">
             <div
                 key={`icon-${currentIndex}`}
-                className="flex h-16 w-16 animate-in items-center justify-center rounded-full bg-emerald-100 duration-500 zoom-in-95 fade-in dark:bg-emerald-900/30"
+                className="flex h-14 w-14 animate-in items-center justify-center rounded-full bg-emerald-100 duration-500 zoom-in-95 fade-in dark:bg-emerald-900/30"
             >
                 <Icon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
             </div>
