@@ -525,6 +525,64 @@ test('checkout applies configured trial days to the subscription builder', funct
     $this->get(route('subscribe.checkout', ['plan' => 'monthly']))->assertRedirect();
 });
 
+test('checkout tags the subscription with a valid upsell source', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 0,
+        'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
+    ]);
+    Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
+    $builder->shouldReceive('withMetadata')->once()->with(['upsell_source' => 'connections'])->andReturnSelf();
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
+    $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('newSubscription')
+        ->once()
+        ->with('default', 'price_test_monthly')
+        ->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('subscribe.checkout', ['plan' => 'monthly', 'source' => 'connections']))->assertRedirect();
+});
+
+test('checkout ignores an unknown upsell source', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 0,
+        'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
+    ]);
+    Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
+    $builder->shouldNotReceive('withMetadata');
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
+    $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('newSubscription')
+        ->once()
+        ->with('default', 'price_test_monthly')
+        ->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('subscribe.checkout', ['plan' => 'monthly', 'source' => 'bogus']))->assertRedirect();
+});
+
 test('checkout applies lead promotion code without allowing manual promotion codes', function () {
     config([
         'subscriptions.plans.monthly.trial_days' => 0,

@@ -2,7 +2,7 @@ import { store } from '@/actions/App/Http/Controllers/Settings/AccountController
 import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
-import { UpgradeConnectionDialog } from '@/components/open-banking/upgrade-connection-dialog';
+import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Button } from '@/components/ui/button';
 import { CreateButton } from '@/components/ui/create-button';
 import {
@@ -342,9 +342,14 @@ export function CreateAccountDialog({
                 connections={connections}
             />
 
-            <UpgradeConnectionDialog
+            <UpgradeDialog
                 open={upgradeDialogOpen}
                 onOpenChange={setUpgradeDialogOpen}
+                title={__('Connected accounts are a paid feature')}
+                description={__(
+                    'Subscribe to a plan to link a bank account and keep it synced automatically.',
+                )}
+                source="accounts"
             />
 
             <IntegrationRequestsDrawer

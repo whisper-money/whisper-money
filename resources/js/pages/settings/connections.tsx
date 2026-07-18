@@ -2,7 +2,7 @@ import { ConnectAccountDialog } from '@/components/open-banking/connect-account-
 import { ConnectionStatusBadge } from '@/components/open-banking/connection-status-badge';
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
 import { UpdateCredentialsDialog } from '@/components/open-banking/update-credentials-dialog';
-import { UpgradeConnectionDialog } from '@/components/open-banking/upgrade-connection-dialog';
+import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -518,9 +518,14 @@ export default function ConnectionsPage({ connections }: Props) {
                     connections={connections}
                 />
 
-                <UpgradeConnectionDialog
+                <UpgradeDialog
                     open={upgradeDialogOpen}
                     onOpenChange={setUpgradeDialogOpen}
+                    title={__('Bank connections are a paid feature')}
+                    description={__(
+                        'Subscribe to a plan to automatically sync your transactions and balances straight from your bank.',
+                    )}
+                    source="connections"
                 />
 
                 {disconnectConnection && (
