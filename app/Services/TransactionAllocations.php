@@ -10,10 +10,13 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The single source of truth for "effective category attribution": an unsplit
- * transaction is attributed to its own category, a split transaction to its
- * lines. Every category breakdown reads through here so a split never gets
- * double-counted or dropped.
+ * Effective category attribution: an unsplit transaction is attributed to its
+ * own category, a split transaction to its lines. The category breakdowns read
+ * through here — either the SQL {@see self::query()} or the collection
+ * {@see self::expand()} — so a split is never double-counted or dropped. The two
+ * encarnations share the "iterate lines vs the row itself" rule but not code:
+ * SQL sums raw rows, expand() needs hydrated models (account/category/labels)
+ * for currency conversion and side classification.
  */
 class TransactionAllocations
 {
@@ -50,10 +53,14 @@ class TransactionAllocations
     /**
      * Expand a loaded transaction collection into effective allocations: a split
      * transaction becomes one synthetic Transaction per line (carrying the line's
-     * amount + category while keeping the parent's account/currency/date for FX
-     * and side classification); unsplit transactions pass through unchanged.
+     * amount + category + labels while keeping the parent's account/currency/date
+     * for FX and side classification); unsplit transactions pass through
+     * unchanged.
      *
-     * Callers must eager-load `splits.category` (and `account` for FX).
+     * Callers must eager-load `splits.category` (and `splits.labels`/`account`
+     * where they read those). Synthetic line instances deliberately keep the
+     * parent's `id`, so consumers must aggregate by `category_id`/labels, never
+     * `keyBy('id')`/`unique('id')` (that would collapse a split's lines).
      *
      * @param  Collection<int, Transaction>  $transactions
      * @return Collection<int, Transaction>
@@ -75,6 +82,10 @@ class TransactionAllocations
                 ]);
                 $allocation->setRelation('account', $transaction->relationLoaded('account') ? $transaction->account : null);
                 $allocation->setRelation('category', $line->relationLoaded('category') ? $line->category : null);
+
+                if ($line->relationLoaded('labels')) {
+                    $allocation->setRelation('labels', $line->labels);
+                }
 
                 return $allocation;
             })->all();

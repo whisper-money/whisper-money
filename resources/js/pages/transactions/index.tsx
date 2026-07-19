@@ -104,6 +104,7 @@ import {
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
+    isSplit,
     type DecryptedTransaction,
     type TransactionFilters as Filters,
     type ServerTransaction,
@@ -1139,7 +1140,7 @@ export default function Transactions({
                 );
                 if (response.data.omitted_splits > 0) {
                     toast.info(
-                        __('Skipped :count split transactions', {
+                        __('Split transactions skipped: :count', {
                             count: response.data.omitted_splits,
                         }),
                     );
@@ -1159,10 +1160,7 @@ export default function Transactions({
                 // (it would wipe their lines), so skip them and report how many.
                 const splitIds = new Set(
                     allTransactions
-                        .filter(
-                            (transaction) =>
-                                (transaction.splits?.length ?? 0) > 0,
-                        )
+                        .filter((transaction) => isSplit(transaction))
                         .map((transaction) => transaction.id.toString()),
                 );
                 const targetIds = selectedIds.filter((id) => !splitIds.has(id));
@@ -1195,7 +1193,7 @@ export default function Transactions({
 
                 if (omitted > 0) {
                     toast.info(
-                        __('Skipped :count split transactions', {
+                        __('Split transactions skipped: :count', {
                             count: omitted,
                         }),
                     );

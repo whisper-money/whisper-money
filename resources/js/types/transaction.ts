@@ -52,6 +52,11 @@ export interface Transaction {
     updated_at: string;
 }
 
+/** Whether a transaction is split into per-category lines. */
+export function isSplit(transaction: Pick<Transaction, 'splits'>): boolean {
+    return (transaction.splits?.length ?? 0) > 0;
+}
+
 export interface ServerTransaction extends Transaction {
     account?: Account;
     category?: Category | null;

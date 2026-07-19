@@ -299,6 +299,86 @@ it('does not treat a fully-categorized split as uncategorized', function () {
     expect($matches->all())->not->toContain($split->id);
 });
 
+it('rejects splitting a zero-amount transaction', function () {
+    $category = expenseCategory($this->user);
+    $transaction = splittableTransaction($this->user, 0);
+
+    actingAs($this->user)
+        ->patchJson(route('transactions.update', $transaction), [
+            'splits' => [
+                ['category_id' => $category->id, 'amount' => 50],
+                ['category_id' => $category->id, 'amount' => -50],
+            ],
+        ])
+        ->assertJsonValidationErrors(['splits']);
+});
+
+it('classifies split lines by their own category type in the dashboard cash flow', function () {
+    $expense = expenseCategory($this->user, 'Groceries');
+    $savings = Category::factory()->for($this->user)->create([
+        'name' => 'Savings',
+        'type' => CategoryType::Savings,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+    $transaction = splittableTransaction($this->user, -10000);
+    $transaction->update(['transaction_date' => now()]);
+
+    app(TransactionSplitter::class)->apply($transaction, [
+        ['category_id' => $expense->id, 'amount' => -3000],
+        ['category_id' => $savings->id, 'amount' => -7000],
+    ]);
+
+    $response = actingAs($this->user)->getJson(
+        '/api/dashboard/cash-flow?from='.now()->startOfMonth()->toDateString().'&to='.now()->endOfMonth()->toDateString(),
+    )->assertOk();
+
+    // Only the expense line counts as expense; the savings line is excluded.
+    expect($response->json('current.expense'))->toBe(3000);
+});
+
+it('attributes split lines per category on the analysis screen', function () {
+    $restaurant = expenseCategory($this->user, 'Restaurant');
+    $travel = expenseCategory($this->user, 'Travel');
+    $transaction = splittableTransaction($this->user, -10000);
+    $transaction->update(['transaction_date' => now()]);
+
+    app(TransactionSplitter::class)->apply($transaction, [
+        ['category_id' => $restaurant->id, 'amount' => -2500],
+        ['category_id' => $travel->id, 'amount' => -7500],
+    ]);
+
+    $response = actingAs($this->user)->getJson(
+        '/api/transactions/analysis?date_from='.now()->subDay()->toDateString().'&date_to='.now()->addDay()->toDateString(),
+    )->assertOk();
+
+    $byCategory = collect($response->json('by_category'))->keyBy('category_id');
+
+    expect($byCategory[$restaurant->id]['amount'])->toBe(2500);
+    expect($byCategory[$travel->id]['amount'])->toBe(7500);
+});
+
+it('skips split transactions on a bulk label assignment', function () {
+    $category = expenseCategory($this->user);
+    $label = Label::factory()->for($this->user)->create();
+    $split = splittableTransaction($this->user, -10000);
+    $plain = splittableTransaction($this->user, -5000);
+
+    app(TransactionSplitter::class)->apply($split, [
+        ['category_id' => $category->id, 'amount' => -2500],
+        ['category_id' => $category->id, 'amount' => -7500],
+    ]);
+
+    actingAs($this->user)
+        ->patchJson(route('transactions.bulk-update'), [
+            'transaction_ids' => [$split->id, $plain->id],
+            'label_ids' => [$label->id],
+        ])
+        ->assertOk();
+
+    expect($split->fresh()->labels)->toHaveCount(0);
+    expect($plain->fresh()->labels->pluck('id')->all())->toContain($label->id);
+});
+
 it('skips split transactions on a bulk category assignment', function () {
     $category = expenseCategory($this->user);
     $newCategory = expenseCategory($this->user, 'New');

@@ -2298,9 +2298,11 @@
     "Remove line": "Eliminar línea",
     "Undo split": "Deshacer división",
     "Remaining: :amount": "Restante: :amount",
-    "Skipped :count split transactions": "Se omitieron :count transacciones divididas",
+    "Each line needs a non-zero amount": "Cada línea necesita un importe distinto de cero",
+    "Split transactions skipped: :count": "Transacciones divididas omitidas: :count",
     "A split needs at least two lines.": "Una división necesita al menos dos líneas.",
     "The split lines must add up to the transaction amount.": "Las líneas de la división deben sumar el importe de la transacción.",
     "Each split line must be a non-zero amount.": "Cada línea de la división debe tener un importe distinto de cero.",
+    "You can't split a transaction with no amount.": "No puedes dividir una transacción sin importe.",
     "Split lines must have the same sign as the transaction.": "Las líneas de la división deben tener el mismo signo que la transacción."
 }

@@ -26,15 +26,11 @@ interface SplitEditorProps {
     onLabelCreated?: (label: Label) => void;
 }
 
-let keyCounter = 0;
-
 export function newSplitLine(
     partial?: Partial<SplitLineDraft>,
 ): SplitLineDraft {
-    keyCounter += 1;
-
     return {
-        key: `split-${keyCounter}`,
+        key: crypto.randomUUID(),
         category_id: null,
         amount: 0,
         label_ids: [],
@@ -48,17 +44,16 @@ export function splitRemaining(total: number, lines: SplitLineDraft[]): number {
 
 /**
  * A split is valid once it has at least two lines that each carry a non-zero
- * amount on the same side as the transaction and together reconcile to its
- * total to the cent.
+ * amount on the same side as the (non-zero) transaction total and together
+ * reconcile to it to the cent.
  */
 export function isSplitValid(total: number, lines: SplitLineDraft[]): boolean {
-    if (lines.length < 2 || splitRemaining(total, lines) !== 0) {
+    if (total === 0 || lines.length < 2 || splitRemaining(total, lines) !== 0) {
         return false;
     }
 
     return lines.every(
-        (line) =>
-            line.amount !== 0 && (total === 0 || line.amount > 0 === total > 0),
+        (line) => line.amount !== 0 && line.amount > 0 === total > 0,
     );
 }
 
@@ -87,6 +82,11 @@ export function SplitEditor({
 
     const addLine = () =>
         onChange([...lines, newSplitLine({ amount: remaining })]);
+
+    const valid = isSplitValid(total, lines);
+    // Remaining can be 0 while the split is still invalid (e.g. a seeded
+    // zero-amount line), so key the styling off validity, not just the balance.
+    const hasZeroLine = lines.some((line) => line.amount === 0);
 
     const formattedRemaining = new Intl.NumberFormat(locale, {
         style: 'currency',
@@ -168,13 +168,17 @@ export function SplitEditor({
                 </Button>
                 <span
                     className={
-                        remaining === 0
+                        valid
                             ? 'text-sm text-muted-foreground'
                             : 'text-sm font-medium text-destructive'
                     }
                     data-testid="split-remaining"
                 >
-                    {__('Remaining: :amount', { amount: formattedRemaining })}
+                    {remaining === 0 && hasZeroLine
+                        ? __('Each line needs a non-zero amount')
+                        : __('Remaining: :amount', {
+                              amount: formattedRemaining,
+                          })}
                 </span>
             </div>
         </div>

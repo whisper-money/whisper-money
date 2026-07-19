@@ -37,4 +37,8 @@ describe('isSplitValid', () => {
     it('rejects a line whose sign differs from the total', () => {
         expect(isSplitValid(-10000, lines(-12500, 2500))).toBe(false);
     });
+
+    it('rejects splitting a zero-total transaction', () => {
+        expect(isSplitValid(0, lines(50, -50))).toBe(false);
+    });
 });

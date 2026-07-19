@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Enums\CategoryType;
 use App\Models\Account;
-use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
 use App\Services\PeriodComparator;
+use App\Services\TransactionAllocations;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -110,9 +110,11 @@ class DashboardController extends Controller
 
     private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
     {
-        return Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
+        // Read effective allocations so a split's lines are classified by their
+        // own category type (a savings/transfer line no longer counts as a plain
+        // expense just because the parent row has no category).
+        return DB::query()
+            ->fromSub(TransactionAllocations::query($userId, $from, $to), 'transactions')
             ->where(function ($q) use ($type) {
                 $q->whereExists(function ($sub) use ($type) {
                     $sub->select(DB::raw(1))

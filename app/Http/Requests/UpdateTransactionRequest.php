@@ -75,6 +75,13 @@ class UpdateTransactionRequest extends FormRequest
             }
 
             $total = $this->effectiveAmount();
+
+            if ($total === 0) {
+                $validator->errors()->add('splits', __("You can't split a transaction with no amount."));
+
+                return;
+            }
+
             $sum = 0;
 
             foreach ($lines as $index => $line) {
@@ -83,7 +90,7 @@ class UpdateTransactionRequest extends FormRequest
 
                 if ($amount === 0) {
                     $validator->errors()->add("splits.{$index}.amount", __('Each split line must be a non-zero amount.'));
-                } elseif ($total !== 0 && ($amount > 0) !== ($total > 0)) {
+                } elseif (($amount > 0) !== ($total > 0)) {
                     $validator->errors()->add("splits.{$index}.amount", __('Split lines must have the same sign as the transaction.'));
                 }
             }

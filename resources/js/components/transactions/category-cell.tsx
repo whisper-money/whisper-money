@@ -18,6 +18,7 @@ import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { getCategoryColorClasses, type Category } from '@/types/category';
 import {
+    isSplit,
     type DecryptedTransaction,
     type TransactionSplit,
 } from '@/types/transaction';
@@ -67,7 +68,7 @@ export function CategoryCell({
 
     // A split transaction shows its per-line breakdown instead of a single,
     // editable category. Editing happens in the modal (click the row).
-    if (transaction.splits && transaction.splits.length > 0) {
+    if (isSplit(transaction)) {
         return (
             <SplitBreakdown
                 transaction={transaction}

@@ -353,16 +353,23 @@ class TransactionController extends Controller
             $transactions = $query->get();
         }
 
-        // Split transactions carry no single category, so a bulk category
-        // assignment skips them (it would silently destroy their lines) and we
-        // report how many were left untouched.
-        $omittedSplitIds = collect();
-        $updateData = [];
-        if ($request->has('category_id')) {
-            $newCategoryId = $request->input('category_id');
+        $labelIds = $request->input('label_ids');
+        $hasLabelUpdate = $request->has('label_ids');
+        $hasCategoryUpdate = $request->has('category_id');
 
+        // A bulk category or label assignment skips split transactions: setting a
+        // single category would destroy their lines, and labels live on the lines,
+        // not the row. Notes still apply (they are transaction-level). We report
+        // how many splits were left untouched.
+        $omittedSplitIds = collect();
+        if ($hasCategoryUpdate || $hasLabelUpdate) {
             $transactions->loadMissing('splits:id,transaction_id');
             $omittedSplitIds = $transactions->filter->isSplit()->pluck('id');
+        }
+
+        $updateData = [];
+        if ($hasCategoryUpdate) {
+            $newCategoryId = $request->input('category_id');
 
             $overrideHandler = app(CategoryOverrideHandler::class);
 
@@ -386,9 +393,6 @@ class TransactionController extends Controller
             $updateData['notes_iv'] = $request->input('notes_iv');
         }
 
-        $labelIds = $request->input('label_ids');
-        $hasLabelUpdate = $request->has('label_ids');
-
         if (empty($updateData) && ! $hasLabelUpdate) {
             return response()->json([
                 'message' => 'No update data provided.',
@@ -402,7 +406,7 @@ class TransactionController extends Controller
             } elseif ($filters !== null) {
                 $updateQuery->applyFilters($filters);
             }
-            if ($omittedSplitIds->isNotEmpty()) {
+            if ($hasCategoryUpdate && $omittedSplitIds->isNotEmpty()) {
                 $updateQuery->whereNotIn('id', $omittedSplitIds->all());
             }
             $updateQuery->update($updateData);
@@ -410,6 +414,10 @@ class TransactionController extends Controller
 
         if ($hasLabelUpdate) {
             foreach ($transactions as $transaction) {
+                if ($transaction->isSplit()) {
+                    continue;
+                }
+
                 $transaction->labels()->sync($labelIds ?? []);
                 $transaction->save();
             }

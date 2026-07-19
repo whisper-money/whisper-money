@@ -6,9 +6,11 @@
     "Remove line": "Remove line",
     "Undo split": "Undo split",
     "Remaining: :amount": "Remaining: :amount",
-    "Skipped :count split transactions": "Skipped :count split transactions",
+    "Each line needs a non-zero amount": "Each line needs a non-zero amount",
+    "Split transactions skipped: :count": "Split transactions skipped: :count",
     "A split needs at least two lines.": "A split needs at least two lines.",
     "The split lines must add up to the transaction amount.": "The split lines must add up to the transaction amount.",
     "Each split line must be a non-zero amount.": "Each split line must be a non-zero amount.",
+    "You can't split a transaction with no amount.": "You can't split a transaction with no amount.",
     "Split lines must have the same sign as the transaction.": "Split lines must have the same sign as the transaction."
 }

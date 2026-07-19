@@ -44,7 +44,7 @@ import {
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { isSplit, type DecryptedTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
@@ -124,7 +124,7 @@ export function EditTransactionDialog({
     const splittingEnabled =
         usePage<SharedData>().props.features.transactionSplitting;
     const isSplitting = splitLines.length > 0;
-    const wasSplit = (transaction?.splits?.length ?? 0) > 0;
+    const wasSplit = transaction ? isSplit(transaction) : false;
 
     function startSplit() {
         // Seed with the current category as the first line at the full amount,
@@ -496,8 +496,32 @@ export function EditTransactionDialog({
 
                 // A split change turns one row into several (or back). Persist it
                 // and let the server-rendered list re-fetch rather than patch the
-                // grouped rows by hand.
-                if (isSplitting || wasSplit) {
+                // grouped rows by hand. Only send `splits` when the split content
+                // actually changed (or was undone) — editing another field of an
+                // already-split transaction must not re-trigger the gated split
+                // write, so it keeps working even if the feature is rolled back.
+                const originalSplitSignature = JSON.stringify(
+                    (transaction.splits ?? []).map((split) => ({
+                        category_id: split.category_id,
+                        amount: split.amount,
+                        label_ids: [
+                            ...(split.labels?.map((label) => label.id) ?? []),
+                        ].sort(),
+                    })),
+                );
+                const currentSplitSignature = JSON.stringify(
+                    splitLines.map((line) => ({
+                        category_id: line.category_id,
+                        amount: line.amount,
+                        label_ids: [...line.label_ids].sort(),
+                    })),
+                );
+                const splitDirty =
+                    (isSplitting &&
+                        currentSplitSignature !== originalSplitSignature) ||
+                    (!isSplitting && wasSplit);
+
+                if (splitDirty) {
                     if (isSplitting) {
                         if (!isSplitValid(amount, splitLines)) {
                             toast.error(

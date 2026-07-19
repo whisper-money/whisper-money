@@ -9,6 +9,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Services\CategoryTree;
 use App\Services\ExchangeRateService;
+use App\Services\TransactionAllocations;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -56,14 +57,19 @@ class TransactionAnalysisController extends Controller
 
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
-            ->with(['account.bank', 'category', 'labels'])
+            ->with(['account.bank', 'category', 'labels', 'splits.category', 'splits.labels'])
             ->applyFilters($filters)
             ->get();
 
         $this->preloadExchangeRates($transactions, $currency);
 
-        $byCategory = $this->categoryBreakdown($transactions, $currency, $user->id);
-        $byTag = $this->tagBreakdown($transactions, $currency);
+        // Category and tag breakdowns are per-line for split transactions; payee,
+        // account and the totals stay at the transaction level (a split doesn't
+        // change who was paid or the amount that moved).
+        $allocations = TransactionAllocations::expand($transactions);
+
+        $byCategory = $this->categoryBreakdown($allocations, $currency, $user->id);
+        $byTag = $this->tagBreakdown($allocations, $currency);
         $byPayee = $this->payeeBreakdown($transactions, $currency);
         $byAccount = $this->accountBreakdown($transactions, $currency);
 
