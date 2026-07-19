@@ -1,3 +1,14 @@
 {
-    "Saved (cashflow)": "Saved"
+    "Saved (cashflow)": "Saved",
+    "Split": "Split",
+    "Rest": "Rest",
+    "Add line": "Add line",
+    "Remove line": "Remove line",
+    "Undo split": "Undo split",
+    "Remaining: :amount": "Remaining: :amount",
+    "Skipped :count split transactions": "Skipped :count split transactions",
+    "A split needs at least two lines.": "A split needs at least two lines.",
+    "The split lines must add up to the transaction amount.": "The split lines must add up to the transaction amount.",
+    "Each split line must be a non-zero amount.": "Each split line must be a non-zero amount.",
+    "Split lines must have the same sign as the transaction.": "Split lines must have the same sign as the transaction."
 }

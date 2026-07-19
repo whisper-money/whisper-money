@@ -12,6 +12,22 @@ export type TransactionSource =
 
 export type CategorySource = 'manual' | 'rule' | 'ai' | 'bank';
 
+/** One category+amount line of a split transaction, with its own labels. */
+export interface TransactionSplit {
+    id: UUID;
+    category_id: UUID | null;
+    amount: number;
+    category?: Category | null;
+    labels?: Label[];
+}
+
+/** A single split line as submitted to the backend when (re)splitting. */
+export interface SplitLineInput {
+    category_id: UUID | null;
+    amount: number;
+    label_ids?: UUID[];
+}
+
 export interface Transaction {
     id: UUID;
     user_id: UUID;
@@ -31,6 +47,7 @@ export interface Transaction {
     ai_confidence?: number | null;
     ai_categorized?: boolean;
     label_ids?: UUID[];
+    splits?: TransactionSplit[];
     created_at: string;
     updated_at: string;
 }
@@ -39,6 +56,7 @@ export interface ServerTransaction extends Transaction {
     account?: Account;
     category?: Category | null;
     labels?: Label[];
+    splits?: TransactionSplit[];
 }
 
 export interface DecryptedTransaction extends Transaction {
@@ -48,6 +66,7 @@ export interface DecryptedTransaction extends Transaction {
     category?: Category | null;
     bank?: Bank;
     labels?: Label[];
+    splits?: TransactionSplit[];
 }
 
 export interface TransactionFilters {

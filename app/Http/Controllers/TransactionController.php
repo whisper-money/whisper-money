@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CategorySource;
+use App\Features\TransactionSplitting;
 use App\Http\Requests\BulkUpdateTransactionsRequest;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
@@ -15,11 +16,13 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Services\Ai\CategoryOverrideHandler;
 use App\Services\ManualBalanceAdjuster;
+use App\Services\TransactionSplitter;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class TransactionController extends Controller
 {
@@ -55,7 +58,7 @@ class TransactionController extends Controller
 
         $query = Transaction::query()
             ->where('user_id', $user->id)
-            ->with(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin'])
+            ->with(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin', 'splits.category', 'splits.labels'])
             ->applyFilters($filters);
 
         $nullableSortColumns = ['creditor_name', 'debtor_name'];
@@ -213,7 +216,7 @@ class TransactionController extends Controller
         ], 201);
     }
 
-    public function update(UpdateTransactionRequest $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
+    public function update(UpdateTransactionRequest $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster, TransactionSplitter $splitter): JsonResponse
     {
         $this->authorize('update', $transaction);
 
@@ -222,11 +225,25 @@ class TransactionController extends Controller
         $hasLabelUpdate = $request->has('label_ids');
         unset($data['label_ids']);
 
+        $splitLines = $request->has('splits') ? ($data['splits'] ?? []) : null;
+        unset($data['splits']);
+        $applyingSplit = is_array($splitLines) && $splitLines !== [];
+        // An explicit empty array collapses an existing split back to a single
+        // category; the normal category_id in this request restores it.
+        $unsplitting = $splitLines === [] && $transaction->isSplit();
+
+        // The flag only gates creating/changing splits; unsplitting and reads of
+        // existing splits always work so the feature can be rolled back safely.
+        if ($applyingSplit) {
+            abort_unless(Feature::for($request->user())->active(TransactionSplitting::class), 403);
+        }
+
         $learnedRule = null;
 
         // A user-set category overrides any AI assignment: learn the correction as
         // a forward-looking rule, log/self-heal as needed, and reset provenance.
-        if ($request->has('category_id')) {
+        // Skipped while splitting — the lines own the categorisation, not the row.
+        if ($request->has('category_id') && ! $applyingSplit) {
             $newCategoryId = $data['category_id'] ?? null;
 
             if ($newCategoryId !== $transaction->category_id) {
@@ -247,21 +264,32 @@ class TransactionController extends Controller
             $transaction->fill($data);
         }
 
-        // Sync labels if provided
-        if ($hasLabelUpdate) {
-            $transaction->labels()->sync($labelIds ?? []);
-            // Reload labels so the event listener has fresh data
-            $transaction->load('labels');
-        }
-
-        // Save to fire the updated event if there are any changes
-        // We need to save even if just labels changed (isDirty won't detect pivot changes)
-        if ($transaction->isDirty() || $hasLabelUpdate) {
-            // Touch the model to ensure it's marked as changed for the event
-            if (! $transaction->isDirty() && $hasLabelUpdate) {
-                $transaction->touch();
+        if ($applyingSplit) {
+            // apply() persists the lines and saves the transaction (nulling its
+            // own category/labels) in a single write, so the queued budget
+            // listener sees the final split state.
+            $splitter->apply($transaction, $splitLines);
+        } else {
+            if ($unsplitting) {
+                $splitter->remove($transaction);
             }
-            $transaction->save();
+
+            // Sync labels if provided
+            if ($hasLabelUpdate) {
+                $transaction->labels()->sync($labelIds ?? []);
+                // Reload labels so the event listener has fresh data
+                $transaction->load('labels');
+            }
+
+            // Save to fire the updated event if there are any changes
+            // We need to save even if just labels changed (isDirty won't detect pivot changes)
+            if ($transaction->isDirty() || $hasLabelUpdate || $unsplitting) {
+                // Touch the model to ensure it's marked as changed for the event
+                if (! $transaction->isDirty() && ($hasLabelUpdate || $unsplitting)) {
+                    $transaction->touch();
+                }
+                $transaction->save();
+            }
         }
 
         // Move the manual account balance to match an edited amount/date/account:
@@ -277,7 +305,7 @@ class TransactionController extends Controller
         }
 
         return response()->json([
-            'data' => $transaction->fresh()->load('labels'),
+            'data' => $transaction->fresh()->load(['labels', 'splits.category', 'splits.labels']),
             'learned_rule' => $learnedRule === null ? null : [
                 'id' => $learnedRule->id,
                 'title' => $learnedRule->title,
@@ -325,13 +353,24 @@ class TransactionController extends Controller
             $transactions = $query->get();
         }
 
+        // Split transactions carry no single category, so a bulk category
+        // assignment skips them (it would silently destroy their lines) and we
+        // report how many were left untouched.
+        $omittedSplitIds = collect();
         $updateData = [];
         if ($request->has('category_id')) {
             $newCategoryId = $request->input('category_id');
 
+            $transactions->loadMissing('splits:id,transaction_id');
+            $omittedSplitIds = $transactions->filter->isSplit()->pluck('id');
+
             $overrideHandler = app(CategoryOverrideHandler::class);
 
             foreach ($transactions as $transaction) {
+                if ($transaction->isSplit()) {
+                    continue;
+                }
+
                 $overrideHandler->record($transaction, $newCategoryId);
             }
 
@@ -363,6 +402,9 @@ class TransactionController extends Controller
             } elseif ($filters !== null) {
                 $updateQuery->applyFilters($filters);
             }
+            if ($omittedSplitIds->isNotEmpty()) {
+                $updateQuery->whereNotIn('id', $omittedSplitIds->all());
+            }
             $updateQuery->update($updateData);
         }
 
@@ -375,7 +417,8 @@ class TransactionController extends Controller
 
         return response()->json([
             'message' => 'Transactions updated successfully',
-            'count' => $transactions->count(),
+            'count' => $transactions->count() - $omittedSplitIds->count(),
+            'omitted_splits' => $omittedSplitIds->count(),
         ]);
     }
 }

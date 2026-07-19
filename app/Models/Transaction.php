@@ -234,6 +234,26 @@ class Transaction extends Model
         return $this->hasMany(BudgetTransaction::class);
     }
 
+    /** @return HasMany<TransactionSplit, $this> */
+    public function splits(): HasMany
+    {
+        return $this->hasMany(TransactionSplit::class);
+    }
+
+    /**
+     * Whether this transaction is split into per-category lines. Prefers the
+     * loaded relation (list/detail eager-load it) and only hits the DB when the
+     * relation was not loaded.
+     */
+    public function isSplit(): bool
+    {
+        if ($this->relationLoaded('splits')) {
+            return $this->splits->isNotEmpty();
+        }
+
+        return $this->splits()->exists();
+    }
+
     /**
      * Transactions the AI backfill can act on: still uncategorized and stored
      * in plaintext (encrypted descriptions are never sent to the AI provider).
@@ -294,18 +314,27 @@ class Transaction extends Model
 
             $query->where(function (Builder $outer) use ($hasCategoryFilter, $realIds, $hasUncategorized, $hasLabelFilter, $labelIds) {
                 if ($hasCategoryFilter) {
+                    // A split transaction carries no category itself; it matches
+                    // through its lines. "Uncategorized" means an unsplit row with
+                    // no category, or a split with an uncategorized line — never a
+                    // split whose own (nulled) category is a bookkeeping artefact.
                     $outer->where(function (Builder $q) use ($realIds, $hasUncategorized) {
                         if (! empty($realIds)) {
-                            $q->whereIn('category_id', $realIds);
+                            $q->whereIn('category_id', $realIds)
+                                ->orWhereHas('splits', fn (Builder $s) => $s->whereIn('category_id', $realIds));
                         }
                         if ($hasUncategorized) {
-                            $q->orWhereNull('category_id');
+                            $q->orWhere(fn (Builder $u) => $u->whereNull('category_id')->whereDoesntHave('splits'))
+                                ->orWhereHas('splits', fn (Builder $s) => $s->whereNull('category_id'));
                         }
                     });
                 }
 
                 if ($hasLabelFilter) {
-                    $outer->orWhereHas('labels', fn (Builder $q) => $q->whereIn('labels.id', $labelIds));
+                    $outer->orWhere(function (Builder $q) use ($labelIds) {
+                        $q->whereHas('labels', fn (Builder $l) => $l->whereIn('labels.id', $labelIds))
+                            ->orWhereHas('splits.labels', fn (Builder $l) => $l->whereIn('labels.id', $labelIds));
+                    });
                 }
             });
         }

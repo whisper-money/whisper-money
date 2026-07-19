@@ -45,6 +45,9 @@ interface CreateColumnsOptions {
     isDateHidden?: boolean;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
+    /** Active category/label filters, used to collapse non-matching split lines into a "Rest" row. */
+    appliedCategoryIds?: string[];
+    appliedLabelIds?: string[];
 }
 
 export function createTransactionColumns({
@@ -60,6 +63,8 @@ export function createTransactionColumns({
     onReEvaluateRules,
     isDateHidden = false,
     categorizingIds,
+    appliedCategoryIds = [],
+    appliedLabelIds = [],
 }: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
     return [
         {
@@ -158,6 +163,8 @@ export function createTransactionColumns({
                         className="relative -top-0.5 max-w-[150px] md:max-w-[180px]"
                         withoutChevronIcon
                         isCategorizing={categorizingIds?.has(row.original.id)}
+                        appliedCategoryIds={appliedCategoryIds}
+                        appliedLabelIds={appliedLabelIds}
                     />
                 );
             },

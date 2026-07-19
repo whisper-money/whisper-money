@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\CategoryType;
-use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +21,8 @@ class CategorySpendingService
      */
     public function forPeriod(string $userId, Carbon $from, Carbon $to, ?string $drillParentId = null): Collection
     {
-        $perCategory = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
+        $perCategory = DB::query()
+            ->fromSub(TransactionAllocations::query($userId, $from, $to), 'transactions')
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
                     ->where('categories.type', '=', CategoryType::Expense)

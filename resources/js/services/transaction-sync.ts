@@ -1,7 +1,7 @@
 import { db, withDb } from '@/lib/dexie-db';
 import { TransactionSyncManager } from '@/lib/sync-manager';
 import type { LearnedRuleNotice } from '@/types/automation-rule';
-import type { Transaction } from '@/types/transaction';
+import type { SplitLineInput, Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
 import axios from 'axios';
 
@@ -10,8 +10,11 @@ export type UpdatedTransaction = Transaction & {
     learned_rule?: LearnedRuleNotice | null;
 };
 
-interface TransactionUpdateData extends Partial<Transaction> {
+interface TransactionUpdateData extends Omit<Partial<Transaction>, 'splits'> {
     label_ids?: string[];
+    // Present = (re)split into these lines; empty array = collapse back to a
+    // single category; absent = leave the split state untouched.
+    splits?: SplitLineInput[];
 }
 
 interface TransactionFilters {

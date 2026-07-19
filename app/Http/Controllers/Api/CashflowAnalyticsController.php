@@ -12,6 +12,7 @@ use App\Services\CashflowSummaryService;
 use App\Services\CategoryTree;
 use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
+use App\Services\TransactionAllocations;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -186,8 +187,10 @@ class CashflowAnalyticsController extends Controller
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$previousPeriod->from, $period->to])
-            ->with(['account', 'category'])
+            ->with(['account', 'category', 'splits.category'])
             ->get();
+
+        $transactions = TransactionAllocations::expand($transactions);
 
         $this->preloadExchangeRates($transactions, $userCurrency);
 
@@ -245,8 +248,10 @@ class CashflowAnalyticsController extends Controller
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->with(['account', 'category'])
+            ->with(['account', 'category', 'splits.category'])
             ->get();
+
+        $transactions = TransactionAllocations::expand($transactions);
 
         $this->preloadExchangeRates($transactions, $userCurrency);
 
@@ -340,8 +345,10 @@ class CashflowAnalyticsController extends Controller
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->with(['account', 'category'])
+            ->with(['account', 'category', 'splits.category'])
             ->get();
+
+        $transactions = TransactionAllocations::expand($transactions);
 
         $this->preloadExchangeRates($transactions, $userCurrency);
 
@@ -398,8 +405,10 @@ class CashflowAnalyticsController extends Controller
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->with(['account', 'category'])
+            ->with(['account', 'category', 'splits.category'])
             ->get();
+
+        $transactions = TransactionAllocations::expand($transactions);
 
         $this->preloadExchangeRates($transactions, $userCurrency);
 

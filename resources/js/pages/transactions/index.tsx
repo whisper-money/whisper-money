@@ -1052,6 +1052,8 @@ export default function Transactions({
                 onReEvaluateRules: handleReEvaluateRules,
                 isDateHidden: columnVisibility.transaction_date === false,
                 categorizingIds,
+                appliedCategoryIds: filters.categoryIds.map(String),
+                appliedLabelIds: filters.labelIds.map(String),
             }),
         [
             accounts,
@@ -1064,6 +1066,8 @@ export default function Transactions({
             handleReEvaluateRules,
             columnVisibility,
             categorizingIds,
+            filters.categoryIds,
+            filters.labelIds,
         ],
     );
 
@@ -1120,19 +1124,26 @@ export default function Transactions({
         try {
             if (isSelectingAll) {
                 const toastId = toast.loading(__('Updating transactions...'));
-                const response = await axios.patch<{ count: number }>(
-                    '/transactions/bulk',
-                    {
-                        filters: clientFiltersToBackendFilters(filters),
-                        category_id: categoryId,
-                    },
-                );
+                const response = await axios.patch<{
+                    count: number;
+                    omitted_splits: number;
+                }>('/transactions/bulk', {
+                    filters: clientFiltersToBackendFilters(filters),
+                    category_id: categoryId,
+                });
                 toast.dismiss(toastId);
                 toast.success(
                     __(`Updated :count transactions`, {
                         count: response.data.count,
                     }),
                 );
+                if (response.data.omitted_splits > 0) {
+                    toast.info(
+                        __('Skipped :count split transactions', {
+                            count: response.data.omitted_splits,
+                        }),
+                    );
+                }
                 setRowSelection({});
                 setIsSelectingAll(false);
                 refreshTransactions();
@@ -1144,28 +1155,51 @@ export default function Transactions({
                     ? categoriesMap.get(categoryId) || null
                     : null;
 
-                await transactionSyncService.updateMany(selectedIds, {
-                    category_id: categoryId,
-                });
-
-                setAllTransactions((previous) =>
-                    previous.map((transaction) => {
-                        if (selectedIds.includes(transaction.id.toString())) {
-                            return {
-                                ...transaction,
-                                category_id: categoryId,
-                                category: selectedCategory,
-                            };
-                        }
-                        return transaction;
-                    }),
+                // A bulk category assignment can't apply to split transactions
+                // (it would wipe their lines), so skip them and report how many.
+                const splitIds = new Set(
+                    allTransactions
+                        .filter(
+                            (transaction) =>
+                                (transaction.splits?.length ?? 0) > 0,
+                        )
+                        .map((transaction) => transaction.id.toString()),
                 );
+                const targetIds = selectedIds.filter((id) => !splitIds.has(id));
+                const omitted = selectedIds.length - targetIds.length;
 
-                toast.success(
-                    __(`Updated :count transactions`, {
-                        count: selectedIds.length,
-                    }),
-                );
+                if (targetIds.length > 0) {
+                    await transactionSyncService.updateMany(targetIds, {
+                        category_id: categoryId,
+                    });
+
+                    setAllTransactions((previous) =>
+                        previous.map((transaction) => {
+                            if (targetIds.includes(transaction.id.toString())) {
+                                return {
+                                    ...transaction,
+                                    category_id: categoryId,
+                                    category: selectedCategory,
+                                };
+                            }
+                            return transaction;
+                        }),
+                    );
+
+                    toast.success(
+                        __(`Updated :count transactions`, {
+                            count: targetIds.length,
+                        }),
+                    );
+                }
+
+                if (omitted > 0) {
+                    toast.info(
+                        __('Skipped :count split transactions', {
+                            count: omitted,
+                        }),
+                    );
+                }
 
                 setRowSelection({});
             }

@@ -1,6 +1,12 @@
 import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
+import {
+    isSplitValid,
+    newSplitLine,
+    SplitEditor,
+    type SplitLineDraft,
+} from '@/components/transactions/split-editor';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +35,7 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type SharedData } from '@/types';
 import {
     filterTransactionalAccounts,
     type Account,
@@ -40,9 +47,9 @@ import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Split, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -95,6 +102,7 @@ export function EditTransactionDialog({
     const [categoryId, setCategoryId] = useState<string>('null');
     const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [notes, setNotes] = useState('');
+    const [splitLines, setSplitLines] = useState<SplitLineDraft[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [decryptedAccountNames, setDecryptedAccountNames] = useState<
         Map<string, string>
@@ -113,6 +121,24 @@ export function EditTransactionDialog({
     const canEditAllFields =
         mode === 'create' || transaction?.source === 'manually_created';
 
+    const splittingEnabled =
+        usePage<SharedData>().props.features.transactionSplitting;
+    const isSplitting = splitLines.length > 0;
+    const wasSplit = (transaction?.splits?.length ?? 0) > 0;
+
+    function startSplit() {
+        // Seed with the current category as the first line at the full amount,
+        // plus an empty second line the user fills as they split it up.
+        setSplitLines([
+            newSplitLine({
+                category_id: categoryId === 'null' ? null : categoryId,
+                amount,
+                label_ids: selectedLabelIds,
+            }),
+            newSplitLine(),
+        ]);
+    }
+
     useEffect(() => {
         if (mode === 'edit' && transaction) {
             setTransactionDate(transaction.transaction_date);
@@ -126,6 +152,15 @@ export function EditTransactionDialog({
                     [],
             );
             setNotes(transaction.decryptedNotes || '');
+            setSplitLines(
+                (transaction.splits ?? []).map((split) =>
+                    newSplitLine({
+                        category_id: split.category_id,
+                        amount: split.amount,
+                        label_ids: split.labels?.map((label) => label.id) ?? [],
+                    }),
+                ),
+            );
         } else if (mode === 'create' && open) {
             const today = new Date().toISOString().split('T')[0];
             setTransactionDate(today);
@@ -139,6 +174,7 @@ export function EditTransactionDialog({
             setCategoryId('null');
             setSelectedLabelIds([]);
             setNotes('');
+            setSplitLines([]);
         }
     }, [mode, transaction, open, accounts, initialAccountId]);
 
@@ -427,6 +463,11 @@ export function EditTransactionDialog({
                     transaction_date?: string;
                     account_id?: string;
                     currency_code?: string;
+                    splits?: {
+                        category_id: string | null;
+                        amount: number;
+                        label_ids: string[];
+                    }[];
                 } = {
                     category_id: selectedCategoryId,
                     notes: encryptedNotes,
@@ -451,6 +492,51 @@ export function EditTransactionDialog({
                     updateData.transaction_date = transactionDate;
                     updateData.account_id = accountId;
                     updateData.currency_code = editedCurrencyCode;
+                }
+
+                // A split change turns one row into several (or back). Persist it
+                // and let the server-rendered list re-fetch rather than patch the
+                // grouped rows by hand.
+                if (isSplitting || wasSplit) {
+                    if (isSplitting) {
+                        if (!isSplitValid(amount, splitLines)) {
+                            toast.error(
+                                __(
+                                    'The split lines must add up to the transaction amount.',
+                                ),
+                            );
+                            setIsSubmitting(false);
+                            return;
+                        }
+
+                        // The lines own categorisation and labels now; drop the
+                        // transaction-level values so the backend nulls them.
+                        updateData.category_id = null;
+                        delete updateData.label_ids;
+                        updateData.splits = splitLines.map((line) => ({
+                            category_id: line.category_id,
+                            amount: line.amount,
+                            label_ids: line.label_ids,
+                        }));
+                    } else {
+                        // Collapse an existing split back to a single category.
+                        updateData.splits = [];
+                    }
+
+                    await transactionSyncService.update(
+                        transaction.id,
+                        updateData,
+                        {
+                            updateBalance: canEditAllFields
+                                ? updateAccountBalance
+                                : false,
+                        },
+                    );
+
+                    toast.success(__('Transaction updated successfully'));
+                    onOpenChange(false);
+                    router.reload({ only: ['transactions'] });
+                    return;
                 }
 
                 const result = await transactionSyncService.update(
@@ -827,34 +913,83 @@ export function EditTransactionDialog({
                             )}
                         </div>
 
-                        <div className="space-y-2">
-                            <FormLabel htmlFor="category">
-                                {__('Category')}
-                            </FormLabel>
-                            <CategorySelect
-                                value={categoryId}
-                                onValueChange={setCategoryId}
-                                categories={categories}
-                                disabled={isSubmitting}
-                                placeholder={__('Uncategorized')}
-                                triggerClassName="w-full"
-                                showUncategorized={true}
-                                data-testid="category-select"
-                            />
-                        </div>
+                        {isSplitting ? (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <FormLabel>{__('Split')}</FormLabel>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSplitLines([])}
+                                        disabled={isSubmitting}
+                                    >
+                                        {__('Undo split')}
+                                    </Button>
+                                </div>
+                                <SplitEditor
+                                    total={amount}
+                                    currencyCode={
+                                        selectedAccount?.currency_code ??
+                                        transaction?.currency_code ??
+                                        'EUR'
+                                    }
+                                    categories={categories}
+                                    labels={labels}
+                                    lines={splitLines}
+                                    onChange={setSplitLines}
+                                    disabled={isSubmitting}
+                                    onLabelCreated={onLabelCreated}
+                                />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <FormLabel htmlFor="category">
+                                            {__('Category')}
+                                        </FormLabel>
+                                        {mode === 'edit' &&
+                                            splittingEnabled && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={startSplit}
+                                                    disabled={isSubmitting}
+                                                    data-testid="split-button"
+                                                >
+                                                    <Split className="mr-1 h-4 w-4" />
+                                                    {__('Split')}
+                                                </Button>
+                                            )}
+                                    </div>
+                                    <CategorySelect
+                                        value={categoryId}
+                                        onValueChange={setCategoryId}
+                                        categories={categories}
+                                        disabled={isSubmitting}
+                                        placeholder={__('Uncategorized')}
+                                        triggerClassName="w-full"
+                                        showUncategorized={true}
+                                        data-testid="category-select"
+                                    />
+                                </div>
 
-                        <div className="space-y-2">
-                            <FormLabel>{__('Labels')}</FormLabel>
-                            <LabelCombobox
-                                value={selectedLabelIds}
-                                onValueChange={setSelectedLabelIds}
-                                labels={labels}
-                                disabled={isSubmitting}
-                                placeholder={__('Add labels...')}
-                                allowCreate={true}
-                                onLabelCreated={onLabelCreated}
-                            />
-                        </div>
+                                <div className="space-y-2">
+                                    <FormLabel>{__('Labels')}</FormLabel>
+                                    <LabelCombobox
+                                        value={selectedLabelIds}
+                                        onValueChange={setSelectedLabelIds}
+                                        labels={labels}
+                                        disabled={isSubmitting}
+                                        placeholder={__('Add labels...')}
+                                        allowCreate={true}
+                                        onLabelCreated={onLabelCreated}
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         <div className="space-y-2">
                             <FormLabel htmlFor="notes">{__('Notes')}</FormLabel>
@@ -895,7 +1030,11 @@ export function EditTransactionDialog({
                         </Button>
                         <Button
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={
+                                isSubmitting ||
+                                (isSplitting &&
+                                    !isSplitValid(amount, splitLines))
+                            }
                             data-testid="submit-transaction"
                         >
                             {isSubmitting

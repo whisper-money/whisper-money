@@ -3,6 +3,13 @@ import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditTransactionDialog } from './edit-transaction-dialog';
 
+vi.mock('@inertiajs/react', () => ({
+    usePage: () => ({
+        props: { features: { transactionSplitting: false } },
+    }),
+    router: { reload: vi.fn(), delete: vi.fn(), visit: vi.fn() },
+}));
+
 vi.mock('@/components/shared/label-combobox', () => ({
     LabelCombobox: () => <div />,
 }));

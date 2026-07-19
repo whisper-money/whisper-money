@@ -9,17 +9,22 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { billing } from '@/routes/settings';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
-import { type Category } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { getCategoryColorClasses, type Category } from '@/types/category';
+import {
+    type DecryptedTransaction,
+    type TransactionSplit,
+} from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import * as Icons from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 interface CategoryCellProps {
@@ -37,6 +42,9 @@ interface CategoryCellProps {
     withoutChevronIcon?: boolean;
     /** AI is currently categorizing this row in the background. */
     isCategorizing?: boolean;
+    /** Active filters, used to collapse non-matching split lines into a "Rest" row. */
+    appliedCategoryIds?: string[];
+    appliedLabelIds?: string[];
 }
 
 export function CategoryCell({
@@ -49,11 +57,27 @@ export function CategoryCell({
     className,
     withoutChevronIcon,
     isCategorizing,
+    appliedCategoryIds = [],
+    appliedLabelIds = [],
 }: CategoryCellProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const isMobile = useIsMobile();
     const { auth, subscriptionsEnabled, aiCategorizationUpsellRate } =
         usePage<SharedData>().props;
+
+    // A split transaction shows its per-line breakdown instead of a single,
+    // editable category. Editing happens in the modal (click the row).
+    if (transaction.splits && transaction.splits.length > 0) {
+        return (
+            <SplitBreakdown
+                transaction={transaction}
+                categories={categories}
+                appliedCategoryIds={appliedCategoryIds}
+                appliedLabelIds={appliedLabelIds}
+                className={className}
+            />
+        );
+    }
 
     // Free-plan nudge: AI could categorize this row. Sampled to a configurable
     // share of rows so it stays subtle instead of marking every uncategorized one.
@@ -254,6 +278,163 @@ export function CategoryCell({
                     aiUpsell
                 ) : null}
             </span>
+        </div>
+    );
+}
+
+function SplitCategoryChip({ category }: { category?: Category | null }) {
+    if (!category) {
+        return (
+            <span className="truncate text-xs text-muted-foreground">
+                {__('Uncategorized')}
+            </span>
+        );
+    }
+
+    const colorClasses = getCategoryColorClasses(category.color);
+    const IconComponent = Icons[
+        category.icon as keyof typeof Icons
+    ] as Icons.LucideIcon;
+
+    return (
+        <span
+            className={cn(
+                'inline-flex min-w-0 items-center gap-1 rounded px-1.5 py-0.5 text-xs',
+                colorClasses.bg,
+                colorClasses.text,
+            )}
+        >
+            {IconComponent && (
+                <IconComponent className="h-3 w-3 shrink-0 opacity-80" />
+            )}
+            <span className="truncate">{category.name}</span>
+        </span>
+    );
+}
+
+/**
+ * The per-line breakdown shown in the list for a split transaction. Without an
+ * active category/label filter every line is listed; with one, only the lines
+ * matching the filter are shown plus a single "Rest" row for the remainder, so
+ * the visible parts still add up to the transaction total.
+ */
+function SplitBreakdown({
+    transaction,
+    categories,
+    appliedCategoryIds,
+    appliedLabelIds,
+    className,
+}: {
+    transaction: DecryptedTransaction;
+    categories: Category[];
+    appliedCategoryIds: string[];
+    appliedLabelIds: string[];
+    className?: string;
+}) {
+    const locale = useLocale();
+    const splits = transaction.splits ?? [];
+    const currencyCode = transaction.currency_code;
+
+    const parentOf = useMemo(
+        () =>
+            new Map(
+                categories.map((category) => [category.id, category.parent_id]),
+            ),
+        [categories],
+    );
+
+    const formatAmount = (amount: number) =>
+        new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: currencyCode,
+        }).format(amount / 100);
+
+    const filterActive =
+        appliedCategoryIds.length > 0 || appliedLabelIds.length > 0;
+
+    const lineMatchesFilter = (split: TransactionSplit): boolean => {
+        let matches = false;
+
+        if (appliedCategoryIds.length > 0) {
+            if (split.category_id === null) {
+                matches ||= appliedCategoryIds.includes('uncategorized');
+            } else {
+                const chain: string[] = [];
+                let current: string | null | undefined = split.category_id;
+                let guard = 0;
+                while (current && guard++ < 10) {
+                    chain.push(current);
+                    current = parentOf.get(current) ?? null;
+                }
+                matches ||= chain.some((id) => appliedCategoryIds.includes(id));
+            }
+        }
+
+        if (appliedLabelIds.length > 0) {
+            matches ||= (split.labels ?? []).some((label) =>
+                appliedLabelIds.includes(label.id),
+            );
+        }
+
+        return matches;
+    };
+
+    const rows: {
+        key: string;
+        category?: Category | null;
+        amount: number;
+        isRest?: boolean;
+    }[] = [];
+
+    if (filterActive) {
+        const matching = splits.filter(lineMatchesFilter);
+        const restAmount = splits
+            .filter((split) => !matching.includes(split))
+            .reduce((sum, split) => sum + split.amount, 0);
+
+        matching.forEach((split) =>
+            rows.push({
+                key: split.id,
+                category: split.category,
+                amount: split.amount,
+            }),
+        );
+
+        if (restAmount !== 0) {
+            rows.push({ key: 'rest', amount: restAmount, isRest: true });
+        }
+    } else {
+        splits.forEach((split) =>
+            rows.push({
+                key: split.id,
+                category: split.category,
+                amount: split.amount,
+            }),
+        );
+    }
+
+    return (
+        <div
+            className={cn('flex w-full flex-col gap-1', className)}
+            data-testid="split-breakdown"
+        >
+            {rows.map((row) => (
+                <div
+                    key={row.key}
+                    className="flex items-center justify-between gap-2"
+                >
+                    {row.isRest ? (
+                        <span className="truncate text-xs text-muted-foreground">
+                            {__('Rest')}
+                        </span>
+                    ) : (
+                        <SplitCategoryChip category={row.category} />
+                    )}
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                        {formatAmount(row.amount)}
+                    </span>
+                </div>
+            ))}
         </div>
     );
 }

@@ -6,16 +6,18 @@ use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
-use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\BalanceLookup;
 use App\Services\CategorySpendingService;
 use App\Services\ExchangeRateService;
 use App\Services\LoanAmortizationService;
 use App\Services\PeriodComparator;
+use App\Services\TransactionAllocations;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardAnalyticsController extends Controller
 {
@@ -505,45 +507,36 @@ class DashboardAnalyticsController extends Controller
 
     private function calculateSpending(Carbon $from, Carbon $to): int
     {
-        $spending = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense)
-                    ->whereNull('categories.deleted_at');
-            })
-            ->sum('transactions.amount');
+        $spending = $this->allocationsByType($from, $to, CategoryType::Expense)->sum('transactions.amount');
 
         return max(0, -$spending);
     }
 
     private function calculateCashFlow(Carbon $from, Carbon $to): array
     {
-        $income = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Income)
-                    ->whereNull('categories.deleted_at');
-            })
-            ->sum('transactions.amount');
-
-        $expense = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense)
-                    ->whereNull('categories.deleted_at');
-            })
-            ->sum('transactions.amount');
+        $income = $this->allocationsByType($from, $to, CategoryType::Income)->sum('transactions.amount');
+        $expense = $this->allocationsByType($from, $to, CategoryType::Expense)->sum('transactions.amount');
 
         return [
             'income' => max(0, $income),
             'expense' => max(0, -$expense),
         ];
+    }
+
+    /**
+     * Effective category allocations (split-aware) for the period, joined to
+     * categories of the given type. A split transaction contributes one row per
+     * line so each line lands in its own category's type bucket.
+     */
+    private function allocationsByType(Carbon $from, Carbon $to, CategoryType $type): Builder
+    {
+        return DB::query()
+            ->fromSub(TransactionAllocations::query(request()->user()->id, $from, $to), 'transactions')
+            ->join('categories', function ($join) use ($type) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', '=', $type)
+                    ->whereNull('categories.deleted_at');
+            });
     }
 
     /**

@@ -43,6 +43,7 @@ export interface Features {
     cashflow: boolean;
     calculateBalancesOnImport: boolean;
     mcp: boolean;
+    transactionSplitting: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {

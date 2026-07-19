@@ -2291,5 +2291,16 @@
     "Read and analyse your transactions, balances, categories and spending.": "Leer y analizar tus transacciones, saldos, categorías y gastos.",
     "Create, edit and delete transactions, categories, labels and automation rules.": "Crear, editar y eliminar transacciones, categorías, etiquetas y reglas de automatización.",
     "Bank-connected accounts and their transactions stay read-only. You can disconnect it at any time from the connected app.": "Las cuentas conectadas a un banco y sus transacciones siguen siendo de solo lectura. Puedes desconectarla cuando quieras desde la app conectada.",
-    "Connecting…": "Conectando…"
+    "Connecting…": "Conectando…",
+    "Split": "Dividir",
+    "Rest": "Resto",
+    "Add line": "Añadir línea",
+    "Remove line": "Eliminar línea",
+    "Undo split": "Deshacer división",
+    "Remaining: :amount": "Restante: :amount",
+    "Skipped :count split transactions": "Se omitieron :count transacciones divididas",
+    "A split needs at least two lines.": "Una división necesita al menos dos líneas.",
+    "The split lines must add up to the transaction amount.": "Las líneas de la división deben sumar el importe de la transacción.",
+    "Each split line must be a non-zero amount.": "Cada línea de la división debe tener un importe distinto de cero.",
+    "Split lines must have the same sign as the transaction.": "Las líneas de la división deben tener el mismo signo que la transacción."
 }

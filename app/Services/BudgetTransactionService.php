@@ -7,13 +7,20 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class BudgetTransactionService
 {
     public function __construct(private readonly CategoryTree $tree = new CategoryTree) {}
 
+    /**
+     * (Re)assign a transaction to the budget periods it belongs to. A split
+     * transaction is attributed per line — each line matches budgets by its own
+     * category or labels — and the matching lines' amounts are aggregated into a
+     * single BudgetTransaction per period (the unique index allows only one row
+     * per transaction+period).
+     */
     public function assignTransaction(Transaction $transaction): void
     {
         $userId = $transaction->user_id;
@@ -22,62 +29,26 @@ class BudgetTransactionService
             return;
         }
 
-        // Ensure labels are available for matching (safe if already loaded).
-        $transaction->loadMissing('labels');
+        $allocations = $this->allocationsFor($transaction);
+        $claimedCategoryIds = $this->claimedCategoryIds($userId);
 
-        $transactionLabelIds = $transaction->labels->pluck('id');
+        // period_id => aggregated amount (already negated: expenses are positive
+        // spend in a budget). Periods that net to zero are dropped below.
+        $periodAmounts = [];
 
-        // A budget tracking a parent category also covers its children, so a
-        // transaction matches a budget when any of its category's ancestors
-        // (or itself) is attached to that budget.
-        $categoryMatchIds = $transaction->category_id
-            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id)
-            : [];
+        foreach ($this->candidatePeriods($transaction, $userId, $allocations) as $period) {
+            $amount = $this->matchedAmountForBudget($allocations, $period->budget, $userId, $claimedCategoryIds);
 
-        // Find budget periods that potentially match this transaction.
-        $budgetPeriods = BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $userId) {
-                $query->where('user_id', $userId)
-                    ->where(function ($q) use ($categoryMatchIds, $transactionLabelIds) {
-                        $q->whereHas('categories', function ($cq) use ($categoryMatchIds) {
-                            $cq->whereIn('categories.id', $categoryMatchIds);
-                        })
-                            ->orWhereHas('labels', function ($lq) use ($transactionLabelIds) {
-                                $lq->whereIn('labels.id', $transactionLabelIds);
-                            });
-                    });
-            })
-            ->where('start_date', '<=', $transaction->transaction_date)
-            ->where('end_date', '>=', $transaction->transaction_date)
-            ->with('budget.categories:id', 'budget.labels:id')
-            ->get();
-
-        // Narrow down to periods whose budget actually matches the transaction.
-        $matchingPeriodIds = [];
-
-        foreach ($budgetPeriods as $period) {
-            $budget = $period->budget;
-
-            $matchesCategory = $categoryMatchIds !== []
-                && $budget->categories->pluck('id')->intersect($categoryMatchIds)->isNotEmpty();
-            $matchesLabel = $budget->labels
-                ->pluck('id')
-                ->intersect($transactionLabelIds)
-                ->isNotEmpty();
-
-            if ($matchesCategory || $matchesLabel) {
-                $matchingPeriodIds[] = $period->id;
+            if ($amount !== 0) {
+                $periodAmounts[$period->id] = $amount;
             }
         }
 
-        $matchingPeriodIds = array_merge(
-            $matchingPeriodIds,
-            $this->catchAllPeriodIds($transaction, $userId, $categoryMatchIds),
-        );
+        $matchingPeriodIds = array_keys($periodAmounts);
 
         // Apply changes atomically so concurrent workers cannot leave the
         // transaction half-assigned and the unique index guards duplicates.
-        DB::transaction(function () use ($transaction, $matchingPeriodIds) {
+        DB::transaction(function () use ($transaction, $periodAmounts, $matchingPeriodIds) {
             Transaction::query()
                 ->whereKey($transaction->id)
                 ->lockForUpdate()
@@ -91,14 +62,14 @@ class BudgetTransactionService
                 )
                 ->delete();
 
-            foreach ($matchingPeriodIds as $periodId) {
+            foreach ($periodAmounts as $periodId => $amount) {
                 BudgetTransaction::updateOrCreate(
                     [
                         'transaction_id' => $transaction->id,
                         'budget_period_id' => $periodId,
                     ],
                     [
-                        'amount' => -$transaction->amount,
+                        'amount' => $amount,
                     ],
                 );
             }
@@ -112,118 +83,186 @@ class BudgetTransactionService
 
     public function assignHistoricalTransactionsToPeriod(BudgetPeriod $period): int
     {
-        // Load the budget with its relationships
         $budget = $period->budget()->with(['categories:id', 'labels:id'])->first();
 
         if (! $budget) {
             return 0;
         }
 
+        $claimedCategoryIds = $this->claimedCategoryIds($budget->user_id);
         $assignedCount = 0;
 
-        // Tracking a parent category also tracks its children's spending.
-        $categoryIds = collect($this->tree->expand($budget->user_id, $budget->categories->pluck('id')->all()));
-        $labelIds = $budget->labels->pluck('id');
-
-        Log::info('Building query for historical transactions', [
-            'user_id' => $budget->user_id,
-            'category_ids' => $categoryIds->all(),
-            'label_ids' => $labelIds->all(),
-            'start_date' => $period->start_date->toDateString(),
-            'end_date' => $period->end_date->toDateString(),
-        ]);
-
-        // Build the query for matching transactions
-        $query = Transaction::query()
+        // Evaluate every transaction in range against this budget. Split-aware
+        // matching lives on the lines, so we can't pre-filter by the parent's
+        // category_id/labels in SQL.
+        // ponytail: full period scan (chunked); narrow to matched-or-split rows
+        // if a large backfill becomes slow.
+        Transaction::query()
             ->where('user_id', $budget->user_id)
             ->whereBetween('transaction_date', [$period->start_date, $period->end_date])
-            ->withoutTrashed();
+            ->withoutTrashed()
+            ->with(['category:id,type', 'labels:id', 'splits.category:id,type', 'splits.labels:id'])
+            ->chunk(500, function (Collection $transactions) use ($period, $budget, $claimedCategoryIds, &$assignedCount): void {
+                foreach ($transactions as $transaction) {
+                    $amount = $this->matchedAmountForBudget(
+                        $this->allocationsFor($transaction),
+                        $budget,
+                        $budget->user_id,
+                        $claimedCategoryIds,
+                    );
 
-        if ($budget->is_catch_all) {
-            // A catch-all budget absorbs every expense whose category is not
-            // already tracked by one of the user's other budgets.
-            $claimedCategoryIds = $this->tree->expand(
-                $budget->user_id,
-                $this->claimedCategoryIds($budget->user_id),
-            );
+                    if ($amount === 0) {
+                        continue;
+                    }
 
-            $query->whereNotNull('category_id')
-                ->when(
-                    $claimedCategoryIds !== [],
-                    fn ($q) => $q->whereNotIn('category_id', $claimedCategoryIds),
-                )
-                ->whereHas('category', fn ($q) => $q->where('type', CategoryType::Expense->value));
-        } else {
-            // Filter by any tracked category OR label
-            $query->where(function ($q) use ($categoryIds, $labelIds) {
-                if ($categoryIds->isNotEmpty()) {
-                    $q->whereIn('category_id', $categoryIds);
-                }
+                    $budgetTransaction = BudgetTransaction::updateOrCreate(
+                        [
+                            'transaction_id' => $transaction->id,
+                            'budget_period_id' => $period->id,
+                        ],
+                        [
+                            'amount' => $amount,
+                        ],
+                    );
 
-                if ($labelIds->isNotEmpty()) {
-                    $q->orWhereHas('labels', function ($labelQuery) use ($labelIds) {
-                        $labelQuery->whereIn('labels.id', $labelIds);
-                    });
+                    if ($budgetTransaction->wasRecentlyCreated) {
+                        $assignedCount++;
+                    }
                 }
             });
-        }
-
-        $totalCount = $query->count();
-        Log::info("Found {$totalCount} transactions to process in date range");
-
-        // Process in chunks to prevent memory issues
-        $query->chunk(500, function ($transactions) use ($period, &$assignedCount) {
-            foreach ($transactions as $transaction) {
-                $budgetTransaction = BudgetTransaction::updateOrCreate(
-                    [
-                        'transaction_id' => $transaction->id,
-                        'budget_period_id' => $period->id,
-                    ],
-                    [
-                        'amount' => -$transaction->amount,
-                    ],
-                );
-
-                if ($budgetTransaction->wasRecentlyCreated) {
-                    $assignedCount++;
-                }
-            }
-        });
 
         return $assignedCount;
     }
 
     /**
-     * Catch-all budget periods that should absorb this transaction: an expense
-     * whose category (or an ancestor) is not tracked by any non-catch-all budget.
+     * The transaction's category attributions: one entry for an unsplit
+     * transaction, one per line for a split one.
      *
-     * @param  array<int, string>  $categoryMatchIds  the transaction category and its ancestors
-     * @return array<int, string>
+     * @return array<int, array{categoryId: ?string, categoryType: ?CategoryType, labelIds: array<int, string>, amount: int}>
      */
-    private function catchAllPeriodIds(Transaction $transaction, string $userId, array $categoryMatchIds): array
+    private function allocationsFor(Transaction $transaction): array
     {
-        if ($transaction->category_id === null) {
-            return [];
+        if ($transaction->isSplit()) {
+            $transaction->loadMissing(['splits.category', 'splits.labels']);
+
+            return $transaction->splits->map(fn ($line): array => [
+                'categoryId' => $line->category_id,
+                'categoryType' => $line->category?->type,
+                'labelIds' => $line->labels->pluck('id')->all(),
+                'amount' => $line->amount,
+            ])->all();
         }
 
-        $transaction->loadMissing('category');
+        $transaction->loadMissing(['category', 'labels']);
 
-        if ($transaction->category?->type !== CategoryType::Expense) {
-            return [];
+        return [[
+            'categoryId' => $transaction->category_id,
+            'categoryType' => $transaction->category?->type,
+            'labelIds' => $transaction->labels->pluck('id')->all(),
+            'amount' => $transaction->amount,
+        ]];
+    }
+
+    /**
+     * Budget periods in the transaction's date range that could match any of its
+     * allocations — by tracked category, tracked label, or being a catch-all.
+     *
+     * @param  array<int, array{categoryId: ?string, categoryType: ?CategoryType, labelIds: array<int, string>, amount: int}>  $allocations
+     * @return Collection<int, BudgetPeriod>
+     */
+    private function candidatePeriods(Transaction $transaction, string $userId, array $allocations): Collection
+    {
+        $categoryMatchIds = [];
+        $labelIds = [];
+
+        foreach ($allocations as $allocation) {
+            if ($allocation['categoryId'] !== null) {
+                $categoryMatchIds = array_merge($categoryMatchIds, $this->tree->ancestorAndSelfIds($userId, $allocation['categoryId']));
+            }
+
+            $labelIds = array_merge($labelIds, $allocation['labelIds']);
         }
 
-        if (array_intersect($categoryMatchIds, $this->claimedCategoryIds($userId)) !== []) {
-            return [];
-        }
+        $categoryMatchIds = array_values(array_unique($categoryMatchIds));
+        $labelIds = array_values(array_unique($labelIds));
 
         return BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($userId) {
-                $query->where('user_id', $userId)->where('is_catch_all', true);
+            ->whereHas('budget', function ($query) use ($userId, $categoryMatchIds, $labelIds) {
+                $query->where('user_id', $userId)
+                    ->where(function ($inner) use ($categoryMatchIds, $labelIds) {
+                        $inner->where('is_catch_all', true)
+                            ->orWhereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $categoryMatchIds))
+                            ->orWhereHas('labels', fn ($lq) => $lq->whereIn('labels.id', $labelIds));
+                    });
             })
             ->where('start_date', '<=', $transaction->transaction_date)
             ->where('end_date', '>=', $transaction->transaction_date)
+            ->with('budget.categories:id', 'budget.labels:id')
+            ->get();
+    }
+
+    /**
+     * The portion of a transaction's amount that belongs to a budget: the sum of
+     * the allocations that match it (negated so expenses count as positive
+     * spend), or zero when none match.
+     *
+     * @param  array<int, array{categoryId: ?string, categoryType: ?CategoryType, labelIds: array<int, string>, amount: int}>  $allocations
+     * @param  array<int, string>  $claimedCategoryIds
+     */
+    private function matchedAmountForBudget(array $allocations, Budget $budget, string $userId, array $claimedCategoryIds): int
+    {
+        $total = 0;
+
+        foreach ($allocations as $allocation) {
+            if ($this->allocationMatchesBudget($allocation, $budget, $userId, $claimedCategoryIds)) {
+                $total += -$allocation['amount'];
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * @param  array{categoryId: ?string, categoryType: ?CategoryType, labelIds: array<int, string>, amount: int}  $allocation
+     * @param  array<int, string>  $claimedCategoryIds
+     */
+    private function allocationMatchesBudget(array $allocation, Budget $budget, string $userId, array $claimedCategoryIds): bool
+    {
+        if ($budget->is_catch_all) {
+            return $this->allocationHitsCatchAll($allocation, $userId, $claimedCategoryIds);
+        }
+
+        $categoryMatchIds = $allocation['categoryId'] !== null
+            ? $this->tree->ancestorAndSelfIds($userId, $allocation['categoryId'])
+            : [];
+
+        $matchesCategory = $categoryMatchIds !== []
+            && $budget->categories->pluck('id')->intersect($categoryMatchIds)->isNotEmpty();
+
+        $matchesLabel = $budget->labels
             ->pluck('id')
-            ->all();
+            ->intersect($allocation['labelIds'])
+            ->isNotEmpty();
+
+        return $matchesCategory || $matchesLabel;
+    }
+
+    /**
+     * A catch-all budget absorbs an expense allocation whose category (or an
+     * ancestor) is not tracked by any of the user's other budgets.
+     *
+     * @param  array{categoryId: ?string, categoryType: ?CategoryType, labelIds: array<int, string>, amount: int}  $allocation
+     * @param  array<int, string>  $claimedCategoryIds
+     */
+    private function allocationHitsCatchAll(array $allocation, string $userId, array $claimedCategoryIds): bool
+    {
+        if ($allocation['categoryId'] === null || $allocation['categoryType'] !== CategoryType::Expense) {
+            return false;
+        }
+
+        $categoryMatchIds = $this->tree->ancestorAndSelfIds($userId, $allocation['categoryId']);
+
+        return array_intersect($categoryMatchIds, $claimedCategoryIds) === [];
     }
 
     /**
