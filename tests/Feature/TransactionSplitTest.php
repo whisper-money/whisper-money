@@ -20,7 +20,7 @@ use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
-function expenseCategory(User $user, string $name = 'Cat'): Category
+function splitTestExpenseCategory(User $user, string $name = 'Cat'): Category
 {
     return Category::factory()->for($user)->create([
         'name' => $name,
@@ -47,8 +47,8 @@ beforeEach(function () {
 });
 
 it('splits a transaction into lines and nulls its own category', function () {
-    $restaurant = expenseCategory($this->user, 'Restaurant');
-    $travel = expenseCategory($this->user, 'Travel');
+    $restaurant = splitTestExpenseCategory($this->user, 'Restaurant');
+    $travel = splitTestExpenseCategory($this->user, 'Travel');
     $transaction = splittableTransaction($this->user);
 
     actingAs($this->user)
@@ -70,7 +70,7 @@ it('splits a transaction into lines and nulls its own category', function () {
 });
 
 it('moves transaction labels onto the split lines', function () {
-    $category = expenseCategory($this->user);
+    $category = splitTestExpenseCategory($this->user);
     $label = Label::factory()->for($this->user)->create();
     $transaction = splittableTransaction($this->user);
     $transaction->labels()->attach($label->id);
@@ -91,7 +91,7 @@ it('moves transaction labels onto the split lines', function () {
 });
 
 it('rejects splits that do not add up to the transaction amount', function () {
-    $category = expenseCategory($this->user);
+    $category = splitTestExpenseCategory($this->user);
     $transaction = splittableTransaction($this->user);
 
     actingAs($this->user)
@@ -107,7 +107,7 @@ it('rejects splits that do not add up to the transaction amount', function () {
 });
 
 it('rejects a single split line', function () {
-    $category = expenseCategory($this->user);
+    $category = splitTestExpenseCategory($this->user);
     $transaction = splittableTransaction($this->user);
 
     actingAs($this->user)
@@ -120,7 +120,7 @@ it('rejects a single split line', function () {
 });
 
 it('rejects a split line whose sign differs from the transaction', function () {
-    $category = expenseCategory($this->user);
+    $category = splitTestExpenseCategory($this->user);
     $transaction = splittableTransaction($this->user);
 
     actingAs($this->user)
@@ -134,8 +134,8 @@ it('rejects a split line whose sign differs from the transaction', function () {
 });
 
 it('collapses a split back to a single category', function () {
-    $category = expenseCategory($this->user);
-    $target = expenseCategory($this->user, 'Target');
+    $category = splitTestExpenseCategory($this->user);
+    $target = splitTestExpenseCategory($this->user, 'Target');
     $transaction = splittableTransaction($this->user);
 
     app(TransactionSplitter::class)->apply($transaction, [
@@ -159,7 +159,7 @@ it('collapses a split back to a single category', function () {
 it('forbids splitting when the feature is disabled', function () {
     Feature::for($this->user)->deactivate(TransactionSplitting::class);
 
-    $category = expenseCategory($this->user);
+    $category = splitTestExpenseCategory($this->user);
     $transaction = splittableTransaction($this->user);
 
     actingAs($this->user)
@@ -173,7 +173,7 @@ it('forbids splitting when the feature is disabled', function () {
 });
 
 it('cascade-deletes split lines when the transaction row is removed', function () {
-    $category = expenseCategory($this->user);
+    $category = splitTestExpenseCategory($this->user);
     $transaction = splittableTransaction($this->user);
 
     app(TransactionSplitter::class)->apply($transaction, [
@@ -189,8 +189,8 @@ it('cascade-deletes split lines when the transaction row is removed', function (
 });
 
 it('attributes split lines to their categories in the spending breakdown', function () {
-    $restaurant = expenseCategory($this->user, 'Restaurant');
-    $travel = expenseCategory($this->user, 'Travel');
+    $restaurant = splitTestExpenseCategory($this->user, 'Restaurant');
+    $travel = splitTestExpenseCategory($this->user, 'Travel');
     $transaction = splittableTransaction($this->user, -10000);
     $transaction->update(['transaction_date' => now()]);
 
@@ -212,8 +212,8 @@ it('attributes split lines to their categories in the spending breakdown', funct
 });
 
 it('reflects split lines in the cashflow expense breakdown endpoint', function () {
-    $restaurant = expenseCategory($this->user, 'Restaurant');
-    $travel = expenseCategory($this->user, 'Travel');
+    $restaurant = splitTestExpenseCategory($this->user, 'Restaurant');
+    $travel = splitTestExpenseCategory($this->user, 'Travel');
     $transaction = splittableTransaction($this->user, -10000);
     $transaction->update(['transaction_date' => now()]);
 
@@ -233,8 +233,8 @@ it('reflects split lines in the cashflow expense breakdown endpoint', function (
 });
 
 it('attributes only the matching split line to a category budget', function () {
-    $tracked = expenseCategory($this->user, 'Tracked');
-    $other = expenseCategory($this->user, 'Other');
+    $tracked = splitTestExpenseCategory($this->user, 'Tracked');
+    $other = splitTestExpenseCategory($this->user, 'Other');
     $transaction = splittableTransaction($this->user, -10000);
     $transaction->update(['transaction_date' => now()]);
 
@@ -262,8 +262,8 @@ it('attributes only the matching split line to a category budget', function () {
 });
 
 it('finds a split transaction when filtering the list by a line category', function () {
-    $restaurant = expenseCategory($this->user, 'Restaurant');
-    $travel = expenseCategory($this->user, 'Travel');
+    $restaurant = splitTestExpenseCategory($this->user, 'Restaurant');
+    $travel = splitTestExpenseCategory($this->user, 'Travel');
     $transaction = splittableTransaction($this->user, -10000);
 
     app(TransactionSplitter::class)->apply($transaction, [
@@ -280,8 +280,8 @@ it('finds a split transaction when filtering the list by a line category', funct
 });
 
 it('does not treat a fully-categorized split as uncategorized', function () {
-    $restaurant = expenseCategory($this->user, 'Restaurant');
-    $travel = expenseCategory($this->user, 'Travel');
+    $restaurant = splitTestExpenseCategory($this->user, 'Restaurant');
+    $travel = splitTestExpenseCategory($this->user, 'Travel');
     $split = splittableTransaction($this->user, -10000);
     $uncategorized = splittableTransaction($this->user, -5000);
 
@@ -300,7 +300,7 @@ it('does not treat a fully-categorized split as uncategorized', function () {
 });
 
 it('rejects splitting a zero-amount transaction', function () {
-    $category = expenseCategory($this->user);
+    $category = splitTestExpenseCategory($this->user);
     $transaction = splittableTransaction($this->user, 0);
 
     actingAs($this->user)
@@ -314,7 +314,7 @@ it('rejects splitting a zero-amount transaction', function () {
 });
 
 it('classifies split lines by their own category type in the dashboard cash flow', function () {
-    $expense = expenseCategory($this->user, 'Groceries');
+    $expense = splitTestExpenseCategory($this->user, 'Groceries');
     $savings = Category::factory()->for($this->user)->create([
         'name' => 'Savings',
         'type' => CategoryType::Savings,
@@ -337,8 +337,8 @@ it('classifies split lines by their own category type in the dashboard cash flow
 });
 
 it('attributes split lines per category on the analysis screen', function () {
-    $restaurant = expenseCategory($this->user, 'Restaurant');
-    $travel = expenseCategory($this->user, 'Travel');
+    $restaurant = splitTestExpenseCategory($this->user, 'Restaurant');
+    $travel = splitTestExpenseCategory($this->user, 'Travel');
     $transaction = splittableTransaction($this->user, -10000);
     $transaction->update(['transaction_date' => now()]);
 
@@ -358,7 +358,7 @@ it('attributes split lines per category on the analysis screen', function () {
 });
 
 it('skips split transactions on a bulk label assignment', function () {
-    $category = expenseCategory($this->user);
+    $category = splitTestExpenseCategory($this->user);
     $label = Label::factory()->for($this->user)->create();
     $split = splittableTransaction($this->user, -10000);
     $plain = splittableTransaction($this->user, -5000);
@@ -380,8 +380,8 @@ it('skips split transactions on a bulk label assignment', function () {
 });
 
 it('skips split transactions on a bulk category assignment', function () {
-    $category = expenseCategory($this->user);
-    $newCategory = expenseCategory($this->user, 'New');
+    $category = splitTestExpenseCategory($this->user);
+    $newCategory = splitTestExpenseCategory($this->user, 'New');
     $split = splittableTransaction($this->user, -10000);
     $plain = splittableTransaction($this->user, -5000);
 
