@@ -78,7 +78,8 @@ test('cashflow trend API does not exceed query threshold', function () {
 });
 
 test('cashflow breakdown API does not exceed query threshold', function () {
-    assertMaxQueries(15, function () {
+    // +1 vs. pre-split: the breakdown eager-loads each transaction's splits.
+    assertMaxQueries(16, function () {
         $this->getJson("/api/cashflow/breakdown?type=expense&{$this->dateParams}")->assertOk();
     }, 'API Cashflow Breakdown');
 });

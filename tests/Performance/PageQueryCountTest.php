@@ -57,7 +57,8 @@ test('account show page does not exceed query threshold', function () {
 });
 
 test('transactions index page does not exceed query threshold', function () {
-    assertMaxQueries(21, function () {
+    // +1 vs. pre-split: the list eager-loads each transaction's splits.
+    assertMaxQueries(22, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions Index');
 });
@@ -163,8 +164,9 @@ test('transactions page query count does not scale with number of transactions',
         'category_id' => $category->id,
     ]);
 
-    // Same threshold — paginated queries should not scale
-    assertMaxQueries(21, function () {
+    // Same threshold as the base case — the splits eager-load is a single bulk
+    // query, so it stays constant regardless of how many transactions there are.
+    assertMaxQueries(22, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions with 120 records');
 });
