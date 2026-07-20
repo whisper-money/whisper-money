@@ -11,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon $created_at
+ * @property Carbon|null $target_date
+ */
 class SavingsGoal extends Model
 {
     /** @use HasFactory<SavingsGoalFactory> */

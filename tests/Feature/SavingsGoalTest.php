@@ -10,13 +10,13 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
 
-function onboardedUser(): User
+function onboardedSavingsUser(): User
 {
     return User::factory()->create(['onboarded_at' => now()]);
 }
 
 test('creating a goal creates a linked hidden label with the same name', function () {
-    $user = onboardedUser();
+    $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);
 
     $response = $this->actingAs($user)->post('/savings-goals', [
@@ -41,7 +41,7 @@ test('creating a goal creates a linked hidden label with the same name', functio
 });
 
 test('goal-backed labels are hidden from the labels settings screen', function () {
-    $user = onboardedUser();
+    $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);
 
     Label::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
@@ -57,7 +57,7 @@ test('goal-backed labels are hidden from the labels settings screen', function (
 });
 
 test('saved amount is the negated net flow of tagged transactions', function () {
-    $user = onboardedUser();
+    $user = onboardedSavingsUser();
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create(['user_id' => $user->id]);
 
@@ -80,7 +80,7 @@ test('saved amount is the negated net flow of tagged transactions', function () 
 });
 
 test('show exposes computed progress stats', function () {
-    $user = onboardedUser();
+    $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create([
@@ -107,7 +107,7 @@ test('show exposes computed progress stats', function () {
 });
 
 test('renaming the goal renames its label', function () {
-    $user = onboardedUser();
+    $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
@@ -122,7 +122,7 @@ test('renaming the goal renames its label', function () {
 });
 
 test('deleting the goal also removes its label', function () {
-    $user = onboardedUser();
+    $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
@@ -135,7 +135,7 @@ test('deleting the goal also removes its label', function () {
 });
 
 test('a goal name cannot collide with an existing label', function () {
-    $user = onboardedUser();
+    $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);
 
     Label::factory()->create(['user_id' => $user->id, 'name' => 'Coche']);
@@ -150,7 +150,7 @@ test('a goal name cannot collide with an existing label', function () {
 });
 
 test('routes are gated behind the feature flag', function () {
-    $user = onboardedUser();
+    $user = onboardedSavingsUser();
 
     $this->actingAs($user)->post('/savings-goals', [
         'name' => 'Blocked',
@@ -159,8 +159,8 @@ test('routes are gated behind the feature flag', function () {
 });
 
 test('a user cannot view another users goal', function () {
-    $owner = onboardedUser();
-    $other = onboardedUser();
+    $owner = onboardedSavingsUser();
+    $other = onboardedSavingsUser();
     Feature::for($other)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $owner->id]);
