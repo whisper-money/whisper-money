@@ -67,13 +67,25 @@ export default function BudgetsIndex({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                {/* Defer opening until the menu has closed so Radix
+                                    doesn't leave pointer-events locked on the body. */}
                                 <DropdownMenuItem
-                                    onSelect={() => setCreateType('budget')}
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        requestAnimationFrame(() =>
+                                            setCreateType('budget'),
+                                        );
+                                    }}
                                 >
                                     {__('Budget')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    onSelect={() => setCreateType('goal')}
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        requestAnimationFrame(() =>
+                                            setCreateType('goal'),
+                                        );
+                                    }}
                                 >
                                     {__('Savings Goal')}
                                 </DropdownMenuItem>

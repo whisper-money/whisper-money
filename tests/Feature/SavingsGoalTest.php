@@ -191,3 +191,23 @@ test('projection reports a completed goal', function () {
     expect($stats['status'])->toBe('completed')
         ->and($stats['required_per_month'])->toBe(0);
 });
+
+test('effective start anchors on the earliest contribution predating creation', function () {
+    $created = Carbon::parse('2026-07-20');
+
+    // A goal created today whose money was set aside two years ago.
+    $start = SavingsGoal::effectiveStart($created, '2024-07-20');
+    expect($start->toDateString())->toBe('2024-07-20');
+
+    // The real ~2-year window keeps the rate sane instead of projecting completion
+    // tomorrow (which is what anchoring on created_at would produce).
+    $stats = SavingsGoal::project(250000, 500000, $start, null, $created);
+    expect($stats['rate_per_day'])->toBeLessThan(1000.0);
+});
+
+test('effective start keeps creation date when no earlier contribution exists', function () {
+    $created = Carbon::parse('2026-07-20');
+
+    expect(SavingsGoal::effectiveStart($created, null)->toDateString())->toBe('2026-07-20')
+        ->and(SavingsGoal::effectiveStart($created, '2026-08-01')->toDateString())->toBe('2026-07-20');
+});

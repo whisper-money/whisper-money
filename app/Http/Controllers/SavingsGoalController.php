@@ -79,7 +79,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
         $stats = SavingsGoal::project(
             $savingsGoal->savedAmountInCents(),
             $savingsGoal->target_amount,
-            $savingsGoal->created_at,
+            SavingsGoal::effectiveStart($savingsGoal->created_at, $transactions->first()?->transaction_date),
             $savingsGoal->target_date,
             now(),
         );

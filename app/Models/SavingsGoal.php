@@ -75,28 +75,48 @@ class SavingsGoal extends Model
     {
         $goals = $user->savingsGoals()->with('label')->get();
 
-        // ponytail: one grouped sum for all goals' labels avoids N+1 across the list.
-        $savedByLabel = Transaction::query()
+        // ponytail: one grouped sum+min for all goals' labels avoids N+1 across the list.
+        $aggByLabel = Transaction::query()
             ->join('label_transaction', 'label_transaction.transaction_id', '=', 'transactions.id')
             ->whereIn('label_transaction.label_id', $goals->pluck('label_id')->filter())
             ->groupBy('label_transaction.label_id')
-            ->selectRaw('label_transaction.label_id as label_id, SUM(transactions.amount) as total')
-            ->pluck('total', 'label_id');
+            ->selectRaw('label_transaction.label_id as label_id, SUM(transactions.amount) as total, MIN(transactions.transaction_date) as earliest')
+            ->get()
+            ->keyBy('label_id');
 
-        return $goals->map(function (SavingsGoal $goal) use ($savedByLabel): array {
+        return $goals->map(function (SavingsGoal $goal) use ($aggByLabel): array {
+            $agg = $aggByLabel->get($goal->label_id);
             // Negated net flow, mirroring savedAmountInCents(); batched to avoid N+1.
-            $saved = -1 * (int) ($savedByLabel[$goal->label_id] ?? 0);
+            $saved = -1 * (int) ($agg->total ?? 0);
 
             return array_merge($goal->toArray(), [
                 'stats' => self::project(
                     $saved,
                     $goal->target_amount,
-                    $goal->created_at,
+                    self::effectiveStart($goal->created_at, $agg->earliest ?? null),
                     $goal->target_date,
                     now(),
                 ),
             ]);
         })->all();
+    }
+
+    /**
+     * The goal's timeline start: the earlier of its creation date and its first
+     * tagged transaction. Tagging pre-existing savings must not compress the
+     * elapsed window, which would otherwise inflate the rate and projection.
+     */
+    public static function effectiveStart(Carbon $createdAt, Carbon|string|null $earliestContribution): Carbon
+    {
+        $start = $createdAt->copy()->startOfDay();
+
+        if ($earliestContribution === null) {
+            return $start;
+        }
+
+        $earliest = Carbon::parse($earliestContribution)->startOfDay();
+
+        return $earliest->lt($start) ? $earliest : $start;
     }
 
     /**

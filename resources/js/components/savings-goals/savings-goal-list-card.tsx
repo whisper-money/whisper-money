@@ -93,7 +93,7 @@ export function SavingsGoalListCard({ savingsGoal, currencyCode }: Props) {
                         className="h-2"
                     />
                     <div className="text-right text-sm text-muted-foreground">
-                        {Math.round(percentage)}%
+                        {Math.max(0, Math.round(percentage))}%
                     </div>
                 </div>
 

@@ -169,23 +169,24 @@ export default function SavingsGoalShow({
                                     {__('Progress')}
                                 </p>
                                 <p className="font-medium">
-                                    {Math.round(stats.percentage)}%
+                                    {Math.max(0, Math.round(stats.percentage))}%
                                 </p>
                             </div>
-                            {stats.estimated_date && (
-                                <div>
-                                    <p className="text-muted-foreground">
-                                        {__('Estimated completion')}
-                                    </p>
-                                    <p className="font-medium">
-                                        {formatDate(
-                                            stats.estimated_date,
-                                            'MMM d, yyyy',
-                                            locale,
-                                        )}
-                                    </p>
-                                </div>
-                            )}
+                            {savingsGoal.target_date &&
+                                stats.estimated_date && (
+                                    <div>
+                                        <p className="text-muted-foreground">
+                                            {__('Estimated completion')}
+                                        </p>
+                                        <p className="font-medium">
+                                            {formatDate(
+                                                stats.estimated_date,
+                                                'MMM d, yyyy',
+                                                locale,
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
                             {stats.required_per_month !== null &&
                                 stats.required_per_month > 0 && (
                                     <div>

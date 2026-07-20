@@ -120,7 +120,7 @@ export function SavingsGoalProgressChart({
     const locale = useLocale();
 
     const chartData = useMemo<ChartDataPoint[]>(() => {
-        const start = startOfDay(parseISO(savingsGoal.created_at));
+        const createdAt = startOfDay(parseISO(savingsGoal.created_at));
         const today = startOfDay(new Date());
         const target = savingsGoal.target_amount;
         const targetDate = savingsGoal.target_date
@@ -130,10 +130,20 @@ export function SavingsGoalProgressChart({
 
         // Contributions are outflows, so the natural sign is negated.
         const byDate = new Map<string, number>();
+        let earliest: Date | null = null;
         transactions.forEach((t) => {
-            const key = toKey(parseISO(t.transaction_date));
+            const day = startOfDay(parseISO(t.transaction_date));
+            const key = toKey(day);
             byDate.set(key, (byDate.get(key) ?? 0) + -t.amount);
+            if (!earliest || day < earliest) {
+                earliest = day;
+            }
         });
+
+        // Anchor the timeline on the earliest contribution when the goal was
+        // created after money was already set aside, so the solid line includes
+        // those contributions and joins the projection at today.
+        const start = earliest && earliest < createdAt ? earliest : createdAt;
 
         let savedToday = 0;
         byDate.forEach((amount, key) => {
