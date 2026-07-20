@@ -67,25 +67,25 @@ export default function BudgetsIndex({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {/* Defer opening until the menu has closed so Radix
-                                    doesn't leave pointer-events locked on the body. */}
+                                {/* Let the menu close itself (no preventDefault, or
+                                    it leaves pointer-events locked on the body), and
+                                    defer opening the dialog to the next frame so it
+                                    doesn't race the menu's close. */}
                                 <DropdownMenuItem
-                                    onSelect={(e) => {
-                                        e.preventDefault();
+                                    onSelect={() =>
                                         requestAnimationFrame(() =>
                                             setCreateType('budget'),
-                                        );
-                                    }}
+                                        )
+                                    }
                                 >
                                     {__('Budget')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    onSelect={(e) => {
-                                        e.preventDefault();
+                                    onSelect={() =>
                                         requestAnimationFrame(() =>
                                             setCreateType('goal'),
-                                        );
-                                    }}
+                                        )
+                                    }
                                 >
                                     {__('Savings Goal')}
                                 </DropdownMenuItem>
