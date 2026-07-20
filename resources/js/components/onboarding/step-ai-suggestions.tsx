@@ -18,6 +18,11 @@ import axios from 'axios';
 import { Loader2, PartyPopper, Sparkles, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+// Client-side give-up: the backend marks the run failed on timeout/crash, but
+// this guarantees the spinner resolves even if the worker dies before it can.
+// A little beyond the "up to two minutes" the UI promises.
+const MAX_POLL_MS = 3 * 60_000;
+
 interface SuggestionState {
     available: boolean;
     consented: boolean;
@@ -52,10 +57,12 @@ export function StepAiSuggestions({
     const [drafts, setDrafts] = useState<Record<string, SuggestionDraft>>({});
     const [busy, setBusy] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [timedOut, setTimedOut] = useState(false);
     const [summary, setSummary] = useState<AcceptResponse['summary'] | null>(
         null,
     );
     const pollRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+    const deadlineRef = useRef(0);
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
 
@@ -88,20 +95,41 @@ export function StepAiSuggestions({
         data?.run?.status === 'pending' || data?.run?.status === 'processing';
 
     const poll = useCallback(async () => {
-        const { data } = await axios.get<SuggestionState>(show().url);
-        applyState(data);
-        if (isRunning(data)) {
-            pollRef.current = setTimeout(poll, 3000);
+        try {
+            const { data } = await axios.get<SuggestionState>(show().url);
+            applyState(data);
+            if (!isRunning(data)) {
+                return;
+            }
+        } catch {
+            // Transient failure (network blip, expired session, 5xx). Keep
+            // retrying until the deadline instead of silently dying here.
         }
+        // Guarantee the client never spins forever: if the run hasn't reached a
+        // terminal status in time (e.g. the worker was killed before it could
+        // mark the run failed), surface the failed state so the user can retry
+        // or skip.
+        if (Date.now() >= deadlineRef.current) {
+            setTimedOut(true);
+            return;
+        }
+        pollRef.current = setTimeout(poll, 3000);
     }, [applyState]);
+
+    const startPolling = useCallback(() => {
+        setTimedOut(false);
+        deadlineRef.current = Date.now() + MAX_POLL_MS;
+        poll();
+    }, [poll]);
 
     const startGenerate = useCallback(async () => {
         setBusy(true);
+        setTimedOut(false);
         try {
             const { data } = await axios.post<SuggestionState>(generate().url);
             applyState(data);
             if (isRunning(data)) {
-                poll();
+                startPolling();
             }
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 422) {
@@ -110,7 +138,7 @@ export function StepAiSuggestions({
         } finally {
             setBusy(false);
         }
-    }, [applyState, poll]);
+    }, [applyState, startPolling]);
 
     useEffect(() => {
         let cancelled = false;
@@ -124,7 +152,7 @@ export function StepAiSuggestions({
                 applyState(data);
 
                 if (isRunning(data)) {
-                    poll();
+                    startPolling();
                 } else if (
                     data.consented &&
                     data.eligible &&
@@ -253,7 +281,7 @@ export function StepAiSuggestions({
         );
     }
 
-    if (!state || busy || isRunning(state)) {
+    if (!timedOut && (!state || busy || isRunning(state))) {
         return (
             <Centered>
                 <StepHeader
@@ -275,6 +303,12 @@ export function StepAiSuggestions({
                 </p>
             </Centered>
         );
+    }
+
+    // ponytail: unreachable — timedOut only flips after state has loaded; the
+    // guard just restores non-null narrowing for the branches below.
+    if (!state) {
+        return null;
     }
 
     if (!state.consented) {
@@ -320,7 +354,7 @@ export function StepAiSuggestions({
         );
     }
 
-    if (state.run?.status === 'failed') {
+    if (timedOut || state.run?.status === 'failed') {
         return (
             <Centered>
                 <StepHeader
