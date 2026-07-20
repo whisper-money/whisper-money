@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Features\SavingsGoals;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
 use App\Models\Account;
@@ -9,6 +10,9 @@ use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
+use App\Models\SavingsGoal;
+use App\Models\Transaction;
+use App\Models\User;
 use App\Services\BudgetPeriodService;
 use App\Services\BudgetService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -16,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class BudgetController extends Controller
 {
@@ -45,8 +50,47 @@ class BudgetController extends Controller
 
         return Inertia::render('budgets/index', [
             'budgets' => $budgets,
+            'savingsGoals' => $this->savingsGoalsForIndex($user),
+            'savingsGoalsEnabled' => Feature::active(SavingsGoals::class),
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
+    }
+
+    /**
+     * Savings goals shown alongside budgets on the index, each enriched with its
+     * computed progress. Returns an empty list when the feature is off.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function savingsGoalsForIndex(User $user): array
+    {
+        if (! Feature::active(SavingsGoals::class)) {
+            return [];
+        }
+
+        $goals = $user->savingsGoals()->with('label')->get();
+
+        // ponytail: one grouped sum for all goals' labels avoids N+1 across the list.
+        $savedByLabel = Transaction::query()
+            ->join('label_transaction', 'label_transaction.transaction_id', '=', 'transactions.id')
+            ->whereIn('label_transaction.label_id', $goals->pluck('label_id')->filter())
+            ->groupBy('label_transaction.label_id')
+            ->selectRaw('label_transaction.label_id as label_id, SUM(transactions.amount) as total')
+            ->pluck('total', 'label_id');
+
+        return $goals->map(function (SavingsGoal $goal) use ($savedByLabel): array {
+            $saved = -1 * (int) ($savedByLabel[$goal->label_id] ?? 0);
+
+            return array_merge($goal->toArray(), [
+                'stats' => SavingsGoal::project(
+                    $saved,
+                    $goal->target_amount,
+                    $goal->created_at,
+                    $goal->target_date,
+                    now(),
+                ),
+            ]);
+        })->all();
     }
 
     public function show(Request $request, Budget $budget): Response

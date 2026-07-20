@@ -1,0 +1,193 @@
+<?php
+
+use App\Enums\LabelSource;
+use App\Features\SavingsGoals;
+use App\Models\Account;
+use App\Models\Label;
+use App\Models\SavingsGoal;
+use App\Models\Transaction;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Laravel\Pennant\Feature;
+
+function onboardedUser(): User
+{
+    return User::factory()->create(['onboarded_at' => now()]);
+}
+
+test('creating a goal creates a linked hidden label with the same name', function () {
+    $user = onboardedUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $response = $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'New car',
+        'target_amount' => 500000,
+        'target_date' => now()->addYear()->toDateString(),
+    ]);
+
+    $response->assertRedirect();
+
+    $goal = SavingsGoal::where('user_id', $user->id)->first();
+    expect($goal)->not->toBeNull()
+        ->and($goal->name)->toBe('New car')
+        ->and($goal->target_amount)->toBe(500000);
+
+    $this->assertDatabaseHas('labels', [
+        'id' => $goal->label_id,
+        'user_id' => $user->id,
+        'name' => 'New car',
+        'source' => LabelSource::SavingsGoal->value,
+    ]);
+});
+
+test('goal-backed labels are hidden from the labels settings screen', function () {
+    $user = onboardedUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    Label::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+    SavingsGoal::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->get('/settings/labels');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('labels', 1)
+        ->where('labels.0.name', 'Groceries')
+    );
+});
+
+test('saved amount is the negated net flow of tagged transactions', function () {
+    $user = onboardedUser();
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    // Outflow to savings (−500) contributes +500; a withdrawal back (+200) subtracts.
+    $outflow = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -50000,
+    ]);
+    $withdrawal = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 20000,
+    ]);
+
+    $outflow->labels()->attach($goal->label_id);
+    $withdrawal->labels()->attach($goal->label_id);
+
+    expect($goal->savedAmountInCents())->toBe(30000);
+});
+
+test('show exposes computed progress stats', function () {
+    $user = onboardedUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create([
+        'user_id' => $user->id,
+        'target_amount' => 100000,
+        'target_date' => null,
+    ]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -25000,
+    ]);
+    $transaction->labels()->attach($goal->label_id);
+
+    $response = $this->actingAs($user)->get("/savings-goals/{$goal->id}");
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('savings-goals/show')
+        ->where('stats.saved', 25000)
+        ->where('stats.target', 100000)
+    );
+});
+
+test('renaming the goal renames its label', function () {
+    $user = onboardedUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)->patch("/savings-goals/{$goal->id}", [
+        'name' => 'Emergency fund',
+        'target_amount' => $goal->target_amount,
+    ])->assertRedirect();
+
+    $this->assertDatabaseHas('savings_goals', ['id' => $goal->id, 'name' => 'Emergency fund']);
+    $this->assertDatabaseHas('labels', ['id' => $goal->label_id, 'name' => 'Emergency fund']);
+});
+
+test('deleting the goal also removes its label', function () {
+    $user = onboardedUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $labelId = $goal->label_id;
+
+    $this->actingAs($user)->delete("/savings-goals/{$goal->id}")->assertRedirect('/budgets');
+
+    $this->assertSoftDeleted('savings_goals', ['id' => $goal->id]);
+    $this->assertSoftDeleted('labels', ['id' => $labelId]);
+});
+
+test('a goal name cannot collide with an existing label', function () {
+    $user = onboardedUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    Label::factory()->create(['user_id' => $user->id, 'name' => 'Coche']);
+
+    $response = $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'Coche',
+        'target_amount' => 500000,
+    ]);
+
+    $response->assertSessionHasErrors('name');
+    expect(SavingsGoal::where('user_id', $user->id)->count())->toBe(0);
+});
+
+test('routes are gated behind the feature flag', function () {
+    $user = onboardedUser();
+
+    $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'Blocked',
+        'target_amount' => 100000,
+    ])->assertNotFound();
+});
+
+test('a user cannot view another users goal', function () {
+    $owner = onboardedUser();
+    $other = onboardedUser();
+    Feature::for($other)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($other)->get("/savings-goals/{$goal->id}")->assertForbidden();
+});
+
+test('projection reports behind schedule and a required monthly pace', function () {
+    $start = Carbon::parse('2026-06-20');
+    $today = Carbon::parse('2026-07-20');
+    $targetDate = Carbon::parse('2026-09-18');
+
+    $stats = SavingsGoal::project(100000, 500000, $start, $targetDate, $today);
+
+    expect($stats['status'])->toBe('behind')
+        ->and($stats['percentage'])->toBe(20.0)
+        ->and($stats['required_per_month'])->toBe(200000)
+        ->and($stats['estimated_date'])->not->toBeNull();
+});
+
+test('projection reports a completed goal', function () {
+    $start = Carbon::parse('2026-06-20');
+    $today = Carbon::parse('2026-07-20');
+    $targetDate = Carbon::parse('2026-09-18');
+
+    $stats = SavingsGoal::project(520000, 500000, $start, $targetDate, $today);
+
+    expect($stats['status'])->toBe('completed')
+        ->and($stats['required_per_month'])->toBe(0);
+});

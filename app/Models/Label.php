@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\LabelSource;
 use App\Models\Concerns\BelongsToSpace;
 use Database\Factories\LabelFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,9 +21,30 @@ class Label extends Model
     protected $fillable = [
         'name',
         'color',
+        'source',
         'user_id',
         'space_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'source' => LabelSource::class,
+        ];
+    }
+
+    /**
+     * Only labels the user created and manages directly. Excludes labels that
+     * back a savings goal — those are managed through the goal, not the label
+     * settings screen.
+     *
+     * @param  Builder<Label>  $query
+     * @return Builder<Label>
+     */
+    public function scopeUserManaged(Builder $query): Builder
+    {
+        return $query->where('source', LabelSource::User);
+    }
 
     /**
      * Hide the pivot from serialization so a Label looks identical whether it
@@ -32,6 +55,7 @@ class Label extends Model
     protected $hidden = [
         'pivot',
         'space_id',
+        'source',
     ];
 
     /** @return BelongsTo<User, $this> */

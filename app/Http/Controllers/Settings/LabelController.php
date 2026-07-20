@@ -23,6 +23,7 @@ class LabelController extends Controller
     {
         $labels = auth()->user()
             ->labels()
+            ->userManaged()
             ->orderBy('name')
             ->get();
 

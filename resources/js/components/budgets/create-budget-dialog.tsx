@@ -45,15 +45,28 @@ interface Props {
     className?: string;
     currencyCode?: string;
     trigger?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
 
 export function CreateBudgetDialog({
     className = '',
     currencyCode = 'USD',
     trigger,
+    open,
+    onOpenChange,
 }: Props) {
     const page = usePage<SharedData>();
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isControlled = open !== undefined;
+    const dialogOpen = isControlled ? open : internalOpen;
+    const setOpen = (next: boolean) => {
+        if (isControlled) {
+            onOpenChange?.(next);
+        } else {
+            setInternalOpen(next);
+        }
+    };
     const [name, setName] = useState('');
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
     const [periodStartDay, setPeriodStartDay] = useState<number>(1);
@@ -128,9 +141,11 @@ export function CreateBudgetDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                {trigger ?? (
+        <Dialog open={dialogOpen} onOpenChange={setOpen}>
+            {trigger !== undefined ? (
+                <DialogTrigger asChild>{trigger}</DialogTrigger>
+            ) : isControlled ? null : (
+                <DialogTrigger asChild>
                     <Card
                         className={cn(
                             'cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100',
@@ -144,8 +159,8 @@ export function CreateBudgetDialog({
                             </div>
                         </CardContent>
                     </Card>
-                )}
-            </DialogTrigger>
+                </DialogTrigger>
+            )}
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
