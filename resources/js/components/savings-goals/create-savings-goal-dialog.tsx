@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label as UILabel } from '@/components/ui/label';
+import { useControllableOpen } from '@/hooks/use-controllable-open';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
@@ -34,16 +35,11 @@ export function CreateSavingsGoalDialog({
     open,
     onOpenChange,
 }: Props) {
-    const [internalOpen, setInternalOpen] = useState(false);
-    const isControlled = open !== undefined;
-    const dialogOpen = isControlled ? open : internalOpen;
-    const setDialogOpen = (next: boolean) => {
-        if (isControlled) {
-            onOpenChange?.(next);
-        } else {
-            setInternalOpen(next);
-        }
-    };
+    const {
+        open: dialogOpen,
+        setOpen: setDialogOpen,
+        isControlled,
+    } = useControllableOpen({ open, onOpenChange });
 
     const [name, setName] = useState('');
     const [targetAmount, setTargetAmount] = useState<number>(0);

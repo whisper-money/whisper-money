@@ -65,6 +65,41 @@ class SavingsGoal extends Model
     }
 
     /**
+     * All of a user's goals with their computed progress, for the combined
+     * budgets/goals index. Kept here (not in the budget controller) so budgets
+     * stay decoupled from goals.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function withStatsForUser(User $user): array
+    {
+        $goals = $user->savingsGoals()->with('label')->get();
+
+        // ponytail: one grouped sum for all goals' labels avoids N+1 across the list.
+        $savedByLabel = Transaction::query()
+            ->join('label_transaction', 'label_transaction.transaction_id', '=', 'transactions.id')
+            ->whereIn('label_transaction.label_id', $goals->pluck('label_id')->filter())
+            ->groupBy('label_transaction.label_id')
+            ->selectRaw('label_transaction.label_id as label_id, SUM(transactions.amount) as total')
+            ->pluck('total', 'label_id');
+
+        return $goals->map(function (SavingsGoal $goal) use ($savedByLabel): array {
+            // Negated net flow, mirroring savedAmountInCents(); batched to avoid N+1.
+            $saved = -1 * (int) ($savedByLabel[$goal->label_id] ?? 0);
+
+            return array_merge($goal->toArray(), [
+                'stats' => self::project(
+                    $saved,
+                    $goal->target_amount,
+                    $goal->created_at,
+                    $goal->target_date,
+                    now(),
+                ),
+            ]);
+        })->all();
+    }
+
+    /**
      * Linear progress + projection, computed from primitives so it stays a pure,
      * testable function. Dates are day-granular. `rate_per_day` is cents/day and
      * feeds the chart's dotted projection line client-side.

@@ -21,6 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useControllableOpen } from '@/hooks/use-controllable-open';
 import { buildCategoryTree, flattenCategoryTree } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
@@ -57,16 +58,11 @@ export function CreateBudgetDialog({
     onOpenChange,
 }: Props) {
     const page = usePage<SharedData>();
-    const [internalOpen, setInternalOpen] = useState(false);
-    const isControlled = open !== undefined;
-    const dialogOpen = isControlled ? open : internalOpen;
-    const setOpen = (next: boolean) => {
-        if (isControlled) {
-            onOpenChange?.(next);
-        } else {
-            setInternalOpen(next);
-        }
-    };
+    const {
+        open: dialogOpen,
+        setOpen,
+        isControlled,
+    } = useControllableOpen({ open, onOpenChange });
     const [name, setName] = useState('');
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
     const [periodStartDay, setPeriodStartDay] = useState<number>(1);

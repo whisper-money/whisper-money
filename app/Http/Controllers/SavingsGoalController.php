@@ -12,22 +12,38 @@ use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
+use Closure;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Pennant\Feature;
 
-class SavingsGoalController extends Controller
+class SavingsGoalController extends Controller implements HasMiddleware
 {
     use AuthorizesRequests;
 
+    /**
+     * Hide the whole savings-goals surface behind the rollout feature flag.
+     *
+     * @return array<int, Closure>
+     */
+    public static function middleware(): array
+    {
+        return [
+            function (Request $request, Closure $next): mixed {
+                abort_unless(Feature::active(SavingsGoals::class), 404);
+
+                return $next($request);
+            },
+        ];
+    }
+
     public function store(StoreSavingsGoalRequest $request): RedirectResponse
     {
-        abort_unless(Feature::active(SavingsGoals::class), 404);
-
         $goal = DB::transaction(function () use ($request) {
             $label = $request->user()->labels()->create([
                 'name' => $request->name,
@@ -48,7 +64,6 @@ class SavingsGoalController extends Controller
 
     public function show(Request $request, SavingsGoal $savingsGoal): Response
     {
-        abort_unless(Feature::active(SavingsGoals::class), 404);
         $this->authorize('view', $savingsGoal);
 
         $user = $request->user();
@@ -61,10 +76,8 @@ class SavingsGoalController extends Controller
                 ->get()
             : collect();
 
-        $saved = -1 * (int) $transactions->sum('amount');
-
         $stats = SavingsGoal::project(
-            $saved,
+            $savingsGoal->savedAmountInCents(),
             $savingsGoal->target_amount,
             $savingsGoal->created_at,
             $savingsGoal->target_date,
@@ -98,7 +111,6 @@ class SavingsGoalController extends Controller
 
     public function update(UpdateSavingsGoalRequest $request, SavingsGoal $savingsGoal): RedirectResponse
     {
-        abort_unless(Feature::active(SavingsGoals::class), 404);
         $this->authorize('update', $savingsGoal);
 
         DB::transaction(function () use ($request, $savingsGoal) {
@@ -114,7 +126,6 @@ class SavingsGoalController extends Controller
 
     public function destroy(Request $request, SavingsGoal $savingsGoal): RedirectResponse
     {
-        abort_unless(Feature::active(SavingsGoals::class), 404);
         $this->authorize('delete', $savingsGoal);
 
         DB::transaction(function () use ($savingsGoal) {
