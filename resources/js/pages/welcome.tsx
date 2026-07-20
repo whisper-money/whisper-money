@@ -2075,6 +2075,13 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Miguel Ángel SB',
+            gravatar: 'e5da1753042eee6b08a3db0df0b5f807',
+            text: __(
+                'I love the style, the intuitive interface, how easy it is to use. If it keeps growing like this, Whisper Money will be my finance app of choice. You can tell it is built with passion — and things made with passion can only end up a success.',
+            ),
+        },
+        {
             name: 'Víctor Falcón (co-owner)',
             gravatar: '50901af884c50a8f12804b0cf3aeb98a',
             text: __(
