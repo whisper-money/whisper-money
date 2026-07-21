@@ -169,6 +169,39 @@ The template includes:
 | `STRIPE_KEY`            | -       | Stripe publishable key                             |
 | `STRIPE_SECRET`         | -       | Stripe secret key                                  |
 | `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret                      |
+| `AI_PROVIDER`           | `gemini`| AI provider for every AI feature (`gemini`, `ollama`, `openai`, ...) |
+
+## AI Provider
+
+Whisper Money's AI features (transaction categorization and automation-rule
+suggestions) run on [`laravel/ai`](https://github.com/laravel/ai) and default to
+Google **Gemini**. The provider is configurable independently of the model, so
+you can point the app at any provider from `config/ai.php` — including a
+self-hosted **[Ollama](https://ollama.com)** server for fully local, private AI
+processing that never leaves your infrastructure.
+
+| Variable                     | Default              | Description                                                            |
+| ---------------------------- | -------------------- | --------------------------------------------------------------------- |
+| `AI_PROVIDER`                | `gemini`             | Provider for all AI features. Set once to switch everything.          |
+| `AI_SUGGESTIONS_PROVIDER`    | `AI_PROVIDER`        | Override the provider for rule suggestions only.                      |
+| `AI_CATEGORIZATION_PROVIDER` | `AI_PROVIDER`        | Override the provider for transaction categorization only.            |
+| `AI_SUGGESTIONS_MODEL`       | `gemini-flash-latest`| Model used for rule suggestions.                                      |
+| `AI_CATEGORIZATION_MODEL`    | `gemini-flash-latest`| Model used for transaction categorization.                            |
+| `GEMINI_API_KEY`             | -                    | Required when the provider is `gemini`.                               |
+| `OLLAMA_URL`                 | `http://localhost:11434` | Ollama server URL (used when the provider is `ollama`).           |
+| `OLLAMA_API_KEY`             | -                    | Optional; only needed behind an authenticating proxy.                 |
+
+### Using a local Ollama model
+
+```dotenv
+AI_PROVIDER=ollama
+OLLAMA_URL=http://ollama.example.local:11434
+AI_SUGGESTIONS_MODEL=gemma3:12b
+AI_CATEGORIZATION_MODEL=gemma3:12b
+```
+
+Make sure the model is pulled on the Ollama server first (`ollama pull gemma3:12b`).
+Gemini remains the default, so existing deployments are unaffected.
 
 ## Star History
 

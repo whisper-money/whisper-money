@@ -4,14 +4,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Model
+    | Provider & model
     |--------------------------------------------------------------------------
     |
-    | The Gemini model used to categorize transactions. Cost is negligible at
-    | any tier for this task, so the model is chosen for accuracy, not price.
-    | Kept env-overridable so it can be swapped without a deploy.
+    | The laravel/ai provider and model used to categorize transactions. The
+    | provider defaults to Gemini for backward compatibility, but any provider
+    | configured in config/ai.php works — set it to "ollama" (with OLLAMA_URL)
+    | to keep AI processing fully local and private. Both are env-overridable so
+    | they can be swapped without a deploy; "AI_PROVIDER" switches every AI
+    | feature at once, and the feature-specific var overrides it. Cost is
+    | negligible at any tier for this task, so the model is chosen for accuracy.
     |
     */
+
+    'provider' => env('AI_CATEGORIZATION_PROVIDER', env('AI_PROVIDER', 'gemini')),
 
     'model' => env('AI_CATEGORIZATION_MODEL', 'gemini-flash-latest'),
 

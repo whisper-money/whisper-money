@@ -39,6 +39,37 @@ it('skips the model entirely when there are no groups', function () {
     expect($generator->generate([], []))->toBe([]);
 });
 
+it('prompts the configured provider and model, defaulting to gemini', function () {
+    RuleSuggestionAgent::fake([['suggestions' => []]]);
+
+    (new LaravelAiRuleSuggestionGenerator)->generate(
+        groups: [benchGroup('alpha')],
+        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+    );
+
+    RuleSuggestionAgent::assertPrompted(
+        fn ($prompt): bool => (string) $prompt->provider === 'gemini'
+            && $prompt->model === (string) config('ai_suggestions.model'),
+    );
+});
+
+it('routes prompts through Ollama when the provider is configured for local AI', function () {
+    config()->set('ai_suggestions.provider', 'ollama');
+    config()->set('ai_suggestions.model', 'gemma3:12b');
+
+    RuleSuggestionAgent::fake([['suggestions' => []]]);
+
+    (new LaravelAiRuleSuggestionGenerator)->generate(
+        groups: [benchGroup('alpha')],
+        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+    );
+
+    RuleSuggestionAgent::assertPrompted(
+        fn ($prompt): bool => (string) $prompt->provider === 'ollama'
+            && $prompt->model === 'gemma3:12b',
+    );
+});
+
 function genSuggestion(string $key): array
 {
     return [

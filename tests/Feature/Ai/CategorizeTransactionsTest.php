@@ -178,6 +178,56 @@ it('reports unexpected failures and does not schedule a retry so real bugs are n
     Queue::assertNotPushed(RetryTransientAiCategorizationJob::class);
 });
 
+it('routes prompts through the configured provider so local Ollama can be used', function () {
+    config()->set('ai_categorization.provider', 'ollama');
+    config()->set('ai_categorization.model', 'gemma3:12b');
+
+    $user = User::factory()->create();
+    $category = groceries($user);
+    $transaction = uncategorized($user);
+
+    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+
+    TransactionCategorizationAgent::fake([
+        ['results' => [[
+            'ref' => $transaction->id,
+            'category_index' => $index,
+            'confidence' => 0.95,
+            'merchant_unambiguous' => true,
+        ]]],
+    ]);
+
+    app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    TransactionCategorizationAgent::assertPrompted(
+        fn ($prompt): bool => (string) $prompt->provider === 'ollama'
+            && $prompt->model === 'gemma3:12b',
+    );
+});
+
+it('defaults the categorization provider to gemini for backward compatibility', function () {
+    $user = User::factory()->create();
+    $category = groceries($user);
+    $transaction = uncategorized($user);
+
+    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+
+    TransactionCategorizationAgent::fake([
+        ['results' => [[
+            'ref' => $transaction->id,
+            'category_index' => $index,
+            'confidence' => 0.95,
+            'merchant_unambiguous' => true,
+        ]]],
+    ]);
+
+    app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    TransactionCategorizationAgent::assertPrompted(
+        fn ($prompt): bool => (string) $prompt->provider === 'gemini',
+    );
+});
+
 it('skips results whose category index does not resolve', function () {
     $user = User::factory()->create();
     groceries($user);
