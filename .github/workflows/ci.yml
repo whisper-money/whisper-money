@@ -440,8 +440,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=
-            type=raw,value=latest
+            type=sha,prefix=,suffix=-development
+            type=raw,value=development
 
       - name: Extract package version
         id: package-version
@@ -453,7 +453,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=,suffix=-production
+            type=sha,prefix=
+            type=raw,value=latest
             type=raw,value=production
             type=raw,value=v${{ steps.package-version.outputs.version }}-production
 
@@ -518,8 +519,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=
-            type=raw,value=latest
+            type=sha,prefix=,suffix=-development
+            type=raw,value=development
 
       - name: Extract production metadata
         id: production-meta
@@ -527,7 +528,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=,suffix=-production
+            type=sha,prefix=
+            type=raw,value=latest
             type=raw,value=production
             type=raw,value=v${{ needs.build-image.outputs.package-version }}-production
 
