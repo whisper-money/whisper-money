@@ -34,38 +34,6 @@ import { __, setTranslations } from './utils/i18n';
 
 installChunkLoadRecovery();
 
-// The installed PWA claims the whole origin (manifest scope "/"), so on mobile an
-// OAuth link (e.g. from ChatGPT connecting over MCP) gets captured into the app.
-// Paired with launch_handler "focus-existing", the launcher hands us the target
-// URL instead of dropping it and showing the dashboard — navigate there so the
-// OAuth consent screen actually loads. Non-OAuth launches keep their place.
-type LaunchParams = { targetURL?: string };
-
-const launchQueue = (
-    window as Window & {
-        launchQueue?: {
-            setConsumer(consumer: (params: LaunchParams) => void): void;
-        };
-    }
-).launchQueue;
-
-if (launchQueue) {
-    launchQueue.setConsumer(({ targetURL }) => {
-        if (!targetURL) {
-            return;
-        }
-
-        const target = new URL(targetURL);
-
-        if (
-            target.pathname.startsWith('/oauth/') &&
-            target.href !== window.location.href
-        ) {
-            window.location.href = targetURL;
-        }
-    });
-}
-
 Sentry.init({
     dsn: import.meta.env.SENTRY_LARAVEL_DSN,
     environment: import.meta.env.MODE,

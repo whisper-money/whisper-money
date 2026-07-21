@@ -6,9 +6,7 @@
   "scope": "/",
   "id": "/",
   "display": "standalone",
-  "launch_handler": {
-    "client_mode": "focus-existing"
-  },
+  "handle_links": "not-preferred",
   "orientation": "portrait-primary",
   "theme_color": "#1b1b18",
   "background_color": "#ffffff",
