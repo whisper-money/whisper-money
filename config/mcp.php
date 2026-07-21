@@ -48,8 +48,15 @@ return [
     | per RFC 8414. This value appears in your protected resource and auth
     | server metadata endpoints. When null, this defaults to `url('/')`.
     |
+    | Point this at a dedicated host (e.g. https://oauth.whisper.money) so the
+    | authorize/token/register endpoints live outside the PWA's manifest scope.
+    | The installed PWA is a verified App Link handler for the app origin, so an
+    | on-origin `/oauth/authorize` link (e.g. from ChatGPT on Android) gets
+    | captured into the app, where the redirect back to the client can't
+    | complete. A separate host keeps the OAuth flow in the browser instead.
+    |
     */
 
-    'authorization_server' => null,
+    'authorization_server' => env('MCP_AUTHORIZATION_SERVER'),
 
 ];
