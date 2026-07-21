@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Exceptions\FailoverableException;
 use Throwable;
 
@@ -169,7 +170,7 @@ class CategorizeTransactions
 
         $response = (new TransactionCategorizationAgent)->prompt(
             $payload,
-            provider: (string) config('ai_categorization.provider'),
+            provider: Lab::from((string) config('ai_categorization.provider')),
             model: (string) config('ai_categorization.model'),
         );
 

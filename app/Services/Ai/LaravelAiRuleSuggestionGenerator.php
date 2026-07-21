@@ -5,6 +5,7 @@ namespace App\Services\Ai;
 use App\Ai\Agents\RuleSuggestionAgent;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Exceptions\FailoverableException;
 use Throwable;
 
@@ -90,7 +91,7 @@ class LaravelAiRuleSuggestionGenerator implements RuleSuggestionGenerator
 
         $response = (new RuleSuggestionAgent)->prompt(
             $payload,
-            provider: (string) config('ai_suggestions.provider'),
+            provider: Lab::from((string) config('ai_suggestions.provider')),
             model: (string) config('ai_suggestions.model'),
         );
 

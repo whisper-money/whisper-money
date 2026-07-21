@@ -7,13 +7,11 @@ return [
     | Provider & model
     |--------------------------------------------------------------------------
     |
-    | The laravel/ai provider and model used to generate automation-rule
-    | suggestions. The provider defaults to Gemini for backward compatibility,
-    | but any provider configured in config/ai.php works — set it to "ollama"
-    | (with OLLAMA_URL) to keep AI processing fully local and private. Both are
-    | env-overridable so they can be swapped without a deploy; "AI_PROVIDER"
-    | switches every AI feature at once, and the feature-specific var overrides
-    | it. Any Flash-tier model is appropriate for this constrained task.
+    | Provider and model for automation-rule suggestions, both env-overridable.
+    | The provider defaults to Gemini but accepts any laravel/ai provider (a
+    | valid Laravel\Ai\Enums\Lab case — an unknown value fails fast). Any
+    | Flash-tier model suits this constrained task. See the README "AI Provider"
+    | section for the shared options (e.g. local Ollama, the AI_PROVIDER switch).
     |
     */
 

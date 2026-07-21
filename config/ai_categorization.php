@@ -7,13 +7,11 @@ return [
     | Provider & model
     |--------------------------------------------------------------------------
     |
-    | The laravel/ai provider and model used to categorize transactions. The
-    | provider defaults to Gemini for backward compatibility, but any provider
-    | configured in config/ai.php works — set it to "ollama" (with OLLAMA_URL)
-    | to keep AI processing fully local and private. Both are env-overridable so
-    | they can be swapped without a deploy; "AI_PROVIDER" switches every AI
-    | feature at once, and the feature-specific var overrides it. Cost is
-    | negligible at any tier for this task, so the model is chosen for accuracy.
+    | Provider and model for transaction categorization, both env-overridable.
+    | The provider defaults to Gemini but accepts any laravel/ai provider (a
+    | valid Laravel\Ai\Enums\Lab case — an unknown value fails fast). Cost is
+    | negligible at any tier, so the model is chosen for accuracy. See the
+    | README "AI Provider" section for the shared options (e.g. local Ollama).
     |
     */
 

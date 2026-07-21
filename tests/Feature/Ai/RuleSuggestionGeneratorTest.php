@@ -70,6 +70,17 @@ it('routes prompts through Ollama when the provider is configured for local AI',
     );
 });
 
+it('fails fast with a clear error when the configured provider is unknown', function () {
+    config()->set('ai_suggestions.provider', 'not-a-provider');
+
+    RuleSuggestionAgent::fake([['suggestions' => []]]);
+
+    expect(fn () => (new LaravelAiRuleSuggestionGenerator)->generate(
+        groups: [benchGroup('alpha')],
+        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+    ))->toThrow(ValueError::class);
+});
+
 function genSuggestion(string $key): array
 {
     return [
