@@ -110,6 +110,26 @@ it('serves authorization server metadata advertising PKCE and the mcp:use scope'
     expect($json['registration_endpoint'])->toContain('oauth/register');
 });
 
+it('runs the whole authorization server on the configured dedicated host', function () {
+    config()->set('mcp.authorization_server', 'https://oauth.whisper.money');
+
+    // Protected-resource metadata (served from the app origin) points clients at the
+    // dedicated host, while the protected resource itself stays on the app origin.
+    $resource = get('/.well-known/oauth-protected-resource/mcp/oauth')->assertOk()->json();
+    expect($resource['authorization_servers'])->toBe(['https://oauth.whisper.money']);
+    expect($resource['resource'])->toEndWith('/mcp/oauth');
+
+    // Fetched from that host, every auth-server endpoint stays on it (same origin as
+    // the issuer), so the OAuth authorize link lives off the PWA origin and the
+    // installed app can't capture it.
+    $server = get('https://oauth.whisper.money/.well-known/oauth-authorization-server')
+        ->assertOk()->json();
+    expect($server['issuer'])->toBe('https://oauth.whisper.money');
+    expect($server['authorization_endpoint'])->toStartWith('https://oauth.whisper.money/');
+    expect($server['token_endpoint'])->toStartWith('https://oauth.whisper.money/');
+    expect($server['registration_endpoint'])->toStartWith('https://oauth.whisper.money/');
+});
+
 /*
 |--------------------------------------------------------------------------
 | 401 bootstrap challenge (mandatory for Claude / ChatGPT)
