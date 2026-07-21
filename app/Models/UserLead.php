@@ -29,14 +29,9 @@ class UserLead extends Model
         'email_verified_at',
         'position',
         'referral_code',
-        'referred_by_id',
         'locale',
-        'cohort',
         'promo_code_monthly',
         'promo_code_yearly',
-        'invitation_sent_at',
-        're_invitation_sent_at',
-        're_invitation_count',
     ];
 
     /**
@@ -46,9 +41,6 @@ class UserLead extends Model
     {
         return [
             'email_verified_at' => 'datetime',
-            'invitation_sent_at' => 'datetime',
-            're_invitation_sent_at' => 'datetime',
-            're_invitation_count' => 'integer',
         ];
     }
 }
