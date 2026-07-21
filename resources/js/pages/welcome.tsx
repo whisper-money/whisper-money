@@ -1665,7 +1665,13 @@ const PRO_ONLY_FEATURES = [
     'Priority support',
 ];
 
-function FreePlanCard({ features }: { features: string[] }) {
+function FreePlanCard({
+    features,
+    canRegister = false,
+}: {
+    features: string[];
+    canRegister?: boolean;
+}) {
     const excluded = new Set(PRO_ONLY_FEATURES);
 
     return (
@@ -1717,12 +1723,15 @@ function FreePlanCard({ features }: { features: string[] }) {
                     })}
                 </ul>
 
-                <Link href="/register" className="mt-8">
+                <Link
+                    href={canRegister ? '/register' : '/login'}
+                    className="mt-8"
+                >
                     <Button
                         className="w-full cursor-pointer border-[#e3e3e0] bg-transparent py-5 text-base text-[#1b1b18] shadow-sm transition-all hover:bg-[#f5f5f4] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:bg-[#1f1f1e]"
                         variant="outline"
                     >
-                        {__('Get Started Free')}
+                        {canRegister ? __('Get Started Free') : __('Log in')}
                     </Button>
                 </Link>
             </div>
@@ -1736,6 +1745,7 @@ function LandingPlanCard({
     isBestValue,
     currency,
     locale,
+    canRegister = false,
 }: {
     plan: Plan;
     isDefault: boolean;
@@ -1744,6 +1754,7 @@ function LandingPlanCard({
     promoBadge: string;
     currency: string;
     locale: string;
+    canRegister?: boolean;
 }) {
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
@@ -1825,7 +1836,10 @@ function LandingPlanCard({
                     ))}
                 </ul>
 
-                <Link href="/register" className="mt-8">
+                <Link
+                    href={canRegister ? '/register' : '/login'}
+                    className="mt-8"
+                >
                     <Button
                         className={cn(
                             'w-full cursor-pointer py-5 text-base shadow-sm transition-all',
@@ -1835,7 +1849,7 @@ function LandingPlanCard({
                         )}
                         variant={isDefault ? 'default' : 'outline'}
                     >
-                        {__('Get Started')}
+                        {canRegister ? __('Get Started') : __('Log in')}
                     </Button>
                 </Link>
             </div>
@@ -2318,11 +2332,17 @@ export default function Welcome({
                                     ) : (
                                         <div className="flex w-full flex-row gap-4">
                                             <Link
-                                                href="/register"
+                                                href={
+                                                    canRegister
+                                                        ? '/register'
+                                                        : '/login'
+                                                }
                                                 className="w-full"
                                             >
                                                 <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
-                                                    {__('Get Started')}
+                                                    {canRegister
+                                                        ? __('Get Started')
+                                                        : __('Log in')}
                                                 </Button>
                                             </Link>
                                             {demoEnabled && (
@@ -2792,6 +2812,7 @@ export default function Welcome({
                                             features={[
                                                 ...planEntries[0][1].features,
                                             ]}
+                                            canRegister={canRegister}
                                         />
                                         {displayedPlanEntries.map(
                                             ([key, plan]) => (
@@ -2814,6 +2835,7 @@ export default function Welcome({
                                                     }
                                                     currency={pricing.currency}
                                                     locale={locale}
+                                                    canRegister={canRegister}
                                                 />
                                             ),
                                         )}
@@ -2907,9 +2929,17 @@ export default function Welcome({
                                     ) : isMobile ? (
                                         <InstallAppButton />
                                     ) : (
-                                        <Link href="/register">
+                                        <Link
+                                            href={
+                                                canRegister
+                                                    ? '/register'
+                                                    : '/login'
+                                            }
+                                        >
                                             <Button className="h-12 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-8 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50">
-                                                {__('Get Started for Free')}
+                                                {canRegister
+                                                    ? __('Get Started for Free')
+                                                    : __('Log in')}
                                             </Button>
                                         </Link>
                                     )}

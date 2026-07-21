@@ -143,8 +143,8 @@ return [
     |
     */
 
-    'features' => [
-        Features::registration(),
+    'features' => array_values(array_filter([
+        env('REGISTRATION_ENABLED', true) ? Features::registration() : null,
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([
@@ -152,6 +152,6 @@ return [
             'confirmPassword' => true,
             // 'window' => 0
         ]),
-    ],
+    ])),
 
 ];
