@@ -1,4 +1,6 @@
 {
+    "Set this up on a computer": "Configúralo desde un ordenador",
+    "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude or ChatGPT on your phone as usual.": "El inicio de sesión y la aprobación funcionan bien en un navegador de escritorio, pero suelen fallar en el navegador interno del móvil. Una vez conectado, puedes chatear con Whisper Money desde Claude o ChatGPT en el móvil con normalidad.",
     "Learned: similar transactions will be categorized automatically.": "Aprendido: las transacciones similares se categorizarán automáticamente.",
     "Learned from your correction": "Aprendida de tu corrección",
     "Undo": "Deshacer",
