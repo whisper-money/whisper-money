@@ -13,6 +13,10 @@ class AuthEntryPointService
 
     private const COOKIE_MINUTES = 60 * 24 * 365 * 5;
 
+    /**
+     * @api Invoked dynamically via the container in bootstrap/app.php's
+     *      redirectGuestsTo callback.
+     */
     public function guestRedirectRoute(Request $request): string
     {
         if (

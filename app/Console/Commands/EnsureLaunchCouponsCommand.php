@@ -10,11 +10,11 @@ use Stripe\Exception\InvalidRequestException;
 
 class EnsureLaunchCouponsCommand extends Command
 {
-    public const COUPON_FOUNDER_FOREVER = 'wm_founder_forever';
+    private const COUPON_FOUNDER_FOREVER = 'wm_founder_forever';
 
-    public const COUPON_EARLYBIRD_MONTHLY = 'wm_earlybird_monthly';
+    private const COUPON_EARLYBIRD_MONTHLY = 'wm_earlybird_monthly';
 
-    public const COUPON_EARLYBIRD_YEARLY = 'wm_earlybird_yearly';
+    private const COUPON_EARLYBIRD_YEARLY = 'wm_earlybird_yearly';
 
     protected $signature = 'stripe:ensure-launch-coupons {--dry-run : Show what would happen without writing to Stripe}';
 
