@@ -53,6 +53,7 @@ import {
     ChevronDown,
     Copy,
     KeyRound,
+    MonitorSmartphone,
     RefreshCw,
     ShieldAlert,
     Trash2,
@@ -259,6 +260,18 @@ export default function Mcp() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            <div className="flex gap-3 rounded-md border bg-muted/50 p-3 text-sm">
+                                <MonitorSmartphone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                <p className="text-muted-foreground">
+                                    <span className="font-medium text-foreground">
+                                        {__('Set this up on a computer')}.
+                                    </span>{' '}
+                                    {__(
+                                        "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude or ChatGPT on your phone as usual.",
+                                    )}
+                                </p>
+                            </div>
+
                             <ToggleGroup
                                 type="single"
                                 value={connector}
