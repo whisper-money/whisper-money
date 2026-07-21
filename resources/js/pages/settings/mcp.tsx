@@ -144,7 +144,7 @@ export default function Mcp() {
             label: __('Claude Desktop'),
             steps: [
                 __('Open Settings → Connectors in Claude Desktop.'),
-                __('Click "Add custom connector".'),
+                __('Click "Add" in the top right, then "Add custom connector".'),
                 <>
                     {__('Give it a name and paste this URL:')}
                     {oauthUrlBlock}
@@ -158,9 +158,9 @@ export default function Mcp() {
             label: __('ChatGPT'),
             steps: [
                 __(
-                    'Turn on developer mode: Settings → Connectors → Advanced → Developer mode. Custom connectors are only available with it on.',
+                    'Turn on developer mode: Settings → Security and login → Developer mode. Custom connectors are only available with it on.',
                 ),
-                __('In Connectors, click "Create".'),
+                __('In Plugins, click the + button in the top right.'),
                 <>
                     {__('Give it a name and paste this URL:')}
                     {oauthUrlBlock}
