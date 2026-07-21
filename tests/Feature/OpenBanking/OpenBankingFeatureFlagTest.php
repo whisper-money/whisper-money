@@ -1,9 +1,5 @@
 <?php
 
-beforeEach(function () {
-    config(['landing.hide_auth_buttons' => false]);
-});
-
 test('guests cannot access institutions route', function () {
     $this->getJson('/open-banking/institutions?country=ES')
         ->assertUnauthorized();

@@ -1,8 +1,8 @@
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 import { __ } from '@/utils/i18n';
-import { Form, Head, router } from '@inertiajs/react';
-import { useCallback, useEffect } from 'react';
+import { Form, Head } from '@inertiajs/react';
+import { useCallback } from 'react';
 
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
@@ -14,40 +14,18 @@ import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { transactionSyncService } from '@/services/transaction-sync';
 
-interface RegisterProps {
-    forcedRegistration?: boolean;
-    hideAuthButtons?: boolean;
-    defaultEmail?: string | null;
-}
-
-export default function Register({
-    forcedRegistration = false,
-    hideAuthButtons = false,
-    defaultEmail = null,
-}: RegisterProps) {
+export default function Register() {
     const detectedTimezone =
         typeof window !== 'undefined'
             ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
             : '';
 
-    const registrationForm = forcedRegistration
-        ? store.form({ query: { force: 1 } })
-        : store.form();
-
-    useEffect(() => {
-        if (hideAuthButtons) {
-            router.visit(login({ query: { force: 1 } }));
-        }
-    }, [hideAuthButtons]);
+    const registrationForm = store.form();
 
     const handleBeforeSubmit = useCallback(async () => {
         await transactionSyncService.clearAll();
         return true;
     }, []);
-
-    if (hideAuthButtons) {
-        return null;
-    }
 
     return (
         <AuthLayout
@@ -103,7 +81,6 @@ export default function Register({
                                     tabIndex={2}
                                     autoComplete="email"
                                     name="email"
-                                    defaultValue={defaultEmail ?? undefined}
                                     placeholder={__('email@example.com')}
                                 />
 
@@ -157,10 +134,7 @@ export default function Register({
 
                         <div className="text-center text-sm text-muted-foreground">
                             {__('Already have an account?')}{' '}
-                            <TextLink
-                                href={login({ query: { force: 1 } })}
-                                tabIndex={6}
-                            >
+                            <TextLink href={login()} tabIndex={6}>
                                 {__('Log in')}
                             </TextLink>
                         </div>

@@ -27,22 +27,13 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\UserLeadController;
 use App\Models\Bank;
-use App\Services\LandingAuthOverrideService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
-Route::get('/', function (Request $request, LandingAuthOverrideService $landingAuthOverrideService) {
-    $user = $request->user();
-
-    if ($leadId = $request->query('lead')) {
-        $request->session()->put('invited_lead_id', (string) $leadId);
-    }
-
+Route::get('/', function () {
     $popularBanks = Cache::remember('popular-banks', now()->addDay(), function () {
         return Bank::query()
             ->whereNull('user_id')
@@ -68,24 +59,14 @@ Route::get('/', function (Request $request, LandingAuthOverrideService $landingA
             ->toArray();
     });
 
-    $hideAuthButtons = $landingAuthOverrideService->authButtonsHidden($request);
-
     return Inertia::render('welcome', [
-        'canRegister' => Features::enabled(Features::registration()) && ! $hideAuthButtons,
-        'hideAuthButtons' => $hideAuthButtons,
+        'canRegister' => Features::enabled(Features::registration()),
         'popularBanks' => $popularBanks,
     ]);
 })->name('home');
 
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('robots.txt', [RobotsController::class, 'index'])->name('robots');
-
-Route::post('user-leads', [UserLeadController::class, 'store'])->name('user-leads.store');
-Route::get('waitlist/check-email/{lead}', [UserLeadController::class, 'checkEmail'])->name('waitlist.check-email');
-Route::get('user-leads/{lead}/verify', [UserLeadController::class, 'verify'])
-    ->middleware('signed')
-    ->name('user-leads.verify');
-Route::get('waitlist/thank-you/{lead}', [UserLeadController::class, 'thankYou'])->name('waitlist.thank-you');
 
 Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
     ->middleware(['signed', 'throttle:6,1'])

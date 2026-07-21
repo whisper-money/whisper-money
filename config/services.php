@@ -20,7 +20,6 @@ return [
 
     'resend' => [
         'key' => env('RESEND_API_KEY'),
-        'leads_segment_id' => env('RESEND_LEADS_SEGMENT_ID'),
     ],
 
     'ses' => [

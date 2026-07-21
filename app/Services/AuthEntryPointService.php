@@ -13,17 +13,11 @@ class AuthEntryPointService
 
     private const COOKIE_MINUTES = 60 * 24 * 365 * 5;
 
-    public function __construct(private readonly LandingAuthOverrideService $landingAuthOverrideService) {}
-
-    /**
-     * @api
-     */
     public function guestRedirectRoute(Request $request): string
     {
         if (
             $this->hasAuthenticatedBefore($request)
             || ! Features::enabled(Features::registration())
-            || $this->landingAuthOverrideService->authButtonsHidden($request)
         ) {
             return route('login');
         }

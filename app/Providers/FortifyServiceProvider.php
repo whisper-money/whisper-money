@@ -8,8 +8,6 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
 use App\Models\User;
-use App\Models\UserLead;
-use App\Services\LandingAuthOverrideService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -74,12 +72,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        $landingAuthOverrideService = app(LandingAuthOverrideService::class);
-
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'canRegister' => Features::enabled(Features::registration())
-                && ! $landingAuthOverrideService->authButtonsHidden($request),
+            'canRegister' => Features::enabled(Features::registration()),
             'status' => $request->session()->get('status'),
         ]));
 
@@ -96,29 +91,11 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn (Request $request) => Inertia::render('auth/register', [
-            'hideAuthButtons' => $landingAuthOverrideService->authButtonsHidden($request),
-            'forcedRegistration' => $request->boolean('force'),
-            'defaultEmail' => $this->resolveInvitedLeadEmail($request),
-        ]));
+        Fortify::registerView(fn () => Inertia::render('auth/register'));
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 
         Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
-    }
-
-    /**
-     * Resolve the email of the invited lead (if any) for register prefill.
-     */
-    private function resolveInvitedLeadEmail(Request $request): ?string
-    {
-        $leadId = $request->query('lead') ?? $request->session()->get('invited_lead_id');
-
-        if (! $leadId) {
-            return null;
-        }
-
-        return UserLead::query()->whereKey($leadId)->value('email');
     }
 
     /**
