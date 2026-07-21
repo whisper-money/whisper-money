@@ -176,10 +176,15 @@ The template includes:
 Whisper Money's AI features (transaction categorization and automation-rule
 suggestions) run on [`laravel/ai`](https://github.com/laravel/ai) and default to
 Google **Gemini**. The provider is configurable independently of the model, so
-you can point the app at any provider supported by `laravel/ai` — including a
-self-hosted **[Ollama](https://ollama.com)** server for fully local, private AI
-processing that never leaves your infrastructure. An unknown provider fails
-fast at startup of the AI feature.
+you can point the app at **any text provider `laravel/ai` supports** — `gemini`,
+`openai`, `anthropic`, `azure`, `groq`, `xai`, `deepseek`, `mistral`, or a
+self-hosted **[Ollama](https://ollama.com)** server. Ollama is the headline case
+because it keeps AI processing fully local and private — data never leaves your
+infrastructure — but the switch is generic.
+
+Each provider needs its own credentials configured for `laravel/ai` (e.g.
+`GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OLLAMA_URL`). An
+unknown or non-text provider fails fast when the AI feature runs.
 
 | Variable                     | Default              | Description                                                            |
 | ---------------------------- | -------------------- | --------------------------------------------------------------------- |
@@ -192,7 +197,7 @@ fast at startup of the AI feature.
 | `OLLAMA_URL`                 | `http://localhost:11434` | Ollama server URL (used when the provider is `ollama`).           |
 | `OLLAMA_API_KEY`             | -                    | Optional; only needed behind an authenticating proxy.                 |
 
-### Using a local Ollama model
+### Example: fully local AI with Ollama
 
 ```dotenv
 AI_PROVIDER=ollama
@@ -202,7 +207,9 @@ AI_CATEGORIZATION_MODEL=gemma3:12b
 ```
 
 Make sure the model is pulled on the Ollama server first (`ollama pull gemma3:12b`).
-Gemini remains the default, so existing deployments are unaffected.
+Any other provider follows the same pattern: set `AI_PROVIDER`, that provider's
+credentials, and the `*_MODEL` vars to one of its models. Gemini remains the
+default, so existing deployments are unaffected.
 
 ## Star History
 
