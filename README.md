@@ -176,9 +176,10 @@ The template includes:
 Whisper Money's AI features (transaction categorization and automation-rule
 suggestions) run on [`laravel/ai`](https://github.com/laravel/ai) and default to
 Google **Gemini**. The provider is configurable independently of the model, so
-you can point the app at any provider from `config/ai.php` — including a
+you can point the app at any provider supported by `laravel/ai` — including a
 self-hosted **[Ollama](https://ollama.com)** server for fully local, private AI
-processing that never leaves your infrastructure.
+processing that never leaves your infrastructure. An unknown provider fails
+fast at startup of the AI feature.
 
 | Variable                     | Default              | Description                                                            |
 | ---------------------------- | -------------------- | --------------------------------------------------------------------- |
