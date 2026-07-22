@@ -11,7 +11,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Search and filter the user\'s transactions by text, category, account, date range and amount. Amounts are integers in minor units (cents). Use this to analyse spending or to find recurring charges by grouping results by merchant.')]
+#[Description('Search and filter the user\'s transactions by text, category, account, label, date range and amount. Amounts are integers in minor units (cents). Use this to analyse spending or to find recurring charges by grouping results by merchant.')]
 class SearchTransactions extends McpTool
 {
     /**
@@ -23,6 +23,7 @@ class SearchTransactions extends McpTool
             'query' => $schema->string()->description('Free text matched against description, creditor and debtor names.'),
             'account_id' => $schema->string()->description('Restrict to a single account id.'),
             'category_id' => $schema->string()->description('Restrict to a single category id.'),
+            'label_ids' => $schema->array()->items($schema->string())->description('Restrict to transactions carrying any of these label ids. Call list_labels to see valid ids.'),
             'from' => $schema->string()->description('Earliest transaction date, YYYY-MM-DD.'),
             'to' => $schema->string()->description('Latest transaction date, YYYY-MM-DD.'),
             'min_amount' => $schema->integer()->description('Minimum signed amount in minor units (cents).'),
@@ -42,9 +43,11 @@ class SearchTransactions extends McpTool
 
         $space = $this->resolveSpace($request, $user);
 
+        $labels = $this->labelsInSpace($request, $space, 'label_ids');
+
         $transactions = Transaction::query()
             ->forSpace($space)
-            ->with(['account:id,name', 'category:id,name,type'])
+            ->with(['account:id,name', 'category:id,name,type', 'labels:id,name'])
             ->when($request->string('query')->toString() !== '', function ($query) use ($request): void {
                 $term = '%'.$request->string('query')->toString().'%';
                 $query->where(function ($q) use ($term): void {
@@ -55,6 +58,7 @@ class SearchTransactions extends McpTool
             })
             ->when($request->string('account_id')->toString() !== '', fn ($query) => $query->where('account_id', $request->string('account_id')->toString()))
             ->when($request->string('category_id')->toString() !== '', fn ($query) => $query->where('category_id', $request->string('category_id')->toString()))
+            ->when($labels->isNotEmpty(), fn ($query) => $query->whereHas('labels', fn ($q) => $q->whereIn('labels.id', $labels->pluck('id')->all())))
             ->when($request->string('from')->toString() !== '', fn ($query) => $query->whereDate('transaction_date', '>=', $request->string('from')->toString()))
             ->when($request->string('to')->toString() !== '', fn ($query) => $query->whereDate('transaction_date', '<=', $request->string('to')->toString()))
             ->when($request->has('min_amount'), fn ($query) => $query->where('amount', '>=', $request->integer('min_amount')))
@@ -75,6 +79,10 @@ class SearchTransactions extends McpTool
                 'source' => $transaction->source->value,
                 'creditor_name' => $transaction->creditor_name,
                 'debtor_name' => $transaction->debtor_name,
+                'labels' => $transaction->labels
+                    ->map(fn ($label): array => ['id' => $label->id, 'name' => $label->name])
+                    ->values()
+                    ->all(),
             ]);
 
         return $this->json([

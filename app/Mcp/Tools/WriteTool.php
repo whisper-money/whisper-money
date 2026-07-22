@@ -9,7 +9,6 @@ use App\Models\Label;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
@@ -112,38 +111,6 @@ abstract class WriteTool extends McpTool
         }
 
         return $label;
-    }
-
-    /**
-     * Resolve every label id passed under $key, asserting each belongs to the
-     * space. Returns an empty collection when the argument is absent or empty.
-     *
-     * @return Collection<int, Label>
-     */
-    protected function labelsInSpace(Request $request, Space $space, string $key): Collection
-    {
-        $ids = collect($request->get($key, []))
-            ->map(fn (mixed $id): string => (string) $id)
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($ids->isEmpty()) {
-            /** @var Collection<int, Label> $empty */
-            $empty = Label::query()->whereRaw('1 = 0')->get();
-
-            return $empty;
-        }
-
-        $labels = Label::query()->forSpace($space)->whereIn('id', $ids)->get();
-
-        if ($labels->count() !== $ids->count()) {
-            throw ValidationException::withMessages([
-                $key => "One or more label ids do not exist in space {$space->id}. Call list_labels to see valid ids.",
-            ]);
-        }
-
-        return $labels;
     }
 
     /**

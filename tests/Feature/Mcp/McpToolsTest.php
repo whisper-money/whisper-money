@@ -7,6 +7,7 @@ use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\SearchTransactions;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 
@@ -43,6 +44,41 @@ it('searches transactions scoped to the user\'s space', function () {
         ->tool(SearchTransactions::class, ['query' => 'Blue Bottle'])
         ->assertOk()
         ->assertSee('Blue Bottle Coffee');
+});
+
+it('filters transactions by label id', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $label = Label::factory()->create(['user_id' => $user->id]);
+
+    $labelled = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'description' => 'Labelled Lunch',
+    ]);
+    $labelled->labels()->attach($label->id);
+
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'description' => 'Unlabelled Dinner',
+    ]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(SearchTransactions::class, ['label_ids' => [$label->id]])
+        ->assertOk()
+        ->assertSee('Labelled Lunch')
+        ->assertDontSee('Unlabelled Dinner');
+});
+
+it('rejects a label id the user cannot access', function () {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $foreignLabel = Label::factory()->create(['user_id' => $other->id]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(SearchTransactions::class, ['label_ids' => [$foreignLabel->id]])
+        ->assertHasErrors();
 });
 
 it('never exposes another user\'s transactions', function () {
