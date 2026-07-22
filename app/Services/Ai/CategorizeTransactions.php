@@ -170,7 +170,7 @@ class CategorizeTransactions
 
         $response = (new TransactionCategorizationAgent)->prompt(
             $payload,
-            provider: Lab::Gemini,
+            provider: Lab::from((string) config('ai_categorization.provider')),
             model: (string) config('ai_categorization.model'),
         );
 

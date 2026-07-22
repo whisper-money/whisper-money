@@ -4,14 +4,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Model
+    | Provider & model
     |--------------------------------------------------------------------------
     |
-    | The Gemini model used to categorize transactions. Cost is negligible at
-    | any tier for this task, so the model is chosen for accuracy, not price.
-    | Kept env-overridable so it can be swapped without a deploy.
+    | Provider and model for transaction categorization, both env-overridable.
+    | The provider defaults to Gemini but accepts any laravel/ai provider (a
+    | valid Laravel\Ai\Enums\Lab case — an unknown value fails fast). Cost is
+    | negligible at any tier, so the model is chosen for accuracy. See the
+    | README "AI Provider" section for the shared options (e.g. local Ollama).
     |
     */
+
+    'provider' => env('AI_CATEGORIZATION_PROVIDER', env('AI_PROVIDER', 'gemini')),
 
     'model' => env('AI_CATEGORIZATION_MODEL', 'gemini-flash-latest'),
 

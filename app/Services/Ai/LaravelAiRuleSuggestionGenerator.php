@@ -91,7 +91,7 @@ class LaravelAiRuleSuggestionGenerator implements RuleSuggestionGenerator
 
         $response = (new RuleSuggestionAgent)->prompt(
             $payload,
-            provider: Lab::Gemini,
+            provider: Lab::from((string) config('ai_suggestions.provider')),
             model: (string) config('ai_suggestions.model'),
         );
 

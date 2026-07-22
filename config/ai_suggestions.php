@@ -4,14 +4,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Model
+    | Provider & model
     |--------------------------------------------------------------------------
     |
-    | The Gemini model used to generate automation-rule suggestions. Kept in
-    | config (env-overridable) so the model can be swapped without a deploy.
-    | Any Flash-tier model is appropriate for this constrained task.
+    | Provider and model for automation-rule suggestions, both env-overridable.
+    | The provider defaults to Gemini but accepts any laravel/ai provider (a
+    | valid Laravel\Ai\Enums\Lab case — an unknown value fails fast). Any
+    | Flash-tier model suits this constrained task. See the README "AI Provider"
+    | section for the shared options (e.g. local Ollama, the AI_PROVIDER switch).
     |
     */
+
+    'provider' => env('AI_SUGGESTIONS_PROVIDER', env('AI_PROVIDER', 'gemini')),
 
     'model' => env('AI_SUGGESTIONS_MODEL', 'gemini-flash-latest'),
 
