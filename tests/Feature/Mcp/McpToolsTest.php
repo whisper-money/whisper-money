@@ -71,6 +71,16 @@ it('filters transactions by label id', function () {
         ->assertDontSee('Unlabelled Dinner');
 });
 
+it('rejects a label id the user cannot access', function () {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $foreignLabel = Label::factory()->create(['user_id' => $other->id]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(SearchTransactions::class, ['label_ids' => [$foreignLabel->id]])
+        ->assertHasErrors();
+});
+
 it('never exposes another user\'s transactions', function () {
     $user = User::factory()->create();
     $userAccount = Account::factory()->create(['user_id' => $user->id]);

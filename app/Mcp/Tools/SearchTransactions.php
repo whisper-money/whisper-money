@@ -11,7 +11,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Search and filter the user\'s transactions by text, category, account, date range and amount. Amounts are integers in minor units (cents). Use this to analyse spending or to find recurring charges by grouping results by merchant.')]
+#[Description('Search and filter the user\'s transactions by text, category, account, label, date range and amount. Amounts are integers in minor units (cents). Use this to analyse spending or to find recurring charges by grouping results by merchant.')]
 class SearchTransactions extends McpTool
 {
     /**
@@ -43,11 +43,7 @@ class SearchTransactions extends McpTool
 
         $space = $this->resolveSpace($request, $user);
 
-        $labelIds = collect($request->get('label_ids', []))
-            ->map(fn (mixed $id): string => (string) $id)
-            ->filter()
-            ->unique()
-            ->values();
+        $labels = $this->labelsInSpace($request, $space, 'label_ids');
 
         $transactions = Transaction::query()
             ->forSpace($space)
@@ -62,7 +58,7 @@ class SearchTransactions extends McpTool
             })
             ->when($request->string('account_id')->toString() !== '', fn ($query) => $query->where('account_id', $request->string('account_id')->toString()))
             ->when($request->string('category_id')->toString() !== '', fn ($query) => $query->where('category_id', $request->string('category_id')->toString()))
-            ->when($labelIds->isNotEmpty(), fn ($query) => $query->whereHas('labels', fn ($q) => $q->whereIn('labels.id', $labelIds->all())))
+            ->when($labels->isNotEmpty(), fn ($query) => $query->whereHas('labels', fn ($q) => $q->whereIn('labels.id', $labels->pluck('id')->all())))
             ->when($request->string('from')->toString() !== '', fn ($query) => $query->whereDate('transaction_date', '>=', $request->string('from')->toString()))
             ->when($request->string('to')->toString() !== '', fn ($query) => $query->whereDate('transaction_date', '<=', $request->string('to')->toString()))
             ->when($request->has('min_amount'), fn ($query) => $query->where('amount', '>=', $request->integer('min_amount')))
