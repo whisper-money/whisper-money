@@ -4,7 +4,6 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
-use Laravel\Fortify\Features;
 use Symfony\Component\HttpFoundation\Cookie as HttpFoundationCookie;
 
 class AuthEntryPointService
@@ -21,7 +20,7 @@ class AuthEntryPointService
     {
         if (
             $this->hasAuthenticatedBefore($request)
-            || ! Features::enabled(Features::registration())
+            || ! config('auth.registration_enabled')
         ) {
             return route('login');
         }

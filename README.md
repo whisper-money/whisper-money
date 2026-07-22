@@ -163,7 +163,7 @@ The template includes:
 | Variable                | Default | Description                                        |
 | ----------------------- | ------- | -------------------------------------------------- |
 | `DRIP_EMAILS_ENABLED`   | `true`  | Enable drip emails (welcome, onboarding, feedback) |
-| `REGISTRATION_ENABLED`  | `true`  | Set to `false` to close public sign-ups (the `/register` routes are disabled and every registration CTA is hidden) while keeping `/login` open |
+| `REGISTRATION_ENABLED`  | `true`  | Set to `false` to close public sign-ups (the `/register` routes return a 403 and every registration CTA is hidden) while keeping `/login` open |
 | `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                        |
 | `STRIPE_KEY`            | -       | Stripe publishable key                             |
 | `STRIPE_SECRET`         | -       | Stripe secret key                                  |

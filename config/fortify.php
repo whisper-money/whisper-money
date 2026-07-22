@@ -143,8 +143,14 @@ return [
     |
     */
 
-    'features' => array_values(array_filter([
-        env('REGISTRATION_ENABLED', true) ? Features::registration() : null,
+    /*
+     | Registration routes are always registered so Wayfinder can generate
+     | their route helpers and the frontend build stays deterministic. Whether
+     | sign-ups are actually accepted is gated at runtime via the
+     | "auth.registration_enabled" config value.
+     */
+    'features' => [
+        Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([
@@ -152,6 +158,6 @@ return [
             'confirmPassword' => true,
             // 'window' => 0
         ]),
-    ])),
+    ],
 
 ];

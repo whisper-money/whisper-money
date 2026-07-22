@@ -19,6 +19,8 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        abort_if(! config('auth.registration_enabled'), 403);
+
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
