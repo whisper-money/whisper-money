@@ -2,8 +2,10 @@
 
 use App\Models\Label;
 use App\Models\User;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Str;
 use Laravel\Passport\ClientRepository;
+use League\OAuth2\Server\Exception\OAuthServerException;
 
 use function Pest\Laravel\get;
 use function Pest\Laravel\postJson;
@@ -222,4 +224,24 @@ it('lets an OAuth connection use write tools', function () {
     $label = Label::query()->where('user_id', $user->id)->first();
     expect($label)->not->toBeNull();
     expect($label->name)->toBe('Groceries');
+});
+
+/**
+ * A client presenting an invalid/expired/wrong-signature bearer token to a
+ * Passport-guarded endpoint (e.g. an MCP request or the /mcp/oauth flow) makes
+ * league/oauth2-server throw an OAuthServerException. These are routine 4xx
+ * OAuth protocol responses returned to the client, not server faults, so they
+ * must not be reported to Sentry as errors (Sentry PHP-LARAVEL-4Q noise).
+ */
+test('does not report client-facing OAuthServerException (4xx)', function () {
+    expect(app(ExceptionHandler::class)->shouldReport(OAuthServerException::accessDenied()))->toBeFalse();
+    expect(app(ExceptionHandler::class)->shouldReport(OAuthServerException::invalidCredentials()))->toBeFalse();
+});
+
+/**
+ * A genuine server_error (500) inside the OAuth flow IS a real fault and must
+ * still be reported.
+ */
+test('still reports server_error OAuthServerException (5xx)', function () {
+    expect(app(ExceptionHandler::class)->shouldReport(OAuthServerException::serverError('boom')))->toBeTrue();
 });
