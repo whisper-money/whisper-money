@@ -31,7 +31,6 @@ use App\Models\Bank;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
 
 Route::get('/', function () {
     $popularBanks = Cache::remember('popular-banks', now()->addDay(), function () {
@@ -60,7 +59,7 @@ Route::get('/', function () {
     });
 
     return Inertia::render('welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
+        'canRegister' => config('auth.registration_enabled'),
         'popularBanks' => $popularBanks,
     ]);
 })->name('home');

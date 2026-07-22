@@ -4,7 +4,6 @@ use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
-use Laravel\Fortify\Features;
 
 test('new guests are redirected to the registration page', function () {
     $this->get(route('dashboard'))->assertRedirect(route('register'));
@@ -18,12 +17,7 @@ test('returning guests are redirected to the login page', function () {
 });
 
 test('new guests are redirected to the login page when registration is disabled', function () {
-    config([
-        'fortify.features' => array_values(array_filter(
-            config('fortify.features'),
-            fn (string $feature): bool => $feature !== Features::registration(),
-        )),
-    ]);
+    config(['auth.registration_enabled' => false]);
 
     $this->get(route('dashboard'))->assertRedirect(route('login'));
 });
