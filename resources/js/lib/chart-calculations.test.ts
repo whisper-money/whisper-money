@@ -3,6 +3,7 @@ import {
     AccountInfo,
     computeDeltaSeries,
     computeMoMPercent,
+    computeNetWorthBarScaling,
     computeNetWorthSeries,
     formatPercentValue,
     getAccountSign,
@@ -38,6 +39,50 @@ describe('isLiabilityType', () => {
 
     it('returns false for others', () => {
         expect(isLiabilityType('others')).toBe(false);
+    });
+});
+
+describe('computeNetWorthBarScaling', () => {
+    it('leaves assets untouched when there are no liabilities', () => {
+        expect(computeNetWorthBarScaling(100000, 0, false)).toEqual({
+            scaleFactor: 1,
+            deficit: null,
+        });
+    });
+
+    it('scales assets down to net worth when positive', () => {
+        expect(computeNetWorthBarScaling(100000, 40000, true)).toEqual({
+            scaleFactor: 0.6,
+            deficit: null,
+        });
+    });
+
+    it('hides assets and reports the deficit when net worth is negative', () => {
+        expect(computeNetWorthBarScaling(20000, 77604, true)).toEqual({
+            scaleFactor: 0,
+            deficit: -57604,
+        });
+    });
+
+    it('reports the full deficit when there are only liabilities', () => {
+        expect(computeNetWorthBarScaling(0, 50000, true)).toEqual({
+            scaleFactor: 0,
+            deficit: -50000,
+        });
+    });
+
+    it('collapses assets to zero when net worth is exactly zero', () => {
+        expect(computeNetWorthBarScaling(50000, 50000, true)).toEqual({
+            scaleFactor: 0,
+            deficit: null,
+        });
+    });
+
+    it('falls back to a neutral factor when there are no assets to scale', () => {
+        expect(computeNetWorthBarScaling(0, 0, true)).toEqual({
+            scaleFactor: 1,
+            deficit: null,
+        });
     });
 });
 

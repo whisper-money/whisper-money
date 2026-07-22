@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Bar, BarChart, Rectangle, XAxis, type BarShapeProps } from 'recharts';
+import {
+    Bar,
+    BarChart,
+    Rectangle,
+    ReferenceLine,
+    XAxis,
+    type BarShapeProps,
+} from 'recharts';
 
 import {
     ChartConfig,
@@ -8,6 +15,7 @@ import {
     ChartLegendContent,
     ChartTooltip,
     ChartTooltipContent,
+    type NetWorthMode,
 } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +43,47 @@ interface StackedBarShapeProps {
     payload?: Record<string, unknown>;
     dataKey: string;
     dataKeys: string[];
+    /**
+     * Keep the bottom edge square even for the bottom-most segment. Used when
+     * the chart has a zero baseline shared with downward deficit bars, so the
+     * positive stack meets the axis flush (rounded only at its far/top end).
+     */
+    flatBottom?: boolean;
+}
+
+/**
+ * Build a rounded-rectangle path, rounding only the requested corners.
+ * Traversal matches the original per-corner variants so an all-rounded or
+ * top/bottom-only bar produces an identical `d` string.
+ */
+function roundedBarPath(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+    roundTop: boolean,
+    roundBottom: boolean,
+): string {
+    const rTop = roundTop ? radius : 0;
+    const rBottom = roundBottom ? radius : 0;
+
+    return [
+        `M ${x + rTop} ${y}`,
+        `H ${x + width - rTop}`,
+        rTop ? `Q ${x + width} ${y} ${x + width} ${y + rTop}` : '',
+        `V ${y + height - rBottom}`,
+        rBottom
+            ? `Q ${x + width} ${y + height} ${x + width - rBottom} ${y + height}`
+            : '',
+        `H ${x + rBottom}`,
+        rBottom ? `Q ${x} ${y + height} ${x} ${y + height - rBottom}` : '',
+        `V ${y + rTop}`,
+        rTop ? `Q ${x} ${y} ${x + rTop} ${y}` : '',
+        'Z',
+    ]
+        .filter(Boolean)
+        .join(' ');
 }
 
 export function StackedBarShape({
@@ -46,6 +95,7 @@ export function StackedBarShape({
     payload,
     dataKey,
     dataKeys,
+    flatBottom = false,
 }: StackedBarShapeProps) {
     if (height <= 0) return null;
 
@@ -59,53 +109,15 @@ export function StackedBarShape({
     const isFirstVisible = visibleKeys[0] === dataKey;
     const isLastVisible = visibleKeys[visibleKeys.length - 1] === dataKey;
 
-    let path: string;
-
-    if (isFirstVisible && isLastVisible) {
-        path = `
-            M ${x + radius} ${y}
-            H ${x + width - radius}
-            Q ${x + width} ${y} ${x + width} ${y + radius}
-            V ${y + height - radius}
-            Q ${x + width} ${y + height} ${x + width - radius} ${y + height}
-            H ${x + radius}
-            Q ${x} ${y + height} ${x} ${y + height - radius}
-            V ${y + radius}
-            Q ${x} ${y} ${x + radius} ${y}
-            Z
-        `;
-    } else if (isLastVisible) {
-        path = `
-            M ${x + radius} ${y}
-            H ${x + width - radius}
-            Q ${x + width} ${y} ${x + width} ${y + radius}
-            V ${y + height}
-            H ${x}
-            V ${y + radius}
-            Q ${x} ${y} ${x + radius} ${y}
-            Z
-        `;
-    } else if (isFirstVisible) {
-        path = `
-            M ${x} ${y}
-            H ${x + width}
-            V ${y + height - radius}
-            Q ${x + width} ${y + height} ${x + width - radius} ${y + height}
-            H ${x + radius}
-            Q ${x} ${y + height} ${x} ${y + height - radius}
-            V ${y}
-            Z
-        `;
-    } else {
-        path = `
-            M ${x} ${y}
-            H ${x + width}
-            V ${y + height}
-            H ${x}
-            V ${y}
-            Z
-        `;
-    }
+    const path = roundedBarPath(
+        x,
+        y,
+        width,
+        height,
+        radius,
+        isLastVisible,
+        isFirstVisible && !flatBottom,
+    );
 
     return (
         <path
@@ -134,7 +146,7 @@ export interface StackedBarChartProps<T extends Record<string, unknown>> {
     className?: string;
     showLegend?: boolean;
     minBarWidth?: number;
-    netWorthMode?: { liabilityTypeLabel: string; liabilityDotColor?: string };
+    netWorthMode?: NetWorthMode;
 }
 
 export function StackedBarChart<T extends Record<string, unknown>>({
@@ -165,6 +177,13 @@ export function StackedBarChart<T extends Record<string, unknown>>({
 
     const minChartWidth = data.length * minBarWidth;
 
+    // When downward deficit bars share the zero baseline, keep the positive
+    // stack square at the axis so both directions round only at their far end.
+    const deficitKey = netWorthMode?.deficitKey;
+    const hasDeficit = deficitKey
+        ? data.some((point) => typeof point[deficitKey] === 'number')
+        : false;
+
     useEffect(() => {
         if (scrollContainerRef.current) {
             scrollContainerRef.current.scrollLeft =
@@ -180,6 +199,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                         {...props}
                         dataKey={key}
                         dataKeys={dataKeys}
+                        flatBottom={hasDeficit}
                     />
                 );
 
@@ -190,7 +210,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                 (props: BarShapeProps) => React.ReactElement | null
             >,
         );
-    }, [dataKeys]);
+    }, [dataKeys, hasDeficit]);
 
     return (
         <div
@@ -210,6 +230,13 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                         axisLine={false}
                         tickFormatter={xAxisFormatter}
                     />
+                    {netWorthMode?.deficitKey && (
+                        <ReferenceLine
+                            y={0}
+                            stroke="var(--color-border)"
+                            strokeDasharray="3 3"
+                        />
+                    )}
                     <ChartTooltip
                         cursor={<CustomCursor />}
                         content={
@@ -234,6 +261,21 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                             shape={shapeRenderers[key]}
                         />
                     ))}
+                    {netWorthMode?.deficitKey && (
+                        <Bar
+                            key={netWorthMode.deficitKey}
+                            dataKey={netWorthMode.deficitKey}
+                            stackId="stack"
+                            fill={
+                                netWorthMode.liabilityDotColor ??
+                                'var(--color-destructive)'
+                            }
+                            // Deficit values are negative, so Recharts flips the
+                            // radius vertically: top corners round the far (bottom)
+                            // end of the downward bar. Matches MoMChart.
+                            radius={[BORDER_RADIUS, BORDER_RADIUS, 0, 0]}
+                        />
+                    )}
                 </BarChart>
             </ChartContainer>
         </div>

@@ -39,6 +39,49 @@ export function netWorthContribution(
     return isLiabilityType(type) ? -Math.abs(balance) : balance;
 }
 
+export interface NetWorthBarScaling {
+    /**
+     * Factor applied to each asset segment so the stacked (upward) bar height
+     * equals net worth. `0` when net worth is negative — assets are hidden and
+     * the deficit is drawn instead.
+     */
+    scaleFactor: number;
+    /**
+     * Signed net worth to draw as a single downward bar when it is negative,
+     * or `null` when net worth is zero/positive (assets carry the height).
+     */
+    deficit: number | null;
+}
+
+/**
+ * Decide how a period renders in the net worth bar chart.
+ *
+ * Positive net worth stacks assets upward, scaled so the total height equals
+ * net worth. Negative net worth can't be shown as a stack of positive
+ * segments, so assets are hidden (scaleFactor 0) and the deficit is drawn as a
+ * single downward bar from the zero baseline.
+ */
+export function computeNetWorthBarScaling(
+    totalAssets: number,
+    totalLiabilities: number,
+    hasLiabilities: boolean,
+): NetWorthBarScaling {
+    if (!hasLiabilities) {
+        return { scaleFactor: 1, deficit: null };
+    }
+
+    const netWorth = totalAssets - totalLiabilities;
+
+    if (netWorth < 0) {
+        return { scaleFactor: 0, deficit: netWorth };
+    }
+
+    return {
+        scaleFactor: totalAssets > 0 ? netWorth / totalAssets : 1,
+        deficit: null,
+    };
+}
+
 /**
  * Data point representing net worth for a month
  */

@@ -7,6 +7,7 @@ import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/currency';
+import { __ } from '@/utils/i18n';
 
 const THEMES = { light: '', dark: '.dark' } as const;
 
@@ -215,6 +216,22 @@ interface TooltipPayloadItem {
     payload?: Record<string, unknown>;
 }
 
+/**
+ * Net-worth chart mode shared by the stacked bar/area charts and this tooltip.
+ * When set, the tooltip shows liability rows and a net-worth total instead of a
+ * plain sum, and the charts can draw a negative net worth as a downward series.
+ */
+export interface NetWorthMode {
+    liabilityTypeLabel: string;
+    liabilityDotColor?: string;
+    /**
+     * Synthetic data key holding a period's negative net worth. The charts draw
+     * it as a single downward bar/area; the tooltip hides it from the per-account
+     * rows since the negative total already shows in the net-worth row.
+     */
+    deficitKey?: string;
+}
+
 interface ChartTooltipContentProps {
     active?: boolean;
     payload?: TooltipPayloadItem[];
@@ -241,10 +258,7 @@ interface ChartTooltipContentProps {
     accountCurrencies?: Record<string, string>;
     displayCurrency?: string;
     /** When set, tooltip shows liability rows and net-worth total instead of simple sum. */
-    netWorthMode?: {
-        liabilityTypeLabel: string;
-        liabilityDotColor?: string;
-    };
+    netWorthMode?: NetWorthMode;
 }
 
 function formatCurrencyWithCode(
@@ -327,7 +341,9 @@ const ChartTooltipContent = React.forwardRef<
                 return null;
             }
 
-            // In net worth mode, use pre-computed net worth from data point
+            // In net worth mode, use pre-computed net worth from data point.
+            // This returns before the raw-payload sums below, so the synthetic
+            // deficit series never gets double-counted into a currency total.
             if (netWorthMode && displayCurrency) {
                 const netWorth = payload[0]?.payload?.__net_worth as number | undefined;
                 if (netWorth !== undefined) {
@@ -363,7 +379,13 @@ const ChartTooltipContent = React.forwardRef<
             return null;
         }
 
-        const nestLabel = payload.length === 1 && indicator !== 'dot';
+        // The synthetic deficit series is rendering-only; the negative net
+        // worth already shows in the total row, so drop it from the item list.
+        const itemPayload = netWorthMode?.deficitKey
+            ? payload.filter((item) => item.dataKey !== netWorthMode.deficitKey)
+            : payload;
+
+        const nestLabel = itemPayload.length === 1 && indicator !== 'dot';
         const hasMultipleCurrencies =
             currencyTotals && currencyTotals.length > 1;
 
@@ -378,7 +400,7 @@ const ChartTooltipContent = React.forwardRef<
             >
                 {!nestLabel ? tooltipLabel : null}
                 <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
-                    {payload.map(
+                    {itemPayload.map(
                         (item: TooltipPayloadItem, index: number) => {
                             const key = `${nameKey || item.name || item.dataKey || 'value'}`;
                             const itemConfig = getPayloadConfigFromPayload(
@@ -479,11 +501,13 @@ const ChartTooltipContent = React.forwardRef<
                             ? (JSON.parse(liabilitiesJson) as Array<{ name: string; amount: number }>)
                             : [];
                         const hasLiabilities = typeof liabilitiesTotal === 'number' && liabilitiesTotal > 0;
-                        const showTotalSection = payload.length > 1 || hasLiabilities;
+                        const showTotalSection = itemPayload.length > 1 || hasLiabilities;
 
                         if (!showTotalSection) return null;
 
-                        const totalLabel = hasLiabilities ? 'Net Worth' : 'Total';
+                        const totalLabel = hasLiabilities
+                            ? __('Net Worth')
+                            : __('Total');
 
                         return (
                             <div className="border-border/50 flex flex-col gap-1 border-t pt-1.5 min-w-0">

@@ -28,6 +28,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
     AccountInfo,
+    computeNetWorthBarScaling,
     isLiabilityType,
     netWorthContribution,
 } from '@/lib/chart-calculations';
@@ -46,6 +47,13 @@ interface NetWorthChartProps {
 }
 
 const DAILY_DAYS = 30;
+
+/**
+ * Synthetic data key holding a period's negative net worth so the bar chart
+ * can draw it as a single downward bar (assets can't stack to a negative
+ * total).
+ */
+const NET_WORTH_DEFICIT_KEY = '__net_worth_deficit';
 
 interface TrendData {
     percentage: number;
@@ -332,10 +340,17 @@ export function NetWorthChart({
             });
 
             const netWorth = totalAssets - totalLiabilities;
-            const scaleFactor =
-                hasLiabs && totalAssets > 0
-                    ? Math.max(0, netWorth / totalAssets)
-                    : 1;
+            const { scaleFactor, deficit } = computeNetWorthBarScaling(
+                totalAssets,
+                totalLiabilities,
+                hasLiabs,
+            );
+
+            // Negative net worth can't be a stack of positive asset segments,
+            // so draw it as a single downward bar from the zero baseline.
+            if (deficit !== null) {
+                newPoint[NET_WORTH_DEFICIT_KEY] = deficit;
+            }
 
             // Asset values: scaled for rendering, original for tooltip
             chartAccountIds.forEach((id) => {
@@ -502,7 +517,9 @@ export function NetWorthChart({
         );
     }
 
-    if (dataKeys.length === 0) {
+    // Render the chart when there are asset segments to stack, or liabilities
+    // to draw as a downward deficit — a debtor with only a loan still has data.
+    if (dataKeys.length === 0 && !hasLiabilities) {
         return (
             <Card className="col-span-3">
                 <CardHeader>
@@ -616,6 +633,7 @@ export function NetWorthChart({
                                     ? {
                                           liabilityTypeLabel: __('Loan'),
                                           liabilityDotColor,
+                                          deficitKey: NET_WORTH_DEFICIT_KEY,
                                       }
                                     : undefined
                             }
@@ -638,6 +656,7 @@ export function NetWorthChart({
                                     ? {
                                           liabilityTypeLabel: __('Loan'),
                                           liabilityDotColor,
+                                          deficitKey: NET_WORTH_DEFICIT_KEY,
                                       }
                                     : undefined
                             }
