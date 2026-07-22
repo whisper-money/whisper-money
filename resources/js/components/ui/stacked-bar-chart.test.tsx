@@ -48,4 +48,29 @@ describe('StackedBarShape', () => {
         expect(path?.getAttribute('d')).toContain('M 1 0');
         expect(path?.getAttribute('d')).toContain('H 19');
     });
+
+    it('keeps the bottom edge square when flatBottom is set', () => {
+        const { container } = render(
+            <svg>
+                <StackedBarShape
+                    x={0}
+                    y={0}
+                    width={20}
+                    height={10}
+                    fill="var(--color-chart-2)"
+                    payload={{ asset: 10 }}
+                    dataKey="asset"
+                    dataKeys={['asset']}
+                    flatBottom
+                />
+            </svg>,
+        );
+
+        const d = container.querySelector('path')?.getAttribute('d');
+
+        // Rounded at the top (far end), square at the zero baseline.
+        expect(d).toContain('Q 20 0 20 4');
+        expect(d).toContain('V 10 H 0');
+        expect(d).not.toContain('Q 20 10');
+    });
 });

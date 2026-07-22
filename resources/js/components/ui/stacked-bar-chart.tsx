@@ -53,6 +53,8 @@ interface StackedBarShapeProps {
 
 /**
  * Build a rounded-rectangle path, rounding only the requested corners.
+ * Traversal matches the original per-corner variants so an all-rounded or
+ * top/bottom-only bar produces an identical `d` string.
  */
 function roundedBarPath(
     x: number,
@@ -67,8 +69,7 @@ function roundedBarPath(
     const rBottom = roundBottom ? radius : 0;
 
     return [
-        `M ${x} ${y + rTop}`,
-        rTop ? `Q ${x} ${y} ${x + rTop} ${y}` : '',
+        `M ${x + rTop} ${y}`,
         `H ${x + width - rTop}`,
         rTop ? `Q ${x + width} ${y} ${x + width} ${y + rTop}` : '',
         `V ${y + height - rBottom}`,
@@ -77,6 +78,8 @@ function roundedBarPath(
             : '',
         `H ${x + rBottom}`,
         rBottom ? `Q ${x} ${y + height} ${x} ${y + height - rBottom}` : '',
+        `V ${y + rTop}`,
+        rTop ? `Q ${x} ${y} ${x + rTop} ${y}` : '',
         'Z',
     ]
         .filter(Boolean)
