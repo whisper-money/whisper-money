@@ -11,10 +11,6 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-beforeEach(function () {
-    config(['landing.hide_auth_buttons' => false]);
-});
-
 test('authenticated users can view their categories', function () {
     $user = User::factory()->create();
     $categories = Category::factory()->count(3)->create(['user_id' => $user->id]);

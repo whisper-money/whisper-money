@@ -2,10 +2,6 @@
 
 use App\Models\User;
 
-beforeEach(function () {
-    config(['landing.hide_auth_buttons' => false]);
-});
-
 test('timezone can be backfilled for authenticated users without one', function () {
     $user = User::factory()->create(['timezone' => null]);
 

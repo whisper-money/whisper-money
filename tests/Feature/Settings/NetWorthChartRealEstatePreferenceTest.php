@@ -3,10 +3,6 @@
 use App\Models\User;
 use App\Models\UserSetting;
 
-beforeEach(function () {
-    config(['landing.hide_auth_buttons' => false]);
-});
-
 test('net worth chart real estate preference can be updated', function () {
     $user = User::factory()->create();
 

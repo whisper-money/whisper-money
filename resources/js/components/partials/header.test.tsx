@@ -35,8 +35,8 @@ describe('Header', () => {
         );
     });
 
-    it('shows dashboard links for authenticated users when auth buttons are hidden', () => {
-        render(<Header hideAuthButtons />);
+    it('shows dashboard links for authenticated users', () => {
+        render(<Header />);
 
         const dashboardLinks = screen.getAllByRole('link', {
             name: 'Dashboard',

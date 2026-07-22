@@ -1,23 +1,20 @@
 import { BankLogo } from '@/components/bank-logo';
-import InputError from '@/components/input-error';
 import AuthenticatedRedirectDialog from '@/components/landing/authenticated-redirect-dialog';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { tailwindColorClasses } from '@/components/user-info';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { cn } from '@/lib/utils';
-import { store as storeUserLead } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
 import { LANGUAGE_OPTIONS } from '@/types/language';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Facehash } from 'facehash';
 import {
     ArrowDownLeftIcon,
@@ -1891,65 +1888,11 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
     );
 }
 
-function WaitlistForm() {
-    const [referrerCode, setReferrerCode] = useState('');
-    const { locale } = usePage<SharedData>().props;
-
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const ref = params.get('ref');
-        if (ref) {
-            setReferrerCode(ref);
-        }
-    }, []);
-
-    return (
-        <Form
-            {...storeUserLead.form()}
-            className="flex w-full flex-col gap-3"
-            disableWhileProcessing
-        >
-            {({ processing, errors }) => (
-                <>
-                    <input
-                        type="hidden"
-                        name="referrer_code"
-                        value={referrerCode}
-                    />
-                    <input type="hidden" name="locale" value={locale} />
-                    <div className="flex w-full flex-col gap-1.5">
-                        <div className="flex w-full flex-row gap-2">
-                            <Input
-                                type="email"
-                                name="email"
-                                required
-                                autoComplete="email"
-                                placeholder={__('Your email address')}
-                                className="h-14 flex-1 text-base"
-                            />
-                            <Button
-                                type="submit"
-                                className="text-shadow h-14 shrink-0 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-6 text-base text-white shadow-sm transition-all duration-200 hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:from-zinc-50"
-                            >
-                                {processing && <Spinner />}
-                                {__('Join Waitlist')}
-                            </Button>
-                        </div>
-                        <InputError message={errors.email} />
-                    </div>
-                </>
-            )}
-        </Form>
-    );
-}
-
 export default function Welcome({
     canRegister,
-    hideAuthButtons,
     popularBanks,
 }: {
     canRegister?: boolean;
-    hideAuthButtons?: boolean;
     popularBanks: PopularBank[];
 }) {
     const { appUrl, auth, subscriptionsEnabled, demoEnabled, pricing, locale } =
@@ -2299,10 +2242,7 @@ export default function Welcome({
             </Head>
             <AuthenticatedRedirectDialog open={Boolean(auth.user)} />
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
-                <Header
-                    canRegister={canRegister}
-                    hideAuthButtons={hideAuthButtons}
-                />
+                <Header canRegister={canRegister} />
 
                 <main className="flex flex-1 flex-col">
                     <section className="relative w-full overflow-hidden px-6 py-28 sm:py-32 md:py-40">
@@ -2325,9 +2265,7 @@ export default function Welcome({
                                     )}
                                 </p>
                                 <div className="flex w-full max-w-lg flex-col gap-4">
-                                    {hideAuthButtons ? (
-                                        <WaitlistForm />
-                                    ) : isMobile ? (
+                                    {isMobile ? (
                                         <InstallAppButton />
                                     ) : (
                                         <div className="flex w-full flex-row gap-4">
@@ -2359,13 +2297,7 @@ export default function Welcome({
                                         </div>
                                     )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                        {hideAuthButtons
-                                            ? __(
-                                                  "Join the waiting list. We'll let you know when you're in.",
-                                              )
-                                            : __(
-                                                  'Your data stays private. Always.',
-                                              )}
+                                        {__('Your data stays private. Always.')}
                                     </p>
                                 </div>
                             </div>
@@ -2719,130 +2651,114 @@ export default function Welcome({
                         </div>
                     </section>
 
-                    {subscriptionsEnabled &&
-                        !hideAuthButtons &&
-                        planEntries.length > 0 && (
-                            <section
-                                id="pricing"
-                                className="px-4 py-12 sm:py-16 md:py-20"
-                            >
-                                <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 sm:gap-12">
-                                    <div className="flex flex-col items-center gap-4 text-center">
-                                        <h2 className="text-3xl leading-tight font-semibold sm:text-5xl sm:leading-tight">
-                                            {__('Simple, transparent pricing')}
-                                        </h2>
-                                        <p className="text-md max-w-[600px] font-medium text-[#706f6c] sm:text-lg dark:text-[#A1A09A]">
-                                            {__(
-                                                'Choose the plan that works for you. No hidden fees.',
-                                            )}
-                                        </p>
-
-                                        {hasMonthlyAndYearly && (
-                                            <div className="mt-2 flex items-center rounded-full border border-[#e3e3e0] p-1 dark:border-[#3E3E3A]">
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setBillingPeriod(
-                                                            'month',
-                                                        )
-                                                    }
-                                                    className={cn(
-                                                        'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-                                                        billingPeriod ===
-                                                            'month'
-                                                            ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                            : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
-                                                    )}
-                                                >
-                                                    {__('Monthly')}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setBillingPeriod('year')
-                                                    }
-                                                    className={cn(
-                                                        'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-                                                        billingPeriod === 'year'
-                                                            ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                            : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
-                                                    )}
-                                                >
-                                                    {__('Yearly')}
-                                                    {yearlyDiscount !==
-                                                        null && (
-                                                        <span
-                                                            className={cn(
-                                                                'rounded-full px-2 py-0.5 text-xs font-semibold',
-                                                                billingPeriod ===
-                                                                    'year'
-                                                                    ? 'bg-emerald-500/20 text-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
-                                                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-                                                            )}
-                                                        >
-                                                            {__(
-                                                                'Save :percent%',
-                                                            ).replace(
-                                                                ':percent',
-                                                                String(
-                                                                    yearlyDiscount,
-                                                                ),
-                                                            )}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            </div>
+                    {subscriptionsEnabled && planEntries.length > 0 && (
+                        <section
+                            id="pricing"
+                            className="px-4 py-12 sm:py-16 md:py-20"
+                        >
+                            <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 sm:gap-12">
+                                <div className="flex flex-col items-center gap-4 text-center">
+                                    <h2 className="text-3xl leading-tight font-semibold sm:text-5xl sm:leading-tight">
+                                        {__('Simple, transparent pricing')}
+                                    </h2>
+                                    <p className="text-md max-w-[600px] font-medium text-[#706f6c] sm:text-lg dark:text-[#A1A09A]">
+                                        {__(
+                                            'Choose the plan that works for you. No hidden fees.',
                                         )}
-                                    </div>
+                                    </p>
 
-                                    <div
-                                        className={cn(
-                                            'grid w-full gap-6',
-                                            displayedPlanEntries.length + 1 ===
-                                                1 && 'mx-auto max-w-md',
-                                            displayedPlanEntries.length + 1 ===
-                                                2 &&
-                                                'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
-                                            displayedPlanEntries.length + 1 >=
-                                                3 &&
-                                                'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-                                        )}
-                                    >
-                                        <FreePlanCard
-                                            features={[
-                                                ...planEntries[0][1].features,
-                                            ]}
+                                    {hasMonthlyAndYearly && (
+                                        <div className="mt-2 flex items-center rounded-full border border-[#e3e3e0] p-1 dark:border-[#3E3E3A]">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setBillingPeriod('month')
+                                                }
+                                                className={cn(
+                                                    'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                                                    billingPeriod === 'month'
+                                                        ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                                                        : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
+                                                )}
+                                            >
+                                                {__('Monthly')}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setBillingPeriod('year')
+                                                }
+                                                className={cn(
+                                                    'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                                                    billingPeriod === 'year'
+                                                        ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                                                        : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
+                                                )}
+                                            >
+                                                {__('Yearly')}
+                                                {yearlyDiscount !== null && (
+                                                    <span
+                                                        className={cn(
+                                                            'rounded-full px-2 py-0.5 text-xs font-semibold',
+                                                            billingPeriod ===
+                                                                'year'
+                                                                ? 'bg-emerald-500/20 text-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+                                                        )}
+                                                    >
+                                                        {__(
+                                                            'Save :percent%',
+                                                        ).replace(
+                                                            ':percent',
+                                                            String(
+                                                                yearlyDiscount,
+                                                            ),
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div
+                                    className={cn(
+                                        'grid w-full gap-6',
+                                        displayedPlanEntries.length + 1 === 1 &&
+                                            'mx-auto max-w-md',
+                                        displayedPlanEntries.length + 1 === 2 &&
+                                            'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
+                                        displayedPlanEntries.length + 1 >= 3 &&
+                                            'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+                                    )}
+                                >
+                                    <FreePlanCard
+                                        features={[
+                                            ...planEntries[0][1].features,
+                                        ]}
+                                        canRegister={canRegister}
+                                    />
+                                    {displayedPlanEntries.map(([key, plan]) => (
+                                        <LandingPlanCard
+                                            key={key}
+                                            plan={plan}
+                                            isDefault={
+                                                key === pricing.defaultPlan
+                                            }
+                                            isBestValue={
+                                                key === pricing.bestValuePlan
+                                            }
+                                            promoEnabled={pricing.promo.enabled}
+                                            promoBadge={pricing.promo.badge}
+                                            currency={pricing.currency}
+                                            locale={locale}
                                             canRegister={canRegister}
                                         />
-                                        {displayedPlanEntries.map(
-                                            ([key, plan]) => (
-                                                <LandingPlanCard
-                                                    key={key}
-                                                    plan={plan}
-                                                    isDefault={
-                                                        key ===
-                                                        pricing.defaultPlan
-                                                    }
-                                                    isBestValue={
-                                                        key ===
-                                                        pricing.bestValuePlan
-                                                    }
-                                                    promoEnabled={
-                                                        pricing.promo.enabled
-                                                    }
-                                                    promoBadge={
-                                                        pricing.promo.badge
-                                                    }
-                                                    currency={pricing.currency}
-                                                    locale={locale}
-                                                    canRegister={canRegister}
-                                                />
-                                            ),
-                                        )}
-                                    </div>
+                                    ))}
                                 </div>
-                            </section>
-                        )}
+                            </div>
+                        </section>
+                    )}
 
                     <section className="px-4 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto max-w-3xl">
@@ -2924,9 +2840,7 @@ export default function Welcome({
                                     )}
                                 </p>
                                 <div className="flex flex-col gap-3 sm:flex-row">
-                                    {hideAuthButtons ? (
-                                        <WaitlistForm />
-                                    ) : isMobile ? (
+                                    {isMobile ? (
                                         <InstallAppButton />
                                     ) : (
                                         <Link

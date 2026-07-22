@@ -1,4 +1,3 @@
-import { cn } from '@/lib/utils';
 import { dashboard, login } from '@/routes';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
@@ -30,13 +29,11 @@ function useGitHubStars(): number | null {
 
 type Props = {
     canRegister?: boolean;
-    hideAuthButtons?: boolean;
     hideExternalButtons?: boolean;
 };
 
 export default function Header({
     canRegister = false,
-    hideAuthButtons = false,
     hideExternalButtons = false,
 }: Props) {
     const { auth } = usePage<SharedData>().props;
@@ -62,10 +59,7 @@ export default function Header({
                             >
                                 <Button
                                     variant={'ghost'}
-                                    className={cn([
-                                        'cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100',
-                                        { 'hidden sm:flex': !hideAuthButtons },
-                                    ])}
+                                    className="hidden cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100 sm:flex"
                                 >
                                     <Github className="size-5" />
                                     <span className="hidden sm:inline">
@@ -86,10 +80,7 @@ export default function Header({
                             >
                                 <Button
                                     variant={'ghost'}
-                                    className={cn([
-                                        'cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100',
-                                        { 'hidden sm:flex': !hideAuthButtons },
-                                    ])}
+                                    className="hidden cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100 sm:flex"
                                 >
                                     <DiscordIcon className="size-5" />
                                     <span className="hidden sm:inline">
@@ -99,13 +90,10 @@ export default function Header({
                             </a>
                         </>
                     )}
-                    {!hideAuthButtons && !hideExternalButtons && (
+                    {!hideExternalButtons && (
                         <Separator
                             orientation="vertical"
-                            className={cn([
-                                'data-[orientation=vertical]:h-6 data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:bg-border',
-                                { 'hidden sm:block': !hideAuthButtons },
-                            ])}
+                            className="hidden data-[orientation=vertical]:h-6 data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:bg-border sm:block"
                         />
                     )}
                     {auth.user ? (
@@ -118,33 +106,28 @@ export default function Header({
                             </Button>
                         </Link>
                     ) : (
-                        !hideAuthButtons && (
-                            <>
-                                <Link
-                                    href={login({ query: { force: 1 } })}
-                                    aria-label={__('Log in')}
+                        <>
+                            <Link href={login()} aria-label={__('Log in')}>
+                                <Button
+                                    variant={'ghost'}
+                                    size="icon-sm"
+                                    className="cursor-pointer rounded-full"
                                 >
+                                    <LogIn className="size-4" />
+                                </Button>
+                            </Link>
+                            {canRegister && (
+                                <Link href="/register">
                                     <Button
-                                        variant={'ghost'}
-                                        size="icon-sm"
+                                        variant="default"
+                                        size="sm"
                                         className="cursor-pointer rounded-full"
                                     >
-                                        <LogIn className="size-4" />
+                                        {__('Register')}
                                     </Button>
                                 </Link>
-                                {canRegister && (
-                                    <Link href="/register">
-                                        <Button
-                                            variant="default"
-                                            size="sm"
-                                            className="cursor-pointer rounded-full"
-                                        >
-                                            {__('Register')}
-                                        </Button>
-                                    </Link>
-                                )}
-                            </>
-                        )
+                            )}
+                        </>
                     )}
                 </nav>
             </header>
@@ -166,13 +149,7 @@ export default function Header({
                                 >
                                     <Button
                                         variant={'ghost'}
-                                        className={cn([
-                                            'cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100',
-                                            {
-                                                'hidden sm:flex':
-                                                    !hideAuthButtons,
-                                            },
-                                        ])}
+                                        className="hidden cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100 sm:flex"
                                     >
                                         <Github className="size-5" />
                                         <span className="hidden sm:inline">
@@ -193,13 +170,7 @@ export default function Header({
                                 >
                                     <Button
                                         variant={'ghost'}
-                                        className={cn([
-                                            'cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100',
-                                            {
-                                                'hidden sm:flex':
-                                                    !hideAuthButtons,
-                                            },
-                                        ])}
+                                        className="hidden cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100 sm:flex"
                                     >
                                         <DiscordIcon className="size-5" />
                                         <span className="hidden sm:inline">
@@ -209,15 +180,10 @@ export default function Header({
                                 </a>
                             </>
                         )}
-                        {!hideAuthButtons && !hideExternalButtons && (
+                        {!hideExternalButtons && (
                             <Separator
                                 orientation="vertical"
-                                className={cn([
-                                    'data-[orientation=vertical]:h-6 data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:bg-border',
-                                    {
-                                        'hidden sm:block': !hideAuthButtons,
-                                    },
-                                ])}
+                                className="hidden data-[orientation=vertical]:h-6 data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:bg-border sm:block"
                             />
                         )}
                         {auth.user ? (
@@ -227,28 +193,26 @@ export default function Header({
                                 </Button>
                             </Link>
                         ) : (
-                            !hideAuthButtons && (
-                                <>
-                                    <Link href={login({ query: { force: 1 } })}>
+                            <>
+                                <Link href={login()}>
+                                    <Button
+                                        variant={'ghost'}
+                                        className="cursor-pointer"
+                                    >
+                                        {__('Log in')}
+                                    </Button>
+                                </Link>
+                                {canRegister && (
+                                    <Link href="/register">
                                         <Button
-                                            variant={'ghost'}
+                                            variant="default"
                                             className="cursor-pointer"
                                         >
-                                            {__('Log in')}
+                                            {__('Register')}
                                         </Button>
                                     </Link>
-                                    {canRegister && (
-                                        <Link href="/register">
-                                            <Button
-                                                variant="default"
-                                                className="cursor-pointer"
-                                            >
-                                                {__('Register')}
-                                            </Button>
-                                        </Link>
-                                    )}
-                                </>
-                            )
+                                )}
+                            </>
                         )}
                     </nav>
                 </div>

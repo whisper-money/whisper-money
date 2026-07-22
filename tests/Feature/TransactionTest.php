@@ -12,10 +12,6 @@ use App\Services\BudgetTransactionService;
 
 use function Pest\Laravel\actingAs;
 
-beforeEach(function () {
-    config(['landing.hide_auth_buttons' => false]);
-});
-
 test('guests cannot access transactions page', function () {
     $response = $this->get(route('transactions.index'));
 

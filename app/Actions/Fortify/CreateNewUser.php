@@ -4,7 +4,6 @@ namespace App\Actions\Fortify;
 
 use App\Enums\Locale;
 use App\Models\User;
-use App\Services\LandingAuthOverrideService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -13,8 +12,6 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
 
-    public function __construct(private LandingAuthOverrideService $landingAuthOverrideService) {}
-
     /**
      * Validate and create a newly registered user.
      *
@@ -22,10 +19,6 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-        if ($this->landingAuthOverrideService->authButtonsHidden(request())) {
-            abort(404);
-        }
-
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
             'email' => [

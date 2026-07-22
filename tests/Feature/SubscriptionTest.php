@@ -16,7 +16,6 @@ use Stripe\StripeClient;
 
 beforeEach(function () {
     config([
-        'landing.hide_auth_buttons' => false,
         'subscriptions.enabled' => true,
     ]);
 });

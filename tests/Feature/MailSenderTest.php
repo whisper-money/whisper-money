@@ -13,14 +13,9 @@ use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Mail\Drip\WelcomeEmail;
 use App\Mail\EnableBankingConnectionsCancelledEmail;
 use App\Mail\UpdateEmail;
-use App\Mail\WaitlistOvertaken;
-use App\Mail\WaitlistReferralNotification;
-use App\Mail\WaitlistWelcome;
 use App\Models\BankingConnection;
 use App\Models\User;
-use App\Models\UserLead;
 use App\Notifications\VerifyEmailNotification;
-use App\Notifications\VerifyUserLeadEmailNotification;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailer;
 use Illuminate\Mail\Transport\ArrayTransport;
@@ -133,9 +128,6 @@ test('default sender is used for active non-drip mailables', function (string $m
         BankingConnectionAuthFailedEmail::class => new BankingConnectionAuthFailedEmail($user, BankingConnection::factory()->for($user)->create(['aspsp_name' => 'Test Bank'])),
         EnableBankingConnectionsCancelledEmail::class => new EnableBankingConnectionsCancelledEmail($user, 2),
         BrokenBankLogosReportEmail::class => new BrokenBankLogosReportEmail([['id' => 'bank-1', 'name' => 'Test Bank', 'previous_logo' => 'https://example.com/logo.png']]),
-        WaitlistWelcome::class => new WaitlistWelcome(UserLead::factory()->create()),
-        WaitlistReferralNotification::class => new WaitlistReferralNotification(UserLead::factory()->create()),
-        WaitlistOvertaken::class => new WaitlistOvertaken(UserLead::factory()->create()),
     };
 
     sendWithArrayMailer($mailable);
@@ -150,9 +142,6 @@ test('default sender is used for active non-drip mailables', function (string $m
     BankingConnectionAuthFailedEmail::class,
     EnableBankingConnectionsCancelledEmail::class,
     BrokenBankLogosReportEmail::class,
-    WaitlistWelcome::class,
-    WaitlistReferralNotification::class,
-    WaitlistOvertaken::class,
 ]);
 
 test('transaction sync email envelope explicitly uses the default sender', function () {
@@ -174,25 +163,9 @@ test('verification notification uses the default sender', function () {
         ->and($from->getName())->toBe('Whisper Money');
 });
 
-test('user lead verification notification uses the default sender', function () {
-    $lead = UserLead::factory()->unverified()->create();
-
-    $lead->notify(new VerifyUserLeadEmailNotification('https://example.com/verify'));
-
-    $from = lastSentMailMessage()->getOriginalMessage()->getFrom()[0];
-
-    expect($from->getAddress())->toBe('no-reply@whisper.money')
-        ->and($from->getName())->toBe('Whisper Money');
-});
-
 test('mail blade signatures use alvaro before victor', function () {
     $mailViews = [
         'mail/verify-email.blade.php',
-        'mail/verify-user-lead-email.blade.php',
-        'mail/waitlist-welcome.blade.php',
-        'mail/waitlist-referral-notification.blade.php',
-        'mail/user-lead-invitation.blade.php',
-        'mail/waitlist-overtaken.blade.php',
         'mail/drip/import-help.blade.php',
         'mail/drip/onboarding-reminder.blade.php',
         'mail/drip/promo-code.blade.php',
