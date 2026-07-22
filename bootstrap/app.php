@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Queue\MaxAttemptsExceededException;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
+use League\OAuth2\Server\Exception\OAuthServerException;
 use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -65,4 +66,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->dontReportWhen(fn (Throwable $e): bool => $e instanceof MaxAttemptsExceededException
             && $e->job?->resolveName() === SyncBankingConnectionJob::class);
+
+        $exceptions->dontReportWhen(fn (Throwable $e): bool => $e instanceof OAuthServerException
+            && $e->getHttpStatusCode() < 500);
     })->create();
