@@ -227,7 +227,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                         onValueChange={(value) => router.visit(value)}
                     >
                         <SelectTrigger
-                            className="w-full"
+                            className="h-11 bg-muted font-medium [&>svg:last-child]:opacity-100"
                             data-testid="settings-mobile-nav-trigger"
                         >
                             <div className="flex w-full flex-row items-center gap-2">
