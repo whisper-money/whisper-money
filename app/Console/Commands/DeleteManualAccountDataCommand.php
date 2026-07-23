@@ -6,6 +6,7 @@ use App\Models\AccountBalance;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class DeleteManualAccountDataCommand extends Command
 {
@@ -46,7 +47,7 @@ class DeleteManualAccountDataCommand extends Command
             return self::SUCCESS;
         }
 
-        $transactionCount = Transaction::query()->whereIn('account_id', $accountIds)->count();
+        $transactionCount = Transaction::withTrashed()->whereIn('account_id', $accountIds)->count();
         $balanceCount = AccountBalance::query()->whereIn('account_id', $accountIds)->count();
 
         if (! $this->confirm("Delete {$transactionCount} transaction(s) and {$balanceCount} balance(s) across {$accountIds->count()} non-connected account(s) of '{$user->email}'?")) {
@@ -55,8 +56,11 @@ class DeleteManualAccountDataCommand extends Command
             return self::SUCCESS;
         }
 
-        Transaction::query()->whereIn('account_id', $accountIds)->forceDelete();
-        AccountBalance::query()->whereIn('account_id', $accountIds)->delete();
+        DB::transaction(function () use ($accountIds): void {
+            // forceDelete purges soft-deleted transactions too; balances have no SoftDeletes, so delete() is already a hard delete.
+            Transaction::query()->whereIn('account_id', $accountIds)->forceDelete();
+            AccountBalance::query()->whereIn('account_id', $accountIds)->delete();
+        });
 
         $this->info("Deleted {$transactionCount} transaction(s) and {$balanceCount} balance(s) for '{$user->email}'.");
 

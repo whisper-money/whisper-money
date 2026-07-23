@@ -30,16 +30,31 @@ test('does not touch other users data', function () {
     $user = User::factory()->onboarded()->create(['email' => 'test@example.com']);
     $other = User::factory()->onboarded()->create(['email' => 'keep@example.com']);
 
+    $account = Account::factory()->for($user)->create();
+    Transaction::factory()->count(3)->create(['user_id' => $user->id, 'account_id' => $account->id]);
+    AccountBalance::factory()->count(2)->create(['account_id' => $account->id]);
+
     $otherAccount = Account::factory()->for($other)->create();
     Transaction::factory()->count(2)->create(['user_id' => $other->id, 'account_id' => $otherAccount->id]);
     AccountBalance::factory()->count(2)->create(['account_id' => $otherAccount->id]);
 
     $this->artisan('user:delete-manual-account-data', ['email' => 'test@example.com'])
-        ->expectsOutput("User 'test@example.com' has no non-connected accounts.")
+        ->expectsConfirmation("Delete 3 transaction(s) and 2 balance(s) across 1 non-connected account(s) of 'test@example.com'?", 'yes')
         ->assertSuccessful();
 
+    expect(Transaction::query()->where('account_id', $account->id)->count())->toBe(0);
+    expect(AccountBalance::query()->where('account_id', $account->id)->count())->toBe(0);
     expect(Transaction::query()->where('account_id', $otherAccount->id)->count())->toBe(2);
     expect(AccountBalance::query()->where('account_id', $otherAccount->id)->count())->toBe(2);
+});
+
+test('reports zero non-connected accounts when the user has only connected ones', function () {
+    $user = User::factory()->onboarded()->create(['email' => 'test@example.com']);
+    Account::factory()->connected()->for($user)->create();
+
+    $this->artisan('user:delete-manual-account-data', ['email' => 'test@example.com'])
+        ->expectsOutput("User 'test@example.com' has no non-connected accounts.")
+        ->assertSuccessful();
 });
 
 test('cancels when not confirmed', function () {
@@ -53,6 +68,20 @@ test('cancels when not confirmed', function () {
         ->assertSuccessful();
 
     expect(Transaction::query()->where('account_id', $manual->id)->count())->toBe(3);
+});
+
+test('counts and purges soft-deleted transactions', function () {
+    $user = User::factory()->onboarded()->create(['email' => 'test@example.com']);
+    $manual = Account::factory()->for($user)->create();
+
+    Transaction::factory()->count(2)->create(['user_id' => $user->id, 'account_id' => $manual->id]);
+    Transaction::factory()->count(1)->create(['user_id' => $user->id, 'account_id' => $manual->id])->each->delete();
+
+    $this->artisan('user:delete-manual-account-data', ['email' => 'test@example.com'])
+        ->expectsConfirmation("Delete 3 transaction(s) and 0 balance(s) across 1 non-connected account(s) of 'test@example.com'?", 'yes')
+        ->assertSuccessful();
+
+    expect(Transaction::withTrashed()->where('account_id', $manual->id)->count())->toBe(0);
 });
 
 test('shows error when user not found', function () {
