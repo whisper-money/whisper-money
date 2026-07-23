@@ -14,9 +14,9 @@ test('revokes active AI consent for a user by email', function () {
 });
 
 test('reports when the user has no active consent', function () {
-    User::factory()->create(['email' => 'sinconsent@example.com']);
+    User::factory()->create(['email' => 'no-consent@example.com']);
 
-    $this->artisan('ai:revoke-consent', ['email' => 'sinconsent@example.com'])
+    $this->artisan('ai:revoke-consent', ['email' => 'no-consent@example.com'])
         ->expectsOutputToContain('no active AI consent')
         ->assertSuccessful();
 });

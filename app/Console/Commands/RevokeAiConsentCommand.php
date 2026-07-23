@@ -31,7 +31,7 @@ class RevokeAiConsentCommand extends Command
 
         $user->revokeAiConsent();
 
-        $this->info("Revoked AI consent for '{$email}'. AI will no longer be used for their account.");
+        $this->info("Revoked AI consent for '{$email}'. AI won't be used for their account unless they re-enable it from Settings.");
 
         return self::SUCCESS;
     }
