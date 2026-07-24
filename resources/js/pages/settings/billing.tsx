@@ -367,6 +367,21 @@ function AiConsentSection({
         }
     };
 
+    const steps = [
+        {
+            title: __('Categorize new transactions'),
+            description: __(
+                "We suggest a category for new transactions that don't match any of your automation rules.",
+            ),
+        },
+        {
+            title: __('Learn your automation rules'),
+            description: __(
+                'We suggest and create automation rules for recurring transactions based on the corrections you make, so similar ones are categorized for you next time.',
+            ),
+        },
+    ];
+
     return (
         <div className="space-y-6">
             <header>
@@ -383,6 +398,39 @@ function AiConsentSection({
                 </p>
             </header>
 
+            <div className="space-y-5 rounded-lg border bg-card p-5">
+                <p className="text-sm font-medium">
+                    {__('What happens when you turn this on')}
+                </p>
+
+                <ol className="space-y-4">
+                    {steps.map((step, index) => (
+                        <li key={step.title} className="flex items-start gap-3">
+                            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                {index + 1}
+                            </span>
+                            <div>
+                                <p className="text-sm font-medium">
+                                    {step.title}
+                                </p>
+                                <p className="mt-0.5 text-sm text-muted-foreground">
+                                    {step.description}
+                                </p>
+                            </div>
+                        </li>
+                    ))}
+                </ol>
+
+                <div className="flex items-start gap-3 rounded-md bg-muted/50 p-3">
+                    <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <p className="text-sm text-muted-foreground">
+                        {__(
+                            "To do this, we send each transaction's description, amount, and the merchant or sender name to our AI provider, along with the names of your categories so it can pick one. We never send your full financial picture, and your data is never used to train AI models.",
+                        )}
+                    </p>
+                </div>
+            </div>
+
             <div className="rounded-lg border bg-card p-5">
                 <label className="flex items-start gap-3">
                     <Checkbox
@@ -398,9 +446,7 @@ function AiConsentSection({
                             {__('Allow AI categorization')}
                         </span>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            {__(
-                                'With your permission, we send merchant names from your transactions to our AI provider so it can suggest categories. You can revoke this at any time.',
-                            )}
+                            {__('You can turn this off at any time.')}
                         </p>
                     </div>
                 </label>
@@ -425,6 +471,12 @@ export default function Billing() {
 
             <SettingsLayout>
                 <div className="space-y-8">
+                    <AiConsentSection
+                        initialConsent={hasAiConsent}
+                        hasProPlan={hasProPlan}
+                        onUpgradeNeeded={() => setShowAiUpgrade(true)}
+                    />
+
                     {hasProPlan ? (
                         <SubscribedSection
                             isDemoAccount={isDemoAccount}
@@ -441,12 +493,6 @@ export default function Billing() {
                             locale={locale}
                         />
                     )}
-
-                    <AiConsentSection
-                        initialConsent={hasAiConsent}
-                        hasProPlan={hasProPlan}
-                        onUpgradeNeeded={() => setShowAiUpgrade(true)}
-                    />
 
                     {!hasProPlan && (
                         <UpgradeDialog
