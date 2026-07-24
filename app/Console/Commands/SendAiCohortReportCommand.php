@@ -23,6 +23,12 @@ class SendAiCohortReportCommand extends Command
 
     public function handle(): int
     {
+        if (! config('subscriptions.enabled')) {
+            $this->info('Subscriptions are disabled; skipping the AI cohort report.');
+
+            return self::SUCCESS;
+        }
+
         $weeks = $this->option('weeks') !== null ? (int) $this->option('weeks') : null;
 
         $report = $this->collector->collect($weeks);

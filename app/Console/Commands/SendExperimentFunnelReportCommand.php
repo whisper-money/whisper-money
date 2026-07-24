@@ -34,6 +34,12 @@ class SendExperimentFunnelReportCommand extends Command
 
     public function handle(): int
     {
+        if (! config('subscriptions.enabled')) {
+            $this->info('Subscriptions are disabled; skipping the experiment funnel report.');
+
+            return self::SUCCESS;
+        }
+
         $costPerConnectionCents = (int) round(((float) $this->option('cost-per-connection')) * 100);
         $report = $this->collector->collect($costPerConnectionCents);
 

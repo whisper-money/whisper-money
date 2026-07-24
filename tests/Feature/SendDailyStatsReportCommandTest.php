@@ -5,7 +5,20 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
+    config()->set('subscriptions.enabled', true);
     config()->set('services.discord.webhook_url', 'https://discord.test/webhook');
+});
+
+test('skips the report and hits no external service when subscriptions are disabled', function () {
+    config()->set('subscriptions.enabled', false);
+
+    Http::fake();
+
+    $this->artisan('stats:daily-report')
+        ->expectsOutputToContain('Subscriptions are disabled; skipping the daily stats report.')
+        ->assertSuccessful();
+
+    Http::assertNothingSent();
 });
 
 test('posts yesterday user counts and stripe stats to discord', function () {

@@ -30,6 +30,12 @@ class SendDailyStatsReportCommand extends Command
 
     public function handle(): int
     {
+        if (! config('subscriptions.enabled')) {
+            $this->info('Subscriptions are disabled; skipping the daily stats report.');
+
+            return self::SUCCESS;
+        }
+
         try {
             $stats = $this->collector->collect();
         } catch (ApiErrorException $exception) {
