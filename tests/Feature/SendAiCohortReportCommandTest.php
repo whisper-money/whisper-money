@@ -76,8 +76,21 @@ function rowForWeek(array $report, CarbonImmutable $signup): array
 
 beforeEach(function () {
     Carbon::setTestNow(referenceNow());
+    config(['subscriptions.enabled' => true]);
     config(['ai_suggestions.eligibility_min_transactions' => 3]);
     config(['ai_suggestions.report.excluded_emails' => []]);
+});
+
+it('skips the report and hits no external service when subscriptions are disabled', function () {
+    config(['subscriptions.enabled' => false]);
+
+    Http::fake();
+
+    artisan('stats:ai-cohort-report')
+        ->expectsOutputToContain('Subscriptions are disabled; skipping the AI cohort report.')
+        ->assertSuccessful();
+
+    Http::assertNothingSent();
 });
 
 it('only counts users who imported enough transactions within their first week', function () {

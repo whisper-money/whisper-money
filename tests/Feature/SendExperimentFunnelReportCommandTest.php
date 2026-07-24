@@ -31,6 +31,18 @@ beforeEach(function () {
     Cache::put('experiment_funnel_monthly_equiv', ['price_test' => 399], now()->addHour());
 });
 
+it('skips the report and hits no external service when subscriptions are disabled', function () {
+    config(['subscriptions.enabled' => false]);
+
+    Http::fake();
+
+    artisan('stats:experiment-funnel')
+        ->expectsOutputToContain('Subscriptions are disabled; skipping the experiment funnel report.')
+        ->assertSuccessful();
+
+    Http::assertNothingSent();
+});
+
 /**
  * Create a user whose id buckets into the wanted variant, anchored to a signup,
  * with an optional default subscription and any bank connections / AI consent

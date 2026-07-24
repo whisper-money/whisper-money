@@ -59,7 +59,20 @@ function funnelRow(array $report, CarbonImmutable $signup): array
 
 beforeEach(function () {
     Carbon::setTestNow(funnelNow());
+    config(['subscriptions.enabled' => true]);
     config(['ai_suggestions.report.excluded_emails' => []]);
+});
+
+it('skips the report and hits no external service when subscriptions are disabled', function () {
+    config(['subscriptions.enabled' => false]);
+
+    Http::fake();
+
+    artisan('stats:subscription-funnel')
+        ->expectsOutputToContain('Subscriptions are disabled; skipping the subscription funnel report.')
+        ->assertSuccessful();
+
+    Http::assertNothingSent();
 });
 
 it('counts registrations, subscriptions and paid conversions per signup week', function () {
