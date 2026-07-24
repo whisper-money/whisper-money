@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\Log;
 
 class BudgetTransactionService
 {
-    public function __construct(private readonly CategoryTree $tree = new CategoryTree) {}
+    public function __construct(
+        private readonly CategoryTree $tree = new CategoryTree,
+        private readonly BudgetNotificationService $notifications = new BudgetNotificationService,
+    ) {}
 
     public function assignTransaction(Transaction $transaction): void
     {
@@ -77,7 +80,12 @@ class BudgetTransactionService
 
         // Apply changes atomically so concurrent workers cannot leave the
         // transaction half-assigned and the unique index guards duplicates.
-        DB::transaction(function () use ($transaction, $matchingPeriodIds) {
+        $createdPeriodIds = [];
+
+        DB::transaction(function () use ($transaction, $matchingPeriodIds, &$createdPeriodIds) {
+            // Reset per attempt: a deadlock retry re-runs this closure.
+            $createdPeriodIds = [];
+
             Transaction::query()
                 ->whereKey($transaction->id)
                 ->lockForUpdate()
@@ -92,7 +100,7 @@ class BudgetTransactionService
                 ->delete();
 
             foreach ($matchingPeriodIds as $periodId) {
-                BudgetTransaction::updateOrCreate(
+                $budgetTransaction = BudgetTransaction::updateOrCreate(
                     [
                         'transaction_id' => $transaction->id,
                         'budget_period_id' => $periodId,
@@ -101,8 +109,14 @@ class BudgetTransactionService
                         'amount' => -$transaction->amount,
                     ],
                 );
+
+                if ($budgetTransaction->wasRecentlyCreated) {
+                    $createdPeriodIds[] = $periodId;
+                }
             }
         }, attempts: 5);
+
+        $this->notifications->handleAssignment($transaction, $matchingPeriodIds, $createdPeriodIds);
     }
 
     public function unassignTransaction(Transaction $transaction): void

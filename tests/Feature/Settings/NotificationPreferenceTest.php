@@ -70,14 +70,34 @@ test('bank transactions notification defaults to true when no setting exists', f
     expect($user->wantsBankTransactionsSyncedEmail())->toBeTrue();
 });
 
-test('bank transactions notification preference is shared with the account page', function () {
+test('bank transactions notification preference is shared with the notifications page', function () {
     $user = User::factory()->create();
     UserSetting::factory()->for($user)->create([
         'notify_on_bank_transactions_synced' => false,
     ]);
 
-    $response = $this->actingAs($user)->get(route('account.edit'));
+    $response = $this->actingAs($user)->get(route('notifications.index'));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page->where('notifyOnBankTransactionsSynced', false));
+});
+
+test('budget notification defaults can be updated', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch(route('notifications.update'), [
+            'notifications' => [
+                'budget_new_transaction' => true,
+                'budget_close_to_limit' => true,
+                'budget_over_limit' => true,
+            ],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $setting = $user->fresh()->setting;
+
+    expect($setting->budget_notify_on_new_transaction)->toBeTrue()
+        ->and($setting->budget_notify_on_close_to_limit)->toBeTrue()
+        ->and($setting->budget_notify_on_over_limit)->toBeTrue();
 });

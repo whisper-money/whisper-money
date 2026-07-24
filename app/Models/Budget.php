@@ -29,6 +29,9 @@ class Budget extends Model
         'period_start_day',
         'rollover_type',
         'is_catch_all',
+        'notify_on_new_transaction',
+        'notify_on_close_to_limit',
+        'notify_on_over_limit',
     ];
 
     /** @var list<string> */
@@ -44,6 +47,9 @@ class Budget extends Model
             'rollover_type' => RolloverType::class,
             'period_start_day' => 'integer',
             'is_catch_all' => 'boolean',
+            'notify_on_new_transaction' => 'boolean',
+            'notify_on_close_to_limit' => 'boolean',
+            'notify_on_over_limit' => 'boolean',
         ];
     }
 

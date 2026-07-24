@@ -120,12 +120,17 @@ class BudgetController extends Controller
     public function store(StoreBudgetRequest $request): RedirectResponse
     {
         $result = DB::transaction(function () use ($request) {
+            $setting = $request->user()->setting;
+
             $budget = $request->user()->budgets()->create([
                 'name' => $request->name,
                 'period_type' => $request->period_type,
                 'period_start_day' => $request->period_start_day,
                 'rollover_type' => $request->rollover_type,
                 'is_catch_all' => $request->boolean('is_catch_all'),
+                'notify_on_new_transaction' => $setting->budget_notify_on_new_transaction ?? false,
+                'notify_on_close_to_limit' => $setting->budget_notify_on_close_to_limit ?? false,
+                'notify_on_over_limit' => $setting->budget_notify_on_over_limit ?? false,
             ]);
 
             $budget->categories()->sync($request->category_ids ?? []);
