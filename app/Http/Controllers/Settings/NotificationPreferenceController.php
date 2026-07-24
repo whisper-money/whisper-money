@@ -38,9 +38,9 @@ class NotificationPreferenceController extends Controller
         return Inertia::render('settings/notifications', [
             'notifyOnBankTransactionsSynced' => $user->wantsBankTransactionsSyncedEmail(),
             'budgetDefaults' => [
-                'notify_on_new_transaction' => (bool) ($setting->budget_notify_on_new_transaction ?? false),
-                'notify_on_close_to_limit' => (bool) ($setting->budget_notify_on_close_to_limit ?? false),
-                'notify_on_over_limit' => (bool) ($setting->budget_notify_on_over_limit ?? false),
+                'notify_on_new_transaction' => (bool) ($setting->budget_notify_on_new_transaction ?? true),
+                'notify_on_close_to_limit' => (bool) ($setting->budget_notify_on_close_to_limit ?? true),
+                'notify_on_over_limit' => (bool) ($setting->budget_notify_on_over_limit ?? true),
             ],
             'budgets' => $user->budgets()
                 ->orderBy('name')

@@ -59,45 +59,46 @@ class BudgetNotificationService
     private function processPeriod(User $user, Transaction $transaction, BudgetPeriod $period, bool $isNewlyAssigned): void
     {
         $budget = $period->budget;
+        $allocated = $period->allocated_amount;
 
+        // A single incoming transaction must raise at most one email per budget.
+        // A limit alert outranks the plain "new transaction" notice, so try the
+        // most severe applicable event first and stop once one is sent. The
+        // triggering transaction rides along so the email still shows what pushed
+        // the budget over. A budget with no limit can't be "close" or "over".
+        if ($allocated > 0) {
+            $ratio = $period->spentAmount() / $allocated;
+
+            if ($ratio >= 1.0) {
+                // Claim the over-limit slot atomically so concurrent workers can't
+                // both send. Also claim "close" so a later dip into the close range
+                // doesn't raise a second, lower-severity alarm for the same period.
+                if ($budget->notify_on_over_limit && $this->claim($period, ['over_limit_notified', 'close_to_limit_notified'])) {
+                    $this->send($user, $period, BudgetNotificationType::OverLimit, $transaction);
+
+                    return;
+                }
+            } elseif ($ratio >= self::CLOSE_TO_LIMIT_THRESHOLD) {
+                if ($budget->notify_on_close_to_limit && $this->claim($period, ['close_to_limit_notified'])) {
+                    $this->send($user, $period, BudgetNotificationType::CloseToLimit, $transaction);
+
+                    return;
+                }
+            } else {
+                // Dropped back below both thresholds (e.g. a refund) — allow the
+                // next crossing to notify again.
+                BudgetPeriod::query()
+                    ->whereKey($period->id)
+                    ->where(fn ($query) => $query->where('close_to_limit_notified', true)->orWhere('over_limit_notified', true))
+                    ->update(['close_to_limit_notified' => false, 'over_limit_notified' => false]);
+            }
+        }
+
+        // No limit alert fired (no limit, opted out, or already notified this
+        // crossing) — fall back to the new-transaction notice if opted in.
         if ($isNewlyAssigned && $budget->notify_on_new_transaction) {
             $this->send($user, $period, BudgetNotificationType::NewTransaction, $transaction);
         }
-
-        $allocated = $period->allocated_amount;
-
-        // A budget with no limit can't be "close" or "over" in any useful way.
-        if ($allocated <= 0) {
-            return;
-        }
-
-        $ratio = $period->spentAmount() / $allocated;
-
-        if ($ratio >= 1.0) {
-            // Claim the over-limit slot atomically so concurrent workers can't
-            // both send. Also claim "close" so a later dip into the close range
-            // doesn't raise a second, lower-severity alarm for the same period.
-            if ($budget->notify_on_over_limit && $this->claim($period, ['over_limit_notified', 'close_to_limit_notified'])) {
-                $this->send($user, $period, BudgetNotificationType::OverLimit);
-            }
-
-            return;
-        }
-
-        if ($ratio >= self::CLOSE_TO_LIMIT_THRESHOLD) {
-            if ($budget->notify_on_close_to_limit && $this->claim($period, ['close_to_limit_notified'])) {
-                $this->send($user, $period, BudgetNotificationType::CloseToLimit);
-            }
-
-            return;
-        }
-
-        // Dropped back below both thresholds (e.g. a refund) — allow the next
-        // crossing to notify again.
-        BudgetPeriod::query()
-            ->whereKey($period->id)
-            ->where(fn ($query) => $query->where('close_to_limit_notified', true)->orWhere('over_limit_notified', true))
-            ->update(['close_to_limit_notified' => false, 'over_limit_notified' => false]);
     }
 
     /**
