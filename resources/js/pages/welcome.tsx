@@ -2039,6 +2039,13 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Marta Bordiu',
+            gravatar: '8329bd04eb4272db2e94f7c849ca7776',
+            text: __(
+                "I'd been holding back on finance apps because I worried about my data — this is the first one I trusted enough to go premium. I love that I can put everything in one place, investments included.",
+            ),
+        },
+        {
             name: 'Víctor Falcón (co-owner)',
             gravatar: '50901af884c50a8f12804b0cf3aeb98a',
             text: __(
