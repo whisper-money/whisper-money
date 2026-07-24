@@ -24,6 +24,8 @@ class BudgetPeriod extends Model
         'allocated_amount',
         'carried_over_amount',
         'processing_historical',
+        'close_to_limit_notified',
+        'over_limit_notified',
     ];
 
     protected function casts(): array
@@ -34,6 +36,8 @@ class BudgetPeriod extends Model
             'allocated_amount' => 'integer',
             'carried_over_amount' => 'integer',
             'processing_historical' => 'boolean',
+            'close_to_limit_notified' => 'boolean',
+            'over_limit_notified' => 'boolean',
         ];
     }
 
@@ -41,6 +45,15 @@ class BudgetPeriod extends Model
     public function budget(): BelongsTo
     {
         return $this->belongsTo(Budget::class);
+    }
+
+    /**
+     * Total spent in this period, in cents. BudgetTransaction amounts are
+     * stored positive for expenses, so summing them gives the amount spent.
+     */
+    public function spentAmount(): int
+    {
+        return (int) $this->budgetTransactions()->sum('amount');
     }
 
     /** @return HasMany<BudgetTransaction, $this> */

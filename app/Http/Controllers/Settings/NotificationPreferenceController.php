@@ -3,11 +3,19 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Settings\UpdateBudgetNotificationPreferencesRequest;
 use App\Http\Requests\Settings\UpdateNotificationPreferencesRequest;
+use App\Models\Budget;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class NotificationPreferenceController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Map of public notification keys to their `user_settings` columns.
      *
@@ -17,7 +25,34 @@ class NotificationPreferenceController extends Controller
      */
     public const PREFERENCES = [
         'bank_transactions_synced' => 'notify_on_bank_transactions_synced',
+        'budget_new_transaction' => 'budget_notify_on_new_transaction',
+        'budget_close_to_limit' => 'budget_notify_on_close_to_limit',
+        'budget_over_limit' => 'budget_notify_on_over_limit',
     ];
+
+    public function index(Request $request): Response
+    {
+        $user = $request->user();
+        $setting = $user->setting;
+
+        return Inertia::render('settings/notifications', [
+            'notifyOnBankTransactionsSynced' => $user->wantsBankTransactionsSyncedEmail(),
+            'budgetDefaults' => [
+                'notify_on_new_transaction' => (bool) ($setting->budget_notify_on_new_transaction ?? false),
+                'notify_on_close_to_limit' => (bool) ($setting->budget_notify_on_close_to_limit ?? false),
+                'notify_on_over_limit' => (bool) ($setting->budget_notify_on_over_limit ?? false),
+            ],
+            'budgets' => $user->budgets()
+                ->orderBy('name')
+                ->get([
+                    'id',
+                    'name',
+                    'notify_on_new_transaction',
+                    'notify_on_close_to_limit',
+                    'notify_on_over_limit',
+                ]),
+        ]);
+    }
 
     public function update(UpdateNotificationPreferencesRequest $request): RedirectResponse
     {
@@ -31,6 +66,15 @@ class NotificationPreferenceController extends Controller
             ['user_id' => $request->user()->id],
             $attributes,
         );
+
+        return back();
+    }
+
+    public function updateBudget(UpdateBudgetNotificationPreferencesRequest $request, Budget $budget): RedirectResponse
+    {
+        $this->authorize('update', $budget);
+
+        $budget->update($request->validated());
 
         return back();
     }

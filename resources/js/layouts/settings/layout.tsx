@@ -3,6 +3,7 @@ import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Se
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import { index as mcpIndex } from '@/actions/App/Http/Controllers/Settings/McpTokenController';
+import { index as notificationsIndex } from '@/actions/App/Http/Controllers/Settings/NotificationPreferenceController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {
@@ -88,6 +89,12 @@ const getNavItems = (
                   type: 'nav-item' as const,
                   title: 'User account',
                   href: editAccount(),
+                  icon: null,
+              },
+              {
+                  type: 'nav-item' as const,
+                  title: 'Notifications',
+                  href: notificationsIndex(),
                   icon: null,
               },
           ]

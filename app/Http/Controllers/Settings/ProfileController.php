@@ -24,7 +24,6 @@ class ProfileController extends Controller
             'status' => $request->session()->get('status'),
             'twoFactorEnabled' => $request->user()->hasEnabledTwoFactorAuthentication(),
             'requiresConfirmation' => Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm'),
-            'notifyOnBankTransactionsSynced' => $request->user()->wantsBankTransactionsSyncedEmail(),
         ]);
     }
 
@@ -38,7 +37,6 @@ class ProfileController extends Controller
             'status' => $request->session()->get('status'),
             'twoFactorEnabled' => $request->user()->hasEnabledTwoFactorAuthentication(),
             'requiresConfirmation' => Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm'),
-            'notifyOnBankTransactionsSynced' => $request->user()->wantsBankTransactionsSyncedEmail(),
         ]);
     }
 
