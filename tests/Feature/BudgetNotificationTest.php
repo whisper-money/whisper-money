@@ -102,17 +102,42 @@ test('renders every budget notification email variant', function () {
     ]);
     $this->service->assignTransaction($transaction);
 
+    // Every variant can carry the triggering transaction now that a limit alert
+    // coalesces the "new transaction" notice into itself.
     foreach (BudgetNotificationType::cases() as $type) {
         $html = (new BudgetNotificationEmail(
             $this->user,
             $period->budget,
             $period->fresh(),
             $type,
-            $type === BudgetNotificationType::NewTransaction ? $transaction : null,
+            $transaction,
         ))->render();
 
-        expect($html)->toContain($period->budget->name);
+        expect($html)
+            ->toContain($period->budget->name)
+            ->toContain(route('notifications.index'));
     }
+});
+
+test('a single limit-crossing transaction sends only the over-limit email', function () {
+    Mail::fake();
+    budgetPeriodFor($this->user, $this->category, 1000, [
+        'notify_on_new_transaction' => true,
+        'notify_on_close_to_limit' => true,
+        'notify_on_over_limit' => true,
+    ]);
+
+    // One transaction takes the budget straight past its limit: the user should
+    // get a single email — the over-limit one — that still names the transaction.
+    $transaction = assignExpense($this->service, $this->user, $this->category, 1500);
+
+    expect(Mail::queued(BudgetNotificationEmail::class))->toHaveCount(1);
+    Mail::assertQueued(
+        BudgetNotificationEmail::class,
+        fn (BudgetNotificationEmail $mail) => $mail->type === BudgetNotificationType::OverLimit
+            && $mail->transaction?->is($transaction)
+            && $mail->hasTo($this->user->email),
+    );
 });
 
 test('does not resend the over limit email on later transactions', function () {
