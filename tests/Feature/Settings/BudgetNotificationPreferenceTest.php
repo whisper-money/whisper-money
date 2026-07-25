@@ -49,7 +49,7 @@ test('a user cannot update another user budget notifications', function () {
     expect($budget->fresh()->notify_on_over_limit)->toBeFalse();
 });
 
-test('a new budget enables all notifications by default', function () {
+test('a new budget enables the limit notifications by default but not the per-transaction one', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
@@ -64,7 +64,7 @@ test('a new budget enables all notifications by default', function () {
 
     $budget = Budget::where('user_id', $user->id)->firstOrFail();
 
-    expect($budget->notify_on_new_transaction)->toBeTrue()
+    expect($budget->notify_on_new_transaction)->toBeFalse()
         ->and($budget->notify_on_close_to_limit)->toBeTrue()
         ->and($budget->notify_on_over_limit)->toBeTrue();
 });

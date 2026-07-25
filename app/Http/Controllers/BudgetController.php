@@ -128,7 +128,7 @@ class BudgetController extends Controller
                 'period_start_day' => $request->period_start_day,
                 'rollover_type' => $request->rollover_type,
                 'is_catch_all' => $request->boolean('is_catch_all'),
-                'notify_on_new_transaction' => $setting->budget_notify_on_new_transaction ?? true,
+                'notify_on_new_transaction' => $setting->budget_notify_on_new_transaction ?? false,
                 'notify_on_close_to_limit' => $setting->budget_notify_on_close_to_limit ?? true,
                 'notify_on_over_limit' => $setting->budget_notify_on_over_limit ?? true,
             ]);
