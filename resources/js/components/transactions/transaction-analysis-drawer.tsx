@@ -63,6 +63,7 @@ import {
 } from 'react';
 import {
     Bar,
+    Cell,
     ComposedChart,
     Line,
     ReferenceLine,
@@ -277,29 +278,26 @@ function toMonthlyPoints(
 }
 
 /**
- * Narrows the series to the months a monthly figure may average over: the ones
- * covered end to end.
+ * Whether the series only covers part of this month, which is what keeps it out
+ * of every monthly figure.
  *
- * Both edges can be a fraction of a month and both would drag an average down.
- * The trailing one is the calendar month still in progress — on the 2nd it
- * holds two days of spending, which would read as a drop that has not
- * happened. The leading one is the month the series starts in, whenever that is
- * not its 1st: a filter clipping a few days out of March, or simply the first
- * transaction landing on the 18th, leaves a month that never had a chance to
- * spend a full month's worth.
+ * Either edge of the span can be a fraction of a month and both would drag an
+ * average down. The trailing one is the calendar month still in progress — on
+ * the 2nd it holds two days of spending, which would read as a drop that has
+ * not happened. The leading one is the month the series starts in, whenever
+ * that is not its 1st: a filter clipping a few days out of March, or simply the
+ * first transaction landing on the 18th, leaves a month that never had a chance
+ * to spend a full month's worth.
  */
-function wholeMonths(
-    months: MonthlyPoint[],
-    firstDate: string | null,
-): MonthlyPoint[] {
-    const currentMonth = format(new Date(), 'yyyy-MM');
-    const partialFirstMonth =
-        firstDate !== null && !firstDate.endsWith('-01')
-            ? firstDate.slice(0, 7)
-            : null;
+export function isPartialMonth(key: string, firstDate: string | null): boolean {
+    if (key >= format(new Date(), 'yyyy-MM')) {
+        return true;
+    }
 
-    return months.filter(
-        (month) => month.key < currentMonth && month.key !== partialFirstMonth,
+    return (
+        firstDate !== null &&
+        !firstDate.endsWith('-01') &&
+        key === firstDate.slice(0, 7)
     );
 }
 
@@ -311,7 +309,9 @@ export function monthlyRates(
     useNet: boolean,
     firstDate: string | null = null,
 ): MonthlyRates | null {
-    const whole = wholeMonths(months, firstDate);
+    const whole = months.filter(
+        (month) => !isPartialMonth(month.key, firstDate),
+    );
 
     if (whole.length === 0) {
         return null;
@@ -728,6 +728,7 @@ export function TransactionAnalysisDrawer({
                                     currency={currency}
                                     locale={locale}
                                     showsIncome={showsIncome}
+                                    firstDate={data.summary.first_date ?? null}
                                 />
                             ) : (
                                 <OverTimeChart
@@ -1422,12 +1423,14 @@ function MonthlyTrendChart({
     currency,
     locale,
     showsIncome,
+    firstDate,
 }: {
     months: MonthlyPoint[];
     average: number;
     currency: string;
     locale: string;
     showsIncome: boolean;
+    firstDate: string | null;
 }) {
     const config: ChartConfig = {
         expense: { label: __('Expenses'), color: 'var(--color-chart-5)' },
@@ -1488,11 +1491,28 @@ function MonthlyTrendChart({
                             radius={[3, 3, 0, 0]}
                         />
                     )}
+                    {/*
+                     * A part-month bar is faded rather than dropped: it is real
+                     * spending, but at full strength it reads as a fall against
+                     * the average line when the month simply has not finished.
+                     */}
                     <Bar
                         dataKey="expense"
                         fill="var(--color-chart-5)"
                         radius={[3, 3, 0, 0]}
-                    />
+                    >
+                        {months.map((month) => (
+                            <Cell
+                                key={month.key}
+                                fill="var(--color-chart-5)"
+                                fillOpacity={
+                                    isPartialMonth(month.key, firstDate)
+                                        ? 0.35
+                                        : 1
+                                }
+                            />
+                        ))}
+                    </Bar>
                 </ComposedChart>
             </ChartContainer>
         </Panel>
