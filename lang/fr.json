@@ -97,7 +97,6 @@
     "Show less": "voir moins",
     "Analysis view": "Vue d'analyse",
     "Automatic": "Automatique",
-    "Expenses only": "seulement les dépenses",
     "Income & expenses": "Recettes et dépenses",
     "adjusted": "serré",
     "Adjust number of days": "Définir le nombre de jours",
@@ -2162,6 +2161,6 @@
     "This catch-all budget tracks every expense that no other budget covers.": "Ce budget général suit chaque dépense qu'aucun autre budget ne couvre.",
     "Monthly trend": "Tendance mensuelle",
     "Monthly net average": "Moyenne mensuelle nette",
-    "Last 3 months": "3 derniers mois",
+    "Last :count months": ":count derniers mois",
     "Spending per month": "Dépenses par mois"
 }

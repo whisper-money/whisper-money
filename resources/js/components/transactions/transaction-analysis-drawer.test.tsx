@@ -8,7 +8,12 @@ import {
 } from '@testing-library/react';
 import type React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TransactionAnalysisDrawer } from './transaction-analysis-drawer';
+import {
+    isAdverseChange,
+    monthlyRates,
+    resolveAnalysisView,
+    TransactionAnalysisDrawer,
+} from './transaction-analysis-drawer';
 
 const axiosGet = vi.fn();
 const axiosPatch = vi.fn();
@@ -112,6 +117,150 @@ beforeEach(() => {
 
 afterEach(() => {
     vi.restoreAllMocks();
+});
+
+describe('monthly rates', () => {
+    function month(key: string, expense: number, income = 0) {
+        return { key, label: key, income, expense, net: income - expense };
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        // Mid-July, so 2026-07 is the calendar month still in progress.
+        vi.setSystemTime(new Date('2026-07-15T12:00:00Z'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('leaves the month in progress out of the average', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-04', 1000),
+                month('2026-05', 4000),
+                month('2026-06', 4000),
+                month('2026-07', 999900),
+            ],
+            false,
+        );
+
+        // (1000 + 4000 + 4000) / 3, with July's part-month figure discarded.
+        expect(rates?.average).toBe(3000);
+    });
+
+    it('compares the recent window against the whole span', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-02', 1000),
+                month('2026-03', 1000),
+                month('2026-04', 1000),
+                month('2026-05', 4000),
+                month('2026-06', 4000),
+            ],
+            false,
+        );
+
+        expect(rates?.average).toBe(2200);
+        expect(rates?.recentAverage).toBe(3000);
+        expect(rates?.changePercentage).toBe(36);
+    });
+
+    it('withholds the recent window when it covers the whole span', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-04', 1000),
+                month('2026-05', 1000),
+                month('2026-06', 1000),
+            ],
+            false,
+        );
+
+        expect(rates?.average).toBe(1000);
+        expect(rates?.recentAverage).toBeNull();
+        expect(rates?.changePercentage).toBeNull();
+    });
+
+    it('reports nothing without a single completed month', () => {
+        expect(monthlyRates([month('2026-07', 5000)], false)).toBeNull();
+        expect(monthlyRates([], false)).toBeNull();
+    });
+
+    it('sizes the change against a negative net average', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-02', 200),
+                month('2026-03', 200),
+                month('2026-04', 600),
+                month('2026-05', 600),
+                month('2026-06', 600),
+            ],
+            true,
+        );
+
+        // Net runs at −440/month overall and −600 recently: 36% further under.
+        expect(rates?.average).toBe(-440);
+        expect(rates?.recentAverage).toBe(-600);
+        expect(rates?.changePercentage).toBe(-36);
+        expect(isAdverseChange(rates?.changePercentage ?? null, true)).toBe(
+            true,
+        );
+    });
+
+    it('has no change to report against an average of zero', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-03', 1000, 1000),
+                month('2026-04', 1000, 1000),
+                month('2026-05', 1000, 1000),
+                month('2026-06', 1000, 1000),
+            ],
+            true,
+        );
+
+        expect(rates?.average).toBe(0);
+        expect(rates?.changePercentage).toBeNull();
+    });
+
+    it('reads a rise as bad for spending and good for a net result', () => {
+        expect(isAdverseChange(20, false)).toBe(true);
+        expect(isAdverseChange(-20, false)).toBe(false);
+        expect(isAdverseChange(20, true)).toBe(false);
+        expect(isAdverseChange(-20, true)).toBe(true);
+        expect(isAdverseChange(0, false)).toBe(false);
+        expect(isAdverseChange(null, false)).toBe(false);
+    });
+
+    it('falls back to the bounded shape with nothing to average', () => {
+        const view = resolveAnalysisView('trend', 0, 5000, [
+            month('2026-07', 5000),
+        ]);
+
+        expect(view.resolvedMode).toBe('expense');
+        expect(view.trendRates).toBeNull();
+    });
+
+    it('switches the trend view to net once income is a real share', () => {
+        const view = resolveAnalysisView('trend', 100000, 40000, [
+            month('2026-04', 1000, 5000),
+            month('2026-05', 1000, 5000),
+            month('2026-06', 1000, 5000),
+        ]);
+
+        expect(view.showsIncome).toBe(true);
+        expect(view.resolvedMode).toBe('trend');
+        expect(view.trendRates?.average).toBe(4000);
+    });
+
+    it('leaves a bounded request alone', () => {
+        const view = resolveAnalysisView('expense', 100000, 40000, [
+            month('2026-04', 1000),
+        ]);
+
+        expect(view.resolvedMode).toBe('expense');
+        expect(view.boundedMode).toBe('expense');
+        expect(view.trendRates).toBeNull();
+    });
 });
 
 describe('TransactionAnalysisDrawer day override', () => {

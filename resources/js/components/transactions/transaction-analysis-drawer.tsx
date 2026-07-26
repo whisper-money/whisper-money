@@ -126,12 +126,12 @@ function compactAmount(value: number, locale: string): string {
 
 function modeLabel(mode: AnalysisMode): string {
     switch (mode) {
+        case 'expense':
+            return __('Total spent');
         case 'income':
             return __('Income & expenses');
         case 'trend':
             return __('Monthly trend');
-        default:
-            return __('Total spent');
     }
 }
 
@@ -189,6 +189,12 @@ interface LargestExpense {
     labels: { id: string; name: string; color: string }[];
 }
 
+/**
+ * One bucket of the over-time series. The endpoint walks a cursor from the
+ * first transaction to the last and fills empty buckets with zeroes, so the
+ * series is chronological and gapless — which is what lets the monthly
+ * derivations below average by position and read the span off the ends.
+ */
 interface OverTimePoint {
     date: string;
     label: string;
@@ -272,7 +278,7 @@ function toMonthlyPoints(
  * recent average down by however much of it is left, which on the 2nd of a
  * month would read as a spending drop that has not happened.
  */
-function monthlyRates(
+export function monthlyRates(
     months: MonthlyPoint[],
     useNet: boolean,
 ): MonthlyRates | null {
@@ -308,6 +314,61 @@ function monthlyRates(
                       ((recentAverage - average) / Math.abs(average)) * 100,
                   ),
     };
+}
+
+interface AnalysisView {
+    /** The shape actually on screen, which the view toggle's trigger names. */
+    resolvedMode: AnalysisMode;
+    /** The bounded shape to render whenever the trend one is not on screen. */
+    boundedMode: BoundedMode;
+    /** Non-null exactly when the trend view has something to average. */
+    trendRates: MonthlyRates | null;
+    /** Whether income is a big enough share to report net figures. */
+    showsIncome: boolean;
+}
+
+/**
+ * Settles which analysis shape is on screen. Trend is a request rather than a
+ * guarantee: it needs at least one completed calendar month to average, so a
+ * span without one falls back to the bounded shape, toggle label included.
+ */
+export function resolveAnalysisView(
+    effectiveMode: AnalysisMode,
+    income: number,
+    expense: number,
+    months: MonthlyPoint[],
+): AnalysisView {
+    const showsIncome = hasSignificantIncome(income, expense);
+    const isTrend = effectiveMode === 'trend';
+
+    const boundedMode: BoundedMode = isTrend
+        ? showsIncome
+            ? 'income'
+            : 'expense'
+        : effectiveMode;
+    const trendRates = isTrend ? monthlyRates(months, showsIncome) : null;
+
+    return {
+        resolvedMode: trendRates ? 'trend' : boundedMode,
+        boundedMode,
+        trendRates,
+        showsIncome,
+    };
+}
+
+/**
+ * Whether a change in the monthly rate is bad news: a rising monthly spend is,
+ * while a rising net result is the opposite.
+ */
+export function isAdverseChange(
+    change: number | null,
+    showsIncome: boolean,
+): boolean {
+    if (change === null || change === 0) {
+        return false;
+    }
+
+    return showsIncome ? change < 0 : change > 0;
 }
 
 interface TransactionAnalysisDrawerProps {
@@ -537,28 +598,16 @@ export function TransactionAnalysisDrawer({
     const averagePerDay =
         effectiveDays > 0 ? Math.round(expense / effectiveDays) : expense;
 
-    const showsIncome = hasSignificantIncome(income, expense);
-
     const monthlyPoints = useMemo(
         () => toMonthlyPoints(data?.over_time.points ?? [], locale),
         [data, locale],
     );
 
-    const rates = useMemo(
-        () => monthlyRates(monthlyPoints, showsIncome),
-        [monthlyPoints, showsIncome],
+    const { resolvedMode, boundedMode, trendRates, showsIncome } = useMemo(
+        () =>
+            resolveAnalysisView(effectiveMode, income, expense, monthlyPoints),
+        [effectiveMode, income, expense, monthlyPoints],
     );
-
-    // Forcing the trend view onto a span without a single completed calendar
-    // month leaves nothing to average, so it falls back to the bounded view.
-    const trendRates = effectiveMode === 'trend' ? rates : null;
-    const boundedMode: BoundedMode =
-        effectiveMode === 'trend'
-            ? showsIncome
-                ? 'income'
-                : 'expense'
-            : effectiveMode;
-    const resolvedMode: AnalysisMode = trendRates ? 'trend' : boundedMode;
 
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
@@ -645,7 +694,7 @@ export function TransactionAnalysisDrawer({
                                 />
                             )}
 
-                            {resolvedMode !== 'trend' && (
+                            {!trendRates && (
                                 <LargestTransactions
                                     items={data.largest_expenses ?? []}
                                     currency={currency}
@@ -828,26 +877,32 @@ function SummaryCard({
     amount,
     currency,
     tone,
+    badge,
 }: {
     label: string;
     amount: number;
     currency: string;
     tone: 'income' | 'expense';
+    /** Sits beside the amount, for a card that qualifies its own figure. */
+    badge?: ReactNode;
 }) {
     return (
         <div className="rounded-lg bg-muted/50 p-4">
             <div className="flex h-6 items-center">
                 <p className="text-xs text-muted-foreground">{label}</p>
             </div>
-            <AmountDisplay
-                amountInCents={amount}
-                currencyCode={currency}
-                className={cn(
-                    'mt-1 text-lg font-semibold tabular-nums',
-                    tone === 'income' && 'text-emerald-600',
-                    tone === 'expense' && 'text-red-600',
-                )}
-            />
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                <AmountDisplay
+                    amountInCents={amount}
+                    currencyCode={currency}
+                    className={cn(
+                        'text-lg font-semibold tabular-nums',
+                        tone === 'income' && 'text-emerald-600',
+                        tone === 'expense' && 'text-red-600',
+                    )}
+                />
+                {badge}
+            </div>
         </div>
     );
 }
@@ -892,12 +947,7 @@ function TrendCards({
     showsIncome: boolean;
 }) {
     const change = rates.changePercentage;
-
-    // A rising monthly spend is bad news; a rising net result is good news.
-    const isAdverse =
-        change !== null &&
-        change !== 0 &&
-        (showsIncome ? change < 0 : change > 0);
+    const isAdverse = isAdverseChange(change, showsIncome);
     const ChangeIcon =
         change === null || change === 0
             ? Minus
@@ -905,12 +955,18 @@ function TrendCards({
               ? TrendingUp
               : TrendingDown;
 
-    const tone = (amount: number) =>
-        showsIncome && amount >= 0 ? 'text-emerald-600' : 'text-red-600';
+    // Only a net figure can be good news; spending is always in the red.
+    const tone = (amount: number): 'income' | 'expense' =>
+        showsIncome && amount >= 0 ? 'income' : 'expense';
 
     return (
         <Panel>
-            <div className="grid grid-cols-2 gap-3">
+            <div
+                className={cn(
+                    'grid gap-3',
+                    rates.recentAverage !== null && 'grid-cols-2',
+                )}
+            >
                 <SummaryCard
                     label={
                         showsIncome
@@ -919,28 +975,19 @@ function TrendCards({
                     }
                     amount={rates.average}
                     currency={currency}
-                    tone={
-                        showsIncome && rates.average >= 0 ? 'income' : 'expense'
-                    }
+                    tone={tone(rates.average)}
                 />
 
                 {rates.recentAverage !== null && (
-                    <div className="rounded-lg bg-muted/50 p-4">
-                        <div className="flex h-6 items-center">
-                            <p className="text-xs text-muted-foreground">
-                                {__('Last 3 months')}
-                            </p>
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
-                            <AmountDisplay
-                                amountInCents={rates.recentAverage}
-                                currencyCode={currency}
-                                className={cn(
-                                    'text-lg font-semibold tabular-nums',
-                                    tone(rates.recentAverage),
-                                )}
-                            />
-                            {change !== null && (
+                    <SummaryCard
+                        label={__('Last :count months', {
+                            count: RECENT_MONTHS,
+                        })}
+                        amount={rates.recentAverage}
+                        currency={currency}
+                        tone={tone(rates.recentAverage)}
+                        badge={
+                            change !== null && (
                                 <span
                                     className={cn(
                                         'flex items-center gap-0.5 text-xs font-medium tabular-nums',
@@ -955,9 +1002,9 @@ function TrendCards({
                                     {change > 0 ? '+' : ''}
                                     {change}%
                                 </span>
-                            )}
-                        </div>
-                    </div>
+                            )
+                        }
+                    />
                 )}
             </div>
 
