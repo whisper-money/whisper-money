@@ -48,6 +48,7 @@ const filters: TransactionFilters = {
     creditorName: '',
     debtorName: '',
     searchText: '',
+    aiCategorizedOnly: false,
 };
 
 // expense 90000 cents over a 90-day span → auto avg = 1000/day.
@@ -80,12 +81,16 @@ function mockAnalysisFetch(response: unknown = analysisResponse) {
     }) as unknown as typeof fetch;
 }
 
-// In expense-only mode the Avg/day amount lives in the card labelled "Avg / day".
-function avgPerDay(): number {
+// Every summary card renders its label and its mocked amount in one rounded box.
+function cardAmount(label: string): number {
     const card = screen
-        .getByText('Avg / day')
+        .getByText(label)
         .closest('div.rounded-lg') as HTMLElement;
     return Number(within(card).getByTestId('amount').textContent);
+}
+
+function avgPerDay(): number {
+    return cardAmount('Avg / day');
 }
 
 function stubLocalStorage() {
@@ -313,7 +318,7 @@ describe('TransactionAnalysisDrawer view mode', () => {
         fireEvent.click(
             screen.getByRole('button', { name: /Income & expenses/i }),
         );
-        fireEvent.click(screen.getByText('Expenses only'));
+        fireEvent.click(screen.getByText('Total spent'));
 
         await waitFor(() =>
             expect(axiosPatch).toHaveBeenCalledWith(
@@ -323,6 +328,250 @@ describe('TransactionAnalysisDrawer view mode', () => {
         );
         await waitFor(() =>
             expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+    });
+});
+
+describe('TransactionAnalysisDrawer monthly trend view', () => {
+    // Feb–Jun are complete; Jul is the calendar month in progress and its
+    // deliberately huge figure must not reach either average.
+    const monthlyPoints = [
+        ['2026-02', 1000],
+        ['2026-03', 1000],
+        ['2026-04', 1000],
+        ['2026-05', 4000],
+        ['2026-06', 4000],
+        ['2026-07', 999900],
+    ].map(([date, expense]) => ({
+        date,
+        label: date as string,
+        income: 0,
+        expense: expense as number,
+        cumulative_expense: 0,
+        cumulative_net: 0,
+    }));
+
+    function trendResponse(overrides: Record<string, unknown> = {}) {
+        return {
+            ...analysisResponse,
+            summary: {
+                ...analysisResponse.summary,
+                count: 40,
+                // Long enough for the automatic view to pick the trend shape.
+                days: 150,
+            },
+            over_time: { bucket: 'month', points: monthlyPoints },
+            largest_expenses: [
+                {
+                    id: 'tx-1',
+                    date: '2026-05-10',
+                    description: 'Grand Hotel',
+                    amount: 50000,
+                    category: null,
+                    account: { name: 'Visa', bank: null },
+                    labels: [],
+                },
+            ],
+            ...overrides,
+        };
+    }
+
+    function renderDrawer() {
+        render(
+            <TransactionAnalysisDrawer
+                open
+                onOpenChange={vi.fn()}
+                filters={filters}
+            />,
+        );
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        vi.setSystemTime(new Date('2026-07-15T12:00:00Z'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('averages completed months only, ignoring the month in progress', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(trendResponse());
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Monthly average')).toBeInTheDocument(),
+        );
+
+        // (1000 + 1000 + 1000 + 4000 + 4000) / 5 completed months.
+        expect(cardAmount('Monthly average')).toBe(2200);
+        // The last three completed months: (1000 + 4000 + 4000) / 3.
+        expect(cardAmount('Last 3 months')).toBe(3000);
+        // 3000 against 2200.
+        expect(screen.getByText('+36%')).toBeInTheDocument();
+    });
+
+    it('replaces the bounded widgets with the monthly ones', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(trendResponse());
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Spending per month')).toBeInTheDocument(),
+        );
+
+        expect(screen.queryByText('Avg / day')).not.toBeInTheDocument();
+        expect(screen.queryByText('Total spent')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Spending over time'),
+        ).not.toBeInTheDocument();
+        // A single largest expense says nothing across an open-ended span.
+        expect(screen.queryByText('Largest expenses')).not.toBeInTheDocument();
+        // The footer names the months behind the average instead of a day count.
+        expect(
+            screen.getByText(/Feb 2026 – Jul 2026/, { exact: false }),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the bounded shape below the trend span', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(
+            trendResponse({
+                summary: {
+                    ...analysisResponse.summary,
+                    count: 40,
+                    days: 119,
+                },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+        expect(screen.queryByText('Monthly average')).not.toBeInTheDocument();
+        expect(screen.getByText('Largest expenses')).toBeInTheDocument();
+    });
+
+    it('drops the recent card when it would repeat the overall average', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(
+            trendResponse({
+                // Three completed months plus the one in progress: the recent
+                // window would cover every month it is compared against.
+                over_time: { bucket: 'month', points: monthlyPoints.slice(-4) },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Monthly average')).toBeInTheDocument(),
+        );
+
+        // (1000 + 4000 + 4000) / 3.
+        expect(cardAmount('Monthly average')).toBe(3000);
+        expect(screen.queryByText('Last 3 months')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the bounded view without a completed month', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(
+            trendResponse({
+                over_time: { bucket: 'month', points: monthlyPoints.slice(-1) },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+        expect(screen.queryByText('Monthly average')).not.toBeInTheDocument();
+        // The trigger names what is on screen, not the view that was unavailable.
+        expect(
+            screen.getByRole('button', { name: /Total spent/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('reports a net rate when income is a meaningful share', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(
+            trendResponse({
+                summary: {
+                    income: 100000,
+                    expense: 40000,
+                    net: 60000,
+                    count: 40,
+                    days: 150,
+                    average_expense_per_day: 266,
+                },
+                over_time: {
+                    bucket: 'month',
+                    points: monthlyPoints
+                        .slice(0, 5)
+                        .map((point) => ({ ...point, income: 5000 })),
+                },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Monthly net average')).toBeInTheDocument(),
+        );
+
+        // Income 5000 less expense, averaged over the five completed months:
+        // (4000 + 4000 + 4000 + 1000 + 1000) / 5.
+        expect(cardAmount('Monthly net average')).toBe(2800);
+    });
+
+    it('persists a forced trend view to the matched saved filter', async () => {
+        axiosGet.mockResolvedValue({
+            data: {
+                data: [
+                    {
+                        id: 'saved-1',
+                        filters: { label_ids: ['label-1'] },
+                        analysis_days: null,
+                        analysis_mode: null,
+                    },
+                ],
+            },
+        });
+        axiosPatch.mockResolvedValue({ data: {} });
+        // A bounded span, so the trend view only appears once forced.
+        mockAnalysisFetch(
+            trendResponse({
+                summary: {
+                    ...analysisResponse.summary,
+                    count: 40,
+                    days: 60,
+                },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Total spent/i }));
+        fireEvent.click(screen.getByText('Monthly trend'));
+
+        await waitFor(() =>
+            expect(axiosPatch).toHaveBeenCalledWith(
+                '/api/saved-filters/saved-1/analysis-mode',
+                { analysis_mode: 'trend' },
+            ),
+        );
+        await waitFor(() =>
+            expect(screen.getByText('Monthly average')).toBeInTheDocument(),
         );
     });
 });

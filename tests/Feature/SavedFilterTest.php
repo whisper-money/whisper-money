@@ -74,6 +74,16 @@ test('updates the analysis view mode on a saved filter', function () {
     expect($savedFilter->fresh()->analysis_mode)->toBe(AnalysisMode::Income);
 });
 
+test('stores the monthly trend analysis view mode', function () {
+    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => 'trend'])
+        ->assertOk()
+        ->assertJsonPath('data.analysis_mode', 'trend');
+
+    expect($savedFilter->fresh()->analysis_mode)->toBe(AnalysisMode::Trend);
+});
+
 test('clears the analysis view mode when sent null', function () {
     $savedFilter = SavedFilter::factory()->create([
         'user_id' => $this->user->id,

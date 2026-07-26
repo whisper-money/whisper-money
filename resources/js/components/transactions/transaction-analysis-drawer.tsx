@@ -39,16 +39,19 @@ import {
 import { type Label } from '@/types/label';
 import { type TransactionFilters } from '@/types/transaction';
 import { type UUID } from '@/types/uuid';
-import { formatDate } from '@/utils/date';
+import { formatDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
-import { parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import * as Icons from 'lucide-react';
 import {
     Check,
     HelpCircle,
+    Minus,
     Settings2,
     SlidersHorizontal,
+    TrendingDown,
+    TrendingUp,
     type LucideIcon,
 } from 'lucide-react';
 import {
@@ -62,13 +65,21 @@ import {
     Bar,
     ComposedChart,
     Line,
+    ReferenceLine,
     ResponsiveContainer,
     Tooltip,
     XAxis,
     YAxis,
 } from 'recharts';
 
-type AnalysisMode = 'expense' | 'income';
+type AnalysisMode = 'expense' | 'income' | 'trend';
+
+/**
+ * The two bounded shapes, where a total and a daily average are the answer.
+ * The trend view is never one of them, and typing the bounded widgets against
+ * this keeps that guarantee at the compiler instead of in a fallthrough.
+ */
+type BoundedMode = Exclude<AnalysisMode, 'trend'>;
 
 /**
  * Income only changes the analysis into its income-and-expense shape once it
@@ -77,10 +88,51 @@ type AnalysisMode = 'expense' | 'income';
  */
 const INCOME_MODE_THRESHOLD = 0.15;
 
-function detectMode(income: number, expense: number): AnalysisMode {
-    return income > 0 && income >= expense * INCOME_MODE_THRESHOLD
-        ? 'income'
-        : 'expense';
+/**
+ * Past this span a filter has stopped describing a bounded thing like a trip
+ * or a project: the total and the daily average answer nothing, so the
+ * analysis switches to a monthly rate and its direction. Four months is the
+ * shortest span where the recent-months average covers less than the whole
+ * set, which is what makes the comparison between the two mean anything.
+ */
+const TREND_MIN_DAYS = 120;
+
+/** How many completed months the recent-rate card averages over. */
+const RECENT_MONTHS = 3;
+
+function hasSignificantIncome(income: number, expense: number): boolean {
+    return income > 0 && income >= expense * INCOME_MODE_THRESHOLD;
+}
+
+function detectMode(
+    income: number,
+    expense: number,
+    days: number,
+): AnalysisMode {
+    if (days >= TREND_MIN_DAYS) {
+        return 'trend';
+    }
+
+    return hasSignificantIncome(income, expense) ? 'income' : 'expense';
+}
+
+/** Compact axis ticks: an amount in cents in, "1.2K" out. */
+function compactAmount(value: number, locale: string): string {
+    return new Intl.NumberFormat(locale, {
+        notation: 'compact',
+        compactDisplay: 'short',
+    }).format(value / 100);
+}
+
+function modeLabel(mode: AnalysisMode): string {
+    switch (mode) {
+        case 'income':
+            return __('Income & expenses');
+        case 'trend':
+            return __('Monthly trend');
+        default:
+            return __('Total spent');
+    }
 }
 
 interface AnalysisSummary {
@@ -159,6 +211,103 @@ interface AnalysisData {
     distinct_account_count: number;
     largest_expenses: LargestExpense[];
     over_time: { bucket: 'day' | 'month'; points: OverTimePoint[] };
+}
+
+interface MonthlyPoint {
+    key: string;
+    label: string;
+    income: number;
+    expense: number;
+    net: number;
+}
+
+interface MonthlyRates {
+    average: number;
+    /**
+     * Null while the completed months do not outnumber the recent window, when
+     * the two averages would be the same number shown twice.
+     */
+    recentAverage: number | null;
+    changePercentage: number | null;
+}
+
+/**
+ * Folds the over-time series into calendar months. The series arrives bucketed
+ * by day for short spans and by month for long ones, and the trend view needs
+ * months either way — including when the user forces it onto a span the
+ * backend bucketed by day.
+ */
+function toMonthlyPoints(
+    points: OverTimePoint[],
+    locale: string,
+): MonthlyPoint[] {
+    const months = new Map<string, MonthlyPoint>();
+
+    for (const point of points) {
+        const key = point.date.slice(0, 7);
+        const month = months.get(key);
+
+        if (month) {
+            month.income += point.income;
+            month.expense += point.expense;
+            month.net += point.income - point.expense;
+            continue;
+        }
+
+        months.set(key, {
+            key,
+            label: formatMonthFromYearMonth(key, locale),
+            income: point.income,
+            expense: point.expense,
+            net: point.income - point.expense,
+        });
+    }
+
+    return [...months.values()];
+}
+
+/**
+ * The monthly rate and how the recent months compare against it, over
+ * completed months only. A calendar month still in progress would drag the
+ * recent average down by however much of it is left, which on the 2nd of a
+ * month would read as a spending drop that has not happened.
+ */
+function monthlyRates(
+    months: MonthlyPoint[],
+    useNet: boolean,
+): MonthlyRates | null {
+    const currentMonth = format(new Date(), 'yyyy-MM');
+    const completed = months.filter((month) => month.key < currentMonth);
+
+    if (completed.length === 0) {
+        return null;
+    }
+
+    const value = (month: MonthlyPoint) => (useNet ? month.net : month.expense);
+    const mean = (subset: MonthlyPoint[]) =>
+        Math.round(
+            subset.reduce((sum, month) => sum + value(month), 0) /
+                subset.length,
+        );
+
+    const average = mean(completed);
+
+    if (completed.length <= RECENT_MONTHS) {
+        return { average, recentAverage: null, changePercentage: null };
+    }
+
+    const recentAverage = mean(completed.slice(-RECENT_MONTHS));
+
+    return {
+        average,
+        recentAverage,
+        changePercentage:
+            average === 0
+                ? null
+                : Math.round(
+                      ((recentAverage - average) / Math.abs(average)) * 100,
+                  ),
+    };
 }
 
 interface TransactionAnalysisDrawerProps {
@@ -368,7 +517,7 @@ export function TransactionAnalysisDrawer({
     const income = data?.summary.income ?? 0;
     const expense = data?.summary.expense ?? 0;
     const net = data?.summary.net ?? 0;
-    const autoMode = detectMode(income, expense);
+    const autoMode = detectMode(income, expense, data?.summary.days ?? 0);
 
     const {
         effectiveDays,
@@ -388,6 +537,29 @@ export function TransactionAnalysisDrawer({
     const averagePerDay =
         effectiveDays > 0 ? Math.round(expense / effectiveDays) : expense;
 
+    const showsIncome = hasSignificantIncome(income, expense);
+
+    const monthlyPoints = useMemo(
+        () => toMonthlyPoints(data?.over_time.points ?? [], locale),
+        [data, locale],
+    );
+
+    const rates = useMemo(
+        () => monthlyRates(monthlyPoints, showsIncome),
+        [monthlyPoints, showsIncome],
+    );
+
+    // Forcing the trend view onto a span without a single completed calendar
+    // month leaves nothing to average, so it falls back to the bounded view.
+    const trendRates = effectiveMode === 'trend' ? rates : null;
+    const boundedMode: BoundedMode =
+        effectiveMode === 'trend'
+            ? showsIncome
+                ? 'income'
+                : 'expense'
+            : effectiveMode;
+    const resolvedMode: AnalysisMode = trendRates ? 'trend' : boundedMode;
+
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]">
@@ -397,7 +569,7 @@ export function TransactionAnalysisDrawer({
                             {hasTransactions && (
                                 <ModeToggle
                                     override={modeOverride}
-                                    effectiveMode={effectiveMode}
+                                    resolvedMode={resolvedMode}
                                     isSaved={isSaved}
                                     onApply={applyMode}
                                 />
@@ -431,33 +603,56 @@ export function TransactionAnalysisDrawer({
 
                     {!isLoading && !error && data && hasTransactions && (
                         <div className="flex flex-col gap-6">
-                            <SummaryCards
-                                mode={effectiveMode}
-                                income={income}
-                                expense={expense}
-                                net={net}
-                                count={data.summary.count}
-                                currency={currency}
-                                days={effectiveDays}
-                                averagePerDay={averagePerDay}
-                                isDaysOverridden={isDaysOverridden}
-                                isSaved={isSaved}
-                                onApplyDays={applyDays}
-                            />
+                            {trendRates ? (
+                                <TrendCards
+                                    rates={trendRates}
+                                    months={monthlyPoints}
+                                    count={data.summary.count}
+                                    currency={currency}
+                                    locale={locale}
+                                    showsIncome={showsIncome}
+                                />
+                            ) : (
+                                <SummaryCards
+                                    mode={boundedMode}
+                                    income={income}
+                                    expense={expense}
+                                    net={net}
+                                    count={data.summary.count}
+                                    currency={currency}
+                                    days={effectiveDays}
+                                    averagePerDay={averagePerDay}
+                                    isDaysOverridden={isDaysOverridden}
+                                    isSaved={isSaved}
+                                    onApplyDays={applyDays}
+                                />
+                            )}
 
-                            <OverTimeChart
-                                points={data.over_time.points}
-                                currency={currency}
-                                locale={locale}
-                                mode={effectiveMode}
-                            />
+                            {trendRates ? (
+                                <MonthlyTrendChart
+                                    months={monthlyPoints}
+                                    average={trendRates.average}
+                                    currency={currency}
+                                    locale={locale}
+                                    showsIncome={showsIncome}
+                                />
+                            ) : (
+                                <OverTimeChart
+                                    points={data.over_time.points}
+                                    currency={currency}
+                                    locale={locale}
+                                    mode={boundedMode}
+                                />
+                            )}
 
-                            <LargestTransactions
-                                items={data.largest_expenses ?? []}
-                                currency={currency}
-                                locale={locale}
-                                filters={filters}
-                            />
+                            {resolvedMode !== 'trend' && (
+                                <LargestTransactions
+                                    items={data.largest_expenses ?? []}
+                                    currency={currency}
+                                    locale={locale}
+                                    filters={filters}
+                                />
+                            )}
 
                             {data.distinct_category_count > 1 && (
                                 <CategoryBreakdown
@@ -537,7 +732,7 @@ function SummaryCards({
     isSaved,
     onApplyDays,
 }: {
-    mode: AnalysisMode;
+    mode: BoundedMode;
     income: number;
     expense: number;
     net: number;
@@ -657,14 +852,130 @@ function SummaryCard({
     );
 }
 
+/**
+ * Renders the span as the months it covers, so the denominator behind a
+ * monthly average is legible without counting days.
+ */
+function monthRange(months: MonthlyPoint[], locale: string): string {
+    const first = months.at(0);
+    const last = months.at(-1);
+
+    if (!first || !last) {
+        return '';
+    }
+
+    const label = (key: string) =>
+        formatDate(parseISO(`${key}-01`), 'MMM yyyy', locale);
+
+    return first.key === last.key
+        ? label(first.key)
+        : `${label(first.key)} – ${label(last.key)}`;
+}
+
+/**
+ * The pair of numbers that answer "how am I doing" over an open-ended span:
+ * the monthly rate, and where the recent months sit against it.
+ */
+function TrendCards({
+    rates,
+    months,
+    count,
+    currency,
+    locale,
+    showsIncome,
+}: {
+    rates: MonthlyRates;
+    months: MonthlyPoint[];
+    count: number;
+    currency: string;
+    locale: string;
+    showsIncome: boolean;
+}) {
+    const change = rates.changePercentage;
+
+    // A rising monthly spend is bad news; a rising net result is good news.
+    const isAdverse =
+        change !== null &&
+        change !== 0 &&
+        (showsIncome ? change < 0 : change > 0);
+    const ChangeIcon =
+        change === null || change === 0
+            ? Minus
+            : change > 0
+              ? TrendingUp
+              : TrendingDown;
+
+    const tone = (amount: number) =>
+        showsIncome && amount >= 0 ? 'text-emerald-600' : 'text-red-600';
+
+    return (
+        <Panel>
+            <div className="grid grid-cols-2 gap-3">
+                <SummaryCard
+                    label={
+                        showsIncome
+                            ? __('Monthly net average')
+                            : __('Monthly average')
+                    }
+                    amount={rates.average}
+                    currency={currency}
+                    tone={
+                        showsIncome && rates.average >= 0 ? 'income' : 'expense'
+                    }
+                />
+
+                {rates.recentAverage !== null && (
+                    <div className="rounded-lg bg-muted/50 p-4">
+                        <div className="flex h-6 items-center">
+                            <p className="text-xs text-muted-foreground">
+                                {__('Last 3 months')}
+                            </p>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                            <AmountDisplay
+                                amountInCents={rates.recentAverage}
+                                currencyCode={currency}
+                                className={cn(
+                                    'text-lg font-semibold tabular-nums',
+                                    tone(rates.recentAverage),
+                                )}
+                            />
+                            {change !== null && (
+                                <span
+                                    className={cn(
+                                        'flex items-center gap-0.5 text-xs font-medium tabular-nums',
+                                        change === 0 && 'text-muted-foreground',
+                                        isAdverse && 'text-amber-500',
+                                        change !== 0 &&
+                                            !isAdverse &&
+                                            'text-emerald-500',
+                                    )}
+                                >
+                                    <ChangeIcon className="size-3.5" />
+                                    {change > 0 ? '+' : ''}
+                                    {change}%
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+                {count} {__('transactions')} · {monthRange(months, locale)}
+            </p>
+        </Panel>
+    );
+}
+
 function ModeToggle({
     override,
-    effectiveMode,
+    resolvedMode,
     isSaved,
     onApply,
 }: {
     override: AnalysisMode | null;
-    effectiveMode: AnalysisMode;
+    resolvedMode: AnalysisMode;
     isSaved: boolean;
     onApply: (value: AnalysisMode | null) => void;
 }) {
@@ -672,18 +983,14 @@ function ModeToggle({
 
     const options: { value: AnalysisMode | null; label: string }[] = [
         { value: null, label: __('Automatic') },
-        { value: 'expense', label: __('Expenses only') },
-        { value: 'income', label: __('Income & expenses') },
+        { value: 'expense', label: modeLabel('expense') },
+        { value: 'income', label: modeLabel('income') },
+        { value: 'trend', label: modeLabel('trend') },
     ];
 
-    const triggerLabel =
-        override === null
-            ? effectiveMode === 'income'
-                ? __('Income & expenses')
-                : __('Expenses only')
-            : override === 'income'
-              ? __('Income & expenses')
-              : __('Expenses only');
+    // The trigger names what is on screen, not what was asked for: a forced
+    // trend view that could not be built falls back, and so does the label.
+    const triggerLabel = modeLabel(resolvedMode);
 
     const choose = (value: AnalysisMode | null) => {
         onApply(value);
@@ -831,7 +1138,7 @@ function OverTimeChart({
     points: OverTimePoint[];
     currency: string;
     locale: string;
-    mode: AnalysisMode;
+    mode: BoundedMode;
 }) {
     const cumulativeKey =
         mode === 'income' ? 'cumulative_net' : 'cumulative_expense';
@@ -846,12 +1153,6 @@ function OverTimeChart({
             color: 'var(--color-chart-1)',
         },
     };
-
-    const compact = (value: number) =>
-        new Intl.NumberFormat(locale, {
-            notation: 'compact',
-            compactDisplay: 'short',
-        }).format(value / 100);
 
     return (
         <Panel title={__('Spending over time')}>
@@ -868,7 +1169,7 @@ function OverTimeChart({
                         tickLine={false}
                         axisLine={false}
                         width={48}
-                        tickFormatter={compact}
+                        tickFormatter={(value) => compactAmount(value, locale)}
                     />
                     <Tooltip
                         content={
@@ -926,14 +1227,14 @@ function OverTimeTooltip({
     currency: string;
     cumulativeKey: 'cumulative_expense' | 'cumulative_net';
     cumulativeLabel: string;
-    mode: AnalysisMode;
+    mode: BoundedMode;
 }) {
     if (!active || !payload?.length) {
         return null;
     }
 
     const point = payload[0]?.payload;
-    const rows: {
+    const keys: {
         label: string;
         key: 'income' | 'expense' | 'cumulative_expense' | 'cumulative_net';
     }[] = [
@@ -945,16 +1246,41 @@ function OverTimeTooltip({
     ];
 
     return (
+        <AmountRowsTooltip
+            title={point?.label}
+            currency={currency}
+            rows={keys.map((row) => ({
+                label: row.label,
+                amount: point ? point[row.key] : 0,
+            }))}
+        />
+    );
+}
+
+/**
+ * The shared body of the chart tooltips: a title over labelled amounts, all
+ * formatted the same way whichever chart raised it.
+ */
+function AmountRowsTooltip({
+    title,
+    rows,
+    currency,
+}: {
+    title?: string;
+    rows: { label: string; amount: number }[];
+    currency: string;
+}) {
+    return (
         <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
-            <div className="font-medium">{point?.label}</div>
+            <div className="font-medium">{title}</div>
             {rows.map((row) => (
                 <div
-                    key={row.key}
+                    key={row.label}
                     className="mt-1 flex items-center justify-between gap-4"
                 >
                     <span className="text-muted-foreground">{row.label}</span>
                     <AmountDisplay
-                        amountInCents={point ? point[row.key] : 0}
+                        amountInCents={row.amount}
                         currencyCode={currency}
                         className="font-mono tabular-nums"
                     />
@@ -969,6 +1295,124 @@ function OverTimeTooltip({
  * one named with an empty string when counting distinct values.
  */
 const MISSING = ' ';
+
+/**
+ * Monthly bars without a cumulative line: over an open-ended span the running
+ * total only ever climbs, while the month-to-month shape is the whole story.
+ */
+function MonthlyTrendChart({
+    months,
+    average,
+    currency,
+    locale,
+    showsIncome,
+}: {
+    months: MonthlyPoint[];
+    average: number;
+    currency: string;
+    locale: string;
+    showsIncome: boolean;
+}) {
+    const config: ChartConfig = {
+        expense: { label: __('Expenses'), color: 'var(--color-chart-5)' },
+        ...(showsIncome
+            ? { income: { label: __('Income'), color: 'var(--color-chart-2)' } }
+            : {}),
+    };
+
+    return (
+        <Panel title={__('Spending per month')}>
+            <ChartContainer config={config} className="h-64 w-full">
+                <ComposedChart data={months}>
+                    <XAxis
+                        dataKey="label"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        minTickGap={16}
+                    />
+                    <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        width={48}
+                        tickFormatter={(value) => compactAmount(value, locale)}
+                    />
+                    <Tooltip
+                        content={
+                            <MonthlyTrendTooltip
+                                currency={currency}
+                                showsIncome={showsIncome}
+                            />
+                        }
+                        cursor={{ fill: 'var(--color-muted)', opacity: 0.3 }}
+                    />
+                    {/*
+                     * The rate the cards report, so the recent bars can be read
+                     * against it. Drawn for spending only: with income in play
+                     * the cards report a net figure, and no line over
+                     * income-and-expense bars would sit on it meaningfully.
+                     */}
+                    {!showsIncome && (
+                        <ReferenceLine
+                            y={average}
+                            stroke="var(--color-muted-foreground)"
+                            strokeDasharray="4 4"
+                        />
+                    )}
+                    {showsIncome && (
+                        <Bar
+                            dataKey="income"
+                            fill="var(--color-chart-2)"
+                            radius={[3, 3, 0, 0]}
+                        />
+                    )}
+                    <Bar
+                        dataKey="expense"
+                        fill="var(--color-chart-5)"
+                        radius={[3, 3, 0, 0]}
+                    />
+                </ComposedChart>
+            </ChartContainer>
+        </Panel>
+    );
+}
+
+function MonthlyTrendTooltip({
+    active,
+    payload,
+    currency,
+    showsIncome,
+}: {
+    active?: boolean;
+    payload?: { payload?: MonthlyPoint }[];
+    currency: string;
+    showsIncome: boolean;
+}) {
+    if (!active || !payload?.length) {
+        return null;
+    }
+
+    const month = payload[0]?.payload;
+    const keys: { label: string; key: 'income' | 'expense' | 'net' }[] =
+        showsIncome
+            ? [
+                  { label: __('Income'), key: 'income' },
+                  { label: __('Expenses'), key: 'expense' },
+                  { label: __('Net result'), key: 'net' },
+              ]
+            : [{ label: __('Expenses'), key: 'expense' }];
+
+    return (
+        <AmountRowsTooltip
+            title={month?.label}
+            currency={currency}
+            rows={keys.map((row) => ({
+                label: row.label,
+                amount: month ? month[row.key] : 0,
+            }))}
+        />
+    );
+}
 
 function LargestTransactions({
     items,
@@ -1245,12 +1689,6 @@ function HorizontalBarBreakdown({
         amount: { label: __('Spent'), color },
     };
 
-    const compact = (value: number) =>
-        new Intl.NumberFormat(locale, {
-            notation: 'compact',
-            compactDisplay: 'short',
-        }).format(value / 100);
-
     return (
         <Panel title={title}>
             <ChartContainer
@@ -1264,7 +1702,13 @@ function HorizontalBarBreakdown({
                         data={data}
                         margin={{ left: 8, right: 16 }}
                     >
-                        <XAxis type="number" hide tickFormatter={compact} />
+                        <XAxis
+                            type="number"
+                            hide
+                            tickFormatter={(value) =>
+                                compactAmount(value, locale)
+                            }
+                        />
                         <YAxis
                             type="category"
                             dataKey="name"

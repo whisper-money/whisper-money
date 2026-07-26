@@ -2314,5 +2314,9 @@
     "Over by": "Excedido en",
     "Available": "Disponible",
     "View Budget": "Ver presupuesto",
-    "Don't want these emails? Manage notifications in [notification settings](:url).": "¿No quieres estos emails? Gestiona las notificaciones en los [ajustes de notificaciones](:url)."
+    "Don't want these emails? Manage notifications in [notification settings](:url).": "¿No quieres estos emails? Gestiona las notificaciones en los [ajustes de notificaciones](:url).",
+    "Monthly trend": "Tendencia mensual",
+    "Monthly net average": "Media mensual neta",
+    "Last 3 months": "Últimos 3 meses",
+    "Spending per month": "Gasto por mes"
 }
