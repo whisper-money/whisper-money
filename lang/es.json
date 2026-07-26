@@ -117,7 +117,6 @@
     "Show less": "Ver menos",
     "Analysis view": "Vista de análisis",
     "Automatic": "Automático",
-    "Expenses only": "Solo gastos",
     "Income & expenses": "Ingresos y gastos",
     "adjusted": "ajustado",
     "Adjust number of days": "Ajustar número de días",
@@ -2314,5 +2313,13 @@
     "Over by": "Excedido en",
     "Available": "Disponible",
     "View Budget": "Ver presupuesto",
-    "Don't want these emails? Manage notifications in [notification settings](:url).": "¿No quieres estos emails? Gestiona las notificaciones en los [ajustes de notificaciones](:url)."
+    "Don't want these emails? Manage notifications in [notification settings](:url).": "¿No quieres estos emails? Gestiona las notificaciones en los [ajustes de notificaciones](:url).",
+    "Monthly trend": "Tendencia mensual",
+    "Monthly net average": "Media mensual neta",
+    "Last :count months": "Últimos :count meses",
+    "Spending per month": "Gasto por mes",
+    "over :count whole months": "sobre :count meses completos",
+    "vs. average": "vs. media",
+    "Income & expenses per month": "Ingresos y gastos por mes",
+    "Monthly trend needs at least one whole calendar month.": "La tendencia mensual necesita al menos un mes natural completo."
 }

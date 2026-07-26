@@ -86,7 +86,7 @@ class TransactionAnalysisController extends Controller
     }
 
     /**
-     * @return array{income: int, expense: int, net: int, count: int, days: int, average_expense_per_day: int}
+     * @return array{income: int, expense: int, net: int, count: int, days: int, average_expense_per_day: int, first_date: ?string}
      */
     private function summaryTotals(Collection $transactions, string $currency): array
     {
@@ -116,6 +116,14 @@ class TransactionAnalysisController extends Controller
             'count' => $transactions->count(),
             'days' => $days,
             'average_expense_per_day' => $days > 0 ? intdiv($expense, $days) : $expense,
+            // The day the series starts, so a monthly average can tell a whole
+            // calendar month from one the filter only clips a few days out of.
+            'first_date' => $transactions->isEmpty()
+                ? null
+                : $transactions
+                    ->map(fn (Transaction $transaction): Carbon => $transaction->transaction_date)
+                    ->min()
+                    ->toDateString(),
         ];
     }
 

@@ -8,7 +8,12 @@ import {
 } from '@testing-library/react';
 import type React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TransactionAnalysisDrawer } from './transaction-analysis-drawer';
+import {
+    isAdverseChange,
+    monthlyRates,
+    resolveAnalysisView,
+    TransactionAnalysisDrawer,
+} from './transaction-analysis-drawer';
 
 const axiosGet = vi.fn();
 const axiosPatch = vi.fn();
@@ -48,6 +53,7 @@ const filters: TransactionFilters = {
     creditorName: '',
     debtorName: '',
     searchText: '',
+    aiCategorizedOnly: false,
 };
 
 // expense 90000 cents over a 90-day span → auto avg = 1000/day.
@@ -60,6 +66,7 @@ const analysisResponse = {
         count: 5,
         days: 90,
         average_expense_per_day: 1000,
+        first_date: null,
     },
     by_category: [],
     distinct_category_count: 0,
@@ -80,12 +87,16 @@ function mockAnalysisFetch(response: unknown = analysisResponse) {
     }) as unknown as typeof fetch;
 }
 
-// In expense-only mode the Avg/day amount lives in the card labelled "Avg / day".
-function avgPerDay(): number {
+// Every summary card renders its label and its mocked amount in one rounded box.
+function cardAmount(label: string): number {
     const card = screen
-        .getByText('Avg / day')
+        .getByText(label)
         .closest('div.rounded-lg') as HTMLElement;
     return Number(within(card).getByTestId('amount').textContent);
+}
+
+function avgPerDay(): number {
+    return cardAmount('Avg / day');
 }
 
 function stubLocalStorage() {
@@ -107,6 +118,188 @@ beforeEach(() => {
 
 afterEach(() => {
     vi.restoreAllMocks();
+});
+
+describe('monthly rates', () => {
+    function month(key: string, expense: number, income = 0) {
+        return { key, label: key, income, expense, net: income - expense };
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        // Mid-July, so 2026-07 is the calendar month still in progress.
+        vi.setSystemTime(new Date('2026-07-15T12:00:00Z'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('leaves the month in progress out of the average', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-04', 1000),
+                month('2026-05', 4000),
+                month('2026-06', 4000),
+                month('2026-07', 999900),
+            ],
+            false,
+        );
+
+        // (1000 + 4000 + 4000) / 3, with July's part-month figure discarded.
+        expect(rates?.average).toBe(3000);
+    });
+
+    it('compares the recent window against the whole span', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-02', 1000),
+                month('2026-03', 1000),
+                month('2026-04', 1000),
+                month('2026-05', 4000),
+                month('2026-06', 4000),
+            ],
+            false,
+        );
+
+        expect(rates?.average).toBe(2200);
+        expect(rates?.recentAverage).toBe(3000);
+        expect(rates?.changePercentage).toBe(36);
+    });
+
+    it('withholds the recent window when it covers the whole span', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-04', 1000),
+                month('2026-05', 1000),
+                month('2026-06', 1000),
+            ],
+            false,
+        );
+
+        expect(rates?.average).toBe(1000);
+        expect(rates?.recentAverage).toBeNull();
+        expect(rates?.changePercentage).toBeNull();
+    });
+
+    it('reports nothing without a single completed month', () => {
+        expect(monthlyRates([month('2026-07', 5000)], false)).toBeNull();
+        expect(monthlyRates([], false)).toBeNull();
+    });
+
+    it('sizes the change against a negative net average', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-02', 200),
+                month('2026-03', 200),
+                month('2026-04', 600),
+                month('2026-05', 600),
+                month('2026-06', 600),
+            ],
+            true,
+        );
+
+        // Net runs at −440/month overall and −600 recently: 36% further under.
+        expect(rates?.average).toBe(-440);
+        expect(rates?.recentAverage).toBe(-600);
+        expect(rates?.changePercentage).toBe(-36);
+        expect(isAdverseChange(rates?.changePercentage ?? null, true)).toBe(
+            true,
+        );
+    });
+
+    it('has no change to report against an average of zero', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-03', 1000, 1000),
+                month('2026-04', 1000, 1000),
+                month('2026-05', 1000, 1000),
+                month('2026-06', 1000, 1000),
+            ],
+            true,
+        );
+
+        expect(rates?.average).toBe(0);
+        expect(rates?.changePercentage).toBeNull();
+    });
+
+    it('leaves out a first month the series only clips a few days out of', () => {
+        // Flat €300 a month, but the span starts on the 18th of February and
+        // July is still running. Counting either edge would invent a rise.
+        const rates = monthlyRates(
+            [
+                month('2026-02', 15000),
+                month('2026-03', 30000),
+                month('2026-04', 30000),
+                month('2026-05', 30000),
+                month('2026-06', 30000),
+                month('2026-07', 999900),
+            ],
+            false,
+            '2026-02-18',
+        );
+
+        expect(rates?.months).toBe(4);
+        expect(rates?.average).toBe(30000);
+        expect(rates?.recentAverage).toBe(30000);
+        expect(rates?.changePercentage).toBe(0);
+    });
+
+    it('keeps a first month the series covers from its 1st', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-02', 30000),
+                month('2026-03', 30000),
+                month('2026-04', 30000),
+                month('2026-05', 30000),
+                month('2026-06', 30000),
+            ],
+            false,
+            '2026-02-01',
+        );
+
+        expect(rates?.months).toBe(5);
+    });
+
+    it('reads a rise as bad for spending and good for a net result', () => {
+        expect(isAdverseChange(20, false)).toBe(true);
+        expect(isAdverseChange(-20, false)).toBe(false);
+        expect(isAdverseChange(20, true)).toBe(false);
+        expect(isAdverseChange(-20, true)).toBe(true);
+        expect(isAdverseChange(0, false)).toBe(false);
+        expect(isAdverseChange(null, false)).toBe(false);
+    });
+
+    it('falls back to the bounded shape with nothing to average', () => {
+        const view = resolveAnalysisView('trend', 0, 5000, [
+            month('2026-07', 5000),
+        ]);
+
+        expect(view.resolvedMode).toBe('expense');
+        expect(view.trendRates).toBeNull();
+    });
+
+    it('switches the trend view to net once income is a real share', () => {
+        const view = resolveAnalysisView('trend', 100000, 40000, [
+            month('2026-04', 1000, 5000),
+            month('2026-05', 1000, 5000),
+            month('2026-06', 1000, 5000),
+        ]);
+
+        expect(view.showsIncome).toBe(true);
+        expect(view.resolvedMode).toBe('trend');
+        expect(view.trendRates?.average).toBe(4000);
+    });
+
+    it('leaves a bounded request alone', () => {
+        const view = resolveAnalysisView('expense', 100000, 40000, [
+            month('2026-04', 1000),
+        ]);
+
+        expect(view.resolvedMode).toBe('expense');
+        expect(view.boundedMode).toBe('expense');
+        expect(view.trendRates).toBeNull();
+    });
 });
 
 describe('TransactionAnalysisDrawer day override', () => {
@@ -313,7 +506,7 @@ describe('TransactionAnalysisDrawer view mode', () => {
         fireEvent.click(
             screen.getByRole('button', { name: /Income & expenses/i }),
         );
-        fireEvent.click(screen.getByText('Expenses only'));
+        fireEvent.click(screen.getByText('Total spent'));
 
         await waitFor(() =>
             expect(axiosPatch).toHaveBeenCalledWith(
@@ -323,6 +516,312 @@ describe('TransactionAnalysisDrawer view mode', () => {
         );
         await waitFor(() =>
             expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+    });
+});
+
+describe('TransactionAnalysisDrawer monthly trend view', () => {
+    // Feb–Jun are complete; Jul is the calendar month in progress and its
+    // deliberately huge figure must not reach either average.
+    const monthlyPoints = [
+        ['2026-02', 1000],
+        ['2026-03', 1000],
+        ['2026-04', 1000],
+        ['2026-05', 4000],
+        ['2026-06', 4000],
+        ['2026-07', 999900],
+    ].map(([date, expense]) => ({
+        date,
+        label: date as string,
+        income: 0,
+        expense: expense as number,
+        cumulative_expense: 0,
+        cumulative_net: 0,
+    }));
+
+    function trendResponse(overrides: Record<string, unknown> = {}) {
+        return {
+            ...analysisResponse,
+            summary: {
+                ...analysisResponse.summary,
+                count: 40,
+                // Long enough for the automatic view to pick the trend shape.
+                days: 150,
+            },
+            over_time: { bucket: 'month', points: monthlyPoints },
+            largest_expenses: [
+                {
+                    id: 'tx-1',
+                    date: '2026-05-10',
+                    description: 'Grand Hotel',
+                    amount: 50000,
+                    category: null,
+                    account: { name: 'Visa', bank: null },
+                    labels: [],
+                },
+            ],
+            ...overrides,
+        };
+    }
+
+    function renderDrawer() {
+        render(
+            <TransactionAnalysisDrawer
+                open
+                onOpenChange={vi.fn()}
+                filters={filters}
+            />,
+        );
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        vi.setSystemTime(new Date('2026-07-15T12:00:00Z'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('averages completed months only, ignoring the month in progress', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(trendResponse());
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Monthly average')).toBeInTheDocument(),
+        );
+
+        // (1000 + 1000 + 1000 + 4000 + 4000) / 5 completed months.
+        expect(cardAmount('Monthly average')).toBe(2200);
+        // The last three completed months: (1000 + 4000 + 4000) / 3.
+        expect(cardAmount('Last 3 months')).toBe(3000);
+        // 3000 against 2200.
+        expect(screen.getByText('+36%')).toBeInTheDocument();
+    });
+
+    it('replaces the bounded widgets with the monthly ones', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(trendResponse());
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Spending per month')).toBeInTheDocument(),
+        );
+
+        expect(screen.queryByText('Avg / day')).not.toBeInTheDocument();
+        expect(screen.queryByText('Total spent')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Spending over time'),
+        ).not.toBeInTheDocument();
+        // A single largest expense says nothing across an open-ended span.
+        expect(screen.queryByText('Largest expenses')).not.toBeInTheDocument();
+        // The footer names the months behind the average instead of a day count.
+        expect(
+            screen.getByText(/Feb 2026 – Jul 2026/, { exact: false }),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the bounded shape below the trend span', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(
+            trendResponse({
+                summary: {
+                    ...analysisResponse.summary,
+                    count: 40,
+                    days: 119,
+                },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+        expect(screen.queryByText('Monthly average')).not.toBeInTheDocument();
+        expect(screen.getByText('Largest expenses')).toBeInTheDocument();
+    });
+
+    it('drops the recent card when it would repeat the overall average', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(
+            trendResponse({
+                // Three completed months plus the one in progress: the recent
+                // window would cover every month it is compared against.
+                over_time: { bucket: 'month', points: monthlyPoints.slice(-4) },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Monthly average')).toBeInTheDocument(),
+        );
+
+        // (1000 + 4000 + 4000) / 3.
+        expect(cardAmount('Monthly average')).toBe(3000);
+        expect(screen.queryByText('Last 3 months')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the bounded view without a completed month', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(
+            trendResponse({
+                over_time: { bucket: 'month', points: monthlyPoints.slice(-1) },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+        expect(screen.queryByText('Monthly average')).not.toBeInTheDocument();
+        // The trigger names what is on screen, not the view that was unavailable.
+        expect(
+            screen.getByRole('button', { name: /Total spent/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('reports a net rate when income is a meaningful share', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(
+            trendResponse({
+                summary: {
+                    income: 100000,
+                    expense: 40000,
+                    net: 60000,
+                    count: 40,
+                    days: 150,
+                    average_expense_per_day: 266,
+                },
+                over_time: {
+                    bucket: 'month',
+                    points: monthlyPoints
+                        .slice(0, 5)
+                        .map((point) => ({ ...point, income: 5000 })),
+                },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Monthly net average')).toBeInTheDocument(),
+        );
+
+        // Income 5000 less expense, averaged over the five completed months:
+        // (4000 + 4000 + 4000 + 1000 + 1000) / 5.
+        expect(cardAmount('Monthly net average')).toBe(2800);
+    });
+
+    it('restores a forced trend view from the browser with no saved filter', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        localStorage.setItem(
+            `wm.analysis-mode.${JSON.stringify({
+                date_from: null,
+                date_to: null,
+                amount_min: null,
+                amount_max: null,
+                category_ids: [],
+                account_ids: [],
+                label_ids: ['label-1'],
+                creditor_name: '',
+                debtor_name: '',
+                search: '',
+            })}`,
+            'trend',
+        );
+        // A bounded span, so only the stored override can reach the trend view.
+        mockAnalysisFetch(
+            trendResponse({
+                summary: {
+                    ...analysisResponse.summary,
+                    count: 40,
+                    days: 60,
+                },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Monthly average')).toBeInTheDocument(),
+        );
+    });
+
+    it('honours a day override that puts the span back under the threshold', async () => {
+        axiosGet.mockResolvedValue({
+            data: {
+                data: [
+                    {
+                        id: 'saved-1',
+                        filters: { label_ids: ['label-1'] },
+                        // The user has said the real duration is 20 days, even
+                        // though the transactions posted across five months.
+                        analysis_days: 20,
+                        analysis_mode: null,
+                    },
+                ],
+            },
+        });
+        mockAnalysisFetch(trendResponse());
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+        expect(screen.queryByText('Monthly average')).not.toBeInTheDocument();
+        // 90000 / 20, the override rather than the 150-day span.
+        expect(avgPerDay()).toBe(4500);
+    });
+
+    it('persists a forced trend view to the matched saved filter', async () => {
+        axiosGet.mockResolvedValue({
+            data: {
+                data: [
+                    {
+                        id: 'saved-1',
+                        filters: { label_ids: ['label-1'] },
+                        analysis_days: null,
+                        analysis_mode: null,
+                    },
+                ],
+            },
+        });
+        axiosPatch.mockResolvedValue({ data: {} });
+        // A bounded span, so the trend view only appears once forced.
+        mockAnalysisFetch(
+            trendResponse({
+                summary: {
+                    ...analysisResponse.summary,
+                    count: 40,
+                    days: 60,
+                },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Total spent/i }));
+        fireEvent.click(screen.getByText('Monthly trend'));
+
+        await waitFor(() =>
+            expect(axiosPatch).toHaveBeenCalledWith(
+                '/api/saved-filters/saved-1/analysis-mode',
+                { analysis_mode: 'trend' },
+            ),
+        );
+        await waitFor(() =>
+            expect(screen.getByText('Monthly average')).toBeInTheDocument(),
         );
     });
 });

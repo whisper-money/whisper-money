@@ -97,7 +97,6 @@
     "Show less": "voir moins",
     "Analysis view": "Vue d'analyse",
     "Automatic": "Automatique",
-    "Expenses only": "seulement les dépenses",
     "Income & expenses": "Recettes et dépenses",
     "adjusted": "serré",
     "Adjust number of days": "Définir le nombre de jours",
@@ -2159,5 +2158,13 @@
     "Catch-all budget": "Budget général",
     "All untracked expenses": "Toutes les dépenses non suivies",
     "Automatically track every expense that no other budget covers. You can only have one.": "Suit automatiquement chaque dépense qu'aucun autre budget ne couvre. Vous ne pouvez en avoir qu'un seul.",
-    "This catch-all budget tracks every expense that no other budget covers.": "Ce budget général suit chaque dépense qu'aucun autre budget ne couvre."
+    "This catch-all budget tracks every expense that no other budget covers.": "Ce budget général suit chaque dépense qu'aucun autre budget ne couvre.",
+    "Monthly trend": "Tendance mensuelle",
+    "Monthly net average": "Moyenne mensuelle nette",
+    "Last :count months": ":count derniers mois",
+    "Spending per month": "Dépenses par mois",
+    "over :count whole months": "sur :count mois complets",
+    "vs. average": "vs. moyenne",
+    "Income & expenses per month": "Revenus et dépenses par mois",
+    "Monthly trend needs at least one whole calendar month.": "La tendance mensuelle nécessite au moins un mois calendaire complet."
 }
