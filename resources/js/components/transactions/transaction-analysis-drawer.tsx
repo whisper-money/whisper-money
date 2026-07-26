@@ -1410,7 +1410,7 @@ function AmountRowsTooltip({
  * A sentinel that keeps an absent category/account from colliding with a real
  * one named with an empty string when counting distinct values.
  */
-const MISSING = ' ';
+const MISSING = '\0';
 
 /**
  * Monthly bars without a cumulative line: over an open-ended span the running
