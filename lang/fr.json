@@ -2162,5 +2162,9 @@
     "Monthly trend": "Tendance mensuelle",
     "Monthly net average": "Moyenne mensuelle nette",
     "Last :count months": ":count derniers mois",
-    "Spending per month": "Dépenses par mois"
+    "Spending per month": "Dépenses par mois",
+    "over :count whole months": "sur :count mois complets",
+    "vs. average": "vs. moyenne",
+    "Income & expenses per month": "Revenus et dépenses par mois",
+    "Monthly trend needs at least one whole calendar month.": "La tendance mensuelle nécessite au moins un mois calendaire complet."
 }

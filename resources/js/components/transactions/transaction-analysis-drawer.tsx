@@ -142,6 +142,8 @@ interface AnalysisSummary {
     count: number;
     days: number;
     average_expense_per_day: number;
+    /** The day the series starts on, or null when nothing matched. */
+    first_date: string | null;
 }
 
 interface CategorySlice {
@@ -230,11 +232,13 @@ interface MonthlyPoint {
 interface MonthlyRates {
     average: number;
     /**
-     * Null while the completed months do not outnumber the recent window, when
-     * the two averages would be the same number shown twice.
+     * Null while the whole months do not outnumber the recent window, when the
+     * two averages would be the same number shown twice.
      */
     recentAverage: number | null;
     changePercentage: number | null;
+    /** How many whole months the average covers, for the card to own up to. */
+    months: number;
 }
 
 /**
@@ -273,19 +277,43 @@ function toMonthlyPoints(
 }
 
 /**
- * The monthly rate and how the recent months compare against it, over
- * completed months only. A calendar month still in progress would drag the
- * recent average down by however much of it is left, which on the 2nd of a
- * month would read as a spending drop that has not happened.
+ * Narrows the series to the months a monthly figure may average over: the ones
+ * covered end to end.
+ *
+ * Both edges can be a fraction of a month and both would drag an average down.
+ * The trailing one is the calendar month still in progress — on the 2nd it
+ * holds two days of spending, which would read as a drop that has not
+ * happened. The leading one is the month the series starts in, whenever that is
+ * not its 1st: a filter clipping a few days out of March, or simply the first
+ * transaction landing on the 18th, leaves a month that never had a chance to
+ * spend a full month's worth.
+ */
+function wholeMonths(
+    months: MonthlyPoint[],
+    firstDate: string | null,
+): MonthlyPoint[] {
+    const currentMonth = format(new Date(), 'yyyy-MM');
+    const partialFirstMonth =
+        firstDate !== null && !firstDate.endsWith('-01')
+            ? firstDate.slice(0, 7)
+            : null;
+
+    return months.filter(
+        (month) => month.key < currentMonth && month.key !== partialFirstMonth,
+    );
+}
+
+/**
+ * The monthly rate and how the recent months compare against it.
  */
 export function monthlyRates(
     months: MonthlyPoint[],
     useNet: boolean,
+    firstDate: string | null = null,
 ): MonthlyRates | null {
-    const currentMonth = format(new Date(), 'yyyy-MM');
-    const completed = months.filter((month) => month.key < currentMonth);
+    const whole = wholeMonths(months, firstDate);
 
-    if (completed.length === 0) {
+    if (whole.length === 0) {
         return null;
     }
 
@@ -296,13 +324,18 @@ export function monthlyRates(
                 subset.length,
         );
 
-    const average = mean(completed);
+    const average = mean(whole);
 
-    if (completed.length <= RECENT_MONTHS) {
-        return { average, recentAverage: null, changePercentage: null };
+    if (whole.length <= RECENT_MONTHS) {
+        return {
+            average,
+            recentAverage: null,
+            changePercentage: null,
+            months: whole.length,
+        };
     }
 
-    const recentAverage = mean(completed.slice(-RECENT_MONTHS));
+    const recentAverage = mean(whole.slice(-RECENT_MONTHS));
 
     return {
         average,
@@ -313,6 +346,7 @@ export function monthlyRates(
                 : Math.round(
                       ((recentAverage - average) / Math.abs(average)) * 100,
                   ),
+        months: whole.length,
     };
 }
 
@@ -337,6 +371,7 @@ export function resolveAnalysisView(
     income: number,
     expense: number,
     months: MonthlyPoint[],
+    firstDate: string | null = null,
 ): AnalysisView {
     const showsIncome = hasSignificantIncome(income, expense);
     const isTrend = effectiveMode === 'trend';
@@ -346,7 +381,9 @@ export function resolveAnalysisView(
             ? 'income'
             : 'expense'
         : effectiveMode;
-    const trendRates = isTrend ? monthlyRates(months, showsIncome) : null;
+    const trendRates = isTrend
+        ? monthlyRates(months, showsIncome, firstDate)
+        : null;
 
     return {
         resolvedMode: trendRates ? 'trend' : boundedMode,
@@ -412,25 +449,28 @@ function readStoredDays(key: string): number | null {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+const ANALYSIS_MODES: AnalysisMode[] = ['expense', 'income', 'trend'];
+
 function readStoredMode(key: string): AnalysisMode | null {
     const raw = localStorage.getItem(key);
-    return raw === 'expense' || raw === 'income' ? raw : null;
+
+    return ANALYSIS_MODES.find((mode) => mode === raw) ?? null;
 }
 
 /**
- * Resolves the day span and view mode used for a filter set.
+ * Carries the two overrides a filter set can hold: the day span behind the
+ * daily average, and the analysis view. Both are remembered per filter
+ * fingerprint in the browser and, when the current filters match a saved
+ * filter, synced to the backend. A single lookup of the saved filters backs
+ * both, so the drawer hits the API once per open.
  *
- * Both follow the same rule: an automatic value (the transaction span; the
- * income-share detection) unless the user overrides it. Overrides are
- * remembered per filter fingerprint in the browser and, when the current
- * filters match a saved filter, synced to the backend. A single lookup of the
- * saved filters backs both, so the drawer hits the API once per open.
+ * Which view an absent override resolves to is the caller's business — it
+ * depends on the effective day span, which this hook is what supplies.
  */
 function useAnalysisPreferences(
     open: boolean,
     filters: TransactionFilters,
     autoDays: number,
-    autoMode: AnalysisMode,
 ) {
     const fingerprint = useMemo(
         () => filtersFingerprint(serializeFilters(filters)),
@@ -524,7 +564,6 @@ function useAnalysisPreferences(
     return {
         effectiveDays: dayOverride ?? autoDays,
         isDaysOverridden: dayOverride !== null,
-        effectiveMode: modeOverride ?? autoMode,
         modeOverride,
         isSaved: savedFilterId !== null,
         applyDays,
@@ -578,25 +617,24 @@ export function TransactionAnalysisDrawer({
     const income = data?.summary.income ?? 0;
     const expense = data?.summary.expense ?? 0;
     const net = data?.summary.net ?? 0;
-    const autoMode = detectMode(income, expense, data?.summary.days ?? 0);
 
     const {
         effectiveDays,
         isDaysOverridden,
-        effectiveMode,
         modeOverride,
         isSaved,
         applyDays,
         applyMode,
-    } = useAnalysisPreferences(
-        open,
-        filters,
-        data?.summary.days ?? 0,
-        autoMode,
-    );
+    } = useAnalysisPreferences(open, filters, data?.summary.days ?? 0);
 
     const averagePerDay =
         effectiveDays > 0 ? Math.round(expense / effectiveDays) : expense;
+
+    // The day override is the user telling us the real duration, so it decides
+    // the automatic view too: a trip whose transactions posted over eight
+    // months is still a trip, and stays on the bounded shape.
+    const effectiveMode =
+        modeOverride ?? detectMode(income, expense, effectiveDays);
 
     const monthlyPoints = useMemo(
         () => toMonthlyPoints(data?.over_time.points ?? [], locale),
@@ -605,8 +643,14 @@ export function TransactionAnalysisDrawer({
 
     const { resolvedMode, boundedMode, trendRates, showsIncome } = useMemo(
         () =>
-            resolveAnalysisView(effectiveMode, income, expense, monthlyPoints),
-        [effectiveMode, income, expense, monthlyPoints],
+            resolveAnalysisView(
+                effectiveMode,
+                income,
+                expense,
+                monthlyPoints,
+                data?.summary.first_date ?? null,
+            ),
+        [effectiveMode, income, expense, monthlyPoints, data],
     );
 
     return (
@@ -976,6 +1020,15 @@ function TrendCards({
                     amount={rates.average}
                     currency={currency}
                     tone={tone(rates.average)}
+                    badge={
+                        // Owns up to the denominator: part-months at either end
+                        // of the span are left out of every figure here.
+                        <span className="text-xs text-muted-foreground">
+                            {__('over :count whole months', {
+                                count: rates.months,
+                            })}
+                        </span>
+                    }
                 />
 
                 {rates.recentAverage !== null && (
@@ -988,19 +1041,25 @@ function TrendCards({
                         tone={tone(rates.recentAverage)}
                         badge={
                             change !== null && (
-                                <span
-                                    className={cn(
-                                        'flex items-center gap-0.5 text-xs font-medium tabular-nums',
-                                        change === 0 && 'text-muted-foreground',
-                                        isAdverse && 'text-amber-500',
-                                        change !== 0 &&
-                                            !isAdverse &&
-                                            'text-emerald-500',
-                                    )}
-                                >
-                                    <ChangeIcon className="size-3.5" />
-                                    {change > 0 ? '+' : ''}
-                                    {change}%
+                                <span className="flex items-center gap-1 text-xs">
+                                    <span
+                                        className={cn(
+                                            'flex items-center gap-0.5 font-medium tabular-nums',
+                                            change === 0 &&
+                                                'text-muted-foreground',
+                                            isAdverse && 'text-amber-500',
+                                            change !== 0 &&
+                                                !isAdverse &&
+                                                'text-emerald-500',
+                                        )}
+                                    >
+                                        <ChangeIcon className="size-3.5" />
+                                        {change > 0 ? '+' : ''}
+                                        {change}%
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        {__('vs. average')}
+                                    </span>
                                 </span>
                             )
                         }
@@ -1026,6 +1085,9 @@ function ModeToggle({
     isSaved: boolean;
     onApply: (value: AnalysisMode | null) => void;
 }) {
+    // Picking a view that cannot be built would otherwise change nothing on
+    // screen and say nothing about why.
+    const unavailable = override === 'trend' && resolvedMode !== 'trend';
     const [open, setOpen] = useState(false);
 
     const options: { value: AnalysisMode | null; label: string }[] = [
@@ -1073,6 +1135,13 @@ function ModeToggle({
                             </Button>
                         );
                     })}
+                    {unavailable && (
+                        <p className="px-2 pt-1 text-xs text-amber-600">
+                            {__(
+                                'Monthly trend needs at least one whole calendar month.',
+                            )}
+                        </p>
+                    )}
                     {isSaved && (
                         <p className="px-2 pt-1 text-xs text-muted-foreground">
                             {__('Saved with this filter.')}
@@ -1368,7 +1437,13 @@ function MonthlyTrendChart({
     };
 
     return (
-        <Panel title={__('Spending per month')}>
+        <Panel
+            title={
+                showsIncome
+                    ? __('Income & expenses per month')
+                    : __('Spending per month')
+            }
+        >
             <ChartContainer config={config} className="h-64 w-full">
                 <ComposedChart data={months}>
                     <XAxis

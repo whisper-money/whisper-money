@@ -67,6 +67,21 @@ test('summary totals income, expense, net and count from the filtered set', func
         ]);
 });
 
+test('summary reports the day the series starts on', function () {
+    makeTransaction(['amount' => -40000, 'transaction_date' => '2026-03-18']);
+    makeTransaction(['amount' => -10000, 'transaction_date' => '2026-06-02']);
+
+    $this->getJson('/api/transactions/analysis')
+        ->assertOk()
+        ->assertJsonPath('summary.first_date', '2026-03-18');
+});
+
+test('summary reports no start day when nothing matches', function () {
+    $this->getJson('/api/transactions/analysis?'.http_build_query(['search' => 'nothing matches this']))
+        ->assertOk()
+        ->assertJsonPath('summary.first_date', null);
+});
+
 test('category breakdown groups expenses by top-level category', function () {
     $hotel = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Hotel', 'color' => 'blue', 'icon' => 'Building']);
     $meals = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Meals']);

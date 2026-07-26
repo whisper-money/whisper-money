@@ -66,6 +66,7 @@ const analysisResponse = {
         count: 5,
         days: 90,
         average_expense_per_day: 1000,
+        first_date: null,
     },
     by_category: [],
     distinct_category_count: 0,
@@ -220,6 +221,44 @@ describe('monthly rates', () => {
 
         expect(rates?.average).toBe(0);
         expect(rates?.changePercentage).toBeNull();
+    });
+
+    it('leaves out a first month the series only clips a few days out of', () => {
+        // Flat €300 a month, but the span starts on the 18th of February and
+        // July is still running. Counting either edge would invent a rise.
+        const rates = monthlyRates(
+            [
+                month('2026-02', 15000),
+                month('2026-03', 30000),
+                month('2026-04', 30000),
+                month('2026-05', 30000),
+                month('2026-06', 30000),
+                month('2026-07', 999900),
+            ],
+            false,
+            '2026-02-18',
+        );
+
+        expect(rates?.months).toBe(4);
+        expect(rates?.average).toBe(30000);
+        expect(rates?.recentAverage).toBe(30000);
+        expect(rates?.changePercentage).toBe(0);
+    });
+
+    it('keeps a first month the series covers from its 1st', () => {
+        const rates = monthlyRates(
+            [
+                month('2026-02', 30000),
+                month('2026-03', 30000),
+                month('2026-04', 30000),
+                month('2026-05', 30000),
+                month('2026-06', 30000),
+            ],
+            false,
+            '2026-02-01',
+        );
+
+        expect(rates?.months).toBe(5);
     });
 
     it('reads a rise as bad for spending and good for a net result', () => {
@@ -677,6 +716,68 @@ describe('TransactionAnalysisDrawer monthly trend view', () => {
         // Income 5000 less expense, averaged over the five completed months:
         // (4000 + 4000 + 4000 + 1000 + 1000) / 5.
         expect(cardAmount('Monthly net average')).toBe(2800);
+    });
+
+    it('restores a forced trend view from the browser with no saved filter', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        localStorage.setItem(
+            `wm.analysis-mode.${JSON.stringify({
+                date_from: null,
+                date_to: null,
+                amount_min: null,
+                amount_max: null,
+                category_ids: [],
+                account_ids: [],
+                label_ids: ['label-1'],
+                creditor_name: '',
+                debtor_name: '',
+                search: '',
+            })}`,
+            'trend',
+        );
+        // A bounded span, so only the stored override can reach the trend view.
+        mockAnalysisFetch(
+            trendResponse({
+                summary: {
+                    ...analysisResponse.summary,
+                    count: 40,
+                    days: 60,
+                },
+            }),
+        );
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Monthly average')).toBeInTheDocument(),
+        );
+    });
+
+    it('honours a day override that puts the span back under the threshold', async () => {
+        axiosGet.mockResolvedValue({
+            data: {
+                data: [
+                    {
+                        id: 'saved-1',
+                        filters: { label_ids: ['label-1'] },
+                        // The user has said the real duration is 20 days, even
+                        // though the transactions posted across five months.
+                        analysis_days: 20,
+                        analysis_mode: null,
+                    },
+                ],
+            },
+        });
+        mockAnalysisFetch(trendResponse());
+
+        renderDrawer();
+
+        await waitFor(() =>
+            expect(screen.getByText('Avg / day')).toBeInTheDocument(),
+        );
+        expect(screen.queryByText('Monthly average')).not.toBeInTheDocument();
+        // 90000 / 20, the override rather than the 150-day span.
+        expect(avgPerDay()).toBe(4500);
     });
 
     it('persists a forced trend view to the matched saved filter', async () => {
