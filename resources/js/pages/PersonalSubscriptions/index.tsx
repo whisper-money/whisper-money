@@ -1,5 +1,7 @@
 import { index } from '@/actions/App/Http/Controllers/PersonalSubscriptionController'
 import HeadingSmall from '@/components/heading-small';
+import { CreateSubscriptionDialog } from '@/components/pers-subs/create-subscription-dialog';
+import { CreateButton } from '@/components/ui/create-button';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { PersonalSubscription } from '@/types/personal-subscriptions';
@@ -15,7 +17,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface Props {
     personalSubs: PersonalSubscription[];
-    currencyCode: String;
+    currencyCode: string;
 }
 
 export default function PersonalSubsIndex({personalSubs, currencyCode}: Props) {
@@ -31,7 +33,23 @@ export default function PersonalSubsIndex({personalSubs, currencyCode}: Props) {
                             'Track your subsciptions'
                         )}
                     />
+                    <CreateSubscriptionDialog
+                    currencyCode={currencyCode}
+                    trigger={
+                        <CreateButton>{__('Create subscription')}</CreateButton>
+                    }
+                    />
                 </div>
+                
+                {personalSubs.length > 0 ? (
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        {personalSubs.map((personalSubs) => (
+                            
+                        ))}
+                    </div>
+                ) : (
+
+                )}
             </div>
         </AppSidebarLayout>
     )
