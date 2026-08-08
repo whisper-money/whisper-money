@@ -182,5 +182,11 @@ return [
             'allows_primary' => true,
             'allows_account' => true,
         ],
+        [
+            'code' => 'THB',
+            'name' => 'Thai Baht',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];
