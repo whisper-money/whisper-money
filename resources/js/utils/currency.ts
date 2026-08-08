@@ -28,6 +28,7 @@ export function getCurrencySymbol(currencyCode: string): string {
         NGN: '₦',
         SEK: 'kr',
         THB: '฿',
+        SGD: 'S$',
     };
     return symbols[currencyCode] || currencyCode;
 }
