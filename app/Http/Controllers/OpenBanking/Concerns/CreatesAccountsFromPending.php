@@ -30,12 +30,8 @@ trait CreatesAccountsFromPending
 
         $accountType = $connection->provider->defaultAccountType();
 
-        foreach ($connection->pending_accounts_data ?? [] as $accountData) {
-            $uid = $accountData['uid'] ?? null;
-
-            if (! $uid) {
-                continue;
-            }
+        foreach ($connection->mappablePendingAccounts() as $accountData) {
+            $uid = $accountData['uid'];
 
             $currency = $accountUserCurrencyService->resolveImportedCurrency($accountData['currency'] ?? null, $user);
             $name = $accountData['name']

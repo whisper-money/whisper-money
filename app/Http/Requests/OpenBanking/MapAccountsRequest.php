@@ -31,4 +31,17 @@ class MapAccountsRequest extends FormRequest
             ],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'mappings.required' => 'There are no accounts to map.',
+            'mappings.min' => 'There are no accounts to map.',
+            'mappings.*.bank_account_uid.required' => 'This account cannot be mapped because your bank did not provide an identifier for it.',
+            'mappings.*.existing_account_id.required_if' => 'Choose the account you want to link to.',
+        ];
+    }
 }
