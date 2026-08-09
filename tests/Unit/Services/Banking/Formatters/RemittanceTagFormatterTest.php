@@ -33,7 +33,13 @@ test('strips the purchase and settlement dates from card payments', function (st
     ['/TXT/EL CLANDESTI 27/07/26|20260803', 'EL CLANDESTI'],
     ['/TXT/CONDIS SANT JUST DESV07/07/26|20260714', 'CONDIS SANT JUST DESV'],
     ['/TXT/WWW.AMAZON 06/07/26|20260713', 'WWW.AMAZON'],
+    ['/TXT/RECIBO MES TARJETA|20260806', 'RECIBO MES TARJETA'],
+    ['/TXT/PROCESO DEL PROGRAMA: SATD066|20260720', 'PROCESO DEL PROGRAMA: SATD066'],
 ]);
+
+test('leaves a pipe that is not a date suffix alone', function () {
+    expect($this->formatter->format('/TXT/D|TRANS INM/ VICTORIA|MOLLFULLEDA'))->toBe('TRANS INM/ VICTORIA|MOLLFULLEDA');
+});
 
 test('strips the internal marker on card charges', function () {
     expect($this->formatter->format('/TXT/D|#RECOBRO RECIBO VISA'))->toBe('RECOBRO RECIBO VISA');

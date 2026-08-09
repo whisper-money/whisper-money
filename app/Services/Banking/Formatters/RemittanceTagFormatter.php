@@ -11,20 +11,20 @@ namespace App\Services\Banking\Formatters;
  */
 class RemittanceTagFormatter implements BankFormatter
 {
-    private const TAG = '/TXT/';
+    public const TAG = '/TXT/';
 
     /**
-     * Debit/credit marker the bank prepends to the text (`D|`, `H|`). It only
-     * repeats the sign of the amount.
+     * Debit/credit marker the bank prepends to the text (`D` for debe, `H` for
+     * haber). It only repeats the sign of the amount.
      */
-    private const CREDIT_DEBIT_MARKER = '/^[A-Z]\|/';
+    private const CREDIT_DEBIT_MARKER = '/^[DH]\|/';
 
     /**
-     * Card purchases carry the purchase date — often glued to a truncated
-     * merchant name — plus the settlement date after a pipe:
-     * `CONDIS SANT JUST DESV07/07/26|20260714`.
+     * Card payments carry the settlement date after a pipe, usually preceded by
+     * the purchase date glued to a truncated merchant name:
+     * `CONDIS SANT JUST DESV07/07/26|20260714`, `RECIBO MES TARJETA|20260806`.
      */
-    private const CARD_DATES_SUFFIX = '/\s*\d{2}\/\d{2}\/\d{2}\|\d{8}$/';
+    private const CARD_DATES_SUFFIX = '/\s*(\d{2}\/\d{2}\/\d{2})?\|\d{8}$/';
 
     public function matches(string $description, ?string $bankName): bool
     {
@@ -39,8 +39,7 @@ class RemittanceTagFormatter implements BankFormatter
         $text = (string) preg_replace('/\s+/u', ' ', $text);
 
         // Internal marker on card charges and refunds ("#RECOBRO RECIBO VISA").
-        $text = ltrim(trim($text), '#');
-        $text = trim($text);
+        $text = trim(ltrim(trim($text), '#'));
 
         return $text === '' ? $description : $text;
     }

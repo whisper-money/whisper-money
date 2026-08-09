@@ -13,8 +13,9 @@ class TransactionDescriptionFormatter
 
     public function __construct()
     {
-        // Ordered most specific first: a formatter keyed on the description
-        // itself knows the shape it gets, a bank-keyed one only guesses.
+        // First match wins, so a formatter keyed on the description — which
+        // knows the exact shape it gets — is tried before a bank-keyed one,
+        // which only guesses from the connection.
         $this->formatters = [
             new RemittanceTagFormatter,
             new BbvaFormatter,

@@ -34,6 +34,12 @@ test('strips the remittance tag even when the bank name is unknown', function ()
     expect($result['original_description'])->toBe('/TXT/D|BAR CONO');
 });
 
+test('a tagged description is handled by the remittance formatter, not the bank one', function () {
+    $result = $this->formatter->format('/TXT/D|ADEUDO DE ENDESA', 'BBVA');
+
+    expect($result['description'])->toBe('ADEUDO DE ENDESA');
+});
+
 test('does not transform description for non-BBVA bank', function () {
     $result = $this->formatter->format('ADEUDO DE ENDESA', 'ING');
 
