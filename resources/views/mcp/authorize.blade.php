@@ -104,7 +104,7 @@
                     </ul>
 
                     <p class="text-sm text-muted-foreground pt-1">
-                        {{ __('Bank-connected accounts and their transactions stay read-only. You can disconnect it at any time from the connected app.') }}
+                        {{ __('Transactions synced from your bank cannot be edited or deleted, and bank-connected balances stay untouched. You can disconnect it at any time from the connected app.') }}
                     </p>
                 </div>
             </div>

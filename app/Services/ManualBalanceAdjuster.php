@@ -13,13 +13,15 @@ class ManualBalanceAdjuster
      * Subtracts the transaction amount from its own day and every later
      * snapshot, mirroring the forward shift applied on creation. Connected
      * accounts are skipped because their balances come from bank sync.
+     *
+     * @return bool whether any balance was actually shifted
      */
-    public function reverseDeletedTransaction(Transaction $transaction): void
+    public function reverseDeletedTransaction(Transaction $transaction): bool
     {
         $account = $transaction->account;
 
         if ($account === null || $account->isConnected()) {
-            return;
+            return false;
         }
 
         $this->shiftBalancesFrom(
@@ -27,6 +29,8 @@ class ManualBalanceAdjuster
             $transaction->transaction_date->toDateString(),
             -$transaction->amount,
         );
+
+        return true;
     }
 
     /**
@@ -36,13 +40,15 @@ class ManualBalanceAdjuster
      * balance when none exists yet), then shifts that day and every later
      * snapshot by the transaction amount. Connected accounts are skipped
      * because their balances come from bank sync.
+     *
+     * @return bool whether any balance was actually shifted
      */
-    public function applyCreatedTransaction(Transaction $transaction): void
+    public function applyCreatedTransaction(Transaction $transaction): bool
     {
         $account = $transaction->account;
 
         if ($account === null || $account->isConnected()) {
-            return;
+            return false;
         }
 
         $transactionDate = $transaction->transaction_date->toDateString();
@@ -53,6 +59,8 @@ class ManualBalanceAdjuster
         );
 
         $this->shiftBalancesFrom($account, $transactionDate, $transaction->amount);
+
+        return true;
     }
 
     /**

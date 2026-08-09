@@ -82,14 +82,11 @@ class CreateTransaction extends WriteTool
             $transaction->labels()->sync($labels->pluck('id')->all());
         }
 
-        // A connected account's balances belong to the bank sync, so the
-        // adjuster no-ops there. Report what actually happened, otherwise the
-        // agent tells the user a balance moved when it did not.
-        $balanceUpdated = $request->boolean('update_balance') && ! $account->isConnected();
-
-        if ($balanceUpdated) {
-            app(ManualBalanceAdjuster::class)->applyCreatedTransaction($transaction->load('account'));
-        }
+        // The adjuster no-ops on a connected account, whose balances belong to
+        // the bank sync. Report what it actually did, otherwise the agent tells
+        // the user a balance moved when it did not.
+        $balanceUpdated = $request->boolean('update_balance')
+            && app(ManualBalanceAdjuster::class)->applyCreatedTransaction($transaction->load('account'));
 
         return $this->json([
             'transaction' => $this->presentTransaction($transaction),

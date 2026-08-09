@@ -103,12 +103,20 @@ class UpdateTransaction extends WriteTool
 
         $transaction->save();
 
+        $balanceUpdated = false;
+
         if ($request->boolean('update_balance') && $transaction->wasChanged(['amount', 'transaction_date', 'account_id'])) {
             $adjuster = app(ManualBalanceAdjuster::class);
-            $adjuster->reverseDeletedTransaction($originalSnapshot);
-            $adjuster->applyCreatedTransaction($transaction->load('account'));
+            // Either side no-ops on a connected account, so moving a transaction
+            // onto one still unwinds the manual account it came from.
+            $reversed = $adjuster->reverseDeletedTransaction($originalSnapshot);
+            $applied = $adjuster->applyCreatedTransaction($transaction->load('account'));
+            $balanceUpdated = $reversed || $applied;
         }
 
-        return $this->json(['transaction' => $this->presentTransaction($transaction->refresh())]);
+        return $this->json([
+            'transaction' => $this->presentTransaction($transaction->refresh()),
+            'balance_updated' => $balanceUpdated,
+        ]);
     }
 }

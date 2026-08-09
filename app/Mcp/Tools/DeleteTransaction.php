@@ -36,12 +36,15 @@ class DeleteTransaction extends WriteTool
             return Response::error('Only manually-created transactions can be deleted. This one came from a bank or import.');
         }
 
-        if ($request->boolean('update_balance')) {
-            app(ManualBalanceAdjuster::class)->reverseDeletedTransaction($transaction);
-        }
+        $balanceUpdated = $request->boolean('update_balance')
+            && app(ManualBalanceAdjuster::class)->reverseDeletedTransaction($transaction);
 
         $transaction->delete();
 
-        return $this->json(['deleted' => true, 'id' => $transaction->id]);
+        return $this->json([
+            'deleted' => true,
+            'id' => $transaction->id,
+            'balance_updated' => $balanceUpdated,
+        ]);
     }
 }

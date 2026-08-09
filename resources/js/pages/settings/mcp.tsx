@@ -144,7 +144,9 @@ export default function Mcp() {
             label: __('Claude Desktop'),
             steps: [
                 __('Open Settings → Connectors in Claude Desktop.'),
-                __('Click "Add" in the top right, then "Add custom connector".'),
+                __(
+                    'Click "Add" in the top right, then "Add custom connector".',
+                ),
                 <>
                     {__('Give it a name and paste this URL:')}
                     {oauthUrlBlock}
@@ -304,7 +306,7 @@ export default function Mcp() {
 
                             <p className="text-sm text-muted-foreground">
                                 {__(
-                                    'Connected apps can read, analyse and make changes to your data (bank-connected accounts stay read-only).',
+                                    'Connected apps can read, analyse and make changes to your data (transactions synced from your bank cannot be edited or deleted).',
                                 )}
                             </p>
                         </CardContent>

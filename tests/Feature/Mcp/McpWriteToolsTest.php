@@ -93,6 +93,33 @@ it('edits a manual transaction', function () {
     expect($transaction->fresh()->description)->toBe('Fresh description');
 });
 
+it('moves a transaction onto a connected account, unwinding only the manual side', function () {
+    $user = User::factory()->create();
+    $manualAccount = Account::factory()->create(['user_id' => $user->id]);
+    $connectedAccount = Account::factory()->connected()->create(['user_id' => $user->id]);
+
+    $manualAccount->balances()->create(['balance_date' => '2026-01-15', 'balance' => 9_000]);
+    $connectedAccount->balances()->create(['balance_date' => '2026-01-15', 'balance' => 50_000]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $manualAccount->id,
+        'transaction_date' => '2026-01-15',
+        'amount' => -1_000,
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'account_id' => $connectedAccount->id,
+        'update_balance' => true,
+    ])->assertOk();
+
+    expect($transaction->fresh()->account_id)->toBe($connectedAccount->id);
+    // The manual account gets the money back; the bank's balance is left alone.
+    expect($manualAccount->balances()->where('balance_date', '2026-01-15')->value('balance'))->toBe(10_000);
+    expect($connectedAccount->balances()->where('balance_date', '2026-01-15')->value('balance'))->toBe(50_000);
+});
+
 it('refuses to edit an imported transaction', function () {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
