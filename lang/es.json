@@ -2322,5 +2322,10 @@
     "over :count whole months": "sobre :count meses completos",
     "vs. average": "vs. media",
     "Income & expenses per month": "Ingresos y gastos por mes",
-    "Monthly trend needs at least one whole calendar month.": "La tendencia mensual necesita al menos un mes natural completo."
+    "Monthly trend needs at least one whole calendar month.": "La tendencia mensual necesita al menos un mes natural completo.",
+    "Action required: reconnect :provider": "Acción necesaria: vuelve a conectar :provider",
+    "Reconnect your :provider account": "Vuelve a conectar tu cuenta de :provider",
+    "Your :provider connection has expired, so we cannot sync new transactions until you reconnect it.": "Tu conexión con :provider ha dejado de ser válida, así que no podemos sincronizar nuevos movimientos hasta que vuelvas a conectarla.",
+    "Reconnect Account": "Volver a conectar",
+    "If the button does not work, open your connection settings and reconnect :provider from there.": "Si el botón no funciona, abre los ajustes de tus conexiones y vuelve a conectar :provider desde ahí."
 }
