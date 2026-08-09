@@ -1,7 +1,12 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { initializeTheme } from '@/hooks/use-appearance';
+import { initializeChartColorScheme } from '@/hooks/use-chart-color-scheme';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readStoredValue, writeStoredValue } from './safe-storage';
 
-const realStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+const realStorage = Object.getOwnPropertyDescriptor(
+    window,
+    'localStorage',
+) as PropertyDescriptor;
 
 const replaceStorage = (value: unknown) => {
     Object.defineProperty(window, 'localStorage', {
@@ -10,16 +15,17 @@ const replaceStorage = (value: unknown) => {
     });
 };
 
+const throwOnStorageAccess = () => {
+    Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get: () => {
+            throw new DOMException('The operation is insecure.');
+        },
+    });
+};
+
 afterEach(() => {
-    if (realStorage) {
-        Object.defineProperty(window, 'localStorage', realStorage);
-
-        return;
-    }
-
-    // jsdom exposes localStorage on the prototype, so there is no own
-    // descriptor to put back — drop the override instead.
-    delete (window as { localStorage?: unknown }).localStorage;
+    Object.defineProperty(window, 'localStorage', realStorage);
 });
 
 describe('safe storage', () => {
@@ -48,12 +54,7 @@ describe('safe storage', () => {
     // Blocking cookies/site data makes the first access throw SecurityError —
     // PHP-LARAVEL-4Y, same boot frame.
     it('survives a localStorage that throws on access', () => {
-        Object.defineProperty(window, 'localStorage', {
-            configurable: true,
-            get: () => {
-                throw new DOMException('The operation is insecure.');
-            },
-        });
+        throwOnStorageAccess();
 
         expect(readStoredValue('appearance')).toBeNull();
         expect(() => writeStoredValue('appearance', 'dark')).not.toThrow();
@@ -68,5 +69,40 @@ describe('safe storage', () => {
         });
 
         expect(() => writeStoredValue('appearance', 'dark')).not.toThrow();
+    });
+});
+
+// The invariant that actually regressed is that nothing on the boot path reads
+// storage unguardedly — a helper that is safe on its own does not keep someone
+// from going back to a bare localStorage call in these two functions.
+describe('boot initializers', () => {
+    // jsdom ships no matchMedia; the boot path needs one to get as far as the
+    // storage read this guards.
+    beforeEach(() => {
+        window.matchMedia = ((query: string) => ({
+            matches: false,
+            media: query,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        })) as unknown as typeof window.matchMedia;
+    });
+
+    it.each([
+        ['a null localStorage', () => replaceStorage(null)],
+        ['a localStorage that throws on access', throwOnStorageAccess],
+    ])('start the app with %s', (_name, breakStorage) => {
+        breakStorage();
+
+        expect(() => initializeTheme()).not.toThrow();
+        expect(() => initializeChartColorScheme()).not.toThrow();
+    });
+
+    it('leaves the theme the server already applied alone when nothing is stored', () => {
+        replaceStorage(null);
+        document.cookie = 'appearance=dark';
+
+        initializeTheme();
+
+        expect(document.documentElement.classList.contains('dark')).toBe(true);
     });
 });

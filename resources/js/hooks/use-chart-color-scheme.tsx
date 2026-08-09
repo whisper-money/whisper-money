@@ -32,9 +32,14 @@ export function initializeChartColorScheme() {
         return;
     }
 
-    const saved =
-        (readStoredValue(STORAGE_KEY) as ChartColorScheme) || 'colorful';
-    applyColorScheme(saved);
+    // Only override what the server already rendered from the cookie: with no
+    // usable storage this would otherwise reset every user to "colorful",
+    // leaving the CSS palette fighting the scheme the charts draw with.
+    const saved = readStoredValue(STORAGE_KEY) as ChartColorScheme | null;
+
+    if (saved) {
+        applyColorScheme(saved);
+    }
 }
 
 export function useChartColorScheme() {
