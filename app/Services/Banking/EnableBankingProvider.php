@@ -127,11 +127,12 @@ class EnableBankingProvider implements BankingProviderInterface
                 );
             }
 
-            if ($this->isTransientServerError($e)) {
+            if ($this->isTransientServerError($e) || $this->isPsuActionRequired($e)) {
                 throw new TransientBankingProviderException(
-                    'EnableBanking returned a server error while fetching account transactions.',
+                    'EnableBanking could not serve account transactions right now.',
                     provider: 'enablebanking',
                     statusCode: $e->response->status(),
+                    providerCode: $this->detailErrorName($e),
                     previous: $e,
                 );
             }
@@ -187,11 +188,12 @@ class EnableBankingProvider implements BankingProviderInterface
                 );
             }
 
-            if ($this->isTransientServerError($e)) {
+            if ($this->isTransientServerError($e) || $this->isPsuActionRequired($e)) {
                 throw new TransientBankingProviderException(
-                    'EnableBanking returned a server error while fetching account balances.',
+                    'EnableBanking could not serve account balances right now.',
                     provider: 'enablebanking',
                     statusCode: $e->response->status(),
+                    providerCode: $this->detailErrorName($e),
                     previous: $e,
                 );
             }
@@ -257,36 +259,49 @@ class EnableBankingProvider implements BankingProviderInterface
     }
 
     /**
-     * Whether the bank will not serve this connection again until the user
-     * authorizes it afresh. Three codes, one remedy — the user reconnects:
-     *
-     * - 401 EXPIRED_SESSION: the consent window lapsed.
-     * - 401 CLOSED_SESSION: the session was closed (revoked at the bank, or
-     *   superseded by a newer authorization).
-     * - 403 PsuActionRequiredException: the bank wants the user present —
-     *   typically a fresh SCA before it will keep serving unattended access.
+     * Whether the session itself is gone, so the bank will serve nothing more
+     * on this connection until the user authorizes it afresh: the consent
+     * window lapsed (EXPIRED_SESSION), or the session was closed — revoked at
+     * the bank, or superseded by a newer authorization (CLOSED_SESSION).
      */
     private function requiresReconnect(RequestException $e): bool
     {
-        $body = $this->errorBody($e);
-        $detail = $body['detail'] ?? null;
+        return $e->response->status() === 401
+            && in_array($this->errorBody($e)['error'] ?? null, ['EXPIRED_SESSION', 'CLOSED_SESSION'], true);
+    }
 
-        return match ($e->response->status()) {
-            401 => in_array($body['error'] ?? null, ['EXPIRED_SESSION', 'CLOSED_SESSION'], true),
-            403 => is_array($detail) && ($detail['error_name'] ?? null) === 'PsuActionRequiredException',
-            default => false,
-        };
+    /**
+     * The bank asked for the user to be present — nominally a fresh SCA before
+     * it keeps serving unattended access.
+     *
+     * Deliberately treated as transient rather than as a reconnect: in the one
+     * burst we have seen, nine connections at nine different banks, all with
+     * months of consent left, failed inside the same nine-minute sync window
+     * hours after syncing cleanly, and none recurred. That is the provider
+     * faulting, not nine users revoking consent. Expiring a connection is a
+     * one-way door — the only way out is a full reauthorization with SCA — so
+     * this must not expire one on first sight. If it turns out to be genuine,
+     * the consent lapses on its own and 401 EXPIRED_SESSION takes over.
+     */
+    private function isPsuActionRequired(RequestException $e): bool
+    {
+        return $e->response->status() === 403
+            && $this->detailErrorName($e) === 'PsuActionRequiredException';
     }
 
     private function isInaccessibleAccount(RequestException $e): bool
     {
-        $detail = $this->errorBody($e)['detail'] ?? null;
-        $errorName = is_array($detail) ? ($detail['error_name'] ?? null) : null;
-
         // ponytail: the documented per-account 400; widen if other terminal
         // account-level codes surface for a single account.
         return $e->response->status() === 400
-            && $errorName === 'AccountNotAccessibleException';
+            && $this->detailErrorName($e) === 'AccountNotAccessibleException';
+    }
+
+    private function detailErrorName(RequestException $e): ?string
+    {
+        $detail = $this->errorBody($e)['detail'] ?? null;
+
+        return is_array($detail) ? ($detail['error_name'] ?? null) : null;
     }
 
     private function isWrongPeriod(RequestException $e): bool
@@ -327,10 +342,14 @@ class EnableBankingProvider implements BankingProviderInterface
                 // as application errors.
                 $isExpected = $this->isAspspError($exception)
                     || $this->requiresReconnect($exception)
+                    || $this->isPsuActionRequired($exception)
                     || $response->status() === 422;
 
                 Log::log($isExpected ? 'warning' : 'error', 'EnableBanking API error', [
                     'status' => $response->status(),
+                    // Which endpoint failed tells one bad account apart from a
+                    // whole connection or a provider-wide wave.
+                    'path' => $response->effectiveUri()?->getPath(),
                     'body' => $response->json(),
                     'exception' => get_class($exception),
                 ]);
