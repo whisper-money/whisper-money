@@ -23,8 +23,15 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-/** ISO 4217 code for "no currency" — some providers report it instead of a real one. */
-const NO_CURRENCY = 'XXX';
+/**
+ * Banks don't always report a usable currency: EnableBanking sends XXX, the ISO 4217
+ * code for "no currency". Treat that as unknown rather than as a real code.
+ */
+function usableCurrency(reported: string | null | undefined): string | null {
+    const currency = (reported ?? '').trim().toUpperCase();
+
+    return currency === '' || currency === 'XXX' ? null : currency;
+}
 
 interface Mapping {
     bank_account_uid: string;
@@ -36,12 +43,14 @@ interface Props {
     connection: BankingConnection;
     bankAccounts: PendingBankAccount[];
     existingAccounts: Account[];
+    unmappableAccountNames: string[];
 }
 
 export default function MapAccountsPage({
     connection,
     bankAccounts,
     existingAccounts,
+    unmappableAccountNames,
 }: Props) {
     const [mappings, setMappings] = useState<Mapping[]>(
         bankAccounts.map((ba) => ({
@@ -60,7 +69,8 @@ export default function MapAccountsPage({
         );
     }
 
-    function getCompatibleAccounts(currency: string | null) {
+    /** With no currency reported there is nothing to match on, so anything is linkable. */
+    function getLinkableAccounts(currency: string | null) {
         if (!currency) {
             return existingAccounts;
         }
@@ -107,21 +117,16 @@ export default function MapAccountsPage({
                         const mapping = mappings.find(
                             (m) => m.bank_account_uid === bankAccount.uid,
                         );
-                        const currency =
-                            bankAccount.currency === NO_CURRENCY
-                                ? null
-                                : bankAccount.currency;
+                        const currency = usableCurrency(bankAccount.currency);
                         const compatibleAccounts =
-                            getCompatibleAccounts(currency);
+                            getLinkableAccounts(currency);
+                        const iban = bankAccount.account_id?.iban;
                         const displayName =
-                            bankAccount.name ||
-                            bankAccount.account_id?.iban ||
-                            __('Bank Account');
+                            bankAccount.name || iban || __('Bank Account');
                         const details = [
                             currency,
-                            bankAccount.name
-                                ? bankAccount.account_id?.iban
-                                : null,
+                            // Don't repeat the IBAN when it is already the title.
+                            displayName === iban ? null : iban,
                         ].filter(Boolean);
 
                         return (
@@ -130,9 +135,11 @@ export default function MapAccountsPage({
                                     <CardTitle className="text-base">
                                         {displayName}
                                     </CardTitle>
-                                    <CardDescription>
-                                        {details.join(' \u00b7 ')}
-                                    </CardDescription>
+                                    {details.length > 0 && (
+                                        <CardDescription>
+                                            {details.join(' \u00b7 ')}
+                                        </CardDescription>
+                                    )}
                                 </CardHeader>
                                 <CardContent>
                                     <RadioGroup
@@ -262,6 +269,15 @@ export default function MapAccountsPage({
                             </Card>
                         );
                     })}
+
+                    {unmappableAccountNames.length > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                            {__(
+                                'Not shown: :accounts. Your bank did not provide an identifier for them, so they cannot be synced.',
+                                { accounts: unmappableAccountNames.join(', ') },
+                            )}
+                        </p>
+                    )}
 
                     <div className="flex items-center justify-end gap-3">
                         <Link href="/settings/connections">

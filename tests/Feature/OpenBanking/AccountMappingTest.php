@@ -61,7 +61,37 @@ test('show hides pending accounts the provider reported without a uid', function
             ->component('open-banking/map-accounts')
             ->has('bankAccounts', 1)
             ->where('bankAccounts.0.uid', 'ext-1')
+            ->where('unmappableAccountNames', ['CB Visa'])
         );
+});
+
+test('show closes the connection when no pending account can be mapped', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'pending_accounts_data' => [
+            [
+                'uid' => null,
+                'currency' => 'XXX',
+                'name' => 'CB Visa',
+                'account_id' => ['iban' => null],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('open-banking.map-accounts', $connection))
+        ->assertRedirect(route('settings.connections.index'));
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->pending_accounts_data)->toBeNull();
+
+    $this->assertDatabaseMissing('accounts', [
+        'banking_connection_id' => $connection->id,
+    ]);
 });
 
 test('show redirects if no pending accounts', function () {

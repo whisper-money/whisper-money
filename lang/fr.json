@@ -1111,6 +1111,8 @@
     "No balance records found.": "Aucun enregistrement de solde trouvé.",
     "No bank connections yet. Connect a bank to automatically sync your transactions.": "Il n'y a pas encore de connexions bancaires. Connectez une banque pour synchroniser automatiquement vos transactions.",
     "No bank found.": "Aucun banc n'a été trouvé.",
+    "Not shown: :accounts. Your bank did not provide an identifier for them, so they cannot be synced.": "Non affichés : :accounts. Votre banque n'a pas fourni d'identifiant pour ces comptes, ils ne peuvent donc pas être synchronisés.",
+    "Your bank did not provide an identifier for any of its accounts, so they cannot be synced.": "Votre banque n'a fourni d'identifiant pour aucun de ses comptes, ils ne peuvent donc pas être synchronisés.",
     "No banks found.": "Aucun banc n'a été trouvé.",
     "No cashflow data for this period": "Aucune donnée sur les flux monétaires pour cette période",
     "No categories found.": "Aucune catégorie trouvée.",

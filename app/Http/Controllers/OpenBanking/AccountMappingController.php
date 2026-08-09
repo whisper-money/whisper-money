@@ -42,6 +42,18 @@ class AccountMappingController extends Controller
                 ->with('success', 'Bank account connected successfully.');
         }
 
+        $mappableAccounts = $connection->mappablePendingAccounts();
+
+        // Nothing the bank gave us can be mapped, so there is no decision left for the
+        // user to make. Close the connection instead of leaving it awaiting a mapping
+        // that can never happen.
+        if ($mappableAccounts === []) {
+            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
+
+            return redirect()->route('settings.connections.index')
+                ->with('error', __('Your bank did not provide an identifier for any of its accounts, so they cannot be synced.'));
+        }
+
         $existingAccounts = $user
             ->accounts()
             ->whereNull('banking_connection_id')
@@ -50,8 +62,9 @@ class AccountMappingController extends Controller
 
         return Inertia::render('open-banking/map-accounts', [
             'connection' => $connection,
-            'bankAccounts' => $connection->mappablePendingAccounts(),
+            'bankAccounts' => $mappableAccounts,
             'existingAccounts' => $existingAccounts,
+            'unmappableAccountNames' => $connection->unmappablePendingAccountNames(),
         ]);
     }
 

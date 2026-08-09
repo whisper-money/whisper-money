@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $bank_transactions_email_cutoff_at
  * @property Carbon|null $rate_limited_until
  * @property int $consecutive_sync_failures
- * @property array<int, mixed>|null $pending_accounts_data
+ * @property array<int, array<string, mixed>>|null $pending_accounts_data
  */
 class BankingConnection extends Model
 {
@@ -164,6 +164,23 @@ class BankingConnection extends Model
         return array_values(array_filter(
             $this->pending_accounts_data ?? [],
             fn (array $account): bool => ! empty($account['uid']),
+        ));
+    }
+
+    /**
+     * Names of the pending accounts left out of the mapping screen, so the user is told
+     * why an account they can see in their bank never shows up here.
+     *
+     * @return array<int, string>
+     */
+    public function unmappablePendingAccountNames(): array
+    {
+        return array_values(array_map(
+            fn (array $account): string => $account['name'] ?? $account['account_id']['iban'] ?? __('Bank Account'),
+            array_filter(
+                $this->pending_accounts_data ?? [],
+                fn (array $account): bool => empty($account['uid']),
+            ),
         ));
     }
 

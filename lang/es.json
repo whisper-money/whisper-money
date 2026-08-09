@@ -1150,6 +1150,8 @@
     "No balance records found.": "No se encontraron registros de balance.",
     "No bank connections yet. Connect a bank to automatically sync your transactions.": "Aún no hay conexiones bancarias. Conecta un banco para sincronizar automáticamente tus transacciones.",
     "No bank found.": "No se encontró ningún banco.",
+    "Not shown: :accounts. Your bank did not provide an identifier for them, so they cannot be synced.": "No se muestran: :accounts. Tu banco no proporcionó un identificador para ellas, así que no se pueden sincronizar.",
+    "Your bank did not provide an identifier for any of its accounts, so they cannot be synced.": "Tu banco no proporcionó un identificador para ninguna de sus cuentas, así que no se pueden sincronizar.",
     "No banks found.": "No se encontraron bancos.",
     "No cashflow data for this period": "Sin datos de flujo de dinero para este período",
     "No categories found.": "No se encontraron categorías.",
