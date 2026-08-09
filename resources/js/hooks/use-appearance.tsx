@@ -2,6 +2,7 @@ import {
     addMediaQueryListener,
     removeMediaQueryListener,
 } from '@/lib/media-query';
+import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { useCallback, useEffect, useState } from 'react';
 
 export type Appearance = 'light' | 'dark' | 'system';
@@ -44,7 +45,7 @@ const mediaQuery = () => {
 const handleSystemThemeChange = () => {
     if (typeof window === 'undefined') return;
 
-    const currentAppearance = localStorage.getItem('appearance') as Appearance;
+    const currentAppearance = readStoredValue('appearance') as Appearance;
     applyTheme(currentAppearance || 'system');
 };
 
@@ -52,7 +53,7 @@ export function initializeTheme() {
     if (typeof window === 'undefined') return;
 
     const savedAppearance =
-        (localStorage.getItem('appearance') as Appearance) || 'system';
+        (readStoredValue('appearance') as Appearance) || 'system';
 
     applyTheme(savedAppearance);
 
@@ -70,7 +71,7 @@ export function useAppearance() {
         setAppearance(mode);
 
         // Store in localStorage for client-side persistence...
-        localStorage.setItem('appearance', mode);
+        writeStoredValue('appearance', mode);
 
         // Store in cookie for SSR...
         setCookie('appearance', mode);
@@ -79,7 +80,7 @@ export function useAppearance() {
     }, []);
 
     useEffect(() => {
-        const savedAppearance = localStorage.getItem(
+        const savedAppearance = readStoredValue(
             'appearance',
         ) as Appearance | null;
 

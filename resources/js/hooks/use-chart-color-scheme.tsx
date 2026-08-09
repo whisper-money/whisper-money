@@ -1,3 +1,4 @@
+import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { ChartColorScheme, SharedData } from '@/types';
 import { CategoryColor, getCategoryChartColor } from '@/types/category';
 import { usePage } from '@inertiajs/react';
@@ -32,7 +33,7 @@ export function initializeChartColorScheme() {
     }
 
     const saved =
-        (localStorage.getItem(STORAGE_KEY) as ChartColorScheme) || 'colorful';
+        (readStoredValue(STORAGE_KEY) as ChartColorScheme) || 'colorful';
     applyColorScheme(saved);
 }
 
@@ -42,15 +43,13 @@ export function useChartColorScheme() {
 
     const updateScheme = useCallback((newScheme: ChartColorScheme) => {
         setScheme(newScheme);
-        localStorage.setItem(STORAGE_KEY, newScheme);
+        writeStoredValue(STORAGE_KEY, newScheme);
         setCookie(STORAGE_KEY, newScheme);
         applyColorScheme(newScheme);
     }, []);
 
     useEffect(() => {
-        const saved = localStorage.getItem(
-            STORAGE_KEY,
-        ) as ChartColorScheme | null;
+        const saved = readStoredValue(STORAGE_KEY) as ChartColorScheme | null;
         updateScheme(saved || serverScheme || 'colorful');
     }, [serverScheme, updateScheme]);
 

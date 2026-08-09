@@ -1,3 +1,5 @@
+import { getStorage } from './safe-storage';
+
 const CHUNK_LOAD_RELOAD_STORAGE_KEY =
     'whisper-money:chunk-load-reload-asset-signature';
 
@@ -58,7 +60,7 @@ export function installChunkLoadRecovery(): void {
     window.addEventListener('unhandledrejection', (event) => {
         if (
             reloadOnChunkLoadError(event.reason, {
-                storage: window.sessionStorage,
+                storage: getStorage('session'),
             })
         ) {
             event.preventDefault();
@@ -68,7 +70,7 @@ export function installChunkLoadRecovery(): void {
     window.addEventListener('error', (event) => {
         if (
             reloadOnChunkLoadError(event.error ?? event.message, {
-                storage: window.sessionStorage,
+                storage: getStorage('session'),
             })
         ) {
             event.preventDefault();
