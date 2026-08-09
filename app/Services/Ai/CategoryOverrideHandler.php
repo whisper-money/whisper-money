@@ -7,6 +7,7 @@ use App\Enums\RuleOrigin;
 use App\Models\AutomationRule;
 use App\Models\CategoryCorrection;
 use App\Models\Transaction;
+use Throwable;
 
 /**
  * Runs when a user overrides a transaction's category. If the category being
@@ -44,6 +45,20 @@ class CategoryOverrideHandler
             return null;
         }
 
+        try {
+            return $this->learn($transaction, $newCategoryId, $aiDriven);
+        } catch (Throwable $e) {
+            // Learning is a side-effect of the correction, never the point of it.
+            // A failure here must not abort the category change the user asked
+            // for — nor, in a bulk correction, every transaction after it.
+            report($e);
+
+            return null;
+        }
+    }
+
+    private function learn(Transaction $transaction, ?string $newCategoryId, bool $aiDriven): ?AutomationRule
+    {
         // The correction signal calibrates AI accuracy, so only AI assignments
         // are logged — a correction rule overruling itself is not an AI miss.
         if ($aiDriven) {

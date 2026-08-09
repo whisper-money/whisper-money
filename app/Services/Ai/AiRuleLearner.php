@@ -37,6 +37,17 @@ class AiRuleLearner
     private const MIN_SOLE_TOKEN_LENGTH = 5;
 
     /**
+     * Rule titles are built from bank-supplied merchant names, and some banks
+     * stuff the whole statement line (dates, amounts, running balance) into
+     * them. Cap each part so the whole "Merchant, Merchant → Category" title
+     * stays readable and well inside the column, rather than being cut off at
+     * the end by the model's truncation backstop.
+     */
+    private const MAX_TOKEN_LABEL_LENGTH = 40;
+
+    private const MAX_CATEGORY_LABEL_LENGTH = 60;
+
+    /**
      * Per-user document-frequency corpus, memoized for the lifetime of this
      * instance. A bulk correction runs learnFromCorrection once per transaction
      * for the same user, and the description corpus is immutable while only
@@ -510,13 +521,20 @@ class AiRuleLearner
      */
     private function title(string $categoryId, array $tokens): string
     {
-        $categoryName = Category::query()->whereKey($categoryId)->value('name') ?? '';
+        $categoryName = Str::limit(
+            Category::query()->whereKey($categoryId)->value('name') ?? '',
+            self::MAX_CATEGORY_LABEL_LENGTH,
+            '…',
+        );
 
         if ($tokens === []) {
             return trim($categoryName.' (AI)');
         }
 
-        $label = implode(', ', array_map(fn (string $token): string => Str::title($token), array_slice($tokens, 0, 3)));
+        $label = implode(', ', array_map(
+            fn (string $token): string => Str::limit(Str::title($token), self::MAX_TOKEN_LABEL_LENGTH, '…'),
+            array_slice($tokens, 0, 3),
+        ));
 
         if (count($tokens) > 3) {
             $label .= '…';
