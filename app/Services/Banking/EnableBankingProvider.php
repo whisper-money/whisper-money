@@ -106,9 +106,9 @@ class EnableBankingProvider implements BankingProviderInterface
                 previous: $e,
             );
         } catch (RequestException $e) {
-            if ($this->isExpiredSession($e)) {
+            if ($this->requiresReconnect($e)) {
                 throw new ExpiredBankingSessionException(
-                    'EnableBanking session expired while fetching account transactions.',
+                    'EnableBanking needs the user to reconnect before it will serve account transactions.',
                     previous: $e,
                 );
             }
@@ -173,9 +173,9 @@ class EnableBankingProvider implements BankingProviderInterface
                 previous: $e,
             );
         } catch (RequestException $e) {
-            if ($this->isExpiredSession($e)) {
+            if ($this->requiresReconnect($e)) {
                 throw new ExpiredBankingSessionException(
-                    'EnableBanking session expired while fetching account balances.',
+                    'EnableBanking needs the user to reconnect before it will serve account balances.',
                     previous: $e,
                 );
             }
@@ -256,14 +256,26 @@ class EnableBankingProvider implements BankingProviderInterface
         return $e->response->status() >= 500;
     }
 
-    private function isExpiredSession(RequestException $e): bool
+    /**
+     * Whether the bank will not serve this connection again until the user
+     * authorizes it afresh. Three codes, one remedy — the user reconnects:
+     *
+     * - 401 EXPIRED_SESSION: the consent window lapsed.
+     * - 401 CLOSED_SESSION: the session was closed (revoked at the bank, or
+     *   superseded by a newer authorization).
+     * - 403 PsuActionRequiredException: the bank wants the user present —
+     *   typically a fresh SCA before it will keep serving unattended access.
+     */
+    private function requiresReconnect(RequestException $e): bool
     {
         $body = $this->errorBody($e);
+        $detail = $body['detail'] ?? null;
 
-        // ponytail: only the documented EXPIRED_SESSION code; widen if other
-        // terminal "reconnect required" session codes (e.g. revoked) surface.
-        return $e->response->status() === 401
-            && ($body['error'] ?? null) === 'EXPIRED_SESSION';
+        return match ($e->response->status()) {
+            401 => in_array($body['error'] ?? null, ['EXPIRED_SESSION', 'CLOSED_SESSION'], true),
+            403 => is_array($detail) && ($detail['error_name'] ?? null) === 'PsuActionRequiredException',
+            default => false,
+        };
     }
 
     private function isInaccessibleAccount(RequestException $e): bool
@@ -308,16 +320,18 @@ class EnableBankingProvider implements BankingProviderInterface
             ->connectTimeout(5)
             ->withToken($this->generateJwt())
             ->acceptJson()
-            ->throw(function ($response, $exception) {
-                $body = $response->json();
-                $error = is_array($body) ? ($body['error'] ?? null) : null;
-                $isExpected = ($response->status() === 400 && $error === 'ASPSP_ERROR')
-                    || ($response->status() === 401 && $error === 'EXPIRED_SESSION')
+            ->throw(function ($response, RequestException $exception) {
+                // Expected outcomes of an unattended sync — a flaky bank connector,
+                // a consent the user has to renew, a period the bank won't serve —
+                // are the caller's to handle, so they log as warnings rather than
+                // as application errors.
+                $isExpected = $this->isAspspError($exception)
+                    || $this->requiresReconnect($exception)
                     || $response->status() === 422;
 
                 Log::log($isExpected ? 'warning' : 'error', 'EnableBanking API error', [
                     'status' => $response->status(),
-                    'body' => $body,
+                    'body' => $response->json(),
                     'exception' => get_class($exception),
                 ]);
             });
