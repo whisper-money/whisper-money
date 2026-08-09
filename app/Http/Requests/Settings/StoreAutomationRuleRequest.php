@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Settings;
 
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
+use App\Models\AutomationRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -26,7 +27,7 @@ class StoreAutomationRuleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:'.AutomationRule::MAX_TITLE_LENGTH],
             'priority' => ['required', 'integer', 'min:0'],
             'rules_json' => ['required', 'json', function ($attribute, $value, $fail) {
                 $decoded = json_decode($value, true);
