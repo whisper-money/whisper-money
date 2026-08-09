@@ -106,9 +106,9 @@ class EnableBankingProvider implements BankingProviderInterface
                 previous: $e,
             );
         } catch (RequestException $e) {
-            if ($this->isExpiredSession($e)) {
+            if ($this->requiresReconnect($e)) {
                 throw new ExpiredBankingSessionException(
-                    'EnableBanking session expired while fetching account transactions.',
+                    'EnableBanking needs the user to reconnect before it will serve account transactions.',
                     previous: $e,
                 );
             }
@@ -127,11 +127,12 @@ class EnableBankingProvider implements BankingProviderInterface
                 );
             }
 
-            if ($this->isTransientServerError($e)) {
+            if ($this->isTransientServerError($e) || $this->isPsuActionRequired($e)) {
                 throw new TransientBankingProviderException(
-                    'EnableBanking returned a server error while fetching account transactions.',
+                    'EnableBanking could not serve account transactions right now.',
                     provider: 'enablebanking',
                     statusCode: $e->response->status(),
+                    providerCode: $this->detailErrorName($e),
                     previous: $e,
                 );
             }
@@ -173,9 +174,9 @@ class EnableBankingProvider implements BankingProviderInterface
                 previous: $e,
             );
         } catch (RequestException $e) {
-            if ($this->isExpiredSession($e)) {
+            if ($this->requiresReconnect($e)) {
                 throw new ExpiredBankingSessionException(
-                    'EnableBanking session expired while fetching account balances.',
+                    'EnableBanking needs the user to reconnect before it will serve account balances.',
                     previous: $e,
                 );
             }
@@ -187,11 +188,12 @@ class EnableBankingProvider implements BankingProviderInterface
                 );
             }
 
-            if ($this->isTransientServerError($e)) {
+            if ($this->isTransientServerError($e) || $this->isPsuActionRequired($e)) {
                 throw new TransientBankingProviderException(
-                    'EnableBanking returned a server error while fetching account balances.',
+                    'EnableBanking could not serve account balances right now.',
                     provider: 'enablebanking',
                     statusCode: $e->response->status(),
+                    providerCode: $this->detailErrorName($e),
                     previous: $e,
                 );
             }
@@ -256,25 +258,50 @@ class EnableBankingProvider implements BankingProviderInterface
         return $e->response->status() >= 500;
     }
 
-    private function isExpiredSession(RequestException $e): bool
+    /**
+     * Whether the session itself is gone, so the bank will serve nothing more
+     * on this connection until the user authorizes it afresh: the consent
+     * window lapsed (EXPIRED_SESSION), or the session was closed — revoked at
+     * the bank, or superseded by a newer authorization (CLOSED_SESSION).
+     */
+    private function requiresReconnect(RequestException $e): bool
     {
-        $body = $this->errorBody($e);
-
-        // ponytail: only the documented EXPIRED_SESSION code; widen if other
-        // terminal "reconnect required" session codes (e.g. revoked) surface.
         return $e->response->status() === 401
-            && ($body['error'] ?? null) === 'EXPIRED_SESSION';
+            && in_array($this->errorBody($e)['error'] ?? null, ['EXPIRED_SESSION', 'CLOSED_SESSION'], true);
+    }
+
+    /**
+     * The bank asked for the user to be present — nominally a fresh SCA before
+     * it keeps serving unattended access.
+     *
+     * Deliberately treated as transient rather than as a reconnect: in the one
+     * burst we have seen, nine connections at nine different banks, all with
+     * months of consent left, failed inside the same nine-minute sync window
+     * hours after syncing cleanly, and none recurred. That is the provider
+     * faulting, not nine users revoking consent. Expiring a connection is a
+     * one-way door — the only way out is a full reauthorization with SCA — so
+     * this must not expire one on first sight. If it turns out to be genuine,
+     * the consent lapses on its own and 401 EXPIRED_SESSION takes over.
+     */
+    private function isPsuActionRequired(RequestException $e): bool
+    {
+        return $e->response->status() === 403
+            && $this->detailErrorName($e) === 'PsuActionRequiredException';
     }
 
     private function isInaccessibleAccount(RequestException $e): bool
     {
-        $detail = $this->errorBody($e)['detail'] ?? null;
-        $errorName = is_array($detail) ? ($detail['error_name'] ?? null) : null;
-
         // ponytail: the documented per-account 400; widen if other terminal
         // account-level codes surface for a single account.
         return $e->response->status() === 400
-            && $errorName === 'AccountNotAccessibleException';
+            && $this->detailErrorName($e) === 'AccountNotAccessibleException';
+    }
+
+    private function detailErrorName(RequestException $e): ?string
+    {
+        $detail = $this->errorBody($e)['detail'] ?? null;
+
+        return is_array($detail) ? ($detail['error_name'] ?? null) : null;
     }
 
     private function isWrongPeriod(RequestException $e): bool
@@ -308,16 +335,22 @@ class EnableBankingProvider implements BankingProviderInterface
             ->connectTimeout(5)
             ->withToken($this->generateJwt())
             ->acceptJson()
-            ->throw(function ($response, $exception) {
-                $body = $response->json();
-                $error = is_array($body) ? ($body['error'] ?? null) : null;
-                $isExpected = ($response->status() === 400 && $error === 'ASPSP_ERROR')
-                    || ($response->status() === 401 && $error === 'EXPIRED_SESSION')
+            ->throw(function ($response, RequestException $exception) {
+                // Expected outcomes of an unattended sync — a flaky bank connector,
+                // a consent the user has to renew, a period the bank won't serve —
+                // are the caller's to handle, so they log as warnings rather than
+                // as application errors.
+                $isExpected = $this->isAspspError($exception)
+                    || $this->requiresReconnect($exception)
+                    || $this->isPsuActionRequired($exception)
                     || $response->status() === 422;
 
                 Log::log($isExpected ? 'warning' : 'error', 'EnableBanking API error', [
                     'status' => $response->status(),
-                    'body' => $body,
+                    // Which endpoint failed tells one bad account apart from a
+                    // whole connection or a provider-wide wave.
+                    'path' => $response->effectiveUri()?->getPath(),
+                    'body' => $response->json(),
                     'exception' => get_class($exception),
                 ]);
             });

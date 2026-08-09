@@ -362,3 +362,134 @@ PEM;
 
     return new EnableBankingProvider('test-app-id', $path);
 }
+
+test('getTransactions treats a PSU-action-required 403 as transient rather than expiring the connection', function () {
+    // Payload shape from PHP-LARAVEL-3J. Expiring a connection is a one-way
+    // door, so a single one of these must leave it schedulable and self-healing.
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 403,
+            'message' => 'Internal error.',
+            'detail' => [
+                'message' => 'Internal error.',
+                'error_name' => 'PsuActionRequiredException',
+            ],
+        ], 403),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
+    } catch (TransientBankingProviderException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->statusCode)->toBe(403)
+            ->and($e->providerCode)->toBe('PsuActionRequiredException')
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected transient banking provider exception.');
+});
+
+test('getTransactions treats a closed session 401 as needing a reconnect', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 401,
+            'message' => 'Session is closed',
+            'error' => 'CLOSED_SESSION',
+            'detail' => null,
+        ], 401),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
+    } catch (ExpiredBankingSessionException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected expired banking session exception.');
+});
+
+test('getBalances treats a PSU-action-required 403 as transient rather than expiring the connection', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
+            'code' => 403,
+            'message' => 'Internal error.',
+            'detail' => [
+                'message' => 'Internal error.',
+                'error_name' => 'PsuActionRequiredException',
+            ],
+        ], 403),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getBalances('ext-123');
+    } catch (TransientBankingProviderException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected transient banking provider exception.');
+});
+
+test('a 403 the bank sends for another reason still surfaces as a request exception', function () {
+    // Only the documented PSU-action code is classified; a bare 403 stays an
+    // error we want to hear about.
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 403,
+            'message' => 'Forbidden',
+            'detail' => null,
+        ], 403),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    expect(fn () => $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString()))
+        ->toThrow(RequestException::class);
+});
+
+test('a 401 with an unrecognised code still surfaces as a request exception', function () {
+    // Only the documented session codes mean "reconnect". Widening this to any
+    // 401 would silently expire every connection during a credentials bug of
+    // our own, and expiring is a one-way door.
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 401,
+            'message' => 'Invalid token',
+            'error' => 'INVALID_TOKEN',
+            'detail' => null,
+        ], 401),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    expect(fn () => $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString()))
+        ->toThrow(RequestException::class);
+});
+
+test('a 403 whose detail is not an object is not mistaken for a known code', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 403,
+            'message' => 'Forbidden',
+            'detail' => 'Forbidden',
+        ], 403),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    expect(fn () => $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString()))
+        ->toThrow(RequestException::class);
+});
