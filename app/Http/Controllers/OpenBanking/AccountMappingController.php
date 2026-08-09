@@ -126,6 +126,8 @@ class AccountMappingController extends Controller
         $connection->update([
             'status' => BankingConnectionStatus::Active,
             'pending_accounts_data' => null,
+            'error_message' => null,
+            'consecutive_sync_failures' => 0,
         ]);
 
         SyncBankingConnectionJob::dispatch($connection);
