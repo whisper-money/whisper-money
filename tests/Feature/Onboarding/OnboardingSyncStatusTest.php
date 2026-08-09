@@ -54,6 +54,22 @@ it('returns pending false when unsynced connection has an error status', functio
         ->assertJson(['pending' => false]);
 });
 
+it('returns pending false when an unsynced active connection is rate limited', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    BankingConnection::factory()->for($user)->create([
+        'status' => BankingConnectionStatus::Active,
+        'last_synced_at' => null,
+        'rate_limited_until' => now()->addHour(),
+        'error_message' => 'Rate limit exceeded. Please wait a few minutes and try again.',
+    ]);
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/sync-status')
+        ->assertOk()
+        ->assertJson(['pending' => false]);
+});
+
 it('returns pending false when unsynced connection is revoked', function () {
     $user = User::factory()->create(['onboarded_at' => null]);
 

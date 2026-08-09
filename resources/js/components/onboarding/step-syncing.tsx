@@ -40,6 +40,9 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
     useEffect(() => {
         let cancelled = false;
         let pollTimer: ReturnType<typeof setTimeout>;
+        // ponytail: hard deadline so a sync that never resolves can't trap the
+        // user on this step; the sync keeps running in the background either way
+        const deadline = Date.now() + 2 * 60 * 1000;
 
         const check = async () => {
             try {
@@ -51,7 +54,7 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
                     return;
                 }
 
-                if (!data.pending) {
+                if (!data.pending || Date.now() > deadline) {
                     setIsPending(false);
                     advance();
                 } else {

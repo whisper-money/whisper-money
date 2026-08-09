@@ -75,12 +75,20 @@ class OnboardingController extends Controller
         ]);
     }
 
+    /**
+     * Report whether the onboarding sync step should keep waiting.
+     *
+     * A connection that already failed (rate limits keep the status Active while
+     * only recording an error) will never set last_synced_at, so it must not
+     * hold the user on the syncing step forever.
+     */
     public function syncStatus(Request $request): JsonResponse
     {
         $pending = $request->user()
             ->bankingConnections()
             ->where('status', BankingConnectionStatus::Active)
             ->whereNull('last_synced_at')
+            ->whereNull('error_message')
             ->exists();
 
         return response()->json(['pending' => $pending]);
