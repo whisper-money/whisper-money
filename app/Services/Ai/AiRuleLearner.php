@@ -37,6 +37,17 @@ class AiRuleLearner
     private const MIN_SOLE_TOKEN_LENGTH = 5;
 
     /**
+     * Rule titles are built from bank-supplied merchant names, and some banks
+     * stuff the whole statement line (dates, amounts, running balance) into
+     * them. Cap each token so the "→ Category" tail stays readable, and the
+     * whole title so it can never overflow the varchar(255) column — an
+     * oversized title used to abort the user's category change with a 500.
+     */
+    private const MAX_TOKEN_LABEL_LENGTH = 40;
+
+    private const MAX_TITLE_LENGTH = 255;
+
+    /**
      * Per-user document-frequency corpus, memoized for the lifetime of this
      * instance. A bulk correction runs learnFromCorrection once per transaction
      * for the same user, and the description corpus is immutable while only
@@ -513,16 +524,28 @@ class AiRuleLearner
         $categoryName = Category::query()->whereKey($categoryId)->value('name') ?? '';
 
         if ($tokens === []) {
-            return trim($categoryName.' (AI)');
+            return $this->fit(trim($categoryName.' (AI)'));
         }
 
-        $label = implode(', ', array_map(fn (string $token): string => Str::title($token), array_slice($tokens, 0, 3)));
+        $label = implode(', ', array_map(
+            fn (string $token): string => Str::limit(Str::title($token), self::MAX_TOKEN_LABEL_LENGTH),
+            array_slice($tokens, 0, 3),
+        ));
 
         if (count($tokens) > 3) {
             $label .= '…';
         }
 
-        return trim($label.' → '.$categoryName);
+        return $this->fit(trim($label.' → '.$categoryName));
+    }
+
+    /**
+     * Keep a generated title within the column, whatever the merchant and
+     * category names hold.
+     */
+    private function fit(string $title): string
+    {
+        return Str::limit($title, self::MAX_TITLE_LENGTH, '');
     }
 
     private function normalize(string $value): string

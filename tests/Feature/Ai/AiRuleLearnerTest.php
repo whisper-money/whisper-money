@@ -257,3 +257,39 @@ it('never reuses a user-owned rule, even for the same category', function () {
     expect($aiRule->id)->not->toBe($userRule->id)
         ->and($aiRule->origin)->toBe(RuleOrigin::Ai);
 });
+
+it('keeps the generated title within the column when the bank stuffs the statement line into the merchant name', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->for($user)->create([
+        'name' => 'Hobbies y otras actividades de ocio',
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+    $existing = expenseCategory($user);
+
+    // Real payload from PHP-LARAVEL-53: the bank sends the whole statement line
+    // (dates, concept, amount, running balance, card number) as the merchant, so
+    // two corrections alone already overflow the title column.
+    $statementLines = [
+        "15/06 12/06 Pago Con Tarjeta En Discos, Libros, Fotos Y Pc's -59,00 189,27 | 4940197152806468 Classpass* Monthly",
+        '01/06 31/05 Pago Con Tarjeta En Restaurantes Y Cafeterias -9,00 1.819,59 | 4940197152806468 Dirty Castelldefels Castelldefelses',
+    ];
+    $learner = app(AiRuleLearner::class);
+    $rule = null;
+
+    foreach ($statementLines as $statementLine) {
+        $rule = $learner->learnFromCorrection(
+            Transaction::factory()->plaintext()->create([
+                'user_id' => $user->id,
+                'category_id' => $existing->id,
+                'creditor_name' => $statementLine,
+            ]),
+            $target->id,
+        );
+    }
+
+    expect($rule)->not->toBeNull()
+        ->and(mb_strlen($rule->refresh()->title))->toBeLessThanOrEqual(255)
+        ->and($rule->title)->toContain($target->name)
+        ->and($rule->rules_json['or'])->toHaveCount(2);
+});
