@@ -39,13 +39,13 @@ class AiRuleLearner
     /**
      * Rule titles are built from bank-supplied merchant names, and some banks
      * stuff the whole statement line (dates, amounts, running balance) into
-     * them. Cap each token so the "→ Category" tail stays readable, and the
-     * whole title so it can never overflow the varchar(255) column — an
-     * oversized title used to abort the user's category change with a 500.
+     * them. Cap each part so the whole "Merchant, Merchant → Category" title
+     * stays readable and well inside the column, rather than being cut off at
+     * the end by the model's truncation backstop.
      */
     private const MAX_TOKEN_LABEL_LENGTH = 40;
 
-    private const MAX_TITLE_LENGTH = 255;
+    private const MAX_CATEGORY_LABEL_LENGTH = 60;
 
     /**
      * Per-user document-frequency corpus, memoized for the lifetime of this
@@ -521,14 +521,18 @@ class AiRuleLearner
      */
     private function title(string $categoryId, array $tokens): string
     {
-        $categoryName = Category::query()->whereKey($categoryId)->value('name') ?? '';
+        $categoryName = Str::limit(
+            Category::query()->whereKey($categoryId)->value('name') ?? '',
+            self::MAX_CATEGORY_LABEL_LENGTH,
+            '…',
+        );
 
         if ($tokens === []) {
-            return $this->fit(trim($categoryName.' (AI)'));
+            return trim($categoryName.' (AI)');
         }
 
         $label = implode(', ', array_map(
-            fn (string $token): string => Str::limit(Str::title($token), self::MAX_TOKEN_LABEL_LENGTH),
+            fn (string $token): string => Str::limit(Str::title($token), self::MAX_TOKEN_LABEL_LENGTH, '…'),
             array_slice($tokens, 0, 3),
         ));
 
@@ -536,16 +540,7 @@ class AiRuleLearner
             $label .= '…';
         }
 
-        return $this->fit(trim($label.' → '.$categoryName));
-    }
-
-    /**
-     * Keep a generated title within the column, whatever the merchant and
-     * category names hold.
-     */
-    private function fit(string $title): string
-    {
-        return Str::limit($title, self::MAX_TITLE_LENGTH, '');
+        return trim($label.' → '.$categoryName);
     }
 
     private function normalize(string $value): string

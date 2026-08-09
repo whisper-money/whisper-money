@@ -6,6 +6,7 @@ use App\Enums\RuleOrigin;
 use App\Models\Concerns\BelongsToSpace;
 use Database\Factories\AutomationRuleFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,8 @@ class AutomationRule extends Model
 {
     /** @use HasFactory<AutomationRuleFactory> */
     use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
+
+    public const MAX_TITLE_LENGTH = 255;
 
     protected $fillable = [
         'user_id',
@@ -46,6 +49,22 @@ class AutomationRule extends Model
             'priority' => 'integer',
             'origin' => RuleOrigin::class,
         ];
+    }
+
+    /**
+     * Generated titles are assembled from bank-supplied merchant names and AI
+     * tokens, neither of which the column bounds. Truncating here is the one
+     * place that covers every generator, so an oversized title can never abort
+     * the action that produced it. User-authored titles never reach this: the
+     * form request rejects anything over the same limit with a 422.
+     *
+     * @return Attribute<never, string|null>
+     */
+    protected function title(): Attribute
+    {
+        return Attribute::set(
+            fn (?string $value): ?string => $value === null ? null : mb_substr($value, 0, self::MAX_TITLE_LENGTH),
+        );
     }
 
     /**

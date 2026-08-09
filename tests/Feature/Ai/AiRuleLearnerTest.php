@@ -288,8 +288,11 @@ it('keeps the generated title within the column when the bank stuffs the stateme
         );
     }
 
+    // Each merchant is shortened enough that the whole title stays well inside
+    // the column and the "→ Category" tail survives.
     expect($rule)->not->toBeNull()
-        ->and(mb_strlen($rule->refresh()->title))->toBeLessThanOrEqual(255)
+        ->and(mb_strlen($rule->refresh()->title))->toBeLessThan(AutomationRule::MAX_TITLE_LENGTH)
         ->and($rule->title)->toContain($target->name)
+        ->and($rule->title)->toStartWith('15/06 12/06 Pago Con Tarjeta En Discos,…, ')
         ->and($rule->rules_json['or'])->toHaveCount(2);
 });

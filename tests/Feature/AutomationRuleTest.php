@@ -453,3 +453,12 @@ test('automation rules serialize full nested category and labels', function () {
     expect(array_keys($serialized['labels'][0]))
         ->toEqualCanonicalizing(['id', 'user_id', 'name', 'color', 'created_at', 'updated_at', 'deleted_at']);
 });
+
+test('a generated title is truncated to fit the column instead of failing the write', function () {
+    $rule = AutomationRule::factory()->create([
+        'user_id' => User::factory()->create()->id,
+        'title' => str_repeat('a', AutomationRule::MAX_TITLE_LENGTH + 50),
+    ]);
+
+    expect(mb_strlen($rule->refresh()->title))->toBe(AutomationRule::MAX_TITLE_LENGTH);
+});
