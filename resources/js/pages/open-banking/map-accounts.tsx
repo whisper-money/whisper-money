@@ -273,7 +273,7 @@ export default function MapAccountsPage({
                     {unmappableAccountNames.length > 0 && (
                         <p className="text-sm text-muted-foreground">
                             {__(
-                                'Not shown: :accounts. Your bank did not provide an identifier for them, so they cannot be synced.',
+                                'Not shown: :accounts. Your bank did not provide an identifier, so syncing is not possible.',
                                 { accounts: unmappableAccountNames.join(', ') },
                             )}
                         </p>
