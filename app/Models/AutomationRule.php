@@ -14,7 +14,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property array<string, mixed> $rules_json
+ * Rules written before the store request stopped double-encoding the payload
+ * came back out of the array cast as the JSON string it wrapped, so readers
+ * have to cope with both shapes — see AutomationRuleService::normalizeRuleJson.
+ *
+ * @property array<string, mixed>|string $rules_json
  * @property RuleOrigin $origin
  */
 class AutomationRule extends Model

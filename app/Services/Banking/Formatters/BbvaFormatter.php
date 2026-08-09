@@ -19,9 +19,9 @@ class BbvaFormatter implements BankFormatter
         'de', 'del', 'la', 'las', 'los', 'el', 'en', 'y', 'a', 'al', 'por', 'con', 'para',
     ];
 
-    public function matches(string $bankName): bool
+    public function matches(string $description, ?string $bankName): bool
     {
-        return mb_strtolower($bankName) === 'bbva';
+        return $bankName !== null && mb_strtolower($bankName) === 'bbva';
     }
 
     public function format(string $description): string

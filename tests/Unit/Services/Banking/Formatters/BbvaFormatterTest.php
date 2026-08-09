@@ -7,14 +7,15 @@ beforeEach(function () {
 });
 
 test('matches BBVA bank name case-insensitively', function () {
-    expect($this->formatter->matches('BBVA'))->toBeTrue();
-    expect($this->formatter->matches('bbva'))->toBeTrue();
-    expect($this->formatter->matches('Bbva'))->toBeTrue();
+    expect($this->formatter->matches('ADEUDO', 'BBVA'))->toBeTrue();
+    expect($this->formatter->matches('ADEUDO', 'bbva'))->toBeTrue();
+    expect($this->formatter->matches('ADEUDO', 'Bbva'))->toBeTrue();
 });
 
 test('does not match other banks', function () {
-    expect($this->formatter->matches('ING'))->toBeFalse();
-    expect($this->formatter->matches('Santander'))->toBeFalse();
+    expect($this->formatter->matches('ADEUDO', 'ING'))->toBeFalse();
+    expect($this->formatter->matches('ADEUDO', 'Santander'))->toBeFalse();
+    expect($this->formatter->matches('ADEUDO', null))->toBeFalse();
 });
 
 test('formats ALL CAPS description with // separators to Title Case', function () {
