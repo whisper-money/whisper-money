@@ -3,6 +3,7 @@
 use App\Models\AutomationRule;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\AutomationRuleService;
 
 use function Pest\Laravel\artisan;
 
@@ -74,6 +75,25 @@ test('rewrites the tag in rules stored as a JSON string', function () {
 
     expect(json_decode($rule->refresh()->rules_json, true))
         ->toBe(['in' => ['BAR CONO', ['var' => 'description']]]);
+});
+
+test('a rule matching on the raw tag still matches its transaction afterwards', function () {
+    $user = User::factory()->create();
+    $transaction = taggedTransaction([
+        'user_id' => $user->id,
+        'description' => '/TXT/D|RECIBO VISA CLASICA',
+    ]);
+    $rule = AutomationRule::factory()->for($user)->create([
+        'rules_json' => ['in' => ['/TXT/D|RECIBO VISA CLASICA', ['var' => 'description']]],
+    ]);
+
+    $service = app(AutomationRuleService::class);
+
+    expect($service->ruleMatches($rule, $transaction))->toBeTrue();
+
+    artisan('banking:backfill-descriptions')->assertSuccessful();
+
+    expect($service->ruleMatches($rule->refresh(), $transaction->refresh()))->toBeTrue();
 });
 
 test('leaves untagged automation rules untouched', function () {
