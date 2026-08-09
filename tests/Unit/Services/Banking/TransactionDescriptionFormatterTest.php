@@ -20,6 +20,20 @@ test('does not set original_description when formatting produces no change', fun
     expect($result['original_description'])->toBeNull();
 });
 
+test('strips the remittance tag and stores the original, whatever the bank', function () {
+    $result = $this->formatter->format('/TXT/D|BAR CONO', 'Bankinter');
+
+    expect($result['description'])->toBe('BAR CONO');
+    expect($result['original_description'])->toBe('/TXT/D|BAR CONO');
+});
+
+test('strips the remittance tag even when the bank name is unknown', function () {
+    $result = $this->formatter->format('/TXT/D|BAR CONO', null);
+
+    expect($result['description'])->toBe('BAR CONO');
+    expect($result['original_description'])->toBe('/TXT/D|BAR CONO');
+});
+
 test('does not transform description for non-BBVA bank', function () {
     $result = $this->formatter->format('ADEUDO DE ENDESA', 'ING');
 

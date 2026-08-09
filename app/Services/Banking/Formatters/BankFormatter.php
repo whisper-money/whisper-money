@@ -4,7 +4,7 @@ namespace App\Services\Banking\Formatters;
 
 interface BankFormatter
 {
-    public function matches(string $bankName): bool;
+    public function matches(string $description, ?string $bankName): bool;
 
     public function format(string $description): string;
 }
