@@ -13,6 +13,7 @@ use App\Services\Ai\AiRuleLearner;
 use App\Services\Ai\CategorizationOutcome;
 use App\Services\Ai\CategoryOverrideHandler;
 use App\Services\AutomationRuleService;
+use Illuminate\Support\Facades\Exceptions;
 
 function cohCategory(User $user): Category
 {
@@ -379,4 +380,22 @@ it('learns nothing from an encrypted-description transaction without a merchant'
 
     expect($learned)->toBeNull()
         ->and(AutomationRule::query()->origin(RuleOrigin::Correction)->count())->toBe(0);
+});
+
+it('still applies the correction when learning blows up', function () {
+    $user = User::factory()->create();
+    $target = cohCategory($user);
+    $transaction = cohMerchantTxn($user, 'Mercadona');
+    $transaction->update(['category_source' => CategorySource::Ai]);
+
+    $this->mock(AiRuleLearner::class)
+        ->shouldReceive('forgetFromAiRules')
+        ->andThrow(new RuntimeException('learning exploded'));
+
+    Exceptions::fake();
+
+    $rule = app(CategoryOverrideHandler::class)->record($transaction, $target->id);
+
+    Exceptions::assertReported(RuntimeException::class);
+    expect($rule)->toBeNull();
 });
