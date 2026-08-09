@@ -2,6 +2,7 @@
 
 namespace App\Services\Banking\Sync;
 
+use App\Enums\TransactionSource;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
@@ -42,7 +43,11 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         foreach ($connection->accounts as $account) {
             try {
                 if ($account->isLinked()) {
+                    // Only bank-sourced rows move the watermark. A manual or
+                    // imported transaction dated later would otherwise shrink
+                    // the fetch window and skip bank history for good.
                     $lastTransaction = $account->transactions()
+                        ->where('source', TransactionSource::EnableBanking)
                         ->latest('transaction_date')
                         ->first();
 

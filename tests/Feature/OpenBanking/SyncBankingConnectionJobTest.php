@@ -120,7 +120,7 @@ test('linked accounts sync from last transaction date and skip historical balanc
         'external_account_id' => 'ext-123',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->enableBanking()->plaintext()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2025-12-15',
@@ -132,6 +132,46 @@ test('linked accounts sync from last transaction date and skip historical balanc
         ->withArgs(function ($acct, $dateFrom, $dateTo, $strategy) {
             return $dateFrom === '2025-12-15';
         })
+        ->andReturn(0);
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldNotReceive('calculateHistoricalBalances');
+
+    $job = new SyncBankingConnectionJob($connection);
+    runSync($job, $transactionSync, $balanceSync);
+});
+
+test('a manual transaction does not move the linked account sync window', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->linked()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    Transaction::factory()->enableBanking()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2025-12-15',
+    ]);
+
+    // Hand-entered and dated later than anything the bank has sent. It must not
+    // shrink the window, or the bank rows in between are skipped for good.
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2025-12-28',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')
+        ->once()
+        ->withArgs(fn ($acct, $dateFrom, $dateTo, $strategy) => $dateFrom === '2025-12-15')
         ->andReturn(0);
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
@@ -156,7 +196,7 @@ test('linked accounts clamp linkedDateFrom to today when last transaction is in 
         'external_account_id' => 'ext-123',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->enableBanking()->plaintext()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2026-05-04',

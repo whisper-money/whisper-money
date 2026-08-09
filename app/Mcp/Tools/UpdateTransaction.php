@@ -33,7 +33,7 @@ class UpdateTransaction extends WriteTool
             'creditor_name' => $schema->string()->description('New creditor (payee) name.'),
             'debtor_name' => $schema->string()->description('New debtor (payer) name.'),
             'notes' => $schema->string()->description('New free-text notes.'),
-            'update_balance' => $schema->boolean()->description('When true and the amount/date/account changed, move the manual account balance snapshots accordingly. Default false.'),
+            'update_balance' => $schema->boolean()->description('When true and the amount/date/account changed, move the account balance snapshots accordingly. Ignored on connected accounts, whose balances come from the bank. Default false.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }

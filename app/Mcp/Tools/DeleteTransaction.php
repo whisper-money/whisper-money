@@ -22,7 +22,7 @@ class DeleteTransaction extends WriteTool
     {
         return [
             'transaction_id' => $schema->string()->description('Id of the manually-created transaction to delete.')->required(),
-            'update_balance' => $schema->boolean()->description('When true, reverse this transaction from the manual account balance snapshots. Default false.'),
+            'update_balance' => $schema->boolean()->description('When true, reverse this transaction from the account balance snapshots. Ignored on connected accounts, whose balances come from the bank. Default false.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }
