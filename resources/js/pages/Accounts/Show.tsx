@@ -134,8 +134,17 @@ export default function AccountShow({
     const loanDetail = account.loan_detail;
     const linkedLoanAccount = account.linked_loan_account;
     const hasLinkedLoan = isRealEstate && !!linkedLoanAccount;
-    const canCreateTransaction =
-        !isConnected && isTransactionalAccount(account);
+    // Connected accounts accept manual transactions too (a sync only inserts
+    // rows it has not seen, so they survive); only their balances are the
+    // bank's to own.
+    const canCreateTransaction = isTransactionalAccount(account);
+
+    const addTransactionButton = canCreateTransaction ? (
+        <Button variant="outline" onClick={handleAddTransaction}>
+            <Plus className="h-4 w-4" />
+            {__('Add transaction')}
+        </Button>
+    ) : null;
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -192,12 +201,15 @@ export default function AccountShow({
                     </div>
 
                     {isConnected && !hasLinkedLoan ? (
-                        <Button
-                            variant="outline"
-                            onClick={() => setEditOpen(true)}
-                        >
-                            {__('Edit account')}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            {addTransactionButton}
+                            <Button
+                                variant="outline"
+                                onClick={() => setEditOpen(true)}
+                            >
+                                {__('Edit account')}
+                            </Button>
+                        </div>
                     ) : isConnected && hasLinkedLoan ? (
                         <ButtonGroup>
                             <Button
@@ -276,15 +288,7 @@ export default function AccountShow({
                         </ButtonGroup>
                     ) : (
                         <div className="flex flex-wrap gap-2">
-                            {canCreateTransaction && (
-                                <Button
-                                    variant="outline"
-                                    onClick={handleAddTransaction}
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    {__('Add transaction')}
-                                </Button>
-                            )}
+                            {addTransactionButton}
                             <ButtonGroup>
                                 <Button
                                     variant="outline"

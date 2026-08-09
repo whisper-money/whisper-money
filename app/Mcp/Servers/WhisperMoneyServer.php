@@ -49,10 +49,12 @@ data.
 Write tools (create_transaction, update_transaction, delete_transaction,
 categorize_transaction, label_transaction, create_balance and full CRUD for
 categories, labels and automation rules) require a read & write token; a
-read-only token can analyse data but never change it. Bank-connected accounts
-and bank/imported transactions are protected: you can only create, edit or
-delete manual transactions and manual-account balances, but you can categorize
-and label any transaction.
+read-only token can analyse data but never change it. Manual transactions can be
+created on any account, bank-connected ones included — a sync never removes them.
+Bank/imported transactions themselves are protected: only manually-created ones
+can be edited or deleted, though you can categorize and label any transaction.
+Balances can only be recorded on non-connected accounts, since a connected
+account's balances come from the bank and would be overwritten.
 MARKDOWN)]
 class WhisperMoneyServer extends Server
 {

@@ -59,18 +59,21 @@ it('creates a manual transaction and defaults the currency to the account', func
     expect($transaction->source->value)->toBe('manually_created');
 });
 
-it('refuses to create a transaction on a connected account', function () {
+it('creates a transaction on a connected account without touching its balances', function () {
     $user = User::factory()->create();
     $account = Account::factory()->connected()->create(['user_id' => $user->id]);
+    $account->balances()->create(['balance_date' => '2026-01-15', 'balance' => 10_000]);
 
     callWriteTool($user, CreateTransaction::class, [
         'account_id' => $account->id,
-        'description' => 'Nope',
+        'description' => 'Cash withdrawal the bank missed',
         'amount' => -100,
         'transaction_date' => '2026-01-15',
-    ])->assertHasErrors(['connected']);
+        'update_balance' => true,
+    ])->assertOk()->assertSee('Cash withdrawal the bank missed');
 
-    expect(Transaction::query()->where('account_id', $account->id)->count())->toBe(0);
+    expect(Transaction::query()->where('account_id', $account->id)->count())->toBe(1);
+    expect($account->balances()->where('balance_date', '2026-01-15')->value('balance'))->toBe(10_000);
 });
 
 it('edits a manual transaction', function () {

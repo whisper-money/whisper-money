@@ -28,7 +28,7 @@ class UpdateTransaction extends WriteTool
             'amount' => $schema->integer()->description('New signed amount in minor units (cents).'),
             'transaction_date' => $schema->string()->description('New transaction date, YYYY-MM-DD.'),
             'currency_code' => $schema->string()->description('New ISO 4217 currency code (3 letters).'),
-            'account_id' => $schema->string()->description('Move the transaction to another non-connected account.'),
+            'account_id' => $schema->string()->description('Move the transaction to another account.'),
             'category_id' => $schema->string()->description('New category id, or null to clear the category.'),
             'creditor_name' => $schema->string()->description('New creditor (payee) name.'),
             'debtor_name' => $schema->string()->description('New debtor (payer) name.'),
@@ -74,7 +74,7 @@ class UpdateTransaction extends WriteTool
             $transaction->currency_code = mb_strtoupper($request->string('currency_code')->toString());
         }
         if ($request->has('account_id')) {
-            $transaction->account_id = $this->writableAccount($request, $space)->id;
+            $transaction->account_id = $this->accountInSpace($request, $space)->id;
         }
         if ($request->has('notes')) {
             $transaction->notes = $request->filled('notes') ? $request->string('notes')->toString() : null;

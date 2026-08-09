@@ -129,14 +129,30 @@ describe('AccountShow', () => {
         expect(router.reload).toHaveBeenCalledWith({ only: ['transactions'] });
     });
 
-    it('hides transaction action for connected accounts', () => {
+    it('opens create transaction dialog for connected transactional accounts', () => {
         renderPage({
             ...baseAccount,
             banking_connection_id: 'connection-1',
         });
 
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Add transaction' }),
+        );
+
+        expect(editTransactionDialog).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                open: true,
+                initialAccountId: 'account-1',
+                mode: 'create',
+            }),
+        );
+    });
+
+    it('hides transaction action for non-transactional accounts', () => {
+        renderPage({ ...baseAccount, type: 'real_estate' });
+
         expect(
-            screen.queryByRole('button', { name: 'Transaction' }),
+            screen.queryByRole('button', { name: 'Add transaction' }),
         ).not.toBeInTheDocument();
     });
 });

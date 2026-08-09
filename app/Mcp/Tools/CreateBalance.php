@@ -37,7 +37,7 @@ class CreateBalance extends WriteTool
         ]);
 
         $space = $this->resolveSpace($request, $user);
-        $account = $this->writableAccount($request, $space);
+        $account = $this->balanceWritableAccount($request, $space);
 
         $balanceDate = $request->filled('balance_date')
             ? $request->string('balance_date')->toString()
