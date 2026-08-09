@@ -152,6 +152,21 @@ class BankingConnection extends Model
         return ! empty($this->pending_accounts_data);
     }
 
+    /**
+     * Pending accounts the user can actually map. Providers sometimes report accounts
+     * without a uid (EnableBanking does it for some French cards); those can never be
+     * synced, so offering them for mapping only produces a validation error.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function mappablePendingAccounts(): array
+    {
+        return array_values(array_filter(
+            $this->pending_accounts_data ?? [],
+            fn (array $account): bool => ! empty($account['uid']),
+        ));
+    }
+
     public function isExpired(): bool
     {
         return $this->status === BankingConnectionStatus::Expired

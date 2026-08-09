@@ -21,6 +21,10 @@ import type { BankingConnection, PendingBankAccount } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { toast } from 'sonner';
+
+/** ISO 4217 code for "no currency" — some providers report it instead of a real one. */
+const NO_CURRENCY = 'XXX';
 
 interface Mapping {
     bank_account_uid: string;
@@ -56,7 +60,11 @@ export default function MapAccountsPage({
         );
     }
 
-    function getCompatibleAccounts(currency: string) {
+    function getCompatibleAccounts(currency: string | null) {
+        if (!currency) {
+            return existingAccounts;
+        }
+
         return existingAccounts.filter((a) => a.currency_code === currency);
     }
 
@@ -67,6 +75,11 @@ export default function MapAccountsPage({
             `/open-banking/connections/${connection.id}/map-accounts`,
             { mappings },
             {
+                onError: (errors) => {
+                    toast.error(
+                        Object.values(errors)[0] ?? __('Something went wrong.'),
+                    );
+                },
                 onFinish: () => setProcessing(false),
             },
         );
@@ -94,13 +107,22 @@ export default function MapAccountsPage({
                         const mapping = mappings.find(
                             (m) => m.bank_account_uid === bankAccount.uid,
                         );
-                        const compatibleAccounts = getCompatibleAccounts(
-                            bankAccount.currency,
-                        );
+                        const currency =
+                            bankAccount.currency === NO_CURRENCY
+                                ? null
+                                : bankAccount.currency;
+                        const compatibleAccounts =
+                            getCompatibleAccounts(currency);
                         const displayName =
                             bankAccount.name ||
                             bankAccount.account_id?.iban ||
                             __('Bank Account');
+                        const details = [
+                            currency,
+                            bankAccount.name
+                                ? bankAccount.account_id?.iban
+                                : null,
+                        ].filter(Boolean);
 
                         return (
                             <Card key={bankAccount.uid}>
@@ -109,10 +131,7 @@ export default function MapAccountsPage({
                                         {displayName}
                                     </CardTitle>
                                     <CardDescription>
-                                        {bankAccount.currency}
-                                        {bankAccount.account_id?.iban &&
-                                            bankAccount.name &&
-                                            ` \u00b7 ${bankAccount.account_id.iban}`}
+                                        {details.join(' \u00b7 ')}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>

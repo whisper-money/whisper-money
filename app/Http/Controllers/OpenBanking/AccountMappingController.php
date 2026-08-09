@@ -50,7 +50,7 @@ class AccountMappingController extends Controller
 
         return Inertia::render('open-banking/map-accounts', [
             'connection' => $connection,
-            'bankAccounts' => $connection->pending_accounts_data,
+            'bankAccounts' => $connection->mappablePendingAccounts(),
             'existingAccounts' => $existingAccounts,
         ]);
     }

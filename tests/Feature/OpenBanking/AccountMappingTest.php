@@ -34,6 +34,36 @@ test('show returns mapping page with correct props', function () {
     );
 });
 
+test('show hides pending accounts the provider reported without a uid', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'pending_accounts_data' => [
+            [
+                'uid' => 'ext-1',
+                'currency' => 'EUR',
+                'name' => 'Compte Bancaire',
+                'account_id' => ['iban' => 'FR1234567890'],
+            ],
+            [
+                'uid' => null,
+                'currency' => 'XXX',
+                'name' => 'CB Visa',
+                'account_id' => ['iban' => null],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('open-banking.map-accounts', $connection))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('open-banking/map-accounts')
+            ->has('bankAccounts', 1)
+            ->where('bankAccounts.0.uid', 'ext-1')
+        );
+});
+
 test('show redirects if no pending accounts', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
