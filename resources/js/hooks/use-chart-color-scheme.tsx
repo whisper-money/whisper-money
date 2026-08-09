@@ -1,3 +1,4 @@
+import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { ChartColorScheme, SharedData } from '@/types';
 import { CategoryColor, getCategoryChartColor } from '@/types/category';
 import { usePage } from '@inertiajs/react';
@@ -31,9 +32,14 @@ export function initializeChartColorScheme() {
         return;
     }
 
-    const saved =
-        (localStorage.getItem(STORAGE_KEY) as ChartColorScheme) || 'colorful';
-    applyColorScheme(saved);
+    // Only override what the server already rendered from the cookie: with no
+    // usable storage this would otherwise reset every user to "colorful",
+    // leaving the CSS palette fighting the scheme the charts draw with.
+    const saved = readStoredValue(STORAGE_KEY) as ChartColorScheme | null;
+
+    if (saved) {
+        applyColorScheme(saved);
+    }
 }
 
 export function useChartColorScheme() {
@@ -42,15 +48,13 @@ export function useChartColorScheme() {
 
     const updateScheme = useCallback((newScheme: ChartColorScheme) => {
         setScheme(newScheme);
-        localStorage.setItem(STORAGE_KEY, newScheme);
+        writeStoredValue(STORAGE_KEY, newScheme);
         setCookie(STORAGE_KEY, newScheme);
         applyColorScheme(newScheme);
     }, []);
 
     useEffect(() => {
-        const saved = localStorage.getItem(
-            STORAGE_KEY,
-        ) as ChartColorScheme | null;
+        const saved = readStoredValue(STORAGE_KEY) as ChartColorScheme | null;
         updateScheme(saved || serverScheme || 'colorful');
     }, [serverScheme, updateScheme]);
 

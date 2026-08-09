@@ -27,6 +27,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
+import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
@@ -101,7 +102,7 @@ export function EditTransactionDialog({
     >(new Map());
     const [updateAccountBalance, setUpdateAccountBalance] = useState(() => {
         if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem(STORAGE_KEY_UPDATE_BALANCE);
+            const stored = readStoredValue(STORAGE_KEY_UPDATE_BALANCE);
             // Active by default; only an explicit opt-out turns it off.
             return stored === null ? true : stored === 'true';
         }
@@ -275,7 +276,7 @@ export function EditTransactionDialog({
 
     function handleUpdateBalanceChange(checked: boolean) {
         setUpdateAccountBalance(checked);
-        localStorage.setItem(STORAGE_KEY_UPDATE_BALANCE, String(checked));
+        writeStoredValue(STORAGE_KEY_UPDATE_BALANCE, String(checked));
     }
 
     async function handleSubmit(e: React.FormEvent) {

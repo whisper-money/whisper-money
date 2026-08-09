@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { tailwindColorClasses } from '@/components/user-info';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
+import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
@@ -2102,10 +2103,10 @@ export default function Welcome({
 
         if (langParam && supportedLocales.includes(langParam)) {
             // Store the preference in localStorage
-            localStorage.setItem('whisper_landing_locale', langParam);
+            writeStoredValue('whisper_landing_locale', langParam);
         } else {
             // No query param - check if we have a stored preference
-            const storedLocale = localStorage.getItem('whisper_landing_locale');
+            const storedLocale = readStoredValue('whisper_landing_locale');
 
             if (
                 storedLocale &&
@@ -2117,7 +2118,7 @@ export default function Welcome({
                 return;
             } else if (!storedLocale && locale) {
                 // First visit - store the detected locale from session/header
-                localStorage.setItem('whisper_landing_locale', locale);
+                writeStoredValue('whisper_landing_locale', locale);
             }
         }
     }, [locale]);
