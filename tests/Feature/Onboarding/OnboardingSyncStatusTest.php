@@ -54,20 +54,44 @@ it('returns pending false when unsynced connection has an error status', functio
         ->assertJson(['pending' => false]);
 });
 
-it('returns pending false when an unsynced active connection is rate limited', function () {
+it('reports a rate limited connection as failed instead of pending', function () {
     $user = User::factory()->create(['onboarded_at' => null]);
 
+    BankingConnection::factory()->for($user)->rateLimited()->create();
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/sync-status')
+        ->assertOk()
+        ->assertJson(['pending' => false, 'failed' => true]);
+});
+
+it('keeps waiting while a healthy connection syncs alongside a failed one', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    BankingConnection::factory()->for($user)->rateLimited()->create();
     BankingConnection::factory()->for($user)->create([
         'status' => BankingConnectionStatus::Active,
         'last_synced_at' => null,
-        'rate_limited_until' => now()->addHour(),
-        'error_message' => 'Rate limit exceeded. Please wait a few minutes and try again.',
     ]);
 
     $this->actingAs($user)
         ->getJson('/onboarding/sync-status')
         ->assertOk()
-        ->assertJson(['pending' => false]);
+        ->assertJson(['pending' => true, 'failed' => false]);
+});
+
+it('does not report a synced connection as failed', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    BankingConnection::factory()->for($user)->create([
+        'status' => BankingConnectionStatus::Active,
+        'last_synced_at' => now(),
+    ]);
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/sync-status')
+        ->assertOk()
+        ->assertJson(['pending' => false, 'failed' => false]);
 });
 
 it('returns pending false when unsynced connection is revoked', function () {

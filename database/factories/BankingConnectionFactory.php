@@ -171,4 +171,18 @@ class BankingConnectionFactory extends Factory
             'consecutive_sync_failures' => 1,
         ]);
     }
+
+    /**
+     * A connection the provider rate limited: still Active, backing off, and
+     * carrying an error message instead of a sync.
+     */
+    public function rateLimited(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => BankingConnectionStatus::Active,
+            'last_synced_at' => null,
+            'rate_limited_until' => now()->addHour(),
+            'error_message' => 'Rate limit exceeded. Please wait a few minutes and try again.',
+        ]);
+    }
 }

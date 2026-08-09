@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\BankingConnectionStatus;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Bank;
+use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
@@ -78,20 +79,28 @@ class OnboardingController extends Controller
     /**
      * Report whether the onboarding sync step should keep waiting.
      *
-     * A connection that already failed (rate limits keep the status Active while
-     * only recording an error) will never set last_synced_at, so it must not
-     * hold the user on the syncing step forever.
+     * A connection that already recorded an error will never set last_synced_at
+     * (rate limits keep the status Active while only storing the message), so it
+     * must not hold the user on the syncing step forever. It is reported as
+     * failed instead, so the step can say so rather than claim everything worked.
      */
     public function syncStatus(Request $request): JsonResponse
     {
-        $pending = $request->user()
+        $unsynced = $request->user()
             ->bankingConnections()
-            ->where('status', BankingConnectionStatus::Active)
+            ->whereIn('status', [BankingConnectionStatus::Active, BankingConnectionStatus::Error])
             ->whereNull('last_synced_at')
-            ->whereNull('error_message')
-            ->exists();
+            ->get(['status', 'error_message']);
 
-        return response()->json(['pending' => $pending]);
+        $pending = $unsynced->contains(
+            fn (BankingConnection $connection): bool => $connection->status === BankingConnectionStatus::Active
+                && $connection->error_message === null
+        );
+
+        return response()->json([
+            'pending' => $pending,
+            'failed' => ! $pending && $unsynced->isNotEmpty(),
+        ]);
     }
 
     public function complete(Request $request): RedirectResponse

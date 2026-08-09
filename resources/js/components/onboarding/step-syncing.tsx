@@ -1,9 +1,18 @@
+import { StepButton } from '@/components/onboarding/step-button';
+import { StepHeader } from '@/components/onboarding/step-header';
 import { syncStatus } from '@/routes/onboarding';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
-import { Loader2 } from 'lucide-react';
+import { CloudOff, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+// Client-side give-up: the sync keeps running on the queue, but this guarantees
+// the spinner resolves even if the worker dies. Beyond the worst case a healthy
+// first sync can take (3 attempts of a 120s job, 30s apart).
+const MAX_POLL_MS = 5 * 60_000;
+
+const POLL_INTERVAL_MS = 3_000;
 
 const MESSAGES = [
     'Importing your balances...',
@@ -24,6 +33,7 @@ interface StepSyncingProps {
 export function StepSyncing({ onComplete }: StepSyncingProps) {
     const [messageIndex, setMessageIndex] = useState(0);
     const [isPending, setIsPending] = useState<boolean | null>(null);
+    const [hasStalled, setHasStalled] = useState(false);
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
 
@@ -40,31 +50,49 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
     useEffect(() => {
         let cancelled = false;
         let pollTimer: ReturnType<typeof setTimeout>;
-        // ponytail: hard deadline so a sync that never resolves can't trap the
-        // user on this step; the sync keeps running in the background either way
-        const deadline = Date.now() + 2 * 60 * 1000;
+        const deadline = Date.now() + MAX_POLL_MS;
+
+        const stall = () => {
+            setIsPending(false);
+            setHasStalled(true);
+        };
+
+        // A failing status check says nothing about the sync itself, so both the
+        // still-pending and the request-failed paths keep polling until the
+        // deadline rather than dropping the user into the next step early.
+        const keepPolling = () => {
+            if (Date.now() > deadline) {
+                stall();
+
+                return;
+            }
+
+            setIsPending(true);
+            pollTimer = setTimeout(() => check(), POLL_INTERVAL_MS);
+        };
 
         const check = async () => {
             try {
-                const { data } = await axios.get<{ pending: boolean }>(
-                    syncStatus().url,
-                );
+                const { data } = await axios.get<{
+                    pending: boolean;
+                    failed: boolean;
+                }>(syncStatus().url, { timeout: POLL_INTERVAL_MS });
 
                 if (cancelled) {
                     return;
                 }
 
-                if (!data.pending || Date.now() > deadline) {
+                if (data.failed) {
+                    stall();
+                } else if (data.pending) {
+                    keepPolling();
+                } else {
                     setIsPending(false);
                     advance();
-                } else {
-                    setIsPending(true);
-                    pollTimer = setTimeout(() => check(), 3000);
                 }
             } catch {
                 if (!cancelled) {
-                    // On error, advance anyway to not block the user
-                    advance();
+                    keepPolling();
                 }
             }
         };
@@ -89,6 +117,22 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
 
         return () => clearInterval(interval);
     }, [isPending]);
+
+    if (hasStalled) {
+        return (
+            <div className="flex animate-in flex-col items-center gap-6 pb-4 duration-500 fade-in slide-in-from-bottom-4">
+                <StepHeader
+                    icon={CloudOff}
+                    iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
+                    title={__('We couldn’t finish importing right now')}
+                    description={__(
+                        'Your bank is taking longer than expected. We’ll keep trying in the background and your transactions will show up automatically.',
+                    )}
+                />
+                <StepButton text={__('Continue')} onClick={advance} />
+            </div>
+        );
+    }
 
     // Don't render anything until we know sync is pending
     if (!isPending) {
