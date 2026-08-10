@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingSyncLogStatus;
 use App\Enums\DripEmailType;
 use App\Enums\TransactionSource;
 use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
@@ -11,6 +12,7 @@ use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\BankingConnection;
+use App\Models\BankingSyncLog;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserMailLog;
@@ -130,7 +132,7 @@ test('linked accounts sync from last transaction date and skip historical balanc
     $transactionSync->shouldReceive('sync')
         ->once()
         ->withArgs(function ($acct, $dateFrom, $dateTo, $strategy) {
-            return $dateFrom === '2025-12-15';
+            return $dateFrom === '2025-12-12';
         })
         ->andReturn(0);
 
@@ -171,7 +173,7 @@ test('a manual transaction does not move the linked account sync window', functi
     $transactionSync = Mockery::mock(TransactionSyncService::class);
     $transactionSync->shouldReceive('sync')
         ->once()
-        ->withArgs(fn ($acct, $dateFrom, $dateTo, $strategy) => $dateFrom === '2025-12-15')
+        ->withArgs(fn ($acct, $dateFrom, $dateTo, $strategy) => $dateFrom === '2025-12-12')
         ->andReturn(0);
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
@@ -182,7 +184,7 @@ test('a manual transaction does not move the linked account sync window', functi
     runSync($job, $transactionSync, $balanceSync);
 });
 
-test('linked accounts clamp linkedDateFrom to today when last transaction is in future', function () {
+test('clamps the fetch window to today when the last transaction is in the future', function () {
     Carbon::setTestNow('2026-05-02 12:00:00');
 
     $user = User::factory()->onboarded()->create();
@@ -199,7 +201,7 @@ test('linked accounts clamp linkedDateFrom to today when last transaction is in 
     Transaction::factory()->enableBanking()->plaintext()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
-        'transaction_date' => '2026-05-04',
+        'transaction_date' => '2026-05-10',
     ]);
 
     $transactionSync = Mockery::mock(TransactionSyncService::class);
@@ -216,6 +218,86 @@ test('linked accounts clamp linkedDateFrom to today when last transaction is in 
 
     $job = new SyncBankingConnectionJob($connection);
     runSync($job, $transactionSync, $balanceSync);
+});
+
+test('an account with bank transactions syncs from the watermark instead of a year back', function () {
+    Carbon::setTestNow('2026-05-02 12:00:00');
+
+    $user = User::factory()->onboarded()->create();
+    // The broken production state: transactions were already imported but the
+    // run never finished, so last_synced_at is still null.
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    Transaction::factory()->enableBanking()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-04-28',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')
+        ->once()
+        ->withArgs(fn ($acct, $dateFrom, $dateTo, $strategy) => $dateFrom === '2026-04-25'
+            && $dateTo === '2026-05-02'
+            && $strategy === null)
+        ->andReturn(0);
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
+
+    $job = new SyncBankingConnectionJob($connection);
+    runSync($job, $transactionSync, $balanceSync);
+});
+
+test('a failing balance call does not fail the whole sync', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->once()->andReturnUsing(function () use ($user, $account) {
+        Transaction::factory()->enableBanking()->plaintext()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+        ]);
+
+        return 1;
+    });
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once()->andThrow(
+        new RequestException(new Illuminate\Http\Client\Response(new Response(429)))
+    );
+    $balanceSync->shouldNotReceive('calculateHistoricalBalances');
+
+    $job = new SyncBankingConnectionJob($connection);
+    runSync($job, $transactionSync, $balanceSync);
+
+    $connection->refresh();
+    $log = BankingSyncLog::query()->latest('created_at')->first();
+
+    expect($connection->status)->toBe(BankingConnectionStatus::Active)
+        ->and($connection->last_synced_at)->not->toBeNull()
+        ->and($connection->rate_limited_until)->toBeNull()
+        ->and($account->transactions()->count())->toBe(1)
+        ->and($log->status)->toBe(BankingSyncLogStatus::Success)
+        ->and($log->metadata['balance_failed'])->toBe(1);
 });
 
 test('mixed linked and new accounts in same connection', function () {
