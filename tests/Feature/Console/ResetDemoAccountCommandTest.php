@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\PlanFeature;
+use App\Enums\TransactionSource;
 use App\Models\User;
 
 beforeEach(function () {
@@ -48,4 +50,27 @@ test('demo:reset verifies existing unverified demo user', function () {
     $user = User::where('email', 'demo@whisper.money')->first();
 
     expect($user->email_verified_at)->not->toBeNull();
+})->group('slow');
+
+test('demo:reset fails if a password is not passed alongside an explicit email', function () {
+    $this->artisan('demo:reset', ['--email' => 'openai-review@whisper.money'])->assertFailed();
+
+    expect(User::where('email', 'openai-review@whisper.money')->exists())->toBeFalse();
+});
+
+test('demo:reset seeds a named reviewer account on the Pro plan with imported transactions', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $this->artisan('demo:reset', [
+        '--email' => 'openai-review@whisper.money',
+        '--password' => 'secret-review-password',
+        '--imported' => true,
+    ])->assertSuccessful();
+
+    $user = User::where('email', 'openai-review@whisper.money')->sole();
+
+    expect($user->canUseFeature(PlanFeature::McpAccess))->toBeTrue()
+        ->and($user->isDemoAccount())->toBeFalse()
+        ->and($user->transactions()->where('source', TransactionSource::ManuallyCreated)->exists())->toBeTrue()
+        ->and($user->transactions()->where('source', '!=', TransactionSource::ManuallyCreated)->exists())->toBeTrue();
 })->group('slow');

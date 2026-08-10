@@ -6,6 +6,7 @@ use App\Actions\CreateDefaultCategories;
 use App\Enums\AccountType;
 use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
+use App\Enums\TransactionSource;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Budget;
@@ -22,7 +23,10 @@ use Illuminate\Support\Collection;
 
 class ResetDemoAccountCommand extends Command
 {
-    protected $signature = 'demo:reset';
+    protected $signature = 'demo:reset
+        {--email= : Create or reset this account instead of the configured demo user}
+        {--password= : Password for --email}
+        {--imported : Mark one account\'s transactions as bank-imported, so the read-only protections can be demonstrated}';
 
     protected $description = 'Reset the demo account with fresh data';
 
@@ -40,19 +44,24 @@ class ResetDemoAccountCommand extends Command
 
     public function handle(): int
     {
-        $demoEnabled = config('app.demo.enabled');
+        /** An explicit --email is a named account (e.g. an app-store reviewer), not the public demo. */
+        $explicitEmail = (string) $this->option('email');
 
-        if (! $demoEnabled) {
+        if ($explicitEmail === '' && ! config('app.demo.enabled')) {
             $this->info('Demo account is not enabled');
 
             return self::SUCCESS;
         }
 
-        $demoEmail = config('app.demo.email');
-        $demoPassword = config('app.demo.password');
+        $demoEmail = $explicitEmail !== '' ? $explicitEmail : config('app.demo.email');
+        $demoPassword = $explicitEmail !== ''
+            ? (string) $this->option('password')
+            : config('app.demo.password');
 
         if (! $demoEmail || ! $demoPassword) {
-            $this->error('Demo configuration not set. Please set DEMO_EMAIL and DEMO_PASSWORD in .env');
+            $this->error($explicitEmail !== ''
+                ? 'Pass --password together with --email.'
+                : 'Demo configuration not set. Please set DEMO_EMAIL and DEMO_PASSWORD in .env');
 
             return self::FAILURE;
         }
@@ -76,6 +85,10 @@ class ResetDemoAccountCommand extends Command
         $this->assignTransactionsToBudgets($user);
 
         $this->createSubscription($user);
+
+        if ($this->option('imported')) {
+            $this->markTransactionsAsImported($user);
+        }
 
         $this->info('✓ Demo account reset successfully!');
 
@@ -506,6 +519,24 @@ class ResetDemoAccountCommand extends Command
         foreach ($budgetAssignments as $budgetName => $count) {
             $this->info("    - {$budgetName}: {$count} transactions");
         }
+    }
+
+    /**
+     * Mark one account's transactions as bank-imported so a reviewer can see
+     * update_transaction and delete_transaction refuse to touch synced data.
+     * The account keeps no banking connection, so no sync ever runs on it.
+     */
+    private function markTransactionsAsImported(User $user): void
+    {
+        $account = $user->accounts()->whereHas('transactions')->first();
+
+        if ($account === null) {
+            return;
+        }
+
+        $count = $account->transactions()->update(['source' => TransactionSource::EnableBanking]);
+
+        $this->info("  Marked {$count} transactions on '{$account->name}' as bank-imported");
     }
 
     private function createSubscription(User $user): void
