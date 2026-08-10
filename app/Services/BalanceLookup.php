@@ -28,14 +28,16 @@ class BalanceLookup
     /**
      * Preload all balance data for a set of accounts covering the given date range.
      *
-     * Executes exactly 3 efficient queries (no correlated subqueries):
+     * Executes exactly 4 efficient queries (no correlated subqueries):
      * 1. A derived-table join to find the latest balance record before the range start per account.
      * 2. A derived-table join to find the latest non-null invested_amount before the range start per account.
      * 3. All balance records within the range.
+     * 4. The accounts that only count as a share of their balance.
      *
-     * Accounts configured to apply their ownership percentage to balances get
-     * every figure scaled down to the owner's share here, so every reader
-     * (net worth, evolution charts, account metrics) stays consistent.
+     * Those accounts get every figure scaled down to the owner's share here,
+     * so every reader (net worth, evolution charts, account metrics) stays
+     * consistent. Callers that need the real bank balance — the balance editor,
+     * imports, bank sync — read `account_balances` directly and are unaffected.
      *
      * @param  Collection<int, string>|array<string>  $accountIds
      */

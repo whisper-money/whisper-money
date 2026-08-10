@@ -132,6 +132,60 @@ test('the dashboard top categories endpoint counts only the owner share of a sha
     expect($response->json('0.amount'))->toBe(40000);
 });
 
+test('the dashboard page cashflow summary counts only the owner share of a shared account', function () {
+    sharedAccountWithTransactions($this->user, 50);
+
+    $response = $this->withoutVite()->get(route('dashboard'), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Partial-Component' => 'dashboard',
+        'X-Inertia-Partial-Data' => 'cashflowSummary',
+    ]);
+
+    $response->assertOk();
+    expect($response->json('props.cashflowSummary.current.income'))->toBe(100000)
+        ->and($response->json('props.cashflowSummary.current.expense'))->toBe(40000);
+});
+
+/**
+ * The share is computed twice — in PHP for the row-by-row cashflow paths and in
+ * SQL for the dashboard aggregates. An amount that does not divide evenly is the
+ * only thing that catches the two rounding rules drifting apart.
+ */
+test('the PHP and SQL paths round an uneven share identically', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'currency_code' => 'USD',
+        'ownership_percentage' => 33,
+    ]);
+
+    $expense = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+
+    // 33% of 3333 is 1099.89, which has to land on the same side in both paths.
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $expense->id,
+        'amount' => -3333,
+        'currency_code' => 'USD',
+        'transaction_date' => now(),
+    ]);
+
+    $query = http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]);
+
+    $php = $this->getJson('/api/cashflow/summary?'.$query);
+    $sql = $this->getJson('/api/dashboard/monthly-spending?'.$query);
+
+    expect($php->json('current.expense'))->toBe(1100)
+        ->and($sql->json('current'))->toBe(1100);
+});
+
 test('fully owned accounts are unaffected', function () {
     sharedAccountWithTransactions($this->user, 100);
 

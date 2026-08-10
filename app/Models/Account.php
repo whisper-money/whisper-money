@@ -79,11 +79,16 @@ class Account extends Model
      */
     public function shareOfAmount(int $amount): int
     {
-        if ($this->ownership_percentage >= 100) {
+        // Defaults to full ownership so a model built without the column (a
+        // partial select, a fresh factory instance) reads at face value
+        // instead of silently zeroing every amount.
+        $percentage = $this->ownership_percentage ?? 100;
+
+        if ($percentage >= 100) {
             return $amount;
         }
 
-        return (int) round($amount * $this->ownership_percentage / 100);
+        return (int) round($amount * $percentage / 100);
     }
 
     /**

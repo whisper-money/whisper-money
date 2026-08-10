@@ -155,10 +155,14 @@ export function EditAccountDialog({
         formDataRef.current = data;
     }, []);
 
-    // An empty field reads as full ownership; anything else goes to the server
-    // as typed so an out-of-range value comes back as a validation error.
-    const parsedShare = parseInt(ownershipPercentage, 10);
-    const sharePercentage = Number.isNaN(parsedShare) ? 100 : parsedShare;
+    // An empty field means "leave it as it is" rather than a silent reset to
+    // full ownership. Anything else is sent as the number typed, so a decimal
+    // or out-of-range value comes back as a validation error instead of being
+    // quietly truncated.
+    const shareIsBlank = ownershipPercentage.trim() === '';
+    const sharePercentage = shareIsBlank
+        ? (account.ownership_percentage ?? 100)
+        : Number(ownershipPercentage);
 
     useEffect(() => {
         if (open) {
@@ -359,6 +363,7 @@ export function EditAccountDialog({
                                     max={100}
                                     step={1}
                                     value={ownershipPercentage}
+                                    aria-describedby="ownership-percentage-hint"
                                     onChange={(event) =>
                                         setOwnershipPercentage(
                                             event.target.value,
@@ -366,7 +371,10 @@ export function EditAccountDialog({
                                     }
                                     disabled={isSubmitting}
                                 />
-                                <p className="text-xs text-muted-foreground">
+                                <p
+                                    id="ownership-percentage-hint"
+                                    className="text-xs text-muted-foreground"
+                                >
                                     {__(
                                         'For accounts you share with someone else. Income and expenses only count towards your figures by this percentage.',
                                     )}

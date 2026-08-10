@@ -250,7 +250,8 @@ class Transaction extends Model
 
     /**
      * A transaction amount reduced to the owner's share of its account, for
-     * SQL-side aggregates. Rounds per row, matching {@see Account::shareOfAmount()}.
+     * SQL-side aggregates. Rounds per row, matching {@see Account::shareOfAmount()}
+     * (MySQL and PHP both round half away from zero).
      * Only valid on queries that ran {@see self::scopeJoinOwningAccount()}.
      */
     public const OWNED_AMOUNT_SQL = 'round(transactions.amount * accounts.ownership_percentage / 100)';
@@ -258,6 +259,10 @@ class Transaction extends Model
     /**
      * Join the owning account so aggregates can weigh each amount by the
      * account's ownership percentage. Pair it with {@see self::ownedAmount()}.
+     *
+     * `account_id` is NOT NULL and the join deliberately ignores the account's
+     * soft-delete scope, so the row set is exactly what it was before the
+     * ownership weighting existed.
      *
      * @param  Builder<Transaction>  $query
      * @return Builder<Transaction>

@@ -57,6 +57,12 @@ export function UpdateBalanceDialog({
     const inputRef = useRef<HTMLInputElement>(null);
     const showInvestedAmount = supportsInvestedAmount(account);
     const isLoan = account.type === 'loan';
+    // This dialog always writes the real amount held in the account, while a
+    // shared account shows only the owner's slice elsewhere. Say so, or the
+    // mismatch reads as a bug and invites typing the halved figure back in.
+    const countsPartially =
+        (account.ownership_applies_to_balance ?? false) &&
+        (account.ownership_percentage ?? 100) < 100;
     const userCurrencyCode =
         usePage<SharedData>().props.auth.user.currency_code;
 
@@ -178,6 +184,18 @@ export function UpdateBalanceDialog({
                                   'Set the balance for this account on a specific date.',
                               )}
                     </DialogDescription>
+                    {countsPartially && (
+                        <p className="text-xs text-muted-foreground">
+                            {__(
+                                'Enter the full amount held in the account. You own :percentage% of it, and that is the share shown everywhere else.',
+                                {
+                                    percentage: String(
+                                        account.ownership_percentage,
+                                    ),
+                                },
+                            )}
+                        </p>
+                    )}
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
