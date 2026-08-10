@@ -90,5 +90,7 @@ test('demo:reset subscribes a named account even when the public demo account al
 
     expect($demo->subscriptions()->count())->toBe(1)
         ->and($reviewer->subscriptions()->count())->toBe(1)
+        ->and($reviewer->subscription('default')->stripe_id)
+        ->not->toBe($demo->subscription('default')->stripe_id)
         ->and($reviewer->canUseFeature(PlanFeature::McpAccess))->toBeTrue();
 })->group('slow');
