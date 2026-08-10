@@ -74,3 +74,21 @@ test('demo:reset seeds a named reviewer account on the Pro plan with imported tr
         ->and($user->transactions()->where('source', TransactionSource::ManuallyCreated)->exists())->toBeTrue()
         ->and($user->transactions()->where('source', '!=', TransactionSource::ManuallyCreated)->exists())->toBeTrue();
 })->group('slow');
+
+test('demo:reset subscribes a named account even when the public demo account already exists', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $this->artisan('demo:reset')->assertSuccessful();
+
+    $this->artisan('demo:reset', [
+        '--email' => 'openai-review@whisper.money',
+        '--password' => 'secret-review-password',
+    ])->assertSuccessful();
+
+    $demo = User::where('email', 'demo@whisper.money')->sole();
+    $reviewer = User::where('email', 'openai-review@whisper.money')->sole();
+
+    expect($demo->subscriptions()->count())->toBe(1)
+        ->and($reviewer->subscriptions()->count())->toBe(1)
+        ->and($reviewer->canUseFeature(PlanFeature::McpAccess))->toBeTrue();
+})->group('slow');

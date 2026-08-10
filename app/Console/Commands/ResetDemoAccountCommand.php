@@ -539,13 +539,18 @@ class ResetDemoAccountCommand extends Command
         $this->info("  Marked {$count} transactions on '{$account->name}' as bank-imported");
     }
 
+    /**
+     * `subscriptions.stripe_id` is unique, so the fake id has to be derived from
+     * the user: --email lets several demo accounts coexist, and a shared literal
+     * would collide with whichever account was seeded first.
+     */
     private function createSubscription(User $user): void
     {
         $user->subscriptions()->delete();
 
         $user->subscriptions()->create([
             'type' => 'default',
-            'stripe_id' => 'sub_demo_free_forever',
+            'stripe_id' => "sub_demo_{$user->id}",
             'stripe_status' => 'active',
             'stripe_price' => 'price_demo_free',
         ]);
