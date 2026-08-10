@@ -64,6 +64,9 @@ parameters:
           path: app/Models/*
         - identifier: public.property.unused
           path: app/Models/*
+        # Eloquent reads model constants (CREATED_AT, UPDATED_AT, …) itself
+        - identifier: public.classConstant.unused
+          path: app/Models/*
         # Enum label/description methods used in Blade/frontend
         - identifier: public.method.unused
           path: app/Enums/*

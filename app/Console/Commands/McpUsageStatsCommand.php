@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\McpToolCall;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 
 class McpUsageStatsCommand extends Command
@@ -16,9 +16,9 @@ class McpUsageStatsCommand extends Command
     public function handle(): int
     {
         $days = max(1, (int) $this->option('days'));
-        $since = Carbon::now()->subDays($days)->startOfDay();
+        $since = Carbon::now()->subDays($days - 1)->startOfDay();
 
-        $total = $this->scope($since)->count();
+        $total = $this->callsSince($since)->count();
 
         if ($total === 0) {
             $this->warn("No MCP tool calls in the last {$days} days.");
@@ -26,7 +26,7 @@ class McpUsageStatsCommand extends Command
             return self::SUCCESS;
         }
 
-        $users = $this->scope($since)->distinct()->count('user_id');
+        $users = $this->callsSince($since)->distinct()->count('user_id');
 
         $this->newLine();
         $this->line("<options=bold>MCP usage — last {$days} days</> (since {$since->toDateString()})");
@@ -39,15 +39,18 @@ class McpUsageStatsCommand extends Command
         return self::SUCCESS;
     }
 
-    /** @return Builder<McpToolCall> */
-    private function scope(Carbon $since): Builder
+    /**
+     * Every call in the window, as a plain query builder: the report only ever
+     * reads aggregates, so it has no use for hydrated models.
+     */
+    private function callsSince(Carbon $since): Builder
     {
-        return McpToolCall::query()->where('created_at', '>=', $since);
+        return McpToolCall::query()->toBase()->where('mcp_tool_calls.created_at', '>=', $since);
     }
 
     private function renderTools(Carbon $since, int $total): void
     {
-        $rows = $this->scope($since)
+        $rows = $this->callsSince($since)
             ->selectRaw('tool, count(*) as calls, count(distinct user_id) as users')
             ->groupBy('tool')
             ->orderByDesc('calls')
@@ -57,44 +60,49 @@ class McpUsageStatsCommand extends Command
         $this->line('<options=bold>By tool</>');
         $this->table(
             ['Tool', 'Calls', '%', 'Users'],
-            $rows->map(fn (McpToolCall $row): array => [
+            $rows->map(fn (object $row): array => [
                 $row->tool,
-                $row->getAttribute('calls'),
-                sprintf('%.1f%%', $row->getAttribute('calls') / $total * 100),
-                $row->getAttribute('users'),
+                $row->calls,
+                sprintf('%.1f%%', $row->calls / $total * 100),
+                $row->users,
             ])->all()
         );
     }
 
+    /**
+     * Joined rather than eager-loaded so users who deleted their account still
+     * show up: `user:delete` soft-deletes, so the cascade never fires and the
+     * relation (with its `deleted_at is null` scope) would come back empty.
+     */
     private function renderUsers(Carbon $since): void
     {
         $top = max(1, (int) $this->option('top'));
 
-        $rows = $this->scope($since)
-            ->selectRaw('user_id, count(*) as calls, count(distinct tool) as tools, max(created_at) as last_call')
-            ->groupBy('user_id')
+        $rows = $this->callsSince($since)
+            ->join('users', 'users.id', '=', 'mcp_tool_calls.user_id')
+            ->selectRaw('users.email, users.deleted_at, count(*) as calls, count(distinct tool) as tools, max(mcp_tool_calls.created_at) as last_call')
+            ->groupBy('users.id', 'users.email', 'users.deleted_at')
             ->orderByDesc('calls')
             ->limit($top)
-            ->with('user:id,email')
             ->get();
 
         $this->newLine();
         $this->line("<options=bold>By user</> (top {$top})");
         $this->table(
             ['User', 'Calls', 'Tools', 'Last call'],
-            $rows->map(fn (McpToolCall $row): array => [
-                $row->user->email,
-                $row->getAttribute('calls'),
-                $row->getAttribute('tools'),
-                (string) $row->getAttribute('last_call'),
+            $rows->map(fn (object $row): array => [
+                $row->email.($row->deleted_at === null ? '' : ' (deleted)'),
+                $row->calls,
+                $row->tools,
+                (string) $row->last_call,
             ])->all()
         );
     }
 
     private function renderDays(Carbon $since): void
     {
-        $rows = $this->scope($since)
-            ->selectRaw('date(created_at) as day, count(*) as calls, count(distinct user_id) as users')
+        $rows = $this->callsSince($since)
+            ->selectRaw('date(mcp_tool_calls.created_at) as day, count(*) as calls, count(distinct user_id) as users')
             ->groupBy('day')
             ->orderBy('day')
             ->get();
@@ -103,10 +111,10 @@ class McpUsageStatsCommand extends Command
         $this->line('<options=bold>By day</>');
         $this->table(
             ['Day', 'Calls', 'Users'],
-            $rows->map(fn (McpToolCall $row): array => [
-                (string) $row->getAttribute('day'),
-                $row->getAttribute('calls'),
-                $row->getAttribute('users'),
+            $rows->map(fn (object $row): array => [
+                (string) $row->day,
+                $row->calls,
+                $row->users,
             ])->all()
         );
     }

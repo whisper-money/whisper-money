@@ -16,6 +16,9 @@ class McpToolCall extends Model
     /** @use HasFactory<McpToolCallFactory> */
     use HasFactory, HasUuids;
 
+    /** Append-only: a call is never updated, so there is no `updated_at`. */
+    const UPDATED_AT = null;
+
     protected $fillable = [
         'user_id',
         'tool',

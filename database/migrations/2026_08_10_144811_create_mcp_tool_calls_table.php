@@ -21,9 +21,8 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->string('tool');
-            $table->timestamps();
+            $table->timestamp('created_at');
 
-            $table->index(['tool', 'created_at']);
             $table->index('created_at');
         });
     }
