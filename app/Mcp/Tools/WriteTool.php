@@ -32,8 +32,7 @@ abstract class WriteTool extends McpTool
         // ChatGPT, resolved via the `api` guard — the user approves the
         // connection on the consent screen) and to Sanctum personal access
         // tokens carrying the mcp:write ability. A read-only Sanctum token is
-        // rejected. Bank-connected data stays protected for both (see the
-        // writableAccount / transaction helpers below).
+        // rejected.
         if (Auth::getDefaultDriver() !== 'api' && ! $user->tokenCan('mcp:write')) {
             return Response::error('This token is read-only. Create a read & write token to make changes.');
         }
@@ -44,10 +43,11 @@ abstract class WriteTool extends McpTool
     abstract protected function write(Request $request, User $user): Response;
 
     /**
-     * Resolve an account the token may write to: it must live in the space and
-     * must not be connected to a bank (bank-sourced data is never touched).
+     * Resolve an account in the space. Bank-connected accounts are allowed:
+     * a sync only inserts rows it has not seen before, so a manual transaction
+     * added to a connected account survives every later sync.
      */
-    protected function writableAccount(Request $request, Space $space, string $key = 'account_id'): Account
+    protected function accountInSpace(Request $request, Space $space, string $key = 'account_id'): Account
     {
         $id = $request->string($key)->toString();
 
@@ -59,9 +59,21 @@ abstract class WriteTool extends McpTool
             ]);
         }
 
+        return $account;
+    }
+
+    /**
+     * Resolve an account whose balance snapshots may be written. Connected
+     * accounts are rejected: their balances come from the bank and any manual
+     * snapshot would be overwritten by the next sync.
+     */
+    protected function balanceWritableAccount(Request $request, Space $space, string $key = 'account_id'): Account
+    {
+        $account = $this->accountInSpace($request, $space, $key);
+
         if ($account->isConnected()) {
             throw ValidationException::withMessages([
-                $key => 'That account is connected to a bank and is read-only. Only non-connected (manual) accounts can be written to.',
+                $key => 'That account is connected to a bank, so its balances come from the sync and a manual snapshot would be overwritten. Only non-connected (manual) accounts accept balances.',
             ]);
         }
 

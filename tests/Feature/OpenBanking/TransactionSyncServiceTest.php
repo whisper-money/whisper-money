@@ -478,6 +478,48 @@ test('sync deduplicates transactions without external id via fingerprint', funct
     expect($stored->dedup_fingerprint)->toStartWith('fp_');
 });
 
+test('sync leaves a manual transaction on a connected account untouched', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $manual = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'description' => 'Cash tip the bank never sees',
+        'transaction_date' => '2025-05-12',
+        'amount' => -1_000,
+        'source' => TransactionSource::ManuallyCreated,
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [[
+                'transaction_id' => 'bank-1',
+                'transaction_amount' => ['amount' => '25.00', 'currency' => 'USD'],
+                'credit_debit_indicator' => 'DBIT',
+                'booking_date' => '2025-05-12',
+                'remittance_information' => ['Supermarket'],
+            ]],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    expect($service->sync($account, '2025-05-01', '2025-05-31'))->toBe(1);
+
+    // The manual row survives the sync untouched and does not block the bank row.
+    expect($account->transactions()->count())->toBe(2);
+    expect($manual->fresh())->not->toBeNull();
+    expect($manual->fresh()->description)->toBe('Cash tip the bank never sees');
+    expect($manual->fresh()->amount)->toBe(-1_000);
+});
+
 test('sync still dedupes when bank later supplies a real id for a fingerprinted txn', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);

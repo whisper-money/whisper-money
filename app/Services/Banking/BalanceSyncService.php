@@ -3,6 +3,7 @@
 namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
+use App\Enums\TransactionSource;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use Carbon\Carbon;
@@ -76,7 +77,11 @@ class BalanceSyncService
             ->flip()
             ->all();
 
+        // The reference balance comes from the bank, so it only reflects rows the
+        // bank itself reported. Walking back through a hand-entered or imported
+        // row would subtract money the bank never counted.
         $dailyTotals = $account->transactions()
+            ->where('source', TransactionSource::EnableBanking)
             ->where('transaction_date', '<=', $referenceBalance->balance_date)
             ->selectRaw('transaction_date, SUM(amount) as daily_total')
             ->groupBy('transaction_date')

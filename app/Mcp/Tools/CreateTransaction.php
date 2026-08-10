@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Create a manual transaction on a non-connected (manual) account. Amount is a signed integer in minor units (cents): negative for an expense, positive for income. Connected/bank accounts are read-only.')]
+#[Description('Create a manual transaction on any account, including bank-connected ones. Amount is a signed integer in minor units (cents): negative for an expense, positive for income. On a connected account nothing dedups this against the bank feed, so only add what the bank will not sync itself (cash, a split, a charge it missed).')]
 class CreateTransaction extends WriteTool
 {
     /**
@@ -23,7 +23,7 @@ class CreateTransaction extends WriteTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'account_id' => $schema->string()->description('Id of a non-connected (manual) account to add the transaction to.')->required(),
+            'account_id' => $schema->string()->description('Id of the account to add the transaction to.')->required(),
             'description' => $schema->string()->description('Human-readable description.')->required(),
             'amount' => $schema->integer()->description('Signed amount in minor units (cents). Negative = expense, positive = income.')->required(),
             'transaction_date' => $schema->string()->description('Transaction date, YYYY-MM-DD.')->required(),
@@ -33,7 +33,7 @@ class CreateTransaction extends WriteTool
             'debtor_name' => $schema->string()->description('Optional debtor (payer) name.'),
             'notes' => $schema->string()->description('Optional free-text notes.'),
             'label_ids' => $schema->array()->items($schema->string())->description('Optional label ids to attach.'),
-            'update_balance' => $schema->boolean()->description('When true, shift the manual account balance snapshots by this amount. Default false.'),
+            'update_balance' => $schema->boolean()->description('When true, shift the account balance snapshots by this amount. Ignored on connected accounts, whose balances come from the bank. Default false.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }
@@ -52,7 +52,7 @@ class CreateTransaction extends WriteTool
         ]);
 
         $space = $this->resolveSpace($request, $user);
-        $account = $this->writableAccount($request, $space);
+        $account = $this->accountInSpace($request, $space);
         $labels = $this->labelsInSpace($request, $space, 'label_ids');
 
         $categoryId = $request->filled('category_id')
@@ -82,10 +82,15 @@ class CreateTransaction extends WriteTool
             $transaction->labels()->sync($labels->pluck('id')->all());
         }
 
-        if ($request->boolean('update_balance')) {
-            app(ManualBalanceAdjuster::class)->applyCreatedTransaction($transaction->load('account'));
-        }
+        // The adjuster no-ops on a connected account, whose balances belong to
+        // the bank sync. Report what it actually did, otherwise the agent tells
+        // the user a balance moved when it did not.
+        $balanceUpdated = $request->boolean('update_balance')
+            && app(ManualBalanceAdjuster::class)->applyCreatedTransaction($transaction->load('account'));
 
-        return $this->json(['transaction' => $this->presentTransaction($transaction)]);
+        return $this->json([
+            'transaction' => $this->presentTransaction($transaction),
+            'balance_updated' => $balanceUpdated,
+        ]);
     }
 }

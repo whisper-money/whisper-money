@@ -28,12 +28,12 @@ class UpdateTransaction extends WriteTool
             'amount' => $schema->integer()->description('New signed amount in minor units (cents).'),
             'transaction_date' => $schema->string()->description('New transaction date, YYYY-MM-DD.'),
             'currency_code' => $schema->string()->description('New ISO 4217 currency code (3 letters).'),
-            'account_id' => $schema->string()->description('Move the transaction to another non-connected account.'),
+            'account_id' => $schema->string()->description('Move the transaction to another account.'),
             'category_id' => $schema->string()->description('New category id, or null to clear the category.'),
             'creditor_name' => $schema->string()->description('New creditor (payee) name.'),
             'debtor_name' => $schema->string()->description('New debtor (payer) name.'),
             'notes' => $schema->string()->description('New free-text notes.'),
-            'update_balance' => $schema->boolean()->description('When true and the amount/date/account changed, move the manual account balance snapshots accordingly. Default false.'),
+            'update_balance' => $schema->boolean()->description('When true and the amount/date/account changed, move the account balance snapshots accordingly. Ignored on connected accounts, whose balances come from the bank. Default false.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }
@@ -74,7 +74,7 @@ class UpdateTransaction extends WriteTool
             $transaction->currency_code = mb_strtoupper($request->string('currency_code')->toString());
         }
         if ($request->has('account_id')) {
-            $transaction->account_id = $this->writableAccount($request, $space)->id;
+            $transaction->account_id = $this->accountInSpace($request, $space)->id;
         }
         if ($request->has('notes')) {
             $transaction->notes = $request->filled('notes') ? $request->string('notes')->toString() : null;
@@ -103,12 +103,20 @@ class UpdateTransaction extends WriteTool
 
         $transaction->save();
 
+        $balanceUpdated = false;
+
         if ($request->boolean('update_balance') && $transaction->wasChanged(['amount', 'transaction_date', 'account_id'])) {
             $adjuster = app(ManualBalanceAdjuster::class);
-            $adjuster->reverseDeletedTransaction($originalSnapshot);
-            $adjuster->applyCreatedTransaction($transaction->load('account'));
+            // Either side no-ops on a connected account, so moving a transaction
+            // onto one still unwinds the manual account it came from.
+            $reversed = $adjuster->reverseDeletedTransaction($originalSnapshot);
+            $applied = $adjuster->applyCreatedTransaction($transaction->load('account'));
+            $balanceUpdated = $reversed || $applied;
         }
 
-        return $this->json(['transaction' => $this->presentTransaction($transaction->refresh())]);
+        return $this->json([
+            'transaction' => $this->presentTransaction($transaction->refresh()),
+            'balance_updated' => $balanceUpdated,
+        ]);
     }
 }

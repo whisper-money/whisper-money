@@ -793,7 +793,13 @@ export function EditTransactionDialog({
                                         allowNegative
                                     />
 
-                                    {!selectedAccount?.banking_connection_id && (
+                                    {selectedAccount?.banking_connection_id ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            {__(
+                                                "This account's balance comes from your bank, so it won't change.",
+                                            )}
+                                        </p>
+                                    ) : (
                                         <div className="flex items-center gap-2">
                                             <Checkbox
                                                 id="update-balance"
