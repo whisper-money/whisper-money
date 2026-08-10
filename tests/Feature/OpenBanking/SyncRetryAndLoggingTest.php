@@ -196,6 +196,7 @@ test('transient banking provider error on final attempt uses retry later message
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'last_synced_at' => now()->subDay(),
+        'consecutive_sync_failures' => 2,
     ]);
     Account::factory()->connected()->create([
         'user_id' => $user->id,
@@ -235,7 +236,46 @@ test('transient banking provider error on final attempt uses retry later message
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Error);
     expect($connection->error_message)->toContain('bank provider is temporarily unavailable');
-    expect($connection->consecutive_sync_failures)->toBe(1);
+
+    // A provider outage must not spend the retry budget: at MAX_SCHEDULED_RETRIES
+    // the connection drops out of every scheduled sync for good.
+    expect($connection->consecutive_sync_failures)->toBe(2)
+        ->toBeLessThan(SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES);
+});
+
+test('a non-transient error on final attempt still spends a scheduled retry', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+        'consecutive_sync_failures' => 2,
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(new RuntimeException('something we did not classify'));
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        runSync($job, $transactionSync, $balanceSync);
+    } catch (RuntimeException) {
+        // expected
+    }
+
+    $connection->refresh();
+    expect($connection->consecutive_sync_failures)->toBe(3);
 });
 
 test('expired session marks the connection expired and emails the user instead of reporting an error', function () {
