@@ -1,3 +1,5 @@
+import { Category } from './category';
+import { Label } from './label';
 import { UUID } from './uuid';
 
 export const SUBSCRIPTIONS_PERIOD_TYPES = [
@@ -21,4 +23,19 @@ export interface PersonalSubscription {
     created_at: string;
     updated_at: string;
     deleted_at: string | null;
+    categories?: Category[];
+    labels?: Label[];
+    periods?: PersonalSubscriptionPeriod[];
 }
+
+/* export interface PersonalSubscriptionPeriod {
+    id: UUID;
+    budget_id: UUID;
+    start_date: string;
+    end_date: string;
+    allocated_amount: number;
+    carried_over_amount: number;
+    processing_historical: boolean;
+    created_at: string;
+    updated_at: string;
+} */
