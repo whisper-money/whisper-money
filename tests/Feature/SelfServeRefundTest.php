@@ -58,6 +58,12 @@ it('blocks a self-refund once already refunded', function () {
     expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
 });
 
+it('blocks a self-refund on a seeded demo subscription', function () {
+    $user = payNowSubscriber(['stripe_id' => 'sub_demo_'.fake()->uuid()]);
+
+    expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
+});
+
 it('blocks a self-refund for non pay-now variants', function () {
     $user = payNowSubscriber();
     Feature::for($user)->activate(SubscriptionExperiment::class, SubscriptionExperiment::CONTROL);

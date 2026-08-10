@@ -366,6 +366,18 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
+     * Demo and end-to-end fixture accounts are seeded with a made-up Stripe
+     * subscription, so every path that would hand that id back to Stripe has to
+     * bail out first or the call 404s.
+     */
+    public function hasSeededSubscription(): bool
+    {
+        $stripeId = (string) $this->subscription('default')?->stripe_id;
+
+        return str_starts_with($stripeId, 'sub_demo_') || str_starts_with($stripeId, 'sub_e2e_');
+    }
+
+    /**
      * Whether the user can access the given feature on their current plan.
      */
     public function canUseFeature(PlanFeature $feature): bool

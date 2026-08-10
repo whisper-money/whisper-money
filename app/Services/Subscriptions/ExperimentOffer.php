@@ -83,6 +83,10 @@ class ExperimentOffer
             return false;
         }
 
+        if ($user->hasSeededSubscription()) {
+            return false;
+        }
+
         return $this->refundDeadlineFor($subscription)->isFuture();
     }
 
