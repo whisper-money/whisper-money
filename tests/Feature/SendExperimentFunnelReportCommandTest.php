@@ -1,5 +1,6 @@
 <?php
 
+use App\Ai\Agents\ReportSummaryAgent;
 use App\Features\SubscriptionExperiment;
 use App\Models\AiConsent;
 use App\Models\BankingConnection;
@@ -29,6 +30,8 @@ beforeEach(function () {
 
     // Seed the price→monthly-equivalent map so revenue is computed without Stripe.
     Cache::put('experiment_funnel_monthly_equiv', ['price_test' => 399], now()->addHour());
+
+    ReportSummaryAgent::fake(['pay_now sigue por delante, pero la muestra es demasiado pequeña.']);
 });
 
 it('skips the report and hits no external service when subscriptions are disabled', function () {
@@ -258,7 +261,7 @@ it('reports a matured-cohort conversion capped at 100% and prints the matured de
     Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
     $output = Artisan::output();
 
-    expect($output)->toContain('MatU')  // matured denominator column is printed
+    expect($output)->toContain('UMad')  // matured denominator column is printed
         ->toContain('Conv%')
         ->toContain('100%')             // capped, not the old 200% A2P%
         ->not->toContain('200%');
@@ -275,11 +278,11 @@ it('reports a Wilson confidence interval and defers the verdict while samples ar
     Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
     $output = Artisan::output();
 
-    expect($output)->toContain('Significance')
+    expect($output)->toContain('Significancia')
         ->toContain('Wilson')
-        ->toContain('Fisher exact')       // verdict uses the exact test, not the z-approx
-        ->toContain('not significant')    // equal 50/50 rates, n=2 per arm → nowhere near
-        ->toContain('Small sample');      // min expected conversions < 5
+        ->toContain('Fisher exacto')      // verdict uses the exact test, not the z-approx
+        ->toContain('no significativo')   // equal 50/50 rates, n=2 per arm → nowhere near
+        ->toContain('Muestra pequeña');   // min expected conversions < 5
 });
 
 it('declares significance via the exact test when the separation is real', function () {
@@ -295,8 +298,8 @@ it('declares significance via the exact test when the separation is real', funct
     Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
     $output = Artisan::output();
 
-    expect($output)->toContain('Fisher exact')
-        ->not->toContain('not significant'); // the exact test clears the corrected bar
+    expect($output)->toContain('Fisher exacto')
+        ->not->toContain('no significativo'); // the exact test clears the corrected bar
 });
 
 it('measures conversion as ever-charged, not active-now, so churn does not bias it', function () {
@@ -395,8 +398,68 @@ it('posts the experiment funnel embed to discord', function () {
 
     artisan('stats:experiment-funnel')->assertSuccessful();
 
-    Http::assertSent(fn ($request) => $request->url() === 'https://discord.test/hook'
-        && str_contains($request['embeds'][0]['title'], 'Experiment'));
+    Http::assertSent(function ($request) {
+        $embed = $request['embeds'][0];
+
+        return $request->url() === 'https://discord.test/hook'
+            && str_contains($embed['title'], 'Experimento')
+            // Spanish table header and legend, no leftover English.
+            && str_contains($embed['description'], 'Variante')
+            && collect($embed['fields'])->contains(fn ($field) => $field['name'] === 'Leyenda');
+    });
+});
+
+it('opens the embed with the AI summary, above the table', function () {
+    config(['services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+    ReportSummaryAgent::fake(['control convierte mejor, pero la diferencia no es significativa.']);
+
+    experimentUser(SubscriptionExperiment::CONTROL, CarbonImmutable::parse('2026-06-05'), [
+        'status' => 'active',
+        'at' => CarbonImmutable::parse('2026-06-05'),
+    ]);
+
+    artisan('stats:experiment-funnel')->assertSuccessful();
+
+    Http::assertSent(fn ($request) => str_starts_with(
+        $request['embeds'][0]['description'],
+        "control convierte mejor, pero la diferencia no es significativa.\n\n```",
+    ));
+});
+
+it('feeds the summary the variant figures and the significance verdict', function () {
+    Http::fake();
+
+    experimentUser(SubscriptionExperiment::CONTROL, CarbonImmutable::parse('2026-06-05'), [
+        'status' => 'active',
+        'at' => CarbonImmutable::parse('2026-06-05'),
+    ]);
+
+    artisan('stats:experiment-funnel', ['--no-discord' => true])->assertSuccessful();
+
+    ReportSummaryAgent::assertPrompted(function ($prompt): bool {
+        $payload = json_decode($prompt->prompt, true)['current'];
+
+        return $payload['variants']['control']['converted_mature'] === 1
+            && $payload['currency'] === 'EUR'
+            && collect($payload['significance'])->contains(fn (string $line) => str_contains($line, 'Wilson'));
+    });
+});
+
+it('still posts the report when the AI summary fails', function () {
+    config(['services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+    ReportSummaryAgent::fake(fn () => throw new RuntimeException('provider down'));
+
+    experimentUser(SubscriptionExperiment::CONTROL, CarbonImmutable::parse('2026-06-05'), [
+        'status' => 'active',
+        'at' => CarbonImmutable::parse('2026-06-05'),
+    ]);
+
+    artisan('stats:experiment-funnel')->assertSuccessful();
+
+    Http::assertSent(fn ($request) => str_starts_with($request['embeds'][0]['description'], '```')
+        && str_contains($request['embeds'][0]['description'], 'Variante'));
 });
 
 it('does not post when the experiment has not started', function () {
@@ -405,6 +468,7 @@ it('does not post when the experiment has not started', function () {
 
     artisan('stats:experiment-funnel')->assertSuccessful();
 
+    ReportSummaryAgent::assertNeverPrompted();
     Http::assertNothingSent();
 });
 

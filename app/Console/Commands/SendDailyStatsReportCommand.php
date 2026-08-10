@@ -79,8 +79,8 @@ class SendDailyStatsReportCommand extends Command
     {
         $fields = [
             [
-                'name' => '👥 Users',
-                'value' => "New yesterday: **{$newUsers}**\nTotal: **{$totalUsers}**",
+                'name' => '👥 Usuarios',
+                'value' => "Nuevos ayer: **{$newUsers}**\nTotal: **{$totalUsers}**",
                 'inline' => false,
             ],
         ];
@@ -98,10 +98,10 @@ class SendDailyStatsReportCommand extends Command
             $fields[] = [
                 'name' => '💳 '.strtoupper($currency),
                 'value' => implode("\n", [
-                    "Active: **{$active['count']}** ({$this->money($currentMrr, $currency)} MRR)",
-                    "Trialing: **{$trialing['count']}** ({$this->money($trialing['mrr'], $currency)} MRR)",
-                    "Current MRR/ARR: **{$this->money($currentMrr, $currency)}** / **{$this->money($currentMrr * 12, $currency)}**",
-                    "Projected MRR/ARR: **{$this->money($projectedMrr, $currency)}** / **{$this->money($projectedMrr * 12, $currency)}**",
+                    "Activas: **{$active['count']}** ({$this->money($currentMrr, $currency)} de MRR)",
+                    "En prueba: **{$trialing['count']}** ({$this->money($trialing['mrr'], $currency)} de MRR)",
+                    "MRR/ARR actual: **{$this->money($currentMrr, $currency)}** / **{$this->money($currentMrr * 12, $currency)}**",
+                    "MRR/ARR previsto: **{$this->money($projectedMrr, $currency)}** / **{$this->money($projectedMrr * 12, $currency)}**",
                 ]),
                 'inline' => false,
             ];
@@ -109,14 +109,14 @@ class SendDailyStatsReportCommand extends Command
 
         if ($currencies === []) {
             $fields[] = [
-                'name' => '💳 Subscriptions',
-                'value' => 'No active or trialing subscriptions.',
+                'name' => '💳 Suscripciones',
+                'value' => 'No hay suscripciones activas ni en prueba.',
                 'inline' => false,
             ];
         }
 
         return [
-            'title' => '📊 Daily Stats — '.$day->format('D, d M Y'),
+            'title' => '📊 Estadísticas diarias — '.$day->locale('es')->translatedFormat('D, d M Y'),
             'color' => 0x5865F2,
             'fields' => $fields,
         ];

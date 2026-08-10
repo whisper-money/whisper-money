@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Features\SubscriptionExperiment;
+use App\Services\Ai\ReportSummarizer;
 use App\Services\Discord\DiscordWebhook;
 use App\Services\Stats\BinomialProportion;
 use App\Services\Stats\ExperimentFunnelCollector;
@@ -25,9 +26,24 @@ class SendExperimentFunnelReportCommand extends Command
         SubscriptionExperiment::PAY_NOW => 'pay_now',
     ];
 
+    /**
+     * What the AI summary is looking at, and which periods it must compare.
+     */
+    private const SUMMARY_CONTEXT = <<<'CONTEXT'
+    The report is the A/B/C trial-and-pricing experiment: one row per variant
+    (control, reduced, pay_now), cumulative since the experiment started. Conv%
+    (conversions over matured users) and ARPU are the comparable metrics; the
+    absolute MRR, cost and margin totals scale with how many users have matured,
+    which differs per variant by design. Monetary amounts are in cents of the
+    report currency. The report is posted every Monday: compare against the
+    previous run to say what moved this week, and never call a winner the
+    significance block does not support.
+    CONTEXT;
+
     public function __construct(
         private ExperimentFunnelCollector $collector,
         private ProportionSignificance $significance,
+        private ReportSummarizer $summarizer,
     ) {
         parent::__construct();
     }
@@ -49,6 +65,18 @@ class SendExperimentFunnelReportCommand extends Command
             return self::SUCCESS;
         }
 
+        $summary = $this->summarizer->summarize(
+            'experiment-funnel',
+            self::SUMMARY_CONTEXT,
+            $this->summaryPayload($report),
+            remember: ! $this->option('no-discord'),
+        );
+
+        if ($summary !== null) {
+            $this->line($summary);
+            $this->newLine();
+        }
+
         foreach ($this->tableLines($report) as $line) {
             $this->line($line);
         }
@@ -66,7 +94,7 @@ class SendExperimentFunnelReportCommand extends Command
         $webhookUrl = config('services.discord.ai_cohort_webhook_url')
             ?: config('services.discord.webhook_url');
 
-        (new DiscordWebhook($webhookUrl))->send('', [$this->buildEmbed($report)]);
+        (new DiscordWebhook($webhookUrl))->send('', [$this->buildEmbed($report, $summary)]);
 
         $this->info('Experiment funnel report sent to Discord.');
 
@@ -83,7 +111,7 @@ class SendExperimentFunnelReportCommand extends Command
         $currency = $report['currency'];
         $lines = [sprintf(
             '%-8s %5s %5s %5s %5s %5s %6s %7s %7s %7s %7s %7s',
-            'Variant', 'Assg', 'Actd', 'Card', 'MatU', 'Conv', 'Conv%', 'ARPU', 'MRR', 'Cost', 'Burn', 'CM',
+            'Variante', 'Asig', 'Actv', 'Tarj', 'UMad', 'Conv', 'Conv%', 'ARPU', 'MRR', 'Coste', 'Quema', 'MC',
         )];
 
         foreach (self::LABELS as $key => $label) {
@@ -99,7 +127,7 @@ class SendExperimentFunnelReportCommand extends Command
                 $row['subscribed'],
                 $row['assignedMature'],
                 $row['convertedMature'],
-                $mature ? ((int) round($row['conversionRate'] * 100)).'%' : 'pend',
+                $mature ? ((int) round($row['conversionRate'] * 100)).'%' : 'pdte',
                 $showMoney && $row['arpuCents'] !== null ? Money::format($row['arpuCents'], $currency) : '—',
                 $showMoney ? Money::format($row['mrrCents'], $currency) : '—',
                 $mature ? Money::format($row['costCents'], $currency) : '—',
@@ -122,7 +150,7 @@ class SendExperimentFunnelReportCommand extends Command
      */
     private function significanceLines(array $report): array
     {
-        $lines = ['', 'Significance (95% Wilson CI on Conv%, n = MatU):'];
+        $lines = ['', 'Significancia (IC de Wilson al 95% sobre Conv%, n = UMad):'];
         $arms = [];
 
         foreach (self::LABELS as $key => $label) {
@@ -131,7 +159,7 @@ class SendExperimentFunnelReportCommand extends Command
             $k = (int) $row['convertedMature'];
 
             if ($n <= 0) {
-                $lines[] = sprintf('  %-8s pend (n=0)', $label);
+                $lines[] = sprintf('  %-8s pdte (n=0)', $label);
 
                 continue;
             }
@@ -142,7 +170,7 @@ class SendExperimentFunnelReportCommand extends Command
         }
 
         if (count($arms) < 2) {
-            $lines[] = 'Not enough matured variants to compare yet.';
+            $lines[] = 'Aún no hay suficientes variantes maduras para comparar.';
 
             return $lines;
         }
@@ -152,20 +180,20 @@ class SendExperimentFunnelReportCommand extends Command
         $result = $this->significance->compare($leader, $runnerUp);
 
         $lines[] = sprintf(
-            'Leader %s vs %s: Δ %+.1f pts (95%% CI %+.1f … %+.1f pts, Newcombe).',
+            'Líder %s vs %s: Δ %+.1f pts (IC 95%% %+.1f … %+.1f pts, Newcombe).',
             $leader->label, $runnerUp->label,
             ($leader->rate() - $runnerUp->rate()) * 100, $result['diffLow'] * 100, $result['diffHigh'] * 100,
         );
         $lines[] = sprintf(
-            'Fisher exact p=%.3f %s α=%.3f (Bonferroni×3) -> %s.%s',
+            'Fisher exacto p=%.3f %s α=%.3f (Bonferroni×3) -> %s.%s',
             $result['fisherP'], $result['significant'] ? '<' : '≥', $result['alpha'],
-            $result['significant'] ? 'significant' : 'not significant',
-            $result['significant'] ? '' : ' Keep running.',
+            $result['significant'] ? 'significativo' : 'no significativo',
+            $result['significant'] ? '' : ' Hay que seguir midiendo.',
         );
 
         if ($result['minExpectedCount'] < 5.0) {
             $lines[] = sprintf(
-                '(Small sample: min expected conversions %.1f < 5, so the normal-approx z=%.2f overstates — exact test used.)',
+                '(Muestra pequeña: el mínimo de conversiones esperadas es %.1f < 5, así que la aproximación normal z=%.2f se pasa de largo — se usa el test exacto.)',
                 $result['minExpectedCount'], $result['z'],
             );
         }
@@ -179,37 +207,78 @@ class SendExperimentFunnelReportCommand extends Command
     }
 
     /**
+     * The figures the AI summary may talk about. The significance verdict is
+     * handed over as the rendered lines so there is a single source of truth for
+     * the comparison.
+     *
      * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, variants: array<string, array<string, mixed>>}  $report
      * @return array<string, mixed>
      */
-    private function buildEmbed(array $report): array
+    private function summaryPayload(array $report): array
     {
+        $variants = [];
+
+        foreach (self::LABELS as $key => $label) {
+            $row = $report['variants'][$key];
+
+            $variants[$label] = [
+                'assigned' => $row['assigned'],
+                'activated' => $row['activated'],
+                'carded' => $row['subscribed'],
+                'matured_users' => $row['assignedMature'],
+                'converted_mature' => $row['convertedMature'],
+                'conversion_rate' => $row['conversionRate'],
+                'arpu_cents' => $row['arpuCents'],
+                'mrr_cents' => $row['mrrCents'],
+                'cost_cents' => $row['costCents'],
+                'wasted_cost_cents' => $row['wastedCostCents'],
+                'contribution_margin_cents' => $row['contributionMarginCents'],
+            ];
+        }
+
         return [
-            'title' => '🧪 Trial/Pricing Experiment — Funnel by Variant',
-            'description' => "```\n".implode("\n", $this->tableLines($report))."\n```",
+            'currency' => $report['currency'],
+            'revenue_available' => $report['revenueAvailable'],
+            'started_at' => $report['startedAt']?->toDateString(),
+            'variants' => $variants,
+            'significance' => array_values(array_filter($this->significanceLines($report))),
+        ];
+    }
+
+    /**
+     * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, variants: array<string, array<string, mixed>>}  $report
+     * @return array<string, mixed>
+     */
+    private function buildEmbed(array $report, ?string $summary): array
+    {
+        $table = "```\n".implode("\n", $this->tableLines($report))."\n```";
+
+        return [
+            'title' => '🧪 Experimento de prueba/precio — embudo por variante',
+            'description' => $summary !== null ? $summary."\n\n".$table : $table,
             'color' => 0xFEE75C,
             'fields' => [
                 [
-                    'name' => 'Started',
-                    'value' => $report['startedAt']->format('D, d M Y').' · new signups split evenly into the three variants.',
+                    'name' => 'Inicio',
+                    'value' => $report['startedAt']->locale('es')->translatedFormat('D, d M Y').' · los nuevos registros se reparten a partes iguales entre las tres variantes.',
                     'inline' => false,
                 ],
                 [
-                    'name' => '📊 Significance',
+                    'name' => '📊 Significancia',
                     'value' => "```\n".implode("\n", $this->significanceLines($report))."\n```",
                     'inline' => false,
                 ],
                 [
-                    'name' => 'Legend',
+                    'name' => 'Leyenda',
                     'value' => sprintf(
-                        'Assg = signups · Actd = activated (connected a bank or enabled AI = cost triggered) · Card = completed checkout (card on file) · MatU = matured assigned (cohort old enough to score for this variant) · Conv = matured users who ever converted (were charged, net of refund) — time-invariant, so it does not shrink as an older cohort has longer to churn · Conv%% = Conv ÷ MatU (always ≤100%%, comparable across variants) · ARPU = MRR ÷ MatU (revenue per matured user) · MRR = monthly run-rate of *currently* paying subs (yearly ÷ 12); Conv above MRR is churn · Cost = est. connection cost of MatU (%s/connection) · Burn = connection cost of matured users who never earned net revenue (connected a bank but never paid, or paid then refunded) · CM = MRR − Cost · `pend`/`—` = no matured data yet.',
+                        'Asig = registros · Actv = activados (conectaron un banco o activaron la IA = coste disparado) · Tarj = completaron el checkout (tarjeta guardada) · UMad = asignados maduros (cohorte con edad suficiente para puntuarla en esta variante) · Conv = usuarios maduros que llegaron a convertir (se les cobró, descontando devoluciones) — no depende del momento, así que no baja porque una cohorte antigua haya tenido más tiempo para cancelar · Conv%% = Conv ÷ UMad (siempre ≤100%%, comparable entre variantes) · ARPU = MRR ÷ UMad (ingreso por usuario maduro) · MRR = ritmo mensual de las suscripciones que pagan *ahora mismo* (las anuales ÷ 12); si Conv va por encima del MRR, es churn · Coste = coste estimado de conexiones de UMad (%s por conexión) · Quema = coste de conexión de los usuarios maduros que nunca dejaron ingreso neto (conectaron un banco y no pagaron, o pagaron y se les devolvió) · MC = MRR − Coste · `pdte`/`—` = todavía sin datos maduros.',
                         Money::format($report['costPerConnectionCents'], $report['currency']),
                     ),
                     'inline' => false,
                 ],
                 [
-                    'name' => '⚠️ How to read it',
-                    'value' => 'Each variant matures on its own decision window (control 15d, reduced 7d, pay_now 3d, +3d settle), so at any moment MatU differs a lot between variants (pay_now matures first). **Compare variants on Conv% and ARPU — normalized per matured user — not on the absolute MRR/Cost/Burn/CM totals, which scale with MatU and so mechanically favour whichever variant has matured more.** Assg/Actd/Card are lifetime counts; everything from MatU rightward covers the matured cohort only, so the raw Actd→Card→Conv funnel mixes cohorts (immature carded users can\'t have matured yet) — read it for volume. Conv counts anyone ever charged (net of refund), so it is not depressed for older cohorts the way a live-active snapshot would be. Per-user CM is sub-cent at current volume, so treat CM as directional context, not the decision. Check significance (sample size = MatU) before calling a winner. Cost is a flat per-connection estimate across all providers, not per-provider billing.',
+                    'name' => '⚠️ Cómo leerlo',
+                    'value' => 'Cada variante madura con su propia ventana de decisión (control 15d, reduced 7d, pay_now 3d, +3d de liquidación), así que en cualquier momento UMad difiere mucho entre variantes (pay_now madura antes). **Compara las variantes por Conv% y ARPU — normalizados por usuario maduro — y no por los totales absolutos de MRR/Coste/Quema/MC, que escalan con UMad y por tanto favorecen mecánicamente a la variante que más ha madurado.** Asig/Actv/Tarj son recuentos de toda la vida; desde UMad hacia la derecha solo se cuenta la cohorte madura, así que el embudo Actv→Tarj→Conv mezcla cohortes (quien puso tarjeta hace poco no puede haber madurado) — léelo como volumen. Conv cuenta a cualquiera al que se le haya cobrado (descontando devoluciones), así que no se hunde en las cohortes antiguas como pasaría con una foto de activos ahora mismo. El MC por usuario está por debajo del céntimo con el volumen actual, así que trátalo como contexto orientativo, no como la decisión. Comprueba la significancia (tamaño de muestra = UMad) antes de dar un ganador. El coste es una estimación plana por conexión para todos los proveedores, no la factura real de cada uno.',
                     'inline' => false,
                 ],
             ],
