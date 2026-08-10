@@ -16,7 +16,7 @@ class SendExperimentFunnelReportCommand extends Command
 {
     protected $signature = 'stats:experiment-funnel
         {--no-discord : Print the report to the console only, without posting to Discord}
-        {--cost-per-connection=0.4 : Estimated cost (in the Cashier currency) per bank connection, used for the Cost/Burn/CM columns}';
+        {--cost-per-connection=0.4 : Estimated cost (in the Cashier currency) per bank connection, used for the cost, burn and contribution-margin columns}';
 
     protected $description = 'Post the trial/pricing experiment funnel (per variant) to Discord';
 
@@ -35,9 +35,10 @@ class SendExperimentFunnelReportCommand extends Command
     (conversions over matured users) and ARPU are the comparable metrics; the
     absolute MRR, cost and margin totals scale with how many users have matured,
     which differs per variant by design. Monetary amounts are in cents of the
-    report currency. The report is posted every Monday: compare against the
-    previous run to say what moved this week, and never call a winner the
-    significance block does not support.
+    report currency, and null means there is no data yet rather than zero. The
+    report is posted every Monday: compare against the previous run to say what
+    moved this week, and never call a winner the significance block does not
+    support.
     CONTEXT;
 
     public function __construct(
@@ -185,7 +186,7 @@ class SendExperimentFunnelReportCommand extends Command
             ($leader->rate() - $runnerUp->rate()) * 100, $result['diffLow'] * 100, $result['diffHigh'] * 100,
         );
         $lines[] = sprintf(
-            'Fisher exacto p=%.3f %s α=%.3f (Bonferroni×3) -> %s.%s',
+            'Test exacto de Fisher p=%.3f %s α=%.3f (Bonferroni×3) -> %s.%s',
             $result['fisherP'], $result['significant'] ? '<' : '≥', $result['alpha'],
             $result['significant'] ? 'significativo' : 'no significativo',
             $result['significant'] ? '' : ' Hay que seguir midiendo.',
@@ -193,7 +194,7 @@ class SendExperimentFunnelReportCommand extends Command
 
         if ($result['minExpectedCount'] < 5.0) {
             $lines[] = sprintf(
-                '(Muestra pequeña: el mínimo de conversiones esperadas es %.1f < 5, así que la aproximación normal z=%.2f se pasa de largo — se usa el test exacto.)',
+                '(Muestra pequeña: el mínimo de conversiones esperadas es %.1f < 5, así que la aproximación normal z=%.2f sobreestima — se usa el test exacto.)',
                 $result['minExpectedCount'], $result['z'],
             );
         }
@@ -207,9 +208,10 @@ class SendExperimentFunnelReportCommand extends Command
     }
 
     /**
-     * The figures the AI summary may talk about. The significance verdict is
-     * handed over as the rendered lines so there is a single source of truth for
-     * the comparison.
+     * The figures the AI summary may talk about — the same ones the table shows,
+     * nulled under exactly the conditions that render them as "—", so the summary
+     * can't claim a zero where the reader sees no data. The significance verdict
+     * is handed over as the rendered lines, keeping one source of truth for it.
      *
      * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, costPerConnectionCents: int, variants: array<string, array<string, mixed>>}  $report
      * @return array<string, mixed>
@@ -220,6 +222,8 @@ class SendExperimentFunnelReportCommand extends Command
 
         foreach (self::LABELS as $key => $label) {
             $row = $report['variants'][$key];
+            $mature = $row['assignedMature'] > 0;
+            $showMoney = $report['revenueAvailable'] && $mature;
 
             $variants[$label] = [
                 'assigned' => $row['assigned'],
@@ -228,11 +232,11 @@ class SendExperimentFunnelReportCommand extends Command
                 'matured_users' => $row['assignedMature'],
                 'converted_mature' => $row['convertedMature'],
                 'conversion_rate' => $row['conversionRate'],
-                'arpu_cents' => $row['arpuCents'],
-                'mrr_cents' => $row['mrrCents'],
-                'cost_cents' => $row['costCents'],
-                'wasted_cost_cents' => $row['wastedCostCents'],
-                'contribution_margin_cents' => $row['contributionMarginCents'],
+                'arpu_cents' => $showMoney ? $row['arpuCents'] : null,
+                'mrr_cents' => $showMoney ? $row['mrrCents'] : null,
+                'cost_cents' => $mature ? $row['costCents'] : null,
+                'wasted_cost_cents' => $mature ? $row['wastedCostCents'] : null,
+                'contribution_margin_cents' => $showMoney ? $row['contributionMarginCents'] : null,
             ];
         }
 
@@ -260,7 +264,7 @@ class SendExperimentFunnelReportCommand extends Command
             'fields' => [
                 [
                     'name' => 'Inicio',
-                    'value' => $report['startedAt']->locale('es')->translatedFormat('D, d M Y').' · los nuevos registros se reparten a partes iguales entre las tres variantes.',
+                    'value' => $report['startedAt']->copy()->locale('es')->translatedFormat('D, d M Y').' · los nuevos registros se reparten a partes iguales entre las tres variantes.',
                     'inline' => false,
                 ],
                 [
@@ -269,16 +273,19 @@ class SendExperimentFunnelReportCommand extends Command
                     'inline' => false,
                 ],
                 [
+                    // Keep this and "Cómo leerlo" tight: they are the only fields
+                    // anywhere near Discord's 1024-character limit per field,
+                    // beyond which DiscordWebhook has to trim them.
                     'name' => 'Leyenda',
                     'value' => sprintf(
-                        'Asig = registros · Actv = activados (conectaron un banco o activaron la IA = coste disparado) · Tarj = completaron el checkout (tarjeta guardada) · UMad = asignados maduros (cohorte con edad suficiente para puntuarla en esta variante) · Conv = usuarios maduros que llegaron a convertir (se les cobró, descontando devoluciones) — no depende del momento, así que no baja porque una cohorte antigua haya tenido más tiempo para cancelar · Conv%% = Conv ÷ UMad (siempre ≤100%%, comparable entre variantes) · ARPU = MRR ÷ UMad (ingreso por usuario maduro) · MRR = ritmo mensual de las suscripciones que pagan *ahora mismo* (las anuales ÷ 12); si Conv va por encima del MRR, es churn · Coste = coste estimado de conexiones de UMad (%s por conexión) · Quema = coste de conexión de los usuarios maduros que nunca dejaron ingreso neto (conectaron un banco y no pagaron, o pagaron y se les devolvió) · MC = MRR − Coste · `pdte`/`—` = todavía sin datos maduros.',
+                        'Asig = registros · Actv = activados (conectaron un banco o activaron la IA = coste disparado) · Tarj = checkout completado (tarjeta guardada) · UMad = asignados maduros (cohorte con edad para puntuarla en esta variante) · Conv = maduros que llegaron a convertir (se les cobró, menos devoluciones); no depende del momento, así que no baja porque una cohorte antigua haya tenido más tiempo para cancelar · Conv%% = Conv ÷ UMad · ARPU = MRR ÷ UMad · MRR = ritmo mensual de quienes pagan *ahora* (anuales ÷ 12); si Conv va por encima del MRR, es churn · Coste = coste estimado de conexiones de UMad (%s por conexión) · Quema = coste de conexión de maduros que nunca dejaron ingreso neto · MC = MRR − Coste · `pdte`/`—` = todavía sin datos maduros.',
                         Money::format($report['costPerConnectionCents'], $report['currency']),
                     ),
                     'inline' => false,
                 ],
                 [
                     'name' => '⚠️ Cómo leerlo',
-                    'value' => 'Cada variante madura con su propia ventana de decisión (control 15d, reduced 7d, pay_now 3d, +3d de liquidación), así que en cualquier momento UMad difiere mucho entre variantes (pay_now madura antes). **Compara las variantes por Conv% y ARPU — normalizados por usuario maduro — y no por los totales absolutos de MRR/Coste/Quema/MC, que escalan con UMad y por tanto favorecen mecánicamente a la variante que más ha madurado.** Asig/Actv/Tarj son recuentos de toda la vida; desde UMad hacia la derecha solo se cuenta la cohorte madura, así que el embudo Actv→Tarj→Conv mezcla cohortes (quien puso tarjeta hace poco no puede haber madurado) — léelo como volumen. Conv cuenta a cualquiera al que se le haya cobrado (descontando devoluciones), así que no se hunde en las cohortes antiguas como pasaría con una foto de activos ahora mismo. El MC por usuario está por debajo del céntimo con el volumen actual, así que trátalo como contexto orientativo, no como la decisión. Comprueba la significancia (tamaño de muestra = UMad) antes de dar un ganador. El coste es una estimación plana por conexión para todos los proveedores, no la factura real de cada uno.',
+                    'value' => 'Cada variante madura con su propia ventana de decisión (control 15d, reduced 7d, pay_now 3d, +3d de liquidación), así que UMad difiere mucho entre variantes (pay_now madura antes). **Compara por Conv% y ARPU — normalizados por usuario maduro — y no por los totales de MRR/Coste/Quema/MC, que escalan con UMad y favorecen a la variante que más ha madurado.** Asig/Actv/Tarj son recuentos de toda la vida; de UMad hacia la derecha solo cuenta la cohorte madura, así que el embudo Actv→Tarj→Conv mezcla cohortes: léelo como volumen. Conv cuenta a quien se le cobró alguna vez, así que no se hunde en las cohortes antiguas como haría una foto de activos de hoy. El MC por usuario está por debajo del céntimo con este volumen: es contexto, no la decisión. Comprueba la significancia (n = UMad) antes de dar un ganador. El coste es una estimación plana por conexión, no la factura real de cada proveedor.',
                     'inline' => false,
                 ],
             ],

@@ -116,7 +116,7 @@ class SendDailyStatsReportCommand extends Command
         }
 
         return [
-            'title' => '📊 Estadísticas diarias — '.$day->locale('es')->translatedFormat('D, d M Y'),
+            'title' => '📊 Estadísticas diarias — '.$day->copy()->locale('es')->translatedFormat('D, d M Y'),
             'color' => 0x5865F2,
             'fields' => $fields,
         ];

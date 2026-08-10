@@ -28,8 +28,12 @@ class ReportSummaryAgent implements Agent
         {$this->context}
 
         You are given a JSON object with "current" (the figures of the report about
-        to be posted) and "previous" (the same payload from the previous run, or
-        null when there is none yet).
+        to be posted), "previous" (the same report measured on an earlier run, null
+        when there is none yet) and "previous_captured_at" (when that earlier run
+        happened). Rows are keyed by period and freeze once they are scored, so a
+        row that went from null to a value in "previous" has simply matured — that
+        is not an improvement. Compare like-for-like periods only, and if
+        "previous_captured_at" is not roughly one period back, say so.
 
         Rules:
         - Answer in Spanish (Spain), as plain text. No markdown, no bullet lists,

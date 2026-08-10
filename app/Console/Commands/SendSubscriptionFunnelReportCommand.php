@@ -18,10 +18,12 @@ class SendSubscriptionFunnelReportCommand extends Command
      */
     private const SUMMARY_CONTEXT = <<<'CONTEXT'
     The report is a weekly signup -> subscription -> paid funnel: one row per
-    signup-week cohort, every stage measured at the same cohort age. Rates are
-    null while a cohort is too young to be scored ("mature": false). The report is
-    posted every Monday, so compare the most recent mature week against the one
-    before it, and put it in the context of the trend across the mature weeks.
+    signup-week cohort, every stage measured at the same cohort age. Each rate is
+    null until its own horizon has elapsed: "subscribed_mature" governs
+    subscribed_rate, "paid_mature" governs paid_rate and trial_to_paid_rate. The
+    report is posted every Monday, so compare the most recent week that is mature
+    for a given rate against the one before it, and put it in the context of the
+    trend across the mature weeks.
     CONTEXT;
 
     public function __construct(
@@ -118,7 +120,8 @@ class SendSubscriptionFunnelReportCommand extends Command
                 'paid' => $row['paid'],
                 'paid_rate' => $row['paidRate'],
                 'trial_to_paid_rate' => $row['trialToPaidRate'],
-                'mature' => $row['paidMature'],
+                'subscribed_mature' => $row['subscribedMature'],
+                'paid_mature' => $row['paidMature'],
                 'signup_surge' => $row['surge'],
             ], $report['weeks']),
         ];

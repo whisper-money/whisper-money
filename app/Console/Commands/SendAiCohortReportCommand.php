@@ -24,11 +24,11 @@ class SendAiCohortReportCommand extends Command
     The report tracks the weekly cohorts of users eligible for the AI suggestions
     feature (retention, trial, paid and AI-consent rates): one row per signup
     week, every metric measured at the same cohort age, with "phase" telling
-    whether the cohort signed up before or after the feature was released. Rates
-    are null while a cohort is too young to be scored ("mature": false). The
-    report is posted on the first day of each month, so compare the last four
-    weeks against the four before them — month against previous month, not week
-    against week.
+    whether the cohort signed up before or after the feature was released. Each
+    rate is null until its own horizon has elapsed: "retention_mature" governs
+    retained_rate and trial_rate, "paid_mature" governs paid_rate. The report is
+    posted on the first day of each month, so compare the last four weeks against
+    the four before them — month against previous month, not week against week.
     CONTEXT;
 
     public function __construct(
@@ -94,7 +94,8 @@ class SendAiCohortReportCommand extends Command
                 'paid_rate' => $row['paidRate'],
                 'ai_accepted_rate' => $row['aiAcceptedRate'],
                 'phase' => $row['phase'],
-                'mature' => $row['paidMature'],
+                'retention_mature' => $row['retentionMature'],
+                'paid_mature' => $row['paidMature'],
                 'signup_surge' => $row['surge'],
             ], $report['weeks']),
         ];
@@ -132,7 +133,7 @@ class SendAiCohortReportCommand extends Command
         }
 
         $release = $report['releaseAt'] !== null
-            ? 'Primer consentimiento de IA (ancla de lanzamiento): '.$report['releaseAt']->locale('es')->translatedFormat('D, d M Y').' · semana '.$report['releaseWeek'].' 🚀'
+            ? 'Primer consentimiento de IA (ancla de lanzamiento): '.$report['releaseAt']->copy()->locale('es')->translatedFormat('D, d M Y').' · semana '.$report['releaseWeek'].' 🚀'
             : 'Todavía no hay ningún consentimiento de IA — la función no está activa en producción.';
 
         $table = "```\n".implode("\n", $lines)."\n```";

@@ -280,7 +280,7 @@ it('reports a Wilson confidence interval and defers the verdict while samples ar
 
     expect($output)->toContain('Significancia')
         ->toContain('Wilson')
-        ->toContain('Fisher exacto')      // verdict uses the exact test, not the z-approx
+        ->toContain('exacto de Fisher')   // verdict uses the exact test, not the z-approx
         ->toContain('no significativo')   // equal 50/50 rates, n=2 per arm → nowhere near
         ->toContain('Muestra pequeña');   // min expected conversions < 5
 });
@@ -298,7 +298,7 @@ it('declares significance via the exact test when the separation is real', funct
     Artisan::call('stats:experiment-funnel', ['--no-discord' => true]);
     $output = Artisan::output();
 
-    expect($output)->toContain('Fisher exacto')
+    expect($output)->toContain('exacto de Fisher')
         ->not->toContain('no significativo'); // the exact test clears the corrected bar
 });
 
