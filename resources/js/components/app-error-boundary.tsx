@@ -18,6 +18,11 @@ export function AppErrorBoundary({ children }: { children: ReactNode }) {
     return (
         <Sentry.ErrorBoundary
             fallback={<AppErrorFallback />}
+            // Supplying a fallback makes the SDK mark the crash handled, which
+            // would drop these out of crash-free sessions and out of any
+            // `error.handled:false` alert. Showing the user a way out is not
+            // the same as the app having coped with it.
+            handled={false}
             onError={(error) => {
                 // A chunk left behind by a deploy is self-healing, and the
                 // global listeners only see errors React did not catch, so the
