@@ -222,16 +222,31 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     /**
      * Handle temporary errors that may resolve on retry.
+     *
+     * A provider outage must not spend the connection's budget of scheduled
+     * retries: MAX_SCHEDULED_RETRIES failures drop it out of every future
+     * scheduled sync, silently and with no way back other than reconnecting.
+     * Reaching that state because the bank was down for three cycles is the
+     * wrong trade, so a classified-transient failure surfaces on the
+     * connection without moving the counter.
+     *
+     * ponytail: a provider that is down forever is then retried forever. That
+     * costs one job per cycle and shows up as a repeating warning; add a cap
+     * if the retries ever become expensive.
      */
     private function handleTemporaryError(BankingConnection $connection, \Throwable $e): void
     {
         $isFinalAttempt = $this->attempts() >= $this->tries;
 
         if ($isFinalAttempt) {
+            $isTransient = $e instanceof TransientBankingProviderException;
+
             $connection->update([
                 'status' => BankingConnectionStatus::Error,
                 'error_message' => $this->friendlyErrorMessage($e),
-                'consecutive_sync_failures' => $connection->consecutive_sync_failures + 1,
+                'consecutive_sync_failures' => $isTransient
+                    ? $connection->consecutive_sync_failures
+                    : $connection->consecutive_sync_failures + 1,
             ]);
         }
 
