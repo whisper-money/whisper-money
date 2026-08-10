@@ -28,6 +28,7 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Models\Bank;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -66,6 +67,19 @@ Route::get('/', function () {
 
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('robots.txt', [RobotsController::class, 'index'])->name('robots');
+
+/**
+ * Domain ownership check for the ChatGPT app directory. It must return the bare
+ * token and nothing else, so an unconfigured deploy 404s rather than serving an
+ * empty body the verifier would read as a mismatched token.
+ */
+Route::get('.well-known/openai-apps-challenge', function (): Response {
+    $token = (string) config('services.openai.apps_challenge');
+
+    abort_if($token === '', 404);
+
+    return response($token)->header('Content-Type', 'text/plain');
+})->name('openai.apps-challenge');
 
 Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
     ->middleware(['signed', 'throttle:6,1'])

@@ -42,6 +42,14 @@ return [
         'redirect_url' => env('ENABLEBANKING_REDIRECT_URL'),
     ],
 
+    'openai' => [
+        /**
+         * Domain-ownership token for the ChatGPT app directory submission,
+         * served at /.well-known/openai-apps-challenge.
+         */
+        'apps_challenge' => env('OPENAI_APPS_CHALLENGE'),
+    ],
+
     'discord' => [
         'webhook_url' => env('DISCORD_WEBHOOK_URL'),
         'ai_cohort_webhook_url' => env('DISCORD_AI_COHORT_WEBHOOK_URL'),
