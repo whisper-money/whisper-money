@@ -11,9 +11,7 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
-use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
-#[IsDestructive]
 #[Description(<<<'TEXT'
 Create an automation rule that auto-applies a category and/or labels to matching transactions. `rules_json` is a JsonLogic object evaluated against these lowercase variables: description, notes, creditor_name, debtor_name, account_name, bank_name, category, transaction_date (YYYY-MM-DD) and amount. Note: amount here is in MAJOR units (e.g. 12.50), not cents. Example: {"and":[{">":[{"var":"amount"},100]},{"in":["grocery",{"var":"description"}]}]}. At least one action (action_category_id or action_label_ids) is required.
 TEXT)]

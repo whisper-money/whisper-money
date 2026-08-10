@@ -11,9 +11,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
-use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
-#[IsDestructive]
 #[Description('Create a manual transaction on any account, including bank-connected ones. Amount is a signed integer in minor units (cents): negative for an expense, positive for income. On a connected account nothing dedups this against the bank feed, so only add what the bank will not sync itself (cash, a split, a charge it missed).')]
 class CreateTransaction extends WriteTool
 {

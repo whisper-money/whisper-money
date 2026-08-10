@@ -8,9 +8,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
-use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
-#[IsDestructive]
 #[Description('Record an account balance snapshot on a non-connected (manual) account. Balance is an integer in minor units (cents). Replaces any existing snapshot for that date. Connected accounts are rejected: their balances come from the bank sync and a manual snapshot would be overwritten. They do accept manual transactions via create_transaction.')]
 class CreateBalance extends WriteTool
 {

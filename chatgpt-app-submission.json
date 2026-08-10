@@ -1,0 +1,248 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Whisper Money",
+    "subtitle": "Chat with your own finances",
+    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, cashflow and net worth and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, record balances for manual accounts, and manage categories, labels and automation rules.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
+    "category": "FINANCE"
+  },
+  "tools": {
+    "search_transactions": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Runs a filtered read query over the user's own transactions and returns them as JSON. It writes nothing.",
+        "open_world_justification": "Reads only the authenticated user's own Whisper Money data, a closed system. It never queries the public internet.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "spending_by_category": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Aggregates the user's own transactions into per-category spending totals and returns them. It writes nothing.",
+        "open_world_justification": "Aggregates only the authenticated user's own Whisper Money data, a closed system. No external systems are touched.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "get_cashflow": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Computes income vs expenses over a date range from the user's own transactions and returns the result. It writes nothing.",
+        "open_world_justification": "Computed entirely from the authenticated user's own Whisper Money data, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "get_net_worth": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Computes current and historical net worth from the user's own account balances and returns it. It writes nothing.",
+        "open_world_justification": "Computed entirely from the authenticated user's own Whisper Money data, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "list_accounts": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Lists the user's own accounts with their current balances so later calls can reference account ids. It writes nothing.",
+        "open_world_justification": "Lists only accounts inside the authenticated user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "list_categories": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Lists the user's own spending categories so later calls can reference category ids. It writes nothing.",
+        "open_world_justification": "Lists only categories inside the authenticated user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "list_labels": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Lists the user's own labels so later calls can reference label ids. It writes nothing.",
+        "open_world_justification": "Lists only labels inside the authenticated user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "list_spaces": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Lists the personal and shared spaces the user is a member of, so later calls can target the right one. It writes nothing.",
+        "open_world_justification": "Lists only the spaces the authenticated user already belongs to, inside Whisper Money, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "create_transaction": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it records a new manual transaction in the user's own account.",
+        "open_world_justification": "Writes a bookkeeping row inside the user's own Whisper Money account, a closed system. It cannot move money or reach any external service.",
+        "destructive_justification": "Additive and reversible: it creates a new record without altering existing ones, and the user can edit or delete it afterwards. Adding one to a bank-connected account is safe because a sync only inserts rows it has not seen before."
+      }
+    },
+    "update_transaction": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it edits the fields of an existing manual transaction in the user's own account.",
+        "open_world_justification": "Edits a bookkeeping row inside the user's own Whisper Money account, a closed system. No external system is affected.",
+        "destructive_justification": "Reversible: field values can be edited back at any time, and bank-imported transactions are rejected outright so synced data cannot be rewritten."
+      }
+    },
+    "delete_transaction": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes: it removes a manual transaction from the user's own account.",
+        "open_world_justification": "Deletes a bookkeeping row inside the user's own Whisper Money account, a closed system. No external system is affected.",
+        "destructive_justification": "Irreversible data loss: the transaction is deleted and cannot be restored, so the model must confirm with the user first. Only manual transactions can be deleted; bank-imported ones are rejected."
+      }
+    },
+    "categorize_transaction": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it assigns a category to an existing transaction in the user's own account.",
+        "open_world_justification": "Updates a single field on a row inside the user's own Whisper Money account, a closed system.",
+        "destructive_justification": "Reversible: only the category assignment changes, and it can be reassigned at any time. No transaction data is removed."
+      }
+    },
+    "label_transaction": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it sets the labels attached to an existing transaction in the user's own account.",
+        "open_world_justification": "Updates label associations inside the user's own Whisper Money account, a closed system.",
+        "destructive_justification": "Reversible: only label associations change and they can be set again at any time. Neither the transaction nor the labels themselves are removed."
+      }
+    },
+    "create_balance": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it records a new balance snapshot for one of the user's manual accounts.",
+        "open_world_justification": "Writes a balance row inside the user's own Whisper Money account, a closed system. It reads no external bank data.",
+        "destructive_justification": "Reversible: it replaces only that account's snapshot for the given date, leaving the rest of the balance history intact, and the user can record the previous figure again. Bank-connected accounts are rejected so synced balances are never overwritten."
+      }
+    },
+    "create_category": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it creates a new spending category in the user's own workspace.",
+        "open_world_justification": "Creates a category inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Additive and reversible: nothing existing is modified, and the new category can be deleted afterwards."
+      }
+    },
+    "update_category": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it renames or restyles an existing category in the user's own workspace.",
+        "open_world_justification": "Edits a category inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Reversible: only the category's own attributes change, its transactions stay attached, and the values can be edited back."
+      }
+    },
+    "delete_category": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes: it removes a category from the user's own workspace.",
+        "open_world_justification": "Deletes a category inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Irreversible: the category is gone and every transaction assigned to it becomes uncategorized, so the model must confirm with the user first."
+      }
+    },
+    "create_label": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it creates a new label in the user's own workspace.",
+        "open_world_justification": "Creates a label inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Additive and reversible: nothing existing is modified, and the new label can be deleted afterwards."
+      }
+    },
+    "update_label": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it renames or recolours an existing label in the user's own workspace.",
+        "open_world_justification": "Edits a label inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Reversible: only the label's name and colour change, its transactions stay attached, and the values can be edited back."
+      }
+    },
+    "delete_label": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes: it removes a label from the user's own workspace.",
+        "open_world_justification": "Deletes a label inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Irreversible: the label is gone and is detached from every transaction that carried it, so the model must confirm with the user first."
+      }
+    },
+    "create_automation_rule": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it creates an automation rule that categorizes or labels the user's future transactions.",
+        "open_world_justification": "Creates a rule inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Additive and reversible: the rule only affects how future transactions are categorized and it can be edited or deleted at any time."
+      }
+    },
+    "update_automation_rule": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it edits the conditions or actions of an existing automation rule in the user's own workspace.",
+        "open_world_justification": "Edits a rule inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Reversible: only the rule definition changes, no transaction data is touched, and the previous definition can be set again."
+      }
+    },
+    "delete_automation_rule": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes: it removes an automation rule from the user's own workspace.",
+        "open_world_justification": "Deletes a rule inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Irreversible: the rule definition is deleted and cannot be restored, so the model must confirm with the user first. Transactions it already categorized are left untouched."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Category spending lookup for a past period. The app resolves the user's categories and returns real per-category totals for the requested month, in the user's own currency.",
+      "user_prompt": "How much did I spend on groceries last month?",
+      "tools_triggered": "list_categories, spending_by_category",
+      "expected_output": "A total spent on the groceries category for the previous calendar month, taken from the demo account's transactions, with the option to break it down by merchant."
+    },
+    {
+      "description": "Net worth trend over time. The app returns the current total plus the per-account balance evolution, and the model summarises the direction of travel.",
+      "user_prompt": "What's my net worth trend over the last 6 months?",
+      "tools_triggered": "get_net_worth",
+      "expected_output": "Current net worth, the change versus six months ago, and a month-by-month evolution with the accounts driving it."
+    },
+    {
+      "description": "Recurring charge discovery. The app searches transactions and the model groups them by merchant and cadence to surface subscriptions.",
+      "user_prompt": "Find my recurring subscriptions and total what they cost me per month.",
+      "tools_triggered": "search_transactions",
+      "expected_output": "A list of merchants charging on a regular cadence with each amount and a combined monthly total."
+    },
+    {
+      "description": "Logging a manual expense. The app resolves the space and the target account, then records the transaction and echoes the created row back.",
+      "user_prompt": "Log a 45 euro cash expense for dinner yesterday in my personal space.",
+      "tools_triggered": "list_spaces, list_accounts, create_transaction",
+      "expected_output": "Confirmation of the new transaction with its date, amount, account and category, created in the personal space."
+    },
+    {
+      "description": "Bulk tidy-up of miscategorized data. The app finds the matching transactions and reassigns their category, asking the user to confirm the set before writing.",
+      "user_prompt": "My Uber charges are filed as Shopping — move them to Transport.",
+      "tools_triggered": "search_transactions, list_categories, categorize_transaction",
+      "expected_output": "The matching transactions listed for confirmation, then each one reassigned to the Transport category, including bank-imported ones (categorizing is always allowed)."
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Bank-connected data is protected. Editing or deleting a transaction imported from a bank connection must be refused by the server, and the model should explain why instead of retrying.",
+      "user_prompt": "Change the amount of that Amazon charge from my bank account to 10 euros.",
+      "tools_triggered": "search_transactions, update_transaction",
+      "expected_output": "The server rejects the write because bank-imported transactions are read-only, and the model explains that only manual transactions can be edited, offering to recategorize or label it instead."
+    },
+    {
+      "description": "Wide, irreversible deletion must not be executed on a vague instruction. delete_transaction is destructive and single-target, so the model must stop and confirm rather than looping over the user's history.",
+      "user_prompt": "Delete all my transactions from last year.",
+      "tools_triggered": null,
+      "expected_output": "No delete is performed. The model states how many transactions the request would destroy irreversibly and asks for explicit confirmation of a specific set before touching anything."
+    },
+    {
+      "description": "Out of scope: the app is bookkeeping only and exposes no tool that can move money or reach a bank. The model must decline rather than pretending a payment happened.",
+      "user_prompt": "Transfer 500 euros from my savings account to my mum's account.",
+      "tools_triggered": null,
+      "expected_output": "A refusal explaining that Whisper Money can only record and analyse finance data, not initiate payments or transfers, with an offer to log the transfer as a manual transaction once the user has made it themselves."
+    }
+  ]
+}

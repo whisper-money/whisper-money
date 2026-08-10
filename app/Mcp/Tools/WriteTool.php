@@ -20,9 +20,11 @@ use Laravel\Mcp\Response;
  * read+write, and Sanctum personal access tokens must carry the `mcp:write`
  * ability, so a read-only PAT can analyse data but never change it.
  *
- * Each concrete write tool must additionally carry the #[IsDestructive]
- * annotation. PHP attributes are not inherited, so the framework only reports
- * one declared directly on the served tool class — it cannot live here.
+ * Only the irreversible tools (the deletes) carry #[IsDestructive]; creating,
+ * updating, categorizing and labelling are reversible and inherit
+ * `destructiveHint: false` from McpTool. PHP attributes are not inherited, so
+ * the framework only reports one declared directly on the served tool class —
+ * it cannot live here.
  */
 abstract class WriteTool extends McpTool
 {
