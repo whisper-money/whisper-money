@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Enums\PlanFeature;
 use App\Models\Label;
+use App\Models\McpToolCall;
 use App\Models\Space;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -60,6 +61,13 @@ abstract class McpTool extends Tool
                 'A paid (Pro) plan is required to use the Whisper Money MCP. Upgrade your account at '.route('subscribe')
             );
         }
+
+        // Usage metric (see `stats:mcp-usage`). Rescued so a failed insert can
+        // never break a working tool call.
+        rescue(fn (): McpToolCall => McpToolCall::create([
+            'user_id' => $user->id,
+            'tool' => $this->name(),
+        ]));
 
         return $this->respond($request, $user);
     }
