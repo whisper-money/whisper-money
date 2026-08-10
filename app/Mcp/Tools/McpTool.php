@@ -29,6 +29,24 @@ abstract class McpTool extends Tool
         return Str::snake(class_basename($this));
     }
 
+    /**
+     * The ChatGPT app directory requires all three MCP hints to be declared
+     * explicitly, with a justification per tool. Default them here — read tools
+     * flip `readOnlyHint` with #[IsReadOnly] and the delete tools flip
+     * `destructiveHint` with #[IsDestructive]. `openWorldHint` is always false:
+     * every tool reads or writes the user's own account, never the open web.
+     *
+     * @return array<string, mixed>
+     */
+    public function annotations(): array
+    {
+        return array_merge([
+            'readOnlyHint' => false,
+            'destructiveHint' => false,
+            'openWorldHint' => false,
+        ], parent::annotations());
+    }
+
     public function handle(Request $request): Response
     {
         $user = $request->user();

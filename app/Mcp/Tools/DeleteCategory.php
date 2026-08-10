@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Delete a category. The strategy decides what happens to its child categories: "reparent" (default) lifts them to the deleted category\'s parent, "promote" turns them into roots, "cascade" deletes the whole subtree and uncategorizes affected transactions.')]
+#[Description('Delete a category. strategy decides its children: "reparent" (default) lifts them to its parent, "promote" makes them roots, "cascade" deletes the subtree and uncategorizes its transactions.')]
 class DeleteCategory extends WriteTool
 {
     /**

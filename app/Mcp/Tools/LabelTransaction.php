@@ -7,9 +7,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
-use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
-#[IsDestructive]
 #[Description('Add and/or remove labels on any transaction, including bank/imported ones. Pass add_label_ids and/or remove_label_ids.')]
 class LabelTransaction extends WriteTool
 {

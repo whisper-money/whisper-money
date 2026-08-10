@@ -8,9 +8,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
-use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
-#[IsDestructive]
 #[Description('Set (or clear) the category of any transaction, including bank/imported ones. Marks the category as manually assigned. Pass category_id: null to remove the category.')]
 class CategorizeTransaction extends WriteTool
 {

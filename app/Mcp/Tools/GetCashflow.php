@@ -11,7 +11,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('The full cashflow picture for a date range as JSON, mirroring the app\'s cashflow screen: income/expense/savings/investment summary (current vs previous), the income-vs-expense category flow (sankey), and the monthly trend. Amounts are in minor units (cents). Covers the user\'s whole account.')]
+#[Description('The app\'s full cashflow picture for a date range: income/expense/savings/investment summary (current vs previous), the category flow sankey and the monthly trend. Covers the whole account.')]
 class GetCashflow extends McpTool
 {
     /**

@@ -11,9 +11,7 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
-use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
-#[IsDestructive]
 #[Description('Edit a label. Only the fields you pass are changed.')]
 class UpdateLabel extends WriteTool
 {

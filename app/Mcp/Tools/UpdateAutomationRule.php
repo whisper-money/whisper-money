@@ -11,9 +11,7 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
-use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
-#[IsDestructive]
 #[Description('Edit an automation rule. Only the fields you pass are changed. The rule must always keep at least one action (a category or labels). See create_automation_rule for the rules_json format.')]
 class UpdateAutomationRule extends WriteTool
 {

@@ -11,7 +11,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Search and filter the user\'s transactions by text, category, account, label, date range and amount. Amounts are integers in minor units (cents). Use this to analyse spending or to find recurring charges by grouping results by merchant.')]
+#[Description('Search and filter the user\'s transactions by text, category, account, label, date range and amount. Use it to analyse spending, or to find recurring charges by grouping results by merchant.')]
 class SearchTransactions extends McpTool
 {
     /**
