@@ -36,10 +36,10 @@ test('posts yesterday user counts and stripe stats to discord', function () {
 
     Http::assertSent(function ($request) {
         $embed = $request['embeds'][0];
-        $users = collect($embed['fields'])->firstWhere('name', '👥 Users');
+        $users = collect($embed['fields'])->firstWhere('name', '👥 Usuarios');
 
         return $request->url() === 'https://discord.test/webhook'
-            && str_contains($users['value'], 'New yesterday: **1**')
+            && str_contains($users['value'], 'Nuevos ayer: **1**')
             && str_contains($users['value'], 'Total: **2**')
             && collect($embed['fields'])->contains(fn ($f) => str_contains($f['value'], '€10.00'));
     });
@@ -71,9 +71,9 @@ test('total reflects users at end of yesterday and excludes users created today'
     $this->artisan('stats:daily-report')->assertSuccessful();
 
     Http::assertSent(function ($request) {
-        $users = collect($request['embeds'][0]['fields'])->firstWhere('name', '👥 Users');
+        $users = collect($request['embeds'][0]['fields'])->firstWhere('name', '👥 Usuarios');
 
-        return str_contains($users['value'], 'New yesterday: **1**')
+        return str_contains($users['value'], 'Nuevos ayer: **1**')
             && str_contains($users['value'], 'Total: **2**');
     });
 });
@@ -87,9 +87,9 @@ test('reports zero new users when none were created yesterday', function () {
     $this->artisan('stats:daily-report')->assertSuccessful();
 
     Http::assertSent(function ($request) {
-        $users = collect($request['embeds'][0]['fields'])->firstWhere('name', '👥 Users');
+        $users = collect($request['embeds'][0]['fields'])->firstWhere('name', '👥 Usuarios');
 
-        return str_contains($users['value'], 'New yesterday: **0**')
+        return str_contains($users['value'], 'Nuevos ayer: **0**')
             && str_contains($users['value'], 'Total: **1**');
     });
 });

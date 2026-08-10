@@ -1,5 +1,6 @@
 <?php
 
+use App\Ai\Agents\ReportSummaryAgent;
 use App\Models\Account;
 use App\Models\AiConsent;
 use App\Models\Category;
@@ -79,6 +80,7 @@ beforeEach(function () {
     config(['subscriptions.enabled' => true]);
     config(['ai_suggestions.eligibility_min_transactions' => 3]);
     config(['ai_suggestions.report.excluded_emails' => []]);
+    ReportSummaryAgent::fake(['La retención se mantiene plana frente al mes anterior.']);
 });
 
 it('skips the report and hits no external service when subscriptions are disabled', function () {
@@ -218,10 +220,43 @@ it('posts the cohort report embed to the configured discord webhook', function (
     artisan('stats:ai-cohort-report')->assertSuccessful();
 
     Http::assertSent(function ($request) {
+        $embed = $request['embeds'][0];
+
         return $request->url() === 'https://discord.test/hook'
-            && isset($request['embeds'][0]['title'])
-            && str_contains($request['embeds'][0]['title'], 'AI Suggestions');
+            && str_contains($embed['title'], 'Sugerencias con IA')
+            // Spanish table header and legend, no leftover English.
+            && str_contains($embed['description'], 'Semana')
+            && str_contains($embed['description'], 'Prueba')
+            && collect($embed['fields'])->contains(fn ($field) => $field['name'] === 'Leyenda');
     });
+});
+
+it('opens the embed with the AI summary, above the table', function () {
+    config(['services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+    ReportSummaryAgent::fake(['La cohorte de este mes convierte peor que la anterior.']);
+
+    cohortUser(referenceNow()->subWeeks(6), ['transactions' => 3, 'lastActiveAt' => referenceNow()->subWeeks(3)]);
+
+    artisan('stats:ai-cohort-report')->assertSuccessful();
+
+    Http::assertSent(fn ($request) => str_starts_with(
+        $request['embeds'][0]['description'],
+        "La cohorte de este mes convierte peor que la anterior.\n\n```",
+    ));
+});
+
+it('still posts the report when the AI summary fails', function () {
+    config(['services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+    ReportSummaryAgent::fake(fn () => throw new RuntimeException('provider down'));
+
+    cohortUser(referenceNow()->subWeeks(6), ['transactions' => 3, 'lastActiveAt' => referenceNow()->subWeeks(3)]);
+
+    artisan('stats:ai-cohort-report')->assertSuccessful();
+
+    Http::assertSent(fn ($request) => str_starts_with($request['embeds'][0]['description'], '```')
+        && str_contains($request['embeds'][0]['description'], 'Semana'));
 });
 
 it('prints to the console without posting when --no-discord is set', function () {
@@ -230,7 +265,9 @@ it('prints to the console without posting when --no-discord is set', function ()
 
     cohortUser(referenceNow()->subWeeks(6), ['transactions' => 3, 'lastActiveAt' => referenceNow()->subWeeks(3)]);
 
-    artisan('stats:ai-cohort-report', ['--no-discord' => true])->assertSuccessful();
+    artisan('stats:ai-cohort-report', ['--no-discord' => true])
+        ->expectsOutputToContain('La retención se mantiene plana frente al mes anterior.')
+        ->assertSuccessful();
 
     Http::assertNothingSent();
 });
