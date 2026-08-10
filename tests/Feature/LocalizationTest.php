@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\CurrencyOptions;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -143,7 +144,20 @@ function formatPhpTranslationReport(string $locale, array $missingByFile): strin
 }
 
 /**
- * Computes the __() source keys missing from the given locale's JSON file.
+ * Lists the currency names configured in config/currencies.php. They are
+ * translated in PHP by CurrencyOptions before reaching the frontend, so they
+ * never appear as literal __() keys in the TS/TSX source.
+ *
+ * @return array<string>
+ */
+function currencyNameKeys(): array
+{
+    return array_column(app(CurrencyOptions::class)->all(), 'name');
+}
+
+/**
+ * Computes the translatable keys missing from the given locale's JSON file:
+ * both the __() keys found in source and the configured currency names.
  * A missing or malformed file is reported via a sentinel entry.
  *
  * @return array<string>
@@ -162,9 +176,9 @@ function missingJsonTranslationKeys(string $locale): array
         return ['__invalid_json__'];
     }
 
-    $sourceKeys = extractI18nKeysFromSource();
+    $translatableKeys = array_unique([...extractI18nKeysFromSource(), ...currencyNameKeys()]);
     $missingKeys = array_values(array_filter(
-        $sourceKeys,
+        $translatableKeys,
         fn (string $key) => ! array_key_exists($key, $json)
     ));
 
@@ -184,13 +198,13 @@ describe('enforced PHP translations', function () {
 });
 
 describe('enforced JSON translations', function () {
-    it('has every __() source key translated', function (string $locale) {
+    it('has every translatable key translated', function (string $locale) {
         expect(lang_path("{$locale}.json"))->toBeFile("Missing lang/{$locale}.json translation file");
 
         $missingKeys = missingJsonTranslationKeys($locale);
 
         expect($missingKeys)->toBeEmpty(
-            count($missingKeys)." key(s) used in source via __() are missing from lang/{$locale}.json:\n  - ".implode("\n  - ", $missingKeys)
+            count($missingKeys)." translatable key(s) are missing from lang/{$locale}.json:\n  - ".implode("\n  - ", $missingKeys)
         );
     })->with(ENFORCED_LOCALES);
 });
@@ -214,7 +228,7 @@ describe('optional PHP translations', function () {
 });
 
 describe('optional JSON translations', function () {
-    it('warns about __() source keys missing from the locale JSON', function (string $locale) {
+    it('warns about translatable keys missing from the locale JSON', function (string $locale) {
         $missingKeys = missingJsonTranslationKeys($locale);
 
         if ($missingKeys !== []) {
@@ -222,7 +236,7 @@ describe('optional JSON translations', function () {
             // visible in the run summary without failing CI (no failOnIncomplete
             // is configured).
             Assert::markTestIncomplete(
-                count($missingKeys)." key(s) used in source via __() are missing from lang/{$locale}.json (not blocking):\n  - "
+                count($missingKeys)." translatable key(s) are missing from lang/{$locale}.json (not blocking):\n  - "
                 .implode("\n  - ", $missingKeys)
             );
         }

@@ -54,10 +54,10 @@ frontend, so add the Spanish name to `lang/es.json`:
 Spanish (`es`) is the enforced locale. French (`lang/fr.json`) is optional and
 warning-only — add it if you can (#644 did), skip it otherwise.
 
-> ⚠️ `LocalizationTest` scans **TS/TSX source** for `__()` keys. Currency names
-> are translated in PHP and never appear literally in the frontend, so a missing
-> Spanish name is **not** auto-caught by CI. Add it by hand or the UI shows the
-> English name.
+`LocalizationTest` feeds the configured currency names into its translatable-key
+check (`currencyNameKeys()`), so a missing Spanish name **fails CI** and a
+missing French one shows up as a warning. You'll be told which name is missing;
+you still have to write the translation.
 
 ---
 
@@ -73,6 +73,10 @@ NGN: '₦',
 ```
 
 `#644` (GHS) skipped this; `#642` (NGN) added it. Both are fine.
+
+> ⚠️ `getCurrencySymbol` currently has **no callers** — every consumer of
+> `utils/currency` imports `formatCurrency` only. Until something uses it again,
+> adding an entry changes nothing on screen. Skip it.
 
 ---
 
@@ -97,7 +101,7 @@ NGN: '₦',
 
 - [ ] entry in `config/currencies.php` (`code`, `name`, `allows_primary`, `allows_account`)
 - [ ] Spanish name in `lang/es.json` (French in `lang/fr.json` if you can)
-- [ ] symbol in `resources/js/utils/currency.ts` (only if you want a custom glyph)
+- [ ] ~~symbol in `resources/js/utils/currency.ts`~~ (skip — `getCurrencySymbol` is unused)
 - [ ] provider covers the code at the correct rate (verified via the CDN URL)
 
 ```bash

@@ -188,5 +188,11 @@ return [
             'allows_primary' => true,
             'allows_account' => true,
         ],
+        [
+            'code' => 'DKK',
+            'name' => 'Danish Krone',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];
