@@ -45,8 +45,33 @@ describe('AppErrorBoundary', () => {
             screen.getByRole('button', { name: 'Try again' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Back to home' }),
+            screen.getByRole('button', { name: 'Go to Dashboard' }),
         ).toBeInTheDocument();
+    });
+
+    it('turns a back-button navigation into a document load while the fallback is up', () => {
+        const addEventListener = vi.spyOn(window, 'addEventListener');
+        const removeEventListener = vi.spyOn(window, 'removeEventListener');
+
+        const { unmount } = render(
+            <AppErrorBoundary>
+                <Boom />
+            </AppErrorBoundary>,
+        );
+
+        // Inertia's own popstate listener outlives the unmounted page, so
+        // without this the URL changes and nothing repaints.
+        expect(addEventListener).toHaveBeenCalledWith(
+            'popstate',
+            expect.any(Function),
+        );
+
+        unmount();
+
+        expect(removeEventListener).toHaveBeenCalledWith(
+            'popstate',
+            expect.any(Function),
+        );
     });
 
     it('hands the error to the chunk-load recovery, which the global listeners no longer see', () => {
