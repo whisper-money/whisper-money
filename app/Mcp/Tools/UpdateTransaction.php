@@ -12,7 +12,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 
-#[Description('Edit a manually-created transaction. Only manual transactions can be edited; bank/imported ones keep their core fields locked (use categorize_transaction or label_transaction for those). Only the fields you pass are changed.')]
+#[Description('Edit a manually-created transaction; only the fields you pass change. Bank/imported ones keep their core fields locked — use categorize_transaction or label_transaction for those instead.')]
 class UpdateTransaction extends WriteTool
 {
     /**

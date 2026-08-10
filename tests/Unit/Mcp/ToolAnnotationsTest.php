@@ -25,6 +25,23 @@ $destructive = [
     'delete_automation_rule',
 ];
 
+/**
+ * The ChatGPT submission portal caps each tool description at 200 characters,
+ * so a longer one cannot be entered in the form. Detail that does not fit
+ * belongs in the server instructions or a schema field description.
+ */
+it('keeps every tool description within the submission form limit', function () {
+    /** @var array<int, class-string<Tool>> $tools */
+    $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
+
+    foreach ($tools as $class) {
+        $tool = new $class;
+
+        expect(mb_strlen((string) $tool->description()))
+            ->toBeLessThanOrEqual(200, "description for {$tool->name()}");
+    }
+});
+
 it('declares all three MCP hints on every tool', function () use ($readOnly, $destructive) {
     /** @var array<int, class-string<Tool>> $tools */
     $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];

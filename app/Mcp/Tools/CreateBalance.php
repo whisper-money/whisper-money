@@ -9,7 +9,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 
-#[Description('Record an account balance snapshot on a non-connected (manual) account. Balance is an integer in minor units (cents). Replaces any existing snapshot for that date. Connected accounts are rejected: their balances come from the bank sync and a manual snapshot would be overwritten. They do accept manual transactions via create_transaction.')]
+#[Description('Record a balance snapshot on a non-connected (manual) account, replacing any snapshot for that date. Connected accounts are rejected: their balances come from the bank sync.')]
 class CreateBalance extends WriteTool
 {
     /**
