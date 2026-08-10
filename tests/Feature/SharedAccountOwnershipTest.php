@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Http;
 beforeEach(function () {
     Http::fake();
 
-    $this->user = User::factory()->create(['currency_code' => 'USD']);
+    $this->user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
     $this->actingAs($this->user);
 });
 
