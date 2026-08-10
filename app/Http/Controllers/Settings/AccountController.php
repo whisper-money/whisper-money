@@ -189,6 +189,7 @@ class AccountController extends Controller
 
         $accountData = collect($validated)->only([
             'name', 'bank_id', 'currency_code', 'type',
+            'ownership_percentage', 'ownership_applies_to_balance',
         ])->toArray();
 
         $account->update([

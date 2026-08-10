@@ -25,12 +25,13 @@ class CategorySpendingService
         $perCategory = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->joinOwningAccount()
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
                     ->where('categories.type', '=', CategoryType::Expense)
                     ->whereNull('categories.deleted_at');
             })
-            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
+            ->select('transactions.category_id', DB::raw('sum('.Transaction::OWNED_AMOUNT_SQL.') as total_amount'))
             ->groupBy('transactions.category_id')
             ->get()
             ->map(fn ($item): array => [

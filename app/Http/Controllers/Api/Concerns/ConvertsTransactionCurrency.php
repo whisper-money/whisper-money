@@ -13,14 +13,20 @@ use Illuminate\Support\Collection;
  */
 trait ConvertsTransactionCurrency
 {
+    /**
+     * The transaction amount in the user's currency, reduced to their share of
+     * the account. Requires the `account` relation to be eager loaded.
+     */
     protected function convertTransactionAmount(Transaction $transaction, string $currency): int
     {
-        return $this->exchangeRateService->convert(
+        $converted = $this->exchangeRateService->convert(
             $transaction->currency_code ?: $transaction->account?->currency_code ?: $currency,
             $currency,
             $transaction->amount,
             $transaction->transaction_date->toDateString(),
         );
+
+        return $transaction->account?->shareOfAmount($converted) ?? $converted;
     }
 
     /**

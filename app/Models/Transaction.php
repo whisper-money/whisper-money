@@ -13,6 +13,7 @@ use App\Models\Concerns\BelongsToSpace;
 use App\Services\CategoryTree;
 use Carbon\Carbon;
 use Database\Factories\TransactionFactory;
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property Carbon $transaction_date
@@ -244,6 +246,33 @@ class Transaction extends Model
     public function scopePendingAiCategorization(Builder $query): Builder
     {
         return $query->whereNull('category_id')->whereNull('description_iv');
+    }
+
+    /**
+     * A transaction amount reduced to the owner's share of its account, for
+     * SQL-side aggregates. Rounds per row, matching {@see Account::shareOfAmount()}.
+     * Only valid on queries that ran {@see self::scopeJoinOwningAccount()}.
+     */
+    public const OWNED_AMOUNT_SQL = 'round(transactions.amount * accounts.ownership_percentage / 100)';
+
+    /**
+     * Join the owning account so aggregates can weigh each amount by the
+     * account's ownership percentage. Pair it with {@see self::ownedAmount()}.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeJoinOwningAccount(Builder $query): Builder
+    {
+        return $query->join('accounts', 'accounts.id', '=', 'transactions.account_id');
+    }
+
+    /**
+     * {@see self::OWNED_AMOUNT_SQL} as an expression, for `sum()` and friends.
+     */
+    public static function ownedAmount(): Expression
+    {
+        return DB::raw(self::OWNED_AMOUNT_SQL);
     }
 
     /**

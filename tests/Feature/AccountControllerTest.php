@@ -660,6 +660,7 @@ test('accounts index serializes the standard account field set without sensitive
         'id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code',
         'banking_connection_id', 'external_account_id', 'linked_at',
         'bank', 'linked_loan_account_id',
+        'ownership_percentage', 'ownership_applies_to_balance',
     ]);
     expect($account)->not->toHaveKeys(['user_id', 'bank_id', 'iban', 'created_at', 'updated_at', 'deleted_at']);
 });

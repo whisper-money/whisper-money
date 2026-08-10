@@ -1,4 +1,7 @@
 {
+    "Apply it to the balance too, so only my share counts towards net worth": "Aplicarlo también al saldo, para que solo mi parte cuente en el patrimonio neto",
+    "For accounts you share with someone else. Income and expenses only count towards your figures by this percentage.": "Para cuentas que compartes con otra persona. Los ingresos y gastos solo cuentan en tus cifras en ese porcentaje.",
+    "My share of this account (%)": "Mi parte de esta cuenta (%)",
     "Set this up on a computer": "Configúralo desde un ordenador",
     "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude or ChatGPT on your phone as usual.": "El inicio de sesión y la aprobación funcionan bien en un navegador de escritorio, pero suelen fallar en el navegador interno del móvil. Una vez conectado, puedes chatear con Whisper Money desde Claude o ChatGPT en el móvil con normalidad.",
     "Learned: similar transactions will be categorized automatically.": "Aprendido: las transacciones similares se categorizarán automáticamente.",
@@ -81,7 +84,6 @@
     "You have reached your monthly limit of :count integration actions. Try again next month.": "Has alcanzado tu límite mensual de :count acciones de integración. Inténtalo de nuevo el mes que viene.",
     "Remove one vote": "Quitar un voto",
     "Categorized by AI": "Categorizado por IA",
-    "Let AI categorize your transactions": "Deja que la IA categorice tus transacciones",
     "Categorized by AI with :confidence% confident": "Categorizado por IA con un :confidence % de confianza",
     "Only show AI guesses": "Mostrar solo sugerencias de IA",
     "Created by AI": "Creado por IA",

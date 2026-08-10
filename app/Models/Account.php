@@ -37,6 +37,8 @@ class Account extends Model
         'linked_at',
         'position',
         'hidden_on_dashboard',
+        'ownership_percentage',
+        'ownership_applies_to_balance',
     ];
 
     /** @var list<string> */
@@ -65,7 +67,23 @@ class Account extends Model
             'linked_at' => 'datetime',
             'position' => 'integer',
             'hidden_on_dashboard' => 'boolean',
+            'ownership_percentage' => 'integer',
+            'ownership_applies_to_balance' => 'boolean',
         ];
+    }
+
+    /**
+     * The owner's share of an amount held in this account, in the same minor
+     * units. A shared account (say 50% with a partner) only contributes that
+     * slice of every transaction to the user's own figures.
+     */
+    public function shareOfAmount(int $amount): int
+    {
+        if ($this->ownership_percentage >= 100) {
+            return $amount;
+        }
+
+        return (int) round($amount * $this->ownership_percentage / 100);
     }
 
     /**

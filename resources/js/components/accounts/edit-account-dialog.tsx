@@ -1,6 +1,8 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -8,6 +10,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getCsrfToken } from '@/lib/csrf';
 import { getStoredKey } from '@/lib/key-storage';
@@ -49,6 +53,12 @@ export function EditAccountDialog({
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [ownershipPercentage, setOwnershipPercentage] = useState(
+        String(account.ownership_percentage ?? 100),
+    );
+    const [ownershipAppliesToBalance, setOwnershipAppliesToBalance] = useState(
+        account.ownership_applies_to_balance ?? false,
+    );
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: account.bank?.id ?? null,
@@ -145,11 +155,24 @@ export function EditAccountDialog({
         formDataRef.current = data;
     }, []);
 
+    // An empty field reads as full ownership; anything else goes to the server
+    // as typed so an out-of-range value comes back as a validation error.
+    const parsedShare = parseInt(ownershipPercentage, 10);
+    const sharePercentage = Number.isNaN(parsedShare) ? 100 : parsedShare;
+
     useEffect(() => {
         if (open) {
             setErrors({});
+            setOwnershipPercentage(String(account.ownership_percentage ?? 100));
+            setOwnershipAppliesToBalance(
+                account.ownership_applies_to_balance ?? false,
+            );
         }
-    }, [open]);
+    }, [
+        open,
+        account.ownership_percentage,
+        account.ownership_applies_to_balance,
+    ]);
 
     async function createBankAndGetId(): Promise<string | null> {
         const customBank = formDataRef.current.customBank;
@@ -231,6 +254,9 @@ export function EditAccountDialog({
                     ...(finalBankId ? { bank_id: finalBankId } : {}),
                     type: type,
                     currency_code: currencyCode,
+                    ownership_percentage: sharePercentage,
+                    ownership_applies_to_balance:
+                        sharePercentage < 100 && ownershipAppliesToBalance,
                     ...(formDataRef.current.loan
                         ? {
                               annual_interest_rate:
@@ -315,11 +341,64 @@ export function EditAccountDialog({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-2">
                     {initialValues ? (
-                        <AccountForm
-                            initialValues={initialValues}
-                            onChange={handleFormChange}
-                            errors={errors}
-                        />
+                        <>
+                            <AccountForm
+                                initialValues={initialValues}
+                                onChange={handleFormChange}
+                                errors={errors}
+                            />
+
+                            <div className="grid gap-2 pt-2">
+                                <Label htmlFor="ownership-percentage">
+                                    {__('My share of this account (%)')}
+                                </Label>
+                                <Input
+                                    id="ownership-percentage"
+                                    type="number"
+                                    min={1}
+                                    max={100}
+                                    step={1}
+                                    value={ownershipPercentage}
+                                    onChange={(event) =>
+                                        setOwnershipPercentage(
+                                            event.target.value,
+                                        )
+                                    }
+                                    disabled={isSubmitting}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {__(
+                                        'For accounts you share with someone else. Income and expenses only count towards your figures by this percentage.',
+                                    )}
+                                </p>
+                                <InputError
+                                    message={errors.ownership_percentage}
+                                />
+
+                                {sharePercentage < 100 && (
+                                    <div className="flex items-start gap-2 pt-1">
+                                        <Checkbox
+                                            id="ownership-applies-to-balance"
+                                            checked={ownershipAppliesToBalance}
+                                            onCheckedChange={(checked) =>
+                                                setOwnershipAppliesToBalance(
+                                                    checked === true,
+                                                )
+                                            }
+                                            disabled={isSubmitting}
+                                        />
+                                        <Label
+                                            htmlFor="ownership-applies-to-balance"
+                                            className="cursor-pointer font-normal"
+                                        >
+                                            {__(
+                                                'Apply it to the balance too, so only my share counts towards net worth',
+                                            )}
+                                        </Label>
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     ) : (
                         <div className="space-y-4">
                             <div className="h-10 animate-pulse rounded bg-muted" />
