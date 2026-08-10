@@ -116,7 +116,7 @@ export function UserMenuContent({
                 <DropdownMenuItem asChild>
                     <a
                         className="block w-full cursor-pointer"
-                        href="https://whisper-money.canny.io/feature-requests"
+                        href="https://whispermoney.userjot.com/"
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={cleanup}
@@ -128,7 +128,7 @@ export function UserMenuContent({
                 <DropdownMenuItem asChild>
                     <a
                         className="block w-full cursor-pointer"
-                        href="https://whisper-money.canny.io/"
+                        href="https://whispermoney.userjot.com/roadmap"
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={cleanup}

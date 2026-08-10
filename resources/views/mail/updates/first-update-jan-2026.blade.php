@@ -19,10 +19,10 @@ Whisper Money is a small project built by one person (me!), but it can become so
 **Join our Discord community** – Share ideas, report bugs, or just chat about privacy-first finance. [Join our comminity](https://discord.gg/m8hUhx6D9D).
 
 **Check our Roadmap** – See what's coming next and vote on features you care about:
-[whisper-money.canny.io](https://whisper-money.canny.io/)
+[whispermoney.userjot.com/roadmap](https://whispermoney.userjot.com/roadmap)
 
 **Request Features** – Have an idea? I want to hear it:
-[whisper-money.canny.io/feature-requests](https://whisper-money.canny.io/feature-requests)
+[whispermoney.userjot.com](https://whispermoney.userjot.com/)
 </x-mail::panel>
 
 ## Why This Matters

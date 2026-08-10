@@ -103,6 +103,25 @@ describe('UserMenuContent', () => {
         );
     });
 
+    it('links feedback and roadmap to UserJot', () => {
+        render(
+            <UserMenuContent
+                user={user}
+                onOpenSupport={vi.fn()}
+                onOpenIntegrationRequests={vi.fn()}
+            />,
+        );
+
+        expect(
+            screen
+                .getByRole('link', { name: /feedback/i })
+                .getAttribute('href'),
+        ).toBe('https://whispermoney.userjot.com/');
+        expect(
+            screen.getByRole('link', { name: /roadmap/i }).getAttribute('href'),
+        ).toBe('https://whispermoney.userjot.com/roadmap');
+    });
+
     it('triggers the support callback when the support item is clicked', () => {
         const onOpenSupport = vi.fn();
 
