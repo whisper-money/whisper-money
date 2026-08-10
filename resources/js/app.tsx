@@ -14,6 +14,7 @@ import {
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast, Toaster } from 'sonner';
+import { AppErrorBoundary } from './components/app-error-boundary';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
@@ -240,27 +241,29 @@ createInertiaApp({
 
         root.render(
             <StrictMode>
-                <EncryptionKeyProvider
-                    hasEncryptionSetup={
-                        hasEncryptionSetup &&
-                        (hasEncryptedAccounts || hasEncryptedTransactions)
-                    }
-                >
-                    <PrivacyModeProvider>
-                        <SyncProvider
-                            initialIsAuthenticated={initialIsAuthenticated}
-                            initialUser={initialUser}
-                        >
-                            <App {...props} />
-                            <ExpiredConnectionsToast
-                                initialExpiredConnections={
-                                    initialExpiredConnections
-                                }
-                            />
-                            <AppToaster />
-                        </SyncProvider>
-                    </PrivacyModeProvider>
-                </EncryptionKeyProvider>
+                <AppErrorBoundary>
+                    <EncryptionKeyProvider
+                        hasEncryptionSetup={
+                            hasEncryptionSetup &&
+                            (hasEncryptedAccounts || hasEncryptedTransactions)
+                        }
+                    >
+                        <PrivacyModeProvider>
+                            <SyncProvider
+                                initialIsAuthenticated={initialIsAuthenticated}
+                                initialUser={initialUser}
+                            >
+                                <App {...props} />
+                                <ExpiredConnectionsToast
+                                    initialExpiredConnections={
+                                        initialExpiredConnections
+                                    }
+                                />
+                                <AppToaster />
+                            </SyncProvider>
+                        </PrivacyModeProvider>
+                    </EncryptionKeyProvider>
+                </AppErrorBoundary>
             </StrictMode>,
         );
     },
