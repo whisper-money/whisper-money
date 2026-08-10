@@ -2,6 +2,8 @@
 
 namespace App\Services\Banking;
 
+use App\Exceptions\Banking\TransientBankingProviderException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -18,11 +20,7 @@ class WiseClient
      */
     public function getProfiles(): array
     {
-        $response = $this->client()->get('/v1/profiles');
-
-        $response->throw();
-
-        return $response->json();
+        return $this->get('/v1/profiles');
     }
 
     /**
@@ -32,13 +30,7 @@ class WiseClient
      */
     public function getBorderlessAccount(int $profileId): array
     {
-        $response = $this->client()->get('/v2/borderless-accounts', [
-            'profileId' => $profileId,
-        ]);
-
-        $response->throw();
-
-        $accounts = $response->json();
+        $accounts = $this->get('/v2/borderless-accounts', ['profileId' => $profileId]);
 
         return $accounts[0] ?? [];
     }
@@ -61,9 +53,42 @@ class WiseClient
             $params['cursor'] = $cursor;
         }
 
-        $response = $this->client()->get("/v1/profiles/{$profileId}/activities", $params);
+        return $this->get("/v1/profiles/{$profileId}/activities", $params);
+    }
 
-        $response->throw();
+    /**
+     * An unattended sync cannot do anything about Wise being down or slow, so a
+     * timeout or a 5xx is reclassified as transient: the job logs it as a
+     * warning, keeps it out of Sentry and retries later. Statuses the caller
+     * acts on - 401/403 auth failures, 429 rate limits - stay as they are.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<mixed>
+     */
+    private function get(string $url, array $params = []): array
+    {
+        try {
+            $response = $this->client()->get($url, $params);
+
+            $response->throw();
+        } catch (ConnectionException $e) {
+            throw new TransientBankingProviderException(
+                'Wise did not respond in time.',
+                provider: 'wise',
+                previous: $e,
+            );
+        } catch (RequestException $e) {
+            if (! $e->response->serverError()) {
+                throw $e;
+            }
+
+            throw new TransientBankingProviderException(
+                'Wise could not serve the request right now.',
+                provider: 'wise',
+                statusCode: $e->response->status(),
+                previous: $e,
+            );
+        }
 
         return $response->json();
     }
@@ -74,7 +99,7 @@ class WiseClient
             ->withToken($this->apiToken)
             ->acceptJson()
             ->throw(function ($response, RequestException $exception) {
-                Log::error('Wise API error', [
+                Log::log($response->serverError() ? 'warning' : 'error', 'Wise API error', [
                     'status' => $response->status(),
                     'body' => $response->json(),
                 ]);
