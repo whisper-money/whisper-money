@@ -7,9 +7,11 @@ use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
+use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 
 class EnableBankingSyncer extends AbstractBankingConnectionSyncer
@@ -20,6 +22,13 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
      * watermark would silently miss them.
      */
     private const int WATERMARK_OVERLAP_DAYS = 3;
+
+    /**
+     * Windows reaching further back than this still ask for the 'longest'
+     * strategy. Banks refuse wide unattended windows, and the narrowing retry
+     * that follows would skip the history in between for good.
+     */
+    private const int SHORT_WINDOW_DAYS = 90;
 
     public function __construct(
         private TransactionSyncService $transactionSync,
@@ -39,6 +48,11 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
     public function sync(BankingConnection $connection, bool $isFirstSync): array
     {
         $dateTo = now()->toDateString();
+        $shortWindowStart = now()->subDays(self::SHORT_WINDOW_DAYS)->toDateString();
+
+        // A first sync on a connection that has synced before can only come from
+        // the --full flag, an explicit request to re-pull the whole history.
+        $forceFullWindow = $isFirstSync && $connection->last_synced_at !== null;
 
         $transactionsPerBank = [];
         $balanceFailed = 0;
@@ -46,30 +60,11 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $connection->load('accounts.bank');
 
         foreach ($connection->accounts as $account) {
-            // Only bank-sourced rows move the watermark. A manual or
-            // imported transaction dated later would otherwise shrink
-            // the fetch window and skip bank history for good.
-            $lastTransaction = $account->transactions()
-                ->where('source', TransactionSource::EnableBanking)
-                ->latest('transaction_date')
-                ->first();
-
-            // With a watermark, ask only for what came after it: re-paginating a
-            // year of history on every scheduled run is what trips the provider's
-            // rate limit. Without one this is the genuine first sync.
-            $dateFrom = $lastTransaction
-                ? $lastTransaction->transaction_date->copy()->subDays(self::WATERMARK_OVERLAP_DAYS)->toDateString()
-                : now()->subYear()->toDateString();
-            $strategy = $lastTransaction ? null : 'longest';
-
-            if ($dateFrom > $dateTo) {
-                $dateFrom = $dateTo;
-            }
+            $dateFrom = $this->resolveDateFrom($account, $dateTo, $forceFullWindow);
+            $strategy = $dateFrom < $shortWindowStart ? 'longest' : null;
 
             try {
-                $created = $account->isLinked()
-                    ? $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy, saveDailyBalances: false)
-                    : $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
+                $created = $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy, saveDailyBalances: ! $account->isLinked());
             } catch (InaccessibleBankAccountException|WrongTransactionsPeriodException $e) {
                 // A single account the bank no longer exposes, or whose history
                 // window it refuses even after narrowing, must not break the
@@ -90,15 +85,17 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 if ($isFirstSync && ! $account->isLinked()) {
                     $this->balanceSync->calculateHistoricalBalances($account);
                 }
-            } catch (ExpiredBankingSessionException $e) {
-                // Not a balance problem: the consent is gone and the whole
-                // connection needs the user to reconnect.
-                throw $e;
             } catch (\Throwable $e) {
-                // Balances are a nice-to-have next to the transactions we just
-                // persisted. Failing the run here would throw away the sync and
-                // leave last_synced_at unset, which pins the connection to the
-                // year-wide first-sync window forever.
+                // An expired consent needs the user to reconnect, and a rate
+                // limit has to reach the job so it applies the provider backoff:
+                // swallowing it would keep burning the remaining daily quota.
+                if ($e instanceof ExpiredBankingSessionException || $this->isRateLimit($e)) {
+                    throw $e;
+                }
+
+                // Anything else is not worth losing the run over. Balances are a
+                // nice-to-have next to the transactions we just persisted, and
+                // failing here leaves last_synced_at unset.
                 $balanceFailed++;
 
                 Log::warning('EnableBanking balance sync failed, continuing', [
@@ -126,5 +123,41 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             'transactions_per_bank' => $transactionsPerBank,
             'balance_failed' => $balanceFailed,
         ];
+    }
+
+    /**
+     * Start of the window to fetch for an account: just before the last
+     * transaction the bank sent us, or a year back when it never sent one.
+     *
+     * Asking for what came after the watermark is what keeps a routine sync to
+     * a handful of days. Re-paginating a year on every scheduled run is what
+     * trips the provider's rate limit.
+     */
+    private function resolveDateFrom(Account $account, string $dateTo, bool $forceFullWindow): string
+    {
+        // Only bank-sourced rows move the watermark: a manual or imported
+        // transaction dated later would shrink the window and skip bank history
+        // for good. Trashed rows still count, because the dedup that follows
+        // sees them too and would re-import nothing anyway.
+        $watermark = $forceFullWindow ? null : $account->transactions()
+            ->withTrashed()
+            ->where('source', TransactionSource::EnableBanking)
+            ->latest('transaction_date')
+            ->value('transaction_date');
+
+        if (! $watermark) {
+            return now()->subYear()->toDateString();
+        }
+
+        // Future-dated rows (standing orders) must not push the window past
+        // today, but the overlap applies either way.
+        $start = $watermark->toDateString() > $dateTo ? now() : $watermark;
+
+        return $start->copy()->subDays(self::WATERMARK_OVERLAP_DAYS)->toDateString();
+    }
+
+    private function isRateLimit(\Throwable $e): bool
+    {
+        return $e instanceof RequestException && $e->response->status() === 429;
     }
 }
