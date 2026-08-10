@@ -90,7 +90,8 @@ class WiseClient
             );
         }
 
-        return $response->json();
+        /** A 200 with an empty body used to degrade to an empty result, not a TypeError. */
+        return $response->json() ?? [];
     }
 
     private function client(): PendingRequest

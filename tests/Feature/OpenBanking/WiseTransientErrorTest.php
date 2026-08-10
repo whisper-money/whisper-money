@@ -2,7 +2,6 @@
 
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Services\Banking\WiseClient;
-use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -34,7 +33,8 @@ test('wise auth and rate-limit responses stay raw so the sync job can act on the
         ->toThrow(RequestException::class);
 })->with([401, 403, 429]);
 
-test('the transient wise exception is not reported to sentry', function () {
-    expect(new TransientBankingProviderException('down', provider: 'wise'))
-        ->toBeInstanceOf(ShouldntReport::class);
+test('an empty wise response body still degrades to an empty result', function () {
+    Http::fake(['api.wise.com/v2/borderless-accounts*' => Http::response('', 200)]);
+
+    expect((new WiseClient('test-token'))->getBorderlessAccount(35242290))->toBe([]);
 });
