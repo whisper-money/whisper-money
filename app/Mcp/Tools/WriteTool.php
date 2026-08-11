@@ -9,6 +9,7 @@ use App\Models\Label;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
@@ -45,23 +46,64 @@ abstract class WriteTool extends McpTool
     abstract protected function write(Request $request, User $user): Response;
 
     /**
+     * Resolve a model of the given class inside the space, failing with a message
+     * that tells the agent which tool lists the valid ids.
+     *
+     * @template TModel of Model
+     *
+     * @param  class-string<TModel>  $model
+     * @param  string  $noun  how the model is named in the failure message
+     * @param  string  $hint  appended to the failure message
+     * @return TModel
+     */
+    protected function modelInSpace(Request $request, Space $space, string $model, string $key, string $noun, string $hint = ''): Model
+    {
+        $id = $request->string($key)->toString();
+
+        $found = $model::query()->forSpace($space)->whereKey($id)->first();
+
+        if ($found === null) {
+            throw ValidationException::withMessages([
+                $key => trim("No {$noun} with id {$id} in space {$space->id}. {$hint}"),
+            ]);
+        }
+
+        return $found;
+    }
+
+    /**
+     * Assign only the fields the request actually carries — the "only what you
+     * pass changes" contract every update tool promises. Values are closures so
+     * that resolving a related model (which may fail validation) happens only
+     * when the field is present.
+     *
+     * @param  array<string, callable(): mixed>  $fields
+     */
+    protected function applyFields(Request $request, Model $model, array $fields): void
+    {
+        foreach ($fields as $attribute => $value) {
+            if ($request->has($attribute)) {
+                $model->{$attribute} = $value();
+            }
+        }
+    }
+
+    /**
+     * A string field, or null when the agent passed an empty value to clear it.
+     */
+    protected function nullableString(Request $request, string $key): ?string
+    {
+        return $request->filled($key) ? $request->string($key)->toString() : null;
+    }
+
+    /**
      * Resolve an account in the space. Bank-connected accounts are allowed:
      * a sync only inserts rows it has not seen before, so a manual transaction
      * added to a connected account survives every later sync.
      */
     protected function accountInSpace(Request $request, Space $space, string $key = 'account_id'): Account
     {
-        $id = $request->string($key)->toString();
-
-        $account = Account::query()->forSpace($space)->whereKey($id)->first();
-
-        if ($account === null) {
-            throw ValidationException::withMessages([
-                $key => "No account with id {$id} in space {$space->id}. Call list_accounts to see valid ids.",
-            ]);
-        }
-
-        return $account;
+        return $this->modelInSpace($request, $space, Account::class, $key, 'account', 'Call list_accounts to see valid ids.');
     }
 
     /**
@@ -84,47 +126,22 @@ abstract class WriteTool extends McpTool
 
     protected function transactionInSpace(Request $request, Space $space, string $key = 'transaction_id'): Transaction
     {
-        $id = $request->string($key)->toString();
-
-        $transaction = Transaction::query()->forSpace($space)->whereKey($id)->first();
-
-        if ($transaction === null) {
-            throw ValidationException::withMessages([
-                $key => "No transaction with id {$id} in space {$space->id}. Call search_transactions to find ids.",
-            ]);
-        }
-
-        return $transaction;
+        return $this->modelInSpace($request, $space, Transaction::class, $key, 'transaction', 'Call search_transactions to find ids.');
     }
 
     protected function categoryInSpace(Request $request, Space $space, string $key = 'category_id'): Category
     {
-        $id = $request->string($key)->toString();
-
-        $category = Category::query()->forSpace($space)->whereKey($id)->first();
-
-        if ($category === null) {
-            throw ValidationException::withMessages([
-                $key => "No category with id {$id} in space {$space->id}. Call list_categories to see valid ids.",
-            ]);
-        }
-
-        return $category;
+        return $this->modelInSpace($request, $space, Category::class, $key, 'category', 'Call list_categories to see valid ids.');
     }
 
     protected function labelInSpace(Request $request, Space $space, string $key = 'label_id'): Label
     {
-        $id = $request->string($key)->toString();
+        return $this->modelInSpace($request, $space, Label::class, $key, 'label', 'Call list_labels to see valid ids.');
+    }
 
-        $label = Label::query()->forSpace($space)->whereKey($id)->first();
-
-        if ($label === null) {
-            throw ValidationException::withMessages([
-                $key => "No label with id {$id} in space {$space->id}. Call list_labels to see valid ids.",
-            ]);
-        }
-
-        return $label;
+    protected function ruleInSpace(Request $request, Space $space, string $key = 'automation_rule_id'): AutomationRule
+    {
+        return $this->modelInSpace($request, $space, AutomationRule::class, $key, 'automation rule');
     }
 
     /**

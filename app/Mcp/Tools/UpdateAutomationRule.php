@@ -3,8 +3,6 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Tools\Concerns\DecodesRulesJson;
-use App\Models\AutomationRule;
-use App\Models\Space;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\ValidationException;
@@ -45,23 +43,15 @@ class UpdateAutomationRule extends WriteTool
         $space = $this->resolveSpace($request, $user);
         $rule = $this->ruleInSpace($request, $space);
 
-        if ($request->has('title')) {
-            $rule->title = $request->string('title')->toString();
-        }
-        if ($request->has('priority')) {
-            $rule->priority = $request->integer('priority');
-        }
-        if ($request->has('rules_json')) {
-            $rule->rules_json = $this->rulesJson($request);
-        }
-        if ($request->has('action_category_id')) {
-            $rule->action_category_id = $request->filled('action_category_id')
+        $this->applyFields($request, $rule, [
+            'title' => fn () => $request->string('title')->toString(),
+            'priority' => fn () => $request->integer('priority'),
+            'rules_json' => fn () => $this->rulesJson($request),
+            'action_category_id' => fn () => $request->filled('action_category_id')
                 ? $this->categoryInSpace($request, $space, 'action_category_id')->id
-                : null;
-        }
-        if ($request->has('action_note')) {
-            $rule->action_note = $request->filled('action_note') ? $request->string('action_note')->toString() : null;
-        }
+                : null,
+            'action_note' => fn () => $this->nullableString($request, 'action_note'),
+        ]);
 
         $newLabels = $request->has('action_label_ids')
             ? $this->labelsInSpace($request, $space, 'action_label_ids')
@@ -86,20 +76,5 @@ class UpdateAutomationRule extends WriteTool
         $rule->touch();
 
         return $this->json(['automation_rule' => $this->presentAutomationRule($rule->refresh())]);
-    }
-
-    private function ruleInSpace(Request $request, Space $space): AutomationRule
-    {
-        $id = $request->string('automation_rule_id')->toString();
-
-        $rule = AutomationRule::query()->forSpace($space)->whereKey($id)->first();
-
-        if ($rule === null) {
-            throw ValidationException::withMessages([
-                'automation_rule_id' => "No automation rule with id {$id} in space {$space->id}.",
-            ]);
-        }
-
-        return $rule;
     }
 }
