@@ -8,8 +8,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | Provider and model for the AI summary that opens the scheduled stats
-    | reports (`stats:subscription-funnel`, `stats:experiment-funnel`,
-    | `stats:ai-cohort-report`). The provider defaults to Gemini but accepts any
+    | reports (`stats:subscription-funnel`, `stats:ai-cohort-report`). The
+    | provider defaults to Gemini but accepts any
     | laravel/ai provider (a valid Laravel\Ai\Enums\Lab case); a Flash-tier
     | model is plenty for summarising a handful of pre-computed figures. See the
     | README "AI Provider" section for the shared AI_PROVIDER switch.

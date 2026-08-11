@@ -51,7 +51,6 @@ it('keeps every scheduled report inside Discord\'s embed limits', function (stri
 })->with([
     'stats:daily-report',
     'stats:subscription-funnel',
-    'stats:experiment-funnel',
     'stats:ai-cohort-report',
 ]);
 
