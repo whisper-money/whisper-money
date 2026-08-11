@@ -15,6 +15,8 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Services\Ai\CategoryOverrideHandler;
 use App\Services\ManualBalanceAdjuster;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -303,32 +305,81 @@ class TransactionController extends Controller
 
     public function bulkUpdate(BulkUpdateTransactionsRequest $request): JsonResponse
     {
-        $user = $request->user();
+        // The request rules make transaction_ids either absent or a non-empty
+        // array (`['array', 'min:1']`), so null here means "no explicit
+        // selection" and the filters decide.
         $transactionIds = $request->input('transaction_ids');
         $filters = $request->input('filters');
 
-        $query = Transaction::query()->where('user_id', $user->id);
+        $transactions = $this->bulkSelection($request->user()->id, $transactionIds, $filters)->get();
 
-        if ($transactionIds && count($transactionIds) > 0) {
-            $query->whereIn('id', $transactionIds);
-            $transactions = $query->get();
-
-            if ($transactions->count() !== count($transactionIds)) {
-                return response()->json([
-                    'message' => 'Some transactions were not found or do not belong to you.',
-                ], 403);
-            }
-        } elseif ($filters !== null) {
-            $query->applyFilters($filters);
-            $transactions = $query->get();
-        } else {
-            $transactions = $query->get();
+        // Ids the user does not own are silently dropped by the user_id scope, so a
+        // short result means they asked for someone else's rows.
+        if ($transactionIds !== null && $transactions->count() !== count($transactionIds)) {
+            return response()->json([
+                'message' => 'Some transactions were not found or do not belong to you.',
+            ], 403);
         }
 
+        $updateData = $this->bulkUpdateAttributes($request, $transactions);
+        $hasLabelUpdate = $request->has('label_ids');
+
+        if ($updateData === [] && ! $hasLabelUpdate) {
+            return response()->json([
+                'message' => 'No update data provided.',
+            ], 400);
+        }
+
+        if ($updateData !== []) {
+            $this->bulkSelection($request->user()->id, $transactionIds, $filters)->update($updateData);
+        }
+
+        if ($hasLabelUpdate) {
+            $this->syncLabels($transactions, $request->input('label_ids') ?? []);
+        }
+
+        return response()->json([
+            'message' => 'Transactions updated successfully',
+            'count' => $transactions->count(),
+        ]);
+    }
+
+    /**
+     * The rows a bulk operation applies to: the explicit ids when the request
+     * carries them, otherwise everything matching the filters the user has on
+     * screen. Always scoped to the caller.
+     *
+     * @param  list<string>|null  $transactionIds
+     * @param  array<string, mixed>|null  $filters
+     * @return Builder<Transaction>
+     */
+    private function bulkSelection(string $userId, ?array $transactionIds, ?array $filters): Builder
+    {
+        $query = Transaction::query()->where('user_id', $userId);
+
+        if ($transactionIds !== null) {
+            return $query->whereIn('id', $transactionIds);
+        }
+
+        return $filters === null ? $query : $query->applyFilters($filters);
+    }
+
+    /**
+     * The columns a bulk update writes, taken from the fields the request carries.
+     *
+     * A new category is a manual assignment, so any AI or rule provenance is
+     * cleared. The previous value is recorded first, while the rows still hold it,
+     * so the learning pipeline sees the correction.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @return array<string, mixed>
+     */
+    private function bulkUpdateAttributes(BulkUpdateTransactionsRequest $request, Collection $transactions): array
+    {
         $updateData = [];
+
         if ($request->has('category_id')) {
             $newCategoryId = $request->input('category_id');
-
             $overrideHandler = app(CategoryOverrideHandler::class);
 
             foreach ($transactions as $transaction) {
@@ -340,42 +391,28 @@ class TransactionController extends Controller
             $updateData['ai_confidence'] = null;
             $updateData['categorized_by_rule_id'] = null;
         }
-        if ($request->has('notes')) {
-            $updateData['notes'] = $request->input('notes');
-        }
-        if ($request->has('notes_iv')) {
-            $updateData['notes_iv'] = $request->input('notes_iv');
-        }
 
-        $labelIds = $request->input('label_ids');
-        $hasLabelUpdate = $request->has('label_ids');
-
-        if (empty($updateData) && ! $hasLabelUpdate) {
-            return response()->json([
-                'message' => 'No update data provided.',
-            ], 400);
-        }
-
-        if (! empty($updateData)) {
-            $updateQuery = Transaction::query()->where('user_id', $user->id);
-            if ($transactionIds && count($transactionIds) > 0) {
-                $updateQuery->whereIn('id', $transactionIds);
-            } elseif ($filters !== null) {
-                $updateQuery->applyFilters($filters);
-            }
-            $updateQuery->update($updateData);
-        }
-
-        if ($hasLabelUpdate) {
-            foreach ($transactions as $transaction) {
-                $transaction->labels()->sync($labelIds ?? []);
-                $transaction->save();
+        foreach (['notes', 'notes_iv'] as $field) {
+            if ($request->has($field)) {
+                $updateData[$field] = $request->input($field);
             }
         }
 
-        return response()->json([
-            'message' => 'Transactions updated successfully',
-            'count' => $transactions->count(),
-        ]);
+        return $updateData;
+    }
+
+    /**
+     * Labels are a relation, so they are replaced row by row rather than in the
+     * mass update. The save() bumps updated_at, which the sync alone would not.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @param  list<string>  $labelIds
+     */
+    private function syncLabels(Collection $transactions, array $labelIds): void
+    {
+        foreach ($transactions as $transaction) {
+            $transaction->labels()->sync($labelIds);
+            $transaction->save();
+        }
     }
 }
