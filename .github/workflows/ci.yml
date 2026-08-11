@@ -57,6 +57,10 @@ jobs:
 
       - name: Setup PHP & Composer Deps
         uses: ./.github/actions/setup-php-deps
+        with:
+          # pcov, not xdebug: the suite runs with coverage so the `crap` job can
+          # report CRAP alongside complexity, and pcov costs far less.
+          coverage: pcov
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -73,7 +77,11 @@ jobs:
         # service runs as root which has CREATE on *.* so this Just Works
         # without extra grants. Performance suite is excluded because
         # concurrent load skews its timing-based assertions.
-        run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4
+        #
+        # pcov.directory must be set explicitly: left to autodetect it picks
+        # "src", which does not exist here, and every method silently reports
+        # zero coverage.
+        run: php -d pcov.directory=app ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4 --coverage-crap4j=build/crap4j.xml
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql
@@ -82,6 +90,51 @@ jobs:
           DB_DATABASE: testing
           DB_USERNAME: root
           DB_PASSWORD: password
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: crap4j-report
+          path: build/crap4j.xml
+          retention-days: 1
+
+  # Reports methods this PR touched that exceed the complexity threshold.
+  #
+  # Deliberately NOT a required check: it goes red so the number is visible on
+  # the PR, but it never blocks the merge. Keep it out of branch protection --
+  # moving it into the `linter` job (as the duplication check is) would turn it
+  # into a merge gate, which is not what it is for.
+  crap:
+    # No !cancelled() here on purpose: when `tests` fails there is no coverage
+    # artifact to download, and a red `crap` job for a missing file would say
+    # nothing about complexity. Skipping is the honest outcome.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout
+        # Full history: the check diffs against the merge-base with the base branch.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP & Composer Deps
+        uses: ./.github/actions/setup-php-deps
+
+      - name: Copy Environment File
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      - name: Download Coverage Report
+        uses: actions/download-artifact@v4
+        with:
+          name: crap4j-report
+          path: build
+
+      - name: Complexity Check
+        run: php artisan crap --base=origin/${{ github.base_ref }}
 
   browser-tests:
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}

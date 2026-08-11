@@ -52,6 +52,32 @@ bun run format
 bun run lint
 ```
 
+### Complexity check
+
+Before opening a PR, run the check on what you changed:
+
+```bash
+php artisan crap --base=origin/main --no-coverage
+```
+
+It fails when a method your diff touches exceeds **cyclomatic complexity 10**.
+`--no-coverage` keeps it under a second and gives the same verdict CI gives, since
+complexity alone decides it. Drop the flag to also get CRAP and per-method coverage
+as context, which needs a coverage report:
+
+```bash
+php -d pcov.directory=app ./vendor/bin/pest --exclude-testsuite=Browser,Performance --coverage-crap4j=build/crap4j.xml
+```
+
+When a method trips the threshold, simplify it. When the complexity is genuinely
+warranted (a state machine, a parser, a funnel whose step order matters), add the
+method to `.crap-ignore.json` with a reason — the reason is read in review, so make
+it a real one. Entries that are no longer needed get reported so they can be deleted.
+
+The `crap` CI job goes red on violations but is **not** a required check, so it never
+blocks a merge. Do not "fix" it by splitting a method into near-identical pieces: the
+duplication check in the `linter` job is a required check and will catch that.
+
 ## Architecture
 
 ### Backend (Laravel 12)
