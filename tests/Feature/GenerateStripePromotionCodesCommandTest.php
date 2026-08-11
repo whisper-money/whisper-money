@@ -38,7 +38,7 @@ test('creates requested number of single use promotion codes for default coupon'
     expect($createdParams)->toHaveCount(3);
 
     foreach ($createdParams as $params) {
-        expect($params['coupon'])->toBe('0E5fAsXG');
+        expect($params['promotion'])->toBe(['type' => 'coupon', 'coupon' => '0E5fAsXG']);
         expect($params['max_redemptions'])->toBe(1);
         expect($params['code'])->toStartWith('WM-');
     }

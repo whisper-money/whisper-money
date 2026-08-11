@@ -69,7 +69,7 @@ it('splits post-start users across all three variants and stays stable per user'
         expect($offer->variantFor($user))->toBe($assigned);
     }
 
-    expect(array_unique($variants))->toEqualCanonicalizing([
+    expect(array_values(array_unique($variants)))->toEqualCanonicalizing([
         SubscriptionExperiment::CONTROL,
         SubscriptionExperiment::REDUCED_TRIAL,
         SubscriptionExperiment::PAY_NOW,

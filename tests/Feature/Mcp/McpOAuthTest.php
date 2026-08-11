@@ -159,7 +159,7 @@ it('registers a public PKCE client via dynamic client registration', function ()
     $response = postJson('/oauth/register', [
         'client_name' => 'Claude',
         'redirect_uris' => [CLAUDE_CALLBACK],
-    ])->assertOk()->assertJson([
+    ])->assertCreated()->assertJson([
         'token_endpoint_auth_method' => 'none',
         'scope' => 'mcp:use',
     ]);

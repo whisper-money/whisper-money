@@ -9,6 +9,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Encoders\PngEncoder;
 use Intervention\Image\ImageManager;
 
 class SetBankLogoCommand extends Command implements PromptsForMissingInput
@@ -68,7 +69,7 @@ class SetBankLogoCommand extends Command implements PromptsForMissingInput
 
         try {
             $manager = new ImageManager(new Driver);
-            $image = $manager->read($response->body());
+            $image = $manager->decodeBinary($response->body());
         } catch (\Exception $e) {
             $this->error("Downloaded file is not a valid image: {$e->getMessage()}");
 
@@ -92,7 +93,7 @@ class SetBankLogoCommand extends Command implements PromptsForMissingInput
 
         $path = "banks/logos/{$bank->id}.png";
 
-        Storage::disk('public')->put($path, $image->toPng()->toString());
+        Storage::disk('public')->put($path, $image->encode(new PngEncoder)->toString());
 
         $logoUrl = Storage::disk('public')->url($path);
 
