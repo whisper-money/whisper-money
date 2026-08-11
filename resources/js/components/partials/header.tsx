@@ -1,8 +1,8 @@
-import { dashboard, login } from '@/routes';
+import { dashboard, login, roadmap } from '@/routes';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
-import { BirdIcon, Github, LogIn, StarIcon } from 'lucide-react';
+import { BirdIcon, Github, LogIn, MapIcon, StarIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import DiscordIcon from '../icons/DiscordIcon';
 import { Button } from '../ui/button';
@@ -142,6 +142,17 @@ export default function Header({
                     <nav className="flex items-center gap-4">
                         {!hideExternalButtons && (
                             <>
+                                <Link href={roadmap()}>
+                                    <Button
+                                        variant={'ghost'}
+                                        className="hidden cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100 sm:flex"
+                                    >
+                                        <MapIcon className="size-5" />
+                                        <span className="hidden sm:inline">
+                                            {__('Roadmap')}
+                                        </span>
+                                    </Button>
+                                </Link>
                                 <a
                                     href="https://github.com/whisper-money/whisper-money"
                                     target="_blank"

@@ -18,6 +18,12 @@ class SitemapController extends Controller
                 'lastmod' => now()->toW3cString(),
             ],
             [
+                'loc' => "{$baseUrl}/roadmap",
+                'changefreq' => 'daily',
+                'priority' => '0.7',
+                'lastmod' => now()->toW3cString(),
+            ],
+            [
                 'loc' => "{$baseUrl}/privacy",
                 'changefreq' => 'monthly',
                 'priority' => '0.5',

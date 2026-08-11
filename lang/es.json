@@ -2337,5 +2337,13 @@
     "Your :provider connection has expired, so we cannot sync new transactions until you reconnect it.": "Tu conexión con :provider ha dejado de ser válida, así que no podemos sincronizar nuevos movimientos hasta que vuelvas a conectarla.",
     "Reconnect Account": "Volver a conectar",
     "If the button does not work, open your connection settings and reconnect :provider from there.": "Si el botón no funciona, abre los ajustes de tus conexiones y vuelve a conectar :provider desde ahí.",
-    "This account's balance comes from your bank, so it won't change.": "El saldo de esta cuenta lo trae tu banco, así que no cambiará."
+    "This account's balance comes from your bank, so it won't change.": "El saldo de esta cuenta lo trae tu banco, así que no cambiará.",
+    "Planned": "Planificado",
+    "Shipped": "Publicado",
+    "Roadmap.": "Hoja de Ruta.",
+    "Roadmap - Whisper Money": "Hoja de Ruta - Whisper Money",
+    "See what's shipped, what we're building, and what's coming next in Whisper Money.": "Descubre qué hemos publicado, qué estamos construyendo y qué viene después en Whisper Money.",
+    "What's shipped. What's coming.": "Lo publicado. Lo que viene.",
+    "Request a feature": "Pedir una función",
+    "The roadmap is temporarily unavailable. Check it out on our feedback board.": "La hoja de ruta no está disponible ahora mismo. Puedes consultarla en nuestro tablón de sugerencias."
 }
