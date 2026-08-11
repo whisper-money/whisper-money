@@ -9,6 +9,7 @@ use App\Models\Label;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -46,21 +47,22 @@ abstract class WriteTool extends McpTool
     abstract protected function write(Request $request, User $user): Response;
 
     /**
-     * Resolve a model of the given class inside the space, failing with a message
-     * that tells the agent which tool lists the valid ids.
+     * Resolve the record the request points at, failing with a message that tells
+     * the agent which tool lists the valid ids. Callers pass the space-scoped
+     * query so each keeps its own model type.
      *
      * @template TModel of Model
      *
-     * @param  class-string<TModel>  $model
-     * @param  string  $noun  how the model is named in the failure message
+     * @param  Builder<TModel>  $query
+     * @param  string  $noun  how the record is named in the failure message
      * @param  string  $hint  appended to the failure message
      * @return TModel
      */
-    protected function modelInSpace(Request $request, Space $space, string $model, string $key, string $noun, string $hint = ''): Model
+    protected function modelInSpace(Request $request, Space $space, Builder $query, string $key, string $noun, string $hint = ''): Model
     {
         $id = $request->string($key)->toString();
 
-        $found = $model::query()->forSpace($space)->whereKey($id)->first();
+        $found = $query->whereKey($id)->first();
 
         if ($found === null) {
             throw ValidationException::withMessages([
@@ -103,7 +105,7 @@ abstract class WriteTool extends McpTool
      */
     protected function accountInSpace(Request $request, Space $space, string $key = 'account_id'): Account
     {
-        return $this->modelInSpace($request, $space, Account::class, $key, 'account', 'Call list_accounts to see valid ids.');
+        return $this->modelInSpace($request, $space, Account::query()->forSpace($space), $key, 'account', 'Call list_accounts to see valid ids.');
     }
 
     /**
@@ -126,22 +128,22 @@ abstract class WriteTool extends McpTool
 
     protected function transactionInSpace(Request $request, Space $space, string $key = 'transaction_id'): Transaction
     {
-        return $this->modelInSpace($request, $space, Transaction::class, $key, 'transaction', 'Call search_transactions to find ids.');
+        return $this->modelInSpace($request, $space, Transaction::query()->forSpace($space), $key, 'transaction', 'Call search_transactions to find ids.');
     }
 
     protected function categoryInSpace(Request $request, Space $space, string $key = 'category_id'): Category
     {
-        return $this->modelInSpace($request, $space, Category::class, $key, 'category', 'Call list_categories to see valid ids.');
+        return $this->modelInSpace($request, $space, Category::query()->forSpace($space), $key, 'category', 'Call list_categories to see valid ids.');
     }
 
     protected function labelInSpace(Request $request, Space $space, string $key = 'label_id'): Label
     {
-        return $this->modelInSpace($request, $space, Label::class, $key, 'label', 'Call list_labels to see valid ids.');
+        return $this->modelInSpace($request, $space, Label::query()->forSpace($space), $key, 'label', 'Call list_labels to see valid ids.');
     }
 
     protected function ruleInSpace(Request $request, Space $space, string $key = 'automation_rule_id'): AutomationRule
     {
-        return $this->modelInSpace($request, $space, AutomationRule::class, $key, 'automation rule');
+        return $this->modelInSpace($request, $space, AutomationRule::query()->forSpace($space), $key, 'automation rule');
     }
 
     /**
