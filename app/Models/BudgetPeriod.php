@@ -56,6 +56,17 @@ class BudgetPeriod extends Model
         return (int) $this->budgetTransactions()->sum('amount');
     }
 
+    /**
+     * What is left of this period's limit, in cents. Deliberately ignores
+     * `carried_over_amount`: the budget cards, the spending chart and the
+     * limit alerts all judge a period against its allocated amount alone, so a
+     * second definition of "remaining" would contradict them.
+     */
+    public function remainingAmount(): int
+    {
+        return $this->allocated_amount - $this->spentAmount();
+    }
+
     /** @return HasMany<BudgetTransaction, $this> */
     public function budgetTransactions(): HasMany
     {

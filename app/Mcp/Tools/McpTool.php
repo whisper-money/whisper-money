@@ -144,27 +144,37 @@ abstract class McpTool extends Tool
      */
     protected function labelsInSpace(Request $request, Space $space, string $key): Collection
     {
-        $ids = collect($request->get($key, []))
-            ->map(fn (mixed $id): string => (string) $id)
-            ->filter()
-            ->unique()
-            ->values();
+        $ids = $this->requestedIds($request, $key);
 
-        if ($ids->isEmpty()) {
-            /** @var Collection<int, Label> $empty */
-            $empty = Label::query()->whereRaw('1 = 0')->get();
-
-            return $empty;
+        if ($ids === []) {
+            /** @var Collection<int, Label> */
+            return new Collection;
         }
 
         $labels = Label::query()->forSpace($space)->whereIn('id', $ids)->get();
 
-        if ($labels->count() !== $ids->count()) {
+        if ($labels->count() !== count($ids)) {
             throw ValidationException::withMessages([
                 $key => "One or more label ids do not exist in space {$space->id}. Call list_labels to see valid ids.",
             ]);
         }
 
         return $labels;
+    }
+
+    /**
+     * The ids passed under $key, cast to strings and de-duplicated. Empty when
+     * the argument is absent.
+     *
+     * @return list<string>
+     */
+    protected function requestedIds(Request $request, string $key): array
+    {
+        return collect($request->get($key, []))
+            ->map(fn (mixed $id): string => (string) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

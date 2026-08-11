@@ -56,8 +56,7 @@ class BudgetPeriodService
         $carriedOverAmount = 0;
 
         if ($budget->rollover_type->value === 'carry_over') {
-            $totalSpent = $period->budgetTransactions()->sum('amount');
-            $remaining = $period->allocated_amount - $totalSpent;
+            $remaining = $period->remainingAmount();
 
             if ($remaining > 0) {
                 $carriedOverAmount = $remaining;
@@ -82,18 +81,12 @@ class BudgetPeriodService
                 break;
 
             case BudgetPeriodType::Weekly:
-                $dayOfWeek = $budget->period_start_day ?? 0;
-                while ($startDate->dayOfWeek !== $dayOfWeek) {
-                    $startDate->subDay();
-                }
+                $startDate = $this->rewindToDayOfWeek($startDate, $budget->period_start_day);
                 $endDate = $startDate->copy()->addWeek()->subDay();
                 break;
 
             case BudgetPeriodType::Biweekly:
-                $dayOfWeek = $budget->period_start_day ?? 0;
-                while ($startDate->dayOfWeek !== $dayOfWeek) {
-                    $startDate->subDay();
-                }
+                $startDate = $this->rewindToDayOfWeek($startDate, $budget->period_start_day);
                 $endDate = $startDate->copy()->addWeeks(2)->subDay();
                 break;
 
@@ -104,6 +97,23 @@ class BudgetPeriodService
         }
 
         return [$startDate, $endDate];
+    }
+
+    /**
+     * Step back to the most recent $dayOfWeek. Taken modulo 7 because
+     * `period_start_day` holds a day of the month for monthly budgets, so a
+     * budget switched to a weekly period can carry a value above 6 — which
+     * `Carbon::dayOfWeek` would never match, spinning forever.
+     */
+    private function rewindToDayOfWeek(Carbon $date, ?int $dayOfWeek): Carbon
+    {
+        $target = ($dayOfWeek ?? 0) % 7;
+
+        while ($date->dayOfWeek !== $target) {
+            $date->subDay();
+        }
+
+        return $date;
     }
 
     protected function calculateNextPeriodStartDate(Budget $budget): Carbon

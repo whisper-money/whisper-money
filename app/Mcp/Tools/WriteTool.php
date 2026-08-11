@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Models\Account;
 use App\Models\AutomationRule;
+use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Space;
@@ -144,6 +145,25 @@ abstract class WriteTool extends McpTool
     protected function ruleInSpace(Request $request, Space $space, string $key = 'automation_rule_id'): AutomationRule
     {
         return $this->modelInSpace($request, $space, AutomationRule::query()->forSpace($space), $key, 'automation rule');
+    }
+
+    /**
+     * Resolve a budget. Budgets hang off the user rather than off a space,
+     * matching how the app decides which budgets a transaction feeds.
+     */
+    protected function budgetOfUser(Request $request, User $user, string $key = 'budget_id'): Budget
+    {
+        $id = $request->string($key)->toString();
+
+        $budget = $user->budgets()->whereKey($id)->first();
+
+        if ($budget === null) {
+            throw ValidationException::withMessages([
+                $key => "No budget with id {$id}. Call list_budgets to see valid ids.",
+            ]);
+        }
+
+        return $budget;
     }
 
     /**
