@@ -1,6 +1,10 @@
 import '../css/app.css';
 
-import { createInertiaApp, router } from '@inertiajs/react';
+import {
+    createInertiaApp,
+    router,
+    type ResolvedComponent,
+} from '@inertiajs/react';
 import * as Sentry from '@sentry/react';
 import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -169,8 +173,10 @@ createInertiaApp({
     resolve: (name) =>
         resolvePageComponent(
             `./pages/${name}.tsx`,
-            import.meta.glob('./pages/**/*.tsx'),
-        ),
+            import.meta.glob<{ default: ResolvedComponent }>(
+                './pages/**/*.tsx',
+            ),
+        ).then((module) => module.default),
     setup({ el, App, props }) {
         const root = createRoot(el);
         const initialPageProps = props.initialPage?.props as

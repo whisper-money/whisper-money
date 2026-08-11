@@ -43,7 +43,7 @@
             }
         </style>
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <title data-inertia>{{ config('app.name', 'Laravel') }}</title>
 
         <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
         <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
