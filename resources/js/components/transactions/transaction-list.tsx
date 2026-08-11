@@ -1,4 +1,5 @@
 import { useLocale } from '@/hooks/use-locale';
+import { reloadPage } from '@/lib/leave-page';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import {
@@ -1027,7 +1028,7 @@ export function TransactionList({
                                     onReEvaluateComplete={() => {
                                         setRowSelection({});
                                         setTimeout(() => {
-                                            window.location.reload();
+                                            reloadPage();
                                         }, 500);
                                     }}
                                 />
