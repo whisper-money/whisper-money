@@ -4,6 +4,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Retained after the pay_now experiment ended: nothing reads this column
+ * anymore, but it is the only record of the refunds that experiment issued.
+ */
 return new class extends Migration
 {
     /**

@@ -15,6 +15,7 @@ const pricing: PricingConfig = {
             original_price: null,
             stripe_lookup_key: 'monthly',
             billing_period: 'month',
+            trial_days: 7,
             features: [],
         },
         yearly: {
@@ -23,6 +24,7 @@ const pricing: PricingConfig = {
             original_price: 47.88,
             stripe_lookup_key: 'yearly',
             billing_period: 'year',
+            trial_days: 15,
             features: [],
         },
     },
