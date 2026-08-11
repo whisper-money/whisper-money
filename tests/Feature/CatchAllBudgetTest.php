@@ -5,6 +5,7 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
@@ -119,6 +120,110 @@ test('catch-all budget excludes a child whose parent category is tracked', funct
     $this->service->assignTransaction($transaction);
 
     expect(BudgetTransaction::where('transaction_id', $transaction->id)->where('budget_period_id', $catchAll->id)->exists())->toBeFalse();
+});
+
+test('catch-all budget ignores an expense whose label is tracked by another budget', function () {
+    $catchAll = catchAllPeriod($this->user);
+    $category = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $tracked = Budget::factory()->forLabels($label)->create(['user_id' => $this->user->id]);
+    $trackedPeriod = BudgetPeriod::factory()->create([
+        'budget_id' => $tracked->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+    $transaction->labels()->attach($label);
+
+    $this->service->assignTransaction($transaction->load('labels'));
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->where('budget_period_id', $trackedPeriod->id)->exists())->toBeTrue();
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->where('budget_period_id', $catchAll->id)->exists())->toBeFalse();
+});
+
+test('catch-all budget still absorbs an expense whose label no budget tracks', function () {
+    $catchAll = catchAllPeriod($this->user);
+    $category = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+    $transaction->labels()->attach($label);
+
+    $this->service->assignTransaction($transaction->load('labels'));
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->where('budget_period_id', $catchAll->id)->exists())->toBeTrue();
+});
+
+test('historical assignment skips expenses whose label another budget tracks', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $labelled = Transaction::factory()->create(['user_id' => $this->user->id, 'category_id' => $category->id, 'transaction_date' => now()->subDay(), 'amount' => -1000]);
+    $labelled->labels()->attach($label);
+    Transaction::factory()->create(['user_id' => $this->user->id, 'category_id' => $category->id, 'transaction_date' => now()->subDay(), 'amount' => -2000]);
+
+    $tracked = Budget::factory()->forLabels($label)->create(['user_id' => $this->user->id]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $tracked->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $period = catchAllPeriod($this->user);
+
+    expect($this->service->assignHistoricalTransactionsToPeriod($period))->toBe(1);
+    expect(BudgetTransaction::where('budget_period_id', $period->id)->where('transaction_id', $labelled->id)->exists())->toBeFalse();
+});
+
+test('the reassign command moves a labelled transaction out of the catch-all budget', function () {
+    $catchAll = catchAllPeriod($this->user);
+    $category = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+    // The state the bug left behind: absorbed by the catch-all on creation, then
+    // labelled — attaching a label fires no model event, so nothing reassigned it.
+    expect(BudgetTransaction::where('budget_period_id', $catchAll->id)->exists())->toBeTrue();
+
+    $transaction->labels()->attach($label);
+
+    $tracked = Budget::factory()->forLabels($label)->create(['user_id' => $this->user->id]);
+    $trackedPeriod = BudgetPeriod::factory()->create([
+        'budget_id' => $tracked->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $this->artisan('budgets:reassign-labelled', ['--dry-run' => true])->assertSuccessful();
+    expect(BudgetTransaction::where('budget_period_id', $catchAll->id)->exists())->toBeTrue();
+
+    $this->artisan('budgets:reassign-labelled')->assertSuccessful();
+
+    expect(BudgetTransaction::where('budget_period_id', $catchAll->id)->exists())->toBeFalse();
+    expect(BudgetTransaction::where('budget_period_id', $trackedPeriod->id)->where('transaction_id', $transaction->id)->exists())->toBeTrue();
 });
 
 test('historical assignment backfills only unclaimed expenses into a catch-all budget', function () {

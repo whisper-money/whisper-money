@@ -7,6 +7,7 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -17,7 +18,11 @@ class BudgetTransactionService
         private readonly BudgetNotificationService $notifications = new BudgetNotificationService,
     ) {}
 
-    public function assignTransaction(Transaction $transaction): void
+    /**
+     * @param  bool  $notify  set to false for bulk backfills, where the emails
+     *                        would describe budget states the user never crossed
+     */
+    public function assignTransaction(Transaction $transaction, bool $notify = true): void
     {
         $userId = $transaction->user_id;
 
@@ -75,7 +80,7 @@ class BudgetTransactionService
 
         $matchingPeriodIds = array_merge(
             $matchingPeriodIds,
-            $this->catchAllPeriodIds($transaction, $userId, $categoryMatchIds),
+            $this->catchAllPeriodIds($transaction, $userId, $categoryMatchIds, $transactionLabelIds->all()),
         );
 
         // Apply changes atomically so concurrent workers cannot leave the
@@ -116,7 +121,9 @@ class BudgetTransactionService
             }
         }, attempts: 5);
 
-        $this->notifications->handleAssignment($transaction, $matchingPeriodIds, $createdPeriodIds);
+        if ($notify) {
+            $this->notifications->handleAssignment($transaction, $matchingPeriodIds, $createdPeriodIds);
+        }
     }
 
     public function unassignTransaction(Transaction $transaction): void
@@ -154,19 +161,7 @@ class BudgetTransactionService
             ->withoutTrashed();
 
         if ($budget->is_catch_all) {
-            // A catch-all budget absorbs every expense whose category is not
-            // already tracked by one of the user's other budgets.
-            $claimedCategoryIds = $this->tree->expand(
-                $budget->user_id,
-                $this->claimedCategoryIds($budget->user_id),
-            );
-
-            $query->whereNotNull('category_id')
-                ->when(
-                    $claimedCategoryIds !== [],
-                    fn ($q) => $q->whereNotIn('category_id', $claimedCategoryIds),
-                )
-                ->whereHas('category', fn ($q) => $q->where('type', CategoryType::Expense->value));
+            $this->applyCatchAllFilters($query, $budget->user_id);
         } else {
             // Filter by any tracked category OR label
             $query->where(function ($q) use ($categoryIds, $labelIds) {
@@ -208,13 +203,41 @@ class BudgetTransactionService
     }
 
     /**
+     * Narrow a transaction query to what a catch-all budget absorbs: expenses
+     * whose category and labels are not already tracked by another budget.
+     *
+     * @param  Builder<Transaction>  $query
+     */
+    private function applyCatchAllFilters(Builder $query, string $userId): void
+    {
+        $claimed = $this->claimedIds($userId);
+        $claimedCategoryIds = $this->tree->expand($userId, $claimed['categories']);
+
+        $query->whereNotNull('category_id')
+            ->when(
+                $claimedCategoryIds !== [],
+                fn ($q) => $q->whereNotIn('category_id', $claimedCategoryIds),
+            )
+            ->when(
+                $claimed['labels'] !== [],
+                fn ($q) => $q->whereDoesntHave(
+                    'labels',
+                    fn ($labelQuery) => $labelQuery->whereIn('labels.id', $claimed['labels']),
+                ),
+            )
+            ->whereHas('category', fn ($q) => $q->where('type', CategoryType::Expense->value));
+    }
+
+    /**
      * Catch-all budget periods that should absorb this transaction: an expense
-     * whose category (or an ancestor) is not tracked by any non-catch-all budget.
+     * whose category (or an ancestor) and labels are not tracked by any
+     * non-catch-all budget.
      *
      * @param  array<int, string>  $categoryMatchIds  the transaction category and its ancestors
+     * @param  array<int, string>  $transactionLabelIds
      * @return array<int, string>
      */
-    private function catchAllPeriodIds(Transaction $transaction, string $userId, array $categoryMatchIds): array
+    private function catchAllPeriodIds(Transaction $transaction, string $userId, array $categoryMatchIds, array $transactionLabelIds): array
     {
         if ($transaction->category_id === null) {
             return [];
@@ -226,7 +249,13 @@ class BudgetTransactionService
             return [];
         }
 
-        if (array_intersect($categoryMatchIds, $this->claimedCategoryIds($userId)) !== []) {
+        $claimed = $this->claimedIds($userId);
+
+        if (array_intersect($categoryMatchIds, $claimed['categories']) !== []) {
+            return [];
+        }
+
+        if (array_intersect($transactionLabelIds, $claimed['labels']) !== []) {
             return [];
         }
 
@@ -241,20 +270,21 @@ class BudgetTransactionService
     }
 
     /**
-     * Category ids directly tracked by the user's non-catch-all budgets.
+     * Categories and labels directly tracked by the user's non-catch-all budgets.
      *
-     * @return array<int, string>
+     * @return array{categories: array<int, string>, labels: array<int, string>}
      */
-    private function claimedCategoryIds(string $userId): array
+    private function claimedIds(string $userId): array
     {
-        return Budget::query()
+        $budgets = Budget::query()
             ->where('user_id', $userId)
             ->where('is_catch_all', false)
-            ->with('categories:id')
-            ->get()
-            ->flatMap(fn (Budget $budget) => $budget->categories->pluck('id'))
-            ->unique()
-            ->values()
-            ->all();
+            ->with('categories:id', 'labels:id')
+            ->get();
+
+        return [
+            'categories' => $budgets->flatMap(fn (Budget $budget) => $budget->categories->pluck('id'))->unique()->values()->all(),
+            'labels' => $budgets->flatMap(fn (Budget $budget) => $budget->labels->pluck('id'))->unique()->values()->all(),
+        ];
     }
 }
