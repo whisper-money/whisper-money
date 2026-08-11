@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Jobs\GenerateHistoricalLoanBalancesJob;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Bank;
@@ -8,6 +9,7 @@ use App\Models\LoanDetail;
 use App\Models\RealEstateDetail;
 use App\Models\User;
 use App\Services\LoanAmortizationService;
+use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\artisan;
@@ -1018,4 +1020,71 @@ it('preserves loan detail when account is soft deleted', function () {
     expect(Account::withTrashed()->find($account->id))->not->toBeNull();
 
     assertDatabaseHas('loan_details', ['id' => $detail->id]);
+});
+
+it('generates the recent balances inline and queues only the ones older than a year', function () {
+    Queue::fake();
+    actingAs($this->user);
+
+    $this->post(route('accounts.store'), [
+        'name' => 'Old Mortgage',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+        'annual_interest_rate' => 3.5,
+        'loan_term_months' => 360,
+        'original_amount' => 20000000,
+        // Well before the twelve-month window the controller fills in inline.
+        'loan_start_date' => now()->subYears(4)->toDateString(),
+        'balance' => 15000000,
+    ])->assertRedirect();
+
+    Queue::assertPushed(GenerateHistoricalLoanBalancesJob::class);
+
+    $account = Account::query()->where('name', 'Old Mortgage')->sole();
+
+    // The last twelve months are written straight away, so the chart is not empty
+    // while the queue catches up.
+    expect(AccountBalance::query()->where('account_id', $account->id)->count())
+        ->toBeGreaterThan(1);
+});
+
+it('does not queue anything when the loan starts inside the twelve-month window', function () {
+    Queue::fake();
+    actingAs($this->user);
+
+    $this->post(route('accounts.store'), [
+        'name' => 'Recent Mortgage',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+        'annual_interest_rate' => 3.5,
+        'loan_term_months' => 360,
+        'original_amount' => 20000000,
+        'loan_start_date' => now()->subMonths(2)->toDateString(),
+        'balance' => 19000000,
+    ])->assertRedirect();
+
+    Queue::assertNotPushed(GenerateHistoricalLoanBalancesJob::class);
+});
+
+it('reports the missing fields when adding loan details to an account that has none', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+        'currency_code' => 'USD',
+    ]);
+
+    // Only one of the three fields a loan detail needs.
+    $this->patch(route('accounts.update', $account), [
+        'name' => $account->name,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+        'annual_interest_rate' => 3.5,
+    ])->assertSessionHasErrors(['loan_term_months', 'original_amount']);
+
+    assertDatabaseMissing('loan_details', ['account_id' => $account->id]);
 });
