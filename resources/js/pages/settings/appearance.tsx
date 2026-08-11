@@ -1,3 +1,4 @@
+import { update as updateChartColorScheme } from '@/actions/App/Http/Controllers/Settings/ChartColorSchemeController';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 
@@ -38,7 +39,7 @@ export default function Appearance() {
         updateScheme(newScheme);
 
         router.patch(
-            '/settings/chart-color-scheme',
+            updateChartColorScheme.url(),
             { chart_color_scheme: newScheme },
             { preserveScroll: true },
         );

@@ -1,3 +1,9 @@
+import {
+    breakdown as cashflowBreakdown,
+    sankey as cashflowSankey,
+    summary as cashflowSummary,
+    trend as cashflowTrend,
+} from '@/actions/App/Http/Controllers/Api/CashflowAnalyticsController';
 import { Category } from '@/types/category';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
@@ -109,30 +115,32 @@ export function useCashflowData({
             const fromStr = format(from, 'yyyy-MM-dd');
             const toStr = format(to, 'yyyy-MM-dd');
 
-            const periodParams = new URLSearchParams({
-                from: fromStr,
-                to: toStr,
-            });
-            const periodQuery = `?${periodParams.toString()}`;
+            const periodQuery = { from: fromStr, to: toStr };
             const trendQuery =
-                periodType === 'month' ? `?months=12&to=${toStr}` : periodQuery;
+                periodType === 'month'
+                    ? { months: 12, to: toStr }
+                    : periodQuery;
 
             const [summary, sankey, trend, incomeBreakdown, expenseBreakdown] =
                 await Promise.all([
-                    fetch(`/api/cashflow/summary${periodQuery}`).then((r) =>
-                        r.json(),
+                    fetch(cashflowSummary.url({ query: periodQuery })).then(
+                        (r) => r.json(),
                     ),
-                    fetch(`/api/cashflow/sankey${periodQuery}`).then((r) =>
-                        r.json(),
+                    fetch(cashflowSankey.url({ query: periodQuery })).then(
+                        (r) => r.json(),
                     ),
-                    fetch(`/api/cashflow/trend${trendQuery}`).then((r) =>
+                    fetch(cashflowTrend.url({ query: trendQuery })).then((r) =>
                         r.json(),
                     ),
                     fetch(
-                        `/api/cashflow/breakdown${periodQuery}&type=income`,
+                        cashflowBreakdown.url({
+                            query: { ...periodQuery, type: 'income' },
+                        }),
                     ).then((r) => r.json()),
                     fetch(
-                        `/api/cashflow/breakdown${periodQuery}&type=expense`,
+                        cashflowBreakdown.url({
+                            query: { ...periodQuery, type: 'expense' },
+                        }),
                     ).then((r) => r.json()),
                 ]);
 

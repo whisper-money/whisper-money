@@ -1,3 +1,7 @@
+import {
+    show as showImportConfig,
+    update as updateImportConfig,
+} from '@/actions/App/Http/Controllers/Api/AccountImportConfigController';
 import type { BalanceColumnMapping } from '@/types/balance-import';
 import { type ColumnMapping, DateFormat } from '@/types/import';
 import { type UUID } from '@/types/uuid';
@@ -15,17 +19,13 @@ interface BalanceImportConfig {
 
 type ImportConfigType = 'transaction' | 'balance';
 
-function configUrl(accountId: UUID): string {
-    return `/api/accounts/${accountId}/import-config`;
-}
-
 async function saveConfig(
     accountId: UUID,
     type: ImportConfigType,
     config: ImportConfig | BalanceImportConfig,
 ): Promise<void> {
     try {
-        await axios.put(configUrl(accountId), { type, config });
+        await axios.put(updateImportConfig.url(accountId), { type, config });
     } catch (error) {
         console.error(`Failed to save ${type} import configuration:`, error);
     }
@@ -37,8 +37,7 @@ async function loadConfig<T extends ImportConfig | BalanceImportConfig>(
 ): Promise<T | null> {
     try {
         const { data } = await axios.get<{ data: T | null }>(
-            configUrl(accountId),
-            { params: { type } },
+            showImportConfig.url(accountId, { query: { type } }),
         );
 
         const config = data.data;

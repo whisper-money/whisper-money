@@ -1,3 +1,4 @@
+import { bulkUpdate } from '@/actions/App/Http/Controllers/Api/TransactionController';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
@@ -127,7 +128,7 @@ export function useDecryptTransactions() {
                     for (let i = 0; i < batch.length; i += 50) {
                         const chunk = batch.slice(i, i + 50);
                         await withRetry(() =>
-                            axios.patch('/api/transactions/bulk', {
+                            axios.patch(bulkUpdate.url(), {
                                 transactions: chunk,
                             }),
                         );

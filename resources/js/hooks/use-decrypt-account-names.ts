@@ -1,3 +1,7 @@
+import {
+    index as accountsIndex,
+    update as updateAccount,
+} from '@/actions/App/Http/Controllers/Api/AccountController';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
@@ -32,8 +36,9 @@ export function useDecryptAccountNames() {
                     return;
                 }
 
-                const { data: accounts } =
-                    await axios.get<EncryptedAccount[]>('/api/accounts');
+                const { data: accounts } = await axios.get<EncryptedAccount[]>(
+                    accountsIndex.url(),
+                );
 
                 const encryptedAccounts = accounts.filter(
                     (a) => a.encrypted && a.name_iv,
@@ -53,7 +58,7 @@ export function useDecryptAccountNames() {
                             account.name_iv!,
                         );
 
-                        await axios.put(`/api/accounts/${account.id}`, {
+                        await axios.put(updateAccount.url(account.id), {
                             name: decryptedName,
                             encrypted: false,
                         });

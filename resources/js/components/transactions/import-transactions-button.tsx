@@ -1,3 +1,4 @@
+import { index as importDataRoute } from '@/actions/App/Http/Controllers/Api/ImportDataController';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -30,7 +31,7 @@ export function ImportTransactionsButton() {
         // Fetch data on-demand when drawer opens
         setLoading(true);
         try {
-            const response = await fetch('/api/import/data');
+            const response = await fetch(importDataRoute.url());
             if (!response.ok) {
                 throw new Error('Failed to load import data');
             }

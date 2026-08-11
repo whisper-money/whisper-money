@@ -18,6 +18,7 @@ import {
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast, Toaster } from 'sonner';
+import { update as updateTimezone } from './actions/App/Http/Controllers/Settings/TimezoneController';
 import { AppErrorBoundary } from './components/app-error-boundary';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
@@ -214,7 +215,7 @@ createInertiaApp({
             hasAttemptedTimezoneBackfill = true;
 
             try {
-                await axios.patch('/settings/timezone', {
+                await axios.patch(updateTimezone.url(), {
                     timezone: detectedTimezone,
                 });
             } catch {

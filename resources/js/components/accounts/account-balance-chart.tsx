@@ -1,3 +1,7 @@
+import {
+    accountBalanceEvolution,
+    accountDailyBalanceEvolution,
+} from '@/actions/App/Http/Controllers/Api/DashboardAnalyticsController';
 import { AccountName } from '@/components/accounts/account-name';
 import {
     type ChartCurrencyMode,
@@ -378,9 +382,10 @@ export function AccountBalanceChart({
                 if (currentGranularity === 'daily') {
                     // Fetch DAILY_DAYS + 1 days (extra day for DoD baseline)
                     const from = format(subDays(now, DAILY_DAYS), 'yyyy-MM-dd');
-                    const params = new URLSearchParams({ from, to });
                     const response = await fetch(
-                        `/api/dashboard/account/${account.id}/daily-balance-evolution?${params.toString()}`,
+                        accountDailyBalanceEvolution.url(account.id, {
+                            query: { from, to },
+                        }),
                     );
                     const data: AccountDailyBalanceData = await response.json();
                     // Normalize daily data so the rest of the component works uniformly
@@ -391,9 +396,10 @@ export function AccountBalanceChart({
                     });
                 } else {
                     const from = format(subMonths(now, 12), 'yyyy-MM-dd');
-                    const params = new URLSearchParams({ from, to });
                     const response = await fetch(
-                        `/api/dashboard/account/${account.id}/balance-evolution?${params.toString()}`,
+                        accountBalanceEvolution.url(account.id, {
+                            query: { from, to },
+                        }),
                     );
                     const data = await response.json();
                     setBalanceData(data);

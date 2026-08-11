@@ -1,4 +1,10 @@
 import {
+    destroy as destroySavedFilter,
+    index as savedFiltersIndex,
+    store as storeSavedFilter,
+    update as updateSavedFilter,
+} from '@/actions/App/Http/Controllers/Api/SavedFilterController';
+import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -113,7 +119,7 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
         let active = true;
 
         axios
-            .get<{ data: SavedFilter[] }>('/api/saved-filters')
+            .get<{ data: SavedFilter[] }>(savedFiltersIndex.url())
             .then((response) => {
                 if (active) {
                     setSavedFilters(response.data.data);
@@ -143,7 +149,7 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
         }
 
         try {
-            await axios.delete(`/api/saved-filters/${savedFilter.id}`);
+            await axios.delete(destroySavedFilter.url(savedFilter.id));
         } catch (error) {
             console.error('Failed to delete saved filter:', error);
             setSavedFilters(previous);
@@ -154,7 +160,7 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
     async function handleUpdate(savedFilter: SavedFilter) {
         try {
             const response = await axios.patch<{ data: SavedFilter }>(
-                `/api/saved-filters/${savedFilter.id}`,
+                updateSavedFilter.url(savedFilter.id),
                 { filters: serializeFilters(filters) },
             );
 
@@ -180,7 +186,7 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
         setIsSaving(true);
         try {
             const response = await axios.post<{ data: SavedFilter }>(
-                '/api/saved-filters',
+                storeSavedFilter.url(),
                 {
                     name: trimmedName,
                     filters: serializeFilters(filters),
