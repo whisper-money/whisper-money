@@ -30,7 +30,8 @@ export function SettingsTable<TData>({
     const rows = table.getRowModel().rows;
 
     return (
-        <div className="overflow-hidden rounded-md border">
+        // Scrolls rather than clips: the accounts table is wider than a phone.
+        <div className="overflow-x-auto rounded-md border">
             <Table>
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (

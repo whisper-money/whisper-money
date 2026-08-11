@@ -1,16 +1,6 @@
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
-import {
-    ColumnDef,
-    ColumnFiltersState,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getSortedRowModel,
-    Row,
-    SortingState,
-    useReactTable,
-    VisibilityState,
-} from '@tanstack/react-table';
+import { ColumnDef, Row } from '@tanstack/react-table';
 import * as Icons from 'lucide-react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -34,6 +24,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useSettingsTable } from '@/hooks/use-settings-table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import {
@@ -146,12 +137,6 @@ export default function Categories() {
                 <ArrowUpDown className="ml-2 h-4 w-4 opacity-40" />
             )}
         </Button>
-    );
-
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-        {},
     );
 
     const columns: ColumnDef<Category>[] = [
@@ -318,21 +303,7 @@ export default function Categories() {
         },
     ];
 
-    const table = useReactTable({
-        data: orderedCategories,
-        columns,
-        onSortingChange: setSorting,
-        onColumnFiltersChange: setColumnFilters,
-        getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        onColumnVisibilityChange: setColumnVisibility,
-        state: {
-            sorting,
-            columnFilters,
-            columnVisibility,
-        },
-    });
+    const table = useSettingsTable(orderedCategories, columns);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

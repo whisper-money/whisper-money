@@ -1,18 +1,6 @@
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
-import {
-    Cell,
-    ColumnDef,
-    ColumnFiltersState,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getSortedRowModel,
-    Row,
-    SortingState,
-    useReactTable,
-    VisibilityState,
-} from '@tanstack/react-table';
+import { Cell, ColumnDef, flexRender, Row } from '@tanstack/react-table';
 import { ArrowUpDown, Link2, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
@@ -23,6 +11,7 @@ import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { BankLogo } from '@/components/bank-logo';
 import HeadingSmall from '@/components/heading-small';
+import { SettingsTable } from '@/components/shared/settings-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,14 +29,8 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { TableCell, TableRow } from '@/components/ui/table';
+import { useSettingsTable } from '@/hooks/use-settings-table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
@@ -177,12 +160,6 @@ interface AccountsPageProps {
 }
 
 export default function Accounts({ accounts }: AccountsPageProps) {
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-        {},
-    );
-
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: __('Bank accounts'),
@@ -291,21 +268,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
         },
     ];
 
-    const table = useReactTable({
-        data: accounts,
-        columns,
-        onSortingChange: setSorting,
-        onColumnFiltersChange: setColumnFilters,
-        getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        onColumnVisibilityChange: setColumnVisibility,
-        state: {
-            sorting,
-            columnFilters,
-            columnVisibility,
-        },
-    });
+    const table = useSettingsTable(accounts, columns);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -340,61 +303,17 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                             />
                         </div>
 
-                        <div className="overflow-x-auto rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    {table
-                                        .getHeaderGroups()
-                                        .map((headerGroup) => (
-                                            <TableRow key={headerGroup.id}>
-                                                {headerGroup.headers.map(
-                                                    (header) => {
-                                                        return (
-                                                            <TableHead
-                                                                key={header.id}
-                                                            >
-                                                                {header.isPlaceholder
-                                                                    ? null
-                                                                    : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
-                                                            </TableHead>
-                                                        );
-                                                    },
-                                                )}
-                                            </TableRow>
-                                        ))}
-                                </TableHeader>
-                                <TableBody>
-                                    {table.getRowModel().rows?.length ? (
-                                        table
-                                            .getRowModel()
-                                            .rows.map((row) => (
-                                                <AccountRow
-                                                    key={row.id}
-                                                    row={row}
-                                                    onSuccess={
-                                                        handleAccountCreated
-                                                    }
-                                                />
-                                            ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={columns.length}
-                                                className="h-24 text-center"
-                                            >
-                                                {__('No accounts found.')}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <SettingsTable
+                            table={table}
+                            emptyMessage={__('No accounts found.')}
+                            renderRow={(row) => (
+                                <AccountRow
+                                    key={row.id}
+                                    row={row}
+                                    onSuccess={handleAccountCreated}
+                                />
+                            )}
+                        />
                     </div>
                 </div>
             </SettingsLayout>
