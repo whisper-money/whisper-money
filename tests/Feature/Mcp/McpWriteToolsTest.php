@@ -10,6 +10,7 @@ use App\Mcp\Tools\CreateCategory;
 use App\Mcp\Tools\CreateLabel;
 use App\Mcp\Tools\CreateTransaction;
 use App\Mcp\Tools\DeleteAutomationRule;
+use App\Mcp\Tools\DeleteBudget;
 use App\Mcp\Tools\DeleteCategory;
 use App\Mcp\Tools\DeleteLabel;
 use App\Mcp\Tools\DeleteTransaction;
@@ -398,7 +399,25 @@ it('refuses a budget tracking another user\'s category', function () {
         'period_type' => 'monthly',
         'rollover_type' => 'reset',
         'category_ids' => [$foreignCategory->id],
-    ])->assertHasErrors(['list_categories']);
+    ])->assertHasErrors(['not categories you own']);
+
+    expect($user->budgets()->count())->toBe(0);
+});
+
+it('rejects a period start day that cannot mean anything for the period type', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    // 15 is a valid day of the month but not a day of the week, and the period
+    // generator would otherwise walk backwards forever looking for it.
+    callWriteTool($user, CreateBudget::class, [
+        'name' => 'Weekly',
+        'allocated_amount' => 10_000,
+        'period_type' => 'weekly',
+        'period_start_day' => 15,
+        'category_ids' => [$category->id],
+        'rollover_type' => 'reset',
+    ])->assertHasErrors(['period start day']);
 
     expect($user->budgets()->count())->toBe(0);
 });
@@ -426,6 +445,13 @@ it('edits a budget and moves the new amount onto the period in progress', functi
         'carried_over_amount' => 0,
     ]);
 
+    $future = $budget->periods()->create([
+        'start_date' => today()->addMonthNoOverflow()->startOfMonth(),
+        'end_date' => today()->addMonthNoOverflow()->endOfMonth(),
+        'allocated_amount' => 50_000,
+        'carried_over_amount' => 0,
+    ]);
+
     callWriteTool($user, UpdateBudget::class, [
         'budget_id' => $budget->id,
         'name' => 'Groceries Budget',
@@ -434,6 +460,7 @@ it('edits a budget and moves the new amount onto the period in progress', functi
 
     expect($budget->fresh()->name)->toBe('Groceries Budget');
     expect($current->fresh()->allocated_amount)->toBe(60_000);
+    expect($future->fresh()->allocated_amount)->toBe(60_000);
     // A period that is already over keeps the amount it was judged against.
     expect($past->fresh()->allocated_amount)->toBe(50_000);
 });
@@ -448,6 +475,13 @@ it('leaves the fields the agent did not pass alone', function () {
         'rollover_type' => 'reset',
     ]);
 
+    $period = $budget->periods()->create([
+        'start_date' => today()->startOfMonth(),
+        'end_date' => today()->endOfMonth(),
+        'allocated_amount' => 50_000,
+        'carried_over_amount' => 0,
+    ]);
+
     callWriteTool($user, UpdateBudget::class, [
         'budget_id' => $budget->id,
         'name' => 'Renamed',
@@ -458,6 +492,30 @@ it('leaves the fields the agent did not pass alone', function () {
     expect($budget->name)->toBe('Renamed');
     expect($budget->period_start_day)->toBe(4);
     expect($budget->rollover_type->value)->toBe('reset');
+    expect($period->fresh()->allocated_amount)->toBe(50_000);
+});
+
+it('will not reshape the periods of an existing budget', function () {
+    $user = User::factory()->create();
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+    ]);
+
+    // Period settings are fixed once a budget exists — changing them would let
+    // the next generated period overlap the current one and count the same
+    // transaction twice, so the tool does not accept them at all.
+    callWriteTool($user, UpdateBudget::class, [
+        'budget_id' => $budget->id,
+        'period_type' => 'weekly',
+        'period_start_day' => 15,
+    ])->assertOk();
+
+    $budget->refresh();
+
+    expect($budget->period_type->value)->toBe('monthly');
+    expect($budget->period_start_day)->toBe(1);
 });
 
 it('refuses to edit another user\'s budget', function () {
@@ -470,6 +528,46 @@ it('refuses to edit another user\'s budget', function () {
     ])->assertHasErrors(['list_budgets']);
 
     expect($foreignBudget->fresh()->name)->toBe('Not Yours');
+});
+
+it('deletes a budget and leaves its transactions alone', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'transaction_date' => today(),
+        'amount' => -3_000,
+    ]);
+
+    callWriteTool($user, CreateBudget::class, [
+        'name' => 'Food Budget',
+        'allocated_amount' => 50_000,
+        'period_type' => 'monthly',
+        'rollover_type' => 'reset',
+        'category_ids' => [$category->id],
+    ])->assertOk();
+
+    $budget = $user->budgets()->firstOrFail();
+
+    callWriteTool($user, DeleteBudget::class, ['budget_id' => $budget->id])->assertOk();
+
+    expect($user->budgets()->count())->toBe(0);
+    expect(Transaction::query()->find($transaction->id))->not->toBeNull();
+});
+
+it('refuses to delete another user\'s budget', function () {
+    $user = User::factory()->create();
+    $foreignBudget = Budget::factory()->create(['user_id' => User::factory()->create()->id]);
+
+    callWriteTool($user, DeleteBudget::class, [
+        'budget_id' => $foreignBudget->id,
+    ])->assertHasErrors(['list_budgets']);
+
+    expect(Budget::query()->find($foreignBudget->id))->not->toBeNull();
 });
 
 it('rejects a write tool called with a read-only token', function () {

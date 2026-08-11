@@ -40,16 +40,18 @@ trait PresentsBudgets
      */
     private function presentBudgetPeriod(BudgetPeriod $period): array
     {
-        $spent = $period->spentAmount();
-
         return [
             'id' => $period->id,
             'start_date' => $period->start_date->toDateString(),
             'end_date' => $period->end_date->toDateString(),
             'allocated_amount' => $period->allocated_amount,
             'carried_over_amount' => $period->carried_over_amount,
-            'spent_amount' => $spent,
-            'remaining_amount' => $period->allocated_amount + $period->carried_over_amount - $spent,
+            'spent_amount' => $period->spentAmount(),
+            'remaining_amount' => $period->remainingAmount(),
+            // True while the queued backfill is still attaching the transactions
+            // that were already in range, so an agent can tell "nothing spent
+            // yet" apart from "not counted yet" and poll again.
+            'processing_historical' => $period->processing_historical,
         ];
     }
 }

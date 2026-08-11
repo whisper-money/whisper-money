@@ -15,6 +15,7 @@ $readOnly = [
     'list_accounts',
     'list_categories',
     'list_labels',
+    'list_budgets',
     'list_spaces',
 ];
 
@@ -23,6 +24,7 @@ $destructive = [
     'delete_category',
     'delete_label',
     'delete_automation_rule',
+    'delete_budget',
 ];
 
 /**
@@ -46,7 +48,7 @@ it('declares all three MCP hints on every tool', function () use ($readOnly, $de
     /** @var array<int, class-string<Tool>> $tools */
     $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
 
-    expect($tools)->toHaveCount(count($readOnly) + 15);
+    expect($tools)->toHaveCount(count($readOnly) + 18);
 
     foreach ($tools as $class) {
         $tool = new $class;

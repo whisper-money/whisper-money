@@ -174,6 +174,42 @@ it('lists budgets with what the current period has spent and has left', function
         ->assertSee('"remaining_amount":38000');
 });
 
+it('reports the remaining amount the app shows, ignoring carry-over', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $budget = Budget::factory()->forCategories($category)->create([
+        'user_id' => $user->id,
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+        'rollover_type' => 'carry_over',
+    ]);
+
+    $budget->periods()->create([
+        'start_date' => today()->startOfMonth(),
+        'end_date' => today()->endOfMonth(),
+        'allocated_amount' => 50_000,
+        'carried_over_amount' => 10_000,
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'transaction_date' => today(),
+        'amount' => -12_000,
+    ]);
+
+    // The budget cards, the spending chart and the limit emails all measure
+    // against the allocated amount alone, so the agent must not add carry-over.
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListBudgets::class)
+        ->assertOk()
+        ->assertSee('"carried_over_amount":10000')
+        ->assertSee('"remaining_amount":38000');
+});
+
 it('never exposes another user\'s budgets', function () {
     $user = User::factory()->create();
     Budget::factory()->create(['user_id' => User::factory()->create()->id, 'name' => 'Secret Budget']);

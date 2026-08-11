@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  */
 class BudgetService
 {
-    public function __construct(private readonly BudgetPeriodService $periods = new BudgetPeriodService) {}
+    public function __construct(private readonly BudgetPeriodService $periods) {}
 
     /**
      * Create a budget with its current and previous period, then backfill both
