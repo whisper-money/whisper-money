@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Enums\PlanFeature;
 use App\Models\Label;
+use App\Models\McpToolCall;
 use App\Models\Space;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -61,7 +62,20 @@ abstract class McpTool extends Tool
             );
         }
 
-        return $this->respond($request, $user);
+        $response = $this->respond($request, $user);
+
+        // Usage metric (see `stats:mcp-usage`), recorded only for calls that did
+        // something: an error response (a read-only token, an id the user cannot
+        // reach) or a thrown ValidationException is a rejected attempt, not
+        // usage. Rescued so a failed insert can never break a working call.
+        if (! $response->isError()) {
+            rescue(fn (): McpToolCall => McpToolCall::create([
+                'user_id' => $user->id,
+                'tool' => $this->name(),
+            ]));
+        }
+
+        return $response;
     }
 
     abstract protected function respond(Request $request, User $user): Response;
