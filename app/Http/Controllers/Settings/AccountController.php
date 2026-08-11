@@ -214,48 +214,66 @@ class AccountController extends Controller
             }
         }
 
-        // Update or create loan detail if account type is loan
         if ($account->type === AccountType::Loan) {
-            $loanData = collect($validated)->only([
-                'annual_interest_rate', 'loan_term_months', 'original_amount',
-            ])->filter(fn ($value) => $value !== null)->toArray();
+            $incompleteLoan = $this->syncLoanDetail($account, $validated);
 
-            $loanStartDate = $validated['loan_start_date'] ?? null;
-            if ($loanStartDate) {
-                $loanData['start_date'] = $loanStartDate;
-            }
-
-            if (! empty($loanData)) {
-                $existingLoanDetail = $account->loanDetail;
-
-                if ($existingLoanDetail) {
-                    $existingLoanDetail->update($loanData);
-                } elseif (isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
-                    if (! isset($loanData['start_date'])) {
-                        $loanData['start_date'] = now()->toDateString();
-                    }
-
-                    $account->loanDetail()->create($loanData);
-                } else {
-                    $errors = [];
-                    $requiredFields = [
-                        'annual_interest_rate' => 'annual_interest_rate',
-                        'loan_term_months' => 'loan_term_months',
-                        'original_amount' => 'original_amount',
-                    ];
-
-                    foreach ($requiredFields as $field => $errorKey) {
-                        if (! isset($loanData[$field])) {
-                            $errors[$errorKey] = __('This field is required.');
-                        }
-                    }
-
-                    return to_route('accounts.index')->withErrors($errors);
-                }
+            if ($incompleteLoan !== null) {
+                return $incompleteLoan;
             }
         }
 
         return to_route('accounts.index');
+    }
+
+    /**
+     * Update or create the account's loan detail from the validated payload.
+     *
+     * Returns a redirect carrying the missing-field errors when a loan detail
+     * has to be created but the payload is incomplete, and null otherwise.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function syncLoanDetail(Account $account, array $validated): ?RedirectResponse
+    {
+        $loanData = collect($validated)->only([
+            'annual_interest_rate', 'loan_term_months', 'original_amount',
+        ])->filter(fn ($value) => $value !== null)->toArray();
+
+        $loanStartDate = $validated['loan_start_date'] ?? null;
+        if ($loanStartDate) {
+            $loanData['start_date'] = $loanStartDate;
+        }
+
+        if (empty($loanData)) {
+            return null;
+        }
+
+        $existingLoanDetail = $account->loanDetail;
+
+        if ($existingLoanDetail) {
+            $existingLoanDetail->update($loanData);
+
+            return null;
+        }
+
+        if (isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
+            $loanData['start_date'] ??= now()->toDateString();
+
+            $account->loanDetail()->create($loanData);
+
+            return null;
+        }
+
+        $required = ['annual_interest_rate', 'loan_term_months', 'original_amount'];
+        $errors = [];
+
+        foreach ($required as $field) {
+            if (! isset($loanData[$field])) {
+                $errors[$field] = __('This field is required.');
+            }
+        }
+
+        return to_route('accounts.index')->withErrors($errors);
     }
 
     /**
