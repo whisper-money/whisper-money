@@ -212,6 +212,11 @@ class CoinbaseBalanceSyncService
      */
     private function fetchPriceMap(CoinbaseClient $client, array $assets, string $targetCurrency): array
     {
+        // convertCryptoAssets settles stablecoins at 1 USD before it ever reads
+        // the map, so quoting them is two wasted round trips. The historical
+        // path skips them for the same reason.
+        $assets = array_values(array_diff($assets, self::USD_STABLECOINS));
+
         if ($assets === []) {
             return [];
         }
@@ -252,12 +257,16 @@ class CoinbaseBalanceSyncService
      */
     private function fetchBestBidAskPrices(CoinbaseClient $client, array $assets, string $quoteCurrency): array
     {
+        if ($assets === []) {
+            return [];
+        }
+
         $productIds = array_map(fn (string $asset) => "{$asset}-{$quoteCurrency}", $assets);
 
         try {
             $response = $client->getBestBidAsk($productIds);
         } catch (\Throwable $e) {
-            Log::warning('Coinbase best_bid_ask failed, falling back to per-asset USD conversion', [
+            Log::warning('Coinbase best_bid_ask failed', [
                 'quote_currency' => $quoteCurrency,
                 'error' => $e->getMessage(),
             ]);
