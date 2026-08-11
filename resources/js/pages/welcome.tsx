@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { tailwindColorClasses } from '@/components/user-info';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
+import {
+    useScrollProgress,
+    useScrollTranslate,
+} from '@/hooks/use-scroll-progress';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
@@ -37,7 +41,7 @@ import {
     WrenchIcon,
     XIcon,
 } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 const LANDING_IMAGES = [
     {
@@ -280,65 +284,15 @@ function BankConnectionsPreview({
     prependFromBottomCount?: number;
     className?: string;
 }) {
-    const [translateY, setTranslateY] = useState(0);
-    const [maxTranslate, setMaxTranslate] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const listRef = useRef<HTMLUListElement | null>(null);
-    const scrollSpeed = 0.15;
+    const { containerRef, listRef, translateY } = useScrollTranslate<
+        HTMLDivElement,
+        HTMLUListElement
+    >({ speed: 0.15, padding: 24 });
     const prependedBanksCount = Math.min(prependFromBottomCount, banks.length);
     const previewBanks = useMemo(
         () => [...banks.slice(-prependedBanksCount), ...banks],
         [banks, prependedBanksCount],
     );
-
-    useEffect(() => {
-        const updateMaxTranslate = () => {
-            const container = containerRef.current;
-            const list = listRef.current;
-            if (!container || !list) {
-                return;
-            }
-
-            const travelDistance = Math.max(
-                0,
-                list.scrollHeight - container.clientHeight + 24,
-            );
-            setMaxTranslate(travelDistance);
-        };
-
-        updateMaxTranslate();
-        window.addEventListener('resize', updateMaxTranslate);
-
-        return () => {
-            window.removeEventListener('resize', updateMaxTranslate);
-        };
-    }, []);
-
-    useEffect(() => {
-        const updateTranslate = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            const clampedProgress = Math.min(1, Math.max(0, progress));
-
-            setTranslateY(clampedProgress * maxTranslate * scrollSpeed);
-        };
-
-        updateTranslate();
-        window.addEventListener('scroll', updateTranslate, { passive: true });
-        window.addEventListener('resize', updateTranslate);
-
-        return () => {
-            window.removeEventListener('scroll', updateTranslate);
-            window.removeEventListener('resize', updateTranslate);
-        };
-    }, [maxTranslate, scrollSpeed]);
 
     return (
         <div
@@ -397,13 +351,16 @@ function TransactionRowsPreview({
     currency: string;
     locale: string;
 }) {
-    const [translateY, setTranslateY] = useState(0);
-    const [maxTranslate, setMaxTranslate] = useState(0);
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const listRef = useRef<HTMLUListElement | null>(null);
+    const {
+        containerRef,
+        listRef,
+        translateY,
+        progress: scrollProgress,
+    } = useScrollTranslate<HTMLDivElement, HTMLUListElement>({
+        speed: 0.28,
+        padding: 56,
+    });
     const prependedRowsCount = Math.min(10, TRANSACTION_PREVIEW_ROWS.length);
-    const scrollSpeed = 0.28;
     const previewRows = useMemo(
         () => [
             ...TRANSACTION_PREVIEW_ROWS.slice(-prependedRowsCount),
@@ -411,56 +368,6 @@ function TransactionRowsPreview({
         ],
         [prependedRowsCount],
     );
-
-    useEffect(() => {
-        const updateMaxTranslate = () => {
-            const container = containerRef.current;
-            const list = listRef.current;
-            if (!container || !list) {
-                return;
-            }
-
-            const travelDistance = Math.max(
-                0,
-                list.scrollHeight - container.clientHeight + 56,
-            );
-            setMaxTranslate(travelDistance);
-        };
-
-        updateMaxTranslate();
-        window.addEventListener('resize', updateMaxTranslate);
-
-        return () => {
-            window.removeEventListener('resize', updateMaxTranslate);
-        };
-    }, []);
-
-    useEffect(() => {
-        const updateTranslate = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            const clampedProgress = Math.min(1, Math.max(0, progress));
-
-            setScrollProgress(clampedProgress);
-            setTranslateY(clampedProgress * maxTranslate * scrollSpeed);
-        };
-
-        updateTranslate();
-        window.addEventListener('scroll', updateTranslate, { passive: true });
-        window.addEventListener('resize', updateTranslate);
-
-        return () => {
-            window.removeEventListener('scroll', updateTranslate);
-            window.removeEventListener('resize', updateTranslate);
-        };
-    }, [maxTranslate, scrollSpeed]);
 
     return (
         <div
@@ -569,35 +476,11 @@ function AccountsBalancePreview({
     currency: string;
     locale: string;
 }) {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
     const cardCount = ACCOUNT_PREVIEW_ROWS.length;
     const staggerDelay = 0.12;
     const staggerRange = 1 - (cardCount - 1) * staggerDelay;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     return (
         <div
@@ -707,8 +590,8 @@ function ImportPreview({
     currency: string;
     locale: string;
 }) {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     // How many transaction rows to show below the file card
     const previewRows = TRANSACTION_PREVIEW_ROWS.slice(0, 5);
@@ -719,30 +602,6 @@ function ImportPreview({
     const ROW_SPAN = 0.12;
     // Row i starts appearing at this scroll progress
     const rowStart = (i: number) => 0.3 + i * 0.1;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     // File card animation: drops from above, scales and fades in
     const fileProgress = Math.min(1, scrollProgress / FILE_DROP_END);
@@ -861,37 +720,13 @@ function PrivacyRedactedPreview() {
         { label: 'Statement', value: 'Q4 2024 · ' + __('Quartely') },
     ] as const;
 
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     // Each bar slides in over this span of scroll progress
     const BAR_SPAN = 0.15;
     // Row i's bar starts sliding at this scroll progress
     const barStart = (i: number) => 0.1 + i * 0.12;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     return (
         <div
@@ -962,32 +797,8 @@ const CASHFLOW_PREVIEW_DATA = [
 ] as const;
 
 function CashflowChartPreview() {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     const maxValue = Math.max(
         ...CASHFLOW_PREVIEW_DATA.map((d) =>
@@ -1131,37 +942,13 @@ function BudgetsListPreview({
     currency: string;
     locale: string;
 }) {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     const ROW_SLIDE_SPAN = 0.15;
     const BAR_FILL_SPAN = 0.2;
     const rowSlideStart = (i: number) => 0.05 + i * 0.1;
     const barFillStart = (i: number) => rowSlideStart(i) + 0.12;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     return (
         <div
@@ -1272,8 +1059,8 @@ function BudgetDetailPreview({
     currency: string;
     locale: string;
 }) {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     // Grocery budget detail — 68% spent
     const budget = BUDGETS_PREVIEW_ROWS[0];
@@ -1286,30 +1073,6 @@ function BudgetDetailPreview({
     const ROWS_START = 0.25;
     const ROW_STEP = 0.1;
     const ROW_SPAN = 0.18;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     const barFill =
         Math.min(1, Math.max(0, scrollProgress / BAR_SPAN)) * spentPct * 100;
@@ -1448,8 +1211,8 @@ function BudgetDetailPreview({
 }
 
 function BudgetEditPreview() {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     // "Dining Out" budget — 90% spent (high alert)
     const budget = BUDGETS_PREVIEW_ROWS[2]; // Entertainment, 90%
@@ -1461,30 +1224,6 @@ function BudgetEditPreview() {
     const ALERT_SPAN = 0.22;
     const ACTION_START = 0.35;
     const ACTION_SPAN = 0.18;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     const rowProgress = Math.min(1, Math.max(0, scrollProgress / ROW_SPAN));
     const alertProgress = Math.min(
