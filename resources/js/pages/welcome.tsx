@@ -12,6 +12,7 @@ import {
 } from '@/hooks/use-scroll-progress';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
+import { dashboard } from '@/routes';
 import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
 import { LANGUAGE_OPTIONS } from '@/types/language';
@@ -1401,6 +1402,27 @@ const PRO_ONLY_FEATURES = [
     'Priority support',
 ];
 
+/**
+ * The landing page is browsable while signed in, and every "get started" route
+ * is behind guest middleware - so for an authenticated visitor those CTAs would
+ * bounce to the dashboard with copy that does not match where they end up.
+ */
+function useLandingCta(canRegister?: boolean): {
+    href: string;
+    isSignedIn: boolean;
+} {
+    const { auth } = usePage<SharedData>().props;
+
+    return {
+        href: auth.user
+            ? dashboard().url
+            : canRegister
+              ? '/register'
+              : '/login',
+        isSignedIn: Boolean(auth.user),
+    };
+}
+
 function FreePlanCard({
     features,
     canRegister = false,
@@ -1409,6 +1431,7 @@ function FreePlanCard({
     canRegister?: boolean;
 }) {
     const excluded = new Set(PRO_ONLY_FEATURES);
+    const cta = useLandingCta(canRegister);
 
     return (
         <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#161615]">
@@ -1459,15 +1482,16 @@ function FreePlanCard({
                     })}
                 </ul>
 
-                <Link
-                    href={canRegister ? '/register' : '/login'}
-                    className="mt-8"
-                >
+                <Link href={cta.href} className="mt-8">
                     <Button
                         className="w-full cursor-pointer border-[#e3e3e0] bg-transparent py-5 text-base text-[#1b1b18] shadow-sm transition-all hover:bg-[#f5f5f4] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:bg-[#1f1f1e]"
                         variant="outline"
                     >
-                        {canRegister ? __('Get Started Free') : __('Log in')}
+                        {cta.isSignedIn
+                            ? __('Go to Dashboard')
+                            : canRegister
+                              ? __('Get Started Free')
+                              : __('Log in')}
                     </Button>
                 </Link>
             </div>
@@ -1494,6 +1518,7 @@ function LandingPlanCard({
 }) {
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
+    const cta = useLandingCta(canRegister);
 
     return (
         <div
@@ -1572,10 +1597,7 @@ function LandingPlanCard({
                     ))}
                 </ul>
 
-                <Link
-                    href={canRegister ? '/register' : '/login'}
-                    className="mt-8"
-                >
+                <Link href={cta.href} className="mt-8">
                     <Button
                         className={cn(
                             'w-full cursor-pointer py-5 text-base shadow-sm transition-all',
@@ -1585,7 +1607,11 @@ function LandingPlanCard({
                         )}
                         variant={isDefault ? 'default' : 'outline'}
                     >
-                        {canRegister ? __('Get Started') : __('Log in')}
+                        {cta.isSignedIn
+                            ? __('Go to Dashboard')
+                            : canRegister
+                              ? __('Get Started')
+                              : __('Log in')}
                     </Button>
                 </Link>
             </div>
@@ -1636,6 +1662,7 @@ export default function Welcome({
 }) {
     const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
         usePage<SharedData>().props;
+    const cta = useLandingCta(canRegister);
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
 
@@ -2015,20 +2042,18 @@ export default function Welcome({
                                     ) : (
                                         <div className="flex w-full flex-row gap-4">
                                             <Link
-                                                href={
-                                                    canRegister
-                                                        ? '/register'
-                                                        : '/login'
-                                                }
+                                                href={cta.href}
                                                 className="w-full"
                                             >
                                                 <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
-                                                    {canRegister
-                                                        ? __('Get Started')
-                                                        : __('Log in')}
+                                                    {cta.isSignedIn
+                                                        ? __('Go to Dashboard')
+                                                        : canRegister
+                                                          ? __('Get Started')
+                                                          : __('Log in')}
                                                 </Button>
                                             </Link>
-                                            {demoEnabled && (
+                                            {demoEnabled && !cta.isSignedIn && (
                                                 <Link href="/login?demo=1">
                                                     <Button
                                                         variant={'secondary'}
@@ -2588,17 +2613,15 @@ export default function Welcome({
                                     {isMobile ? (
                                         <InstallAppButton />
                                     ) : (
-                                        <Link
-                                            href={
-                                                canRegister
-                                                    ? '/register'
-                                                    : '/login'
-                                            }
-                                        >
+                                        <Link href={cta.href}>
                                             <Button className="h-12 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-8 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50">
-                                                {canRegister
-                                                    ? __('Get Started for Free')
-                                                    : __('Log in')}
+                                                {cta.isSignedIn
+                                                    ? __('Go to Dashboard')
+                                                    : canRegister
+                                                      ? __(
+                                                            'Get Started for Free',
+                                                        )
+                                                      : __('Log in')}
                                             </Button>
                                         </Link>
                                     )}
