@@ -309,6 +309,7 @@ test('first sync fetches historical snapshots and converts using currency API', 
                         'balances' => [
                             ['asset' => 'BTC', 'free' => '2.0', 'locked' => '0.0'],
                         ],
+                        'totalAssetOfBtc' => '2.0',
                     ],
                 ],
                 [
@@ -318,6 +319,7 @@ test('first sync fetches historical snapshots and converts using currency API', 
                         'balances' => [
                             ['asset' => 'BTC', 'free' => '2.0', 'locked' => '0.0'],
                         ],
+                        'totalAssetOfBtc' => '2.0',
                     ],
                 ],
             ],
@@ -389,6 +391,7 @@ test('subsequent sync only fetches snapshots since last balance date', function 
                         'balances' => [
                             ['asset' => 'BTC', 'free' => '1.0', 'locked' => '0.0'],
                         ],
+                        'totalAssetOfBtc' => '1.0',
                     ],
                 ],
             ],
@@ -425,7 +428,7 @@ test('subsequent sync only fetches snapshots since last balance date', function 
     expect($todayBalance->balance)->toBe(5600000);
 });
 
-test('historical sync converts assets using currency API', function () {
+test('historical sync values a holding the rate provider cannot price', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->binance()->create([
         'user_id' => $user->id,
@@ -451,13 +454,16 @@ test('historical sync converts assets using currency API', function () {
                         'balances' => [
                             ['asset' => 'SOL', 'free' => '10.0', 'locked' => '0.0'],
                         ],
+                        'totalAssetOfBtc' => '0.02',
                     ],
                 ],
             ],
         ]),
+        // Deliberately no `sol` rate: the provider carries fiat and a couple of
+        // majors, which is why re-pricing each holding dropped everything else.
         'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
             'eur' => [
-                'sol' => 0.01, // 1 EUR = 0.01 SOL → 1 SOL = 100 EUR
+                'btc' => 0.00002, // 1 EUR = 0.00002 BTC → 0.02 BTC = 1000 EUR
             ],
         ]),
         'api.binance.com/api/v3/account*' => Http::response([
@@ -475,7 +481,8 @@ test('historical sync converts assets using currency API', function () {
     $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: true);
 
-    // Historical: 10 SOL / 0.01 = 1000 EUR → 100000 cents
+    // Binance valued the whole account at 0.02 BTC that day → 1000 EUR.
+    // Re-pricing the SOL ourselves would have found no rate and written zero.
     $yesterdayBalance = $account->balances()->where('balance_date', $yesterday->toDateString())->first();
     expect($yesterdayBalance->balance)->toBe(100000);
 });
