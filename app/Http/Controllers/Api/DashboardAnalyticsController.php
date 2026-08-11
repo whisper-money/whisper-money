@@ -429,7 +429,9 @@ class DashboardAnalyticsController extends Controller
      */
     private function realEstateProjection(Account $account, ?Account $linkedLoanAccount, array $points, ?string $displayCurrencyCode): array
     {
-        $revaluationPercentage = (float) ($account->realEstateDetail?->revaluation_percentage ?? 0);
+        // The ?? already covers a missing detail row, so no nullsafe operator here
+        // (phpstan flags the combination as redundant).
+        $revaluationPercentage = (float) ($account->realEstateDetail->revaluation_percentage ?? 0);
         $linkedLoanDetail = $linkedLoanAccount?->loadMissing('loanDetail')->loanDetail;
 
         if ($revaluationPercentage === 0.0 && $linkedLoanDetail === null) {
