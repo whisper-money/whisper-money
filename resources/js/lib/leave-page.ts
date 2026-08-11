@@ -12,12 +12,6 @@
  * for internal navigation; this is only for leaving the app entirely (a bank's
  * authorization page, the Stripe billing portal, a locale reload).
  */
-
-// ponytail: one-way flag, no reset — it dies with the document. If the browser
-// cancels the navigation the page survives with the flag set and we under-report
-// network errors for the rest of that session. Add a time window only if that
-// silence ever hides something real; a window would be worse at the common case,
-// where a slow bank redirect leaves the old page polling for many seconds.
 let leaving = false;
 
 export function leavePage(url: string): void {
@@ -25,6 +19,46 @@ export function leavePage(url: string): void {
     window.location.href = url;
 }
 
+export function reloadPage(): void {
+    leaving = true;
+    window.location.reload();
+}
+
 export function isLeavingPage(): boolean {
     return leaving;
+}
+
+// SSR renders this module — pages/welcome.tsx and pages/settings/connections.tsx
+// import it, and ssr.tsx globs every page — so nothing here may touch `window` at
+// import time.
+if (typeof window !== 'undefined') {
+    // Not every departure comes through the functions above: an external <a>, the
+    // back button and closing the tab unload the document too. Those don't get the
+    // eager flag, which is the whole reason the functions exist — by the time
+    // `pagehide` fires the abort may already have been reported.
+    window.addEventListener('pagehide', () => {
+        leaving = true;
+    });
+
+    // The document does not always die once we leave. Back/forward cache restores
+    // it with the flag still set, and an iOS PWA hands the bank redirect to Safari
+    // and stays alive polling (see pages/onboarding/index.tsx) — either way the
+    // user carries on in a live page whose network errors we'd have silenced for
+    // the rest of the session.
+    //
+    // Becoming visible again is the proof that we stayed. It cannot clear a
+    // departure that is genuinely in progress, because a same-window redirect
+    // never hides the page; and if it ever fires early we over-report, which is
+    // the safe direction.
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+            leaving = false;
+        }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            leaving = false;
+        }
+    });
 }
