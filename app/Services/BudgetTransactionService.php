@@ -78,10 +78,13 @@ class BudgetTransactionService
             }
         }
 
-        $matchingPeriodIds = array_merge(
-            $matchingPeriodIds,
-            $this->catchAllPeriodIds($transaction, $userId, $categoryMatchIds, $transactionLabelIds->all()),
-        );
+        // A catch-all budget only absorbs what nothing else counts. Any budget
+        // already tracking this transaction — by category or by label — in a
+        // period covering its date takes precedence, so the catch-all steps in
+        // only when there is no such period.
+        if ($matchingPeriodIds === []) {
+            $matchingPeriodIds = $this->catchAllPeriodIds($transaction);
+        }
 
         // Apply changes atomically so concurrent workers cannot leave the
         // transaction half-assigned and the unique index guards duplicates.
@@ -161,7 +164,7 @@ class BudgetTransactionService
             ->withoutTrashed();
 
         if ($budget->is_catch_all) {
-            $this->applyCatchAllFilters($query, $budget->user_id);
+            $this->applyCatchAllFilters($query, $period, $budget->user_id);
         } else {
             // Filter by any tracked category OR label
             $query->where(function ($q) use ($categoryIds, $labelIds) {
@@ -208,9 +211,9 @@ class BudgetTransactionService
      *
      * @param  Builder<Transaction>  $query
      */
-    private function applyCatchAllFilters(Builder $query, string $userId): void
+    private function applyCatchAllFilters(Builder $query, BudgetPeriod $period, string $userId): void
     {
-        $claimed = $this->claimedIds($userId);
+        $claimed = $this->claimedIds($userId, $period);
         $claimedCategoryIds = $this->tree->expand($userId, $claimed['categories']);
 
         $query->whereNotNull('category_id')
@@ -229,15 +232,11 @@ class BudgetTransactionService
     }
 
     /**
-     * Catch-all budget periods that should absorb this transaction: an expense
-     * whose category (or an ancestor) and labels are not tracked by any
-     * non-catch-all budget.
+     * Catch-all budget periods that should absorb this expense.
      *
-     * @param  array<int, string>  $categoryMatchIds  the transaction category and its ancestors
-     * @param  array<int, string>  $transactionLabelIds
      * @return array<int, string>
      */
-    private function catchAllPeriodIds(Transaction $transaction, string $userId, array $categoryMatchIds, array $transactionLabelIds): array
+    private function catchAllPeriodIds(Transaction $transaction): array
     {
         if ($transaction->category_id === null) {
             return [];
@@ -249,19 +248,9 @@ class BudgetTransactionService
             return [];
         }
 
-        $claimed = $this->claimedIds($userId);
-
-        if (array_intersect($categoryMatchIds, $claimed['categories']) !== []) {
-            return [];
-        }
-
-        if (array_intersect($transactionLabelIds, $claimed['labels']) !== []) {
-            return [];
-        }
-
         return BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($userId) {
-                $query->where('user_id', $userId)->where('is_catch_all', true);
+            ->whereHas('budget', function ($query) use ($transaction) {
+                $query->where('user_id', $transaction->user_id)->where('is_catch_all', true);
             })
             ->where('start_date', '<=', $transaction->transaction_date)
             ->where('end_date', '>=', $transaction->transaction_date)
@@ -270,15 +259,25 @@ class BudgetTransactionService
     }
 
     /**
-     * Categories and labels directly tracked by the user's non-catch-all budgets.
+     * Categories and labels tracked by the user's other budgets over the same
+     * stretch of time as the given catch-all period.
+     *
+     * A budget only claims spending it actually counts, so one whose periods do
+     * not reach this far back leaves its categories and labels unclaimed here —
+     * otherwise the catch-all would drop those expenses without any budget
+     * picking them up.
      *
      * @return array{categories: array<int, string>, labels: array<int, string>}
      */
-    private function claimedIds(string $userId): array
+    private function claimedIds(string $userId, BudgetPeriod $period): array
     {
         $budgets = Budget::query()
             ->where('user_id', $userId)
             ->where('is_catch_all', false)
+            ->whereHas('periods', function ($query) use ($period) {
+                $query->where('start_date', '<=', $period->end_date)
+                    ->where('end_date', '>=', $period->start_date);
+            })
             ->with('categories:id', 'labels:id')
             ->get();
 

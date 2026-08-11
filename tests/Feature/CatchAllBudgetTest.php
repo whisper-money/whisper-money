@@ -9,6 +9,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
+use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
     $this->service = app(BudgetTransactionService::class);
@@ -151,13 +152,22 @@ test('catch-all budget ignores an expense whose label is tracked by another budg
     expect(BudgetTransaction::where('transaction_id', $transaction->id)->where('budget_period_id', $catchAll->id)->exists())->toBeFalse();
 });
 
-test('catch-all budget still absorbs an expense whose label no budget tracks', function () {
+test('catch-all budget still absorbs an expense carrying a label no budget tracks', function () {
     $catchAll = catchAllPeriod($this->user);
     $category = Category::factory()->create([
         'user_id' => $this->user->id,
         'type' => CategoryType::Expense,
     ]);
     $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    // Another budget claims a different label, so "some label is claimed" must
+    // not be enough to drop this expense.
+    $other = Budget::factory()->forLabels(Label::factory()->create(['user_id' => $this->user->id]))->create(['user_id' => $this->user->id]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $other->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $this->user->id,
@@ -170,6 +180,57 @@ test('catch-all budget still absorbs an expense whose label no budget tracks', f
     $this->service->assignTransaction($transaction->load('labels'));
 
     expect(BudgetTransaction::where('transaction_id', $transaction->id)->where('budget_period_id', $catchAll->id)->exists())->toBeTrue();
+});
+
+test('catch-all budget keeps an expense whose label budget has no period covering it', function () {
+    $catchAll = catchAllPeriod($this->user);
+    $category = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    // The label budget was created later and only covers future dates, so it
+    // cannot take this expense — dropping it from the catch-all would leave it
+    // out of every budget.
+    $tracked = Budget::factory()->forLabels($label)->create(['user_id' => $this->user->id]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $tracked->id,
+        'start_date' => now()->addDays(10),
+        'end_date' => now()->addDays(40),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+    $transaction->labels()->attach($label);
+
+    $this->service->assignTransaction($transaction->load('labels'));
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->where('budget_period_id', $catchAll->id)->exists())->toBeTrue();
+});
+
+test('historical assignment keeps an expense whose label budget has no period covering it', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $transaction = Transaction::factory()->create(['user_id' => $this->user->id, 'category_id' => $category->id, 'transaction_date' => now()->subDay(), 'amount' => -1000]);
+    $transaction->labels()->attach($label);
+
+    $tracked = Budget::factory()->forLabels($label)->create(['user_id' => $this->user->id]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $tracked->id,
+        'start_date' => now()->addDays(40),
+        'end_date' => now()->addDays(70),
+    ]);
+
+    $period = catchAllPeriod($this->user);
+
+    expect($this->service->assignHistoricalTransactionsToPeriod($period))->toBe(1);
+    expect(BudgetTransaction::where('budget_period_id', $period->id)->where('transaction_id', $transaction->id)->exists())->toBeTrue();
 });
 
 test('historical assignment skips expenses whose label another budget tracks', function () {
@@ -193,7 +254,9 @@ test('historical assignment skips expenses whose label another budget tracks', f
     expect(BudgetTransaction::where('budget_period_id', $period->id)->where('transaction_id', $labelled->id)->exists())->toBeFalse();
 });
 
-test('the reassign command moves a labelled transaction out of the catch-all budget', function () {
+test('the reassign command moves a labeled transaction out of the catch-all budget', function () {
+    Mail::fake();
+
     $catchAll = catchAllPeriod($this->user);
     $category = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
     $label = Label::factory()->create(['user_id' => $this->user->id]);
@@ -217,13 +280,16 @@ test('the reassign command moves a labelled transaction out of the catch-all bud
         'end_date' => now()->addDays(30),
     ]);
 
-    $this->artisan('budgets:reassign-labelled', ['--dry-run' => true])->assertSuccessful();
-    expect(BudgetTransaction::where('budget_period_id', $catchAll->id)->exists())->toBeTrue();
+    $this->artisan('budgets:reassign-labeled', ['--dry-run' => true])->assertSuccessful();
+    expect(BudgetTransaction::where('budget_period_id', $catchAll->id)->where('transaction_id', $transaction->id)->exists())->toBeTrue();
 
-    $this->artisan('budgets:reassign-labelled')->assertSuccessful();
+    $this->artisan('budgets:reassign-labeled')->assertSuccessful();
 
-    expect(BudgetTransaction::where('budget_period_id', $catchAll->id)->exists())->toBeFalse();
+    expect(BudgetTransaction::where('budget_period_id', $catchAll->id)->where('transaction_id', $transaction->id)->exists())->toBeFalse();
     expect(BudgetTransaction::where('budget_period_id', $trackedPeriod->id)->where('transaction_id', $transaction->id)->exists())->toBeTrue();
+
+    // A repair sweep must not email the user about thresholds crossed weeks ago.
+    Mail::assertNothingSent();
 });
 
 test('historical assignment backfills only unclaimed expenses into a catch-all budget', function () {
