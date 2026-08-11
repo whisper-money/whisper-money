@@ -54,15 +54,7 @@ class AccountController extends Controller
         $validated = $request->validated();
         $balance = $validated['balance'] ?? null;
 
-        $accountData = collect($validated)->only([
-            'name', 'bank_id', 'currency_code', 'type',
-        ])->toArray();
-
-        $account = $user->accounts()->create([
-            ...$accountData,
-            'encrypted' => false,
-            'name_iv' => null,
-        ]);
+        $account = $user->accounts()->create($this->accountAttributes($validated));
 
         if ($balance !== null) {
             $account->balances()->create([
@@ -71,102 +63,13 @@ class AccountController extends Controller
             ]);
         }
 
-        // Create real estate detail if account type is real_estate
         if ($account->type === AccountType::RealEstate) {
-            $realEstateData = collect($validated)->only([
-                'property_type', 'address', 'purchase_price', 'purchase_date',
-                'area_value', 'area_unit', 'linked_loan_account_id', 'notes',
-                'revaluation_percentage',
-            ])->filter(fn ($value) => $value !== null)->toArray();
-
-            if (! empty($realEstateData)) {
-                $account->realEstateDetail()->create($realEstateData);
-            }
-
-            // Generate historical balances when purchase data and current value are provided
-            if ($balance !== null && isset($validated['purchase_price'], $validated['purchase_date'])) {
-                $purchaseDate = Carbon::parse($validated['purchase_date']);
-                $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
-
-                // Generate the last 12 months synchronously
-                $balanceGenerator->generateHistoricalBalances(
-                    $account,
-                    $validated['purchase_price'],
-                    $purchaseDate,
-                    $balance,
-                    from: $twelveMonthsAgo,
-                );
-
-                // Dispatch older balances asynchronously if the purchase predates the sync window
-                if ($purchaseDate->isBefore($twelveMonthsAgo)) {
-                    GenerateHistoricalRealEstateBalancesJob::dispatch(
-                        $account,
-                        $validated['purchase_price'],
-                        $purchaseDate,
-                        $balance,
-                        $purchaseDate,
-                        $twelveMonthsAgo->copy()->subDay(),
-                    );
-                }
-            }
+            $this->createRealEstateDetail($account, $validated, $balance, $balanceGenerator);
         }
 
-        // Create loan detail if account type is loan and loan fields are provided
         if ($account->type === AccountType::Loan) {
-            $loanData = collect($validated)->only([
-                'annual_interest_rate', 'loan_term_months', 'original_amount',
-            ])->filter(fn ($value) => $value !== null)->toArray();
-
-            $loanStartDate = $validated['loan_start_date'] ?? null;
-            if ($loanStartDate) {
-                $loanData['start_date'] = $loanStartDate;
-            }
-
-            if (! empty($loanData) && isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
-                if (! isset($loanData['start_date'])) {
-                    $loanData['start_date'] = now()->toDateString();
-                }
-
-                $loanDetail = $account->loanDetail()->create($loanData);
-
-                if ($balance !== null) {
-                    $startDate = Carbon::parse($loanDetail->start_date);
-                    $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
-
-                    $loanBalanceGenerator->generateHistoricalBalances(
-                        $account,
-                        (int) $loanDetail->original_amount,
-                        $startDate,
-                        $balance,
-                        from: $twelveMonthsAgo,
-                    );
-
-                    if ($startDate->isBefore($twelveMonthsAgo)) {
-                        GenerateHistoricalLoanBalancesJob::dispatch(
-                            $account,
-                            (int) $loanDetail->original_amount,
-                            $startDate,
-                            $balance,
-                            $startDate,
-                            $twelveMonthsAgo->copy()->subDay(),
-                        );
-                    }
-                }
-            }
-
-            $linkedRealEstateAccountId = $validated['linked_real_estate_account_id'] ?? null;
-
-            if ($linkedRealEstateAccountId !== null) {
-                $realEstateAccount = $user->accounts()
-                    ->whereKey($linkedRealEstateAccountId)
-                    ->where('type', AccountType::RealEstate->value)
-                    ->with('realEstateDetail')
-                    ->first();
-
-                $realEstateAccount?->realEstateDetail?->update([
-                    'linked_loan_account_id' => $account->id,
-                ]);
-            }
+            $this->createLoanDetail($account, $validated, $balance, $loanBalanceGenerator);
+            $this->linkToRealEstateAccount($user, $account, $validated['linked_real_estate_account_id'] ?? null);
         }
 
         $accountUserCurrencyService->syncFromFirstAccount($account);
@@ -187,26 +90,12 @@ class AccountController extends Controller
 
         $validated = $request->validated();
 
-        $accountData = collect($validated)->only([
-            'name', 'bank_id', 'currency_code', 'type',
-            'ownership_percentage', 'ownership_applies_to_balance',
-        ])->toArray();
+        $account->update($this->accountAttributes($validated));
 
-        $account->update([
-            ...$accountData,
-            'encrypted' => false,
-            'name_iv' => null,
-        ]);
-
-        // Update or create real estate detail if account type is real_estate
         if ($account->type === AccountType::RealEstate) {
-            $realEstateData = collect($validated)->only([
-                'property_type', 'address', 'purchase_price', 'purchase_date',
-                'area_value', 'area_unit', 'linked_loan_account_id', 'notes',
-                'revaluation_percentage',
-            ])->filter(fn ($value) => $value !== null)->toArray();
+            $realEstateData = $this->realEstateAttributes($validated);
 
-            if (! empty($realEstateData)) {
+            if ($realEstateData !== []) {
                 $account->realEstateDetail()->updateOrCreate(
                     ['account_id' => $account->id],
                     $realEstateData,
@@ -215,10 +104,10 @@ class AccountController extends Controller
         }
 
         if ($account->type === AccountType::Loan) {
-            $incompleteLoan = $this->syncLoanDetail($account, $validated);
+            $errors = $this->syncLoanDetail($account, $validated);
 
-            if ($incompleteLoan !== null) {
-                return $incompleteLoan;
+            if ($errors !== []) {
+                return to_route('accounts.index')->withErrors($errors);
             }
         }
 
@@ -226,54 +115,214 @@ class AccountController extends Controller
     }
 
     /**
-     * Update or create the account's loan detail from the validated payload.
-     *
-     * Returns a redirect carrying the missing-field errors when a loan detail
-     * has to be created but the payload is incomplete, and null otherwise.
+     * The account's own columns. Encryption is gone, so every write clears the
+     * legacy flags rather than leaving stale ones behind.
      *
      * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
      */
-    private function syncLoanDetail(Account $account, array $validated): ?RedirectResponse
+    private function accountAttributes(array $validated): array
+    {
+        return [
+            ...collect($validated)->only([
+                'name', 'bank_id', 'currency_code', 'type',
+                'ownership_percentage', 'ownership_applies_to_balance',
+            ])->toArray(),
+            'encrypted' => false,
+            'name_iv' => null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function realEstateAttributes(array $validated): array
+    {
+        return collect($validated)->only([
+            'property_type', 'address', 'purchase_price', 'purchase_date',
+            'area_value', 'area_unit', 'linked_loan_account_id', 'notes',
+            'revaluation_percentage',
+        ])->filter(fn ($value) => $value !== null)->toArray();
+    }
+
+    /**
+     * The loan's own columns, defaulting the start date to what the user sent.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function loanAttributes(array $validated): array
     {
         $loanData = collect($validated)->only([
             'annual_interest_rate', 'loan_term_months', 'original_amount',
         ])->filter(fn ($value) => $value !== null)->toArray();
 
         $loanStartDate = $validated['loan_start_date'] ?? null;
+
         if ($loanStartDate) {
             $loanData['start_date'] = $loanStartDate;
         }
 
-        if (empty($loanData)) {
-            return null;
+        return $loanData;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function createRealEstateDetail(Account $account, array $validated, ?int $balance, RealEstateBalanceGeneratorService $balanceGenerator): void
+    {
+        $realEstateData = $this->realEstateAttributes($validated);
+
+        if ($realEstateData !== []) {
+            $account->realEstateDetail()->create($realEstateData);
+        }
+
+        // Historical balances need both ends of the line: what it was bought for
+        // and what it is worth now.
+        if ($balance === null || ! isset($validated['purchase_price'], $validated['purchase_date'])) {
+            return;
+        }
+
+        $this->backfillHistoricalBalances(
+            Carbon::parse($validated['purchase_date']),
+            fn (Carbon $from) => $balanceGenerator->generateHistoricalBalances(
+                $account,
+                $validated['purchase_price'],
+                Carbon::parse($validated['purchase_date']),
+                $balance,
+                from: $from,
+            ),
+            fn (Carbon $until) => GenerateHistoricalRealEstateBalancesJob::dispatch(
+                $account,
+                $validated['purchase_price'],
+                Carbon::parse($validated['purchase_date']),
+                $balance,
+                Carbon::parse($validated['purchase_date']),
+                $until,
+            ),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function createLoanDetail(Account $account, array $validated, ?int $balance, LoanBalanceGeneratorService $loanBalanceGenerator): void
+    {
+        $loanData = $this->loanAttributes($validated);
+
+        if (! isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
+            return;
+        }
+
+        $loanData['start_date'] ??= now()->toDateString();
+
+        $loanDetail = $account->loanDetail()->create($loanData);
+
+        if ($balance === null) {
+            return;
+        }
+
+        $startDate = Carbon::parse($loanDetail->start_date);
+
+        $this->backfillHistoricalBalances(
+            $startDate,
+            fn (Carbon $from) => $loanBalanceGenerator->generateHistoricalBalances(
+                $account,
+                (int) $loanDetail->original_amount,
+                $startDate,
+                $balance,
+                from: $from,
+            ),
+            fn (Carbon $until) => GenerateHistoricalLoanBalancesJob::dispatch(
+                $account,
+                (int) $loanDetail->original_amount,
+                $startDate,
+                $balance,
+                $startDate,
+                $until,
+            ),
+        );
+    }
+
+    /**
+     * Fill in the balance history for an account that existed before we knew about
+     * it: the last twelve months now, so the chart is populated on the next
+     * render, and anything older on the queue.
+     *
+     * @param  callable(Carbon): mixed  $generateRecent  receives the month to start from
+     * @param  callable(Carbon): mixed  $queueOlder  receives the day the recent window starts
+     */
+    private function backfillHistoricalBalances(Carbon $startDate, callable $generateRecent, callable $queueOlder): void
+    {
+        $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
+
+        $generateRecent($twelveMonthsAgo);
+
+        if ($startDate->isBefore($twelveMonthsAgo)) {
+            $queueOlder($twelveMonthsAgo->copy()->subDay());
+        }
+    }
+
+    /**
+     * Point the property this mortgage belongs to back at the loan account, so the
+     * two show up together on the property's chart.
+     */
+    private function linkToRealEstateAccount(User $user, Account $loanAccount, ?string $realEstateAccountId): void
+    {
+        if ($realEstateAccountId === null) {
+            return;
+        }
+
+        $user->accounts()
+            ->whereKey($realEstateAccountId)
+            ->where('type', AccountType::RealEstate->value)
+            ->with('realEstateDetail')
+            ->first()
+            ?->realEstateDetail
+            ?->update(['linked_loan_account_id' => $loanAccount->id]);
+    }
+
+    /**
+     * Update the loan's details, or create them when the account did not have any
+     * yet. Returns the fields still missing when there is not enough to create a
+     * loan with, so the caller can send them back to the form.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, string>
+     */
+    private function syncLoanDetail(Account $account, array $validated): array
+    {
+        $loanData = $this->loanAttributes($validated);
+
+        if ($loanData === []) {
+            return [];
         }
 
         $existingLoanDetail = $account->loanDetail;
 
-        if ($existingLoanDetail) {
+        if ($existingLoanDetail !== null) {
             $existingLoanDetail->update($loanData);
 
-            return null;
+            return [];
         }
 
         if (isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
             $loanData['start_date'] ??= now()->toDateString();
-
             $account->loanDetail()->create($loanData);
 
-            return null;
+            return [];
         }
 
-        $required = ['annual_interest_rate', 'loan_term_months', 'original_amount'];
         $errors = [];
 
-        foreach ($required as $field) {
+        foreach (['annual_interest_rate', 'loan_term_months', 'original_amount'] as $field) {
             if (! isset($loanData[$field])) {
                 $errors[$field] = __('This field is required.');
             }
         }
 
-        return to_route('accounts.index')->withErrors($errors);
+        return $errors;
     }
 
     /**
