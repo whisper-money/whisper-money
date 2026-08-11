@@ -282,6 +282,12 @@ jobs:
       - name: Frontend Tests
         run: bun run test
 
+      # Ratchet: fails when copy-paste duplication climbs above the threshold
+      # in .jscpd.json. Lower the threshold as clones get extracted; never
+      # raise it to make a red build pass.
+      - name: Duplication Check
+        run: bun run dry
+
       # Gates merges on a Conventional-Commit PR title. Lives in the linter
       # job (a required check) so a bad title blocks the merge, unlike the old
       # standalone workflow whose check wasn't required. Skipped on push since
