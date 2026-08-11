@@ -10,7 +10,20 @@ use Illuminate\Support\Facades\Log;
 class CoinbaseBalanceSyncService
 {
     /** @var array<int, string> Stablecoins pegged 1:1 to USD */
-    private const USD_STABLECOINS = ['USDT', 'USDC', 'DAI', 'PYUSD', 'GUSD'];
+    /**
+     * Stablecoins settle at their peg instead of being quoted, so Coinbase is
+     * never asked for a product id that does not exist. EURC is the one that
+     * bit us: pegged to EUR, not USD, and not an ISO 4217 code either, so it
+     * reached the pricebook as a crypto id and 400'd the whole batch.
+     */
+    private const STABLECOIN_PEGS = [
+        'USDT' => 'USD',
+        'USDC' => 'USD',
+        'DAI' => 'USD',
+        'PYUSD' => 'USD',
+        'GUSD' => 'USD',
+        'EURC' => 'EUR',
+    ];
 
     private const USD_CURRENCY = 'USD';
 
@@ -212,10 +225,10 @@ class CoinbaseBalanceSyncService
      */
     private function fetchPriceMap(CoinbaseClient $client, array $assets, string $targetCurrency): array
     {
-        // convertCryptoAssets settles stablecoins at 1 USD before it ever reads
-        // the map, so quoting them is two wasted round trips. The historical
-        // path skips them for the same reason.
-        $assets = array_values(array_diff($assets, self::USD_STABLECOINS));
+        // convertCryptoAssets settles stablecoins at their peg before it ever
+        // reads the map, so quoting them is two wasted round trips. The
+        // historical path skips them for the same reason.
+        $assets = array_values(array_diff($assets, array_keys(self::STABLECOIN_PEGS)));
 
         if ($assets === []) {
             return [];
@@ -274,6 +287,15 @@ class CoinbaseBalanceSyncService
             return [];
         }
 
+        return $this->mapPricebooks($response);
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     * @return array<string, float>
+     */
+    private function mapPricebooks(array $response): array
+    {
         $map = [];
 
         foreach ($response['pricebooks'] ?? [] as $pricebook) {
@@ -310,7 +332,7 @@ class CoinbaseBalanceSyncService
         $priceHistory = [];
 
         foreach ($assets as $asset) {
-            if (in_array($asset, self::USD_STABLECOINS, true)) {
+            if (isset(self::STABLECOIN_PEGS[$asset])) {
                 continue;
             }
 
@@ -436,8 +458,8 @@ class CoinbaseBalanceSyncService
         $total = 0.0;
 
         foreach ($cryptoAssets as $asset => $quantity) {
-            if (in_array($asset, self::USD_STABLECOINS, true)) {
-                $total += $this->convertFiatOnDate(self::USD_CURRENCY, $quantity, $targetCurrency, $date);
+            if (isset(self::STABLECOIN_PEGS[$asset])) {
+                $total += $this->convertFiatOnDate(self::STABLECOIN_PEGS[$asset], $quantity, $targetCurrency, $date);
 
                 continue;
             }
@@ -467,8 +489,8 @@ class CoinbaseBalanceSyncService
         $total = 0.0;
 
         foreach ($cryptoAssets as $asset => $quantity) {
-            if (in_array($asset, self::USD_STABLECOINS, true)) {
-                $total += $this->convertFiat(self::USD_CURRENCY, $quantity, $targetCurrency);
+            if (isset(self::STABLECOIN_PEGS[$asset])) {
+                $total += $this->convertFiat(self::STABLECOIN_PEGS[$asset], $quantity, $targetCurrency);
 
                 continue;
             }
