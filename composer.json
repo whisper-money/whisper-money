@@ -12,7 +12,7 @@
         "php": "^8.3",
         "aws/aws-sdk-php": "^3.382",
         "firebase/php-jwt": "^7.0",
-        "inertiajs/inertia-laravel": "^2.0",
+        "inertiajs/inertia-laravel": "^3.3",
         "intervention/image": "^4.2",
         "jwadhams/json-logic-php": "^1.5",
         "laravel/ai": "^0.10.3",

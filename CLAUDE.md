@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Whisper Money is a privacy-first personal finance app. Your data is never shared with third parties—you are the owner. It uses Laravel 13 (PHP 8.4) backend with React 19 frontend via Inertia.js v2.
+Whisper Money is a privacy-first personal finance app. Your data is never shared with third parties—you are the owner. It uses Laravel 13 (PHP 8.4) backend with React 19 frontend via Inertia.js v3.
 
 ## Commands
 
@@ -104,7 +104,7 @@ duplication check in the `linter` job is a required check and will catch that.
 - **Form Requests**: Always use for validation instead of inline controller validation
 - **Eloquent**: Prefer `Model::query()` over `DB::`, use eager loading to prevent N+1
 
-### Frontend (React 19 + Inertia v2)
+### Frontend (React 19 + Inertia v3)
 
 - **Pages**: `resources/js/pages/` - Inertia page components
 - **Components**: `resources/js/components/` - Reusable UI components
