@@ -16,7 +16,6 @@ use function Pest\Laravel\artisan;
 beforeEach(function () {
     config([
         'subscriptions.enabled' => true,
-        'subscriptions.experiment.started_at' => '2026-06-01',
         'services.discord.webhook_url' => 'https://discord.test/hook',
         'services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook',
     ]);

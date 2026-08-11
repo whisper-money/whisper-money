@@ -327,7 +327,7 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', null)
                 ->has('stripe_lookup_key')
                 ->where('billing_period', 'month')
-                ->where('trial_days', 15)
+                ->where('trial_days', 7)
                 ->has('features')
             )
             ->has('pricing.plans.yearly', fn ($plan) => $plan
@@ -495,19 +495,19 @@ test('billing portal skips stripe customer creation when user already has a stri
     $this->get(route('settings.billing.portal'))->assertRedirect();
 });
 
-test('checkout applies configured trial days to the subscription builder', function () {
+test('checkout applies each plan its own trial days', function (string $planKey, int $trialDays) {
     config([
-        'subscriptions.plans.monthly.trial_days' => 15,
-        'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
+        "subscriptions.plans.{$planKey}.trial_days" => $trialDays,
+        "subscriptions.plans.{$planKey}.stripe_lookup_key" => 'test_lookup',
     ]);
-    Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
+    Cache::put('stripe_price_id:test_lookup', 'price_test', now()->addHour());
 
     $checkout = Mockery::mock(Checkout::class);
     $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
-    $builder->shouldReceive('trialDays')->once()->with(15)->andReturnSelf();
+    $builder->shouldReceive('trialDays')->once()->with($trialDays)->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn($checkout);
 
     $user = Mockery::mock(User::class)->shouldIgnoreMissing();
@@ -515,14 +515,17 @@ test('checkout applies configured trial days to the subscription builder', funct
     $user->shouldReceive('hasProPlan')->andReturn(false);
     $user->shouldReceive('newSubscription')
         ->once()
-        ->with('default', 'price_test_monthly')
+        ->with('default', 'price_test')
         ->andReturn($builder);
 
     $this->withoutMiddleware(HandleInertiaRequests::class);
     $this->actingAs($user);
 
-    $this->get(route('subscribe.checkout', ['plan' => 'monthly']))->assertRedirect();
-});
+    $this->get(route('subscribe.checkout', ['plan' => $planKey]))->assertRedirect();
+})->with([
+    'monthly' => ['monthly', 7],
+    'yearly' => ['yearly', 15],
+]);
 
 test('checkout tags the subscription with a valid upsell source', function () {
     config([

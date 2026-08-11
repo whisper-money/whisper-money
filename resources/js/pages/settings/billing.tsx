@@ -14,7 +14,7 @@ import {
     store as storeConsent,
 } from '@/routes/ai/consent';
 import { billing } from '@/routes/settings';
-import { portal, refund as refundRoute } from '@/routes/settings/billing';
+import { portal } from '@/routes/settings/billing';
 import { checkout } from '@/routes/subscribe';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
@@ -182,95 +182,16 @@ function UpgradeSection({
     );
 }
 
-interface RefundInfo {
-    canSelfRefund: boolean;
-    deadline: string | null;
-}
-
-function RefundCard({
-    deadline,
-    locale,
-}: {
-    deadline: string | null;
-    locale: string;
-}) {
-    const [confirming, setConfirming] = useState(false);
-    const [processing, setProcessing] = useState(false);
-
-    const deadlineLabel = deadline
-        ? new Date(deadline).toLocaleDateString(locale, {
-              day: 'numeric',
-              month: 'long',
-          })
-        : null;
-
-    const submit = () => {
-        setProcessing(true);
-        router.post(
-            refundRoute.url(),
-            {},
-            { onFinish: () => setProcessing(false) },
-        );
-    };
-
-    return (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
-            <h4 className="font-medium text-amber-900 dark:text-amber-200">
-                {__('Money-back guarantee')}
-            </h4>
-            <p className="mt-1 text-sm text-amber-800/80 dark:text-amber-300/80">
-                {deadlineLabel
-                    ? __(
-                          'Changed your mind? Request a full refund until :date. This cancels your subscription and disconnects your bank accounts — the data you already imported is kept.',
-                          { date: deadlineLabel },
-                      )
-                    : __(
-                          'Changed your mind? Request a full refund. This cancels your subscription and disconnects your bank accounts — the data you already imported is kept.',
-                      )}
-            </p>
-
-            {confirming ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                        variant="destructive"
-                        disabled={processing}
-                        onClick={submit}
-                    >
-                        {__('Confirm refund')}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        disabled={processing}
-                        onClick={() => setConfirming(false)}
-                    >
-                        {__('Keep my plan')}
-                    </Button>
-                </div>
-            ) : (
-                <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => setConfirming(true)}
-                >
-                    {__('Request a refund')}
-                </Button>
-            )}
-        </div>
-    );
-}
-
 function SubscribedSection({
     isDemoAccount,
     defaultPlan,
     currency,
     locale,
-    refund,
 }: {
     isDemoAccount: boolean;
     defaultPlan: Plan | undefined;
     currency: string;
     locale: string;
-    refund?: RefundInfo;
 }) {
     return (
         <div className="space-y-6">
@@ -318,10 +239,6 @@ function SubscribedSection({
                     </a>
                 )}
             </div>
-
-            {refund?.canSelfRefund && (
-                <RefundCard deadline={refund.deadline} locale={locale} />
-            )}
         </div>
     );
 }
@@ -456,8 +373,8 @@ function AiConsentSection({
 }
 
 export default function Billing() {
-    const { auth, pricing, locale, hasAiConsent, refund } = usePage<
-        SharedData & { hasAiConsent: boolean; refund?: RefundInfo }
+    const { auth, pricing, locale, hasAiConsent } = usePage<
+        SharedData & { hasAiConsent: boolean }
     >().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
     const hasProPlan = auth?.hasProPlan ?? false;
@@ -483,7 +400,6 @@ export default function Billing() {
                             defaultPlan={defaultPlan}
                             currency={pricing.currency}
                             locale={locale}
-                            refund={refund}
                         />
                     ) : (
                         <UpgradeSection

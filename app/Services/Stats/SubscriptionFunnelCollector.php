@@ -46,7 +46,7 @@ class SubscriptionFunnelCollector
     public function collect(?int $weeks = null): array
     {
         $weeks = max(1, $weeks ?? self::DEFAULT_WEEKS);
-        $trialDays = (int) config('subscriptions.plans.monthly.trial_days', 15);
+        $trialDays = $this->longestTrialDays();
 
         $now = CarbonImmutable::now('UTC');
         $windowStart = $now->startOfWeek(CarbonImmutable::MONDAY)->subWeeks($weeks - 1);
@@ -93,6 +93,18 @@ class SubscriptionFunnelCollector
             'trialDays' => $trialDays,
             'weeks' => array_values($rows),
         ];
+    }
+
+    /**
+     * The longest trial any plan offers. Plans trial for different lengths, so
+     * a cohort has only really finished converting once even the slowest plan
+     * has billed; taking the maximum keeps "paid" from being scored too early.
+     */
+    private function longestTrialDays(): int
+    {
+        $trials = array_column(config('subscriptions.plans', []), 'trial_days');
+
+        return $trials === [] ? 15 : (int) max($trials);
     }
 
     /**
