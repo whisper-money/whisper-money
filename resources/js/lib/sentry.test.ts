@@ -1,5 +1,5 @@
 import type { Event } from '@sentry/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
@@ -12,7 +12,7 @@ function exceptionEvent(type: string, value: string): Event {
     return { exception: { values: [{ type, value }] } };
 }
 
-describe('isAbortedByPageLeaveNoise', () => {
+describe('isPageLeaveAbortNoise', () => {
     // The flag lives at module scope and is deliberately one-way, so each case
     // needs its own instance of the pair rather than a reset helper.
     async function freshModules() {
@@ -24,6 +24,8 @@ describe('isAbortedByPageLeaveNoise', () => {
         };
     }
 
+    const realLocation = window.location;
+
     beforeEach(() => {
         Object.defineProperty(window, 'location', {
             configurable: true,
@@ -32,11 +34,19 @@ describe('isAbortedByPageLeaveNoise', () => {
         });
     });
 
+    afterEach(() => {
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            writable: true,
+            value: realLocation,
+        });
+    });
+
     it('keeps network failures while the user is still on the page', async () => {
-        const { isAbortedByPageLeaveNoise } = await freshModules();
+        const { isPageLeaveAbortNoise } = await freshModules();
 
         expect(
-            isAbortedByPageLeaveNoise(
+            isPageLeaveAbortNoise(
                 exceptionEvent('AxiosError', 'Network Error'),
             ),
         ).toBe(false);
@@ -45,37 +55,64 @@ describe('isAbortedByPageLeaveNoise', () => {
     it.each([
         ['AxiosError', 'Network Error'],
         ['AxiosError', 'Request aborted'],
-        ['HttpNetworkError', 'Network error'],
+        // Inertia's own shape: HttpError appends the request URL to the message,
+        // so a bare "Network error" is not what actually reaches Sentry.
+        [
+            'HttpNetworkError',
+            'Network error (https://whisper.money/onboarding?step=create-account)',
+        ],
         ['TypeError', 'Failed to fetch'],
         ['TypeError', 'Load failed'],
     ])(
         'drops a %s "%s" caused by the navigation we started',
         async (type, value) => {
-            const { leavePage, isAbortedByPageLeaveNoise } =
-                await freshModules();
+            const { leavePage, isPageLeaveAbortNoise } = await freshModules();
 
             leavePage('https://bank.example/authorize');
 
             expect(window.location.href).toBe('https://bank.example/authorize');
-            expect(isAbortedByPageLeaveNoise(exceptionEvent(type, value))).toBe(
+            expect(isPageLeaveAbortNoise(exceptionEvent(type, value))).toBe(
                 true,
             );
         },
     );
 
     it('keeps a genuine crash that happens while leaving', async () => {
-        const { leavePage, isAbortedByPageLeaveNoise } = await freshModules();
+        const { leavePage, isPageLeaveAbortNoise } = await freshModules();
 
         leavePage('https://bank.example/authorize');
 
         expect(
-            isAbortedByPageLeaveNoise(
+            isPageLeaveAbortNoise(
                 exceptionEvent(
                     'TypeError',
                     "undefined is not an object (evaluating 'e.features.cashflow')",
                 ),
             ),
         ).toBe(false);
+    });
+
+    it('keeps a chunk load failure, which starts the same way', async () => {
+        const { leavePage, isPageLeaveAbortNoise } = await freshModules();
+
+        leavePage('https://bank.example/authorize');
+
+        expect(
+            isPageLeaveAbortNoise(
+                exceptionEvent(
+                    'TypeError',
+                    'Failed to fetch dynamically imported module: https://whisper.money/build/assets/accounts-BO3xxENF.js',
+                ),
+            ),
+        ).toBe(false);
+    });
+
+    it('keeps an event carrying no exception at all', async () => {
+        const { leavePage, isPageLeaveAbortNoise } = await freshModules();
+
+        leavePage('https://bank.example/authorize');
+
+        expect(isPageLeaveAbortNoise({ message: 'Network Error' })).toBe(false);
     });
 });
 

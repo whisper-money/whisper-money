@@ -29,10 +29,10 @@ import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
 import { leavePage } from './lib/leave-page';
 import { initializePostHog } from './lib/posthog';
 import {
-    isAbortedByPageLeaveNoise,
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
+    isPageLeaveAbortNoise,
     isPostMessageDataCloneNoise,
     isSafariCashbackExtensionNoise,
 } from './lib/sentry';
@@ -51,7 +51,7 @@ Sentry.init({
     beforeSend(event) {
         if (
             isChunkLoadErrorEvent(event) ||
-            isAbortedByPageLeaveNoise(event) ||
+            isPageLeaveAbortNoise(event) ||
             isBrowserExtensionNoise(event) ||
             isPostMessageDataCloneNoise(event) ||
             isFacebookInAppBrowserJavaBridgeNoise(event) ||
