@@ -1,10 +1,8 @@
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
-    Cell,
     ColumnDef,
     ColumnFiltersState,
-    flexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
@@ -14,7 +12,7 @@ import {
     VisibilityState,
 } from '@tanstack/react-table';
 import * as Icons from 'lucide-react';
-import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
@@ -22,31 +20,15 @@ import { CreateCategoryDialog } from '@/components/categories/create-category-di
 import { DeleteCategoryDialog } from '@/components/categories/delete-category-dialog';
 import { EditCategoryDialog } from '@/components/categories/edit-category-dialog';
 import HeadingSmall from '@/components/heading-small';
+import {
+    type DialogControl,
+    RowActionsDropdown,
+    RowWithActionsContextMenu,
+} from '@/components/shared/row-edit-delete-actions';
+import { SettingsTable } from '@/components/shared/settings-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuLabel,
-    ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import {
     Tooltip,
     TooltipContent,
@@ -71,6 +53,27 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+function categoryDialogs(category: Category, categories: Category[]) {
+    return {
+        renderEditDialog: (control: DialogControl) => (
+            <EditCategoryDialog
+                category={category}
+                categories={categories}
+                onSuccess={() => {}}
+                {...control}
+            />
+        ),
+        renderDeleteDialog: (control: DialogControl) => (
+            <DeleteCategoryDialog
+                category={category}
+                categories={categories}
+                onSuccess={() => {}}
+                {...control}
+            />
+        ),
+    };
+}
+
 function CategoryActions({
     category,
     categories,
@@ -78,49 +81,7 @@ function CategoryActions({
     category: Category;
     categories: Category[];
 }) {
-    const [editOpen, setEditOpen] = useState(false);
-    const [deleteOpen, setDeleteOpen] = useState(false);
-
-    return (
-        <>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">{__('Open menu')}</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>{__('Actions')}</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                        {__('Edit')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        onClick={() => setDeleteOpen(true)}
-                        variant="destructive"
-                    >
-                        {__('Delete')}
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-
-            <EditCategoryDialog
-                category={category}
-                categories={categories}
-                open={editOpen}
-                onOpenChange={setEditOpen}
-                onSuccess={() => {}}
-            />
-
-            <DeleteCategoryDialog
-                category={category}
-                categories={categories}
-                open={deleteOpen}
-                onOpenChange={setDeleteOpen}
-                onSuccess={() => {}}
-            />
-        </>
-    );
+    return <RowActionsDropdown {...categoryDialogs(category, categories)} />;
 }
 
 function CategoryRow({
@@ -130,66 +91,11 @@ function CategoryRow({
     row: Row<Category>;
     categories: Category[];
 }) {
-    const category = row.original;
-    const [editOpen, setEditOpen] = useState(false);
-    const [deleteOpen, setDeleteOpen] = useState(false);
-    const [contextMenuOpen, setContextMenuOpen] = useState(false);
-
     return (
-        <>
-            <ContextMenu onOpenChange={setContextMenuOpen}>
-                <ContextMenuTrigger asChild>
-                    <TableRow
-                        data-state={
-                            (row.getIsSelected() || contextMenuOpen) &&
-                            'selected'
-                        }
-                    >
-                        {row
-                            .getVisibleCells()
-                            .map((cell: Cell<Category, unknown>) => (
-                                <TableCell
-                                    key={cell.id}
-                                    className="align-middle"
-                                >
-                                    {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext(),
-                                    )}
-                                </TableCell>
-                            ))}
-                    </TableRow>
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                    <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
-                    <ContextMenuItem onClick={() => setEditOpen(true)}>
-                        {__('Edit')}
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                        onClick={() => setDeleteOpen(true)}
-                        variant="destructive"
-                    >
-                        {__('Delete')}
-                    </ContextMenuItem>
-                </ContextMenuContent>
-            </ContextMenu>
-
-            <EditCategoryDialog
-                category={category}
-                categories={categories}
-                open={editOpen}
-                onOpenChange={setEditOpen}
-                onSuccess={() => {}}
-            />
-
-            <DeleteCategoryDialog
-                category={category}
-                categories={categories}
-                open={deleteOpen}
-                onOpenChange={setDeleteOpen}
-                onSuccess={() => {}}
-            />
-        </>
+        <RowWithActionsContextMenu
+            row={row}
+            {...categoryDialogs(row.original, categories)}
+        />
     );
 }
 
@@ -462,59 +368,17 @@ export default function Categories() {
                             />
                         </div>
 
-                        <div className="overflow-hidden rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    {table
-                                        .getHeaderGroups()
-                                        .map((headerGroup) => (
-                                            <TableRow key={headerGroup.id}>
-                                                {headerGroup.headers.map(
-                                                    (header) => {
-                                                        return (
-                                                            <TableHead
-                                                                key={header.id}
-                                                            >
-                                                                {header.isPlaceholder
-                                                                    ? null
-                                                                    : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
-                                                            </TableHead>
-                                                        );
-                                                    },
-                                                )}
-                                            </TableRow>
-                                        ))}
-                                </TableHeader>
-                                <TableBody>
-                                    {table.getRowModel().rows?.length ? (
-                                        table
-                                            .getRowModel()
-                                            .rows.map((row) => (
-                                                <CategoryRow
-                                                    key={row.id}
-                                                    row={row}
-                                                    categories={categories}
-                                                />
-                                            ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={columns.length}
-                                                className="h-24 text-center align-middle"
-                                            >
-                                                {__('No categories found.')}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <SettingsTable
+                            table={table}
+                            emptyMessage={__('No categories found.')}
+                            renderRow={(row) => (
+                                <CategoryRow
+                                    key={row.id}
+                                    row={row}
+                                    categories={categories}
+                                />
+                            )}
+                        />
 
                         <div className="flex items-center justify-end">
                             <div className="text-sm text-muted-foreground">
