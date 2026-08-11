@@ -6,6 +6,7 @@ use App\Models\McpToolCall;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class McpUsageStatsCommand extends Command
 {
@@ -20,8 +21,10 @@ class McpUsageStatsCommand extends Command
 
         $total = $this->callsSince($since)->count();
 
+        $window = $days.' '.Str::plural('day', $days);
+
         if ($total === 0) {
-            $this->warn("No MCP tool calls in the last {$days} days.");
+            $this->warn("No MCP tool calls in the last {$window}.");
 
             return self::SUCCESS;
         }
@@ -29,7 +32,7 @@ class McpUsageStatsCommand extends Command
         $users = $this->callsSince($since)->distinct()->count('user_id');
 
         $this->newLine();
-        $this->line("<options=bold>MCP usage — last {$days} days</> (since {$since->toDateString()})");
+        $this->line("<options=bold>MCP usage — last {$window}</> (since {$since->toDateString()})");
         $this->line("  Calls: <fg=cyan>{$total}</>   Users: <fg=cyan>{$users}</>");
 
         $this->renderTools($since, $total);
