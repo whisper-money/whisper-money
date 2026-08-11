@@ -5,6 +5,7 @@ namespace App\Mcp\Servers;
 use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateAutomationRule;
 use App\Mcp\Tools\CreateBalance;
+use App\Mcp\Tools\CreateBudget;
 use App\Mcp\Tools\CreateCategory;
 use App\Mcp\Tools\CreateLabel;
 use App\Mcp\Tools\CreateTransaction;
@@ -16,12 +17,14 @@ use App\Mcp\Tools\GetCashflow;
 use App\Mcp\Tools\GetNetWorth;
 use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SpendingByCategory;
 use App\Mcp\Tools\UpdateAutomationRule;
+use App\Mcp\Tools\UpdateBudget;
 use App\Mcp\Tools\UpdateCategory;
 use App\Mcp\Tools\UpdateLabel;
 use App\Mcp\Tools\UpdateTransaction;
@@ -42,13 +45,19 @@ data.
 - Data is organised into "spaces" (the personal space and any shared spaces).
   Transaction, account, category and label tools accept an optional `space` id and
   default to the personal space; call `list_spaces` to discover ids. The cashflow,
-  net-worth and spending tools cover the user's whole account.
+  net-worth, spending and budget tools cover the user's whole account.
+- A budget is a per-period spending limit over a set of categories and/or labels;
+  tracking a parent category also tracks its children. `list_budgets` reports the
+  period in progress (allocated, carried over, spent and remaining). Matching
+  transactions are attached automatically, so a freshly created budget may take a
+  moment to report its spending.
 - To find recurring charges (subscriptions), use `search_transactions` and group
   the results by merchant and cadence yourself.
 
 Write tools (create_transaction, update_transaction, delete_transaction,
-categorize_transaction, label_transaction, create_balance and full CRUD for
-categories, labels and automation rules) require a read & write token; a
+categorize_transaction, label_transaction, create_balance, create_budget,
+update_budget and full CRUD for categories, labels and automation rules) require
+a read & write token; a
 read-only token can analyse data but never change it. Manual transactions can be
 created on any account, bank-connected ones included — a sync never removes them.
 Bank/imported transactions themselves are protected: only manually-created ones
@@ -68,6 +77,7 @@ class WhisperMoneyServer extends Server
         ListAccounts::class,
         ListCategories::class,
         ListLabels::class,
+        ListBudgets::class,
         ListSpaces::class,
 
         // Write
@@ -86,5 +96,7 @@ class WhisperMoneyServer extends Server
         CreateAutomationRule::class,
         UpdateAutomationRule::class,
         DeleteAutomationRule::class,
+        CreateBudget::class,
+        UpdateBudget::class,
     ];
 }

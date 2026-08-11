@@ -362,7 +362,7 @@ export default function Mcp() {
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
                                                 {__(
-                                                    'Read-only tokens can analyse your data. Read & write tokens can also create, edit and delete transactions, categories, labels and automation rules.',
+                                                    'Read-only tokens can analyse your data. Read & write tokens can also create, edit and delete transactions, categories, labels, budgets and automation rules.',
                                                 )}
                                             </p>
                                         </div>

@@ -2,10 +2,12 @@
 
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\SearchTransactions;
 use App\Models\Account;
+use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
@@ -132,4 +134,52 @@ it('lists the user\'s categories for the space', function () {
         ->tool(ListCategories::class, [])
         ->assertOk()
         ->assertSee('Groceries');
+});
+
+it('lists budgets with what the current period has spent and has left', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+
+    $budget = Budget::factory()->forCategories($category)->create([
+        'user_id' => $user->id,
+        'name' => 'Food Budget',
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+    ]);
+
+    $budget->periods()->create([
+        'start_date' => today()->startOfMonth(),
+        'end_date' => today()->endOfMonth(),
+        'allocated_amount' => 50_000,
+        'carried_over_amount' => 0,
+    ]);
+
+    // Assigned to the period by the TransactionCreated listener.
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'transaction_date' => today(),
+        'amount' => -12_000,
+    ]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListBudgets::class)
+        ->assertOk()
+        ->assertSee('Food Budget')
+        ->assertSee('Groceries')
+        ->assertSee('"allocated_amount":50000')
+        ->assertSee('"spent_amount":12000')
+        ->assertSee('"remaining_amount":38000');
+});
+
+it('never exposes another user\'s budgets', function () {
+    $user = User::factory()->create();
+    Budget::factory()->create(['user_id' => User::factory()->create()->id, 'name' => 'Secret Budget']);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListBudgets::class)
+        ->assertOk()
+        ->assertDontSee('Secret Budget');
 });

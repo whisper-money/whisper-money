@@ -4,17 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
-use App\Jobs\AssignHistoricalTransactionsToBudget;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
 use App\Services\BudgetPeriodService;
+use App\Services\BudgetService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,7 +21,10 @@ class BudgetController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(protected BudgetPeriodService $budgetPeriodService) {}
+    public function __construct(
+        protected BudgetPeriodService $budgetPeriodService,
+        protected BudgetService $budgetService,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -119,55 +121,32 @@ class BudgetController extends Controller
 
     public function store(StoreBudgetRequest $request): RedirectResponse
     {
-        $result = DB::transaction(function () use ($request) {
-            $setting = $request->user()->setting;
-
-            $budget = $request->user()->budgets()->create([
+        $budget = $this->budgetService->create(
+            $request->user(),
+            [
                 'name' => $request->name,
                 'period_type' => $request->period_type,
                 'period_start_day' => $request->period_start_day,
                 'rollover_type' => $request->rollover_type,
                 'is_catch_all' => $request->boolean('is_catch_all'),
-                'notify_on_new_transaction' => $setting->budget_notify_on_new_transaction ?? false,
-                'notify_on_close_to_limit' => $setting->budget_notify_on_close_to_limit ?? true,
-                'notify_on_over_limit' => $setting->budget_notify_on_over_limit ?? true,
-            ]);
+            ],
+            (int) $request->allocated_amount,
+            $request->category_ids ?? [],
+            $request->label_ids ?? [],
+        );
 
-            $budget->categories()->sync($request->category_ids ?? []);
-            $budget->labels()->sync($request->label_ids ?? []);
-
-            $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount, null, true);
-            $previousPeriod = $this->budgetPeriodService->generatePreviousPeriod($budget, $period, $request->allocated_amount, true);
-
-            return ['budget' => $budget, 'period' => $period, 'previousPeriod' => $previousPeriod];
-        });
-
-        // Dispatch jobs to assign historical transactions for the current and previous periods
-        AssignHistoricalTransactionsToBudget::dispatch($result['budget'], $result['period']);
-        AssignHistoricalTransactionsToBudget::dispatch($result['budget'], $result['previousPeriod']);
-
-        return redirect()->route('budgets.show', $result['budget']);
+        return redirect()->route('budgets.show', $budget);
     }
 
     public function update(UpdateBudgetRequest $request, Budget $budget): RedirectResponse
     {
         $this->authorize('update', $budget);
 
-        DB::transaction(function () use ($request, $budget) {
-            $budget->update($request->only([
-                'name',
-                'period_type',
-                'period_start_day',
-                'rollover_type',
-            ]));
-
-            // If allocated_amount is provided, update current and future periods
-            if ($request->has('allocated_amount')) {
-                $budget->periods()
-                    ->where('start_date', '>=', now()->startOfDay())
-                    ->update(['allocated_amount' => $request->allocated_amount]);
-            }
-        });
+        $this->budgetService->update(
+            $budget,
+            $request->only(['name', 'period_type', 'period_start_day', 'rollover_type']),
+            $request->has('allocated_amount') ? (int) $request->allocated_amount : null,
+        );
 
         return redirect()->route('budgets.show', $budget);
     }

@@ -119,6 +119,37 @@ test('user can update their budget', function () {
     ]);
 });
 
+test('a new budget amount applies to the period in progress', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+    ]);
+
+    $current = $budget->periods()->create([
+        'start_date' => today()->startOfMonth(),
+        'end_date' => today()->endOfMonth(),
+        'allocated_amount' => 50000,
+        'carried_over_amount' => 0,
+    ]);
+
+    $past = $budget->periods()->create([
+        'start_date' => today()->subMonthNoOverflow()->startOfMonth(),
+        'end_date' => today()->subMonthNoOverflow()->endOfMonth(),
+        'allocated_amount' => 50000,
+        'carried_over_amount' => 0,
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/budgets/{$budget->id}", ['allocated_amount' => 60000])
+        ->assertRedirect();
+
+    expect($current->fresh()->allocated_amount)->toBe(60000);
+    expect($past->fresh()->allocated_amount)->toBe(50000);
+});
+
 test('user can delete their budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
