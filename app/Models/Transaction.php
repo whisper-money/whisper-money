@@ -253,90 +253,88 @@ class Transaction extends Model
      */
     public function scopeApplyFilters(Builder $query, array $filters): Builder
     {
-        if (isset($filters['date_from'])) {
-            $query->whereDate('transaction_date', '>=', $filters['date_from']);
-        }
+        $query
+            ->when(isset($filters['date_from']), fn (Builder $q) => $q->whereDate('transaction_date', '>=', $filters['date_from']))
+            ->when(isset($filters['date_to']), fn (Builder $q) => $q->whereDate('transaction_date', '<=', $filters['date_to']))
+            // Amounts arrive in major units from the UI but are stored in cents.
+            ->when(isset($filters['amount_min']), fn (Builder $q) => $q->where('amount', '>=', $filters['amount_min'] * 100))
+            ->when(isset($filters['amount_max']), fn (Builder $q) => $q->where('amount', '<=', $filters['amount_max'] * 100))
+            ->when(! empty($filters['account_ids']), fn (Builder $q) => $q->whereIn('account_id', $filters['account_ids']))
+            ->when(! empty($filters['category_source']), fn (Builder $q) => $q->where('category_source', $filters['category_source']))
+            ->when(! empty($filters['creditor_name']), fn (Builder $q) => $q->where('creditor_name', 'LIKE', '%'.$filters['creditor_name'].'%'))
+            ->when(! empty($filters['debtor_name']), fn (Builder $q) => $q->where('debtor_name', 'LIKE', '%'.$filters['debtor_name'].'%'))
+            ->when(! empty($filters['search']), fn (Builder $q) => $q->where(
+                fn (Builder $inner) => $inner
+                    ->where('description', 'LIKE', '%'.$filters['search'].'%')
+                    ->orWhere('notes', 'LIKE', '%'.$filters['search'].'%')
+                    ->orWhere('creditor_name', 'LIKE', '%'.$filters['search'].'%')
+                    ->orWhere('debtor_name', 'LIKE', '%'.$filters['search'].'%')
+            ));
 
-        if (isset($filters['date_to'])) {
-            $query->whereDate('transaction_date', '<=', $filters['date_to']);
-        }
-
-        if (isset($filters['amount_min'])) {
-            $query->where('amount', '>=', $filters['amount_min'] * 100);
-        }
-
-        if (isset($filters['amount_max'])) {
-            $query->where('amount', '<=', $filters['amount_max'] * 100);
-        }
-
-        $hasCategoryFilter = ! empty($filters['category_ids']);
-        $hasLabelFilter = ! empty($filters['label_ids']);
-
-        if ($hasCategoryFilter || $hasLabelFilter) {
-            $realIds = [];
-            $hasUncategorized = false;
-
-            if ($hasCategoryFilter) {
-                $ids = collect($filters['category_ids']);
-                $hasUncategorized = $ids->contains('uncategorized');
-                $realIds = $ids->reject(fn ($id) => $id === 'uncategorized')->values()->all();
-
-                if ($realIds !== []) {
-                    $userId = $filters['user_id'] ?? Category::query()->whereIn('id', $realIds)->value('user_id');
-
-                    if ($userId !== null) {
-                        $realIds = app(CategoryTree::class)->expand($userId, $realIds);
-                    }
-                }
-            }
-
-            $labelIds = $filters['label_ids'] ?? [];
-
-            $query->where(function (Builder $outer) use ($hasCategoryFilter, $realIds, $hasUncategorized, $hasLabelFilter, $labelIds) {
-                if ($hasCategoryFilter) {
-                    $outer->where(function (Builder $q) use ($realIds, $hasUncategorized) {
-                        if (! empty($realIds)) {
-                            $q->whereIn('category_id', $realIds);
-                        }
-                        if ($hasUncategorized) {
-                            $q->orWhereNull('category_id');
-                        }
-                    });
-                }
-
-                if ($hasLabelFilter) {
-                    $outer->orWhereHas('labels', fn (Builder $q) => $q->whereIn('labels.id', $labelIds));
-                }
-            });
-        }
-
-        if (! empty($filters['account_ids'])) {
-            $query->whereIn('account_id', $filters['account_ids']);
-        }
-
-        if (! empty($filters['category_source'])) {
-            $query->where('category_source', $filters['category_source']);
-        }
-
-        if (! empty($filters['creditor_name'])) {
-            $term = '%'.$filters['creditor_name'].'%';
-            $query->where('creditor_name', 'LIKE', $term);
-        }
-
-        if (! empty($filters['debtor_name'])) {
-            $term = '%'.$filters['debtor_name'].'%';
-            $query->where('debtor_name', 'LIKE', $term);
-        }
-
-        if (! empty($filters['search'])) {
-            $term = '%'.$filters['search'].'%';
-            $query->where(fn (Builder $q) => $q
-                ->where('description', 'LIKE', $term)
-                ->orWhere('notes', 'LIKE', $term)
-                ->orWhere('creditor_name', 'LIKE', $term)
-                ->orWhere('debtor_name', 'LIKE', $term));
-        }
+        $this->applyCategoryAndLabelFilters($query, $filters);
 
         return $query;
+    }
+
+    /**
+     * Categories and labels are one filter, not two: a transaction matches when it
+     * sits in a wanted category OR carries a wanted label, so both sides are ORed
+     * together inside a single group.
+     *
+     * @param  Builder<Transaction>  $query
+     * @param  array<string, mixed>  $filters
+     */
+    private function applyCategoryAndLabelFilters(Builder $query, array $filters): void
+    {
+        $categoryIds = empty($filters['category_ids']) ? [] : collect($filters['category_ids']);
+        $labelIds = empty($filters['label_ids']) ? [] : $filters['label_ids'];
+
+        if ($categoryIds === [] && $labelIds === []) {
+            return;
+        }
+
+        // "uncategorized" is a pseudo id the UI sends for transactions with no
+        // category at all, so it can be picked alongside real categories.
+        $wantsUncategorized = $categoryIds !== [] && $categoryIds->contains('uncategorized');
+        $wantedCategoryIds = $categoryIds === []
+            ? []
+            : $this->expandToDescendants(
+                $categoryIds->reject(fn ($id) => $id === 'uncategorized')->values()->all(),
+                $filters['user_id'] ?? null,
+            );
+
+        $query->where(function (Builder $group) use ($wantedCategoryIds, $wantsUncategorized, $labelIds): void {
+            if ($wantedCategoryIds !== []) {
+                $group->whereIn('category_id', $wantedCategoryIds);
+            }
+
+            if ($wantsUncategorized) {
+                $group->orWhereNull('category_id');
+            }
+
+            if ($labelIds !== []) {
+                $group->orWhereHas('labels', fn (Builder $q) => $q->whereIn('labels.id', $labelIds));
+            }
+        });
+    }
+
+    /**
+     * Picking a category means picking everything under it, so the selection is
+     * widened to the whole subtree. Left as-is when the owner cannot be resolved.
+     *
+     * @param  list<string>  $categoryIds
+     * @return list<string>
+     */
+    private function expandToDescendants(array $categoryIds, ?string $userId): array
+    {
+        if ($categoryIds === []) {
+            return [];
+        }
+
+        $userId ??= Category::query()->whereIn('id', $categoryIds)->value('user_id');
+
+        return $userId === null
+            ? $categoryIds
+            : app(CategoryTree::class)->expand($userId, $categoryIds);
     }
 }
