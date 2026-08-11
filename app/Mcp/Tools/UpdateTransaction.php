@@ -59,30 +59,16 @@ class UpdateTransaction extends WriteTool
         // moved off the old values if the edit changes them.
         $originalSnapshot = clone $transaction;
 
-        if ($request->has('description')) {
-            $transaction->description = $request->string('description')->toString();
-        }
-        if ($request->has('amount')) {
-            $transaction->amount = $request->integer('amount');
-        }
-        if ($request->has('transaction_date')) {
-            $transaction->transaction_date = Carbon::parse($request->string('transaction_date')->toString());
-        }
-        if ($request->has('currency_code')) {
-            $transaction->currency_code = mb_strtoupper($request->string('currency_code')->toString());
-        }
-        if ($request->has('account_id')) {
-            $transaction->account_id = $this->accountInSpace($request, $space)->id;
-        }
-        if ($request->has('notes')) {
-            $transaction->notes = $request->filled('notes') ? $request->string('notes')->toString() : null;
-        }
-        if ($request->has('creditor_name')) {
-            $transaction->creditor_name = $request->filled('creditor_name') ? $request->string('creditor_name')->toString() : null;
-        }
-        if ($request->has('debtor_name')) {
-            $transaction->debtor_name = $request->filled('debtor_name') ? $request->string('debtor_name')->toString() : null;
-        }
+        $this->applyFields($request, $transaction, [
+            'description' => fn () => $request->string('description')->toString(),
+            'amount' => fn () => $request->integer('amount'),
+            'transaction_date' => fn () => Carbon::parse($request->string('transaction_date')->toString()),
+            'currency_code' => fn () => mb_strtoupper($request->string('currency_code')->toString()),
+            'account_id' => fn () => $this->accountInSpace($request, $space)->id,
+            'notes' => fn () => $this->nullableString($request, 'notes'),
+            'creditor_name' => fn () => $this->nullableString($request, 'creditor_name'),
+            'debtor_name' => fn () => $this->nullableString($request, 'debtor_name'),
+        ]);
 
         // A new category is always a manual assignment: reset any AI/rule
         // provenance so the row is not later treated as machine-categorized.

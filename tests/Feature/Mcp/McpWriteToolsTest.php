@@ -356,3 +356,22 @@ it('never lets a write tool touch another user\'s data', function () {
 
     expect(Transaction::query()->find($otherTransaction->id))->not->toBeNull();
 });
+
+it('tells the agent which id was missing and where to find valid ones', function () {
+    $user = User::factory()->create();
+
+    // Records that have a listing tool point the agent at it.
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => 'no-such-transaction',
+        'description' => 'Nope',
+    ])->assertHasErrors([
+        'No transaction with id no-such-transaction in space '.$user->personalSpace->id.'. Call search_transactions to find ids.',
+    ]);
+
+    // Those without one end at the sentence, with no dangling hint.
+    callWriteTool($user, DeleteAutomationRule::class, [
+        'automation_rule_id' => 'no-such-rule',
+    ])->assertHasErrors([
+        'No automation rule with id no-such-rule in space '.$user->personalSpace->id.'.',
+    ]);
+});
