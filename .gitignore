@@ -33,3 +33,4 @@ yarn-error.log
 .php-version
 .pint.cache
 /.playwright-mcp
+/build

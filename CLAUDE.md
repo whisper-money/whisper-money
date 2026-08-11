@@ -50,7 +50,50 @@ bun run build
 vendor/bin/pint --test
 bun run format
 bun run lint
+bun run dry
 ```
+
+### Duplication check
+
+`bun run dry` runs jscpd over `app/` and `resources/js` (clones of 8+ lines / 60+
+tokens) and fails when duplication climbs above the `threshold` in `.jscpd.json`.
+It is a step in the `linter` job, a **required** check, so a clone left behind
+blocks the merge.
+
+When it goes red, extract the clone — a shared method, a helper, a component.
+**Never raise the threshold to make the build pass**; it only moves down as clones
+get removed. If the duplication is genuinely warranted, argue it in the PR
+description instead of editing the config.
+
+Before writing a new class, service, or component, look for an existing one to
+extend or reuse. Two near-identical blocks are cheaper to merge while you are
+writing them than after review.
+
+### Complexity check
+
+Before opening a PR, run the check on what you changed:
+
+```bash
+php artisan crap --base=origin/main --no-coverage
+```
+
+It fails when a method your diff touches exceeds **cyclomatic complexity 10**.
+`--no-coverage` keeps it under a second and gives the same verdict CI gives, since
+complexity alone decides it. Drop the flag to also get CRAP and per-method coverage
+as context, which needs a coverage report:
+
+```bash
+php -d pcov.directory=app ./vendor/bin/pest --exclude-testsuite=Browser,Performance --coverage-crap4j=build/crap4j.xml
+```
+
+When a method trips the threshold, simplify it. When the complexity is genuinely
+warranted (a state machine, a parser, a funnel whose step order matters), add the
+method to `.crap-ignore.json` with a reason — the reason is read in review, so make
+it a real one. Entries that are no longer needed get reported so they can be deleted.
+
+The `crap` CI job goes red on violations but is **not** a required check, so it never
+blocks a merge. Do not "fix" it by splitting a method into near-identical pieces: the
+duplication check in the `linter` job is a required check and will catch that.
 
 ## Architecture
 
