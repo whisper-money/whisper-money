@@ -110,9 +110,10 @@ class DashboardController extends Controller
 
     private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
     {
-        return Transaction::query()
+        return (int) Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->joinOwningAccount()
             ->where(function ($q) use ($type) {
                 $q->whereExists(function ($sub) use ($type) {
                     $sub->select(DB::raw(1))
@@ -125,6 +126,6 @@ class DashboardController extends Controller
                             ->where('transactions.amount', $type === CategoryType::Income ? '>' : '<', 0);
                     });
             })
-            ->sum('transactions.amount');
+            ->sum(Transaction::ownedAmount());
     }
 }

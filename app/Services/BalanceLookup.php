@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Account;
 use App\Models\AccountBalance;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -27,10 +28,16 @@ class BalanceLookup
     /**
      * Preload all balance data for a set of accounts covering the given date range.
      *
-     * Executes exactly 3 efficient queries (no correlated subqueries):
+     * Executes exactly 4 efficient queries (no correlated subqueries):
      * 1. A derived-table join to find the latest balance record before the range start per account.
      * 2. A derived-table join to find the latest non-null invested_amount before the range start per account.
      * 3. All balance records within the range.
+     * 4. The accounts that only count as a share of their balance.
+     *
+     * Those accounts get every figure scaled down to the owner's share here,
+     * so every reader (net worth, evolution charts, account metrics) stays
+     * consistent. Callers that need the real bank balance — the balance editor,
+     * imports, bank sync — read `account_balances` directly and are unaffected.
      *
      * @param  Collection<int, string>|array<string>  $accountIds
      */
@@ -89,18 +96,30 @@ class BalanceLookup
             ->orderBy('balance_date')
             ->get(['account_id', 'balance_date', 'balance', 'invested_amount']);
 
+        // The accounts that only count towards the user's figures as a share of
+        // their balance; everything else is read at face value.
+        $sharedAccounts = Account::query()
+            ->whereIn('id', $accountIdList)
+            ->where('ownership_applies_to_balance', true)
+            ->get()
+            ->keyBy('id');
+
         // Build the per-account sorted arrays
         foreach ($accountIdList as $accountId) {
             $entries = [];
             $investedEntries = [];
+            $account = $sharedAccounts->get($accountId);
+            $share = static fn (?int $amount): ?int => $amount === null || $account === null
+                ? $amount
+                : $account->shareOfAmount($amount);
 
             // Add carry-forward seed
             $seed = $carryForwardRecords->firstWhere('account_id', $accountId);
             if ($seed) {
                 $entries[] = [
                     'date' => $seed->balance_date->toDateString(),
-                    'balance' => $seed->balance,
-                    'invested_amount' => $seed->invested_amount,
+                    'balance' => $share($seed->balance),
+                    'invested_amount' => $share($seed->invested_amount),
                 ];
             }
 
@@ -109,7 +128,7 @@ class BalanceLookup
             if ($investedSeed) {
                 $investedEntries[] = [
                     'date' => $investedSeed->balance_date->toDateString(),
-                    'invested_amount' => $investedSeed->invested_amount,
+                    'invested_amount' => $share($investedSeed->invested_amount),
                 ];
             }
 
@@ -118,14 +137,14 @@ class BalanceLookup
                 $dateStr = $record->balance_date->toDateString();
                 $entries[] = [
                     'date' => $dateStr,
-                    'balance' => $record->balance,
-                    'invested_amount' => $record->invested_amount,
+                    'balance' => $share($record->balance),
+                    'invested_amount' => $share($record->invested_amount),
                 ];
 
                 if ($record->invested_amount !== null) {
                     $investedEntries[] = [
                         'date' => $dateStr,
-                        'invested_amount' => $record->invested_amount,
+                        'invested_amount' => $share($record->invested_amount),
                     ];
                 }
             }

@@ -274,12 +274,13 @@ class DashboardAnalyticsController extends Controller
         return (int) Transaction::query()
             ->where('transactions.user_id', request()->user()->id)
             ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->joinOwningAccount()
             ->join('categories', function ($join) use ($type) {
                 $join->on('transactions.category_id', '=', 'categories.id')
                     ->where('categories.type', '=', $type)
                     ->whereNull('categories.deleted_at');
             })
-            ->sum('transactions.amount');
+            ->sum(Transaction::ownedAmount());
     }
 
     /**

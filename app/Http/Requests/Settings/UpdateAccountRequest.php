@@ -45,6 +45,8 @@ class UpdateAccountRequest extends FormRequest
                 'string',
                 Rule::in(array_map(fn ($type) => $type->value, AccountType::cases())),
             ],
+            'ownership_percentage' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'ownership_applies_to_balance' => ['sometimes', 'boolean'],
         ];
 
         if ($isRealEstate) {

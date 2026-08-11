@@ -52,6 +52,8 @@ export interface Account {
     external_account_id: string | null;
     linked_at: string | null;
     linked_loan_account_id?: UUID | null;
+    ownership_percentage?: number;
+    ownership_applies_to_balance?: boolean;
 }
 
 export interface AccountBalance {

@@ -40,6 +40,7 @@ class ListAccounts extends McpTool
                 'currency' => $account->currency_code,
                 'bank' => $account->bank?->name,
                 'is_connected' => $account->isConnected(),
+                'ownership_percentage' => $account->ownership_percentage,
             ]);
 
         return $this->json([
