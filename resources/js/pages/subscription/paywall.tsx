@@ -305,6 +305,11 @@ function CompactPlanCard({
                     {formatCurrency(plan.price * 100, currency, locale)}
                 </span>
             )}
+            {plan.trial_days > 0 && (
+                <span className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    {__(':days days free', { days: plan.trial_days })}
+                </span>
+            )}
         </button>
     );
 }

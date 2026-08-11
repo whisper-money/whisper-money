@@ -78,7 +78,7 @@ class SendSubscriptionFunnelReportCommand extends Command
     }
 
     /**
-     * @param  array{trialDays: int, weeks: list<array<string, mixed>>}  $report
+     * @param  array{longestTrialDays: int, weeks: list<array<string, mixed>>}  $report
      * @return list<string>
      */
     private function tableLines(array $report): array
@@ -105,13 +105,13 @@ class SendSubscriptionFunnelReportCommand extends Command
     /**
      * The figures the AI summary may talk about — the same ones the table shows.
      *
-     * @param  array{trialDays: int, weeks: list<array<string, mixed>>}  $report
+     * @param  array{longestTrialDays: int, weeks: list<array<string, mixed>>}  $report
      * @return array<string, mixed>
      */
     private function summaryPayload(array $report): array
     {
         return [
-            'trial_days' => $report['trialDays'],
+            'longest_trial_days' => $report['longestTrialDays'],
             'weeks' => array_map(fn (array $row): array => [
                 'week' => $row['week'],
                 'registered' => $row['registered'],
@@ -128,7 +128,7 @@ class SendSubscriptionFunnelReportCommand extends Command
     }
 
     /**
-     * @param  array{trialDays: int, weeks: list<array<string, mixed>>}  $report
+     * @param  array{longestTrialDays: int, weeks: list<array<string, mixed>>}  $report
      * @return array<string, mixed>
      */
     private function buildEmbed(array $report, ?string $summary): array
@@ -165,12 +165,12 @@ class SendSubscriptionFunnelReportCommand extends Command
                 ],
                 [
                     'name' => 'Leyenda',
-                    'value' => 'Reg = registros · Sub = empezó un plan ≤30d después de registrarse · Pago = ese plan se cobró al pasar la prueba de '.$report['trialDays'].'d (activo, o cancelado solo después de cobrarse) · Sub%/Pag% sobre registros · P/S = pago ÷ suscritos · `pdte` = cohorte demasiado joven para puntuarla · ⚡ = pico de registros',
+                    'value' => 'Reg = registros · Sub = empezó un plan ≤30d después de registrarse · Pago = ese plan se cobró al pasar su prueba (activo, o cancelado solo después de cobrarse) · Sub%/Pag% sobre registros · P/S = pago ÷ suscritos · `pdte` = cohorte demasiado joven para puntuarla · ⚡ = pico de registros',
                     'inline' => false,
                 ],
                 [
                     'name' => '⚠️ Solo orientativo',
-                    'value' => 'Las cohortes se comparan a la misma edad. Las semanas con pico (⚡, p. ej. lanzamiento o marketing) llegan por otro canal de adquisición y no están controladas — compara semanas orgánicas entre sí. Esta es la referencia previa al A/B, no un test aleatorizado.',
+                    'value' => 'Las cohortes se comparan a la misma edad. Las semanas con pico (⚡, p. ej. lanzamiento o marketing) llegan por otro canal de adquisición y no están controladas — compara semanas orgánicas entre sí. No es un test aleatorizado: las semanas del experimento A/B de prueba (control/reduced/pay_now) siguen dentro de la ventana y no son comparables con las posteriores.',
                     'inline' => false,
                 ],
             ],

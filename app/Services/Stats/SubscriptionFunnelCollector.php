@@ -27,7 +27,7 @@ class SubscriptionFunnelCollector
      * of subscribed and the funnel invariant registered >= subscribed >= paid holds.
      *
      * @return array{
-     *     trialDays: int,
+     *     longestTrialDays: int,
      *     weeks: list<array{
      *         week: string,
      *         weekStart: CarbonImmutable,
@@ -46,7 +46,7 @@ class SubscriptionFunnelCollector
     public function collect(?int $weeks = null): array
     {
         $weeks = max(1, $weeks ?? self::DEFAULT_WEEKS);
-        $trialDays = $this->longestTrialDays();
+        $longestTrialDays = $this->longestTrialDays();
 
         $now = CarbonImmutable::now('UTC');
         $windowStart = $now->startOfWeek(CarbonImmutable::MONDAY)->subWeeks($weeks - 1);
@@ -68,7 +68,7 @@ class SubscriptionFunnelCollector
             $paid = $agg['paid'];
 
             $subscribedMature = $weekEnd->addDays(self::SUBSCRIBE_WINDOW_DAYS)->lessThanOrEqualTo($now);
-            $paidMature = $weekEnd->addDays(self::SUBSCRIBE_WINDOW_DAYS + $trialDays + self::PAID_SETTLE_BUFFER_DAYS)->lessThanOrEqualTo($now);
+            $paidMature = $weekEnd->addDays(self::SUBSCRIBE_WINDOW_DAYS + $longestTrialDays + self::PAID_SETTLE_BUFFER_DAYS)->lessThanOrEqualTo($now);
 
             $registeredCounts[] = $registered;
 
@@ -90,7 +90,7 @@ class SubscriptionFunnelCollector
         $this->flagSurges($rows, $registeredCounts);
 
         return [
-            'trialDays' => $trialDays,
+            'longestTrialDays' => $longestTrialDays,
             'weeks' => array_values($rows),
         ];
     }
