@@ -26,8 +26,10 @@ import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
 import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
+import { leavePage } from './lib/leave-page';
 import { initializePostHog } from './lib/posthog';
 import {
+    isAbortedByPageLeaveNoise,
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
@@ -49,6 +51,7 @@ Sentry.init({
     beforeSend(event) {
         if (
             isChunkLoadErrorEvent(event) ||
+            isAbortedByPageLeaveNoise(event) ||
             isBrowserExtensionNoise(event) ||
             isPostMessageDataCloneNoise(event) ||
             isFacebookInAppBrowserJavaBridgeNoise(event) ||
@@ -110,7 +113,7 @@ function showExpiredConnectionsToast(
             action: {
                 label: __('Reconnect'),
                 onClick: () => {
-                    window.location.href = firstConnection.reconnect_url;
+                    leavePage(firstConnection.reconnect_url);
                 },
             },
         },

@@ -10,6 +10,7 @@ import {
     useScrollProgress,
     useScrollTranslate,
 } from '@/hooks/use-scroll-progress';
+import { leavePage } from '@/lib/leave-page';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
 import { dashboard, roadmap } from '@/routes';
@@ -1879,7 +1880,7 @@ export default function Welcome({
                 supportedLocales.includes(storedLocale)
             ) {
                 // Redirect to stored preference
-                window.location.href = `/?lang=${storedLocale}`;
+                leavePage(`/?lang=${storedLocale}`);
                 return;
             } else if (!storedLocale && locale) {
                 // First visit - store the detected locale from session/header

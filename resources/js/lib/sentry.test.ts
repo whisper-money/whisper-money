@@ -1,5 +1,5 @@
 import type { Event } from '@sentry/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
@@ -7,6 +7,77 @@ import {
     isPostMessageDataCloneNoise,
     isSafariCashbackExtensionNoise,
 } from './sentry';
+
+function exceptionEvent(type: string, value: string): Event {
+    return { exception: { values: [{ type, value }] } };
+}
+
+describe('isAbortedByPageLeaveNoise', () => {
+    // The flag lives at module scope and is deliberately one-way, so each case
+    // needs its own instance of the pair rather than a reset helper.
+    async function freshModules() {
+        vi.resetModules();
+
+        return {
+            ...(await import('./leave-page')),
+            ...(await import('./sentry')),
+        };
+    }
+
+    beforeEach(() => {
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            writable: true,
+            value: { href: 'https://whisper.money/onboarding' },
+        });
+    });
+
+    it('keeps network failures while the user is still on the page', async () => {
+        const { isAbortedByPageLeaveNoise } = await freshModules();
+
+        expect(
+            isAbortedByPageLeaveNoise(
+                exceptionEvent('AxiosError', 'Network Error'),
+            ),
+        ).toBe(false);
+    });
+
+    it.each([
+        ['AxiosError', 'Network Error'],
+        ['AxiosError', 'Request aborted'],
+        ['HttpNetworkError', 'Network error'],
+        ['TypeError', 'Failed to fetch'],
+        ['TypeError', 'Load failed'],
+    ])(
+        'drops a %s "%s" caused by the navigation we started',
+        async (type, value) => {
+            const { leavePage, isAbortedByPageLeaveNoise } =
+                await freshModules();
+
+            leavePage('https://bank.example/authorize');
+
+            expect(window.location.href).toBe('https://bank.example/authorize');
+            expect(isAbortedByPageLeaveNoise(exceptionEvent(type, value))).toBe(
+                true,
+            );
+        },
+    );
+
+    it('keeps a genuine crash that happens while leaving', async () => {
+        const { leavePage, isAbortedByPageLeaveNoise } = await freshModules();
+
+        leavePage('https://bank.example/authorize');
+
+        expect(
+            isAbortedByPageLeaveNoise(
+                exceptionEvent(
+                    'TypeError',
+                    "undefined is not an object (evaluating 'e.features.cashflow')",
+                ),
+            ),
+        ).toBe(false);
+    });
+});
 
 describe('isChunkLoadErrorEvent', () => {
     it('drops recoverable Vite dynamic import failures', () => {

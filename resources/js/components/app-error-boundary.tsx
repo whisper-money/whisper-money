@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { reloadOnChunkLoadError } from '@/lib/chunk-load-recovery';
+import { leavePage } from '@/lib/leave-page';
 import { getStorage } from '@/lib/safe-storage';
 import { dashboard } from '@/routes';
 import { __ } from '@/utils/i18n';
@@ -76,7 +77,7 @@ function AppErrorFallback() {
                 <Button
                     variant="outline"
                     onClick={() => {
-                        window.location.href = dashboard().url;
+                        leavePage(dashboard().url);
                     }}
                 >
                     {__('Go to Dashboard')}

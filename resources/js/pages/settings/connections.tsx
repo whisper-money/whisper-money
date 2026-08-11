@@ -23,6 +23,7 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
+import { leavePage } from '@/lib/leave-page';
 import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
@@ -102,7 +103,7 @@ export default function ConnectionsPage({ connections }: Props) {
                 const data = await response.json().catch(() => ({}));
 
                 if (typeof data.redirect === 'string') {
-                    window.location.href = data.redirect;
+                    leavePage(data.redirect);
                     return;
                 }
 
@@ -112,7 +113,7 @@ export default function ConnectionsPage({ connections }: Props) {
             }
 
             const data = await response.json();
-            window.location.href = data.redirect_url;
+            leavePage(data.redirect_url);
         } catch (e) {
             toast.error(
                 e instanceof Error

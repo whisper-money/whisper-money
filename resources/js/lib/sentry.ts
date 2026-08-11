@@ -1,8 +1,15 @@
 import type { Event } from '@sentry/react';
 import { isChunkLoadError } from './chunk-load-recovery';
+import { isLeavingPage } from './leave-page';
 
 const CLONE_ERROR_MESSAGE_PATTERN =
     /object (can not|could not|couldn't|can't) be cloned/i;
+// Transport-level failures only, so a genuine crash during a page unload is
+// still reported. Covers axios/XHR ("Network Error", "Request aborted"),
+// Inertia's own wrapper ("Network error") and fetch in both engines
+// ("Failed to fetch" in Blink, "Load failed" in WebKit).
+const ABORTED_REQUEST_MESSAGE_PATTERN =
+    /^(network error|request aborted|failed to fetch|load failed)$/i;
 const FACEBOOK_IAB_JAVA_OBJECT_GONE_PATTERN =
     /Error invoking .+: Java object is gone/i;
 const SAFARI_CASHBACK_EXTENSION_PATTERN = /response\.cashbackReminder/i;
@@ -77,6 +84,28 @@ export function isBrowserExtensionNoise(event: Event): boolean {
                     BROWSER_EXTENSION_URL_PATTERN.test(value),
             );
         }) ?? false
+    );
+}
+
+/**
+ * Requests killed by a full page navigation we started ourselves.
+ *
+ * {@link leavePage} aborts whatever was in flight, and the browser hands that
+ * abort to the caller as a transport failure. The request didn't fail — the page
+ * it belonged to went away — so reporting it buries the connection failures that
+ * really did happen to a user who stayed put.
+ */
+export function isAbortedByPageLeaveNoise(event: Event): boolean {
+    if (!isLeavingPage()) {
+        return false;
+    }
+
+    return (
+        event.exception?.values?.some((exception) =>
+            ABORTED_REQUEST_MESSAGE_PATTERN.test(
+                (exception.value ?? '').trim(),
+            ),
+        ) ?? false
     );
 }
 

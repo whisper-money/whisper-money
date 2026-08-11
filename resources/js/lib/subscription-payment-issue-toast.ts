@@ -1,3 +1,4 @@
+import { leavePage } from '@/lib/leave-page';
 import type { SubscriptionPaymentIssueNotification } from '@/types';
 import { __ } from '@/utils/i18n';
 import { toast } from 'sonner';
@@ -32,7 +33,7 @@ export function showSubscriptionPaymentIssueToast(
         action: {
             label: __('Update payment'),
             onClick: () => {
-                window.location.href = issue.action_url;
+                leavePage(issue.action_url);
             },
         },
     });
