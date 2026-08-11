@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Log;
 
 class BitpandaBalanceSyncService
 {
+    private const USD_CURRENCY = 'USD';
+
     public function __construct(private CurrencyConversionService $currencyConverter) {}
 
     /**
@@ -121,17 +123,38 @@ class BitpandaBalanceSyncService
     /**
      * Get the ticker price for an asset in the target currency.
      *
+     * Bitpanda's ticker only quotes a handful of fiats, so anyone outside that
+     * set would otherwise have every crypto wallet dropped from their balance.
+     * Routing through USD keeps the holding priced instead of silently zeroed.
+     *
      * @param  array<string, array<string, string>>  $ticker
      */
     private function getTickerPrice(array $ticker, string $symbol, string $targetCurrency): ?float
     {
         $price = $ticker[$symbol][$targetCurrency] ?? null;
 
-        if ($price === null) {
+        if ($price !== null) {
+            return (float) $price;
+        }
+
+        if ($targetCurrency === self::USD_CURRENCY) {
             return null;
         }
 
-        return (float) $price;
+        $usdPrice = $ticker[$symbol][self::USD_CURRENCY] ?? null;
+
+        if ($usdPrice === null) {
+            return null;
+        }
+
+        $converted = $this->currencyConverter->convert(
+            self::USD_CURRENCY,
+            $targetCurrency,
+            (float) $usdPrice,
+            now()->toDateString(),
+        );
+
+        return $converted > 0 ? $converted : null;
     }
 
     /**

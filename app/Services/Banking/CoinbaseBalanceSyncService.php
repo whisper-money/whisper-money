@@ -212,16 +212,62 @@ class CoinbaseBalanceSyncService
      */
     private function fetchPriceMap(CoinbaseClient $client, array $assets, string $targetCurrency): array
     {
-        $productIds = array_map(fn (string $asset) => "{$asset}-{$targetCurrency}", $assets);
+        // convertCryptoAssets settles stablecoins at 1 USD before it ever reads
+        // the map, so quoting them is two wasted round trips. The historical
+        // path skips them for the same reason.
+        $assets = array_values(array_diff($assets, self::USD_STABLECOINS));
 
-        if (empty($productIds)) {
+        if ($assets === []) {
             return [];
         }
+
+        $map = $this->fetchBestBidAskPrices($client, $assets, $targetCurrency);
+
+        if ($targetCurrency === self::USD_CURRENCY) {
+            return $map;
+        }
+
+        // Coinbase lists most assets only against USD, so being absent from the
+        // fiat pricebook is normal rather than unpriceable. The historical
+        // backfill already routes those through USD (fetchHistoricalPricesForAsset);
+        // without the same hop here the holding falls through to a fiat-only
+        // converter that knows no crypto ticker, and lands in the balance as zero.
+        $missing = array_values(array_diff($assets, array_keys($map)));
+
+        if ($missing === []) {
+            return $map;
+        }
+
+        $date = now()->toDateString();
+
+        foreach ($this->fetchBestBidAskPrices($client, $missing, self::USD_CURRENCY) as $asset => $usdPrice) {
+            $targetPrice = $this->currencyConverter->convert(self::USD_CURRENCY, $targetCurrency, $usdPrice, $date);
+
+            if ($targetPrice > 0) {
+                $map[$asset] = $targetPrice;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<int, string>  $assets
+     * @return array<string, float>
+     */
+    private function fetchBestBidAskPrices(CoinbaseClient $client, array $assets, string $quoteCurrency): array
+    {
+        if ($assets === []) {
+            return [];
+        }
+
+        $productIds = array_map(fn (string $asset) => "{$asset}-{$quoteCurrency}", $assets);
 
         try {
             $response = $client->getBestBidAsk($productIds);
         } catch (\Throwable $e) {
-            Log::warning('Coinbase best_bid_ask failed, falling back to per-asset USD conversion', [
+            Log::warning('Coinbase best_bid_ask failed', [
+                'quote_currency' => $quoteCurrency,
                 'error' => $e->getMessage(),
             ]);
 
