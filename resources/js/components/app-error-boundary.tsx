@@ -73,12 +73,6 @@ function AppErrorFallback() {
                     {__('Try again')}
                 </Button>
 
-                {/*
-                 * Not '/': the landing page mounts AuthenticatedRedirectDialog,
-                 * which sends a signed-in user straight back to the dashboard
-                 * on a timer - so the escape hatch would trampoline them into
-                 * whatever they were escaping.
-                 */}
                 <Button
                     variant="outline"
                     onClick={() => {
