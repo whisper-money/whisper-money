@@ -1,3 +1,4 @@
+import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
 import { useLocale } from '@/hooks/use-locale';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
 import { __ } from '@/utils/i18n';
@@ -1121,7 +1122,7 @@ export default function Transactions({
             if (isSelectingAll) {
                 const toastId = toast.loading(__('Updating transactions...'));
                 const response = await axios.patch<{ count: number }>(
-                    '/transactions/bulk',
+                    bulkUpdateTransactions.url(),
                     {
                         filters: clientFiltersToBackendFilters(filters),
                         category_id: categoryId,
@@ -1262,7 +1263,7 @@ export default function Transactions({
             if (isSelectingAll) {
                 const toastId = toast.loading(__('Updating transactions...'));
                 const response = await axios.patch<{ count: number }>(
-                    '/transactions/bulk',
+                    bulkUpdateTransactions.url(),
                     {
                         filters: clientFiltersToBackendFilters(filters),
                         label_ids: labelIds,

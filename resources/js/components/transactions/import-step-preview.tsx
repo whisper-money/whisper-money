@@ -1,3 +1,4 @@
+import { index as transactionsIndex } from '@/actions/App/Http/Controllers/Api/TransactionController';
 import { TransactionDescription } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
@@ -58,9 +59,11 @@ export function ImportStepPreview({
         }
 
         axios
-            .get('/api/transactions', {
-                params: { account_id: accountId, per_page: 10 },
-            })
+            .get(
+                transactionsIndex.url({
+                    query: { account_id: accountId, per_page: 10 },
+                }),
+            )
             .then((response) => {
                 setExistingTransactions(response.data.data ?? []);
             })

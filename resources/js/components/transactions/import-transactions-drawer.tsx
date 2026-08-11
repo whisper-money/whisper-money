@@ -2,6 +2,7 @@ import {
     index as indexBalances,
     store as storeBalance,
 } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { categorize } from '@/actions/App/Http/Controllers/TransactionController';
 import AlertError from '@/components/alert-error';
 import {
     Drawer,
@@ -687,8 +688,7 @@ export function ImportTransactionsDrawer({
                     uncategorizedCount > 0
                         ? {
                               label: 'Categorize',
-                              onClick: () =>
-                                  router.visit('/transactions/categorize'),
+                              onClick: () => router.visit(categorize.url()),
                           }
                         : undefined,
             });
@@ -703,8 +703,7 @@ export function ImportTransactionsDrawer({
                     uncategorizedCount > 0
                         ? {
                               label: 'Categorize',
-                              onClick: () =>
-                                  router.visit('/transactions/categorize'),
+                              onClick: () => router.visit(categorize.url()),
                           }
                         : undefined,
             });
@@ -718,8 +717,7 @@ export function ImportTransactionsDrawer({
                     uncategorizedCount > 0
                         ? {
                               label: 'Categorize',
-                              onClick: () =>
-                                  router.visit('/transactions/categorize'),
+                              onClick: () => router.visit(categorize.url()),
                           }
                         : undefined,
             });

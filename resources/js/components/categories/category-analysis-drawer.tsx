@@ -1,3 +1,4 @@
+import monthlyBreakdown from '@/actions/App/Http/Controllers/Api/CategoryMonthlyBreakdownController';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
@@ -130,7 +131,7 @@ export function CategoryAnalysisDrawer({
         setIsLoading(true);
         setError(null);
 
-        fetch(`/api/categories/${categoryId}/monthly-breakdown`, {
+        fetch(monthlyBreakdown.url(categoryId), {
             headers: { Accept: 'application/json' },
         })
             .then((response) => {

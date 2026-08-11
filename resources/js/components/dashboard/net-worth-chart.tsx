@@ -1,3 +1,5 @@
+import { update as updateLoanPreference } from '@/actions/App/Http/Controllers/Settings/NetWorthChartLoanPreferenceController';
+import { update as updateRealEstatePreference } from '@/actions/App/Http/Controllers/Settings/NetWorthChartRealEstatePreferenceController';
 import { AccountName } from '@/components/accounts/account-name';
 import {
     type ChartGranularity,
@@ -439,7 +441,7 @@ export function NetWorthChart({
 
     const handleIncludeLoansChange = useCallback((includeLoans: boolean) => {
         router.patch(
-            '/settings/net-worth-chart-loan-preference',
+            updateLoanPreference.url(),
             {
                 include_loans_in_net_worth_chart: includeLoans,
             },
@@ -454,7 +456,7 @@ export function NetWorthChart({
     const handleIncludeRealEstateChange = useCallback(
         (includeRealEstate: boolean) => {
             router.patch(
-                '/settings/net-worth-chart-real-estate-preference',
+                updateRealEstatePreference.url(),
                 {
                     include_real_estate_in_net_worth_chart: includeRealEstate,
                 },
