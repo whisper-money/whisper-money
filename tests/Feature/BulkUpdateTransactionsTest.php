@@ -341,3 +341,22 @@ it('only updates transactions belonging to the authenticated user', function () 
     expect($myTransaction->fresh()->category_id)->toBeNull();
     expect($otherTransaction->fresh()->category_id)->toBeNull();
 });
+
+it('rejects an empty id list rather than falling back to updating everything', function () {
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+    ]);
+
+    $newCategory = Category::factory()->create(['user_id' => $this->user->id]);
+
+    // The controller reads "no transaction_ids" as "use the filters", so an empty
+    // array must not reach it as an empty selection.
+    $this->actingAs($this->user)->patchJson('/transactions/bulk', [
+        'transaction_ids' => [],
+        'category_id' => $newCategory->id,
+    ])->assertStatus(422);
+
+    expect($transaction->fresh()->category_id)->toBeNull();
+});
