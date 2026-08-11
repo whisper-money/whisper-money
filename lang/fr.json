@@ -2172,5 +2172,14 @@
     "vs. average": "vs. moyenne",
     "Income & expenses per month": "Revenus et dépenses par mois",
     "Monthly trend needs at least one whole calendar month.": "La tendance mensuelle nécessite au moins un mois calendaire complet.",
-    "This account's balance comes from your bank, so it won't change.": "Le solde de ce compte provient de votre banque, il ne changera donc pas."
+    "This account's balance comes from your bank, so it won't change.": "Le solde de ce compte provient de votre banque, il ne changera donc pas.",
+    "Planned": "Prévu",
+    "In progress": "En cours",
+    "Shipped": "Livré",
+    "Roadmap.": "Feuille de route.",
+    "Roadmap - Whisper Money": "Feuille de route - Whisper Money",
+    "See what's shipped, what we're building, and what's coming next in Whisper Money.": "Découvrez ce qui est livré, ce que nous construisons et ce qui arrive ensuite dans Whisper Money.",
+    "What's shipped. What's coming.": "Ce qui est livré. Ce qui arrive.",
+    "Request a feature": "Proposer une fonctionnalité",
+    "The roadmap is temporarily unavailable. Check it out on our feedback board.": "La feuille de route est momentanément indisponible. Consultez-la sur notre tableau de suggestions."
 }

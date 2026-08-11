@@ -12,7 +12,7 @@ import {
 } from '@/hooks/use-scroll-progress';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
+import { dashboard, roadmap } from '@/routes';
 import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
 import { LANGUAGE_OPTIONS } from '@/types/language';
@@ -2639,7 +2639,13 @@ export default function Welcome({
                                 'Whisper Money. All\n                            rights reserved.',
                             )}
                         </p>
-                        <div className="flex gap-6">
+                        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+                            <Link
+                                href={roadmap()}
+                                className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
+                            >
+                                {__('Roadmap')}
+                            </Link>
                             <Link
                                 href="/privacy"
                                 className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
