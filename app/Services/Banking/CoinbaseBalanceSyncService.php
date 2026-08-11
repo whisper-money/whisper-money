@@ -4,13 +4,26 @@ namespace App\Services\Banking;
 
 use App\Models\Account;
 use App\Services\CurrencyConversionService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class CoinbaseBalanceSyncService
 {
-    /** @var array<int, string> Stablecoins pegged 1:1 to USD */
-    private const USD_STABLECOINS = ['USDT', 'USDC', 'DAI', 'PYUSD', 'GUSD'];
+    /**
+     * Stablecoins settle at their peg instead of being quoted, so Coinbase is
+     * never asked for a product id that does not exist. EURC is the one that
+     * bit us: pegged to EUR, not USD, and not an ISO 4217 code either, so it
+     * reached the pricebook as a crypto id and 400'd the whole batch.
+     */
+    private const STABLECOIN_PEGS = [
+        'USDT' => 'USD',
+        'USDC' => 'USD',
+        'DAI' => 'USD',
+        'PYUSD' => 'USD',
+        'GUSD' => 'USD',
+        'EURC' => 'EUR',
+    ];
 
     private const USD_CURRENCY = 'USD';
 
@@ -212,10 +225,10 @@ class CoinbaseBalanceSyncService
      */
     private function fetchPriceMap(CoinbaseClient $client, array $assets, string $targetCurrency): array
     {
-        // convertCryptoAssets settles stablecoins at 1 USD before it ever reads
-        // the map, so quoting them is two wasted round trips. The historical
-        // path skips them for the same reason.
-        $assets = array_values(array_diff($assets, self::USD_STABLECOINS));
+        // convertCryptoAssets settles stablecoins at their peg before it ever
+        // reads the map, so quoting them is two wasted round trips. The
+        // historical path skips them for the same reason.
+        $assets = array_values(array_diff($assets, array_keys(self::STABLECOIN_PEGS)));
 
         if ($assets === []) {
             return [];
@@ -271,9 +284,56 @@ class CoinbaseBalanceSyncService
                 'error' => $e->getMessage(),
             ]);
 
-            return [];
+            // Coinbase rejects the whole request over a single product id it
+            // does not list, which would leave every other holding unpriced.
+            // Asking one at a time costs more calls but contains the damage to
+            // the asset that is actually unquotable.
+            //
+            // Only worth it when the batch itself was refused. A 429 or a 5xx
+            // says the endpoint is unhappy with us rather than with one id, and
+            // CoinbaseClient already spends up to ~100s of backoff per call -
+            // fanning that out across every holding would blow the sync job's
+            // 120s timeout instead of returning a wrong-but-quick answer.
+            return count($assets) > 1 && $this->isRejectedBatch($e)
+                ? $this->fetchBestBidAskPricesIndividually($client, $assets, $quoteCurrency)
+                : [];
         }
 
+        return $this->mapPricebooks($response);
+    }
+
+    /**
+     * A client error other than a rate limit means Coinbase read the request
+     * and refused it - for best_bid_ask that is an unlisted product id.
+     */
+    private function isRejectedBatch(\Throwable $e): bool
+    {
+        return $e instanceof RequestException
+            && $e->response->clientError()
+            && $e->response->status() !== 429;
+    }
+
+    /**
+     * @param  array<int, string>  $assets
+     * @return array<string, float>
+     */
+    private function fetchBestBidAskPricesIndividually(CoinbaseClient $client, array $assets, string $quoteCurrency): array
+    {
+        $map = [];
+
+        foreach ($assets as $asset) {
+            $map += $this->fetchBestBidAskPrices($client, [$asset], $quoteCurrency);
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     * @return array<string, float>
+     */
+    private function mapPricebooks(array $response): array
+    {
         $map = [];
 
         foreach ($response['pricebooks'] ?? [] as $pricebook) {
@@ -310,7 +370,7 @@ class CoinbaseBalanceSyncService
         $priceHistory = [];
 
         foreach ($assets as $asset) {
-            if (in_array($asset, self::USD_STABLECOINS, true)) {
+            if (isset(self::STABLECOIN_PEGS[$asset])) {
                 continue;
             }
 
@@ -436,8 +496,8 @@ class CoinbaseBalanceSyncService
         $total = 0.0;
 
         foreach ($cryptoAssets as $asset => $quantity) {
-            if (in_array($asset, self::USD_STABLECOINS, true)) {
-                $total += $this->convertFiatOnDate(self::USD_CURRENCY, $quantity, $targetCurrency, $date);
+            if (isset(self::STABLECOIN_PEGS[$asset])) {
+                $total += $this->convertFiatOnDate(self::STABLECOIN_PEGS[$asset], $quantity, $targetCurrency, $date);
 
                 continue;
             }
@@ -467,8 +527,8 @@ class CoinbaseBalanceSyncService
         $total = 0.0;
 
         foreach ($cryptoAssets as $asset => $quantity) {
-            if (in_array($asset, self::USD_STABLECOINS, true)) {
-                $total += $this->convertFiat(self::USD_CURRENCY, $quantity, $targetCurrency);
+            if (isset(self::STABLECOIN_PEGS[$asset])) {
+                $total += $this->convertFiat(self::STABLECOIN_PEGS[$asset], $quantity, $targetCurrency);
 
                 continue;
             }
