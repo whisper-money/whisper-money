@@ -133,12 +133,22 @@ class BinanceBalanceSyncService
 
         $count = 0;
         $unpricedDays = 0;
+        $daysWithoutValuation = 0;
 
         foreach ($snapshots as $snapshot) {
             $updateTime = $snapshot['updateTime'] ?? null;
             $btcValue = $snapshot['data']['totalAssetOfBtc'] ?? null;
 
-            if ($updateTime === null || $btcValue === null) {
+            if ($updateTime === null) {
+                continue;
+            }
+
+            // The whole valuation now rests on this one field, so a Binance
+            // response that stops carrying it must be visible rather than look
+            // like a day they simply had no snapshot for.
+            if ($btcValue === null) {
+                $daysWithoutValuation++;
+
                 continue;
             }
 
@@ -167,6 +177,7 @@ class BinanceBalanceSyncService
             'days_synced' => $count,
             'currency' => $targetCurrency,
             ...($unpricedDays ? ['unpriced_days' => $unpricedDays] : []),
+            ...($daysWithoutValuation ? ['days_without_valuation' => $daysWithoutValuation] : []),
         ]);
 
         return true;
