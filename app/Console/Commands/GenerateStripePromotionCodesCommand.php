@@ -66,7 +66,7 @@ class GenerateStripePromotionCodesCommand extends Command
 
             try {
                 return Cashier::stripe()->promotionCodes->create([
-                    'coupon' => $couponId,
+                    'promotion' => ['type' => 'coupon', 'coupon' => $couponId],
                     'code' => $code,
                     'max_redemptions' => 1,
                 ]);
