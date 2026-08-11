@@ -27,9 +27,8 @@ return [
     | Pages
     |--------------------------------------------------------------------------
     |
-    | The values described here are used to locate Inertia components on the
-    | filesystem. For instance, when using `assertInertia`, the assertion
-    | attempts to locate the component as a file relative to the paths.
+    | Where Inertia page components live on the filesystem. Used both to
+    | resolve components at runtime and to locate them from `assertInertia`.
     |
     */
 
@@ -64,6 +63,25 @@ return [
     'testing' => [
 
         'ensure_pages_exist' => true,
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | DevTools
+    |--------------------------------------------------------------------------
+    |
+    | Inertia v3 records every request to disk so the DevTools extension can
+    | read it back, and defaults to on in local. Those dumps hold whole page
+    | prop payloads — transactions, balances — and redaction only covers
+    | credential keys, so we keep it opt-in. Set INERTIA_DEVTOOLS_ENABLED=true
+    | in your own .env when you actually need it.
+    |
+    */
+
+    'devtools' => [
+
+        'enabled' => env('INERTIA_DEVTOOLS_ENABLED', false),
 
     ],
 
