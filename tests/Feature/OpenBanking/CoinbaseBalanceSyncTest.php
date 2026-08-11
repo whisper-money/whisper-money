@@ -151,6 +151,96 @@ test('prices an asset Coinbase only quotes in USD instead of dropping it from th
     expect($account->balances()->first()->balance)->toBe(10_000);
 });
 
+test('mixes fiat-quoted and USD-only assets in one balance', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->coinbase()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'coinbase-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake(function (Request $request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/api/v3/brokerage/accounts')) {
+            return Http::response([
+                'accounts' => [
+                    [
+                        'uuid' => 'cb-1',
+                        'name' => 'BTC',
+                        'currency' => 'BTC',
+                        'available_balance' => ['value' => '1.0', 'currency' => 'BTC'],
+                        'hold' => ['value' => '0', 'currency' => 'BTC'],
+                        'active' => true,
+                        'type' => 'ACCOUNT_TYPE_CRYPTO',
+                    ],
+                    [
+                        'uuid' => 'cb-2',
+                        'name' => 'SOL',
+                        'currency' => 'SOL',
+                        'available_balance' => ['value' => '2.0', 'currency' => 'SOL'],
+                        'hold' => ['value' => '0', 'currency' => 'SOL'],
+                        'active' => true,
+                        'type' => 'ACCOUNT_TYPE_CRYPTO',
+                    ],
+                ],
+                'has_next' => false,
+                'cursor' => '',
+                'size' => 2,
+            ]);
+        }
+
+        if (str_contains($url, 'cdn.jsdelivr.net') || str_contains($url, 'currency-api.pages.dev')) {
+            return Http::response(['eur' => ['usd' => 2.0]]);
+        }
+
+        if (str_contains($url, '/api/v3/brokerage/best_bid_ask')) {
+            // BTC has a EUR book, SOL only a USD one, so the second pass must
+            // ask for SOL alone and leave the already-priced BTC untouched.
+            if (str_contains($url, 'SOL-USD')) {
+                return Http::response([
+                    'pricebooks' => [
+                        [
+                            'product_id' => 'SOL-USD',
+                            'bids' => [['price' => '100.00', 'size' => '1']],
+                            'asks' => [['price' => '100.00', 'size' => '1']],
+                        ],
+                    ],
+                ]);
+            }
+
+            return Http::response([
+                'pricebooks' => [
+                    [
+                        'product_id' => 'BTC-EUR',
+                        'bids' => [['price' => '50000.00', 'size' => '1']],
+                        'asks' => [['price' => '50000.00', 'size' => '1']],
+                    ],
+                ],
+            ]);
+        }
+
+        return Http::response([], 404);
+    });
+
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $service = app(CoinbaseBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    // 1 BTC * 50000 EUR + 2 SOL * (100 USD / 2.0) = 50100 EUR.
+    expect($account->balances()->first()->balance)->toBe(5_010_000);
+
+    // The USD pass asks only for what the EUR book missed. An expectation
+    // inside the fake would be swallowed by fetchBestBidAskPrices' catch.
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'best_bid_ask')
+        && str_contains($request->url(), 'SOL-USD')
+        && ! str_contains($request->url(), 'BTC-USD'));
+});
+
 test('first sync creates twelve monthly coinbase historical balances', function () {
     Carbon::setTestNow('2026-05-14 12:00:00');
 
