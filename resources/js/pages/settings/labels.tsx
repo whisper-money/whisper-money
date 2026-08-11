@@ -66,7 +66,6 @@ function LabelRow({ row }: { row: Row<Label> }) {
 }
 
 export default function Labels() {
-    const { labels } = usePage<{ labels: Label[] }>().props;
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'name', desc: false },
     ]);
@@ -74,6 +73,8 @@ export default function Labels() {
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
+
+    const { labels } = usePage<{ labels: Label[] }>().props;
 
     const columns: ColumnDef<Label>[] = [
         {

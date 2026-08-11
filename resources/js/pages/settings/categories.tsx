@@ -100,6 +100,12 @@ function CategoryRow({
 }
 
 export default function Categories() {
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+        {},
+    );
+
     const { categories } = usePage<{ categories: Category[] }>().props;
 
     const [sortField, setSortField] = useState<SortField>('name');
@@ -146,12 +152,6 @@ export default function Categories() {
                 <ArrowUpDown className="ml-2 h-4 w-4 opacity-40" />
             )}
         </Button>
-    );
-
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-        {},
     );
 
     const columns: ColumnDef<Category>[] = [

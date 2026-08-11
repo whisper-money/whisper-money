@@ -24,6 +24,7 @@ import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete
 import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
 import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import HeadingSmall from '@/components/heading-small';
+import { SettingsTable } from '@/components/shared/settings-table';
 import { Button } from '@/components/ui/button';
 import {
     ContextMenu,
@@ -40,14 +41,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { TableCell, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
@@ -206,6 +200,12 @@ function AutomationRuleRow({
 }
 
 export default function AutomationRules() {
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+        {},
+    );
+
     const { automationRules: rawRules } = usePage<{
         automationRules: AutomationRule[];
     }>().props;
@@ -222,11 +222,6 @@ export default function AutomationRules() {
                         : rule.rules_json,
             })),
         [rawRules],
-    );
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-        {},
     );
 
     const columns: ColumnDef<AutomationRule>[] = [
@@ -308,62 +303,18 @@ export default function AutomationRules() {
                             />
                         </div>
 
-                        <div className="overflow-hidden rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    {table
-                                        .getHeaderGroups()
-                                        .map((headerGroup) => (
-                                            <TableRow key={headerGroup.id}>
-                                                {headerGroup.headers.map(
-                                                    (header) => {
-                                                        return (
-                                                            <TableHead
-                                                                key={header.id}
-                                                            >
-                                                                {header.isPlaceholder
-                                                                    ? null
-                                                                    : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
-                                                            </TableHead>
-                                                        );
-                                                    },
-                                                )}
-                                            </TableRow>
-                                        ))}
-                                </TableHeader>
-                                <TableBody>
-                                    {table.getRowModel().rows?.length ? (
-                                        table
-                                            .getRowModel()
-                                            .rows.map((row) => (
-                                                <AutomationRuleRow
-                                                    key={row.id}
-                                                    row={row}
-                                                    categories={categories}
-                                                    labels={labels}
-                                                />
-                                            ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={columns.length}
-                                                className="h-24 text-center"
-                                            >
-                                                {__(
-                                                    'No automation rules found.',
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <SettingsTable
+                            table={table}
+                            emptyMessage={__('No automation rules found.')}
+                            renderRow={(row) => (
+                                <AutomationRuleRow
+                                    key={row.id}
+                                    row={row}
+                                    categories={categories}
+                                    labels={labels}
+                                />
+                            )}
+                        />
 
                         <div className="flex items-center justify-end">
                             <div className="text-sm text-muted-foreground">

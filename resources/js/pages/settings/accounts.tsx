@@ -23,6 +23,7 @@ import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { BankLogo } from '@/components/bank-logo';
 import HeadingSmall from '@/components/heading-small';
+import { SettingsTable } from '@/components/shared/settings-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,14 +41,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { TableCell, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
@@ -340,61 +334,17 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                             />
                         </div>
 
-                        <div className="overflow-x-auto rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    {table
-                                        .getHeaderGroups()
-                                        .map((headerGroup) => (
-                                            <TableRow key={headerGroup.id}>
-                                                {headerGroup.headers.map(
-                                                    (header) => {
-                                                        return (
-                                                            <TableHead
-                                                                key={header.id}
-                                                            >
-                                                                {header.isPlaceholder
-                                                                    ? null
-                                                                    : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
-                                                            </TableHead>
-                                                        );
-                                                    },
-                                                )}
-                                            </TableRow>
-                                        ))}
-                                </TableHeader>
-                                <TableBody>
-                                    {table.getRowModel().rows?.length ? (
-                                        table
-                                            .getRowModel()
-                                            .rows.map((row) => (
-                                                <AccountRow
-                                                    key={row.id}
-                                                    row={row}
-                                                    onSuccess={
-                                                        handleAccountCreated
-                                                    }
-                                                />
-                                            ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={columns.length}
-                                                className="h-24 text-center"
-                                            >
-                                                {__('No accounts found.')}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <SettingsTable
+                            table={table}
+                            emptyMessage={__('No accounts found.')}
+                            renderRow={(row) => (
+                                <AccountRow
+                                    key={row.id}
+                                    row={row}
+                                    onSuccess={handleAccountCreated}
+                                />
+                            )}
+                        />
                     </div>
                 </div>
             </SettingsLayout>
