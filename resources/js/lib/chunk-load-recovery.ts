@@ -1,3 +1,4 @@
+import { reloadPage } from './leave-page';
 import { getStorage } from './safe-storage';
 
 const CHUNK_LOAD_RELOAD_STORAGE_KEY =
@@ -51,7 +52,7 @@ export function reloadOnChunkLoadError(
     }
 
     markReloadedForAssetSignature(assetSignature, options.storage);
-    (options.reload ?? (() => window.location.reload()))();
+    (options.reload ?? reloadPage)();
 
     return true;
 }

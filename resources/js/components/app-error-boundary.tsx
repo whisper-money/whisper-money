@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { reloadOnChunkLoadError } from '@/lib/chunk-load-recovery';
+import { leavePage, reloadPage } from '@/lib/leave-page';
 import { getStorage } from '@/lib/safe-storage';
 import { dashboard } from '@/routes';
 import { __ } from '@/utils/i18n';
@@ -49,7 +50,7 @@ export function AppErrorBoundary({ children }: { children: ReactNode }) {
  */
 function AppErrorFallback() {
     useEffect(() => {
-        const reload = () => window.location.reload();
+        const reload = reloadPage;
 
         window.addEventListener('popstate', reload);
 
@@ -69,14 +70,12 @@ function AppErrorFallback() {
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button onClick={() => window.location.reload()}>
-                    {__('Try again')}
-                </Button>
+                <Button onClick={reloadPage}>{__('Try again')}</Button>
 
                 <Button
                     variant="outline"
                     onClick={() => {
-                        window.location.href = dashboard().url;
+                        leavePage(dashboard().url);
                     }}
                 >
                     {__('Go to Dashboard')}
