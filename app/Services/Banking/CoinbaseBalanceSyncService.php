@@ -4,12 +4,12 @@ namespace App\Services\Banking;
 
 use App\Models\Account;
 use App\Services\CurrencyConversionService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class CoinbaseBalanceSyncService
 {
-    /** @var array<int, string> Stablecoins pegged 1:1 to USD */
     /**
      * Stablecoins settle at their peg instead of being quoted, so Coinbase is
      * never asked for a product id that does not exist. EURC is the one that
@@ -288,12 +288,29 @@ class CoinbaseBalanceSyncService
             // does not list, which would leave every other holding unpriced.
             // Asking one at a time costs more calls but contains the damage to
             // the asset that is actually unquotable.
-            return count($assets) > 1
+            //
+            // Only worth it when the batch itself was refused. A 429 or a 5xx
+            // says the endpoint is unhappy with us rather than with one id, and
+            // CoinbaseClient already spends up to ~100s of backoff per call -
+            // fanning that out across every holding would blow the sync job's
+            // 120s timeout instead of returning a wrong-but-quick answer.
+            return count($assets) > 1 && $this->isRejectedBatch($e)
                 ? $this->fetchBestBidAskPricesIndividually($client, $assets, $quoteCurrency)
                 : [];
         }
 
         return $this->mapPricebooks($response);
+    }
+
+    /**
+     * A client error other than a rate limit means Coinbase read the request
+     * and refused it - for best_bid_ask that is an unlisted product id.
+     */
+    private function isRejectedBatch(\Throwable $e): bool
+    {
+        return $e instanceof RequestException
+            && $e->response->clientError()
+            && $e->response->status() !== 429;
     }
 
     /**

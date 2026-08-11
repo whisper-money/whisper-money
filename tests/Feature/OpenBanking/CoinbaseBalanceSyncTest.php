@@ -8,8 +8,12 @@ use App\Services\Banking\CoinbaseClient;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 
-afterEach(fn () => Carbon::setTestNow());
+afterEach(function () {
+    Carbon::setTestNow();
+    Sleep::fake(false);
+});
 
 function ecPrivateKeyForCoinbase(): string
 {
@@ -382,6 +386,68 @@ test('prices the rest of the portfolio when Coinbase rejects one product id', fu
     Http::assertSent(fn (Request $request) => str_contains($request->url(), 'best_bid_ask')
         && str_contains($request->url(), 'BTC-EUR')
         && ! str_contains($request->url(), 'NOPE'));
+});
+
+test('gives up on a rate-limited price batch rather than retrying every asset', function () {
+    // CoinbaseClient backs off 10s/30s/60s on a 429; without this the test
+    // spends over three minutes sleeping for real.
+    Sleep::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->coinbase()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'coinbase-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake(function (Request $request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/api/v3/brokerage/accounts')) {
+            return Http::response([
+                'accounts' => [
+                    [
+                        'uuid' => 'cb-1',
+                        'name' => 'BTC',
+                        'currency' => 'BTC',
+                        'available_balance' => ['value' => '1.0', 'currency' => 'BTC'],
+                        'hold' => ['value' => '0', 'currency' => 'BTC'],
+                        'active' => true,
+                        'type' => 'ACCOUNT_TYPE_CRYPTO',
+                    ],
+                    [
+                        'uuid' => 'cb-2',
+                        'name' => 'ETH',
+                        'currency' => 'ETH',
+                        'available_balance' => ['value' => '1.0', 'currency' => 'ETH'],
+                        'hold' => ['value' => '0', 'currency' => 'ETH'],
+                        'active' => true,
+                        'type' => 'ACCOUNT_TYPE_CRYPTO',
+                    ],
+                ],
+                'has_next' => false,
+                'cursor' => '',
+                'size' => 2,
+            ]);
+        }
+
+        if (str_contains($url, '/api/v3/brokerage/best_bid_ask')) {
+            return Http::response(['error' => 'rate limit'], 429);
+        }
+
+        return Http::response([], 404);
+    });
+
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    app(CoinbaseBalanceSyncService::class)->sync($account, $client);
+
+    // A rate limit is not one bad product id, and CoinbaseClient already burns
+    // up to ~100s of backoff per call - fanning out would blow the job timeout.
+    Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'best_bid_ask')
+        && str_contains($request->url(), 'BTC-EUR')
+        && ! str_contains($request->url(), 'ETH-EUR'));
 });
 
 test('first sync creates twelve monthly coinbase historical balances', function () {
