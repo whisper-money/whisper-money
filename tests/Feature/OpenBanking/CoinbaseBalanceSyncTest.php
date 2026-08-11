@@ -311,6 +311,79 @@ test('settles EURC at its euro peg instead of asking Coinbase to quote it', func
     Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'EURC'));
 });
 
+test('prices the rest of the portfolio when Coinbase rejects one product id', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->coinbase()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'coinbase-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake(function (Request $request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/api/v3/brokerage/accounts')) {
+            return Http::response([
+                'accounts' => [
+                    [
+                        'uuid' => 'cb-1',
+                        'name' => 'BTC',
+                        'currency' => 'BTC',
+                        'available_balance' => ['value' => '1.0', 'currency' => 'BTC'],
+                        'hold' => ['value' => '0', 'currency' => 'BTC'],
+                        'active' => true,
+                        'type' => 'ACCOUNT_TYPE_CRYPTO',
+                    ],
+                    [
+                        'uuid' => 'cb-2',
+                        'name' => 'NOPE',
+                        'currency' => 'NOPE',
+                        'available_balance' => ['value' => '5.0', 'currency' => 'NOPE'],
+                        'hold' => ['value' => '0', 'currency' => 'NOPE'],
+                        'active' => true,
+                        'type' => 'ACCOUNT_TYPE_CRYPTO',
+                    ],
+                ],
+                'has_next' => false,
+                'cursor' => '',
+                'size' => 2,
+            ]);
+        }
+
+        if (str_contains($url, '/api/v3/brokerage/best_bid_ask')) {
+            // Anything asking for NOPE is refused, batch or not.
+            if (str_contains($url, 'NOPE')) {
+                return Http::response(['error' => 'invalid product_id provided: "NOPE-EUR"'], 400);
+            }
+
+            return Http::response([
+                'pricebooks' => [
+                    [
+                        'product_id' => 'BTC-EUR',
+                        'bids' => [['price' => '50000.00', 'size' => '1']],
+                        'asks' => [['price' => '50000.00', 'size' => '1']],
+                    ],
+                ],
+            ]);
+        }
+
+        return Http::response([], 404);
+    });
+
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    app(CoinbaseBalanceSyncService::class)->sync($account, $client);
+
+    // BTC survives the rejected batch: only the unquotable asset is lost.
+    expect($account->balances()->first()->balance)->toBe(5_000_000);
+
+    // The retry asked for BTC on its own rather than giving up on the batch.
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'best_bid_ask')
+        && str_contains($request->url(), 'BTC-EUR')
+        && ! str_contains($request->url(), 'NOPE'));
+});
+
 test('first sync creates twelve monthly coinbase historical balances', function () {
     Carbon::setTestNow('2026-05-14 12:00:00');
 

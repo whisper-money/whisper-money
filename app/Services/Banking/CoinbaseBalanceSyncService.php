@@ -284,10 +284,31 @@ class CoinbaseBalanceSyncService
                 'error' => $e->getMessage(),
             ]);
 
-            return [];
+            // Coinbase rejects the whole request over a single product id it
+            // does not list, which would leave every other holding unpriced.
+            // Asking one at a time costs more calls but contains the damage to
+            // the asset that is actually unquotable.
+            return count($assets) > 1
+                ? $this->fetchBestBidAskPricesIndividually($client, $assets, $quoteCurrency)
+                : [];
         }
 
         return $this->mapPricebooks($response);
+    }
+
+    /**
+     * @param  array<int, string>  $assets
+     * @return array<string, float>
+     */
+    private function fetchBestBidAskPricesIndividually(CoinbaseClient $client, array $assets, string $quoteCurrency): array
+    {
+        $map = [];
+
+        foreach ($assets as $asset) {
+            $map += $this->fetchBestBidAskPrices($client, [$asset], $quoteCurrency);
+        }
+
+        return $map;
     }
 
     /**
