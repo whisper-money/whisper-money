@@ -50,7 +50,24 @@ bun run build
 vendor/bin/pint --test
 bun run format
 bun run lint
+bun run dry
 ```
+
+### Duplication check
+
+`bun run dry` runs jscpd over `app/` and `resources/js` (clones of 8+ lines / 60+
+tokens) and fails when duplication climbs above the `threshold` in `.jscpd.json`.
+It is a step in the `linter` job, a **required** check, so a clone left behind
+blocks the merge.
+
+When it goes red, extract the clone — a shared method, a helper, a component.
+**Never raise the threshold to make the build pass**; it only moves down as clones
+get removed. If the duplication is genuinely warranted, argue it in the PR
+description instead of editing the config.
+
+Before writing a new class, service, or component, look for an existing one to
+extend or reuse. Two near-identical blocks are cheaper to merge while you are
+writing them than after review.
 
 ### Complexity check
 

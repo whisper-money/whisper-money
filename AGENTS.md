@@ -7,6 +7,22 @@ Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
 
 - After creating a PR use `gh pr checks 123 --watch --fail-fast` to check CI every 10 sec, if something fails, fix it, and update the pr.
 
+## Stay DRY
+
+Run `bun run dry` before finishing. It runs jscpd over `app/` and `resources/js` (clones of 8+ lines / 60+ tokens) and fails when duplication climbs above the `threshold` in `.jscpd.json`. That check is a step in the `linter` job, a **required** check, so a clone you leave behind blocks the merge.
+
+When it goes red, extract the clone — a shared method, a helper, a component. **Never raise the threshold to make the build pass**; it only moves down as clones get removed. If duplication is genuinely warranted, say so in the PR description rather than editing the config.
+
+Before writing a new class, service, or component, look for an existing one to extend or reuse. Two near-identical blocks are cheaper to merge while you are writing them than after review.
+
+## Keep methods simple
+
+Run `php artisan crap --base=origin/main --no-coverage` before opening a PR. It fails when a method your diff touches exceeds cyclomatic complexity 10. The `crap` CI job reports the same thing; it goes red but is **not** a required check, so it never blocks a merge.
+
+Simplify the method. When the complexity is genuinely warranted (a state machine, a parser, a funnel whose step order matters), add it to `.crap-ignore.json` with a reason — the reason is read in review, so make it a real one.
+
+Do not lower complexity by splitting a method into near-identical pieces: that raises duplication, and the duplication check *does* block.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
