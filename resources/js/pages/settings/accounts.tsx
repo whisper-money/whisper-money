@@ -1,6 +1,18 @@
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
-import { Cell, ColumnDef, flexRender, Row } from '@tanstack/react-table';
+import {
+    Cell,
+    ColumnDef,
+    ColumnFiltersState,
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getSortedRowModel,
+    Row,
+    SortingState,
+    useReactTable,
+    VisibilityState,
+} from '@tanstack/react-table';
 import { ArrowUpDown, Link2, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
@@ -30,7 +42,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { useSettingsTable } from '@/hooks/use-settings-table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
@@ -160,6 +171,12 @@ interface AccountsPageProps {
 }
 
 export default function Accounts({ accounts }: AccountsPageProps) {
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+        {},
+    );
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: __('Bank accounts'),
@@ -268,7 +285,21 @@ export default function Accounts({ accounts }: AccountsPageProps) {
         },
     ];
 
-    const table = useSettingsTable(accounts, columns);
+    const table = useReactTable({
+        data: accounts,
+        columns,
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        onColumnVisibilityChange: setColumnVisibility,
+        state: {
+            sorting,
+            columnFilters,
+            columnVisibility,
+        },
+    });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

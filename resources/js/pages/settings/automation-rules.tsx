@@ -1,5 +1,17 @@
 import { Head, usePage } from '@inertiajs/react';
-import { Cell, ColumnDef, flexRender, Row } from '@tanstack/react-table';
+import {
+    Cell,
+    ColumnDef,
+    ColumnFiltersState,
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getSortedRowModel,
+    Row,
+    SortingState,
+    useReactTable,
+    VisibilityState,
+} from '@tanstack/react-table';
 import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -30,7 +42,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { useSettingsTable } from '@/hooks/use-settings-table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
@@ -189,6 +200,12 @@ function AutomationRuleRow({
 }
 
 export default function AutomationRules() {
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+        {},
+    );
+
     const { automationRules: rawRules } = usePage<{
         automationRules: AutomationRule[];
     }>().props;
@@ -235,7 +252,21 @@ export default function AutomationRules() {
         },
     ];
 
-    const table = useSettingsTable(rules, columns);
+    const table = useReactTable({
+        data: rules,
+        columns,
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        onColumnVisibilityChange: setColumnVisibility,
+        state: {
+            sorting,
+            columnFilters,
+            columnVisibility,
+        },
+    });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

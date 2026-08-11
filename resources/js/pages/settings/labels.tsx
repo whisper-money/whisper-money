@@ -1,7 +1,18 @@
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
-import { ColumnDef, Row } from '@tanstack/react-table';
+import {
+    ColumnDef,
+    ColumnFiltersState,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getSortedRowModel,
+    Row,
+    SortingState,
+    useReactTable,
+    VisibilityState,
+} from '@tanstack/react-table';
 import { ArrowUpDown, Tag } from 'lucide-react';
+import { useState } from 'react';
 
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import HeadingSmall from '@/components/heading-small';
@@ -17,7 +28,6 @@ import { SettingsTable } from '@/components/shared/settings-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useSettingsTable } from '@/hooks/use-settings-table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
@@ -56,6 +66,14 @@ function LabelRow({ row }: { row: Row<Label> }) {
 }
 
 export default function Labels() {
+    const [sorting, setSorting] = useState<SortingState>([
+        { id: 'name', desc: false },
+    ]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+        {},
+    );
+
     const { labels } = usePage<{ labels: Label[] }>().props;
 
     const columns: ColumnDef<Label>[] = [
@@ -111,9 +129,21 @@ export default function Labels() {
         },
     ];
 
-    const table = useSettingsTable(labels, columns, [
-        { id: 'name', desc: false },
-    ]);
+    const table = useReactTable({
+        data: labels,
+        columns,
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        onColumnVisibilityChange: setColumnVisibility,
+        state: {
+            sorting,
+            columnFilters,
+            columnVisibility,
+        },
+    });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
