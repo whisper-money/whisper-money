@@ -196,6 +196,35 @@ test('callback without code redirects with error', function () {
     $response->assertSessionHas('error');
 });
 
+test('callback clears the state token when the session exchange fails', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'aspsp_country' => 'ES',
+        'state_token' => 'state-token-fails',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andThrow(new RuntimeException('Provider is unreachable'));
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)
+        ->get('/open-banking/callback?code=test-code&state=state-token-fails');
+
+    $response->assertRedirect(route('settings.connections.index'));
+    $response->assertSessionHas('error', 'Failed to connect to your bank. Please try again.');
+
+    // A state token left behind would be matched by a later callback for another bank.
+    $connection->refresh();
+    expect($connection->state_token)->toBeNull();
+    expect($connection->status)->toBe(BankingConnectionStatus::Pending);
+});
+
 test('callback with valid code stores pending accounts and redirects to mapping', function () {
     Queue::fake();
 
