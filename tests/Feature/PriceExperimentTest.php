@@ -32,13 +32,15 @@ it('keeps users who registered before the experiment on the control price', func
     expect(PriceExperiment::variantFor($user))->toBe(PriceExperiment::LEGACY);
 });
 
-it('treats everyone as legacy while the experiment is off', function () {
-    config(['subscriptions.price_experiment.started_at' => null]);
+it('treats everyone as legacy while the experiment is off', function (?string $startedAt) {
+    // An empty PRICE_EXPERIMENT_STARTED_AT in the env reads back as '', so an
+    // ops typo must not launch the experiment and start charging the high price.
+    config(['subscriptions.price_experiment.started_at' => $startedAt]);
 
     $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
 
     expect(PriceExperiment::variantFor($user))->toBe(PriceExperiment::LEGACY);
-});
+})->with([null, '', '   ']);
 
 it('pins every user to the forced winner price', function () {
     config(['subscriptions.price_experiment.force_variant' => PriceExperiment::HIGH]);

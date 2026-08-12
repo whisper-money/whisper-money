@@ -44,7 +44,15 @@ class PriceExperiment
 
         $startedAt = config('subscriptions.price_experiment.started_at');
 
-        if ($startedAt === null || $user->created_at?->lt(CarbonImmutable::parse($startedAt))) {
+        // blank(), not === null: an empty PRICE_EXPERIMENT_STARTED_AT in the env
+        // reads back as '', and treating that as a start date would launch the
+        // experiment — charging the high price — on an ops typo. Same for a user
+        // with no signup date: fall back to the price they already know.
+        if (blank($startedAt) || $user->created_at === null) {
+            return self::LEGACY;
+        }
+
+        if ($user->created_at->lt(CarbonImmutable::parse($startedAt))) {
             return self::LEGACY;
         }
 
