@@ -155,7 +155,24 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Handle permanent errors (auth failures) that should not be retried.
+     * Last resort for a job that died outside handle()'s own error handling.
+     *
+     * Everything raised inside handle() is already classified and recorded, and
+     * leaves the connection in Error - which the guard below returns on. So what
+     * reaches here is the job being killed from the outside: the queue worker's
+     * timeout, an exhausted retry count, the worker being restarted mid-sync.
+     *
+     * None of that is evidence the *connection* is broken, so it must not be
+     * charged to the connection's budget of scheduled retries. That budget is
+     * what keeps it in the scheduled rotation at all, and spending it here means
+     * spending it on our own infrastructure.
+     *
+     * Note the guard makes this at most one increment per connection lifetime -
+     * a second out-of-band death finds the connection already in Error and does
+     * nothing - so removing it is a small correction, not a fix for a runaway
+     * counter. It closes the one route that could reach the ceiling this way:
+     * a reconnect that left the counter at MAX - 1 (see AuthorizationController)
+     * followed by a single job death.
      */
     public function failed(?\Throwable $e): void
     {
@@ -172,7 +189,6 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         $connection->update([
             'status' => BankingConnectionStatus::Error,
             'error_message' => $e ? $this->friendlyErrorMessage($e) : __('An unexpected error occurred during sync. Please try again later.'),
-            'consecutive_sync_failures' => $connection->consecutive_sync_failures + 1,
         ]);
     }
 

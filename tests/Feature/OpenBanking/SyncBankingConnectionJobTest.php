@@ -1643,7 +1643,9 @@ test('failed sync job marks active connection as error so onboarding can continu
     expect($connection->status)->toBe(BankingConnectionStatus::Error);
     expect($connection->last_synced_at)->toBeNull();
     expect($connection->error_message)->toBe('An unexpected error occurred during sync. Please try again later.');
-    expect($connection->consecutive_sync_failures)->toBe(1);
+    // A job killed from the outside says nothing about the connection, so it no
+    // longer spends a scheduled retry.
+    expect($connection->consecutive_sync_failures)->toBe(0);
 });
 
 test('rate limit error sets backoff window without erroring connection', function () {
