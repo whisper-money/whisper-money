@@ -16,6 +16,11 @@ use Carbon\CarbonImmutable;
  * and a report can reproduce the split in SQL with CRC32(CONCAT('price:', id)).
  * Move it to Pennant only if an experiment ever needs a non-deterministic or
  * hand-overridden per-user assignment.
+ *
+ * @api The variant names are the vocabulary the experiment is configured and read
+ *      with — they are the accepted values of PRICE_EXPERIMENT_FORCE_VARIANT and
+ *      what a funnel report attributes users by — even though production only
+ *      calls plansFor()/lookupKeyFor().
  */
 class PriceExperiment
 {
