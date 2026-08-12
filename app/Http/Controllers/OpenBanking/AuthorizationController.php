@@ -165,44 +165,14 @@ class AuthorizationController extends Controller
                 ->with('error', __('Please log back in to finish connecting your bank account.'));
         }
 
-        $errorRedirectRoute = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
-        $errorRedirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
-
         if ($request->has('error')) {
-            $errorDescription = $request->query('error_description');
-            $errorMessage = is_string($errorDescription) && $errorDescription !== ''
-                ? $errorDescription
-                : 'Authorization was denied or cancelled.';
-
-            Log::warning('EnableBanking authorization error', [
-                'error' => $request->query('error'),
-                'description' => $errorDescription,
-            ]);
-
-            $pendingConnection = $connection ?? $user->bankingConnections()
-                ->where('status', BankingConnectionStatus::Pending)
-                ->latest()
-                ->first();
-
-            if ($pendingConnection) {
-                if ($pendingConnection->accounts()->exists()) {
-                    $pendingConnection->update([
-                        'status' => BankingConnectionStatus::Error,
-                        'error_message' => $errorMessage,
-                        'state_token' => null,
-                    ]);
-                } else {
-                    $pendingConnection->delete();
-                }
-            }
-
-            return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', $errorMessage);
+            return $this->handleAuthorizationError($request, $user, $connection);
         }
 
         $code = $request->query('code');
 
         if (! $code) {
-            return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', 'No authorization code received.');
+            return $this->failureRedirect($user, 'No authorization code received.');
         }
 
         try {
@@ -214,13 +184,13 @@ class AuthorizationController extends Controller
                 $connection->update(['state_token' => null]);
             }
 
-            return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', 'Failed to connect to your bank. Please try again.');
+            return $this->failureRedirect($user, 'Failed to connect to your bank. Please try again.');
         }
 
         $connection ??= $this->findPendingConnectionForSession($user, $sessionData);
 
         if (! $connection) {
-            return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', 'No pending connection found.');
+            return $this->failureRedirect($user, 'No pending connection found.');
         }
 
         $isReconnect = $connection->accounts()->exists();
@@ -262,6 +232,56 @@ class AuthorizationController extends Controller
         }
 
         return $this->finishRedirect('open-banking.map-accounts', ['connection' => $connection]);
+    }
+
+    /**
+     * Clean up after a bank that denied or cancelled the authorization.
+     *
+     * A pending connection that already has accounts is a reconnect, so it is kept
+     * and marked as failing. A brand new one has nothing worth keeping.
+     */
+    private function handleAuthorizationError(Request $request, User $user, ?BankingConnection $connection): RedirectResponse|Response
+    {
+        $errorDescription = $request->query('error_description');
+        $errorMessage = is_string($errorDescription) && $errorDescription !== ''
+            ? $errorDescription
+            : 'Authorization was denied or cancelled.';
+
+        Log::warning('EnableBanking authorization error', [
+            'error' => $request->query('error'),
+            'description' => $errorDescription,
+        ]);
+
+        $pendingConnection = $connection ?? $user->bankingConnections()
+            ->where('status', BankingConnectionStatus::Pending)
+            ->latest()
+            ->first();
+
+        if ($pendingConnection) {
+            if ($pendingConnection->accounts()->exists()) {
+                $pendingConnection->update([
+                    'status' => BankingConnectionStatus::Error,
+                    'error_message' => $errorMessage,
+                    'state_token' => null,
+                ]);
+            } else {
+                $pendingConnection->delete();
+            }
+        }
+
+        return $this->failureRedirect($user, $errorMessage);
+    }
+
+    /**
+     * Abandon the callback with a message, sending the user wherever they came from.
+     *
+     * A user still onboarding has no connections screen to land on yet.
+     */
+    private function failureRedirect(User $user, string $message): RedirectResponse|Response
+    {
+        return $user->isOnboarded()
+            ? $this->finishRedirect('settings.connections.index', [], 'error', $message)
+            : $this->finishRedirect('onboarding', ['step' => 'create-account'], 'error', $message);
     }
 
     /**
