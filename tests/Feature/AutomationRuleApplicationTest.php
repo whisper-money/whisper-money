@@ -214,7 +214,12 @@ test('apply endpoint runs synchronously when matches are below threshold', funct
         ->assertJsonPath('total', 3);
 
     Queue::assertNotPushed(ApplySingleAutomationRuleJob::class);
-    // One reassignment job for the whole batch, not one per transaction.
+    // One reassignment job for the whole batch, not one per transaction, and
+    // silent: applying a rule to history is not new spending.
+    Queue::assertPushed(
+        ReassignTransactionsToBudgets::class,
+        fn (ReassignTransactionsToBudgets $job): bool => $job->notify === false,
+    );
     Queue::assertPushed(ReassignTransactionsToBudgets::class, 1);
 
     expect(
@@ -267,6 +272,7 @@ test('apply endpoint batches category and label writes', function () {
         ->and($perTransactionPivotLookupQueries)->toHaveCount(0);
 
     Queue::assertNotPushed(ApplySingleAutomationRuleJob::class);
+    Queue::assertPushed(ReassignTransactionsToBudgets::class, 1);
     $this->assertDatabaseCount('label_transaction', 5);
 });
 

@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\CategoryType;
+use App\Jobs\ReassignTransactionsToBudgets;
+use App\Jobs\ReEvaluateTransactionRulesJob;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\LabelTransaction;
 use App\Models\Account;
@@ -13,6 +15,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleService;
+use Illuminate\Support\Facades\Queue;
 
 function periodCovering(Budget $budget): BudgetPeriod
 {
@@ -105,6 +108,45 @@ test('the bulk apply reassigns transactions whose category it mass-updated', fun
     app(AutomationRuleService::class)->applyRuleActionsToTransactions($transactions, $rule);
 
     expect(budgetsOf($this->transaction))->toBe([$categoryPeriod->id]);
+});
+
+test('the bulk actions bar moves the labelled transactions into the label budget', function () {
+    $this->actingAs($this->user)
+        ->patchJson(route('transactions.bulk-update'), [
+            'transaction_ids' => [$this->transaction->id],
+            'label_ids' => [$this->label->id],
+        ])
+        ->assertOk();
+
+    expect(budgetsOf($this->transaction))->toBe([$this->labelPeriod->id]);
+});
+
+test('the bulk actions bar reassigns after a mass category update', function () {
+    $tracked = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $categoryPeriod = periodCovering(Budget::factory()->forCategories($tracked)->create(['user_id' => $this->user->id]));
+
+    $this->actingAs($this->user)
+        ->patchJson(route('transactions.bulk-update'), [
+            'transaction_ids' => [$this->transaction->id],
+            'category_id' => $tracked->id,
+        ])
+        ->assertOk();
+
+    expect(budgetsOf($this->transaction))->toBe([$categoryPeriod->id]);
+});
+
+test('re-evaluating the rules over the whole history queues one silent job per chunk', function () {
+    Queue::fake();
+    labelRule($this->user, $this->label);
+
+    (new ReEvaluateTransactionRulesJob($this->user, 'job-1'))->handle(app(AutomationRuleService::class));
+
+    Queue::assertPushed(
+        ReassignTransactionsToBudgets::class,
+        fn (ReassignTransactionsToBudgets $job): bool => $job->notify === false
+            && $job->transactionIds === [$this->transaction->id],
+    );
+    Queue::assertPushed(ReassignTransactionsToBudgets::class, 1);
 });
 
 test('the MCP tool reassigns the transaction when it attaches and when it removes a label', function () {

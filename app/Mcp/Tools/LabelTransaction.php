@@ -46,8 +46,10 @@ class LabelTransaction extends WriteTool
         }
 
         // Pivot writes fire no model event, so nothing would re-derive which
-        // budgets now track this transaction by label.
-        ReassignTransactionsToBudgets::dispatch([$transaction->id]);
+        // budgets now track this transaction by label. Silently: relabelling an
+        // existing transaction is not new spending, and removing a label would
+        // otherwise announce a months-old expense as new in the catch-all budget.
+        ReassignTransactionsToBudgets::dispatch([$transaction->id], notify: false);
 
         return $this->json(['transaction' => $this->presentTransaction($transaction->refresh())]);
     }

@@ -15,6 +15,14 @@ use JWadhams\JsonLogic;
 class AutomationRuleService
 {
     /**
+     * How many transaction ids ride in one reassignment job.
+     *
+     * ponytail: fixed 500; only the AI suggestion path is unbounded, and it has
+     * never come close to needing a smarter split.
+     */
+    private const REASSIGN_BATCH_SIZE = 500;
+
+    /**
      * Per-user rule cache, memoized for the lifetime of this service instance.
      *
      * Bulk re-evaluation calls applyRules() once per transaction; without this
@@ -26,24 +34,34 @@ class AutomationRuleService
      */
     private array $rulesByUser = [];
 
-    public function applyRules(Transaction $transaction): void
+    /**
+     * @param  bool  $reassignBudgets  set to false when the caller loops over many
+     *                                 transactions and batches the reassignment
+     *                                 itself, so this does not queue one job per row
+     * @return bool whether the rule changed something budget membership depends on
+     */
+    public function applyRules(Transaction $transaction, bool $reassignBudgets = true): bool
     {
         if ($transaction->description_iv !== null) {
-            return;
+            return false;
         }
 
         $rules = $this->rulesForUser($transaction->user_id);
 
         if ($rules->isEmpty()) {
-            return;
+            return false;
         }
 
         $transactionData = $this->prepareTransactionData($transaction);
         $matchedRule = $this->evaluateRules($rules, $transactionData);
 
-        if ($matchedRule && $this->applyActions($transaction, $matchedRule)) {
+        $affectsBudgets = $matchedRule !== null && $this->applyActions($transaction, $matchedRule);
+
+        if ($affectsBudgets && $reassignBudgets) {
             ReassignTransactionsToBudgets::dispatch([$transaction->id]);
         }
+
+        return $affectsBudgets;
     }
 
     /**
@@ -99,21 +117,34 @@ class AutomationRuleService
             }
         }
 
-        $changedTransactionIds = array_values(array_unique(array_merge(
-            $this->applyCategoryInBulk($transactions, $rule),
-            $this->applyNoteInBulk($transactions, $rule),
-            $this->applyLabelsInBulk($transactions, $rule),
-        )));
+        // Kept in this order: the note is appended with saveQuietly(), which must
+        // run after the category mass update so it writes only the notes column.
+        $categorizedIds = $this->applyCategoryInBulk($transactions, $rule);
+        $notedIds = $this->applyNoteInBulk($transactions, $rule);
+        $labelledIds = $this->applyLabelsInBulk($transactions, $rule);
 
-        if ($changedTransactionIds !== []) {
-            // One job for the whole batch: the mass update and the pivot insert
-            // above fire no model event, so nothing else re-derives which budgets
-            // now track these transactions — and dispatching per row would queue a
-            // job for every transaction the rule touched.
-            ReassignTransactionsToBudgets::dispatch($changedTransactionIds, notify: false);
+        // A note never changes which budget counts a transaction, so it does not
+        // earn a reassignment — but it does count as a change for the caller.
+        $this->reassignInBatches(array_merge($categorizedIds, $labelledIds));
+
+        return count(array_unique(array_merge($categorizedIds, $notedIds, $labelledIds)));
+    }
+
+    /**
+     * Queue the budget reassignment of transactions the bulk apply changed.
+     *
+     * The mass update and the pivot insert fire no model event, so nothing else
+     * re-derives which budgets now track them. Dispatching per row would queue a
+     * job for every transaction the rule touched, and dispatching one job for
+     * everything would put an unbounded id list in a single queue payload.
+     *
+     * @param  array<int, string>  $transactionIds
+     */
+    private function reassignInBatches(array $transactionIds): void
+    {
+        foreach (array_chunk(array_values(array_unique($transactionIds)), self::REASSIGN_BATCH_SIZE) as $batch) {
+            ReassignTransactionsToBudgets::dispatch($batch, notify: false);
         }
-
-        return count($changedTransactionIds);
     }
 
     /**
@@ -366,16 +397,20 @@ class AutomationRuleService
         }
     }
 
+    /**
+     * @return bool whether the actions changed something budget membership
+     *              depends on — the note is deliberately not one of them
+     */
     private function applyActions(Transaction $transaction, AutomationRule $rule): bool
     {
-        $changed = false;
+        $affectsBudgets = false;
 
         if ($rule->action_category_id !== null
             && $transaction->category_id !== $rule->action_category_id) {
             $transaction->category_id = $rule->action_category_id;
             $transaction->category_source = CategorySource::Rule;
             $transaction->categorized_by_rule_id = $rule->id;
-            $changed = true;
+            $affectsBudgets = true;
         }
 
         // Only apply plain (unencrypted) notes — encrypted notes require the user's key
@@ -387,7 +422,6 @@ class AutomationRuleService
                 $transaction->notes = $existingNotes
                     ? $existingNotes."\n".$ruleNote
                     : $ruleNote;
-                $changed = true;
             }
         }
 
@@ -399,11 +433,11 @@ class AutomationRuleService
         if (! empty($labelIds)) {
             $result = $transaction->labels()->syncWithoutDetaching($labelIds);
             if (! empty($result['attached'])) {
-                $changed = true;
+                $affectsBudgets = true;
             }
         }
 
-        return $changed;
+        return $affectsBudgets;
     }
 
     private function noteAlreadyPresent(string $existingNotes, string $note): bool

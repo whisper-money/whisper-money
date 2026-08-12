@@ -22,6 +22,10 @@ class ReassignTransactionsToBudgets implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 3;
+
+    public int $backoff = 10;
+
     /**
      * @param  array<int, string>  $transactionIds
      * @param  bool  $notify  set to false for bulk applies, where the budget
