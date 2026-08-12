@@ -12,5 +12,6 @@ Schedule::command('email:paywall-follow-up')->dailyAt('10:00')->timezone('Europe
 Schedule::command('email:ai-consent-follow-up')->dailyAt('10:15')->timezone('Europe/Madrid');
 Schedule::command('stats:daily-report')->dailyAt('09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:ai-cohort-report')->monthlyOn(1, '09:00')->timezone('Europe/Madrid');
+Schedule::command('stats:user-emails')->monthlyOn(1, '09:05')->timezone('Europe/Madrid');
 Schedule::command('stats:subscription-funnel')->weekly()->mondays()->at('09:15')->timezone('Europe/Madrid');
 Schedule::command('stats:experiment-funnel')->weekly()->mondays()->at('09:30')->timezone('Europe/Madrid');
