@@ -945,3 +945,19 @@ test('a second out-of-band death on an already errored connection changes nothin
     expect($connection->consecutive_sync_failures)->toBe(2);
     expect($connection->error_message)->toBe('Earlier failure kept.');
 });
+
+test('an out-of-band job death is recorded in the connection history', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+
+    (new SyncBankingConnectionJob($connection))->failed(
+        new TimeoutExceededException('App\Jobs\SyncBankingConnectionJob has timed out.')
+    );
+
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)->sole();
+    expect($log->status)->toBe(BankingSyncLogStatus::Failed);
+    expect($log->error_class)->toBe(TimeoutExceededException::class);
+    expect($log->metadata['reason'])->toBe('job_died_outside_handle');
+    // Unknown rather than zero: nobody timed this attempt.
+    expect($log->duration_ms)->toBeNull();
+});

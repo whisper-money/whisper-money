@@ -188,8 +188,23 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
         $connection->update([
             'status' => BankingConnectionStatus::Error,
-            'error_message' => $e ? $this->friendlyErrorMessage($e) : __('An unexpected error occurred during sync. Please try again later.'),
+            // Every message written here describes an out-of-band death, so the
+            // generic "an unexpected error occurred, please try again" was pushing
+            // our own infrastructure onto the user. The next scheduled cycle picks
+            // the connection back up on its own.
+            'error_message' => __('The sync did not finish. We will try again later.'),
         ]);
+
+        // handle() owns every other logSyncAttempt call, and it is precisely what
+        // an out-of-band death skips - leaving the connection's own history with no
+        // trace of the most common way this job dies.
+        $this->logSyncAttempt(
+            $connection,
+            BankingSyncLogStatus::Failed,
+            startTime: null,
+            error: $e,
+            metadata: ['reason' => 'job_died_outside_handle'],
+        );
     }
 
     /**
@@ -302,22 +317,27 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         });
     }
 
+    /**
+     * @param  float|null  $startTime  Null when the caller never got to start a
+     *                                 timer, so the duration is genuinely unknown
+     *                                 rather than zero.
+     */
     private function logSyncAttempt(
         BankingConnection $connection,
         BankingSyncLogStatus $status,
-        float $startTime,
+        ?float $startTime,
         ?\Throwable $error = null,
         ?array $metadata = null,
     ): void {
-        $durationMs = (int) round((microtime(true) - $startTime) * 1000);
-
         BankingSyncLog::create([
             'banking_connection_id' => $connection->id,
             'status' => $status,
             'attempt' => $this->attempts(),
             'error_message' => $error?->getMessage(),
             'error_class' => $error ? get_class($error) : null,
-            'duration_ms' => $durationMs,
+            'duration_ms' => $startTime === null
+                ? null
+                : (int) round((microtime(true) - $startTime) * 1000),
             'metadata' => $metadata,
             'created_at' => now(),
         ]);

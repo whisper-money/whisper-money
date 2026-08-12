@@ -332,6 +332,7 @@
     "Amount is required": "Se requiere un valor",
     "An unexpected error occurred during sync.": "Se produjo un error inesperado durante la sincronización.",
     "An unexpected error occurred during sync. Please try again later.": "Ocurrió un error inesperado durante la sincronización. Inténtalo de nuevo más tarde.",
+    "The sync did not finish. We will try again later.": "La sincronización no se completó. Volveremos a intentarlo más tarde.",
     "Annual": "Anual",
     "Annual Interest Rate": "Tasa de Interés Anual",
     "Annual Interest Rate (%)": "Tasa de Interés Anual (%)",
