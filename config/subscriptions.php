@@ -27,8 +27,13 @@ return [
     | control/high to roll a winner out to everyone without a deploy.
     |
     | Each variant needs its own Stripe price — run `php artisan stripe:sync-prices`
-    | BEFORE setting `started_at`. The yearly price is the monthly × 6, matching
-    | the control plan structure.
+    | BEFORE setting `started_at`.
+    |
+    | Yearly prices are built the way the control plan is: pick the monthly
+    | equivalent we want to advertise, ending in .99, and multiply by 12 — so
+    | 4.99 × 12 = 59.88, shown against 8.99 × 12 = 107.88 as the undiscounted
+    | reference. That is a ~6.7-month effective price rather than the control's
+    | ~6, because 8.99 ÷ 2 lands on 4.495 and there is no .99 at that level.
     |
     */
 
@@ -43,7 +48,7 @@ return [
                     'lookup' => 'whisper_pro_monthly_high',
                 ],
                 'yearly' => [
-                    'price' => 53.94,
+                    'price' => 59.88,
                     'original_price' => 107.88,
                     'lookup' => 'whisper_pro_yearly_high',
                 ],
