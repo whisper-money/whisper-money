@@ -91,6 +91,17 @@ export default function BudgetShow({
         );
     }, [currentPeriod]);
 
+    // The rows below show what the bank charged while the totals above count
+    // only the user's share, so say so when the two can differ.
+    const hasSharedAccountTransactions = useMemo(
+        () =>
+            periodTransactions.some(
+                (transaction) =>
+                    (transaction.account?.ownership_percentage ?? 100) < 100,
+            ),
+        [periodTransactions],
+    );
+
     return (
         <AppSidebarLayout
             breadcrumbs={breadcrumbs}
@@ -204,16 +215,25 @@ export default function BudgetShow({
                         </div>
                     </div>
                 ) : (
-                    <TransactionList
-                        categories={categories}
-                        accounts={accounts}
-                        banks={banks}
-                        labels={labels}
-                        transactions={periodTransactions}
-                        pageSize={10}
-                        showActionsMenu={false}
-                        maxHeight={600}
-                    />
+                    <>
+                        {hasSharedAccountTransactions && (
+                            <p className="text-xs text-muted-foreground">
+                                {__(
+                                    'Each row shows the full amount charged by the bank. The totals above only count your share of the accounts you share with someone else.',
+                                )}
+                            </p>
+                        )}
+                        <TransactionList
+                            categories={categories}
+                            accounts={accounts}
+                            banks={banks}
+                            labels={labels}
+                            transactions={periodTransactions}
+                            pageSize={10}
+                            showActionsMenu={false}
+                            maxHeight={600}
+                        />
+                    </>
                 )}
             </div>
 

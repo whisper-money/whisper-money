@@ -376,7 +376,7 @@ export function EditAccountDialog({
                                     className="text-xs text-muted-foreground"
                                 >
                                     {__(
-                                        'For accounts you share with someone else. Income and expenses only count towards your figures by this percentage.',
+                                        'For accounts you share with someone else. Income and expenses only count towards your figures by this percentage. Changing it also rewrites what this account has already spent in your budgets, past periods included.',
                                     )}
                                 </p>
                                 <InputError

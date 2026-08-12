@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\CategoryType;
+use App\Models\Account;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
@@ -30,8 +31,12 @@ class BudgetTransactionService
             return;
         }
 
-        // Ensure labels are available for matching (safe if already loaded).
+        // Ensure labels are available for matching, and the account for the
+        // ownership share (both safe if already loaded). The account is loaded
+        // with trashed ones too, so this agrees with the SQL re-weigh, which
+        // ignores the soft-delete scope as well.
         $transaction->loadMissing('labels');
+        $transaction->loadMissing(['account' => fn ($query) => $query->withTrashed()]);
 
         $matchingPeriodIds = $this->trackedPeriodIds($transaction, $userId);
 
@@ -65,15 +70,7 @@ class BudgetTransactionService
                 ->delete();
 
             foreach ($matchingPeriodIds as $periodId) {
-                $budgetTransaction = BudgetTransaction::updateOrCreate(
-                    [
-                        'transaction_id' => $transaction->id,
-                        'budget_period_id' => $periodId,
-                    ],
-                    [
-                        'amount' => -$transaction->amount,
-                    ],
-                );
+                $budgetTransaction = $this->recordSnapshot($transaction, $periodId);
 
                 if ($budgetTransaction->wasRecentlyCreated) {
                     $createdPeriodIds[] = $periodId;
@@ -118,6 +115,10 @@ class BudgetTransactionService
         $query = Transaction::query()
             ->where('user_id', $budget->user_id)
             ->whereBetween('transaction_date', [$period->start_date, $period->end_date])
+            // The owning account weighs every snapshot; eager loaded so a
+            // 500-row chunk does not turn into 500 account lookups, and with
+            // trashed ones so it agrees with the SQL re-weigh.
+            ->with(['account' => fn ($query) => $query->withTrashed()])
             ->withoutTrashed();
 
         if ($budget->is_catch_all) {
@@ -143,23 +144,66 @@ class BudgetTransactionService
         // Process in chunks to prevent memory issues
         $query->chunk(500, function ($transactions) use ($period, &$assignedCount) {
             foreach ($transactions as $transaction) {
-                $budgetTransaction = BudgetTransaction::updateOrCreate(
-                    [
-                        'transaction_id' => $transaction->id,
-                        'budget_period_id' => $period->id,
-                    ],
-                    [
-                        'amount' => -$transaction->amount,
-                    ],
-                );
-
-                if ($budgetTransaction->wasRecentlyCreated) {
+                if ($this->recordSnapshot($transaction, $period->id)->wasRecentlyCreated) {
                     $assignedCount++;
                 }
             }
         });
 
         return $assignedCount;
+    }
+
+    /**
+     * Record what a transaction contributes to a budget period: the owner's
+     * share of it, flipped so an expense counts as positive spending.
+     *
+     * The amount is a snapshot taken here and never revisited, so a later
+     * change to the account's share has to go through
+     * {@see self::reweighAccountSnapshots()}.
+     */
+    private function recordSnapshot(Transaction $transaction, string $budgetPeriodId): BudgetTransaction
+    {
+        return BudgetTransaction::updateOrCreate(
+            [
+                'transaction_id' => $transaction->id,
+                'budget_period_id' => $budgetPeriodId,
+            ],
+            [
+                'amount' => -$transaction->ownerShareOf($transaction->amount),
+            ],
+        );
+    }
+
+    /**
+     * Re-snapshot every budget row of an account after its ownership share
+     * changed, in SQL so it stays one query no matter how much history the
+     * account has. Uses {@see Transaction::OWNED_AMOUNT_SQL} so the rounding
+     * matches what {@see self::recordSnapshot()} would have written.
+     *
+     * @return int the number of rows re-weighed
+     */
+    public function reweighAccountSnapshots(Account $account): int
+    {
+        $reweighed = DB::table('budget_transactions')
+            ->join('transactions', 'transactions.id', '=', 'budget_transactions.transaction_id')
+            ->join('accounts', 'accounts.id', '=', 'transactions.account_id')
+            ->where('accounts.id', $account->id)
+            ->update(['budget_transactions.amount' => DB::raw('-('.Transaction::OWNED_AMOUNT_SQL.')')]);
+
+        // Every affected period now holds a different total, so the limit alerts
+        // it already sent describe a state that no longer exists. Clearing the
+        // flags lets the next crossing notify again, the same way a refund that
+        // drops a budget back under its limit does.
+        if ($reweighed > 0) {
+            BudgetPeriod::query()
+                ->whereHas(
+                    'budgetTransactions.transaction',
+                    fn (Builder $query) => $query->where('account_id', $account->id),
+                )
+                ->update(['close_to_limit_notified' => false, 'over_limit_notified' => false]);
+        }
+
+        return $reweighed;
     }
 
     /**

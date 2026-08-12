@@ -5,9 +5,12 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Bank;
+use App\Models\Budget;
+use App\Models\BudgetPeriod;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\BudgetTransactionService;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -253,6 +256,122 @@ test('updating an account persists its ownership settings', function () {
 
     expect($account->fresh()->ownership_percentage)->toBe(50)
         ->and($account->fresh()->ownership_applies_to_balance)->toBeTrue();
+});
+
+/**
+ * A budget tracking one expense category over the current month, plus a shared
+ * account holding a single expense in that category. The transaction is not
+ * assigned yet, so each test decides which assignment path writes the snapshot.
+ *
+ * @return array{account: Account, period: BudgetPeriod, transaction: Transaction}
+ */
+function sharedAccountExpenseAndBudget(User $user, int $percentage, int $amount = -80000): array
+{
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'type' => AccountType::Checking,
+        'currency_code' => 'USD',
+        'ownership_percentage' => $percentage,
+    ]);
+
+    $category = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Expense,
+    ]);
+
+    $budget = Budget::factory()->forCategories($category)->create([
+        'user_id' => $user->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+        'allocated_amount' => 100000,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'amount' => $amount,
+        'currency_code' => 'USD',
+        'transaction_date' => now(),
+    ]);
+
+    return ['account' => $account, 'period' => $period, 'transaction' => $transaction];
+}
+
+test('a budget counts only the owner share of a transaction on a shared account', function () {
+    ['period' => $period, 'transaction' => $transaction] = sharedAccountExpenseAndBudget($this->user, 50);
+
+    app(BudgetTransactionService::class)->assignTransaction($transaction);
+
+    expect($period->spentAmount())->toBe(40000)
+        ->and($period->remainingAmount())->toBe(60000);
+});
+
+test('a fully owned account still counts in full towards a budget', function () {
+    ['period' => $period, 'transaction' => $transaction] = sharedAccountExpenseAndBudget($this->user, 100);
+
+    app(BudgetTransactionService::class)->assignTransaction($transaction);
+
+    expect($period->spentAmount())->toBe(80000);
+});
+
+test('the historical backfill counts only the owner share of a shared account', function () {
+    ['period' => $period] = sharedAccountExpenseAndBudget($this->user, 50);
+
+    app(BudgetTransactionService::class)->assignHistoricalTransactionsToPeriod($period);
+
+    expect($period->spentAmount())->toBe(40000);
+});
+
+test('changing an account share re-weighs the budget amounts already recorded', function () {
+    ['account' => $account, 'period' => $period, 'transaction' => $transaction] = sharedAccountExpenseAndBudget($this->user, 100);
+
+    app(BudgetTransactionService::class)->assignTransaction($transaction);
+    expect($period->spentAmount())->toBe(80000);
+
+    $this->patch(route('accounts.update', $account), [
+        'name' => $account->name,
+        'type' => AccountType::Checking->value,
+        'currency_code' => 'USD',
+        'ownership_percentage' => 50,
+    ])->assertRedirect();
+
+    expect($period->spentAmount())->toBe(40000);
+});
+
+/**
+ * Budget amounts are written in PHP on assignment and rewritten in SQL when the
+ * share changes. An amount that does not divide evenly is the only thing that
+ * catches the two rounding rules drifting apart.
+ */
+test('the PHP and SQL budget paths round an uneven share identically', function () {
+    ['account' => $account, 'period' => $period, 'transaction' => $transaction] = sharedAccountExpenseAndBudget($this->user, 33, amount: -3333);
+
+    app(BudgetTransactionService::class)->assignTransaction($transaction);
+    expect($period->spentAmount())->toBe(1100);
+
+    // Round-trip through 100% and back so the SQL path recomputes the same 33%.
+    $account->update(['ownership_percentage' => 100]);
+    expect($period->spentAmount())->toBe(3333);
+
+    $account->update(['ownership_percentage' => 33]);
+    expect($period->spentAmount())->toBe(1100);
+});
+
+test('a re-weigh lets a budget notify again on the next crossing', function () {
+    ['account' => $account, 'period' => $period, 'transaction' => $transaction] = sharedAccountExpenseAndBudget($this->user, 100, amount: -120000);
+
+    app(BudgetTransactionService::class)->assignTransaction($transaction);
+    $period->update(['over_limit_notified' => true, 'close_to_limit_notified' => true]);
+
+    $account->update(['ownership_percentage' => 50]);
+
+    expect($period->fresh()->over_limit_notified)->toBeFalse()
+        ->and($period->fresh()->close_to_limit_notified)->toBeFalse();
 });
 
 test('the ownership percentage must stay between 1 and 100', function () {

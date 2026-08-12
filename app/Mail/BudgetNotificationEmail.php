@@ -83,8 +83,11 @@ class BudgetNotificationEmail extends Mailable implements ShouldQueue
                 'allocatedFormatted' => Money::format($allocated, $currency),
                 'spentFormatted' => Money::format($spent, $currency),
                 'remainingFormatted' => Money::format(abs($remaining), $currency),
+                // The owner's share, not the full charge: every other figure in
+                // this email is what the budget counted, so a shared account
+                // would otherwise show €80 spent against a €40 rise.
                 'transactionAmountFormatted' => $this->transaction
-                    ? Money::format(abs((int) $this->transaction->amount), $currency)
+                    ? Money::format(abs($this->transaction->ownerShareOf((int) $this->transaction->amount)), $currency)
                     : null,
                 // Aligns with the service: at exactly the limit we are "over".
                 'isOverLimit' => $hasLimit && $spent >= $allocated,

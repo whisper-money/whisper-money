@@ -497,7 +497,7 @@ class ResetDemoAccountCommand extends Command
 
     private function assignTransactionsToBudgets(User $user): void
     {
-        $transactions = $user->transactions()->get();
+        $transactions = $user->transactions()->with('account')->get();
         $assignedCount = 0;
         $budgetAssignments = [];
 
