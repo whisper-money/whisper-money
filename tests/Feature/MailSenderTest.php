@@ -13,6 +13,7 @@ use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Mail\Drip\WelcomeEmail;
 use App\Mail\EnableBankingConnectionsCancelledEmail;
 use App\Mail\UpdateEmail;
+use App\Mail\UserEmailsReportEmail;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Notifications\VerifyEmailNotification;
@@ -128,6 +129,7 @@ test('default sender is used for active non-drip mailables', function (string $m
         BankingConnectionAuthFailedEmail::class => new BankingConnectionAuthFailedEmail($user, BankingConnection::factory()->for($user)->create(['aspsp_name' => 'Test Bank'])),
         EnableBankingConnectionsCancelledEmail::class => new EnableBankingConnectionsCancelledEmail($user, 2),
         BrokenBankLogosReportEmail::class => new BrokenBankLogosReportEmail([['id' => 'bank-1', 'name' => 'Test Bank', 'previous_logo' => 'https://example.com/logo.png']]),
+        UserEmailsReportEmail::class => new UserEmailsReportEmail("email\ntest@example.com\n", 1, 'user-emails-2026-01-01.csv'),
     };
 
     sendWithArrayMailer($mailable);
@@ -142,6 +144,7 @@ test('default sender is used for active non-drip mailables', function (string $m
     BankingConnectionAuthFailedEmail::class,
     EnableBankingConnectionsCancelledEmail::class,
     BrokenBankLogosReportEmail::class,
+    UserEmailsReportEmail::class,
 ]);
 
 test('transaction sync email envelope explicitly uses the default sender', function () {

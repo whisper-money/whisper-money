@@ -10,32 +10,33 @@ use Illuminate\Support\Facades\Mail;
 
 class SendUserEmailsReportCommand extends Command
 {
-    protected $signature = 'stats:user-emails';
+    protected $signature = 'email:user-emails-report';
 
-    protected $description = 'Email a CSV with every active user\'s email address to the product owners';
-
-    /**
-     * ponytail: hardcoded so the report can never silently no-op on a missing
-     * env var. Move to config if the recipients ever need to differ per environment.
-     *
-     * @var array<int, string>
-     */
-    private const RECIPIENTS = ['victoor89@gmail.com', 'invernovah@gmail.com'];
+    protected $description = 'Email a CSV with every active user\'s email address to the owners';
 
     public function handle(): int
     {
+        /** @var array<int, string> $recipients */
+        $recipients = config('mail.report_recipients');
+
+        if ($recipients === []) {
+            $this->error('REPORT_RECIPIENTS is not configured. Skipping the user emails report.');
+
+            return self::FAILURE;
+        }
+
         // The SoftDeletes global scope already leaves deleted users out.
         $emails = User::query()->orderBy('created_at')->pluck('email');
 
         $fileName = 'user-emails-'.Carbon::now()->format('Y-m-d').'.csv';
 
-        Mail::to(self::RECIPIENTS)->send(new UserEmailsReportEmail(
+        Mail::to($recipients)->send(new UserEmailsReportEmail(
             csv: $this->toCsv($emails->all()),
             userCount: $emails->count(),
             fileName: $fileName,
         ));
 
-        $this->info("Sent {$emails->count()} user email(s) as {$fileName} to ".implode(', ', self::RECIPIENTS).'.');
+        $this->info("Sent {$emails->count()} user email(s) as {$fileName}.");
 
         return self::SUCCESS;
     }
@@ -47,10 +48,11 @@ class SendUserEmailsReportCommand extends Command
     {
         $handle = fopen('php://temp', 'r+');
 
-        fputcsv($handle, ['email']);
+        // PHP 9 changes the default $escape, which would silently change our output.
+        fputcsv($handle, ['email'], escape: '');
 
         foreach ($emails as $email) {
-            fputcsv($handle, [$email]);
+            fputcsv($handle, [$email], escape: '');
         }
 
         rewind($handle);

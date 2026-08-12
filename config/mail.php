@@ -17,6 +17,14 @@ return [
 
     'admin_email' => env('ADMIN_EMAIL'),
 
+    /**
+     * Comma-separated recipients of the internal owner reports.
+     */
+    'report_recipients' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('REPORT_RECIPIENTS', '')),
+    ))),
+
     /*
     |--------------------------------------------------------------------------
     | Email Verification
