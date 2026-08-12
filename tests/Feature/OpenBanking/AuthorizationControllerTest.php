@@ -188,12 +188,50 @@ test('callback with error during reconnect preserves existing connection', funct
     expect($connection->error_message)->toBe('User denied access');
 });
 
+test('callback with error and nothing pending still reports the error', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $response = $this->actingAs($user)
+        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access');
+
+    $response->assertRedirect(route('settings.connections.index'));
+    $response->assertSessionHas('error', 'User denied access');
+});
+
+test('callback with error and no description falls back to a generic message', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+    ]);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?error=access_denied');
+
+    $response->assertRedirect(route('settings.connections.index'));
+    $response->assertSessionHas('error', 'Authorization was denied or cancelled.');
+
+    expect(BankingConnection::find($connection->id))->toBeNull();
+});
+
 test('callback without code redirects with error', function () {
     $user = User::factory()->onboarded()->create();
     $response = $this->actingAs($user)->get('/open-banking/callback');
 
     $response->assertRedirect(route('settings.connections.index'));
     $response->assertSessionHas('error');
+});
+
+test('callback rejects a non-string authorization code instead of failing', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldNotReceive('createSession');
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?code[]=abc');
+
+    $response->assertRedirect(route('settings.connections.index'));
+    $response->assertSessionHas('error', 'No authorization code received.');
 });
 
 test('callback clears the state token when the session exchange fails', function () {

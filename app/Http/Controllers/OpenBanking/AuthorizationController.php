@@ -171,20 +171,21 @@ class AuthorizationController extends Controller
 
         $code = $request->query('code');
 
-        if (! $code) {
-            return $this->failureRedirect($user, 'No authorization code received.');
+        // query() hands back an array for ?code[]=, which is truthy but not a code.
+        if (! $code || ! is_string($code)) {
+            return $this->finishWithError($user, 'No authorization code received.');
         }
 
         $sessionData = $this->createProviderSession($provider, $code, $connection);
 
         if ($sessionData === null) {
-            return $this->failureRedirect($user, 'Failed to connect to your bank. Please try again.');
+            return $this->finishWithError($user, 'Failed to connect to your bank. Please try again.');
         }
 
         $connection ??= $this->findPendingConnectionForSession($user, $sessionData);
 
         if (! $connection) {
-            return $this->failureRedirect($user, 'No pending connection found.');
+            return $this->finishWithError($user, 'No pending connection found.');
         }
 
         $isReconnect = $connection->accounts()->exists();
@@ -307,7 +308,7 @@ class AuthorizationController extends Controller
             }
         }
 
-        return $this->failureRedirect($user, $errorMessage);
+        return $this->finishWithError($user, $errorMessage);
     }
 
     /**
@@ -315,7 +316,7 @@ class AuthorizationController extends Controller
      *
      * A user still onboarding has no connections screen to land on yet.
      */
-    private function failureRedirect(User $user, string $message): RedirectResponse|Response
+    private function finishWithError(User $user, string $message): RedirectResponse|Response
     {
         return $user->isOnboarded()
             ? $this->finishRedirect('settings.connections.index', [], 'error', $message)
