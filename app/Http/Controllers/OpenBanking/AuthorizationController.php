@@ -232,6 +232,11 @@ class AuthorizationController extends Controller
                 'valid_until' => $sessionData['access']['valid_until'] ?? null,
                 'error_message' => null,
                 'state_token' => null,
+                // Reconnecting is the way out of a parked connection, so it has
+                // to hand back the full retry budget. Carrying the old count over
+                // meant the first failure after a reconnect could re-park it
+                // immediately, which is the state the user just paid SCA to leave.
+                'consecutive_sync_failures' => 0,
             ]);
 
             $this->refreshAccountIds($connection, $sessionData['accounts']);

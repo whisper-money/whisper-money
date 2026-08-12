@@ -18,6 +18,7 @@ use App\Services\Banking\TransactionSyncService;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Queue\TimeoutExceededException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -882,4 +883,87 @@ test('manual sync resets consecutive sync failures', function () {
     expect($connection->consecutive_sync_failures)->toBe(0);
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
     expect($connection->error_message)->toBeNull();
+});
+
+// --- Job-Level Failure Tests ---
+
+test('a job killed by the worker timeout does not spend a scheduled retry', function () {
+    $user = User::factory()->onboarded()->create();
+    // The reachable state: every incrementer also writes Error, so an Active
+    // connection carries 0 unless a reconnect left a stale count behind.
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'consecutive_sync_failures' => 0,
+    ]);
+
+    // The worker's timeout never reaches handle()'s catch, so failed() is the
+    // only place the connection hears about it.
+    (new SyncBankingConnectionJob($connection))->failed(
+        new TimeoutExceededException('App\Jobs\SyncBankingConnectionJob has timed out.')
+    );
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+    expect($connection->error_message)->not->toBeNull();
+    expect($connection->consecutive_sync_failures)->toBe(0);
+});
+
+test('a reconnect that left a stale count is not pushed over the ceiling by a job death', function () {
+    $user = User::factory()->onboarded()->create();
+    // AuthorizationController used to return a connection to Active without
+    // clearing the counter, which is the only way this pairing arises - and the
+    // only route by which failed() could ever reach the ceiling.
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES - 1,
+    ]);
+
+    (new SyncBankingConnectionJob($connection))->failed(
+        new TimeoutExceededException('App\Jobs\SyncBankingConnectionJob has timed out.')
+    );
+
+    $connection->refresh();
+    expect($connection->consecutive_sync_failures)
+        ->toBe(SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES - 1);
+});
+
+test('a second out-of-band death on an already errored connection changes nothing', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'consecutive_sync_failures' => 2,
+        'error_message' => 'Earlier failure kept.',
+    ]);
+
+    (new SyncBankingConnectionJob($connection))->failed(
+        new TimeoutExceededException('App\Jobs\SyncBankingConnectionJob has timed out.')
+    );
+
+    // The guard leaves the connection itself untouched. This is the fact that
+    // caps the counter at one increment per lifetime, so it is worth pinning down.
+    $connection->refresh();
+    expect($connection->consecutive_sync_failures)->toBe(2);
+    expect($connection->error_message)->toBe('Earlier failure kept.');
+
+    // The death is still recorded. A connection parked in Error is the state that
+    // repeats - it is where the 65 unrecorded deaths of the connection this was
+    // written for happened - so dropping the log here would drop the whole point.
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)->sole();
+    expect($log->metadata['reason'])->toBe('job_died_outside_handle');
+});
+
+test('an out-of-band job death is recorded in the connection history', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+
+    (new SyncBankingConnectionJob($connection))->failed(
+        new TimeoutExceededException('App\Jobs\SyncBankingConnectionJob has timed out.')
+    );
+
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)->sole();
+    expect($log->status)->toBe(BankingSyncLogStatus::Failed);
+    expect($log->error_class)->toBe(TimeoutExceededException::class);
+    expect($log->metadata['reason'])->toBe('job_died_outside_handle');
+    // Unknown rather than zero: nobody timed this attempt.
+    expect($log->duration_ms)->toBeNull();
 });

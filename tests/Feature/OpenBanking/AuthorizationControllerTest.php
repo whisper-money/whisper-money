@@ -936,3 +936,40 @@ test('callback renders the completion page on error without an authenticated ses
 
     expect($connection->fresh()->trashed())->toBeTrue();
 });
+
+test('reconnect hands back the full scheduled retry budget', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    // A connection parked by repeated auth failures: reconnecting is the only way
+    // out, so it must not carry the count that parked it.
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES + 1,
+    ]);
+
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'existing-ext-account-1',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->once()
+        ->andReturn([
+            'session_id' => 'new-session-789',
+            'accounts' => [],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->consecutive_sync_failures)->toBe(0);
+});

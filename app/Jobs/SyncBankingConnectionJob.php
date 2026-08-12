@@ -37,6 +37,15 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     public int $timeout = 120;
 
     /**
+     * Safety TTL for the unique lock in case a worker dies mid-run, matching the
+     * sibling unique jobs. Without it a lock lost to a hard kill is never
+     * released, and since uniqueId() is the connection id, that one connection
+     * silently stops syncing for good - the same dead end this class of bug keeps
+     * producing. Comfortably longer than tries x (timeout + backoff).
+     */
+    public int $uniqueFor = 1800;
+
+    /**
      * Maximum number of scheduled sync cycles that will auto-retry
      * a connection in Error state before requiring manual intervention.
      */
@@ -155,24 +164,60 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Handle permanent errors (auth failures) that should not be retried.
+     * Last resort for a job that died outside handle()'s own error handling.
+     *
+     * Everything raised inside handle() is already classified and recorded, and
+     * leaves the connection in Error - which the status guard below returns on,
+     * after the death itself has been recorded. So what reaches here is the job
+     * being killed from the outside: the queue worker's timeout, an exhausted
+     * retry count, the worker being restarted mid-sync.
+     *
+     * None of that is evidence the *connection* is broken, so it must not be
+     * charged to the connection's budget of scheduled retries. That budget is
+     * what keeps it in the scheduled rotation at all, and spending it here means
+     * spending it on our own infrastructure.
+     *
+     * Note the guard makes this at most one increment per connection lifetime -
+     * a second out-of-band death finds the connection already in Error and does
+     * nothing - so removing it is a small correction, not a fix for a runaway
+     * counter. It closes the one route that could reach the ceiling this way:
+     * a reconnect that left the counter at MAX - 1 (see AuthorizationController)
+     * followed by a single job death.
      */
     public function failed(?\Throwable $e): void
     {
         $connection = $this->bankingConnection->fresh();
 
-        if (! $connection || $connection->status === BankingConnectionStatus::Error) {
+        if (! $connection) {
             return;
         }
 
-        if (! $this->isSyncableStatus($connection)) {
+        // Recorded before the status guards, not after them. handle() owns every
+        // other logSyncAttempt call and an out-of-band death skips all of them, so
+        // this is the connection's only trace of the most common way this job dies
+        // - and the deaths that repeat are exactly the ones the guards drop. The
+        // connection this was written for is already parked in Error and stays
+        // there: 68 failed jobs against 3 sync-log rows, and logging after the
+        // guard would have added none of the missing 65.
+        $this->logSyncAttempt(
+            $connection,
+            BankingSyncLogStatus::Failed,
+            startTime: null,
+            error: $e,
+            metadata: ['reason' => 'job_died_outside_handle'],
+        );
+
+        if ($connection->status === BankingConnectionStatus::Error || ! $this->isSyncableStatus($connection)) {
             return;
         }
 
         $connection->update([
             'status' => BankingConnectionStatus::Error,
-            'error_message' => $e ? $this->friendlyErrorMessage($e) : __('An unexpected error occurred during sync. Please try again later.'),
-            'consecutive_sync_failures' => $connection->consecutive_sync_failures + 1,
+            // Every message written here describes an out-of-band death, so the
+            // generic "an unexpected error occurred, please try again" was pushing
+            // our own infrastructure onto the user. The next scheduled cycle picks
+            // the connection back up on its own.
+            'error_message' => __('The sync did not finish. We will try again later.'),
         ]);
     }
 
@@ -286,22 +331,27 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         });
     }
 
+    /**
+     * @param  float|null  $startTime  Null when the caller never got to start a
+     *                                 timer, so the duration is genuinely unknown
+     *                                 rather than zero.
+     */
     private function logSyncAttempt(
         BankingConnection $connection,
         BankingSyncLogStatus $status,
-        float $startTime,
+        ?float $startTime,
         ?\Throwable $error = null,
         ?array $metadata = null,
     ): void {
-        $durationMs = (int) round((microtime(true) - $startTime) * 1000);
-
         BankingSyncLog::create([
             'banking_connection_id' => $connection->id,
             'status' => $status,
             'attempt' => $this->attempts(),
             'error_message' => $error?->getMessage(),
             'error_class' => $error ? get_class($error) : null,
-            'duration_ms' => $durationMs,
+            'duration_ms' => $startTime === null
+                ? null
+                : (int) round((microtime(true) - $startTime) * 1000),
             'metadata' => $metadata,
             'created_at' => now(),
         ]);
