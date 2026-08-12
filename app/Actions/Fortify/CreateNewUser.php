@@ -4,6 +4,7 @@ namespace App\Actions\Fortify;
 
 use App\Enums\Locale;
 use App\Models\User;
+use App\Services\Subscriptions\PriceExperiment;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -40,6 +41,10 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $input['password'],
             'locale' => Locale::detectFromHeader(request()->header('Accept-Language'))->value,
             'timezone' => $this->normalizeTimezone($input['timezone'] ?? null),
+            // Freeze the arm this visitor was quoted as an anonymous browser, so
+            // the price on the landing is the price at checkout. Null when they
+            // arrived without a cookie: those users pay the control price.
+            'price_arm' => PriceExperiment::sanitize(request()->cookie(PriceExperiment::COOKIE)),
         ]);
 
         if (! config('mail.email_verification_enabled')) {

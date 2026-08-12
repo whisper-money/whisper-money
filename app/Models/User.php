@@ -33,6 +33,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property ?Carbon $last_active_at
  * @property ?Carbon $transactions_last_visited_at
  * @property ?Carbon $ai_consent_prompt_dismissed_at
+ * @property ?string $price_arm
  */
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
@@ -55,6 +56,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'locale',
         'timezone',
         'current_space_id',
+        'price_arm',
     ];
 
     /**
@@ -72,6 +74,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'pm_last_four',
         'trial_ends_at',
         'encryption_salt',
+        'price_arm',
     ];
 
     /**

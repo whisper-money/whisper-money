@@ -3,10 +3,8 @@
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\User;
 use App\Services\Subscriptions\PriceExperiment;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 use Laravel\Cashier\Checkout;
 use Laravel\Cashier\SubscriptionBuilder;
 
@@ -26,77 +24,59 @@ beforeEach(function () {
     ]);
 });
 
-it('keeps users who registered before the experiment on the control price', function () {
-    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-05-20')]);
+it('treats a user with no stored arm as legacy', function () {
+    $user = User::factory()->create(['price_arm' => null]);
 
-    expect(PriceExperiment::variantFor($user))->toBe(PriceExperiment::LEGACY);
+    expect(PriceExperiment::armFor($user))->toBe(PriceExperiment::LEGACY);
 });
 
-it('treats everyone as legacy while the experiment is off', function (?string $startedAt) {
+it('ignores a stored arm that is not a real variant', function () {
+    $user = User::factory()->create(['price_arm' => 'bogus']);
+
+    expect(PriceExperiment::armFor($user))->toBe(PriceExperiment::LEGACY);
+});
+
+it('is not running while the experiment is off', function (?string $startedAt) {
     // An empty PRICE_EXPERIMENT_STARTED_AT in the env reads back as '', so an
     // ops typo must not launch the experiment and start charging the high price.
     config(['subscriptions.price_experiment.started_at' => $startedAt]);
 
-    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
-
-    expect(PriceExperiment::variantFor($user))->toBe(PriceExperiment::LEGACY);
+    expect(PriceExperiment::isRunning())->toBeFalse();
 })->with([null, '', '   ']);
 
-it('pins every user to the forced winner price', function () {
+it('stops drawing new visitors once a winner is forced', function () {
     config(['subscriptions.price_experiment.force_variant' => PriceExperiment::HIGH]);
 
-    $legacy = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-05-01')]);
-    $fresh = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
+    expect(PriceExperiment::isRunning())->toBeFalse();
+});
 
-    expect(PriceExperiment::variantFor($legacy))->toBe(PriceExperiment::HIGH)
-        ->and(PriceExperiment::variantFor($fresh))->toBe(PriceExperiment::HIGH);
+it('pins everyone to the forced winner, visitors and users alike', function () {
+    config(['subscriptions.price_experiment.force_variant' => PriceExperiment::HIGH]);
+
+    $legacy = User::factory()->create(['price_arm' => null]);
+
+    expect(PriceExperiment::armFor($legacy))->toBe(PriceExperiment::HIGH)
+        ->and(PriceExperiment::armFor(null))->toBe(PriceExperiment::HIGH);
 });
 
 it('ignores an invalid forced variant', function () {
     config(['subscriptions.price_experiment.force_variant' => 'bogus']);
 
-    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-05-01')]);
-
-    expect(PriceExperiment::variantFor($user))->toBe(PriceExperiment::LEGACY);
+    expect(PriceExperiment::armFor(null))->toBe(PriceExperiment::LEGACY)
+        ->and(PriceExperiment::isRunning())->toBeTrue();
 });
 
-it('splits post-start users across control and high and stays stable per user', function () {
-    $variants = [];
+it('draws both arms over enough visitors', function () {
+    $draws = collect(range(1, 60))->map(fn () => PriceExperiment::draw());
 
-    for ($i = 0; $i < 40; $i++) {
-        $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
-        $assigned = PriceExperiment::variantFor($user);
-        $variants[] = $assigned;
-
-        expect(PriceExperiment::variantFor($user))->toBe($assigned);
-    }
-
-    expect(array_values(array_unique($variants)))->toEqualCanonicalizing([
+    expect($draws->unique()->values()->all())->toEqualCanonicalizing([
         PriceExperiment::CONTROL,
         PriceExperiment::HIGH,
     ]);
 });
 
-it('salts the split so it does not mirror a plain crc32 bucket of the same id', function () {
-    // An unsalted crc32(id) % 2 would tie this experiment to the buckets of every
-    // other experiment on the same ids forever. The two splits must disagree.
-    $disagreements = 0;
-
-    for ($i = 0; $i < 50; $i++) {
-        $id = (string) Str::uuid();
-        $salted = crc32('price:'.$id) % 2;
-
-        if ($salted !== crc32($id) % 2) {
-            $disagreements++;
-        }
-    }
-
-    expect($disagreements)->toBeGreaterThan(0);
-});
-
-it('applies the variant price and lookup key for a high-price user', function () {
-    config(['subscriptions.price_experiment.force_variant' => PriceExperiment::HIGH]);
-    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
+it('applies the variant price and lookup key for a high-arm user', function () {
+    $user = User::factory()->create(['price_arm' => PriceExperiment::HIGH]);
 
     $plans = PriceExperiment::plansFor($user);
 
@@ -108,32 +88,80 @@ it('applies the variant price and lookup key for a high-price user', function ()
         ->and(PriceExperiment::lookupKeyFor($user, 'yearly'))->toBe('whisper_pro_yearly_high');
 });
 
-it('leaves control-price users on the config prices', function () {
-    config(['subscriptions.price_experiment.force_variant' => PriceExperiment::CONTROL]);
-    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
+it('leaves control-arm users on the config prices', function () {
+    $user = User::factory()->create(['price_arm' => PriceExperiment::CONTROL]);
 
-    $plans = PriceExperiment::plansFor($user);
-
-    expect($plans['monthly']['price'])->toBe(3.99)
-        ->and($plans['monthly']['stripe_lookup_key'])->toBe('whisper_pro_monthly')
+    expect(PriceExperiment::plansFor($user)['monthly']['price'])->toBe(3.99)
         ->and(PriceExperiment::lookupKeyFor($user, 'monthly'))->toBe('whisper_pro_monthly');
 });
 
-it('shows the assigned variant price on the paywall', function () {
-    config(['subscriptions.price_experiment.force_variant' => PriceExperiment::HIGH]);
-    $user = User::factory()->onboarded()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
+it('ignores the cookie for a signed-in user, so the arm cannot be edited', function () {
+    $user = User::factory()->create(['price_arm' => PriceExperiment::HIGH]);
 
-    $this->actingAs($user)
-        ->get(route('subscribe'))
+    expect(PriceExperiment::armFor($user, PriceExperiment::CONTROL))->toBe(PriceExperiment::HIGH);
+});
+
+it('quotes an anonymous visitor the price their cookie was drawn into', function () {
+    $this->withCookie(PriceExperiment::COOKIE, PriceExperiment::HIGH)
+        ->get('/')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('subscription/paywall')
             ->where('pricing.plans.monthly.price', 8.99)
             ->where('pricing.plans.yearly.price', 53.94));
 });
 
-it('charges the assigned variant price id at checkout, not a client-supplied one', function () {
-    config(['subscriptions.price_experiment.force_variant' => PriceExperiment::HIGH]);
+it('quotes the control price on the very first visit when the draw lands on control', function () {
+    // No cookie yet: the middleware draws one and must apply it to this same
+    // response, since the landing is the first page that quotes a price.
+    $this->get('/')
+        ->assertOk()
+        ->assertCookie(PriceExperiment::COOKIE)
+        ->assertInertia(fn ($page) => $page
+            ->where('pricing.plans.monthly.price', fn ($price) => in_array($price, [3.99, 8.99], true)));
+});
+
+it('does not draw an arm while the experiment is off', function () {
+    config(['subscriptions.price_experiment.started_at' => null]);
+
+    $this->get('/')
+        ->assertOk()
+        ->assertCookieMissing(PriceExperiment::COOKIE)
+        ->assertInertia(fn ($page) => $page->where('pricing.plans.monthly.price', 3.99));
+});
+
+it('keeps the arm the visitor already has instead of redrawing it', function () {
+    $this->withCookie(PriceExperiment::COOKIE, PriceExperiment::HIGH)
+        ->get('/')
+        ->assertOk()
+        ->assertCookieMissing(PriceExperiment::COOKIE);
+});
+
+it('freezes the visitor arm onto the user at registration', function () {
+    $this->withCookie(PriceExperiment::COOKIE, PriceExperiment::HIGH)
+        ->post(route('register'), [
+            'name' => 'Ada',
+            'email' => 'ada@example.com',
+            'password' => 'password-1234',
+            'password_confirmation' => 'password-1234',
+        ]);
+
+    expect(User::where('email', 'ada@example.com')->value('price_arm'))->toBe(PriceExperiment::HIGH);
+});
+
+it('registers without an arm when the visitor arrived with no cookie', function () {
+    config(['subscriptions.price_experiment.started_at' => null]);
+
+    $this->post(route('register'), [
+        'name' => 'Grace',
+        'email' => 'grace@example.com',
+        'password' => 'password-1234',
+        'password_confirmation' => 'password-1234',
+    ]);
+
+    expect(User::where('email', 'grace@example.com')->value('price_arm'))->toBeNull();
+});
+
+it('charges the stored arm price id at checkout, not a client-supplied one', function () {
     Cache::put('stripe_price_id:whisper_pro_monthly_high', 'price_high_monthly', now()->addHour());
 
     $checkout = Mockery::mock(Checkout::class);
@@ -145,6 +173,7 @@ it('charges the assigned variant price id at checkout, not a client-supplied one
     $user = Mockery::mock(User::class)->shouldIgnoreMissing();
     $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
     $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('getAttribute')->with('price_arm')->andReturn(PriceExperiment::HIGH);
     $user->shouldReceive('newSubscription')
         ->once()
         ->with('default', 'price_high_monthly')
@@ -153,5 +182,8 @@ it('charges the assigned variant price id at checkout, not a client-supplied one
     $this->withoutMiddleware(HandleInertiaRequests::class);
     $this->actingAs($user);
 
-    $this->get(route('subscribe.checkout', ['plan' => 'monthly']))->assertRedirect();
+    // The cookie says control; the stored arm must win.
+    $this->withCookie(PriceExperiment::COOKIE, PriceExperiment::CONTROL)
+        ->get(route('subscribe.checkout', ['plan' => 'monthly']))
+        ->assertRedirect();
 });
