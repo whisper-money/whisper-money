@@ -13,6 +13,15 @@ class WiseClient
 {
     private const BASE_URL = 'https://api.wise.com';
 
+    /**
+     * Explicit rather than the framework's 30s default: the caller's time budget is
+     * stated as "the budget plus one in-flight request", which only holds if this
+     * class owns that number. Matches the sibling banking clients.
+     */
+    private const int HTTP_TIMEOUT_SECONDS = 15;
+
+    private const int HTTP_CONNECT_TIMEOUT_SECONDS = 5;
+
     public function __construct(private string $apiToken) {}
 
     /**
@@ -39,6 +48,10 @@ class WiseClient
      * Fetch paginated monetary activities for a profile.
      * Use `since`/`until` (ISO 8601) for date range and `cursor` for pagination.
      *
+     * The names are asymmetric and it matters: Wise returns the cursor as
+     * `cursor` but only reads it back as `nextCursor`. Sending it as `cursor` is
+     * silently ignored, so every request returns the first page again.
+     *
      * @return array{activities?: array, cursor?: string|null}
      */
     public function getActivities(int $profileId, string $since, string $until, ?string $cursor = null): array
@@ -50,7 +63,7 @@ class WiseClient
         ];
 
         if ($cursor !== null) {
-            $params['cursor'] = $cursor;
+            $params['nextCursor'] = $cursor;
         }
 
         return $this->get("/v1/profiles/{$profileId}/activities", $params);
@@ -97,6 +110,8 @@ class WiseClient
     private function client(): PendingRequest
     {
         return Http::baseUrl(self::BASE_URL)
+            ->timeout(self::HTTP_TIMEOUT_SECONDS)
+            ->connectTimeout(self::HTTP_CONNECT_TIMEOUT_SECONDS)
             ->withToken($this->apiToken)
             ->acceptJson()
             ->throw(function ($response, RequestException $exception) {
