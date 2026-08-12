@@ -7,6 +7,7 @@ use App\Http\Requests\BulkUpdateTransactionsRequest;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
+use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Bank;
@@ -338,6 +339,12 @@ class TransactionController extends Controller
             $this->syncLabels($transactions, $request->input('label_ids') ?? []);
         }
 
+        // Neither branch above fires a model event — the category goes through a
+        // query-builder mass update and the labels through the pivot — so nothing
+        // else would re-derive which budgets now track these transactions.
+        // Silently: editing existing rows is not new spending.
+        ReassignTransactionsToBudgets::dispatch($transactions->pluck('id')->all(), notify: false);
+
         return response()->json([
             'message' => 'Transactions updated successfully',
             'count' => $transactions->count(),
@@ -403,7 +410,12 @@ class TransactionController extends Controller
 
     /**
      * Labels are a relation, so they are replaced row by row rather than in the
-     * mass update. The save() bumps updated_at, which the sync alone would not.
+     * mass update.
+     *
+     * The sync fires no model event, and neither does the save() — these models
+     * were loaded before the mass update and nothing dirties them, so save() skips
+     * performUpdate() entirely. bulkUpdate() queues the budget reassignment that
+     * the missing event would have triggered.
      *
      * @param  Collection<int, Transaction>  $transactions
      * @param  list<string>  $labelIds
