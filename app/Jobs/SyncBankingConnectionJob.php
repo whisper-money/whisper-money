@@ -37,6 +37,15 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     public int $timeout = 120;
 
     /**
+     * Safety TTL for the unique lock in case a worker dies mid-run, matching the
+     * sibling unique jobs. Without it a lock lost to a hard kill is never
+     * released, and since uniqueId() is the connection id, that one connection
+     * silently stops syncing for good - the same dead end this class of bug keeps
+     * producing. Comfortably longer than tries x (timeout + backoff).
+     */
+    public int $uniqueFor = 1800;
+
+    /**
      * Maximum number of scheduled sync cycles that will auto-retry
      * a connection in Error state before requiring manual intervention.
      */
