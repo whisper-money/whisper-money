@@ -33,50 +33,7 @@ class BudgetTransactionService
         // Ensure labels are available for matching (safe if already loaded).
         $transaction->loadMissing('labels');
 
-        $transactionLabelIds = $transaction->labels->pluck('id');
-
-        // A budget tracking a parent category also covers its children, so a
-        // transaction matches a budget when any of its category's ancestors
-        // (or itself) is attached to that budget.
-        $categoryMatchIds = $transaction->category_id
-            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id)
-            : [];
-
-        // Find budget periods that potentially match this transaction.
-        $budgetPeriods = BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $userId) {
-                $query->where('user_id', $userId)
-                    ->where(function ($q) use ($categoryMatchIds, $transactionLabelIds) {
-                        $q->whereHas('categories', function ($cq) use ($categoryMatchIds) {
-                            $cq->whereIn('categories.id', $categoryMatchIds);
-                        })
-                            ->orWhereHas('labels', function ($lq) use ($transactionLabelIds) {
-                                $lq->whereIn('labels.id', $transactionLabelIds);
-                            });
-                    });
-            })
-            ->where('start_date', '<=', $transaction->transaction_date)
-            ->where('end_date', '>=', $transaction->transaction_date)
-            ->with('budget.categories:id', 'budget.labels:id')
-            ->get();
-
-        // Narrow down to periods whose budget actually matches the transaction.
-        $matchingPeriodIds = [];
-
-        foreach ($budgetPeriods as $period) {
-            $budget = $period->budget;
-
-            $matchesCategory = $categoryMatchIds !== []
-                && $budget->categories->pluck('id')->intersect($categoryMatchIds)->isNotEmpty();
-            $matchesLabel = $budget->labels
-                ->pluck('id')
-                ->intersect($transactionLabelIds)
-                ->isNotEmpty();
-
-            if ($matchesCategory || $matchesLabel) {
-                $matchingPeriodIds[] = $period->id;
-            }
-        }
+        $matchingPeriodIds = $this->trackedPeriodIds($transaction, $userId);
 
         // A catch-all budget only absorbs what nothing else counts. Any budget
         // already tracking this transaction — by category or by label — in a
@@ -229,6 +186,62 @@ class BudgetTransactionService
                 ),
             )
             ->whereHas('category', fn ($q) => $q->where('type', CategoryType::Expense->value));
+    }
+
+    /**
+     * Budget periods that track this transaction by category or by label and
+     * cover its date.
+     *
+     * @return array<int, string>
+     */
+    private function trackedPeriodIds(Transaction $transaction, string $userId): array
+    {
+        $transactionLabelIds = $transaction->labels->pluck('id');
+
+        // A budget tracking a parent category also covers its children, so a
+        // transaction matches a budget when any of its category's ancestors
+        // (or itself) is attached to that budget.
+        $categoryMatchIds = $transaction->category_id
+            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id)
+            : [];
+
+        // Find budget periods that potentially match this transaction.
+        $budgetPeriods = BudgetPeriod::query()
+            ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $userId) {
+                $query->where('user_id', $userId)
+                    ->where(function ($q) use ($categoryMatchIds, $transactionLabelIds) {
+                        $q->whereHas('categories', function ($cq) use ($categoryMatchIds) {
+                            $cq->whereIn('categories.id', $categoryMatchIds);
+                        })
+                            ->orWhereHas('labels', function ($lq) use ($transactionLabelIds) {
+                                $lq->whereIn('labels.id', $transactionLabelIds);
+                            });
+                    });
+            })
+            ->where('start_date', '<=', $transaction->transaction_date)
+            ->where('end_date', '>=', $transaction->transaction_date)
+            ->with('budget.categories:id', 'budget.labels:id')
+            ->get();
+
+        // Narrow down to periods whose budget actually matches the transaction.
+        $matchingPeriodIds = [];
+
+        foreach ($budgetPeriods as $period) {
+            $budget = $period->budget;
+
+            $matchesCategory = $categoryMatchIds !== []
+                && $budget->categories->pluck('id')->intersect($categoryMatchIds)->isNotEmpty();
+            $matchesLabel = $budget->labels
+                ->pluck('id')
+                ->intersect($transactionLabelIds)
+                ->isNotEmpty();
+
+            if ($matchesCategory || $matchesLabel) {
+                $matchingPeriodIds[] = $period->id;
+            }
+        }
+
+        return $matchingPeriodIds;
     }
 
     /**
