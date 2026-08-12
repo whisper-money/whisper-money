@@ -3,6 +3,7 @@
 use App\Events\TransactionCreated;
 use App\Events\TransactionUpdated;
 use App\Jobs\ApplySingleAutomationRuleJob;
+use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Bank;
@@ -212,7 +213,9 @@ test('apply endpoint runs synchronously when matches are below threshold', funct
         ->assertJsonPath('updated', 3)
         ->assertJsonPath('total', 3);
 
-    Queue::assertNothingPushed();
+    Queue::assertNotPushed(ApplySingleAutomationRuleJob::class);
+    // One reassignment job for the whole batch, not one per transaction.
+    Queue::assertPushed(ReassignTransactionsToBudgets::class, 1);
 
     expect(
         Transaction::where('user_id', $this->user->id)
@@ -263,7 +266,7 @@ test('apply endpoint batches category and label writes', function () {
     expect($transactionUpdateQueries)->toHaveCount(1)
         ->and($perTransactionPivotLookupQueries)->toHaveCount(0);
 
-    Queue::assertNothingPushed();
+    Queue::assertNotPushed(ApplySingleAutomationRuleJob::class);
     $this->assertDatabaseCount('label_transaction', 5);
 });
 

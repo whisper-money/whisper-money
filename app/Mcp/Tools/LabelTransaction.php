@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -43,6 +44,10 @@ class LabelTransaction extends WriteTool
         if ($remove->isNotEmpty()) {
             $transaction->labels()->detach($remove->pluck('id')->all());
         }
+
+        // Pivot writes fire no model event, so nothing would re-derive which
+        // budgets now track this transaction by label.
+        ReassignTransactionsToBudgets::dispatch([$transaction->id]);
 
         return $this->json(['transaction' => $this->presentTransaction($transaction->refresh())]);
     }
