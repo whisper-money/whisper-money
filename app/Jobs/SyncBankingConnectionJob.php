@@ -167,9 +167,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
      * Last resort for a job that died outside handle()'s own error handling.
      *
      * Everything raised inside handle() is already classified and recorded, and
-     * leaves the connection in Error - which the guard below returns on. So what
-     * reaches here is the job being killed from the outside: the queue worker's
-     * timeout, an exhausted retry count, the worker being restarted mid-sync.
+     * leaves the connection in Error - which the status guard below returns on,
+     * after the death itself has been recorded. So what reaches here is the job
+     * being killed from the outside: the queue worker's timeout, an exhausted
+     * retry count, the worker being restarted mid-sync.
      *
      * None of that is evidence the *connection* is broken, so it must not be
      * charged to the connection's budget of scheduled retries. That budget is
@@ -187,11 +188,26 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     {
         $connection = $this->bankingConnection->fresh();
 
-        if (! $connection || $connection->status === BankingConnectionStatus::Error) {
+        if (! $connection) {
             return;
         }
 
-        if (! $this->isSyncableStatus($connection)) {
+        // Recorded before the status guards, not after them. handle() owns every
+        // other logSyncAttempt call and an out-of-band death skips all of them, so
+        // this is the connection's only trace of the most common way this job dies
+        // - and the deaths that repeat are exactly the ones the guards drop. The
+        // connection this was written for is already parked in Error and stays
+        // there: 68 failed jobs against 3 sync-log rows, and logging after the
+        // guard would have added none of the missing 65.
+        $this->logSyncAttempt(
+            $connection,
+            BankingSyncLogStatus::Failed,
+            startTime: null,
+            error: $e,
+            metadata: ['reason' => 'job_died_outside_handle'],
+        );
+
+        if ($connection->status === BankingConnectionStatus::Error || ! $this->isSyncableStatus($connection)) {
             return;
         }
 
@@ -203,17 +219,6 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             // the connection back up on its own.
             'error_message' => __('The sync did not finish. We will try again later.'),
         ]);
-
-        // handle() owns every other logSyncAttempt call, and it is precisely what
-        // an out-of-band death skips - leaving the connection's own history with no
-        // trace of the most common way this job dies.
-        $this->logSyncAttempt(
-            $connection,
-            BankingSyncLogStatus::Failed,
-            startTime: null,
-            error: $e,
-            metadata: ['reason' => 'job_died_outside_handle'],
-        );
     }
 
     /**

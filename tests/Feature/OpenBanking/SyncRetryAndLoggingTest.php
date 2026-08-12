@@ -939,11 +939,17 @@ test('a second out-of-band death on an already errored connection changes nothin
         new TimeoutExceededException('App\Jobs\SyncBankingConnectionJob has timed out.')
     );
 
-    // The guard makes failed() a complete no-op here. This is the fact that caps
-    // it at one increment per lifetime, so it is worth pinning down.
+    // The guard leaves the connection itself untouched. This is the fact that
+    // caps the counter at one increment per lifetime, so it is worth pinning down.
     $connection->refresh();
     expect($connection->consecutive_sync_failures)->toBe(2);
     expect($connection->error_message)->toBe('Earlier failure kept.');
+
+    // The death is still recorded. A connection parked in Error is the state that
+    // repeats - it is where the 65 unrecorded deaths of the connection this was
+    // written for happened - so dropping the log here would drop the whole point.
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)->sole();
+    expect($log->metadata['reason'])->toBe('job_died_outside_handle');
 });
 
 test('an out-of-band job death is recorded in the connection history', function () {
