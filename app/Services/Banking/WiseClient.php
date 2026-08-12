@@ -39,6 +39,10 @@ class WiseClient
      * Fetch paginated monetary activities for a profile.
      * Use `since`/`until` (ISO 8601) for date range and `cursor` for pagination.
      *
+     * The names are asymmetric and it matters: Wise returns the cursor as
+     * `cursor` but only reads it back as `nextCursor`. Sending it as `cursor` is
+     * silently ignored, so every request returns the first page again.
+     *
      * @return array{activities?: array, cursor?: string|null}
      */
     public function getActivities(int $profileId, string $since, string $until, ?string $cursor = null): array
@@ -50,7 +54,7 @@ class WiseClient
         ];
 
         if ($cursor !== null) {
-            $params['cursor'] = $cursor;
+            $params['nextCursor'] = $cursor;
         }
 
         return $this->get("/v1/profiles/{$profileId}/activities", $params);
