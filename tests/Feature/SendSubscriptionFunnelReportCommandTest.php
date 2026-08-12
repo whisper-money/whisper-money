@@ -19,7 +19,7 @@ function funnelNow(): CarbonImmutable
 /**
  * Create a user anchored to a signup, optionally with a default subscription.
  *
- * @param  array{status: string, at: CarbonImmutable, endsAt?: CarbonImmutable}|null  $subscription
+ * @param  array{status: string, at: CarbonImmutable, endsAt?: CarbonImmutable, trialEndsAt?: CarbonImmutable}|null  $subscription
  */
 function funnelUser(CarbonImmutable $signup, ?array $subscription = null): User
 {
@@ -35,6 +35,7 @@ function funnelUser(CarbonImmutable $signup, ?array $subscription = null): User
             'stripe_status' => $subscription['status'],
             'stripe_price' => 'price_test',
             'created_at' => $subscription['at'],
+            'trial_ends_at' => $subscription['trialEndsAt'] ?? null,
             'ends_at' => $subscription['endsAt'] ?? null,
         ]);
     }
@@ -84,10 +85,10 @@ it('counts registrations, subscriptions and paid conversions per signup week', f
     funnelUser($signup); // registered only
     funnelUser($signup, ['status' => 'trialing', 'at' => $signup->addDays(2)]); // subscribed, not paid
     funnelUser($signup, ['status' => 'active', 'at' => $signup->addDays(3)]); // subscribed + paid
-    // Canceled but lived past the 15d trial -> billed at least once -> paid.
-    funnelUser($signup, ['status' => 'canceled', 'at' => $signup->addDays(3), 'endsAt' => $signup->addDays(40)]);
-    // Canceled inside the trial window -> never billed -> not paid.
-    funnelUser($signup, ['status' => 'canceled', 'at' => $signup->addDays(3), 'endsAt' => $signup->addDays(10)]);
+    // Canceled but lived past its own trial -> billed at least once -> paid.
+    funnelUser($signup, ['status' => 'canceled', 'at' => $signup->addDays(3), 'trialEndsAt' => $signup->addDays(18), 'endsAt' => $signup->addDays(40)]);
+    // Canceled inside its own trial -> never billed -> not paid.
+    funnelUser($signup, ['status' => 'canceled', 'at' => $signup->addDays(3), 'trialEndsAt' => $signup->addDays(18), 'endsAt' => $signup->addDays(10)]);
 
     $row = funnelRow(app(SubscriptionFunnelCollector::class)->collect(), $signup);
 
@@ -98,6 +99,40 @@ it('counts registrations, subscriptions and paid conversions per signup week', f
         ->and($row['subscribedRate'])->toBe(4 / 5)
         ->and($row['paidRate'])->toBe(2 / 5)
         ->and($row['trialToPaidRate'])->toBe(2 / 4);
+});
+
+it('scores a cancellation against its own trial, not the longest plan trial', function () {
+    $signup = funnelNow()->subWeeks(10);
+
+    // A 7-day monthly trial canceled on day 10 did bill, even though the yearly
+    // plan trials for 15 — reading the plan lengths instead of the subscription's
+    // own trial_ends_at would score this as never having paid.
+    funnelUser($signup, [
+        'status' => 'canceled',
+        'at' => $signup,
+        'trialEndsAt' => $signup->addDays(7),
+        'endsAt' => $signup->addDays(10),
+    ]);
+
+    $row = funnelRow(app(SubscriptionFunnelCollector::class)->collect(), $signup);
+
+    expect($row['subscribed'])->toBe(1)
+        ->and($row['paid'])->toBe(1);
+});
+
+it('waits for the longest plan trial before scoring a cohort as paid', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 7,
+        'subscriptions.plans.yearly.trial_days' => 15,
+    ]);
+
+    // 30d window + 15d longest trial + 3d settle buffer = 48 days after the
+    // cohort's week closes. This cohort closed 45 days ago, so it is mature
+    // against the 7-day monthly trial but still pending against the yearly one.
+    $row = funnelRow(app(SubscriptionFunnelCollector::class)->collect(), funnelNow()->subWeeks(7));
+
+    expect($row['paidMature'])->toBeFalse()
+        ->and($row['paidRate'])->toBeNull();
 });
 
 it('ignores subscriptions started after the attribution window', function () {

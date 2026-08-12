@@ -27,7 +27,7 @@ class SubscriptionFunnelCollector
      * of subscribed and the funnel invariant registered >= subscribed >= paid holds.
      *
      * @return array{
-     *     trialDays: int,
+     *     longestTrialDays: int,
      *     weeks: list<array{
      *         week: string,
      *         weekStart: CarbonImmutable,
@@ -46,12 +46,12 @@ class SubscriptionFunnelCollector
     public function collect(?int $weeks = null): array
     {
         $weeks = max(1, $weeks ?? self::DEFAULT_WEEKS);
-        $trialDays = (int) config('subscriptions.plans.monthly.trial_days', 15);
+        $longestTrialDays = $this->longestTrialDays();
 
         $now = CarbonImmutable::now('UTC');
         $windowStart = $now->startOfWeek(CarbonImmutable::MONDAY)->subWeeks($weeks - 1);
 
-        $aggregates = $this->aggregateUsers($windowStart, $trialDays);
+        $aggregates = $this->aggregateUsers($windowStart);
 
         $rows = [];
         $registeredCounts = [];
@@ -68,7 +68,7 @@ class SubscriptionFunnelCollector
             $paid = $agg['paid'];
 
             $subscribedMature = $weekEnd->addDays(self::SUBSCRIBE_WINDOW_DAYS)->lessThanOrEqualTo($now);
-            $paidMature = $weekEnd->addDays(self::SUBSCRIBE_WINDOW_DAYS + $trialDays + self::PAID_SETTLE_BUFFER_DAYS)->lessThanOrEqualTo($now);
+            $paidMature = $weekEnd->addDays(self::SUBSCRIBE_WINDOW_DAYS + $longestTrialDays + self::PAID_SETTLE_BUFFER_DAYS)->lessThanOrEqualTo($now);
 
             $registeredCounts[] = $registered;
 
@@ -90,9 +90,19 @@ class SubscriptionFunnelCollector
         $this->flagSurges($rows, $registeredCounts);
 
         return [
-            'trialDays' => $trialDays,
+            'longestTrialDays' => $longestTrialDays,
             'weeks' => array_values($rows),
         ];
+    }
+
+    /**
+     * The longest trial any plan offers. Plans trial for different lengths, so
+     * a cohort has only really finished converting once even the slowest plan
+     * has billed; taking the maximum keeps "paid" from being scored too early.
+     */
+    private function longestTrialDays(): int
+    {
+        return (int) max([0, ...array_column(config('subscriptions.plans', []), 'trial_days')]);
     }
 
     /**
@@ -100,7 +110,7 @@ class SubscriptionFunnelCollector
      *
      * @return array<int, array{registered: int, subscribed: int, paid: int}>
      */
-    private function aggregateUsers(CarbonImmutable $windowStart, int $trialDays): array
+    private function aggregateUsers(CarbonImmutable $windowStart): array
     {
         $excluded = (array) config('ai_suggestions.report.excluded_emails', []);
 
@@ -111,7 +121,7 @@ class SubscriptionFunnelCollector
             ->where('users.created_at', '>=', $windowStart)
             ->selectRaw('YEARWEEK(users.created_at, 3) as yearweek')
             ->selectRaw("EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = users.id AND s.type = 'default' AND s.created_at <= DATE_ADD(users.created_at, INTERVAL {$subWindow} DAY)) as subscribed")
-            ->selectRaw("EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = users.id AND s.type = 'default' AND s.created_at <= DATE_ADD(users.created_at, INTERVAL {$subWindow} DAY) AND (s.stripe_status = 'active' OR (s.stripe_status = 'canceled' AND s.ends_at IS NOT NULL AND TIMESTAMPDIFF(DAY, s.created_at, s.ends_at) > {$trialDays}))) as paid")
+            ->selectRaw("EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = users.id AND s.type = 'default' AND s.created_at <= DATE_ADD(users.created_at, INTERVAL {$subWindow} DAY) AND (s.stripe_status = 'active' OR (s.stripe_status = 'canceled' AND s.ends_at IS NOT NULL AND (s.trial_ends_at IS NULL OR s.ends_at > s.trial_ends_at)))) as paid")
             ->toBase()
             ->get();
 

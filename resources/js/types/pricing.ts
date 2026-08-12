@@ -4,6 +4,7 @@ export interface Plan {
     original_price: number | null;
     stripe_lookup_key: string | null;
     billing_period: 'month' | 'year' | null;
+    trial_days: number;
     features: string[];
 }
 
