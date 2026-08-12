@@ -10,6 +10,7 @@ use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\CurrencyOptions;
+use App\Services\Subscriptions\PriceExperiment;
 use Closure;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -92,7 +93,7 @@ class HandleInertiaRequests extends Middleware
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
             'pricing' => [
-                'plans' => config('subscriptions.plans', []),
+                'plans' => PriceExperiment::plansFor($user),
                 'defaultPlan' => config('subscriptions.default_plan', 'monthly'),
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),
