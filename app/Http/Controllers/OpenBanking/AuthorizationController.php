@@ -175,15 +175,9 @@ class AuthorizationController extends Controller
             return $this->failureRedirect($user, 'No authorization code received.');
         }
 
-        try {
-            $sessionData = $provider->createSession($code);
-        } catch (\Throwable $e) {
-            Log::error('EnableBanking session creation failed', ['error' => $e->getMessage()]);
+        $sessionData = $this->createProviderSession($provider, $code, $connection);
 
-            if ($connection) {
-                $connection->update(['state_token' => null]);
-            }
-
+        if ($sessionData === null) {
             return $this->failureRedirect($user, 'Failed to connect to your bank. Please try again.');
         }
 
@@ -196,26 +190,70 @@ class AuthorizationController extends Controller
         $isReconnect = $connection->accounts()->exists();
 
         if ($isReconnect) {
-            $connection->update([
-                'session_id' => $sessionData['session_id'],
-                'status' => BankingConnectionStatus::Active,
-                'valid_until' => $sessionData['access']['valid_until'] ?? null,
-                'error_message' => null,
-                'state_token' => null,
-                // Reconnecting is the way out of a parked connection, so it has
-                // to hand back the full retry budget. Carrying the old count over
-                // meant the first failure after a reconnect could re-park it
-                // immediately, which is the state the user just paid SCA to leave.
-                'consecutive_sync_failures' => 0,
-            ]);
-
-            $this->refreshAccountIds($connection, $sessionData['accounts']);
-
-            SyncBankingConnectionJob::dispatch($connection);
-
-            return $this->finishRedirect('settings.connections.index', [], 'success', __('Bank account reconnected successfully.'));
+            return $this->completeReconnect($connection, $sessionData);
         }
 
+        return $this->completeFirstConnection($user, $connection, $sessionData, $accountUserCurrencyService);
+    }
+
+    /**
+     * Exchange the authorization code for a provider session, or null when the
+     * exchange fails. A failed exchange burns the state token with it.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function createProviderSession(BankingProviderInterface $provider, string $code, ?BankingConnection $connection): ?array
+    {
+        try {
+            return $provider->createSession($code);
+        } catch (\Throwable $e) {
+            Log::error('EnableBanking session creation failed', ['error' => $e->getMessage()]);
+
+            if ($connection) {
+                $connection->update(['state_token' => null]);
+            }
+
+            return null;
+        }
+    }
+
+    /**
+     * Point a connection that already has accounts at its new session and resync it.
+     *
+     * @param  array<string, mixed>  $sessionData
+     */
+    private function completeReconnect(BankingConnection $connection, array $sessionData): RedirectResponse|Response
+    {
+        $connection->update([
+            'session_id' => $sessionData['session_id'],
+            'status' => BankingConnectionStatus::Active,
+            'valid_until' => $sessionData['access']['valid_until'] ?? null,
+            'error_message' => null,
+            'state_token' => null,
+            // Reconnecting is the way out of a parked connection, so it has
+            // to hand back the full retry budget. Carrying the old count over
+            // meant the first failure after a reconnect could re-park it
+            // immediately, which is the state the user just paid SCA to leave.
+            'consecutive_sync_failures' => 0,
+        ]);
+
+        $this->refreshAccountIds($connection, $sessionData['accounts']);
+
+        SyncBankingConnectionJob::dispatch($connection);
+
+        return $this->finishRedirect('settings.connections.index', [], 'success', __('Bank account reconnected successfully.'));
+    }
+
+    /**
+     * Park the fetched accounts on the connection so the user can map them.
+     *
+     * Onboarding skips the mapping screen: every account is created up front so the
+     * user lands back on the onboarding step with data already syncing.
+     *
+     * @param  array<string, mixed>  $sessionData
+     */
+    private function completeFirstConnection(User $user, BankingConnection $connection, array $sessionData, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse|Response
+    {
         $connection->update([
             'session_id' => $sessionData['session_id'],
             'status' => BankingConnectionStatus::AwaitingMapping,
