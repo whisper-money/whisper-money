@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Header from './header';
 
 const mocks = vi.hoisted(() => ({
-    component: 'roadmap',
+    url: '/roadmap',
     pageProps: {
         auth: {
             user: {
@@ -25,12 +25,12 @@ vi.mock('@inertiajs/react', () => ({
         children: React.ReactNode;
         href: string | { url: string };
     }) => <a href={typeof href === 'string' ? href : href.url}>{children}</a>,
-    usePage: () => ({ component: mocks.component, props: mocks.pageProps }),
+    usePage: () => ({ url: mocks.url, props: mocks.pageProps }),
 }));
 
 describe('Header', () => {
     beforeEach(() => {
-        mocks.component = 'roadmap';
+        mocks.url = '/roadmap';
         vi.stubGlobal(
             'fetch',
             vi.fn(() => new Promise(() => {})),
@@ -60,10 +60,11 @@ describe('Header', () => {
     });
 
     it('does not link the logo on the landing page', () => {
-        mocks.component = 'welcome';
+        mocks.url = '/?ref=newsletter';
 
         render(<Header />);
 
+        expect(screen.getAllByText('Whisper Money')).toHaveLength(2);
         expect(
             screen.queryByRole('link', { name: 'Whisper Money' }),
         ).toBeNull();
