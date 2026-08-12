@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\BudgetPeriodAllocation;
+use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,7 +21,7 @@ class BudgetTransactionFactory extends Factory
     {
         return [
             'transaction_id' => Transaction::factory(),
-            'budget_period_allocation_id' => BudgetPeriodAllocation::factory(),
+            'budget_period_id' => BudgetPeriod::factory(),
             'amount' => fake()->numberBetween(1000, 50000),
         ];
     }

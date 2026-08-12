@@ -26,7 +26,7 @@ trait ConvertsTransactionCurrency
             $transaction->transaction_date->toDateString(),
         );
 
-        return $transaction->account?->shareOfAmount($converted) ?? $converted;
+        return $transaction->ownerShareOf($converted);
     }
 
     /**

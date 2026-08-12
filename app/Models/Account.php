@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AccountType;
 use App\Models\Concerns\BelongsToSpace;
+use App\Services\BudgetTransactionService;
 use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -58,6 +59,21 @@ class Account extends Model
     protected $appends = [
         'linked_loan_account_id',
     ];
+
+    /**
+     * Budget amounts are snapshots taken when a transaction is assigned, so a
+     * new ownership share only reaches the budgets that already counted this
+     * account if something rewrites them. Hooked on the model rather than on
+     * the settings controller so every write path is covered.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (Account $account): void {
+            if ($account->wasChanged('ownership_percentage')) {
+                app(BudgetTransactionService::class)->reweighAccountSnapshots($account);
+            }
+        });
+    }
 
     protected function casts(): array
     {

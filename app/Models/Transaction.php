@@ -249,6 +249,16 @@ class Transaction extends Model
     }
 
     /**
+     * The owner's share of an amount held by this transaction's account, for
+     * the row-by-row PHP paths. Falls back to the full amount when the account
+     * is not loaded, so a partial select never silently zeroes the figure.
+     */
+    public function ownerShareOf(int $amount): int
+    {
+        return $this->account?->shareOfAmount($amount) ?? $amount;
+    }
+
+    /**
      * A transaction amount reduced to the owner's share of its account, for
      * SQL-side aggregates. Rounds per row, matching {@see Account::shareOfAmount()}
      * (MySQL and PHP both round half away from zero).

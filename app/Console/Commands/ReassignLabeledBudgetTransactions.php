@@ -56,7 +56,7 @@ class ReassignLabeledBudgetTransactions extends Command
 
         // Silently: these are historical assignments, so a budget-limit email
         // would announce a threshold the user crossed weeks ago.
-        $query->with('labels')->chunkById(200, function (Collection $transactions) use ($service): void {
+        $query->with('labels', 'account')->chunkById(200, function (Collection $transactions) use ($service): void {
             foreach ($transactions as $transaction) {
                 $service->assignTransaction($transaction, notify: false);
             }
