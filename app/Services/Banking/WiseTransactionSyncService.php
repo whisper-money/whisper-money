@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Enums\TransactionSource;
 use App\Models\Account;
+use Carbon\CarbonInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 
@@ -15,9 +16,14 @@ class WiseTransactionSyncService
      * The account's `external_account_id` must be in the format
      * "{profileId}:{currency}" (e.g. "36875276:EUR").
      *
+     * @param  CarbonInterface|null  $deadline  Wall clock at which to stop paging and
+     *                                          leave the rest for the next sync. The
+     *                                          caller owns it because the budget is
+     *                                          per connection, not per wallet. Null
+     *                                          for callers under no time pressure.
      * @return int Number of new transactions created
      */
-    public function sync(Account $account, WiseClient $client, string $dateFrom, string $dateTo): int
+    public function sync(Account $account, WiseClient $client, string $dateFrom, string $dateTo, ?CarbonInterface $deadline = null): int
     {
         if (! $account->external_account_id) {
             return 0;
@@ -29,29 +35,18 @@ class WiseTransactionSyncService
         $until = $dateTo.'T23:59:59Z';
         $cursor = null;
         $created = 0;
+        $ranOutOfBudget = false;
 
         do {
             $result = $client->getActivities((int) $profileId, $since, $until, $cursor);
             $activities = $result['activities'] ?? [];
             $cursor = $result['cursor'] ?? null;
 
-            foreach ($activities as $activity) {
-                // Skip zero-amount authorization checks and non-monetary types
-                if (($activity['type'] ?? '') === 'CARD_CHECK') {
-                    continue;
-                }
+            $created += $this->importPage($account, $activities, $currency);
 
-                $parsed = $this->parseActivity($activity, $currency);
-
-                if ($parsed === null) {
-                    continue;
-                }
-
-                if ($this->importTransaction($account, $activity, $parsed)) {
-                    $created++;
-                }
-            }
-        } while ($cursor !== null && count($activities) > 0);
+            $hasMorePages = $cursor !== null && count($activities) > 0;
+            $ranOutOfBudget = $hasMorePages && $deadline !== null && now()->gte($deadline);
+        } while ($hasMorePages && ! $ranOutOfBudget);
 
         Log::info('Synced Wise transactions', [
             'account_id' => $account->id,
@@ -60,6 +55,45 @@ class WiseTransactionSyncService
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
         ]);
+
+        if ($ranOutOfBudget) {
+            // Warn, not info: pages were left behind and the next sync starts from
+            // last_synced_at, so this is history the user silently does not get.
+            Log::warning('Wise transaction walk stopped on its time budget', [
+                'account_id' => $account->id,
+                'currency' => $currency,
+                'new_transactions' => $created,
+                'oldest_imported' => $account->transactions()->min('transaction_date'),
+            ]);
+        }
+
+        return $created;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $activities
+     * @return int Number of new transactions created from this page
+     */
+    private function importPage(Account $account, array $activities, string $currency): int
+    {
+        $created = 0;
+
+        foreach ($activities as $activity) {
+            // Skip zero-amount authorization checks and non-monetary types
+            if (($activity['type'] ?? '') === 'CARD_CHECK') {
+                continue;
+            }
+
+            $parsed = $this->parseActivity($activity, $currency);
+
+            if ($parsed === null) {
+                continue;
+            }
+
+            if ($this->importTransaction($account, $activity, $parsed)) {
+                $created++;
+            }
+        }
 
         return $created;
     }
