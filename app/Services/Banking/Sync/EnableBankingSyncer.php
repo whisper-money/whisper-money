@@ -5,6 +5,7 @@ namespace App\Services\Banking\Sync;
 use App\Enums\TransactionSource;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
+use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
 use App\Models\Account;
@@ -48,20 +49,16 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
     public function sync(BankingConnection $connection, bool $isFirstSync): array
     {
         $dateTo = now()->toDateString();
-        $shortWindowStart = now()->subDays(self::SHORT_WINDOW_DAYS)->toDateString();
-
-        // A first sync on a connection that has synced before can only come from
-        // the --full flag, an explicit request to re-pull the whole history.
-        $forceFullWindow = $isFirstSync && $connection->last_synced_at !== null;
 
         $transactionsPerBank = [];
         $balanceFailed = 0;
+        $transactionFailure = null;
 
         $connection->load('accounts.bank');
 
         foreach ($connection->accounts as $account) {
-            $dateFrom = $this->resolveDateFrom($account, $dateTo, $forceFullWindow);
-            $strategy = $dateFrom < $shortWindowStart ? 'longest' : null;
+            $created = 0;
+            [$dateFrom, $strategy] = $this->resolveWindow($connection, $account, $dateTo, $isFirstSync);
 
             try {
                 $created = $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy, saveDailyBalances: ! $account->isLinked());
@@ -77,39 +74,26 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 ]);
 
                 continue;
+            } catch (TransientBankingProviderException $e) {
+                $transactionFailure ??= $this->recordAccountTransactionFailure($account, $e);
             }
 
-            try {
-                $this->balanceSync->sync($account);
-
-                if ($isFirstSync && ! $account->isLinked()) {
-                    $this->balanceSync->calculateHistoricalBalances($account);
-                }
-            } catch (\Throwable $e) {
-                // An expired consent needs the user to reconnect, and a rate
-                // limit has to reach the job so it applies the provider backoff:
-                // swallowing it would keep burning the remaining daily quota.
-                if ($e instanceof ExpiredBankingSessionException || $this->isRateLimit($e)) {
-                    throw $e;
-                }
-
-                // Anything else is not worth losing the run over. Balances are a
-                // nice-to-have next to the transactions we just persisted, and
-                // failing here leaves last_synced_at unset.
+            if (! $this->syncBalances($account, $isFirstSync)) {
                 $balanceFailed++;
-
-                Log::warning('EnableBanking balance sync failed, continuing', [
-                    'connection_id' => $connection->id,
-                    'account_id' => $account->id,
-                    'reason' => $e::class,
-                    'error' => $e->getMessage(),
-                ]);
             }
 
             if ($created > 0) {
                 $bankName = $account->bank->name ?? __('Unknown Bank');
                 $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
             }
+        }
+
+        // Report the failure only once every account has had its turn. The run
+        // still fails, so the connection keeps its Error state, its retries and its
+        // unset last_synced_at exactly as before - the one thing that changes is
+        // that the accounts behind the failing one were attempted at all.
+        if ($transactionFailure !== null) {
+            throw $transactionFailure;
         }
 
         if ($isFirstSync) {
@@ -123,6 +107,87 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             'transactions_per_bank' => $transactionsPerBank,
             'balance_failed' => $balanceFailed,
         ];
+    }
+
+    /**
+     * The window to ask the bank for, and the strategy a window that wide needs.
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    private function resolveWindow(BankingConnection $connection, Account $account, string $dateTo, bool $isFirstSync): array
+    {
+        // A first sync on a connection that has synced before can only come from
+        // the --full flag, an explicit request to re-pull the whole history.
+        $forceFullWindow = $isFirstSync && $connection->last_synced_at !== null;
+
+        $dateFrom = $this->resolveDateFrom($account, $dateTo, $forceFullWindow);
+        $shortWindowStart = now()->subDays(self::SHORT_WINDOW_DAYS)->toDateString();
+
+        return [$dateFrom, $dateFrom < $shortWindowStart ? 'longest' : null];
+    }
+
+    /**
+     * Note that the bank could not serve one account's transactions, and decide
+     * whether the remaining accounts are still worth trying.
+     *
+     * A provider that never answered will not answer for the next account either,
+     * and each further attempt costs the client's full timeout against the job's
+     * 120s - a connection with 26 accounts already spends a minute on the happy
+     * path. Only a reply that came back with a status says something about *this*
+     * account: the ConnectionException path is the one that leaves statusCode null.
+     */
+    private function recordAccountTransactionFailure(Account $account, TransientBankingProviderException $e): TransientBankingProviderException
+    {
+        if ($e->statusCode === null) {
+            throw $e;
+        }
+
+        Log::warning('EnableBanking transaction sync failed for one account, continuing', [
+            'connection_id' => $account->banking_connection_id,
+            'account_id' => $account->id,
+            'status_code' => $e->statusCode,
+            'provider_code' => $e->providerCode,
+            'error' => $e->getMessage(),
+        ]);
+
+        return $e;
+    }
+
+    /**
+     * Sync one account's balances, tolerating a provider that will not serve them.
+     *
+     * @return bool Whether the balances were synced
+     */
+    private function syncBalances(Account $account, bool $isFirstSync): bool
+    {
+        try {
+            $this->balanceSync->sync($account);
+
+            if ($isFirstSync && ! $account->isLinked()) {
+                $this->balanceSync->calculateHistoricalBalances($account);
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            // An expired consent needs the user to reconnect, and a rate limit has
+            // to reach the job so it applies the provider backoff: swallowing it
+            // would keep burning the remaining daily quota.
+            if ($e instanceof ExpiredBankingSessionException || $this->isRateLimit($e)) {
+                throw $e;
+            }
+
+            // Anything else is not worth losing the run over. Balances are a
+            // nice-to-have next to the transactions we just persisted, and failing
+            // here leaves last_synced_at unset.
+            Log::warning('EnableBanking balance sync failed, continuing', [
+                'connection_id' => $account->banking_connection_id,
+                'account_id' => $account->id,
+                'reason' => $e::class,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**
