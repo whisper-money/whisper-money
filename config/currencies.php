@@ -194,5 +194,11 @@ return [
             'allows_primary' => true,
             'allows_account' => true,
         ],
+        [
+            'code' => 'SGD',
+            'name' => 'Singapore Dollar',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];
