@@ -1680,7 +1680,7 @@ test('rate limit error sets backoff window without erroring connection', functio
     expect($connection->rate_limited_until->isFuture())->toBeTrue();
 });
 
-test('daily rate limit backoff lasts until next UTC midnight', function () {
+test('a spent access allowance backs off until the day rolls over', function (string $message) {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
@@ -1692,8 +1692,10 @@ test('daily rate limit backoff lasts until next UTC midnight', function () {
         'external_account_id' => 'ext-123',
     ]);
 
-    $body = json_encode(['code' => 429, 'message' => 'Daily PSU not present consultation limit has been exceeded']);
-    $response = new Response(429, ['Content-Type' => 'application/json'], $body);
+    $response = new Response(429, ['Content-Type' => 'application/json'], json_encode([
+        'code' => 429,
+        'message' => $message,
+    ]));
 
     $transactionSync = Mockery::mock(TransactionSyncService::class);
     $transactionSync->shouldReceive('sync')->andThrow(
@@ -1709,7 +1711,15 @@ test('daily rate limit backoff lasts until next UTC midnight', function () {
     $expected = now()->utc()->addDay()->startOfDay();
     expect($connection->rate_limited_until)->not->toBeNull();
     expect($connection->rate_limited_until->equalTo($expected))->toBeTrue();
-});
+})->with([
+    'Daily PSU not present consultation limit has been exceeded',
+    'Maximum daily access exceeded',
+    '[HUB046] Allowed number of accesses exceeded for consent.',
+    'Access exceeded',
+    'The access on the account has been exceeding the consented multiplicity per day.',
+    'CLO03941 - Operación no disponible. Has superado el número máximo de accesos.',
+    'CLO03941 - Operació no disponible. Has superat el nombre màxim d’accessos.',
+]);
 
 test('rate limit backoff honours Retry-After header', function () {
     $user = User::factory()->onboarded()->create();
