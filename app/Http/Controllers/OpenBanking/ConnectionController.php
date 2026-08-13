@@ -72,6 +72,13 @@ class ConnectionController extends Controller
             'status' => BankingConnectionStatus::Active,
             'error_message' => null,
             'consecutive_sync_failures' => 0,
+            // The backoff exists to keep the *scheduler* off a provider that asked
+            // us to stop. A person asking for their own connection is the request
+            // to honour, and PSD2 budgets access with the user present separately
+            // from unattended access. Leaving it set meant the job returned early
+            // while this flashed "sync started" and nothing happened - for as long
+            // as the window had left.
+            'rate_limited_until' => null,
         ]);
 
         SyncBankingConnectionJob::dispatch($connection);

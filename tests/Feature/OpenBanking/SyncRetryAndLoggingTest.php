@@ -885,6 +885,28 @@ test('manual sync resets consecutive sync failures', function () {
     expect($connection->error_message)->toBeNull();
 });
 
+test('manual sync clears the rate limit backoff so it is not silently swallowed', function () {
+    $user = User::factory()->onboarded()->create();
+
+    // The scheduler is meant to stay off a provider that asked us to stop; a person
+    // asking for their own connection is a different request. Leaving the window in
+    // place meant the job returned early while the UI said "sync started".
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'rate_limited_until' => now()->addHours(20),
+    ]);
+
+    Queue::fake(SyncBankingConnectionJob::class);
+
+    $this->actingAs($user)
+        ->post(route('settings.connections.sync', $connection))
+        ->assertRedirect();
+
+    $connection->refresh();
+    expect($connection->rate_limited_until)->toBeNull();
+    Queue::assertPushed(SyncBankingConnectionJob::class);
+});
+
 // --- Job-Level Failure Tests ---
 
 test('a job killed by the worker timeout does not spend a scheduled retry', function () {
