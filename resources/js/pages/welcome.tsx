@@ -1669,8 +1669,9 @@ export default function Welcome({
 
     const testimonials: {
         name: string;
-        gravatar: string;
         text: string;
+        // ponytail: both optional — with neither, Facehash draws an avatar from the name
+        gravatar?: string;
         avatar?: string;
     }[] = [
         {
@@ -1814,14 +1815,12 @@ export default function Welcome({
         },
         {
             name: 'Ryan Haste',
-            gravatar: '26137c0e864f9603defbd6803ff5975f',
             text: __(
                 'Great job on this project, love this! Keep up the good work.',
             ),
         },
         {
             name: 'Ricardo Rovira',
-            gravatar: '70ff8f261ec710b68356b8a6beb43c79',
             text: __(
                 "I really like the app — it's exactly what I was looking for. It's a great project, and I think you've nailed what a personal finance app should be, at least the way I want to manage mine.",
             ),
@@ -2387,7 +2386,9 @@ export default function Welcome({
                                                                 <AvatarImage
                                                                     src={
                                                                         testimonial.avatar ??
-                                                                        `https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`
+                                                                        (testimonial.gravatar
+                                                                            ? `https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`
+                                                                            : undefined)
                                                                     }
                                                                     alt={
                                                                         testimonial.name
