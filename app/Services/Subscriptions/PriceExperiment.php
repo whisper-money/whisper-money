@@ -3,27 +3,30 @@
 namespace App\Services\Subscriptions;
 
 use App\Models\User;
-use Carbon\CarbonImmutable;
 
 /**
  * A/B split on the price of the paid plan: `control` keeps the plans.* prices,
- * `high` swaps in the variant tier. Users who registered before `started_at` —
- * and everyone while it is null — are `legacy` and pay the control price, so
- * this is inert until the experiment is switched on.
+ * `high` swaps in the variant tier.
  *
- * ponytail: the assignment is a pure salted hash of the user id, not a stored
- * Pennant feature. Nothing has to be persisted, read back or purged afterwards,
- * and a report can reproduce the split in SQL with CRC32(CONCAT('price:', id)).
- * Move it to Pennant only if an experiment ever needs a non-deterministic or
- * hand-overridden per-user assignment.
+ * The arm is drawn for an **anonymous visitor** on their first page view and kept
+ * in a cookie, then copied onto the user row at registration. It has to work that
+ * way round: the landing quotes a price before anyone has an account, so assigning
+ * at registration would advertise the control price to everyone and then switch
+ * half of them to the high one — measuring the annoyance of a price that moved
+ * rather than the price itself, and hiding the visitors who would never have
+ * signed up at the higher price at all.
  *
- * @api The variant names are the vocabulary the experiment is configured and read
- *      with — they are the accepted values of PRICE_EXPERIMENT_FORCE_VARIANT and
- *      what a funnel report attributes users by — even though production only
- *      calls plansFor()/lookupKeyFor().
+ * Anyone without an arm — registered before the experiment, cookies blocked,
+ * arrived straight at a deep link — is `legacy` and pays the control price.
+ *
+ * @api The arm names are the vocabulary the experiment is configured and read
+ *      with: the accepted values of PRICE_EXPERIMENT_FORCE_VARIANT, the contents
+ *      of users.price_arm, and what a funnel report groups by.
  */
 class PriceExperiment
 {
+    public const COOKIE = 'price_arm';
+
     public const LEGACY = 'legacy';
 
     public const CONTROL = 'control';
@@ -31,50 +34,60 @@ class PriceExperiment
     public const HIGH = 'high';
 
     /**
-     * The 'price:' salt decouples this split from any other crc32-based split on
-     * the same user id, so experiments never share buckets.
+     * Whether new visitors should still be drawn into the split. A forced variant
+     * means a winner is being rolled out to everyone, so the split is over even
+     * though the start date is still set.
      */
-    public static function variantFor(User $user): string
+    public static function isRunning(): bool
     {
-        $forced = config('subscriptions.price_experiment.force_variant');
-
-        if (in_array($forced, [self::CONTROL, self::HIGH], true)) {
-            return $forced;
-        }
-
-        $startedAt = config('subscriptions.price_experiment.started_at');
-
         // blank(), not === null: an empty PRICE_EXPERIMENT_STARTED_AT in the env
         // reads back as '', and treating that as a start date would launch the
-        // experiment — charging the high price — on an ops typo. Same for a user
-        // with no signup date: fall back to the price they already know.
-        if (blank($startedAt) || $user->created_at === null) {
-            return self::LEGACY;
-        }
-
-        if ($user->created_at->lt(CarbonImmutable::parse($startedAt))) {
-            return self::LEGACY;
-        }
-
-        return crc32('price:'.$user->getKey()) % 2 === 0 ? self::CONTROL : self::HIGH;
+        // experiment — charging the high price — on an ops typo.
+        return filled(config('subscriptions.price_experiment.started_at'))
+            && self::forcedArm() === null;
     }
 
     /**
-     * The plans config with the user's variant applied: price, original_price and
+     * A fresh 50/50 draw for a visitor we have not seen before. Random rather than
+     * a hash: there is no stable identifier to hash before the user exists.
+     */
+    public static function draw(): string
+    {
+        return random_int(0, 1) === 0 ? self::CONTROL : self::HIGH;
+    }
+
+    /**
+     * A stored or cookie value narrowed to a real arm, or null. Guards the column
+     * and the cookie alike, both of which a user can put anything into.
+     */
+    public static function sanitize(?string $arm): ?string
+    {
+        return in_array($arm, [self::CONTROL, self::HIGH], true) ? $arm : null;
+    }
+
+    /**
+     * The arm to price a request with: a signed-in user keeps the arm stored at
+     * registration, a guest gets the one drawn into their cookie.
+     */
+    public static function armFor(?User $user, ?string $cookieArm = null): string
+    {
+        return self::forcedArm()
+            ?? self::sanitize($user !== null ? $user->price_arm : $cookieArm)
+            ?? self::LEGACY;
+    }
+
+    /**
+     * The plans config with the request's arm applied: price, original_price and
      * Stripe lookup key. Feeds both the shared pricing prop and checkout, so what
-     * is shown is always what is charged. Guests get the control config.
+     * is shown is always what is charged.
      *
      * @return array<string, array<string, mixed>>
      */
-    public static function plansFor(?User $user): array
+    public static function plansFor(?User $user, ?string $cookieArm = null): array
     {
         $plans = (array) config('subscriptions.plans', []);
-
-        if ($user === null) {
-            return $plans;
-        }
-
-        $overrides = (array) config('subscriptions.price_experiment.variants.'.self::variantFor($user), []);
+        $arm = self::armFor($user, $cookieArm);
+        $overrides = (array) config("subscriptions.price_experiment.variants.{$arm}", []);
 
         foreach ($overrides as $planKey => $override) {
             if (! isset($plans[$planKey])) {
@@ -90,11 +103,21 @@ class PriceExperiment
     }
 
     /**
-     * Stripe lookup key to charge for a plan, resolved from the user's variant
-     * server-side and never from the request, so nobody can pick the cheap price.
+     * Stripe lookup key to charge for a plan, resolved from the user's stored arm
+     * server-side and never from the request, so nobody can pick the cheap price
+     * by editing their cookie after signing up.
      */
     public static function lookupKeyFor(User $user, string $planKey): string
     {
         return (string) (self::plansFor($user)[$planKey]['stripe_lookup_key'] ?? '');
+    }
+
+    /**
+     * The winner pinned via PRICE_EXPERIMENT_FORCE_VARIANT, applied to everyone —
+     * visitors and existing users — so a rollout needs no deploy and no backfill.
+     */
+    private static function forcedArm(): ?string
+    {
+        return self::sanitize(config('subscriptions.price_experiment.force_variant'));
     }
 }
