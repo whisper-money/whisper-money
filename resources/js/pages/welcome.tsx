@@ -1669,8 +1669,9 @@ export default function Welcome({
 
     const testimonials: {
         name: string;
-        gravatar: string;
         text: string;
+        // ponytail: both optional — with neither, Facehash draws an avatar from the name
+        gravatar?: string;
         avatar?: string;
     }[] = [
         {
@@ -1810,6 +1811,18 @@ export default function Welcome({
             gravatar: '8329bd04eb4272db2e94f7c849ca7776',
             text: __(
                 "I'd been holding back on finance apps because I worried about my data — this is the first one I trusted enough to go premium. I love that I can put everything in one place, investments included.",
+            ),
+        },
+        {
+            name: 'Ryan Haste',
+            text: __(
+                'Great job on this project, love this! Keep up the good work.',
+            ),
+        },
+        {
+            name: 'Ricardo Rovira',
+            text: __(
+                "I really like the app — it's exactly what I was looking for. It's a great project, and I think you've nailed what a personal finance app should be, at least the way I want to manage mine.",
             ),
         },
         {
@@ -2373,7 +2386,9 @@ export default function Welcome({
                                                                 <AvatarImage
                                                                     src={
                                                                         testimonial.avatar ??
-                                                                        `https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`
+                                                                        (testimonial.gravatar
+                                                                            ? `https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`
+                                                                            : undefined)
                                                                     }
                                                                     alt={
                                                                         testimonial.name
