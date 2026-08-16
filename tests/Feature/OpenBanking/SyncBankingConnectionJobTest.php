@@ -332,12 +332,17 @@ test('a rate limited balance call keeps the transactions and still backs off', f
 
     $connection->refresh();
 
-    // The quota is per consent: swallowing the 429 here would keep the next
-    // scheduled runs burning what is left of it.
+    // The quota is per consent, so the connection still owes the provider a rest.
     expect($connection->status)->toBe(BankingConnectionStatus::Active)
         ->and($connection->rate_limited_until)->not->toBeNull()
         ->and($connection->rate_limited_until->isFuture())->toBeTrue()
         ->and($account->transactions()->count())->toBe(1);
+
+    // But the run counts. Throwing the 429 discarded it, and since last_synced_at
+    // is only written on success the connection then looked like it had never
+    // synced at all - which is what put ~11 production users on an indefinite
+    // "Syncing…" spinner with a EUR 0 balance while their transactions arrived daily.
+    expect($connection->last_synced_at)->not->toBeNull();
 });
 
 test('an expired session during the balance call is not swallowed', function () {

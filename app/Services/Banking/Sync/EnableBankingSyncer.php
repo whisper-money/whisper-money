@@ -11,8 +11,9 @@ use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
+use App\Services\Banking\RateLimitBackoff;
 use App\Services\Banking\TransactionSyncService;
-use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class EnableBankingSyncer extends AbstractBankingConnectionSyncer
@@ -30,6 +31,13 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
      * that follows would skip the history in between for good.
      */
     private const int SHORT_WINDOW_DAYS = 90;
+
+    /**
+     * Set when a balance call was rate limited, so the run can finish and still
+     * hand the provider's window to the job. Reset on every sync because syncers
+     * are resolved once and reused across connections.
+     */
+    private ?Carbon $rateLimitedUntil = null;
 
     public function __construct(
         private TransactionSyncService $transactionSync,
@@ -53,6 +61,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $transactionsPerBank = [];
         $balanceFailed = 0;
         $transactionFailure = null;
+        $this->rateLimitedUntil = null;
 
         $connection->load('accounts.bank');
 
@@ -82,6 +91,12 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 $balanceFailed++;
             }
 
+            // The provider asked us to stop; the accounts left would only spend
+            // allowance we no longer have.
+            if ($this->rateLimitedUntil !== null) {
+                break;
+            }
+
             if ($created > 0) {
                 $bankName = $account->bank->name ?? __('Unknown Bank');
                 $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
@@ -106,6 +121,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             'transactions_synced' => array_sum($transactionsPerBank),
             'transactions_per_bank' => $transactionsPerBank,
             'balance_failed' => $balanceFailed,
+            'rate_limited_until' => $this->rateLimitedUntil,
         ];
     }
 
@@ -169,11 +185,26 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 
             return true;
         } catch (\Throwable $e) {
-            // An expired consent needs the user to reconnect, and a rate limit has
-            // to reach the job so it applies the provider backoff: swallowing it
-            // would keep burning the remaining daily quota.
-            if ($e instanceof ExpiredBankingSessionException || $this->isRateLimit($e)) {
+            // An expired consent needs the user to reconnect: nothing here can help.
+            if ($e instanceof ExpiredBankingSessionException) {
                 throw $e;
+            }
+
+            // A rate limit still has to reach the connection so we stop asking, but
+            // throwing it discarded a run whose transactions had already landed -
+            // and since last_synced_at is only written on success, that connection
+            // then looked like it had never synced at all. Report it instead and let
+            // the caller stop the loop and hand the window to the job.
+            if (RateLimitBackoff::isRateLimit($e)) {
+                $this->rateLimitedUntil = RateLimitBackoff::until($e);
+
+                Log::warning('EnableBanking balance sync rate limited, keeping the run', [
+                    'connection_id' => $account->banking_connection_id,
+                    'account_id' => $account->id,
+                    'rate_limited_until' => $this->rateLimitedUntil->toIso8601String(),
+                ]);
+
+                return false;
             }
 
             // Anything else is not worth losing the run over. Balances are a
@@ -219,10 +250,5 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $start = $watermark->toDateString() > $dateTo ? now() : $watermark;
 
         return $start->copy()->subDays(self::WATERMARK_OVERLAP_DAYS)->toDateString();
-    }
-
-    private function isRateLimit(\Throwable $e): bool
-    {
-        return $e instanceof RequestException && $e->response->status() === 429;
     }
 }

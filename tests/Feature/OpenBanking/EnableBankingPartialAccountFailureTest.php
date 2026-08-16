@@ -183,3 +183,37 @@ test('a rate limit still reaches the job instead of being swallowed per account'
     $connection->refresh();
     expect($connection->rate_limited_until)->not->toBeNull();
 });
+
+test('a balance rate limit stops the loop instead of spending what is left', function () {
+    $connection = enableBankingConnectionWithAccounts(3);
+    // Production's shape: these connections have never recorded a completed run,
+    // which is the whole symptom.
+    $connection->update(['last_synced_at' => null]);
+
+    $attempted = 0;
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(function () use (&$attempted) {
+        $attempted++;
+
+        return 5;
+    });
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andThrow(new RequestException(
+        new Illuminate\Http\Client\Response(new Response(429, [], json_encode([
+            'code' => 429,
+            'message' => 'Maximum daily access exceeded',
+        ])))
+    ));
+
+    runSync(finalAttemptJobFor($connection), $transactionSync, $balanceSync);
+
+    // The allowance is spent, so the accounts behind this one would only burn what
+    // is not there. The run still counts for the account that did import.
+    expect($attempted)->toBe(1);
+
+    $connection->refresh();
+    expect($connection->last_synced_at)->not->toBeNull();
+    expect($connection->rate_limited_until->toIso8601String())
+        ->toBe(now()->utc()->addDay()->startOfDay()->toIso8601String());
+});
