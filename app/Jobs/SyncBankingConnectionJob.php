@@ -11,6 +11,7 @@ use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankingConnectionExpiredEmail;
 use App\Models\BankingConnection;
 use App\Models\BankingSyncLog;
+use App\Services\Banking\RateLimitBackoff;
 use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -19,10 +20,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Sentry\State\Scope;
 
 use function Sentry\configureScope;
@@ -112,11 +111,16 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
             $metadata = $syncer->sync($connection, $isFirstSync);
 
+            // A run can succeed and still owe the provider a rest: the syncer
+            // reports a rate limit it absorbed rather than throwing the whole run
+            // away over it. Anything else clears the window, as a clean run should.
+            $rateLimitedUntil = $metadata['rate_limited_until'] ?? null;
+
             $connection->update([
                 'status' => BankingConnectionStatus::Active,
                 'last_synced_at' => $syncedAt,
                 'error_message' => null,
-                'rate_limited_until' => null,
+                'rate_limited_until' => $rateLimitedUntil,
                 'consecutive_sync_failures' => 0,
             ]);
 
@@ -126,42 +130,64 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
             return;
         } catch (\Throwable $e) {
-            $context = [
-                'connection_id' => $connection->id,
-                'error' => $e->getMessage(),
-                'attempt' => $this->attempts(),
-            ];
+            $this->handleSyncFailure($connection, $syncer, $e, $startTime);
+        }
+    }
 
-            if ($e instanceof TransientBankingProviderException) {
-                $context['provider'] = $e->provider;
-                $context['status_code'] = $e->statusCode;
-                $context['provider_code'] = $e->providerCode;
-            }
+    /**
+     * Classify a failed sync and give the connection the treatment it earns:
+     * a provider backoff, a permanent park, or a retry.
+     */
+    private function handleSyncFailure(
+        BankingConnection $connection,
+        BankingConnectionSyncer $syncer,
+        \Throwable $e,
+        float $startTime,
+    ): void {
+        $this->reportSyncFailure($connection, $e);
 
-            // Only report once the connection actually gives up. Transient errors on a
-            // non-final attempt are recovered by the retry and would otherwise spam one
-            // warning per scheduled cycle for connections that ultimately sync fine.
-            if ($this->attempts() >= $this->tries || $this->isAuthError($e)) {
-                Log::log($e instanceof TransientBankingProviderException ? 'warning' : 'error', 'Banking sync failed', $context);
-            }
-
-            if ($this->isRateLimitError($e)) {
-                $this->applyRateLimitBackoff($connection, $e);
-                $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
-
-                return;
-            }
-
+        if ($this->isRateLimitError($e)) {
+            $this->applyRateLimitBackoff($connection, $e);
             $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
 
-            if ($this->isAuthError($e)) {
-                $this->handlePermanentError($connection, $syncer, $e);
-
-                return;
-            }
-
-            $this->handleTemporaryError($connection, $e);
+            return;
         }
+
+        $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
+
+        if ($this->isAuthError($e)) {
+            $this->handlePermanentError($connection, $syncer, $e);
+
+            return;
+        }
+
+        $this->handleTemporaryError($connection, $e);
+    }
+
+    /**
+     * Log the failure, but only once the connection actually gives up. Transient
+     * errors on a non-final attempt are recovered by the retry and would otherwise
+     * spam one warning per scheduled cycle for connections that ultimately sync fine.
+     */
+    private function reportSyncFailure(BankingConnection $connection, \Throwable $e): void
+    {
+        if ($this->attempts() < $this->tries && ! $this->isAuthError($e)) {
+            return;
+        }
+
+        $context = [
+            'connection_id' => $connection->id,
+            'error' => $e->getMessage(),
+            'attempt' => $this->attempts(),
+        ];
+
+        if ($e instanceof TransientBankingProviderException) {
+            $context['provider'] = $e->provider;
+            $context['status_code'] = $e->statusCode;
+            $context['provider_code'] = $e->providerCode;
+        }
+
+        Log::log($e instanceof TransientBankingProviderException ? 'warning' : 'error', 'Banking sync failed', $context);
     }
 
     /**
@@ -380,7 +406,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     private function isRateLimitError(\Throwable $e): bool
     {
-        return $e instanceof RequestException && $e->response->status() === 429;
+        return RateLimitBackoff::isRateLimit($e);
     }
 
     /**
@@ -389,7 +415,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
      */
     private function applyRateLimitBackoff(BankingConnection $connection, \Throwable $e): void
     {
-        $until = $this->resolveRateLimitBackoffUntil($e);
+        $until = RateLimitBackoff::until($e);
 
         $connection->update([
             'rate_limited_until' => $until,
@@ -400,60 +426,6 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'connection_id' => $connection->id,
             'rate_limited_until' => $until->toIso8601String(),
         ]);
-    }
-
-    private function resolveRateLimitBackoffUntil(\Throwable $e): Carbon
-    {
-        $now = now();
-
-        if ($e instanceof RequestException) {
-            $retryAfter = $e->response->header('Retry-After');
-
-            if (is_numeric($retryAfter) && (int) $retryAfter > 0) {
-                return $now->copy()->addSeconds((int) $retryAfter);
-            }
-
-            $body = $e->response->json();
-            $message = is_array($body) ? (string) ($body['message'] ?? '') : '';
-
-            if ($this->isExhaustedAccessAllowance($message)) {
-                return $now->copy()->utc()->addDay()->startOfDay();
-            }
-        }
-
-        // Default: back off one hour for a burst limit we know nothing else about.
-        return $now->copy()->addHour();
-    }
-
-    /**
-     * Whether the provider is reporting a spent allowance rather than a burst.
-     *
-     * PSD2 budgets unattended access per consent per day, so these do not come back
-     * in an hour - they come back when the day does. Matched on the wordings the
-     * banks actually send, counted over 45 days of banking_sync_logs: "[HUB046]
-     * Allowed number of accesses exceeded for consent." (234), "Access exceeded"
-     * (94), "Maximum daily access exceeded" (48), "The access on the account has
-     * been exceeding the consented multiplicity per day." (37), "Daily PSU not
-     * present consultation limit has been exceeded" (11), and a localised pair,
-     * "CLO03941 - Operación no disponible. Has superado el número máximo de
-     * accesos." (4) plus its Catalan twin (1).
-     *
-     * ponytail: prose matching, because there is nothing better to key on -
-     * detail.error_name is `RateLimitException` for a spent daily allowance and for
-     * a plain burst alike. If Enable Banking ever separates the two, key on that.
-     * Note error_message only holds the first 120 bytes of the body, so a future
-     * attempt at a structured field has to start by logging the whole thing.
-     */
-    private function isExhaustedAccessAllowance(string $message): bool
-    {
-        return Str::contains($message, [
-            'daily',
-            'access exceeded',
-            'accesses exceeded',
-            'exceeding the consented',
-            'máximo de accesos',
-            'màxim d’accessos',
-        ], ignoreCase: true);
     }
 
     private function isAuthError(\Throwable $e): bool
