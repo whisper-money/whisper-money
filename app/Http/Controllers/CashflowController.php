@@ -18,10 +18,7 @@ class CashflowController extends Controller
         $period = $request->query('period');
         $validPeriod = $this->validPeriod($period, $validPeriodType);
 
-        // This used to also send categories, accounts and banks. HandleInertiaRequests
-        // already shares all three on every response, and page props win the merge, so
-        // the only thing the controller's copies did was replace them - with a `banks`
-        // that was every *global* bank rather than the user's own.
+        // categories, accounts and banks arrive via HandleInertiaRequests::share().
         return Inertia::render('cashflow/index', [
             'period' => $validPeriod,
             'periodType' => $validPeriodType,
