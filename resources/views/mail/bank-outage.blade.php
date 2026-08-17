@@ -9,6 +9,8 @@
 
 {{ __('All your data is safe. Nothing has been lost, and everything already in Whisper Money stays exactly as it is. Once :bank responds again, the missing transactions and balances fill in automatically.', ['bank' => $bankName]) }}
 
+{{ __('You may see the connection flagged with an error in Whisper Money. That is this same problem, and retrying it will not help until :bank is back.', ['bank' => $bankName]) }}
+
 {{ __('We are already on it, working with our banking provider and with the bank to get it fixed as soon as possible. We will let you know if we need anything from you.') }}
 
 {{ __('Best,') }}<br>
