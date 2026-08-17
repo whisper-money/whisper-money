@@ -105,7 +105,7 @@ class NotifyBankOutageCommand extends Command
     {
         $this->table(['Email', 'Connections'], $users->map(fn (User $user) => [
             $user->email,
-            $user->affected_connections_count,
+            (int) $user->getAttribute('affected_connections_count'),
         ])->all());
     }
 }
