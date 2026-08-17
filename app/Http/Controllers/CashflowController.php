@@ -2,9 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Account;
-use App\Models\Bank;
-use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,24 +10,6 @@ class CashflowController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $user = $request->user();
-
-        $categories = Category::query()
-            ->where('user_id', $user->id)
-            ->forDisplay()
-            ->get();
-
-        $accounts = Account::query()
-            ->where('user_id', $user->id)
-            ->with('bank')
-            ->orderBy('name')
-            ->get();
-
-        $banks = Bank::query()
-            ->availableForUser($user)
-            ->orderBy('name')
-            ->get();
-
         $periodType = $request->query('period_type');
         $validPeriodType = is_string($periodType) && in_array($periodType, ['month', 'quarter', 'year'], true)
             ? $periodType
@@ -39,10 +18,11 @@ class CashflowController extends Controller
         $period = $request->query('period');
         $validPeriod = $this->validPeriod($period, $validPeriodType);
 
+        // This used to also send categories, accounts and banks. HandleInertiaRequests
+        // already shares all three on every response, and page props win the merge, so
+        // the only thing the controller's copies did was replace them - with a `banks`
+        // that was every *global* bank rather than the user's own.
         return Inertia::render('cashflow/index', [
-            'categories' => $categories,
-            'accounts' => $accounts,
-            'banks' => $banks,
             'period' => $validPeriod,
             'periodType' => $validPeriodType,
         ]);
