@@ -10,19 +10,17 @@ import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     endOfMonth,
     endOfQuarter,
     endOfYear,
-    format,
-    getQuarter,
     parse,
     startOfMonth,
     startOfQuarter,
     startOfYear,
 } from 'date-fns';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -92,21 +90,6 @@ function getPeriodRange(
     };
 }
 
-function formatPeriodParam(
-    currentDate: Date,
-    periodType: CashflowPeriodType,
-): string {
-    if (periodType === 'quarter') {
-        return `${format(currentDate, 'yyyy')}-Q${getQuarter(currentDate)}`;
-    }
-
-    if (periodType === 'year') {
-        return format(currentDate, 'yyyy');
-    }
-
-    return format(currentDate, 'yyyy-MM');
-}
-
 export default function CashflowPage() {
     const {
         auth,
@@ -144,29 +127,7 @@ export default function CashflowPage() {
         periodType,
     });
 
-    useEffect(() => {
-        const periodParam = formatPeriodParam(currentDate, periodType);
-
-        if (initialPeriod !== periodParam || initialPeriodType !== periodType) {
-            // A client-side visit: this effect only exists to put the period in the
-            // URL so a refresh or a shared link keeps it. Asking the server would
-            // re-render every shared prop for an answer we already have - and on a
-            // bare /cashflow the guard is always true, so that was a second full
-            // request on every open and on every period change.
-            router.replace({
-                url: cashflow({
-                    query: { period: periodParam, period_type: periodType },
-                }).url,
-                props: (props) => ({
-                    ...props,
-                    period: periodParam,
-                    periodType,
-                }),
-                preserveScroll: true,
-                preserveState: true,
-            });
-        }
-    }, [currentDate, initialPeriod, initialPeriodType, periodType]);
+    usePeriodUrlSync(currentDate, periodType, initialPeriod, initialPeriodType);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
