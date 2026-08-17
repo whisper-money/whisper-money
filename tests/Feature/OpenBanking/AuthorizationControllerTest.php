@@ -213,29 +213,65 @@ test('callback with error and no description falls back to a generic message', f
     expect(BankingConnection::find($connection->id))->toBeNull();
 });
 
-test('callback does not blame the user when the provider fails without a description', function (string $errorCode) {
+test('callback does not blame the user when the bank fails the authorization', function (string $errorCode) {
     $user = User::factory()->onboarded()->create();
-    BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
+    $connection = BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
 
     $response = $this->actingAs($user)->get("/open-banking/callback?error={$errorCode}");
 
-    $response->assertSessionHas('error', 'Your bank could not complete the connection. Please try again in a few minutes.');
+    $response->assertRedirect(route('settings.connections.index'));
+    $response->assertSessionHas('error', 'We could not complete the connection with your bank. Please try again later.');
+
+    expect(BankingConnection::find($connection->id))->toBeNull();
 })->with(['server_error', 'invalid_request', 'invalid_client']);
 
+test('callback ignores the provider description unless the user denied the consent', function () {
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
+
+    // Real invalid_client description from production: untranslated, addressed to
+    // us rather than to the user, and with its spaces still URL-encoded.
+    $response = $this->actingAs($user)->get(
+        '/open-banking/callback?error=invalid_client&error_description=Alg%C3%BAn+reto+es+err%C3%B3neo.+SOLUCION%3A+Debe+reintentar+el+flujo.'
+    );
+
+    $response->assertSessionHas('error', 'We could not complete the connection with your bank. Please try again later.');
+});
+
+test('callback stores the bank failure on a reconnect instead of blaming the user', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?error=server_error');
+
+    $response->assertSessionHas('error', 'We could not complete the connection with your bank. Please try again later.');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error)
+        ->and($connection->error_message)->toBe('We could not complete the connection with your bank. Please try again later.');
+});
+
 test('callback logs the bank behind an authorization error', function () {
-    Log::shouldReceive('warning')
-        ->once()
-        ->with('EnableBanking authorization error', Mockery::on(fn (array $context) => $context['error'] === 'server_error'
-            && $context['aspsp_name'] === 'Banco Mediolanum'
-            && $context['connection_id'] !== null));
+    Log::spy();
 
     $user = User::factory()->onboarded()->create();
-    BankingConnection::factory()->pending()->create([
+    $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'Banco Mediolanum',
     ]);
 
     $this->actingAs($user)->get('/open-banking/callback?error=server_error');
+
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(fn (string $message, array $context) => $message === 'EnableBanking authorization error'
+            && $context['error'] === 'server_error'
+            && $context['aspsp_name'] === 'Banco Mediolanum'
+            && $context['connection_id'] === $connection->id);
 });
 
 test('callback without code redirects with error', function () {

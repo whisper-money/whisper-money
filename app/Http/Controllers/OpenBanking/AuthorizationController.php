@@ -274,7 +274,7 @@ class AuthorizationController extends Controller
     }
 
     /**
-     * Clean up after a bank that denied or cancelled the authorization.
+     * Clean up after an authorization the bank did not complete.
      *
      * A pending connection that already has accounts is a reconnect, so it is kept
      * and marked as failing. A brand new one has nothing worth keeping.
@@ -283,18 +283,18 @@ class AuthorizationController extends Controller
     {
         $errorCode = $request->query('error');
         $errorDescription = $request->query('error_description');
-        $errorMessage = is_string($errorDescription) && $errorDescription !== ''
-            ? $errorDescription
-            : $this->genericAuthorizationErrorMessage($errorCode);
+        $errorMessage = $this->authorizationErrorMessage(
+            is_string($errorCode) ? $errorCode : null,
+            is_string($errorDescription) ? $errorDescription : null,
+        );
 
         $pendingConnection = $connection ?? $user->bankingConnections()
             ->where('status', BankingConnectionStatus::Pending)
             ->latest()
             ->first();
 
-        // The bank is logged because the failure is overwhelmingly bank-specific:
-        // without it, telling a broken ASPSP from a user who changed their mind
-        // means hand-joining these timestamps against deleted connection rows.
+        // The bank is logged because these failures are bank-specific, and the
+        // connection row is about to be deleted on one of the branches below.
         Log::warning('EnableBanking authorization error', [
             'error' => $errorCode,
             'description' => $errorDescription,
@@ -318,18 +318,23 @@ class AuthorizationController extends Controller
     }
 
     /**
-     * The message to show when the provider sends an error with no description.
+     * The message the user sees when an authorization comes back as an error.
      *
-     * Only `access_denied` means the user walked away from the consent screen.
-     * Everything else is the bank or the provider failing, and it always arrives
-     * without a description — so the old blanket "denied or cancelled" told the
-     * user they had cancelled a connection their bank had actually broken.
+     * `access_denied` is the only code the user causes, and the only one whose
+     * description is worth showing ("Cancelled by user"). The rest are ours or the
+     * bank's to fix and arrive either with no description at all or with
+     * untranslated prose addressed to us, so they get our own copy — worded
+     * without pinning it on the bank, since `invalid_client` is our credentials.
      */
-    private function genericAuthorizationErrorMessage(mixed $errorCode): string
+    private function authorizationErrorMessage(?string $errorCode, ?string $errorDescription): string
     {
-        return $errorCode === 'access_denied'
+        if ($errorCode !== 'access_denied') {
+            return __('We could not complete the connection with your bank. Please try again later.');
+        }
+
+        return $errorDescription === null || $errorDescription === ''
             ? __('Authorization was denied or cancelled.')
-            : __('Your bank could not complete the connection. Please try again in a few minutes.');
+            : $errorDescription;
     }
 
     /**
