@@ -237,17 +237,43 @@ test('user on a trial cannot delete their account', function () {
     expect(User::query()->find($user->id))->not->toBeNull();
 });
 
-test('user with a cancelled subscription on grace period can delete their account', function () {
+test('user with a subscription Stripe can still collect on cannot delete their account', function (string $status) {
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->create();
 
     $user->subscriptions()->create([
         'type' => 'default',
-        'stripe_id' => 'sub_grace_delete_test',
-        'stripe_status' => 'active',
+        'stripe_id' => "sub_{$status}_delete_test",
+        'stripe_status' => $status,
         'stripe_price' => 'price_delete_test',
-        'ends_at' => now()->addDays(7),
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('delete-account.edit'))
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ]);
+
+    $response
+        ->assertSessionHasErrors('subscription')
+        ->assertRedirect(route('delete-account.edit'));
+
+    expect(User::query()->find($user->id))->not->toBeNull();
+})->with(['past_due', 'unpaid', 'incomplete']);
+
+test('user with a subscription Stripe cannot collect on can delete their account', function (string $status, bool $cancelled) {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => "sub_{$status}_delete_test",
+        'stripe_status' => $status,
+        'stripe_price' => 'price_delete_test',
+        'ends_at' => $cancelled ? now()->addDays(7) : null,
     ]);
 
     $response = $this
@@ -261,4 +287,9 @@ test('user with a cancelled subscription on grace period can delete their accoun
         ->assertRedirect(route('home'));
 
     expect(User::query()->find($user->id))->toBeNull();
-});
+})->with([
+    'cancelled, still on grace period' => ['active', true],
+    'checkout that never completed' => ['incomplete_expired', false],
+    'canceled with no end date' => ['canceled', false],
+    'paused, so nothing to collect' => ['paused', false],
+]);
