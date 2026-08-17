@@ -401,7 +401,7 @@ describe('isBrowserExtensionNoise', () => {
 });
 
 describe('isFailedPrefetchNoise', () => {
-    async function freshModules() {
+    async function freshModulesWithFakedRouter() {
         vi.resetModules();
         const listeners: Record<string, (e: unknown) => void> = {};
         vi.doMock('@inertiajs/react', () => ({
@@ -421,6 +421,11 @@ describe('isFailedPrefetchNoise', () => {
         return { ...tracker, ...sentry, listeners };
     }
 
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.doUnmock('@inertiajs/react');
+    });
+
     function networkError(url: string): Event {
         return {
             exception: {
@@ -435,7 +440,8 @@ describe('isFailedPrefetchNoise', () => {
     }
 
     it('drops the failure of a page we only guessed at', async () => {
-        const { isFailedPrefetchNoise, listeners } = await freshModules();
+        const { isFailedPrefetchNoise, listeners } =
+            await freshModulesWithFakedRouter();
 
         // Hovering the sidebar prefetches Cashflow from whatever page you are on.
         listeners.prefetching?.({
@@ -452,7 +458,7 @@ describe('isFailedPrefetchNoise', () => {
     });
 
     it('keeps the failure of a navigation someone was waiting for', async () => {
-        const { isFailedPrefetchNoise } = await freshModules();
+        const { isFailedPrefetchNoise } = await freshModulesWithFakedRouter();
 
         // Never prefetched, so this is a click that went nowhere - the case the
         // suppression must not swallow.
@@ -464,7 +470,8 @@ describe('isFailedPrefetchNoise', () => {
     });
 
     it('stops attributing a prefetch once its window has passed', async () => {
-        const { isFailedPrefetchNoise, listeners } = await freshModules();
+        const { isFailedPrefetchNoise, listeners } =
+            await freshModulesWithFakedRouter();
 
         listeners.prefetching?.({
             detail: {
@@ -482,7 +489,7 @@ describe('isFailedPrefetchNoise', () => {
     });
 
     it('keeps a network error that is not Inertia-shaped', async () => {
-        const { isFailedPrefetchNoise } = await freshModules();
+        const { isFailedPrefetchNoise } = await freshModulesWithFakedRouter();
 
         expect(
             isFailedPrefetchNoise({
@@ -491,5 +498,58 @@ describe('isFailedPrefetchNoise', () => {
                 },
             }),
         ).toBe(false);
+    });
+
+    it('keeps the failure of a click that landed on our in-flight prefetch', async () => {
+        const { isFailedPrefetchNoise, listeners } =
+            await freshModulesWithFakedRouter();
+
+        listeners.prefetching?.({
+            detail: {
+                visit: { url: new URL('https://whisper.money/cashflow') },
+            },
+        });
+
+        // Clicking while the prefetch is still in flight hands the user that same
+        // request, progress bar and all - so from here its failure is theirs.
+        listeners.before?.({
+            detail: {
+                visit: {
+                    url: new URL('https://whisper.money/cashflow'),
+                    prefetch: false,
+                },
+            },
+        });
+
+        expect(
+            isFailedPrefetchNoise(
+                networkError('https://whisper.money/cashflow'),
+            ),
+        ).toBe(false);
+    });
+
+    it('still ignores a prefetch that starts while another page is loading', async () => {
+        const { isFailedPrefetchNoise, listeners } =
+            await freshModulesWithFakedRouter();
+
+        listeners.before?.({
+            detail: {
+                visit: {
+                    url: new URL('https://whisper.money/budgets'),
+                    prefetch: false,
+                },
+            },
+        });
+        listeners.prefetching?.({
+            detail: {
+                visit: { url: new URL('https://whisper.money/cashflow') },
+            },
+        });
+
+        expect(
+            isFailedPrefetchNoise(
+                networkError('https://whisper.money/cashflow'),
+            ),
+        ).toBe(true);
     });
 });

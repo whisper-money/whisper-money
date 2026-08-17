@@ -14,11 +14,14 @@ const CLONE_ERROR_MESSAGE_PATTERN =
 // `Network error (https://whisper.money/onboarding)`. Matching that tail
 // explicitly rather than loosening to a prefix keeps "Failed to fetch
 // dynamically imported module: …" out — that is a chunk load, not an abort.
-// Inertia's own wrapper appends the request URL, which is the only place the failed
-// URL survives to beforeSend.
-const INERTIA_NETWORK_ERROR_PATTERN = /^network error \((.+)\)$/i;
 const ABORTED_REQUEST_MESSAGE_PATTERN =
     /^(network error|request aborted|failed to fetch|load failed)( \(.+\))?$/i;
+// A strict subset of the pattern above, capturing the URL rather than just allowing
+// it: that tail is the only place the *failed* request's URL survives as far as
+// beforeSend, since Sentry's `url` tag is the page the user was on. Depends on
+// Inertia's internal message format, which has no stability contract — if it changes,
+// this stops matching and the noise comes back, which is the safe direction.
+const INERTIA_NETWORK_ERROR_PATTERN = /^network error \((.+)\)$/i;
 const FACEBOOK_IAB_JAVA_OBJECT_GONE_PATTERN =
     /Error invoking .+: Java object is gone/i;
 const SAFARI_CASHBACK_EXTENSION_PATTERN = /response\.cashbackReminder/i;
