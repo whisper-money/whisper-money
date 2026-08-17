@@ -2203,6 +2203,7 @@
     "New: :name": "Nueva: :name",
     "Preview matching transactions": "Ver transacciones coincidentes",
     "Loading…": "Cargando…",
+    "We could not reach the server. Check your connection.": "No hemos podido conectar con el servidor. Comprueba tu conexión.",
     ":count of :total uncategorized transactions match": ":count de :total transacciones sin categorizar coinciden",
     "Matching transactions": "Transacciones coincidentes",
     "Preview :count matching transactions": "Ver :count transacciones coincidentes",

@@ -26,6 +26,7 @@ import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
 import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
+import { installFailedNavigationToast } from './lib/failed-navigation-toast';
 import { leavePage } from './lib/leave-page';
 import { initializePostHog } from './lib/posthog';
 import { trackPrefetchedUrls } from './lib/prefetch-tracker';
@@ -44,6 +45,7 @@ import { __, setTranslations } from './utils/i18n';
 
 installChunkLoadRecovery();
 trackPrefetchedUrls();
+installFailedNavigationToast();
 
 Sentry.init({
     dsn: import.meta.env.SENTRY_LARAVEL_DSN,
