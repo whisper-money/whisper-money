@@ -2,33 +2,27 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\NotifiesBankUsers;
 use App\Enums\BankingConnectionStatus;
-use App\Enums\BankingProvider;
 use App\Enums\DripEmailType;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Mail\BankOutageEmail;
 use App\Models\BankingConnection;
 use App\Models\User;
-use App\Models\UserMailLog;
 use Closure;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 /**
  * Run by hand once a bank-side outage is confirmed: it tells everyone connected
  * to that bank that their transactions and balances are stuck because the bank
  * stopped answering, and that we are on it.
- *
- * Connections are matched on `aspsp_name` + `aspsp_country`, which is also how
- * Enable Banking identifies an ASPSP: `banking_connections` has no bank_id, and
- * the `banks` table is per-user, so a bank UUID means nothing outside the one
- * account it belongs to.
  */
 class NotifyBankOutageCommand extends Command
 {
+    use NotifiesBankUsers;
+
     /**
      * The name and signature of the console command.
      *
@@ -36,7 +30,7 @@ class NotifyBankOutageCommand extends Command
      */
     protected $signature = 'banking:notify-outage
                             {aspsp : The bank name as stored on the connection, e.g. "Openbank"}
-                            {--country= : ISO country code, required when the bank spans several (e.g. ES)}
+                            {--country= : ISO country code, required when the bank is affected in several (e.g. ES)}
                             {--dry-run : List the recipients without sending anything}
                             {--force : Skip the confirmation prompt}
                             {--resend : Notify users who already got this bank\'s outage notice}';
@@ -54,77 +48,59 @@ class NotifyBankOutageCommand extends Command
     public function handle(): int
     {
         $aspsp = (string) $this->argument('aspsp');
-        $country = $this->option('country') ? Str::upper((string) $this->option('country')) : null;
+        $country = $this->countryOption();
 
-        $matchesBank = $this->matchesBank($aspsp, $country);
-        $matchesOutage = $this->matchesOutage($matchesBank);
-
-        $banks = BankingConnection::query()->tap($matchesOutage)
+        $banks = BankingConnection::query()
+            ->tap($this->matchesOutage($this->matchesBank($aspsp, $country)))
             ->select('aspsp_name', 'aspsp_country')
             ->distinct()
             ->orderBy('aspsp_name')
             ->get();
 
         if ($banks->isEmpty()) {
-            return $this->reportNoMatches($matchesBank, $aspsp, $country);
+            return $this->reportNoOutage($aspsp, $country);
         }
 
-        $countries = $banks->pluck('aspsp_country')->unique();
+        $country = $this->resolveCountry($banks, $aspsp, $country);
 
-        if ($country === null && $countries->count() > 1) {
-            $this->error("{$aspsp} has affected connections in ".$countries->sort()->implode(', ').'.');
-            $this->line('An Enable Banking outage is per bank and country, so re-run with --country=XX.');
-
+        if ($country === null) {
             return self::FAILURE;
         }
 
-        // One country is in play from here on: adopt it, so both the console
-        // output and the ledger identifier name the ASPSP unambiguously.
+        // Both the bank name and the country now come from the data, so the
+        // console output, the email and the ledger key all agree.
         $bankName = (string) $banks->first()->aspsp_name;
-        $country ??= (string) $countries->first();
-        $identifier = Str::slug("{$bankName}-{$country}");
+        $displayName = "{$bankName} ({$country})";
+        $matchesBank = $this->matchesBank($bankName, $country);
+        $matchesOutage = $this->matchesOutage($matchesBank);
 
-        $users = $this->recipients($matchesOutage, $identifier);
+        $users = $this->recipients($matchesOutage, DripEmailType::BankOutage, $this->bankIdentifier($bankName, $country));
 
         if ($users->isEmpty()) {
-            $this->info("Nobody to notify about the {$bankName} ({$country}) outage: everyone affected was already notified or cannot receive email. Use --resend to send it again.");
+            $this->info("Nobody to notify about the {$displayName} outage: everyone affected was already notified or cannot receive email. Use --resend to send it again.");
 
             return self::SUCCESS;
         }
 
-        $this->reportScope($users, $matchesBank, $matchesOutage, "{$bankName} ({$country})");
+        $this->reportScope($users, $matchesBank, $matchesOutage, $displayName);
 
-        if ($this->option('dry-run')) {
-            $this->info('[dry-run] No emails sent.');
-
+        if (! $this->shouldSend("Send the {$displayName} outage notice to {$users->count()} user(s)?")) {
             return self::SUCCESS;
         }
 
-        if (! $this->option('force') && ! $this->confirm("Send the {$bankName} ({$country}) outage notice to {$users->count()} user(s)?", false)) {
-            $this->info('Cancelled.');
-
-            return self::SUCCESS;
-        }
-
-        $this->send($users, $bankName, $identifier);
+        $this->sendAndLog(
+            $users,
+            DripEmailType::BankOutage,
+            $this->bankIdentifier($bankName, $country),
+            fn (User $user) => new BankOutageEmail($user, $bankName),
+        );
 
         return self::SUCCESS;
     }
 
     /**
-     * Every Enable Banking connection to the bank the operator named.
-     */
-    private function matchesBank(string $aspsp, ?string $country): Closure
-    {
-        return fn (Builder $query) => $query
-            ->where('provider', BankingProvider::EnableBanking)
-            ->where('aspsp_name', $aspsp)
-            ->when($country, fn (Builder $query) => $query->where('aspsp_country', $country));
-    }
-
-    /**
-     * Of those, the ones an outage at the bank actually explains: the connections
-     * the scheduler will keep retrying, mirroring SyncAllBankingConnectionsJob.
+     * The connections an outage at the bank actually explains: the ones the
+     * scheduler will keep retrying, mirroring SyncAllBankingConnectionsJob.
      *
      * This is what makes the email honest. An expired, revoked or retry-capped
      * connection is stuck for its own reason and its owner does have to
@@ -145,28 +121,6 @@ class NotifyBankOutageCommand extends Command
     }
 
     /**
-     * The users to email: one row each, however many connections they have to
-     * the bank, minus anyone already notified about this outage.
-     *
-     * @return Collection<int, User>
-     */
-    private function recipients(Closure $matchesOutage, string $identifier): Collection
-    {
-        return User::query()
-            ->whereHas('bankingConnections', $matchesOutage)
-            ->withCount(['bankingConnections as affected_connections_count' => $matchesOutage])
-            ->unless($this->option('resend'), fn (Builder $query) => $query->whereDoesntHave(
-                'mailLogs',
-                fn (Builder $query) => $query
-                    ->where('email_type', DripEmailType::BankOutage)
-                    ->where('email_identifier', $identifier),
-            ))
-            ->orderBy('email')
-            ->get()
-            ->filter->canReceiveEmails();
-    }
-
-    /**
      * Show who is about to be emailed, and flag the connections to the same bank
      * that are deliberately left out because this notice would be wrong for them.
      *
@@ -176,7 +130,7 @@ class NotifyBankOutageCommand extends Command
     {
         $this->table(['Email', 'Connections'], $users->map(fn (User $user) => [
             $user->email,
-            (int) $user->getAttribute('affected_connections_count'),
+            (int) $user->getAttribute('matched_connections_count'),
         ])->all());
 
         $this->info("{$users->count()} user(s) to notify about the {$displayName} outage.");
@@ -190,13 +144,13 @@ class NotifyBankOutageCommand extends Command
     }
 
     /**
-     * Explain a run that resolved nobody, so a mistyped or renamed bank does not
-     * read as "no one is affected".
+     * Nothing is waiting on this bank: either it has no live connection at all,
+     * or the ones it has are broken for reasons an outage does not explain.
      */
-    private function reportNoMatches(Closure $matchesBank, string $aspsp, ?string $country): int
+    private function reportNoOutage(string $aspsp, ?string $country): int
     {
         $displayName = $aspsp.($country ? " ({$country})" : '');
-        $existing = BankingConnection::query()->tap($matchesBank)->count();
+        $existing = BankingConnection::query()->tap($this->matchesBank($aspsp, $country))->count();
 
         if ($existing > 0) {
             $this->warn("{$existing} connection(s) to {$displayName} exist, but none is waiting on the bank: expired, revoked or past the retry cap. Those need a reconnect, not this notice.");
@@ -204,39 +158,8 @@ class NotifyBankOutageCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->info("No Enable Banking connection to {$displayName}.");
-
-        $similar = BankingConnection::query()
-            ->where('provider', BankingProvider::EnableBanking)
-            ->where('aspsp_name', 'like', '%'.$aspsp.'%')
-            ->distinct()
-            ->orderBy('aspsp_name')
-            ->pluck('aspsp_name');
-
-        if ($similar->isNotEmpty()) {
-            $this->line('Did you mean: '.$similar->implode(', ').'?');
-        }
+        $this->reportUnknownBank($aspsp, $country);
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param  Collection<int, User>  $users
-     */
-    private function send(Collection $users, string $bankName, string $identifier): void
-    {
-        foreach ($users as $user) {
-            Mail::to($user)->send(new BankOutageEmail($user, $bankName));
-
-            // Logged when queued rather than when delivered: the ledger exists so
-            // a second run during the same outage skips whoever already got it.
-            UserMailLog::updateOrCreate([
-                'user_id' => $user->id,
-                'email_type' => DripEmailType::BankOutage,
-                'email_identifier' => $identifier,
-            ], ['sent_at' => now()]);
-        }
-
-        $this->info("Queued {$users->count()} outage notice(s) to the 'emails' queue.");
     }
 }

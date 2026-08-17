@@ -104,7 +104,7 @@ test('refuses to guess when the bank is affected in several countries', function
     outageUser('de@example.com', ['aspsp_country' => 'DE']);
 
     artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        ->expectsOutputToContain('has affected connections in DE, ES')
+        ->expectsOutputToContain('QA Outage Bank is affected in DE, ES')
         ->expectsOutputToContain('re-run with --country=XX')
         ->assertFailed();
 
