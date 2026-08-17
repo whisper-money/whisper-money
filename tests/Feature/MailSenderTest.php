@@ -1,6 +1,7 @@
 <?php
 
 use App\Mail\BankingConnectionAuthFailedEmail;
+use App\Mail\BankOutageEmail;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Mail\BrokenBankLogosReportEmail;
 use App\Mail\Drip\AiConsentFollowUpEmail;
@@ -127,6 +128,7 @@ test('default sender is used for active non-drip mailables', function (string $m
         UpdateEmail::class => new UpdateEmail($user, 'test-update'),
         BankTransactionsSyncedEmail::class => new BankTransactionsSyncedEmail($user, 3, ['Test Bank' => 3]),
         BankingConnectionAuthFailedEmail::class => new BankingConnectionAuthFailedEmail($user, BankingConnection::factory()->for($user)->create(['aspsp_name' => 'Test Bank'])),
+        BankOutageEmail::class => new BankOutageEmail($user, 'Test Bank'),
         EnableBankingConnectionsCancelledEmail::class => new EnableBankingConnectionsCancelledEmail($user, 2),
         BrokenBankLogosReportEmail::class => new BrokenBankLogosReportEmail([['id' => 'bank-1', 'name' => 'Test Bank', 'previous_logo' => 'https://example.com/logo.png']]),
         UserEmailsReportEmail::class => new UserEmailsReportEmail("email\ntest@example.com\n", 1, 'user-emails-2026-01-01.csv'),
@@ -142,6 +144,7 @@ test('default sender is used for active non-drip mailables', function (string $m
     UpdateEmail::class,
     BankTransactionsSyncedEmail::class,
     BankingConnectionAuthFailedEmail::class,
+    BankOutageEmail::class,
     EnableBankingConnectionsCancelledEmail::class,
     BrokenBankLogosReportEmail::class,
     UserEmailsReportEmail::class,
@@ -178,6 +181,7 @@ test('mail blade signatures use alvaro before victor', function () {
         'mail/drip/feedback.blade.php',
         'mail/banking-connection-auth-failed.blade.php',
         'mail/enable-banking-connections-cancelled.blade.php',
+        'mail/bank-outage.blade.php',
     ];
 
     foreach ($mailViews as $mailView) {
@@ -199,4 +203,17 @@ test('enable banking cancellation email includes dashboard access messaging', fu
     $mailable->assertSeeInHtml('free access');
     $mailable->assertSeeInHtml('accounts, transactions, and balances remain in Whisper Money');
     $mailable->assertSeeInHtml(route('dashboard'));
+});
+
+test('bank outage email blames the bank and asks the user for nothing', function () {
+    $user = User::factory()->create(['name' => 'Test User']);
+
+    $mailable = new BankOutageEmail($user, 'Openbank');
+
+    $mailable->assertHasSubject('Openbank is having a temporary problem on their side');
+    $mailable->assertSeeInHtml('The failure is on the bank side, not in Whisper Money');
+    $mailable->assertSeeInHtml('You do not need to do anything.');
+    $mailable->assertSeeInHtml('All your data is safe.');
+    $mailable->assertSeeInHtml('working with our banking provider and with the bank');
+    $mailable->assertDontSeeInHtml(route('settings.connections.index'));
 });
