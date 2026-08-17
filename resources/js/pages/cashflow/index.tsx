@@ -148,16 +148,23 @@ export default function CashflowPage() {
         const periodParam = formatPeriodParam(currentDate, periodType);
 
         if (initialPeriod !== periodParam || initialPeriodType !== periodType) {
-            router.visit(
-                cashflow({
+            // A client-side visit: this effect only exists to put the period in the
+            // URL so a refresh or a shared link keeps it. Asking the server would
+            // re-render every shared prop for an answer we already have - and on a
+            // bare /cashflow the guard is always true, so that was a second full
+            // request on every open and on every period change.
+            router.replace({
+                url: cashflow({
                     query: { period: periodParam, period_type: periodType },
                 }).url,
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    replace: true,
-                },
-            );
+                props: (props) => ({
+                    ...props,
+                    period: periodParam,
+                    periodType,
+                }),
+                preserveScroll: true,
+                preserveState: true,
+            });
         }
     }, [currentDate, initialPeriod, initialPeriodType, periodType]);
 
