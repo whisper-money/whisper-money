@@ -1,5 +1,5 @@
 <x-mail::message>
-# {{ __('About your :bank connection — it was not your fault', ['bank' => $bankName]) }}
+# {{ __(':bank cannot be connected right now, and it was not your fault', ['bank' => $bankName]) }}
 
 {{ __('Hi :name,', ['name' => $userName]) }}
 
@@ -10,6 +10,10 @@
 {{ __('We have reported it to our banking provider and we are pushing to get :bank working. As soon as it connects, we will email you so you do not have to keep checking.', ['bank' => $bankName]) }}
 
 {{ __('In the meantime you can still track that account here: add it manually, or import a file exported from your bank. Everything else in Whisper Money works as usual.') }}
+
+<x-mail::button :url="route('accounts.list')">
+{{ __('Add the account manually') }}
+</x-mail::button>
 
 {{ __('Sorry for the wasted time, and thank you for the patience.') }}
 

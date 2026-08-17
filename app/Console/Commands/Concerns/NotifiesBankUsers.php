@@ -27,10 +27,19 @@ use Illuminate\Support\Str;
  * the `banks` table is per-user, so a bank UUID means nothing outside the one
  * account it belongs to.
  *
+ * A command using this must declare all four shared options in its signature —
+ * `--country`, `--dry-run`, `--force` and `--resend` — because the helpers here
+ * read them.
+ *
  * @mixin Command
  */
 trait NotifiesBankUsers
 {
+    /**
+     * The withCount alias the recipient tables read.
+     */
+    protected const MATCHED_CONNECTIONS = 'matched_connections_count';
+
     /**
      * The `--country` option, normalized to the casing the column uses.
      */
@@ -48,6 +57,22 @@ trait NotifiesBankUsers
             ->where('provider', BankingProvider::EnableBanking)
             ->where('aspsp_name', $aspsp)
             ->when($country, fn (Builder $query) => $query->where('aspsp_country', $country));
+    }
+
+    /**
+     * The distinct name/country pairs a predicate matches, which is how a bank
+     * gets resolved from whatever the operator typed.
+     *
+     * @return Collection<int, BankingConnection>
+     */
+    protected function affectedBanks(Closure $matches): Collection
+    {
+        return BankingConnection::query()
+            ->tap($matches)
+            ->select('aspsp_name', 'aspsp_country')
+            ->distinct()
+            ->orderBy('aspsp_name')
+            ->get();
     }
 
     /**
@@ -91,7 +116,7 @@ trait NotifiesBankUsers
     {
         return User::query()
             ->whereHas('bankingConnections', $matches)
-            ->withCount(['bankingConnections as matched_connections_count' => $matches])
+            ->withCount(['bankingConnections as '.self::MATCHED_CONNECTIONS => $matches])
             ->unless($this->option('resend'), fn (Builder $query) => $query->whereDoesntHave(
                 'mailLogs',
                 fn (Builder $query) => $query
@@ -115,7 +140,14 @@ trait NotifiesBankUsers
             return false;
         }
 
-        if (! $this->option('force') && ! $this->confirm($question, false)) {
+        // --force is blanket consent for a first send. --resend is the one
+        // combination that puts a second copy of the same message in a real
+        // inbox, so it is always confirmed by hand.
+        if ($this->option('force') && ! $this->option('resend')) {
+            return true;
+        }
+
+        if (! $this->confirm($question, false)) {
             $this->info('Cancelled.');
 
             return false;
@@ -153,6 +185,21 @@ trait NotifiesBankUsers
     protected function reportUnknownBank(string $aspsp, ?string $country): void
     {
         $this->info('No Enable Banking connection to '.$aspsp.($country ? " ({$country})" : '').'.');
+
+        // The usual mistake is the right name with the wrong country, so say
+        // where that bank does exist before offering other names.
+        $countries = BankingConnection::withTrashed()
+            ->where('provider', BankingProvider::EnableBanking)
+            ->where('aspsp_name', $aspsp)
+            ->distinct()
+            ->orderBy('aspsp_country')
+            ->pluck('aspsp_country');
+
+        if ($countries->isNotEmpty()) {
+            $this->line("{$aspsp} exists in ".$countries->implode(', ').'.');
+
+            return;
+        }
 
         $similar = BankingConnection::withTrashed()
             ->where('provider', BankingProvider::EnableBanking)

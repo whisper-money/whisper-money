@@ -31,7 +31,7 @@ class BankConnectFailedEmail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: __('About your :bank connection — it was not your fault', [
+            subject: __(':bank cannot be connected right now, and it was not your fault', [
                 'bank' => $this->bankName,
             ]),
         );

@@ -11,6 +11,7 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use Closure;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -19,7 +20,7 @@ use Illuminate\Support\Collection;
  * to that bank that their transactions and balances are stuck because the bank
  * stopped answering, and that we are on it.
  */
-class NotifyBankOutageCommand extends Command
+class NotifyBankOutageCommand extends Command implements Isolatable
 {
     use NotifiesBankUsers;
 
@@ -50,12 +51,7 @@ class NotifyBankOutageCommand extends Command
         $aspsp = (string) $this->argument('aspsp');
         $country = $this->countryOption();
 
-        $banks = BankingConnection::query()
-            ->tap($this->matchesOutage($this->matchesBank($aspsp, $country)))
-            ->select('aspsp_name', 'aspsp_country')
-            ->distinct()
-            ->orderBy('aspsp_name')
-            ->get();
+        $banks = $this->affectedBanks($this->matchesOutage($this->matchesBank($aspsp, $country)));
 
         if ($banks->isEmpty()) {
             return $this->reportNoOutage($aspsp, $country);
@@ -77,7 +73,7 @@ class NotifyBankOutageCommand extends Command
         $users = $this->recipients($matchesOutage, DripEmailType::BankOutage, $this->bankIdentifier($bankName, $country));
 
         if ($users->isEmpty()) {
-            $this->info("Nobody to notify about the {$displayName} outage: everyone affected was already notified or cannot receive email. Use --resend to send it again.");
+            $this->info("Nobody to notify about the {$displayName} outage: everyone affected was already notified, or has since deleted their account. Use --resend to send it again.");
 
             return self::SUCCESS;
         }
@@ -130,7 +126,7 @@ class NotifyBankOutageCommand extends Command
     {
         $this->table(['Email', 'Connections'], $users->map(fn (User $user) => [
             $user->email,
-            (int) $user->getAttribute('matched_connections_count'),
+            (int) $user->getAttribute(self::MATCHED_CONNECTIONS),
         ])->all());
 
         $this->info("{$users->count()} user(s) to notify about the {$displayName} outage.");

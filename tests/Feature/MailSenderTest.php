@@ -227,9 +227,10 @@ test('bank connect failure email absolves the user and promises a follow-up', fu
 
     $mailable = new BankConnectFailedEmail($user, 'Banco Mediolanum');
 
-    $mailable->assertHasSubject('About your Banco Mediolanum connection — it was not your fault');
+    $mailable->assertHasSubject('Banco Mediolanum cannot be connected right now, and it was not your fault');
     $mailable->assertSeeInHtml('It is failing for everyone who tries it, not just for you');
     $mailable->assertSeeInHtml('There is no point trying again for now.');
     $mailable->assertSeeInHtml('we will email you');
     $mailable->assertSeeInHtml('add it manually, or import a file exported from your bank');
+    $mailable->assertSeeInHtml(route('accounts.list'));
 });

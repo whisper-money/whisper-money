@@ -8,8 +8,10 @@ use App\Enums\DripEmailType;
 use App\Mail\BankConnectFailedEmail;
 use App\Models\BankingConnection;
 use App\Models\User;
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Collection;
@@ -23,9 +25,16 @@ use Illuminate\Support\Collection;
  * working connection that went quiet; this one is for a connection that never
  * existed, because the bank never let it be created.
  */
-class NotifyBankConnectFailureCommand extends Command
+class NotifyBankConnectFailureCommand extends Command implements Isolatable
 {
     use NotifiesBankUsers;
+
+    /**
+     * How many distinct people must have hit the bank before the copy's claim
+     * that it fails for everyone can be defended. One user cancelling twice at
+     * their bank leaves the same trace as a broken connector.
+     */
+    private const MIN_AFFECTED_USERS = 2;
 
     /**
      * The name and signature of the console command.
@@ -35,6 +44,7 @@ class NotifyBankConnectFailureCommand extends Command
     protected $signature = 'banking:notify-connect-failure
                             {aspsp : The bank name as stored on the attempt, e.g. "Banco Mediolanum"}
                             {--country= : ISO country code, required when attempts span several (e.g. ES)}
+                            {--since= : Only notify users who tried on or after this date (e.g. 2026-06-01)}
                             {--dry-run : List the recipients without sending anything}
                             {--force : Skip the confirmation prompt}
                             {--resend : Notify users who already got this bank\'s notice}';
@@ -54,12 +64,7 @@ class NotifyBankConnectFailureCommand extends Command
         $aspsp = (string) $this->argument('aspsp');
         $country = $this->countryOption();
 
-        $banks = BankingConnection::query()
-            ->tap($this->failedCallbacks($this->matchesBank($aspsp, $country)))
-            ->select('aspsp_name', 'aspsp_country')
-            ->distinct()
-            ->orderBy('aspsp_name')
-            ->get();
+        $banks = $this->affectedBanks($this->recentFailures($this->matchesBank($aspsp, $country)));
 
         if ($banks->isEmpty()) {
             return $this->reportNoFailures($aspsp, $country);
@@ -75,15 +80,15 @@ class NotifyBankConnectFailureCommand extends Command
         $displayName = "{$bankName} ({$country})";
         $matchesBank = $this->matchesBank($bankName, $country);
 
-        if (! $this->isBankUnusable($matchesBank, $displayName)) {
+        if (! $this->isBankProvenBroken($matchesBank, $displayName)) {
             return self::FAILURE;
         }
 
         $identifier = $this->bankIdentifier($bankName, $country);
-        $users = $this->recipients($this->failedCallbacks($matchesBank), DripEmailType::BankConnectFailed, $identifier);
+        $users = $this->recipients($this->recentFailures($matchesBank), DripEmailType::BankConnectFailed, $identifier);
 
         if ($users->isEmpty()) {
-            $this->info("Nobody to notify about {$displayName}: everyone who tried was already notified or cannot receive email. Use --resend to send it again.");
+            $this->info("Nobody to notify about {$displayName}: everyone who tried was already notified, or has since deleted their account. Use --resend to send it again.");
 
             return self::SUCCESS;
         }
@@ -113,54 +118,84 @@ class NotifyBankConnectFailureCommand extends Command
      * A `pending` row that is *not* deleted means the user simply never came back
      * from the bank, which is not something to apologise for.
      */
-    private function failedCallbacks(Closure $matchesBank): Closure
+    private function failedAuthorizations(Closure $matchesBank): Closure
     {
         return fn (Builder $query) => $query
             ->tap($matchesBank)
             // Only the soft-deleted rows: a rejected callback deletes the
-            // connection, so every attempt worth reporting is trashed.
+            // connection, so every attempt worth reporting is trashed. The column
+            // is qualified because this also runs as a subquery against `users`,
+            // which has a `deleted_at` of its own.
             ->withoutGlobalScope(SoftDeletingScope::class)
-            ->whereNotNull('deleted_at')
+            ->whereNotNull('banking_connections.deleted_at')
             ->where('status', BankingConnectionStatus::Pending);
     }
 
     /**
-     * Whether this bank has never once let a connection be created.
-     *
-     * The callback error code is not stored — only Sentry has it — so a single
-     * failed attempt cannot be told apart from a user cancelling at the bank.
-     * What the database can prove is that a bank has never produced a session
-     * for anybody, and for such a bank "it was not your fault" is safe to say.
-     * For a bank that does connect, this notice would call some users' own
-     * cancellation a bank failure, so the command refuses to run.
+     * The same attempts, narrowed to the `--since` window. Who gets an email is a
+     * separate question from whether the bank is broken, so the evidence check
+     * below deliberately ignores the window and reads the whole history.
      */
-    private function isBankUnusable(Closure $matchesBank, string $displayName): bool
+    private function recentFailures(Closure $matchesBank): Closure
+    {
+        return fn (Builder $query) => $query
+            ->tap($this->failedAuthorizations($matchesBank))
+            ->when(
+                $this->option('since'),
+                fn (Builder $query) => $query->where('created_at', '>=', Carbon::parse((string) $this->option('since'))),
+            );
+    }
+
+    /**
+     * Whether the data proves the bank cannot be connected, rather than one person
+     * having had a bad time with it.
+     *
+     * Two things must hold. The bank must never have produced a session for
+     * anybody: the callback error code is not stored — only Sentry has it — so a
+     * single failed attempt cannot be told apart from someone cancelling at the
+     * bank, and for a bank that does connect this notice would call that
+     * cancellation a bank failure. And more than one person must have hit it,
+     * because the email says it is failing for everyone who tries.
+     */
+    private function isBankProvenBroken(Closure $matchesBank, string $displayName): bool
     {
         $sessions = BankingConnection::withTrashed()
             ->tap($matchesBank)
             ->whereNotNull('session_id')
             ->count();
 
-        if ($sessions === 0) {
-            return true;
+        if ($sessions > 0) {
+            $this->error("{$displayName} has completed {$sessions} authorization(s), so it does connect.");
+            $this->line('This notice is only for banks that have never once connected: anywhere else a failed callback can just be someone cancelling at the bank, and telling them it was the bank would be wrong. Read the authorization errors in Sentry first.');
+
+            return false;
         }
 
-        $this->error("{$displayName} has completed {$sessions} authorization(s), so it does connect.");
-        $this->line('This notice is only for banks that have never once connected: elsewhere a failed callback can just be someone cancelling at the bank, and telling them it was the bank would be wrong. Check the authorization errors in Sentry first.');
+        $attempts = BankingConnection::query()->tap($this->failedAuthorizations($matchesBank))->count();
+        $affected = BankingConnection::query()->tap($this->failedAuthorizations($matchesBank))->distinct()->count('user_id');
 
-        return false;
+        if ($affected < self::MIN_AFFECTED_USERS) {
+            $this->error("Only {$affected} user(s) have ever hit a failed authorization at {$displayName}, over {$attempts} attempt(s).");
+            $this->line('That is too little to claim the bank is broken: one person\'s attempts look the same whether the connector failed or they cancelled at the bank. Read the authorization errors in Sentry and write to them by hand instead.');
+
+            return false;
+        }
+
+        $this->info("{$displayName} has never connected: {$attempts} failed attempt(s) from {$affected} user(s), and not one session.");
+
+        return true;
     }
 
     /**
      * @param  Collection<int, User>  $users
-     * @param  Collection<string, mixed>  $lastAttempts
+     * @param  Collection<string, string>  $lastAttempts
      */
     private function renderRecipients(Collection $users, Collection $lastAttempts, string $displayName): void
     {
         $this->table(['Email', 'Failed attempts', 'Last attempt'], $users->map(fn (User $user) => [
             $user->email,
-            (int) $user->getAttribute('matched_connections_count'),
-            (string) $lastAttempts->get($user->id, 'unknown'),
+            (int) $user->getAttribute(self::MATCHED_CONNECTIONS),
+            (string) $lastAttempts->get($user->id),
         ])->all());
 
         $this->info("{$users->count()} user(s) tried and failed to connect {$displayName}.");
@@ -170,16 +205,19 @@ class NotifyBankConnectFailureCommand extends Command
      * When each user last hit the bank's broken authorization, so the operator can
      * see who is still waiting and who gave up months ago.
      *
-     * @return Collection<string, mixed>
+     * @return Collection<string, string>
      */
     private function lastAttempts(Closure $matchesBank): Collection
     {
         return BankingConnection::query()
-            ->tap($this->failedCallbacks($matchesBank))
+            ->tap($this->recentFailures($matchesBank))
             ->selectRaw('user_id, MAX(created_at) as last_attempt')
             ->groupBy('user_id')
+            ->toBase()
             ->get()
-            ->pluck('last_attempt', 'user_id');
+            ->mapWithKeys(fn (object $row) => [
+                $row->user_id => Carbon::parse($row->last_attempt)->toDateTimeString(),
+            ]);
     }
 
     /**
