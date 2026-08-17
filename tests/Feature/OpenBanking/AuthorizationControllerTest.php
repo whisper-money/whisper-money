@@ -229,8 +229,8 @@ test('callback ignores the provider description unless the user denied the conse
     $user = User::factory()->onboarded()->create();
     BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
 
-    // Real invalid_client description from production: untranslated, addressed to
-    // us rather than to the user, and with its spaces still URL-encoded.
+    // Real invalid_client description from production: prose addressed to us
+    // rather than to the user, and in a language we never asked for.
     $response = $this->actingAs($user)->get(
         '/open-banking/callback?error=invalid_client&error_description=Alg%C3%BAn+reto+es+err%C3%B3neo.+SOLUCION%3A+Debe+reintentar+el+flujo.'
     );
