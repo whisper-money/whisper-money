@@ -1,6 +1,7 @@
 import type { Event } from '@sentry/react';
 import { isChunkLoadError } from './chunk-load-recovery';
 import { isLeavingPage } from './leave-page';
+import { wasPrefetched } from './prefetch-tracker';
 
 const CLONE_ERROR_MESSAGE_PATTERN =
     /object (can not|could not|couldn't|can't) be cloned/i;
@@ -15,6 +16,12 @@ const CLONE_ERROR_MESSAGE_PATTERN =
 // dynamically imported module: …" out — that is a chunk load, not an abort.
 const ABORTED_REQUEST_MESSAGE_PATTERN =
     /^(network error|request aborted|failed to fetch|load failed)( \(.+\))?$/i;
+// A strict subset of the pattern above, capturing the URL rather than just allowing
+// it: that tail is the only place the *failed* request's URL survives as far as
+// beforeSend, since Sentry's `url` tag is the page the user was on. Depends on
+// Inertia's internal message format, which has no stability contract — if it changes,
+// this stops matching and the noise comes back, which is the safe direction.
+const INERTIA_NETWORK_ERROR_PATTERN = /^network error \((.+)\)$/i;
 const FACEBOOK_IAB_JAVA_OBJECT_GONE_PATTERN =
     /Error invoking .+: Java object is gone/i;
 const SAFARI_CASHBACK_EXTENSION_PATTERN = /response\.cashbackReminder/i;
@@ -109,6 +116,27 @@ export function isPageLeaveAbortNoise(event: Event): boolean {
         event.exception?.values?.some((exception) =>
             ABORTED_REQUEST_MESSAGE_PATTERN.test(exception.value ?? ''),
         ) ?? false
+    );
+}
+
+/**
+ * A speculative request that failed.
+ *
+ * Every sidebar item is a `<Link prefetch>`, so hovering the nav fetches a page the
+ * user has not committed to. When one fails there is nothing to fix and nothing the
+ * user notices - the next real click just makes a real request, and Inertia has
+ * already dropped the dead entry so the click is not wedged. Reporting it buries the
+ * navigations that genuinely failed on someone who was waiting for one.
+ */
+export function isFailedPrefetchNoise(event: Event): boolean {
+    return (
+        event.exception?.values?.some((exception) => {
+            const failedUrl = INERTIA_NETWORK_ERROR_PATTERN.exec(
+                exception.value ?? '',
+            )?.[1];
+
+            return failedUrl !== undefined && wasPrefetched(failedUrl);
+        }) ?? false
     );
 }
 
