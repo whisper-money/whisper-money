@@ -144,7 +144,7 @@ test('does not delete other users data', function () {
     expect(Account::query()->where('user_id', $otherUser->id)->exists())->toBeTrue();
 });
 
-test('cancels active subscription before deleting user when confirmed', function () {
+test('cancels a chargeable subscription before deleting user when confirmed', function (string $status) {
     $this->travelTo(now()->setDate(2026, 4, 22)->setTime(10, 51, 24));
 
     $user = User::factory()->onboarded()->create([
@@ -156,7 +156,7 @@ test('cancels active subscription before deleting user when confirmed', function
         'user_id' => $user->id,
         'type' => 'default',
         'stripe_id' => 'sub_test123',
-        'stripe_status' => 'active',
+        'stripe_status' => $status,
         'stripe_price' => 'price_test123',
         'quantity' => 1,
     ]);
@@ -167,15 +167,15 @@ test('cancels active subscription before deleting user when confirmed', function
 
     $this->artisan('user:delete', ['email' => 'subscribed@example.com'])
         ->expectsConfirmation("Are you sure you want to mark user 'Subscribed User' (subscribed@example.com) as deleted? Their data will be preserved.", 'yes')
-        ->expectsConfirmation("User 'subscribed@example.com' has an active Stripe subscription. Cancel it before deleting the user?", 'yes')
-        ->expectsOutput("Cancelled active Stripe subscription for 'subscribed@example.com'.")
+        ->expectsConfirmation("User 'subscribed@example.com' has a chargeable Stripe subscription ({$status}). Cancel it before deleting the user?", 'yes')
+        ->expectsOutput("Cancelled Stripe subscription for 'subscribed@example.com'.")
         ->expectsOutput("User 'subscribed@example.com' has been marked as deleted. Their data remains in the database.")
         ->assertSuccessful();
 
     expect($subscription->fresh()->stripe_status)->toBe('canceled');
     expect($subscription->fresh()->ends_at)->not->toBeNull();
     expect(User::withTrashed()->find($user->id)?->deleted_at)->not->toBeNull();
-});
+})->with(['active', 'past_due', 'unpaid', 'incomplete']);
 
 test('cancels deletion when subscription cancellation is not confirmed', function () {
     $user = User::factory()->onboarded()->create([
@@ -198,12 +198,42 @@ test('cancels deletion when subscription cancellation is not confirmed', functio
 
     $this->artisan('user:delete', ['email' => 'subscribed@example.com'])
         ->expectsConfirmation("Are you sure you want to mark user 'Subscribed User' (subscribed@example.com) as deleted? Their data will be preserved.", 'yes')
-        ->expectsConfirmation("User 'subscribed@example.com' has an active Stripe subscription. Cancel it before deleting the user?", 'no')
+        ->expectsConfirmation("User 'subscribed@example.com' has a chargeable Stripe subscription (active). Cancel it before deleting the user?", 'no')
         ->expectsOutput('Deletion cancelled.')
         ->assertSuccessful();
 
     expect(User::query()->where('email', 'subscribed@example.com')->exists())->toBeTrue();
     expect(Subscription::query()->where('user_id', $user->id)->first()?->stripe_status)->toBe('active');
+});
+
+test('leaves an already cancelled subscription alone instead of cutting its grace period short', function () {
+    $user = User::factory()->onboarded()->create([
+        'email' => 'grace@example.com',
+        'name' => 'Grace User',
+    ]);
+
+    $subscription = Subscription::query()->create([
+        'user_id' => $user->id,
+        'type' => 'default',
+        'stripe_id' => 'sub_grace123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+        'quantity' => 1,
+        'ends_at' => now()->addDays(7),
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldNotReceive('revokeSession');
+    app()->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->artisan('user:delete', ['email' => 'grace@example.com'])
+        ->expectsConfirmation("Are you sure you want to mark user 'Grace User' (grace@example.com) as deleted? Their data will be preserved.", 'yes')
+        ->expectsOutput("User 'grace@example.com' has been marked as deleted. Their data remains in the database.")
+        ->assertSuccessful();
+
+    expect($subscription->fresh()->stripe_status)->toBe('active');
+    expect($subscription->fresh()->ends_at->toDateString())->toBe(now()->addDays(7)->toDateString());
+    expect(User::withTrashed()->find($user->id)?->deleted_at)->not->toBeNull();
 });
 
 test('revokes enable banking connections before deleting user when confirmed', function () {

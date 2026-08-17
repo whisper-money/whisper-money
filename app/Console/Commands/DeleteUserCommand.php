@@ -51,13 +51,13 @@ class DeleteUserCommand extends Command
             return self::SUCCESS;
         }
 
-        $subscription = $this->activeSubscription($user);
+        $subscription = $user->collectableSubscription();
         $enableBankingConnections = $user->bankingConnections()
             ->with('accounts')
             ->where('provider', BankingProvider::EnableBanking)
             ->get();
 
-        if ($subscription && ! $this->confirm("User '{$user->email}' has an active Stripe subscription. Cancel it before deleting the user?")) {
+        if ($subscription && ! $this->confirm("User '{$user->email}' has a chargeable Stripe subscription ({$subscription->stripe_status}). Cancel it before deleting the user?")) {
             $this->info('Deletion cancelled.');
 
             return self::SUCCESS;
@@ -71,7 +71,7 @@ class DeleteUserCommand extends Command
 
         if ($subscription) {
             $this->cancelSubscription($user, $subscription);
-            $this->info("Cancelled active Stripe subscription for '{$user->email}'.");
+            $this->info("Cancelled Stripe subscription for '{$user->email}'.");
         }
 
         foreach ($enableBankingConnections as $connection) {
@@ -89,20 +89,9 @@ class DeleteUserCommand extends Command
         return self::SUCCESS;
     }
 
-    private function activeSubscription(User $user): ?Subscription
-    {
-        $subscription = $user->subscription('default');
-
-        if (! $subscription || ! $subscription->valid()) {
-            return null;
-        }
-
-        return $subscription;
-    }
-
     private function cancelSubscription(User $user, Subscription $subscription): void
     {
-        if ($user->hasStripeId()) {
+        if ($user->hasStripeId() && ! $user->hasSeededSubscription()) {
             $subscription->cancelNow();
 
             return;
