@@ -2344,5 +2344,10 @@
     "See what's shipped, what we're building, and what's coming next in Whisper Money.": "Descubre qué hemos publicado, qué estamos construyendo y qué viene después en Whisper Money.",
     "What's shipped. What's coming.": "Lo publicado. Lo que viene.",
     "Request a feature": "Pedir una función",
-    "The roadmap is temporarily unavailable. Check it out on our feedback board.": "La hoja de ruta no está disponible ahora mismo. Puedes consultarla en nuestro tablón de sugerencias."
+    "The roadmap is temporarily unavailable. Check it out on our feedback board.": "La hoja de ruta no está disponible ahora mismo. Puedes consultarla en nuestro tablón de sugerencias.",
+    ":bank is having a temporary problem on their side": ":bank está teniendo un problema temporal por su parte",
+    "We noticed that :bank has stopped answering our requests for your transactions and balances. The failure is on the bank side, not in Whisper Money, and it affects everyone connected to :bank right now.": "Hemos detectado que :bank ha dejado de responder a nuestras peticiones de tus movimientos y saldos. El fallo está en el lado del banco, no en Whisper Money, y ahora mismo afecta a todas las personas conectadas a :bank.",
+    "You do not need to do anything. Your connection and your consent are still valid, so there is no need to reconnect :bank — that would not help until the bank answers again.": "No tienes que hacer nada. Tu conexión y tu consentimiento siguen siendo válidos, así que no hace falta volver a conectar :bank: no serviría de nada hasta que el banco vuelva a responder.",
+    "All your data is safe. Nothing has been lost, and everything already in Whisper Money stays exactly as it is. Once :bank responds again, the missing transactions and balances fill in automatically.": "Todos tus datos están a salvo. No se ha perdido nada y todo lo que ya está en Whisper Money se queda tal cual. Cuando :bank vuelva a responder, los movimientos y saldos que falten se completarán automáticamente.",
+    "We are already on it, working with our banking provider and with the bank to get it fixed as soon as possible. We will let you know if we need anything from you.": "Ya estamos en ello, trabajando con nuestro proveedor bancario y con el banco para solucionarlo lo antes posible. Te avisaremos si necesitamos algo de ti."
 }
