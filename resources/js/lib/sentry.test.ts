@@ -399,3 +399,97 @@ describe('isBrowserExtensionNoise', () => {
         expect(isBrowserExtensionNoise(event)).toBe(false);
     });
 });
+
+describe('isFailedPrefetchNoise', () => {
+    async function freshModules() {
+        vi.resetModules();
+        const listeners: Record<string, (e: unknown) => void> = {};
+        vi.doMock('@inertiajs/react', () => ({
+            router: {
+                on: (name: string, cb: (e: unknown) => void) => {
+                    listeners[name] = cb;
+
+                    return () => delete listeners[name];
+                },
+            },
+        }));
+
+        const tracker = await import('./prefetch-tracker');
+        const sentry = await import('./sentry');
+        tracker.trackPrefetchedUrls();
+
+        return { ...tracker, ...sentry, listeners };
+    }
+
+    function networkError(url: string): Event {
+        return {
+            exception: {
+                values: [
+                    {
+                        type: 'HttpNetworkError',
+                        value: `Network error (${url})`,
+                    },
+                ],
+            },
+        };
+    }
+
+    it('drops the failure of a page we only guessed at', async () => {
+        const { isFailedPrefetchNoise, listeners } = await freshModules();
+
+        // Hovering the sidebar prefetches Cashflow from whatever page you are on.
+        listeners.prefetching?.({
+            detail: {
+                visit: { url: new URL('https://whisper.money/cashflow') },
+            },
+        });
+
+        expect(
+            isFailedPrefetchNoise(
+                networkError('https://whisper.money/cashflow'),
+            ),
+        ).toBe(true);
+    });
+
+    it('keeps the failure of a navigation someone was waiting for', async () => {
+        const { isFailedPrefetchNoise } = await freshModules();
+
+        // Never prefetched, so this is a click that went nowhere - the case the
+        // suppression must not swallow.
+        expect(
+            isFailedPrefetchNoise(
+                networkError('https://whisper.money/budgets'),
+            ),
+        ).toBe(false);
+    });
+
+    it('stops attributing a prefetch once its window has passed', async () => {
+        const { isFailedPrefetchNoise, listeners } = await freshModules();
+
+        listeners.prefetching?.({
+            detail: {
+                visit: { url: new URL('https://whisper.money/cashflow') },
+            },
+        });
+
+        vi.setSystemTime(Date.now() + 61_000);
+
+        expect(
+            isFailedPrefetchNoise(
+                networkError('https://whisper.money/cashflow'),
+            ),
+        ).toBe(false);
+    });
+
+    it('keeps a network error that is not Inertia-shaped', async () => {
+        const { isFailedPrefetchNoise } = await freshModules();
+
+        expect(
+            isFailedPrefetchNoise({
+                exception: {
+                    values: [{ type: 'AxiosError', value: 'Network Error' }],
+                },
+            }),
+        ).toBe(false);
+    });
+});

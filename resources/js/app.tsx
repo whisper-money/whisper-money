@@ -28,10 +28,12 @@ import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
 import { leavePage } from './lib/leave-page';
 import { initializePostHog } from './lib/posthog';
+import { trackPrefetchedUrls } from './lib/prefetch-tracker';
 import {
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
+    isFailedPrefetchNoise,
     isPageLeaveAbortNoise,
     isPostMessageDataCloneNoise,
     isSafariCashbackExtensionNoise,
@@ -41,6 +43,7 @@ import type { ExpiredBankingConnectionNotification, SharedData } from './types';
 import { __, setTranslations } from './utils/i18n';
 
 installChunkLoadRecovery();
+trackPrefetchedUrls();
 
 Sentry.init({
     dsn: import.meta.env.SENTRY_LARAVEL_DSN,
@@ -52,6 +55,7 @@ Sentry.init({
         if (
             isChunkLoadErrorEvent(event) ||
             isPageLeaveAbortNoise(event) ||
+            isFailedPrefetchNoise(event) ||
             isBrowserExtensionNoise(event) ||
             isPostMessageDataCloneNoise(event) ||
             isFacebookInAppBrowserJavaBridgeNoise(event) ||
