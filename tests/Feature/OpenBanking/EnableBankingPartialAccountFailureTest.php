@@ -7,6 +7,7 @@ use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\BankingSyncLog;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
@@ -256,4 +257,52 @@ test('a rate limit outranks a transaction failure deferred from an earlier accou
     // allowance. The transaction failure retries next cycle either way.
     $connection->refresh();
     expect($connection->rate_limited_until)->not->toBeNull();
+});
+
+test('an account still gets its balance history after the connection has synced before', function () {
+    $connection = enableBankingConnectionWithAccounts(1);
+    $account = $connection->accounts[0];
+
+    // The connection has synced before, so the old gate ($isFirstSync) was closed
+    // for good - which is what a rate-limited first run leaves behind. The account
+    // itself has transactions and no balance older than them, so it is still owed
+    // its daily history.
+    Transaction::factory()->enableBanking()->plaintext()->create([
+        'user_id' => $connection->user_id,
+        'account_id' => $account->id,
+        'transaction_date' => now()->subMonths(2)->toDateString(),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturn(0);
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
+
+    runSync(finalAttemptJobFor($connection), $transactionSync, $balanceSync);
+});
+
+test('an account that already has balance history is not asked for it again', function () {
+    $connection = enableBankingConnectionWithAccounts(1);
+    $account = $connection->accounts[0];
+
+    Transaction::factory()->enableBanking()->plaintext()->create([
+        'user_id' => $connection->user_id,
+        'account_id' => $account->id,
+        'transaction_date' => now()->subMonth()->toDateString(),
+    ]);
+    $account->balances()->create([
+        'balance_date' => now()->subMonths(2)->toDateString(),
+        'balance' => 1000,
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturn(0);
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldNotReceive('calculateHistoricalBalances');
+
+    runSync(finalAttemptJobFor($connection), $transactionSync, $balanceSync);
 });

@@ -101,24 +101,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             }
         }
 
-        // Report the failure only once every account has had its turn. The run
-        // still fails, so the connection keeps its Error state, its retries and its
-        // unset last_synced_at exactly as before - the one thing that changes is
-        // that the accounts behind the failing one were attempted at all.
-        //
-        // Unless the provider also rate limited us, in which case its window wins:
-        // throwing would drop it, and the scheduler would come straight back for
-        // what is left of the allowance. The transaction failure retries next cycle
-        // either way, so nothing is lost by letting the deadline take precedence.
-        if ($transactionFailure !== null && $rateLimitedUntil === null) {
-            throw $transactionFailure;
-        }
-
-        if ($isFirstSync) {
-            $connection->update(['bank_transactions_email_cutoff_at' => now()]);
-        } elseif ($connection->user->canReceiveEmails()) {
-            SendDailyBankTransactionsSyncedEmailJob::dispatch($connection->user, now()->toDateString());
-        }
+        $this->finishRun($connection, $isFirstSync, $transactionFailure, $rateLimitedUntil);
 
         return array_filter([
             'transactions_synced' => array_sum($transactionsPerBank),
@@ -173,6 +156,67 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
     }
 
     /**
+     * Decide what the run amounted to, once every account has had its turn.
+     */
+    private function finishRun(
+        BankingConnection $connection,
+        bool $isFirstSync,
+        ?TransientBankingProviderException $transactionFailure,
+        ?Carbon $rateLimitedUntil,
+    ): void {
+        // Report the failure only once every account has had its turn. The run
+        // still fails, so the connection keeps its Error state, its retries and its
+        // unset last_synced_at exactly as before - the one thing that changes is
+        // that the accounts behind the failing one were attempted at all.
+        //
+        // Unless the provider also rate limited us, in which case its window wins:
+        // throwing would drop it, and the scheduler would come straight back for
+        // what is left of the allowance. The transaction failure retries next cycle
+        // either way, so nothing is lost by letting the deadline take precedence.
+        if ($transactionFailure !== null && $rateLimitedUntil === null) {
+            throw $transactionFailure;
+        }
+
+        if ($isFirstSync) {
+            $connection->update(['bank_transactions_email_cutoff_at' => now()]);
+        } elseif ($connection->user->canReceiveEmails()) {
+            SendDailyBankTransactionsSyncedEmailJob::dispatch($connection->user, now()->toDateString());
+        }
+
+    }
+
+    /**
+     * Whether this account still owes us the daily balances behind its transactions.
+     *
+     * Widens the connection's first sync rather than replacing it: an account that
+     * would have been backfilled before still is. The connection-level
+     * flag flips false the moment any run completes, and an account whose balance
+     * call failed on that run - rate limited, or just refused - would then never get
+     * its history computed: getBalanceAt carries the last balance backwards and
+     * returns 0 before the first row, so the account and the net-worth chart read a
+     * flat zero for every month before its first balance, permanently. The only way
+     * back was an operator running `banking:sync --full`.
+     *
+     * Checked before the balance call, since that call writes today's row and would
+     * make an account with no history look like it had some. calculateHistoricalBalances
+     * skips dates it already has, so asking again costs one query and writes nothing.
+     */
+    private function needsHistoricalBalances(Account $account): bool
+    {
+        $earliestTransaction = $account->transactions()
+            ->where('source', TransactionSource::EnableBanking)
+            ->min('transaction_date');
+
+        if ($earliestTransaction === null) {
+            return false;
+        }
+
+        return ! $account->balances()
+            ->where('balance_date', '<=', $earliestTransaction)
+            ->exists();
+    }
+
+    /**
      * Sync one account's balances, tolerating a provider that will not serve them.
      *
      * @return array{0: bool, 1: Carbon|null} Whether the balances were synced, and
@@ -181,10 +225,12 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
      */
     private function syncBalances(Account $account, bool $isFirstSync): array
     {
+        $needsHistory = $this->needsHistoricalBalances($account);
+
         try {
             $this->balanceSync->sync($account);
 
-            if ($isFirstSync && ! $account->isLinked()) {
+            if (($isFirstSync || $needsHistory) && ! $account->isLinked()) {
                 $this->balanceSync->calculateHistoricalBalances($account);
             }
 
