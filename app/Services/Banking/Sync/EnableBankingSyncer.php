@@ -32,13 +32,6 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
      */
     private const int SHORT_WINDOW_DAYS = 90;
 
-    /**
-     * Set when a balance call was rate limited, so the run can finish and still
-     * hand the provider's window to the job. Reset on every sync because syncers
-     * are resolved once and reused across connections.
-     */
-    private ?Carbon $rateLimitedUntil = null;
-
     public function __construct(
         private TransactionSyncService $transactionSync,
         private BalanceSyncService $balanceSync,
@@ -61,7 +54,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $transactionsPerBank = [];
         $balanceFailed = 0;
         $transactionFailure = null;
-        $this->rateLimitedUntil = null;
+        $rateLimitedUntil = null;
 
         $connection->load('accounts.bank');
 
@@ -87,19 +80,24 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 $transactionFailure ??= $this->recordAccountTransactionFailure($account, $e);
             }
 
-            if (! $this->syncBalances($account, $isFirstSync)) {
-                $balanceFailed++;
-            }
+            [$balanceSynced, $balanceRateLimit] = $this->syncBalances($account, $isFirstSync);
 
-            // The provider asked us to stop; the accounts left would only spend
-            // allowance we no longer have.
-            if ($this->rateLimitedUntil !== null) {
-                break;
+            if (! $balanceSynced) {
+                $balanceFailed++;
             }
 
             if ($created > 0) {
                 $bankName = $account->bank->name ?? __('Unknown Bank');
                 $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
+            }
+
+            // The provider asked us to stop; the accounts left would only spend
+            // allowance we no longer have. Counted above first - these rows were
+            // imported, and the sync log is what we read to size problems like this.
+            if ($balanceRateLimit !== null) {
+                $rateLimitedUntil = $balanceRateLimit;
+
+                break;
             }
         }
 
@@ -107,7 +105,12 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         // still fails, so the connection keeps its Error state, its retries and its
         // unset last_synced_at exactly as before - the one thing that changes is
         // that the accounts behind the failing one were attempted at all.
-        if ($transactionFailure !== null) {
+        //
+        // Unless the provider also rate limited us, in which case its window wins:
+        // throwing would drop it, and the scheduler would come straight back for
+        // what is left of the allowance. The transaction failure retries next cycle
+        // either way, so nothing is lost by letting the deadline take precedence.
+        if ($transactionFailure !== null && $rateLimitedUntil === null) {
             throw $transactionFailure;
         }
 
@@ -117,12 +120,12 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             SendDailyBankTransactionsSyncedEmailJob::dispatch($connection->user, now()->toDateString());
         }
 
-        return [
+        return array_filter([
             'transactions_synced' => array_sum($transactionsPerBank),
             'transactions_per_bank' => $transactionsPerBank,
             'balance_failed' => $balanceFailed,
-            'rate_limited_until' => $this->rateLimitedUntil,
-        ];
+            'rate_limited_until' => $rateLimitedUntil?->toIso8601String(),
+        ], fn ($value) => $value !== null);
     }
 
     /**
@@ -172,9 +175,11 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
     /**
      * Sync one account's balances, tolerating a provider that will not serve them.
      *
-     * @return bool Whether the balances were synced
+     * @return array{0: bool, 1: Carbon|null} Whether the balances were synced, and
+     *                                        when the provider will have us back if
+     *                                        it rate limited us
      */
-    private function syncBalances(Account $account, bool $isFirstSync): bool
+    private function syncBalances(Account $account, bool $isFirstSync): array
     {
         try {
             $this->balanceSync->sync($account);
@@ -183,7 +188,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 $this->balanceSync->calculateHistoricalBalances($account);
             }
 
-            return true;
+            return [true, null];
         } catch (\Throwable $e) {
             // An expired consent needs the user to reconnect: nothing here can help.
             if ($e instanceof ExpiredBankingSessionException) {
@@ -196,15 +201,15 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             // then looked like it had never synced at all. Report it instead and let
             // the caller stop the loop and hand the window to the job.
             if (RateLimitBackoff::isRateLimit($e)) {
-                $this->rateLimitedUntil = RateLimitBackoff::until($e);
+                $until = RateLimitBackoff::until($e);
 
                 Log::warning('EnableBanking balance sync rate limited, keeping the run', [
                     'connection_id' => $account->banking_connection_id,
                     'account_id' => $account->id,
-                    'rate_limited_until' => $this->rateLimitedUntil->toIso8601String(),
+                    'rate_limited_until' => $until->toIso8601String(),
                 ]);
 
-                return false;
+                return [false, $until];
             }
 
             // Anything else is not worth losing the run over. Balances are a
@@ -217,7 +222,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 'error' => $e->getMessage(),
             ]);
 
-            return false;
+            return [false, null];
         }
     }
 

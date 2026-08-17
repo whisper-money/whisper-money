@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingSyncLogStatus;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
+use App\Models\BankingSyncLog;
 use App\Models\User;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
@@ -199,7 +201,8 @@ test('a balance rate limit stops the loop instead of spending what is left', fun
     });
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
-    $balanceSync->shouldReceive('sync')->andThrow(new RequestException(
+    // The balance call is the one actually spending the allowance, so pin it too.
+    $balanceSync->shouldReceive('sync')->once()->andThrow(new RequestException(
         new Illuminate\Http\Client\Response(new Response(429, [], json_encode([
             'code' => 429,
             'message' => 'Maximum daily access exceeded',
@@ -216,4 +219,41 @@ test('a balance rate limit stops the loop instead of spending what is left', fun
     expect($connection->last_synced_at)->not->toBeNull();
     expect($connection->rate_limited_until->toIso8601String())
         ->toBe(now()->utc()->addDay()->startOfDay()->toIso8601String());
+
+    // The rate-limited account's rows were imported, so the log has to say so -
+    // this is the table we read to size problems like this one.
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)
+        ->where('status', BankingSyncLogStatus::Success)->sole();
+    expect($log->metadata['transactions_synced'])->toBe(5);
+});
+
+test('a rate limit outranks a transaction failure deferred from an earlier account', function () {
+    $connection = enableBankingConnectionWithAccounts(3);
+    $connection->update(['last_synced_at' => null]);
+    $refusedAccountId = $connection->accounts[0]->id;
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(function ($account) use ($refusedAccountId) {
+        if ($account->id === $refusedAccountId) {
+            throw aspspError();
+        }
+
+        return 5;
+    });
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andThrow(new RequestException(
+        new Illuminate\Http\Client\Response(new Response(429, [], json_encode([
+            'code' => 429,
+            'message' => 'Maximum daily access exceeded',
+        ])))
+    ));
+
+    runSync(finalAttemptJobFor($connection), $transactionSync, $balanceSync);
+
+    // Throwing the deferred transaction failure here would drop the provider's
+    // window, and the scheduler would come straight back for what is left of the
+    // allowance. The transaction failure retries next cycle either way.
+    $connection->refresh();
+    expect($connection->rate_limited_until)->not->toBeNull();
 });
