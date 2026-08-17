@@ -17,9 +17,11 @@ createServer((page) =>
         resolve: (name) =>
             resolvePageComponent(
                 `./pages/${name}.tsx`,
-                import.meta.glob<{ default: ResolvedComponent }>(
+                // See app.tsx: keeps the page tests out of the bundle.
+                import.meta.glob<{ default: ResolvedComponent }>([
                     './pages/**/*.tsx',
-                ),
+                    '!./pages/**/*.test.tsx',
+                ]),
             ).then((module) => module.default),
         setup: ({ App, props }) => {
             const initialPageProps = props.initialPage?.props as

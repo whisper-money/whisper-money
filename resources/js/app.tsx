@@ -183,9 +183,13 @@ createInertiaApp({
     resolve: (name) =>
         resolvePageComponent(
             `./pages/${name}.tsx`,
-            import.meta.glob<{ default: ResolvedComponent }>(
+            // Excluding the tests that live next to their pages: without it Vite
+            // treats each one as a page entry and bundles what it imports, which
+            // put four test chunks and 430KB of vitest into the production build.
+            import.meta.glob<{ default: ResolvedComponent }>([
                 './pages/**/*.tsx',
-            ),
+                '!./pages/**/*.test.tsx',
+            ]),
         ).then((module) => module.default),
     setup({ el, App, props }) {
         const root = createRoot(el);
