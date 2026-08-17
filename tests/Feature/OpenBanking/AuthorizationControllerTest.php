@@ -6,6 +6,7 @@ use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -210,6 +211,31 @@ test('callback with error and no description falls back to a generic message', f
     $response->assertSessionHas('error', 'Authorization was denied or cancelled.');
 
     expect(BankingConnection::find($connection->id))->toBeNull();
+});
+
+test('callback does not blame the user when the provider fails without a description', function (string $errorCode) {
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->get("/open-banking/callback?error={$errorCode}");
+
+    $response->assertSessionHas('error', 'Your bank could not complete the connection. Please try again in a few minutes.');
+})->with(['server_error', 'invalid_request', 'invalid_client']);
+
+test('callback logs the bank behind an authorization error', function () {
+    Log::shouldReceive('warning')
+        ->once()
+        ->with('EnableBanking authorization error', Mockery::on(fn (array $context) => $context['error'] === 'server_error'
+            && $context['aspsp_name'] === 'Banco Mediolanum'
+            && $context['connection_id'] !== null));
+
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Banco Mediolanum',
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?error=server_error');
 });
 
 test('callback without code redirects with error', function () {

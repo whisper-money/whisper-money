@@ -404,6 +404,8 @@
     "Bank Account": "Cuenta Bancaria",
     "Bank Connections": "Conexiones Bancarias",
     "Bank Name": "Nombre del Banco",
+    "Authorization was denied or cancelled.": "La autorización se ha denegado o cancelado.",
+    "Your bank could not complete the connection. Please try again in a few minutes.": "Tu banco no ha podido completar la conexión. Vuelve a intentarlo en unos minutos.",
     "Bank account reconnected successfully.": "Cuenta bancaria reconectada exitosamente.",
     "Bank accounts": "Cuentas bancarias",
     "Bank logo preview": "Vista previa del logo del banco",

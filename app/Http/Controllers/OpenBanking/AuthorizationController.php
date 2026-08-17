@@ -281,20 +281,26 @@ class AuthorizationController extends Controller
      */
     private function handleAuthorizationError(Request $request, User $user, ?BankingConnection $connection): RedirectResponse|Response
     {
+        $errorCode = $request->query('error');
         $errorDescription = $request->query('error_description');
         $errorMessage = is_string($errorDescription) && $errorDescription !== ''
             ? $errorDescription
-            : 'Authorization was denied or cancelled.';
-
-        Log::warning('EnableBanking authorization error', [
-            'error' => $request->query('error'),
-            'description' => $errorDescription,
-        ]);
+            : $this->genericAuthorizationErrorMessage($errorCode);
 
         $pendingConnection = $connection ?? $user->bankingConnections()
             ->where('status', BankingConnectionStatus::Pending)
             ->latest()
             ->first();
+
+        // The bank is logged because the failure is overwhelmingly bank-specific:
+        // without it, telling a broken ASPSP from a user who changed their mind
+        // means hand-joining these timestamps against deleted connection rows.
+        Log::warning('EnableBanking authorization error', [
+            'error' => $errorCode,
+            'description' => $errorDescription,
+            'aspsp_name' => $pendingConnection?->aspsp_name,
+            'connection_id' => $pendingConnection?->id,
+        ]);
 
         if ($pendingConnection) {
             if ($pendingConnection->accounts()->exists()) {
@@ -309,6 +315,21 @@ class AuthorizationController extends Controller
         }
 
         return $this->finishWithError($user, $errorMessage);
+    }
+
+    /**
+     * The message to show when the provider sends an error with no description.
+     *
+     * Only `access_denied` means the user walked away from the consent screen.
+     * Everything else is the bank or the provider failing, and it always arrives
+     * without a description — so the old blanket "denied or cancelled" told the
+     * user they had cancelled a connection their bank had actually broken.
+     */
+    private function genericAuthorizationErrorMessage(mixed $errorCode): string
+    {
+        return $errorCode === 'access_denied'
+            ? __('Authorization was denied or cancelled.')
+            : __('Your bank could not complete the connection. Please try again in a few minutes.');
     }
 
     /**
