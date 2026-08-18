@@ -1722,7 +1722,7 @@
     "Use a negative value for expenses (e.g. -21.99) and a positive value for income.": "Utilisez une valeur négative pour les dépenses (par exemple -21,99) et une valeur positive pour les revenus.",
     "Use a strong password (minimum 12 characters). This password will encrypt your data.": "Utilisez un mot de passe fort (minimum 12 caractères). Ce mot de passe cryptera vos données.",
     "Use a strong password (minimum 12 characters). This\\n                            password will encrypt your data.": "Utilisez un mot de passe fort (minimum 12 caractères). Ce mot de passe cryptera vos données.",
-    "Use a view-only key.": "Utilisez une clé en lecture seule.",
+    "Use a view-only key, and tick \"Opt-out of IP allowlisting\" so the key works from our servers.": "Utilisez une clé en lecture seule et cochez « Opt-out of IP allowlisting » pour que la clé fonctionne depuis nos serveurs.",
     "Use code **:code** to get **80% off** your first period (monthly or yearly!)": "Utilisez le code **:code** pour bénéficier de **80 % de réduction** sur vos premières règles (mensuelles ou annuelles !)",
     "Use code **CONTINUE50** to get **50% off** all current and future payments - works for both monthly and yearly subscriptions.": "Utilisez le code **CONTINUE50** pour obtenir **50 % de réduction** sur tous les paiements actuels et futurs, fonctionne pour les abonnements mensuels et annuels.",
     "Use the balance on the latest transaction date as a reference to compute balances for older dates.": "Utilisez le solde à partir de la date de la dernière transaction comme référence pour calculer les soldes des dates précédentes.",

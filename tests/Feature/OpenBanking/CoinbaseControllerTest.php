@@ -80,7 +80,7 @@ test('invalid coinbase credentials return 422', function () {
     ]);
 
     $response->assertUnprocessable();
-    $response->assertJsonFragment(['message' => 'Invalid API credentials or failed to connect to Coinbase.']);
+    $response->assertJsonFragment(['message' => 'Invalid API credentials or failed to connect to Coinbase. Use a view-only key with "Opt-out of IP allowlisting" ticked.']);
 
     $this->assertDatabaseMissing('banking_connections', [
         'user_id' => $user->id,
