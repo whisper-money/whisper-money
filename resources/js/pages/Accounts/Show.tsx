@@ -227,152 +227,11 @@ export default function AccountShow({
                         {isArchived && (
                             <Badge variant="secondary">{__('Archived')}</Badge>
                         )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        {isConnected && !hasLinkedLoan ? (
-                            <div className="flex flex-wrap gap-2">
-                                {addTransactionButton}
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setEditOpen(true)}
-                                >
-                                    {__('Edit account')}
-                                </Button>
-                            </div>
-                        ) : isConnected && hasLinkedLoan ? (
-                            <ButtonGroup>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setEditOpen(true)}
-                                >
-                                    {__('Edit account')}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setEditLoanDialogOpen(true)}
-                                >
-                                    {__('Edit loan details')}
-                                </Button>
-                            </ButtonGroup>
-                        ) : !isConnected && hasLinkedLoan ? (
-                            <ButtonGroup>
-                                <ButtonGroup>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            setUpdateBalanceOpen(true)
-                                        }
-                                    >
-                                        {__('Update market value')}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            setUpdateLoanBalanceOpen(true)
-                                        }
-                                    >
-                                        {__('Update owed amount')}
-                                    </Button>
-                                </ButtonGroup>
-                                <ButtonGroup>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                aria-label={__('More options')}
-                                            >
-                                                <ChevronDown className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    setBalancesOpen(true)
-                                                }
-                                            >
-                                                {__('See market values')}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    setImportBalancesOpen(true)
-                                                }
-                                            >
-                                                {__('Import market values')}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    setEditOpen(true)
-                                                }
-                                            >
-                                                {__('Edit account')}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    setEditLoanDialogOpen(true)
-                                                }
-                                            >
-                                                {__('Edit loan details')}
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </ButtonGroup>
-                            </ButtonGroup>
-                        ) : (
-                            <div className="flex flex-wrap gap-2">
-                                {addTransactionButton}
-                                <ButtonGroup>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            setUpdateBalanceOpen(true)
-                                        }
-                                    >
-                                        {updateBalanceLabel}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            setImportBalancesOpen(true)
-                                        }
-                                    >
-                                        {importBalancesLabel}
-                                    </Button>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                aria-label={__('More options')}
-                                            >
-                                                <ChevronDown className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    setBalancesOpen(true)
-                                                }
-                                            >
-                                                {seeBalancesLabel}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    setEditOpen(true)
-                                                }
-                                            >
-                                                {__('Edit account')}
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </ButtonGroup>
-                            </div>
-                        )}
                         <Button
-                            variant="outline"
+                            variant="ghost"
+                            size="sm"
                             onClick={handleToggleArchived}
+                            className="text-muted-foreground"
                         >
                             {isArchived ? (
                                 <ArchiveRestore className="size-4" />
@@ -382,6 +241,137 @@ export default function AccountShow({
                             {isArchived ? __('Unarchive') : __('Archive')}
                         </Button>
                     </div>
+
+                    {isConnected && !hasLinkedLoan ? (
+                        <div className="flex flex-wrap gap-2">
+                            {addTransactionButton}
+                            <Button
+                                variant="outline"
+                                onClick={() => setEditOpen(true)}
+                            >
+                                {__('Edit account')}
+                            </Button>
+                        </div>
+                    ) : isConnected && hasLinkedLoan ? (
+                        <ButtonGroup>
+                            <Button
+                                variant="outline"
+                                onClick={() => setEditOpen(true)}
+                            >
+                                {__('Edit account')}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setEditLoanDialogOpen(true)}
+                            >
+                                {__('Edit loan details')}
+                            </Button>
+                        </ButtonGroup>
+                    ) : !isConnected && hasLinkedLoan ? (
+                        <ButtonGroup>
+                            <ButtonGroup>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setUpdateBalanceOpen(true)}
+                                >
+                                    {__('Update market value')}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        setUpdateLoanBalanceOpen(true)
+                                    }
+                                >
+                                    {__('Update owed amount')}
+                                </Button>
+                            </ButtonGroup>
+                            <ButtonGroup>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            aria-label={__('More options')}
+                                        >
+                                            <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                setBalancesOpen(true)
+                                            }
+                                        >
+                                            {__('See market values')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                setImportBalancesOpen(true)
+                                            }
+                                        >
+                                            {__('Import market values')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={() => setEditOpen(true)}
+                                        >
+                                            {__('Edit account')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                setEditLoanDialogOpen(true)
+                                            }
+                                        >
+                                            {__('Edit loan details')}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </ButtonGroup>
+                        </ButtonGroup>
+                    ) : (
+                        <div className="flex flex-wrap gap-2">
+                            {addTransactionButton}
+                            <ButtonGroup>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setUpdateBalanceOpen(true)}
+                                >
+                                    {updateBalanceLabel}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setImportBalancesOpen(true)}
+                                >
+                                    {importBalancesLabel}
+                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            aria-label={__('More options')}
+                                        >
+                                            <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                setBalancesOpen(true)
+                                            }
+                                        >
+                                            {seeBalancesLabel}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => setEditOpen(true)}
+                                        >
+                                            {__('Edit account')}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </ButtonGroup>
+                        </div>
+                    )}
                 </div>
 
                 <AccountBalanceChart
