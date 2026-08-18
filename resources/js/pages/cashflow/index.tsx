@@ -6,23 +6,22 @@ import { CashflowTrendChart, SankeyChart } from '@/components/charts';
 import HeadingSmall from '@/components/heading-small';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CashflowPeriodType, useCashflowData } from '@/hooks/use-cashflow-data';
+import { usePeriodUrlSync } from '@/hooks/use-period-url-sync';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     endOfMonth,
     endOfQuarter,
     endOfYear,
-    format,
-    getQuarter,
     parse,
     startOfMonth,
     startOfQuarter,
     startOfYear,
 } from 'date-fns';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -92,21 +91,6 @@ function getPeriodRange(
     };
 }
 
-function formatPeriodParam(
-    currentDate: Date,
-    periodType: CashflowPeriodType,
-): string {
-    if (periodType === 'quarter') {
-        return `${format(currentDate, 'yyyy')}-Q${getQuarter(currentDate)}`;
-    }
-
-    if (periodType === 'year') {
-        return format(currentDate, 'yyyy');
-    }
-
-    return format(currentDate, 'yyyy-MM');
-}
-
 export default function CashflowPage() {
     const {
         auth,
@@ -144,22 +128,7 @@ export default function CashflowPage() {
         periodType,
     });
 
-    useEffect(() => {
-        const periodParam = formatPeriodParam(currentDate, periodType);
-
-        if (initialPeriod !== periodParam || initialPeriodType !== periodType) {
-            router.visit(
-                cashflow({
-                    query: { period: periodParam, period_type: periodType },
-                }).url,
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    replace: true,
-                },
-            );
-        }
-    }, [currentDate, initialPeriod, initialPeriodType, periodType]);
+    usePeriodUrlSync(currentDate, periodType, initialPeriod, initialPeriodType);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
