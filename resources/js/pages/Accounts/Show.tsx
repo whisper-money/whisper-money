@@ -10,6 +10,7 @@ import {
     type BalanceDataPoint,
     type ChartComputedData,
 } from '@/components/accounts/account-balance-chart';
+import { ArchiveAccountDialog } from '@/components/accounts/archive-account-dialog';
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { EditLoanDetailDialog } from '@/components/accounts/edit-loan-detail-dialog';
@@ -79,7 +80,7 @@ import {
     Pencil,
     Plus,
 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface AccountWithDetails extends Account {
@@ -99,6 +100,25 @@ interface Props {
     transactions?: Transaction[];
 }
 
+/** The header's "More options" menu. Every action set has one so the actions that
+ * belong to the account itself, rather than to its balances, live in one place. */
+function MoreOptionsMenu({ children }: { children: ReactNode }) {
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label={__('More options')}
+                >
+                    <ChevronDown className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">{children}</DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
 export default function AccountShow({
     account,
     categories,
@@ -109,6 +129,7 @@ export default function AccountShow({
     transactions = [],
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
+    const [archiveOpen, setArchiveOpen] = useState(false);
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
     const [updateLoanBalanceOpen, setUpdateLoanBalanceOpen] = useState(false);
     const [importBalancesOpen, setImportBalancesOpen] = useState(false);
@@ -141,14 +162,15 @@ export default function AccountShow({
     const isArchived = !!account.archived_at;
 
     /**
-     * Archiving from here keeps the user on the account: it drops off the
-     * accounts page, so this screen and the settings list are the only places
-     * left to bring it back from.
+     * Archiving explains itself first (see ArchiveAccountDialog); unarchiving is
+     * a plain restore, so it just goes. Either way the user stays on the account:
+     * it drops off the accounts page, so this screen and the settings list are
+     * the only places left to reach it from.
      */
-    function handleToggleArchived() {
+    function handleUnarchive() {
         router.patch(
             updateArchived.url(account.id),
-            { archived: !isArchived },
+            { archived: false },
             { preserveScroll: true },
         );
     }
@@ -164,6 +186,18 @@ export default function AccountShow({
     // rows it has not seen, so they survive); only their balances are the
     // bank's to own.
     const canCreateTransaction = isTransactionalAccount(account);
+
+    const archiveMenuItem = isArchived ? (
+        <DropdownMenuItem onClick={handleUnarchive}>
+            <ArchiveRestore className="size-4" />
+            {__('Unarchive account')}
+        </DropdownMenuItem>
+    ) : (
+        <DropdownMenuItem onClick={() => setArchiveOpen(true)}>
+            <Archive className="size-4" />
+            {__('Archive account')}
+        </DropdownMenuItem>
+    );
 
     const addTransactionButton = canCreateTransaction ? (
         <Button variant="outline" onClick={handleAddTransaction}>
@@ -227,30 +261,22 @@ export default function AccountShow({
                         {isArchived && (
                             <Badge variant="secondary">{__('Archived')}</Badge>
                         )}
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleToggleArchived}
-                            className="text-muted-foreground"
-                        >
-                            {isArchived ? (
-                                <ArchiveRestore className="size-4" />
-                            ) : (
-                                <Archive className="size-4" />
-                            )}
-                            {isArchived ? __('Unarchive') : __('Archive')}
-                        </Button>
                     </div>
 
                     {isConnected && !hasLinkedLoan ? (
                         <div className="flex flex-wrap gap-2">
                             {addTransactionButton}
-                            <Button
-                                variant="outline"
-                                onClick={() => setEditOpen(true)}
-                            >
-                                {__('Edit account')}
-                            </Button>
+                            <ButtonGroup>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setEditOpen(true)}
+                                >
+                                    {__('Edit account')}
+                                </Button>
+                                <MoreOptionsMenu>
+                                    {archiveMenuItem}
+                                </MoreOptionsMenu>
+                            </ButtonGroup>
                         </div>
                     ) : isConnected && hasLinkedLoan ? (
                         <ButtonGroup>
@@ -266,6 +292,7 @@ export default function AccountShow({
                             >
                                 {__('Edit loan details')}
                             </Button>
+                            <MoreOptionsMenu>{archiveMenuItem}</MoreOptionsMenu>
                         </ButtonGroup>
                     ) : !isConnected && hasLinkedLoan ? (
                         <ButtonGroup>
@@ -286,46 +313,35 @@ export default function AccountShow({
                                 </Button>
                             </ButtonGroup>
                             <ButtonGroup>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            aria-label={__('More options')}
-                                        >
-                                            <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            onClick={() =>
-                                                setBalancesOpen(true)
-                                            }
-                                        >
-                                            {__('See market values')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() =>
-                                                setImportBalancesOpen(true)
-                                            }
-                                        >
-                                            {__('Import market values')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            onClick={() => setEditOpen(true)}
-                                        >
-                                            {__('Edit account')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() =>
-                                                setEditLoanDialogOpen(true)
-                                            }
-                                        >
-                                            {__('Edit loan details')}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <MoreOptionsMenu>
+                                    <DropdownMenuItem
+                                        onClick={() => setBalancesOpen(true)}
+                                    >
+                                        {__('See market values')}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            setImportBalancesOpen(true)
+                                        }
+                                    >
+                                        {__('Import market values')}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={() => setEditOpen(true)}
+                                    >
+                                        {__('Edit account')}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            setEditLoanDialogOpen(true)
+                                        }
+                                    >
+                                        {__('Edit loan details')}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {archiveMenuItem}
+                                </MoreOptionsMenu>
                             </ButtonGroup>
                         </ButtonGroup>
                     ) : (
@@ -344,31 +360,20 @@ export default function AccountShow({
                                 >
                                     {importBalancesLabel}
                                 </Button>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            aria-label={__('More options')}
-                                        >
-                                            <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            onClick={() =>
-                                                setBalancesOpen(true)
-                                            }
-                                        >
-                                            {seeBalancesLabel}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => setEditOpen(true)}
-                                        >
-                                            {__('Edit account')}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <MoreOptionsMenu>
+                                    <DropdownMenuItem
+                                        onClick={() => setBalancesOpen(true)}
+                                    >
+                                        {seeBalancesLabel}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => setEditOpen(true)}
+                                    >
+                                        {__('Edit account')}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {archiveMenuItem}
+                                </MoreOptionsMenu>
                             </ButtonGroup>
                         </div>
                     )}
@@ -462,6 +467,12 @@ export default function AccountShow({
                 onOpenChange={setEditOpen}
                 redirectTo={show.url(account.id)}
                 deleteRedirectTo={isConnected ? undefined : index().url}
+            />
+
+            <ArchiveAccountDialog
+                account={account}
+                open={archiveOpen}
+                onOpenChange={setArchiveOpen}
             />
 
             <UpdateBalanceDialog

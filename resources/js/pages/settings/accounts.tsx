@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { updateArchived } from '@/actions/App/Http/Controllers/AccountController';
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { AccountName } from '@/components/accounts/account-name';
+import { ArchiveAccountDialog } from '@/components/accounts/archive-account-dialog';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
@@ -49,20 +50,16 @@ import { type BreadcrumbItem } from '@/types';
 import { type Account, formatAccountType } from '@/types/account';
 
 /**
- * Archiving takes an account out of the dashboard, the accounts page and every
- * account picker from the day it happens. This settings list is the one place it
- * stays visible so it can be brought back.
+ * This settings list is the one place an archived account stays visible, so it
+ * can be brought back. Restoring needs no warning; archiving explains itself in
+ * ArchiveAccountDialog first.
  */
-function toggleArchive(account: Account) {
+function unarchive(account: Account) {
     router.patch(
         updateArchived.url(account.id),
-        { archived: !account.archived_at },
+        { archived: false },
         { preserveScroll: true, preserveState: true },
     );
-}
-
-function archiveLabel(account: Account) {
-    return account.archived_at ? __('Unarchive') : __('Archive');
 }
 
 function AccountActions({
@@ -74,6 +71,7 @@ function AccountActions({
 }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [archiveOpen, setArchiveOpen] = useState(false);
 
     return (
         <>
@@ -93,9 +91,15 @@ function AccountActions({
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
                         {__('Edit')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleArchive(account)}>
-                        {archiveLabel(account)}
-                    </DropdownMenuItem>
+                    {account.archived_at ? (
+                        <DropdownMenuItem onClick={() => unarchive(account)}>
+                            {__('Unarchive')}
+                        </DropdownMenuItem>
+                    ) : (
+                        <DropdownMenuItem onClick={() => setArchiveOpen(true)}>
+                            {__('Archive')}
+                        </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         className="text-red-600"
@@ -118,6 +122,13 @@ function AccountActions({
                 onOpenChange={setDeleteOpen}
                 onSuccess={onSuccess}
             />
+
+            <ArchiveAccountDialog
+                account={account}
+                open={archiveOpen}
+                onOpenChange={setArchiveOpen}
+                onSuccess={onSuccess}
+            />
         </>
     );
 }
@@ -132,6 +143,7 @@ function AccountRow({
     const account = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [archiveOpen, setArchiveOpen] = useState(false);
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
 
     return (
@@ -161,9 +173,15 @@ function AccountRow({
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
                         {__('Edit')}
                     </ContextMenuItem>
-                    <ContextMenuItem onClick={() => toggleArchive(account)}>
-                        {archiveLabel(account)}
-                    </ContextMenuItem>
+                    {account.archived_at ? (
+                        <ContextMenuItem onClick={() => unarchive(account)}>
+                            {__('Unarchive')}
+                        </ContextMenuItem>
+                    ) : (
+                        <ContextMenuItem onClick={() => setArchiveOpen(true)}>
+                            {__('Archive')}
+                        </ContextMenuItem>
+                    )}
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
                         className="text-red-600"
@@ -184,6 +202,13 @@ function AccountRow({
                 account={account}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
+                onSuccess={onSuccess}
+            />
+
+            <ArchiveAccountDialog
+                account={account}
+                open={archiveOpen}
+                onOpenChange={setArchiveOpen}
                 onSuccess={onSuccess}
             />
         </>
