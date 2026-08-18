@@ -37,6 +37,15 @@ class SitemapController extends Controller
             ],
         ];
 
+        foreach (ComparisonController::SLUGS as $slug) {
+            $urls[] = [
+                'loc' => "{$baseUrl}/comparativa/{$slug}",
+                'changefreq' => 'monthly',
+                'priority' => '0.8',
+                'lastmod' => now()->toW3cString(),
+            ];
+        }
+
         $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
 

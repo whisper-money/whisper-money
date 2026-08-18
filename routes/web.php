@@ -7,6 +7,7 @@ use App\Http\Controllers\Ai\RuleSuggestionController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
+use App\Http\Controllers\ComparisonController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\LoanDetailController;
@@ -95,6 +96,10 @@ Route::get('terms', function () {
 })->name('terms');
 
 Route::get('roadmap', [RoadmapController::class, 'index'])->name('roadmap');
+
+Route::get('comparativa/{slug}', [ComparisonController::class, 'show'])
+    ->whereIn('slug', ComparisonController::SLUGS)
+    ->name('comparison');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe', [SubscriptionController::class, 'index'])->name('subscribe');
