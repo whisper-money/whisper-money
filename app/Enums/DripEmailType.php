@@ -15,4 +15,5 @@ enum DripEmailType: string
     case AiConsentFollowUp = 'ai_consent_follow_up';
     case Update = 'update';
     case BankOutage = 'bank_outage';
+    case BankConnectFailed = 'bank_connect_failed';
 }

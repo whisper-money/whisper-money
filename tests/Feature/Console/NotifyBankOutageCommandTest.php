@@ -104,7 +104,7 @@ test('refuses to guess when the bank is affected in several countries', function
     outageUser('de@example.com', ['aspsp_country' => 'DE']);
 
     artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        ->expectsOutputToContain('has affected connections in DE, ES')
+        ->expectsOutputToContain('QA Outage Bank is affected in DE, ES')
         ->expectsOutputToContain('re-run with --country=XX')
         ->assertFailed();
 
@@ -226,7 +226,11 @@ test('resend notifies the users who already got the notice', function () {
     outageUser('again@example.com');
 
     artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])->assertSuccessful();
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true, '--resend' => true])->assertSuccessful();
+    // --resend always prompts, even with --force: it is the one flag pair that
+    // puts a second copy of the same email in a real inbox.
+    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true, '--resend' => true])
+        ->expectsConfirmation('Send the QA Outage Bank (ES) outage notice to 1 user(s)?', 'yes')
+        ->assertSuccessful();
 
     Mail::assertQueued(BankOutageEmail::class, 2);
     assertDatabaseCount('user_mail_logs', 1);
