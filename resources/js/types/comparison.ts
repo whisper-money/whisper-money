@@ -9,13 +9,13 @@ export type ComparisonStep = {
     body: string;
 };
 
-/**
- * A quote from a real user, or a slot still waiting for one. Pending slots only
- * render outside production, so a page never ships an invented review.
- */
-export type ComparisonTestimonial =
-    | { name: string; gravatar?: string; avatar?: string; text: string }
-    | { pending: string };
+/** A quote from a real user. There are no placeholders. */
+export type ComparisonTestimonial = {
+    name: string;
+    gravatar?: string;
+    avatar?: string;
+    text: string;
+};
 
 export type ComparisonPageContent = {
     slug: string;

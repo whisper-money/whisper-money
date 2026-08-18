@@ -170,7 +170,6 @@ final class MarketingContent
                         'es' => 'Llevaba tiempo sin dar el paso con las apps de finanzas porque me preocupaban mis datos; esta es la primera en la que confié lo suficiente como para pasarme a premium. Me encanta poder tenerlo todo en un solo sitio, inversiones incluidas.',
                     ],
                 ],
-                ['pending' => 'a user who came from Fintonic'],
             ],
             'en' => [
                 'slug' => 'fintonic-alternative',
@@ -340,7 +339,6 @@ final class MarketingContent
                         'es' => 'Mis cuentas se sincronizan solas y todo llega ya ordenado, así que revisar mi presupuesto me lleva dos minutos en vez de una hora. No pensé que fuese a mantenerlo al día, pero lo he conseguido.',
                     ],
                 ],
-                ['pending' => 'a user who came from YNAB'],
             ],
             'en' => [
                 'slug' => 'ynab-alternative',
@@ -683,7 +681,6 @@ final class MarketingContent
                         'es' => 'Rápida, limpia y con un modo oscuro que no me destroza los ojos de noche. Y no intenta vender mis datos. Es justo todo lo que quería.',
                     ],
                 ],
-                ['pending' => 'a user who only used their bank\'s own app'],
             ],
             'en' => [
                 'slug' => 'bank-app-alternative',
@@ -855,7 +852,6 @@ final class MarketingContent
                         'es' => 'La aplicación es intuitiva, funcional y de gran ayuda para gestionar mis finanzas en el día a día. Lo que más destaca es la cantidad de opciones de la versión gratuita: demuestra vuestro compromiso con los usuarios. ¡Seguiré recomendándola!',
                     ],
                 ],
-                ['pending' => 'a user who came from Wallet'],
             ],
             'en' => [
                 'slug' => 'wallet-budgetbakers-alternative',
@@ -1029,7 +1025,6 @@ final class MarketingContent
                         'es' => 'Acabo de empezar a sincronizar cuentas y ya me parece una gran app. La interfaz me encanta y parece una herramienta muy sólida. ¡Muy buen trabajo!',
                     ],
                 ],
-                ['pending' => 'a user who came from Monefy'],
             ],
             'en' => [
                 'slug' => 'monefy-alternative',
@@ -1201,7 +1196,6 @@ final class MarketingContent
                         'es' => 'Me gusta mucho el estilo, la interfaz intuitiva, la facilidad de uso. Si sigue creciendo en esta línea, Whisper Money será mi futura aplicación de finanzas. Se nota que lo hacéis con pasión, y lo que se hace con pasión solo puede acabar siendo un éxito.',
                     ],
                 ],
-                ['pending' => 'a user who came from Margen'],
             ],
             'en' => [
                 'slug' => 'margen-vs-whisper-money',
@@ -1374,7 +1368,6 @@ final class MarketingContent
                         'es' => 'La aplicación me gusta mucho, es justo lo que buscaba. Me parece muy chulo el proyecto que habéis realizado y creo que habéis dado con la tecla con lo que debe ser una aplicación de gestión de finanzas personales, por lo menos como lo quiero gestionar yo.',
                     ],
                 ],
-                ['pending' => 'a user who came from Dinerio'],
             ],
             'en' => [
                 'slug' => 'dinerio-vs-whisper-money',

@@ -90,26 +90,33 @@ test('the spanish and english pages are distinct translations of each other', fu
         ->and($english['rows'])->toHaveCount(count($spanish['rows']));
 });
 
-test('a served page never carries a pending testimonial marker', function () {
-    foreach (MarketingContent::LOCALES as $locale) {
-        foreach (ComparisonPages::slugs($locale) as $slug) {
-            $path = '/'.ComparisonPages::path($locale, $slug);
-            $html = $this->get($path)->assertSuccessful()->content();
-            $markdown = $this->get($path.'.md')->assertSuccessful()->content();
+test('every page carries real testimonials and no placeholders', function () {
+    foreach (MarketingContent::comparisonPages() as $key => $page) {
+        expect($page['testimonials'])->toHaveCount(2, "{$key} should quote two real users");
 
-            foreach (MarketingContent::comparisonPages() as $page) {
-                foreach ($page['testimonials'] as $testimonial) {
-                    if (! isset($testimonial['pending'])) {
-                        continue;
-                    }
+        foreach ($page['testimonials'] as $testimonial) {
+            expect($testimonial)->toHaveKeys(['name', 'text'])
+                ->and($testimonial)->not->toHaveKey('pending')
+                ->and($testimonial['name'])->not->toBeEmpty();
 
-                    expect($html)->not->toContain($testimonial['pending'])
-                        ->and($markdown)->not->toContain($testimonial['pending']);
-                }
+            foreach (MarketingContent::LOCALES as $locale) {
+                expect($testimonial['text'][$locale] ?? '')->not->toBeEmpty(
+                    "{$key}: the quote from {$testimonial['name']} is missing its {$locale} text"
+                );
             }
         }
     }
 });
+
+test('a served page renders every testimonial it has', function (string $locale, string $slug) {
+    $path = '/'.ComparisonPages::path($locale, $slug);
+    $markdown = $this->get($path.'.md')->assertSuccessful()->content();
+
+    foreach (ComparisonPages::find($locale, $slug)['testimonials'] as $testimonial) {
+        expect($markdown)->toContain($testimonial['name'])
+            ->and($markdown)->toContain($testimonial['text']);
+    }
+})->with(comparisonRoutes());
 
 test('a testimonial quote is served in the language of the page', function () {
     expect(ComparisonPages::find('en', 'fintonic-alternative')['testimonials'][0]['text'])

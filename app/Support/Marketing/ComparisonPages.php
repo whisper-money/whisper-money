@@ -111,27 +111,17 @@ final class ComparisonPages
     }
 
     /**
-     * Testimonials with the quote resolved to one language.
-     *
-     * Slots still waiting for a real quote are dropped outside local
-     * development, so their marker never reaches a served page at all — not even
-     * as unrendered text in the page's own data, where a crawler would read it.
+     * Testimonials with the quote resolved to one language. Every one is a real
+     * quote from a real user; there is no placeholder path.
      *
      * @param  array<string, mixed>  $page
      * @return list<array<string, string>>
      */
     private static function testimonials(array $page, string $locale): array
     {
-        $testimonials = array_filter(
+        return array_map(
+            fn (array $testimonial): array => [...$testimonial, 'text' => $testimonial['text'][$locale]],
             $page['testimonials'],
-            fn (array $testimonial): bool => ! isset($testimonial['pending']) || app()->isLocal(),
         );
-
-        return array_values(array_map(
-            fn (array $testimonial): array => isset($testimonial['pending'])
-                ? $testimonial
-                : [...$testimonial, 'text' => $testimonial['text'][$locale]],
-            $testimonials,
-        ));
     }
 }

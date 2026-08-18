@@ -21,16 +21,6 @@ type ComparisonProps = {
     canRegister: boolean;
 };
 
-/**
- * A slot with no real quote yet. Rendering it in production would ship an empty
- * testimonial card, so it is only visible while developing.
- */
-function isPending(
-    testimonial: ComparisonTestimonial,
-): testimonial is { pending: string } {
-    return 'pending' in testimonial;
-}
-
 function withRival(template: string, rival: string): string {
     return template.replace(':rival', rival);
 }
@@ -61,11 +51,7 @@ function Cta({ canRegister, label }: { canRegister: boolean; label: string }) {
     );
 }
 
-function Testimonial({
-    testimonial,
-}: {
-    testimonial: Exclude<ComparisonTestimonial, { pending: string }>;
-}) {
+function Testimonial({ testimonial }: { testimonial: ComparisonTestimonial }) {
     return (
         <figure className="flex flex-col rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 shadow-sm dark:border-[#3E3E3A] dark:bg-[#161615]">
             <blockquote className="text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
@@ -299,24 +285,12 @@ export default function Comparison({
                             {labels.testimonials}
                         </h2>
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {page.testimonials.map((testimonial) =>
-                                isPending(testimonial) ? (
-                                    import.meta.env.DEV ? (
-                                        <p
-                                            key={testimonial.pending}
-                                            className="rounded-2xl border border-dashed border-amber-500 p-6 text-sm text-amber-700 dark:text-amber-400"
-                                        >
-                                            TODO: real testimonial pending from{' '}
-                                            {testimonial.pending}
-                                        </p>
-                                    ) : null
-                                ) : (
-                                    <Testimonial
-                                        key={testimonial.name}
-                                        testimonial={testimonial}
-                                    />
-                                ),
-                            )}
+                            {page.testimonials.map((testimonial) => (
+                                <Testimonial
+                                    key={testimonial.name}
+                                    testimonial={testimonial}
+                                />
+                            ))}
                         </div>
                     </section>
 

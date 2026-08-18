@@ -64,17 +64,10 @@ final class AgentMarkdown
             $lines = [...$lines, ($index + 1).'. **'.$step['title'].'** — '.$step['body'], ''];
         }
 
-        $quotes = array_values(array_filter(
-            $page['testimonials'],
-            fn (array $testimonial): bool => ! isset($testimonial['pending']),
-        ));
+        $lines = [...$lines, '## '.$labels['testimonials'], ''];
 
-        if ($quotes !== []) {
-            $lines = [...$lines, '## '.$labels['testimonials'], ''];
-
-            foreach ($quotes as $quote) {
-                $lines = [...$lines, '> '.$quote['text'], '>', '> — '.$quote['name'], ''];
-            }
+        foreach ($page['testimonials'] as $quote) {
+            $lines = [...$lines, '> '.$quote['text'], '>', '> — '.$quote['name'], ''];
         }
 
         return implode("\n", [
