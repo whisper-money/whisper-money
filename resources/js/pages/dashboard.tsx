@@ -162,6 +162,10 @@ export default function Dashboard() {
     const handleArchive = useCallback((account: AccountWithMetrics) => {
         setArchivedIds((prev) => new Set(prev).add(account.id));
         persistArchived(account.id, true);
+        // The manager is a modal, and Radix makes everything outside it
+        // unclickable — including the undo below. Closing it also puts the
+        // updated dashboard in front of the user right away.
+        setEditOpen(false);
 
         // One click takes the account out of the whole app, so the way back is
         // right here rather than only in settings.
