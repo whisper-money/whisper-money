@@ -213,7 +213,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     );
 
     return (
-        <div className="px-4 py-6">
+        <div className="p-6">
             <Heading
                 title={__('Settings')}
                 description={__('Manage your profile and account settings')}

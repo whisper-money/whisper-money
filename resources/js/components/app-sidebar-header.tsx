@@ -32,7 +32,10 @@ export function AppSidebarHeader({
     return (
         <header className="flex min-h-16 shrink-0 items-center border-b border-sidebar-border/50 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:min-h-12">
             {/* Padding lives inside the capped row so it lines up with the page content */}
-            <div className="mx-auto flex w-full max-w-page items-center justify-between gap-2 px-5 sm:px-6">
+            <div
+                className="mx-auto flex w-full max-w-page items-center justify-between gap-2 px-5 sm:px-6"
+                data-testid="page-header"
+            >
                 <div className="flex items-center gap-2 sm:hidden">
                     {mobileLeading ?? <AppLogo mobile />}
                 </div>

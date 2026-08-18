@@ -17,7 +17,7 @@ it('caps the app content width on wide screens and keeps the header aligned', fu
     $measures = $page->script(<<<'JS'
         (() => {
             const content = document.querySelector('[data-testid="page-content"]');
-            const headerRow = document.querySelector('header > div');
+            const headerRow = document.querySelector('[data-testid="page-header"]');
 
             return {
                 available: content.parentElement.getBoundingClientRect().width,
