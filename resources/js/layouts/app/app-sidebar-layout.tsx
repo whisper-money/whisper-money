@@ -30,7 +30,7 @@ export default function AppSidebarLayout({
                     mobileLeading={mobileLeading}
                 />
                 <div
-                    className="mx-auto w-full max-w-7xl"
+                    className="mx-auto flex w-full max-w-page flex-1 flex-col"
                     data-testid="page-content"
                 >
                     {children}
