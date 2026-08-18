@@ -126,10 +126,8 @@ test('user cannot access another users budget', function () {
     $user2 = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user1->id]);
-    $budget = Budget::factory()->create([
-        'user_id' => $user1->id,
-        'category_id' => $category->id,
-    ]);
+    $budget = Budget::factory()->create(['user_id' => $user1->id]);
+    $budget->categories()->attach($category->id);
 
     $response = $this->actingAs($user2)->get("/budgets/{$budget->id}");
 
