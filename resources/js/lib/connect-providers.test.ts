@@ -5,7 +5,7 @@ import { CONNECT_PROVIDERS } from './connect-providers';
 /**
  * The registry's copy reaches __() through variables, so the Spanish
  * completeness check in tests/Feature/LocalizationTest.php — which only
- * extracts literal __('…') arguments from source — never sees any of it. A
+ * extracts string literals passed straight to __() — never sees any of it. A
  * provider added or a sentence reworded here would ship untranslated with a
  * green CI. This closes that gap.
  */
