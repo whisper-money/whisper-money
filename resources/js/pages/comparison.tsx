@@ -168,7 +168,7 @@ export default function Comparison({
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 <Header canRegister={canRegister} />
 
-                <main className="mx-auto flex w-full max-w-3xl flex-col gap-12 px-6 py-12 lg:py-16">
+                <main className="mx-auto flex w-full max-w-3xl flex-col gap-12 px-6 pt-28 pb-12 lg:pt-32 lg:pb-16">
                     <header className="flex flex-col gap-4">
                         <h1 className="text-3xl leading-tight font-semibold sm:text-4xl">
                             {page.heading}
