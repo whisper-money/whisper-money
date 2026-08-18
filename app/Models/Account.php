@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AccountType;
 use App\Models\Concerns\BelongsToSpace;
 use App\Services\BudgetTransactionService;
+use Carbon\Carbon;
 use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property AccountType $type
+ * @property ?Carbon $archived_at
  */
 class Account extends Model
 {

@@ -132,7 +132,7 @@ class AccountMetricsService
         }
 
         $now = Carbon::now();
-        $accountsConfig = $accounts->mapWithKeys(function ($account) use ($lookup, $now) {
+        $accountsConfig = $accounts->mapWithKeys(function (Account $account) use ($lookup, $now) {
             $config = [
                 'id' => $account->id,
                 'name' => $account->name,
