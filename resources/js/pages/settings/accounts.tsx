@@ -16,7 +16,7 @@ import {
 import { ArrowUpDown, Link2, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
-import { archive } from '@/actions/App/Http/Controllers/AccountController';
+import { updateArchived } from '@/actions/App/Http/Controllers/AccountController';
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { AccountName } from '@/components/accounts/account-name';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
@@ -55,9 +55,9 @@ import { type Account, formatAccountType } from '@/types/account';
  */
 function toggleArchive(account: Account) {
     router.patch(
-        archive.url(account.id),
+        updateArchived.url(account.id),
         { archived: !account.archived },
-        { preserveScroll: true },
+        { preserveScroll: true, preserveState: true },
     );
 }
 

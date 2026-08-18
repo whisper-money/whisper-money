@@ -1,6 +1,6 @@
 import {
-    archive,
     reorder,
+    updateArchived,
 } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
 import { AccountsManagerDialog } from '@/components/dashboard/accounts-manager-dialog';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
+    type AccountWithMetrics,
     type NetWorthEvolutionData,
     deriveAccountMetrics,
 } from '@/hooks/use-dashboard-data';
@@ -25,6 +26,23 @@ import { __ } from '@/utils/i18n';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+
+/**
+ * Persist the flag only. Asking for an unrelated cheap prop keeps the deferred
+ * netWorthEvolution payload in place so the chart does not flash a skeleton.
+ */
+function persistArchived(id: string, archived: boolean) {
+    router.patch(
+        updateArchived.url(id),
+        { archived },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['showEncryptionPrompt'],
+        },
+    );
+}
 
 interface CashflowSummary {
     income: number;
@@ -141,17 +159,28 @@ export default function Dashboard() {
         );
     }, []);
 
-    const handleArchive = useCallback((id: string) => {
-        setArchivedIds((prev) => new Set(prev).add(id));
-        router.patch(
-            archive.url(id),
-            { archived: true },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                only: ['showEncryptionPrompt'],
+    const handleArchive = useCallback((account: AccountWithMetrics) => {
+        setArchivedIds((prev) => new Set(prev).add(account.id));
+        persistArchived(account.id, true);
+
+        // One click takes the account out of the whole app, so the way back is
+        // right here rather than only in settings.
+        toast.success(__(':name archived.', { name: account.name }), {
+            closeButton: true,
+            duration: 10000,
+            action: {
+                label: __('Undo'),
+                onClick: () => {
+                    setArchivedIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(account.id);
+
+                        return next;
+                    });
+                    persistArchived(account.id, false);
+                },
             },
-        );
+        });
     }, []);
 
     // Build linked loan metrics map keyed by real estate account ID

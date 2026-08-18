@@ -571,6 +571,14 @@ export function EditTransactionDialog({
 
     const selectedAccount = accounts.find((acc) => acc.id === accountId);
     const transactionalAccounts = filterTransactionalAccounts(accounts);
+    // An archived account stays selectable while editing a transaction that
+    // already sits on it, otherwise the field reads as empty and the user cannot
+    // fill it back in.
+    const accountOptions =
+        selectedAccount?.archived &&
+        !transactionalAccounts.some((account) => account.id === accountId)
+            ? [...transactionalAccounts, selectedAccount]
+            : transactionalAccounts;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -613,18 +621,16 @@ export function EditTransactionDialog({
                                         />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {transactionalAccounts.map(
-                                            (account) => (
-                                                <SelectItem
-                                                    key={account.id}
-                                                    value={String(account.id)}
-                                                >
-                                                    {decryptedAccountNames.get(
-                                                        account.id,
-                                                    ) || __('[Loading...]')}
-                                                </SelectItem>
-                                            ),
-                                        )}
+                                        {accountOptions.map((account) => (
+                                            <SelectItem
+                                                key={account.id}
+                                                value={String(account.id)}
+                                            >
+                                                {decryptedAccountNames.get(
+                                                    account.id,
+                                                ) || __('[Loading...]')}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

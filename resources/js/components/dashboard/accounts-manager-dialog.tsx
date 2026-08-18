@@ -18,7 +18,7 @@ interface AccountsManagerDialogProps {
     /** All manageable accounts, in display order. */
     accounts: AccountWithMetrics[];
     onReorder: (orderedIds: string[]) => void;
-    onArchive: (id: string) => void;
+    onArchive: (account: AccountWithMetrics) => void;
 }
 
 export function AccountsManagerDialog({
@@ -35,7 +35,7 @@ export function AccountsManagerDialog({
                     <DialogTitle>{__('Edit accounts')}</DialogTitle>
                     <DialogDescription>
                         {__(
-                            'Drag to reorder. Archived accounts disappear from the app; bring them back from settings.',
+                            'Drag to reorder. Archiving takes an account out of the whole app; bring it back from the Bank accounts settings.',
                         )}
                     </DialogDescription>
                 </DialogHeader>
@@ -59,8 +59,10 @@ export function AccountsManagerDialog({
                             />
                             <button
                                 type="button"
-                                onClick={() => onArchive(account.id)}
-                                aria-label={__('Archive account')}
+                                onClick={() => onArchive(account)}
+                                aria-label={__('Archive :name', {
+                                    name: account.name,
+                                })}
                                 className="text-muted-foreground transition-colors hover:text-foreground"
                             >
                                 <Archive className="size-5" />

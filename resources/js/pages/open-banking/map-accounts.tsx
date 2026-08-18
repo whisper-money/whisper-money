@@ -69,13 +69,15 @@ export default function MapAccountsPage({
         );
     }
 
-    /** With no currency reported there is nothing to match on, so anything is linkable. */
+    /** With no currency reported there is nothing to match on, so any live account is linkable. */
     function getLinkableAccounts(currency: string | null) {
+        const linkable = existingAccounts.filter((a) => !a.archived);
+
         if (!currency) {
-            return existingAccounts;
+            return linkable;
         }
 
-        return existingAccounts.filter((a) => a.currency_code === currency);
+        return linkable.filter((a) => a.currency_code === currency);
     }
 
     function handleSubmit(e: React.FormEvent) {

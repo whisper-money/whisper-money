@@ -61,7 +61,7 @@ class AccountController extends Controller
         return back();
     }
 
-    public function archive(ArchiveAccountRequest $request, Account $account): RedirectResponse
+    public function updateArchived(ArchiveAccountRequest $request, Account $account): RedirectResponse
     {
         $account->update(['archived' => $request->validated('archived')]);
 
@@ -108,6 +108,7 @@ class AccountController extends Controller
             // Provide available loan accounts for linking
             $data['available_loan_accounts'] = $request->user()
                 ->accounts()
+                ->notArchived()
                 ->where('type', AccountType::Loan->value)
                 ->with('bank')
                 ->get();

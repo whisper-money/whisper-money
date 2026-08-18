@@ -41,6 +41,7 @@ class DashboardAnalyticsController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $request->user()->id)
+            ->notArchived()
             ->get();
 
         // Load every account's balance history for the compared range in a
@@ -104,6 +105,7 @@ class DashboardAnalyticsController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $request->user()->id)
+            ->notArchived()
             ->with(['bank:id,name,logo'])
             ->get();
 
@@ -177,6 +179,7 @@ class DashboardAnalyticsController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $request->user()->id)
+            ->notArchived()
             ->with(['bank:id,name,logo'])
             ->get();
 

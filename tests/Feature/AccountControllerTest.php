@@ -121,12 +121,12 @@ test('users can archive and unarchive their accounts', function () {
         'archived' => false,
     ]);
 
-    $this->patch(route('accounts.archive', $account), ['archived' => true])
+    $this->patch(route('accounts.archived', $account), ['archived' => true])
         ->assertRedirect();
 
     expect($account->fresh()->archived)->toBeTrue();
 
-    $this->patch(route('accounts.archive', $account), ['archived' => false])
+    $this->patch(route('accounts.archived', $account), ['archived' => false])
         ->assertRedirect();
 
     expect($account->fresh()->archived)->toBeFalse();
@@ -135,7 +135,7 @@ test('users can archive and unarchive their accounts', function () {
 test('the archived flag is required when archiving', function () {
     $account = Account::factory()->create(['user_id' => $this->user->id]);
 
-    $this->patch(route('accounts.archive', $account), [])
+    $this->patch(route('accounts.archived', $account), [])
         ->assertSessionHasErrors('archived');
 });
 
@@ -145,7 +145,7 @@ test('users cannot archive accounts they do not own', function () {
         'archived' => false,
     ]);
 
-    $this->patch(route('accounts.archive', $other), ['archived' => true])
+    $this->patch(route('accounts.archived', $other), ['archived' => true])
         ->assertForbidden();
 
     expect($other->fresh()->archived)->toBeFalse();
@@ -162,6 +162,23 @@ test('the accounts page leaves out archived accounts', function () {
         ->assertInertia(fn ($page) => $page
             ->has('accounts', 1)
             ->where('accounts.0.id', $visible->id));
+});
+
+test('the settings list keeps archived accounts so they can be brought back', function () {
+    $live = Account::factory()->create(['user_id' => $this->user->id, 'name' => 'Zzz live']);
+    $archived = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'name' => 'Aaa archived',
+        'archived' => true,
+    ]);
+
+    $this->get(route('accounts.index'))
+        ->assertInertia(fn ($page) => $page
+            ->has('accounts', 2)
+            // Archived accounts sort below the live ones despite the name order.
+            ->where('accounts.0.id', $live->id)
+            ->where('accounts.1.id', $archived->id)
+            ->where('accounts.1.archived', true));
 });
 
 test('accounts index only shows user accounts', function () {
