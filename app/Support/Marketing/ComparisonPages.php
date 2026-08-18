@@ -30,6 +30,8 @@ final class ComparisonPages
     /**
      * Slugs published in the given language, for route constraints and tests.
      *
+     * @api Consumed by routes/web.php, which static analysis does not scan.
+     *
      * @return list<string>
      */
     public static function slugs(string $locale): array
@@ -42,6 +44,8 @@ final class ComparisonPages
 
     /**
      * Path for a page in a language, without a leading slash.
+     *
+     * @api Consumed by the test suite, which static analysis does not scan.
      */
     public static function path(string $locale, string $slug): string
     {
@@ -81,12 +85,14 @@ final class ComparisonPages
 
     /**
      * Every published page in a language as title and URL pairs, for the
-     * landing footer, the sitemap and llms.txt.
+     * landing footer, the sitemap and llms.txt. A locale these pages are not
+     * published in falls back to English rather than returning nothing.
      *
      * @return list<array{key: string, slug: string, heading: string, path: string, url: string}>
      */
     public static function index(string $locale): array
     {
+        $locale = in_array($locale, MarketingContent::LOCALES, true) ? $locale : 'en';
         $index = [];
 
         foreach (MarketingContent::comparisonPages() as $key => $page) {
@@ -102,15 +108,6 @@ final class ComparisonPages
         }
 
         return $index;
-    }
-
-    /**
-     * The language to link the comparison pages in for a visitor whose locale
-     * may not be one they are published in.
-     */
-    public static function linkLocale(string $locale): string
-    {
-        return in_array($locale, MarketingContent::LOCALES, true) ? $locale : 'en';
     }
 
     /**

@@ -67,7 +67,7 @@ Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => config('auth.registration_enabled'),
         'popularBanks' => $popularBanks,
-        'comparisonLinks' => ComparisonPages::index(ComparisonPages::linkLocale(app()->getLocale())),
+        'comparisonLinks' => ComparisonPages::index(app()->getLocale()),
     ]);
 })->name('home');
 
