@@ -115,40 +115,53 @@ test('users cannot reorder accounts they do not own', function () {
     expect($other->fresh()->position)->toBe(0);
 });
 
-test('users can toggle dashboard visibility of their accounts', function () {
+test('users can archive and unarchive their accounts', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
-        'hidden_on_dashboard' => false,
+        'archived' => false,
     ]);
 
-    $this->patch(route('accounts.visibility', $account), ['hidden' => true])
+    $this->patch(route('accounts.archive', $account), ['archived' => true])
         ->assertRedirect();
 
-    expect($account->fresh()->hidden_on_dashboard)->toBeTrue();
+    expect($account->fresh()->archived)->toBeTrue();
 
-    $this->patch(route('accounts.visibility', $account), ['hidden' => false])
+    $this->patch(route('accounts.archive', $account), ['archived' => false])
         ->assertRedirect();
 
-    expect($account->fresh()->hidden_on_dashboard)->toBeFalse();
+    expect($account->fresh()->archived)->toBeFalse();
 });
 
-test('the hidden flag is required when toggling visibility', function () {
+test('the archived flag is required when archiving', function () {
     $account = Account::factory()->create(['user_id' => $this->user->id]);
 
-    $this->patch(route('accounts.visibility', $account), [])
-        ->assertSessionHasErrors('hidden');
+    $this->patch(route('accounts.archive', $account), [])
+        ->assertSessionHasErrors('archived');
 });
 
-test('users cannot toggle visibility of accounts they do not own', function () {
+test('users cannot archive accounts they do not own', function () {
     $other = Account::factory()->create([
         'user_id' => User::factory()->create()->id,
-        'hidden_on_dashboard' => false,
+        'archived' => false,
     ]);
 
-    $this->patch(route('accounts.visibility', $other), ['hidden' => true])
+    $this->patch(route('accounts.archive', $other), ['archived' => true])
         ->assertForbidden();
 
-    expect($other->fresh()->hidden_on_dashboard)->toBeFalse();
+    expect($other->fresh()->archived)->toBeFalse();
+});
+
+test('the accounts page leaves out archived accounts', function () {
+    $visible = Account::factory()->create(['user_id' => $this->user->id]);
+    Account::factory()->create([
+        'user_id' => $this->user->id,
+        'archived' => true,
+    ]);
+
+    $this->get(route('accounts.list'))
+        ->assertInertia(fn ($page) => $page
+            ->has('accounts', 1)
+            ->where('accounts.0.id', $visible->id));
 });
 
 test('accounts index only shows user accounts', function () {
@@ -659,7 +672,7 @@ test('accounts index serializes the standard account field set without sensitive
     expect(array_keys($account))->toEqualCanonicalizing([
         'id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code',
         'banking_connection_id', 'external_account_id', 'linked_at',
-        'bank', 'linked_loan_account_id',
+        'bank', 'linked_loan_account_id', 'archived',
         'ownership_percentage', 'ownership_applies_to_balance',
     ]);
     expect($account)->not->toHaveKeys(['user_id', 'bank_id', 'iban', 'created_at', 'updated_at', 'deleted_at']);

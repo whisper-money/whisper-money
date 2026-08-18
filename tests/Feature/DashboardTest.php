@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\CategoryType;
+use App\Models\Account;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
@@ -56,4 +57,20 @@ test('dashboard top categories roll child spending up into the parent', function
         ->assertJsonCount(1, 'props.topCategories')
         ->assertJsonPath('props.topCategories.0.category.id', $food->id)
         ->assertJsonPath('props.topCategories.0.amount', 3000);
+});
+
+test('the dashboard leaves archived accounts out of the net worth payload', function () {
+    $user = User::factory()->onboarded()->create();
+    $visible = Account::factory()->create(['user_id' => $user->id]);
+    $archived = Account::factory()->create(['user_id' => $user->id, 'archived' => true]);
+
+    $response = $this->actingAs($user)->withoutVite()->get(route('dashboard'), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Partial-Component' => 'dashboard',
+        'X-Inertia-Partial-Data' => 'netWorthEvolution',
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath("props.netWorthEvolution.accounts.{$visible->id}.id", $visible->id)
+        ->assertJsonMissingPath("props.netWorthEvolution.accounts.{$archived->id}");
 });
