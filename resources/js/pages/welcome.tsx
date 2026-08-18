@@ -73,6 +73,16 @@ type PopularBank = {
     logo: string | null;
 };
 
+/**
+ * A comparison landing, in whichever language it is published in for this
+ * visitor. The server picks the language, since each one is its own URL.
+ */
+type ComparisonLink = {
+    slug: string;
+    heading: string;
+    path: string;
+};
+
 type TransactionPreviewRow = {
     id: string;
     date: string;
@@ -1657,9 +1667,11 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 export default function Welcome({
     canRegister,
     popularBanks,
+    comparisonLinks,
 }: {
     canRegister?: boolean;
     popularBanks: PopularBank[];
+    comparisonLinks: ComparisonLink[];
 }) {
     const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
         usePage<SharedData>().props;
@@ -2648,6 +2660,25 @@ export default function Welcome({
                 </main>
 
                 <footer className="py-8 lg:mt-12 dark:border-[#3E3E3A]">
+                    {comparisonLinks.length > 0 && (
+                        <div className="mx-auto mb-8 flex max-w-5xl flex-col gap-3 px-6 text-sm text-[#706f6c] lg:px-8 dark:text-[#A1A09A]">
+                            <h2 className="font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
+                                {__('Compare')}
+                            </h2>
+                            <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
+                                {comparisonLinks.map((link) => (
+                                    <li key={link.slug}>
+                                        <Link
+                                            href={link.path}
+                                            className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
+                                        >
+                                            {link.heading}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                     <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#706f6c] sm:flex-row lg:px-8 dark:text-[#A1A09A]">
                         <p>
                             © {new Date().getFullYear()}
