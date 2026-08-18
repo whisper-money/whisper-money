@@ -29,7 +29,12 @@ export default function AppSidebarLayout({
                     breadcrumbs={breadcrumbs}
                     mobileLeading={mobileLeading}
                 />
-                {children}
+                <div
+                    className="mx-auto w-full max-w-7xl"
+                    data-testid="page-content"
+                >
+                    {children}
+                </div>
             </AppContent>
         </AppShell>
     );
