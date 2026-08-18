@@ -196,23 +196,8 @@ export function NetWorthChart({
         }
     }, [granularity, dailyData, fetchDailyData]);
 
-    // The monthly payload decides which accounts belong on the chart — the page
-    // strips the ones archived during this visit out of it — so the daily
-    // payload, fetched separately, is narrowed to the same set.
-    const activeData = useMemo(() => {
-        if (granularity !== 'daily' || !dailyData) {
-            return monthlyData;
-        }
-
-        return {
-            ...dailyData,
-            accounts: Object.fromEntries(
-                Object.entries(dailyData.accounts).filter(
-                    ([id]) => id in monthlyData.accounts,
-                ),
-            ),
-        };
-    }, [granularity, dailyData, monthlyData]);
+    const activeData =
+        granularity === 'daily' && dailyData ? dailyData : monthlyData;
 
     const userCurrency = activeData.currency_code || 'USD';
 

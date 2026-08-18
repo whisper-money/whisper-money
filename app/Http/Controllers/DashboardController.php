@@ -41,7 +41,6 @@ class DashboardController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
-            ->notArchived()
             ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
             ->orderBy('position')
             ->orderBy('name')

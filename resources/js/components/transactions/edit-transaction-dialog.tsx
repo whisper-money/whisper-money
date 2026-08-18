@@ -575,7 +575,7 @@ export function EditTransactionDialog({
     // already sits on it, otherwise the field reads as empty and the user cannot
     // fill it back in.
     const accountOptions =
-        selectedAccount?.archived &&
+        selectedAccount?.archived_at &&
         !transactionalAccounts.some((account) => account.id === accountId)
             ? [...transactionalAccounts, selectedAccount]
             : transactionalAccounts;

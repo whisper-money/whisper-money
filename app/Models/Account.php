@@ -38,7 +38,8 @@ class Account extends Model
         'iban',
         'linked_at',
         'position',
-        'archived',
+        'hidden_on_dashboard',
+        'archived_at',
         'ownership_percentage',
         'ownership_applies_to_balance',
     ];
@@ -50,6 +51,7 @@ class Account extends Model
         'bank_id',
         'iban',
         'position',
+        'hidden_on_dashboard',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -82,22 +84,29 @@ class Account extends Model
             'encrypted' => 'boolean',
             'linked_at' => 'datetime',
             'position' => 'integer',
-            'archived' => 'boolean',
+            'hidden_on_dashboard' => 'boolean',
+            'archived_at' => 'datetime',
             'ownership_percentage' => 'integer',
             'ownership_applies_to_balance' => 'boolean',
         ];
     }
 
     /**
-     * Archived accounts are out of sight everywhere the user picks or reviews
-     * accounts; only the settings list still shows them so they can come back.
+     * Archived accounts are left out of the accounts page and of every picker
+     * that points new data at an account. They stay in the balance history, so
+     * the queries that build it deliberately do not use this scope.
      *
      * @param  Builder<Account>  $query
      * @return Builder<Account>
      */
     public function scopeNotArchived(Builder $query): Builder
     {
-        return $query->where('archived', false);
+        return $query->whereNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 
     /**

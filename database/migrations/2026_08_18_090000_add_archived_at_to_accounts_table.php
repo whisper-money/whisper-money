@@ -7,20 +7,21 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Hiding an account from the dashboard now removes it from every listing
-     * and picker, which is archiving; the column takes the honest name.
+     * Archiving is its own thing, separate from hiding an account on the
+     * dashboard, and it keeps the day it happened: the account stops counting
+     * from then on while everything before that date reads as it always did.
      */
     public function up(): void
     {
         Schema::table('accounts', function (Blueprint $table) {
-            $table->renameColumn('hidden_on_dashboard', 'archived');
+            $table->timestamp('archived_at')->nullable()->after('hidden_on_dashboard');
         });
     }
 
     public function down(): void
     {
         Schema::table('accounts', function (Blueprint $table) {
-            $table->renameColumn('archived', 'hidden_on_dashboard');
+            $table->dropColumn('archived_at');
         });
     }
 };

@@ -50,19 +50,19 @@ import { type Account, formatAccountType } from '@/types/account';
 
 /**
  * Archiving takes an account out of the dashboard, the accounts page and every
- * account picker; this settings list is the only place it stays visible so it
- * can be brought back.
+ * account picker from the day it happens. This settings list is the one place it
+ * stays visible so it can be brought back.
  */
 function toggleArchive(account: Account) {
     router.patch(
         updateArchived.url(account.id),
-        { archived: !account.archived },
+        { archived: !account.archived_at },
         { preserveScroll: true, preserveState: true },
     );
 }
 
 function archiveLabel(account: Account) {
-    return account.archived ? __('Unarchive') : __('Archive');
+    return account.archived_at ? __('Unarchive') : __('Archive');
 }
 
 function AccountActions({
@@ -236,7 +236,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                             account={row.original}
                             length={{ min: 10, max: 20 }}
                         />
-                        {row.original.archived && (
+                        {row.original.archived_at && (
                             <Badge variant="secondary">{__('Archived')}</Badge>
                         )}
                     </div>

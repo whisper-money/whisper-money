@@ -1,6 +1,6 @@
 import {
     reorder,
-    updateArchived,
+    updateVisibility,
 } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
 import { AccountsManagerDialog } from '@/components/dashboard/accounts-manager-dialog';
@@ -26,23 +26,6 @@ import { __ } from '@/utils/i18n';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
-
-/**
- * Persist the flag only. Asking for an unrelated cheap prop keeps the deferred
- * netWorthEvolution payload in place so the chart does not flash a skeleton.
- */
-function persistArchived(id: string, archived: boolean) {
-    router.patch(
-        updateArchived.url(id),
-        { archived },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            only: ['showEncryptionPrompt'],
-        },
-    );
-}
 
 interface CashflowSummary {
     income: number;
@@ -80,31 +63,15 @@ export default function Dashboard() {
         !!props.openIntegrationRequests,
     );
 
-    // Accounts archived during this visit, so the card, the chart segment and
-    // the manager row all disappear at once without refetching the deferred
-    // net worth payload (which would flash the skeleton).
-    const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
-
-    const netWorthEvolution = useMemo(() => {
-        const evolution = props.netWorthEvolution ?? {
-            data: [],
-            accounts: {},
-            currency_code: 'USD',
-        };
-
-        if (archivedIds.size === 0) {
-            return evolution;
-        }
-
-        return {
-            ...evolution,
-            accounts: Object.fromEntries(
-                Object.entries(evolution.accounts).filter(
-                    ([id]) => !archivedIds.has(id),
-                ),
-            ),
-        };
-    }, [props.netWorthEvolution, archivedIds]);
+    const netWorthEvolution = useMemo(
+        () =>
+            props.netWorthEvolution ?? {
+                data: [],
+                accounts: {},
+                currency_code: 'USD',
+            },
+        [props.netWorthEvolution],
+    );
 
     const accountMetrics = useMemo(
         () => deriveAccountMetrics(netWorthEvolution, locale),
@@ -122,8 +89,13 @@ export default function Dashboard() {
         return ids;
     }, [accountMetrics]);
 
+    // Archived accounts stay in the payload so the chart keeps their history,
+    // but they are off the dashboard itself: no card, no row in the manager.
     const manageableAccounts = useMemo(
-        () => accountMetrics.filter((a) => !linkedLoanAccountIds.has(a.id)),
+        () =>
+            accountMetrics.filter(
+                (a) => !linkedLoanAccountIds.has(a.id) && !a.archived_at,
+            ),
         [accountMetrics, linkedLoanAccountIds],
     );
 
@@ -144,6 +116,22 @@ export default function Dashboard() {
         return [...ordered, ...rest];
     }, [manageableAccounts, order]);
 
+    // Optimistic visibility overrides keyed by account id; falls back to the
+    // server flag until the next full reload.
+    const [hiddenOverrides, setHiddenOverrides] = useState<
+        Record<string, boolean>
+    >({});
+    const isHidden = useCallback(
+        (account: AccountWithMetrics) =>
+            hiddenOverrides[account.id] ?? account.hidden_on_dashboard,
+        [hiddenOverrides],
+    );
+
+    const gridAccounts = useMemo(
+        () => orderedAccounts.filter((a) => !isHidden(a)),
+        [orderedAccounts, isHidden],
+    );
+
     const handleReorder = useCallback((ids: string[]) => {
         setOrder(ids);
         // Persist only; keep the deferred netWorthEvolution prop in place by
@@ -159,33 +147,21 @@ export default function Dashboard() {
         );
     }, []);
 
-    const handleArchive = useCallback((account: AccountWithMetrics) => {
-        setArchivedIds((prev) => new Set(prev).add(account.id));
-        persistArchived(account.id, true);
-        // The manager is a modal, and Radix makes everything outside it
-        // unclickable — including the undo below. Closing it also puts the
-        // updated dashboard in front of the user right away.
-        setEditOpen(false);
-
-        // One click takes the account out of the whole app, so the way back is
-        // right here rather than only in settings.
-        toast.success(__(':name archived.', { name: account.name }), {
-            closeButton: true,
-            duration: 10000,
-            action: {
-                label: __('Undo'),
-                onClick: () => {
-                    setArchivedIds((prev) => {
-                        const next = new Set(prev);
-                        next.delete(account.id);
-
-                        return next;
-                    });
-                    persistArchived(account.id, false);
+    const handleToggleVisibility = useCallback(
+        (id: string, hidden: boolean) => {
+            setHiddenOverrides((prev) => ({ ...prev, [id]: hidden }));
+            router.patch(
+                updateVisibility.url(id),
+                { hidden },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    only: ['showEncryptionPrompt'],
                 },
-            },
-        });
-    }, []);
+            );
+        },
+        [],
+    );
 
     // Build linked loan metrics map keyed by real estate account ID
     const linkedLoanMetricsMap = useMemo(() => {
@@ -341,7 +317,7 @@ export default function Dashboard() {
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
-                        {orderedAccounts.map((account) => (
+                        {gridAccounts.map((account) => (
                             <AccountBalanceCard
                                 key={account.id}
                                 account={account}
@@ -360,8 +336,9 @@ export default function Dashboard() {
                         open={editOpen}
                         onOpenChange={setEditOpen}
                         accounts={orderedAccounts}
+                        isHidden={isHidden}
                         onReorder={handleReorder}
-                        onArchive={handleArchive}
+                        onToggleVisibility={handleToggleVisibility}
                     />
                 </Deferred>
 

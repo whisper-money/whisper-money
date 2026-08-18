@@ -115,21 +115,71 @@ test('users cannot reorder accounts they do not own', function () {
     expect($other->fresh()->position)->toBe(0);
 });
 
-test('users can archive and unarchive their accounts', function () {
+test('users can toggle dashboard visibility of their accounts', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
-        'archived' => false,
+        'hidden_on_dashboard' => false,
+    ]);
+
+    $this->patch(route('accounts.visibility', $account), ['hidden' => true])
+        ->assertRedirect();
+
+    expect($account->fresh()->hidden_on_dashboard)->toBeTrue();
+
+    $this->patch(route('accounts.visibility', $account), ['hidden' => false])
+        ->assertRedirect();
+
+    expect($account->fresh()->hidden_on_dashboard)->toBeFalse();
+});
+
+test('the hidden flag is required when toggling visibility', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patch(route('accounts.visibility', $account), [])
+        ->assertSessionHasErrors('hidden');
+});
+
+test('users cannot toggle visibility of accounts they do not own', function () {
+    $other = Account::factory()->create([
+        'user_id' => User::factory()->create()->id,
+        'hidden_on_dashboard' => false,
+    ]);
+
+    $this->patch(route('accounts.visibility', $other), ['hidden' => true])
+        ->assertForbidden();
+
+    expect($other->fresh()->hidden_on_dashboard)->toBeFalse();
+});
+
+test('archiving an account records the day it happened, and unarchiving clears it', function () {
+    $this->freezeTime();
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patch(route('accounts.archived', $account), ['archived' => true])
+        ->assertRedirect();
+
+    expect($account->fresh()->archived_at->toDateTimeString())->toBe(now()->toDateTimeString());
+
+    $this->patch(route('accounts.archived', $account), ['archived' => false])
+        ->assertRedirect();
+
+    expect($account->fresh()->archived_at)->toBeNull();
+});
+
+test('archiving leaves the dashboard visibility flag alone', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'hidden_on_dashboard' => true,
     ]);
 
     $this->patch(route('accounts.archived', $account), ['archived' => true])
         ->assertRedirect();
 
-    expect($account->fresh()->archived)->toBeTrue();
+    $account->refresh();
 
-    $this->patch(route('accounts.archived', $account), ['archived' => false])
-        ->assertRedirect();
-
-    expect($account->fresh()->archived)->toBeFalse();
+    expect($account->archived_at)->not->toBeNull();
+    expect($account->hidden_on_dashboard)->toBeTrue();
 });
 
 test('the archived flag is required when archiving', function () {
@@ -142,20 +192,19 @@ test('the archived flag is required when archiving', function () {
 test('users cannot archive accounts they do not own', function () {
     $other = Account::factory()->create([
         'user_id' => User::factory()->create()->id,
-        'archived' => false,
     ]);
 
     $this->patch(route('accounts.archived', $other), ['archived' => true])
         ->assertForbidden();
 
-    expect($other->fresh()->archived)->toBeFalse();
+    expect($other->fresh()->archived_at)->toBeNull();
 });
 
 test('the accounts page leaves out archived accounts', function () {
     $visible = Account::factory()->create(['user_id' => $this->user->id]);
     Account::factory()->create([
         'user_id' => $this->user->id,
-        'archived' => true,
+        'archived_at' => now(),
     ]);
 
     $this->get(route('accounts.list'))
@@ -169,7 +218,7 @@ test('the settings list keeps archived accounts so they can be brought back', fu
     $archived = Account::factory()->create([
         'user_id' => $this->user->id,
         'name' => 'Aaa archived',
-        'archived' => true,
+        'archived_at' => now(),
     ]);
 
     $this->get(route('accounts.index'))
@@ -178,7 +227,7 @@ test('the settings list keeps archived accounts so they can be brought back', fu
             // Archived accounts sort below the live ones despite the name order.
             ->where('accounts.0.id', $live->id)
             ->where('accounts.1.id', $archived->id)
-            ->where('accounts.1.archived', true));
+            ->where('accounts.1.archived_at', fn ($value) => $value !== null));
 });
 
 test('accounts index only shows user accounts', function () {
@@ -689,7 +738,7 @@ test('accounts index serializes the standard account field set without sensitive
     expect(array_keys($account))->toEqualCanonicalizing([
         'id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code',
         'banking_connection_id', 'external_account_id', 'linked_at',
-        'bank', 'linked_loan_account_id', 'archived',
+        'bank', 'linked_loan_account_id', 'archived_at',
         'ownership_percentage', 'ownership_applies_to_balance',
     ]);
     expect($account)->not->toHaveKeys(['user_id', 'bank_id', 'iban', 'created_at', 'updated_at', 'deleted_at']);

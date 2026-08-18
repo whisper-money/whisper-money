@@ -52,7 +52,7 @@ export interface Account {
     external_account_id: string | null;
     linked_at: string | null;
     linked_loan_account_id?: UUID | null;
-    archived?: boolean;
+    archived_at?: string | null;
     ownership_percentage?: number;
     ownership_applies_to_balance?: boolean;
 }
@@ -185,11 +185,11 @@ export function accountIconByType(type: AccountType): LucideIcon {
  * ledger and anything the user has archived.
  */
 export function filterTransactionalAccounts<
-    T extends { type: AccountType; archived?: boolean },
+    T extends { type: AccountType; archived_at?: string | null },
 >(accounts: T[]): T[] {
     return accounts.filter(
         (account) =>
-            !account.archived &&
+            !account.archived_at &&
             !NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type),
     );
 }

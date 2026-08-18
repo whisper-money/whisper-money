@@ -34,11 +34,12 @@ class AccountController extends Controller
         $user = Auth::user();
 
         // This is the one page archived accounts still show up on, so they can be
-        // brought back; they sort below the live ones instead of in among them.
+        // brought back; a null archived_at sorts first, putting them below the
+        // live ones instead of in among them.
         $accounts = $user
             ->accounts()
             ->with(['bank', 'loanDetail', 'realEstateDetail'])
-            ->orderBy('archived')
+            ->orderBy('archived_at')
             ->orderBy('name')
             ->get();
 

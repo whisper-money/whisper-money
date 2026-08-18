@@ -71,7 +71,7 @@ export default function MapAccountsPage({
 
     /** With no currency reported there is nothing to match on, so any live account is linkable. */
     function getLinkableAccounts(currency: string | null) {
-        const linkable = existingAccounts.filter((a) => !a.archived);
+        const linkable = existingAccounts.filter((a) => !a.archived_at);
 
         if (!currency) {
             return linkable;

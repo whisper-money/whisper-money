@@ -38,7 +38,7 @@ class AccountMetricsService
 
             while ($current->lte($endMonth)) {
                 $date = $current->copy()->endOfMonth();
-                $originalBalance = $lookup->getBalanceAt($account->id, $date);
+                $originalBalance = $this->balanceAt($lookup, $account, $date);
                 $convertedBalance = $this->convertBalance($originalBalance, $account->currency_code, $userCurrency, $date->toDateString());
 
                 $point = [
@@ -47,7 +47,7 @@ class AccountMetricsService
                 ];
 
                 if ($account->type->supportsInvestedAmount()) {
-                    $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
+                    $investedAmount = $this->investedAmountAt($lookup, $account, $date);
                     $point['investedAmount'] = $investedAmount;
                 }
 
@@ -60,7 +60,7 @@ class AccountMetricsService
 
             $investedAmount = null;
             if ($account->type->supportsInvestedAmount()) {
-                $investedAmount = $lookup->getInvestedAmountAt($account->id, $now);
+                $investedAmount = $this->investedAmountAt($lookup, $account, $now);
             }
 
             $metrics[$account->id] = [
@@ -105,7 +105,7 @@ class AccountMetricsService
             ];
 
             foreach ($accounts as $account) {
-                $originalBalance = $lookup->getBalanceAt($account->id, $date);
+                $originalBalance = $this->balanceAt($lookup, $account, $date);
                 $convertedBalance = $this->convertBalance(
                     $originalBalance,
                     $account->currency_code,
@@ -123,7 +123,7 @@ class AccountMetricsService
                 }
 
                 if ($account->type->supportsInvestedAmount()) {
-                    $point[$account->id.'_invested'] = $lookup->getInvestedAmountAt($account->id, $date);
+                    $point[$account->id.'_invested'] = $this->investedAmountAt($lookup, $account, $date);
                 }
             }
 
@@ -142,6 +142,8 @@ class AccountMetricsService
                 'currency_code' => $account->currency_code,
                 'bank' => $account->bank,
                 'banking_connection_id' => $account->banking_connection_id,
+                'hidden_on_dashboard' => $account->hidden_on_dashboard,
+                'archived_at' => $account->archived_at?->toISOString(),
             ];
 
             if ($account->type === AccountType::RealEstate && $account->relationLoaded('realEstateDetail') && $account->realEstateDetail?->linked_loan_account_id) {
@@ -149,7 +151,7 @@ class AccountMetricsService
             }
 
             if ($account->type->supportsInvestedAmount()) {
-                $config['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $now);
+                $config['invested_amount'] = $this->investedAmountAt($lookup, $account, $now);
             }
 
             return [$account->id => $config];
@@ -188,7 +190,7 @@ class AccountMetricsService
             ];
 
             foreach ($accounts as $account) {
-                $originalBalance = $lookup->getBalanceAt($account->id, $date);
+                $originalBalance = $this->balanceAt($lookup, $account, $date);
                 $convertedBalance = $this->convertBalance(
                     $originalBalance,
                     $account->currency_code,
@@ -234,6 +236,38 @@ class AccountMetricsService
     /**
      * Convert a balance from one currency to another.
      */
+    /**
+     * The balance to read for this account on that date. An archived account
+     * stops contributing from the day it was archived; everything before that
+     * keeps the figures it always had, so the history does not move.
+     */
+    private function balanceAt(BalanceLookup $lookup, Account $account, Carbon $date): int
+    {
+        if ($this->isArchivedOn($account, $date)) {
+            return 0;
+        }
+
+        return $lookup->getBalanceAt($account->id, $date);
+    }
+
+    /**
+     * The invested amount to read for this account on that date, dropped once
+     * the account is archived so it cannot contradict a zeroed balance.
+     */
+    private function investedAmountAt(BalanceLookup $lookup, Account $account, Carbon $date): ?int
+    {
+        if ($this->isArchivedOn($account, $date)) {
+            return null;
+        }
+
+        return $lookup->getInvestedAmountAt($account->id, $date);
+    }
+
+    private function isArchivedOn(Account $account, Carbon $date): bool
+    {
+        return $account->archived_at !== null && $date->gte($account->archived_at);
+    }
+
     private function convertBalance(int $balance, string $sourceCurrency, string $targetCurrency, string $date): int
     {
         if (strtolower($sourceCurrency) === strtolower($targetCurrency)) {

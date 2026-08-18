@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\AccountType;
 use App\Http\Requests\ArchiveAccountRequest;
 use App\Http\Requests\ReorderAccountsRequest;
+use App\Http\Requests\UpdateAccountVisibilityRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\LoanDetail;
@@ -61,9 +62,23 @@ class AccountController extends Controller
         return back();
     }
 
+    public function updateVisibility(UpdateAccountVisibilityRequest $request, Account $account): RedirectResponse
+    {
+        $account->update(['hidden_on_dashboard' => $request->validated('hidden')]);
+
+        return back();
+    }
+
+    /**
+     * Archiving records the day it happened so the account stops counting from
+     * then on without touching the history it already has; unarchiving clears
+     * the date and the account goes back to counting.
+     */
     public function updateArchived(ArchiveAccountRequest $request, Account $account): RedirectResponse
     {
-        $account->update(['archived' => $request->validated('archived')]);
+        $account->update([
+            'archived_at' => $request->validated('archived') ? now() : null,
+        ]);
 
         return back();
     }
