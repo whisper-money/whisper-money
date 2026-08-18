@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AgentDocsController;
 use App\Http\Controllers\Ai\AiConsentController;
 use App\Http\Controllers\Ai\CategorizationController;
 use App\Http\Controllers\Ai\RuleSuggestionController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
+use App\Http\Controllers\ComparisonController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\LoanDetailController;
@@ -29,6 +31,8 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Models\Bank;
+use App\Support\Marketing\ComparisonPages;
+use App\Support\Marketing\MarketingContent;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +67,7 @@ Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => config('auth.registration_enabled'),
         'popularBanks' => $popularBanks,
+        'comparisonLinks' => ComparisonPages::index(app()->getLocale()),
     ]);
 })->name('home');
 
@@ -95,6 +100,31 @@ Route::get('terms', function () {
 })->name('terms');
 
 Route::get('roadmap', [RoadmapController::class, 'index'])->name('roadmap');
+
+Route::get('llms.txt', [AgentDocsController::class, 'llms'])->name('llms');
+
+/**
+ * One URL per language, so a crawler can reach and index each one at a stable
+ * address, and a Markdown twin of each for agents.
+ */
+foreach (MarketingContent::LOCALES as $comparisonLocale) {
+    $comparisonBase = MarketingContent::BASE_PATHS[$comparisonLocale];
+    $comparisonSlugs = ComparisonPages::slugs($comparisonLocale);
+
+    Route::get($comparisonBase.'/{slug}', [ComparisonController::class, 'show'])
+        ->defaults('locale', $comparisonLocale)
+        ->whereIn('slug', $comparisonSlugs)
+        ->name("comparison.{$comparisonLocale}");
+
+    Route::get($comparisonBase.'/{slug}.md', [ComparisonController::class, 'markdown'])
+        ->defaults('locale', $comparisonLocale)
+        ->whereIn('slug', $comparisonSlugs)
+        ->name("comparison.{$comparisonLocale}.markdown");
+
+    Route::get($comparisonLocale === 'en' ? 'index.md' : "index.{$comparisonLocale}.md", [AgentDocsController::class, 'landing'])
+        ->defaults('locale', $comparisonLocale)
+        ->name("landing.markdown.{$comparisonLocale}");
+}
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe', [SubscriptionController::class, 'index'])->name('subscribe');
