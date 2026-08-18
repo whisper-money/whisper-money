@@ -43,6 +43,6 @@ class CoinbaseController extends CryptoPortfolioConnectController
 
     protected function credentialErrorMessage(\Throwable $e): string
     {
-        return 'Invalid API credentials or failed to connect to Coinbase.';
+        return 'Invalid API credentials or failed to connect to Coinbase. Use a view-only key with "Opt-out of IP allowlisting" ticked.';
     }
 }

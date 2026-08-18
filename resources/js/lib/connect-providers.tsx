@@ -173,7 +173,7 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
             before: 'Create a CDP API key (Ed25519 recommended) in the Coinbase Developer Platform under',
             href: 'https://portal.cdp.coinbase.com/access/api',
             link: 'API Keys',
-            after: 'Use a view-only key.',
+            after: 'Use a view-only key, and tick "Opt-out of IP allowlisting" so the key works from our servers.',
         },
     },
     {
@@ -273,18 +273,25 @@ export function isProviderComplete(
 
 export function ProviderHelp({ help }: { help: ConnectProvider['help'] }) {
     return (
-        <p className="text-xs text-muted-foreground">
-            {__(help.before)}{' '}
-            <a
-                href={help.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-            >
-                {__(help.link)}
-            </a>
-            {help.after ? <>. {__(help.after)}</> : '.'}
-        </p>
+        <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">
+                {__(help.before)}{' '}
+                <a
+                    href={help.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                >
+                    {__(help.link)}
+                </a>
+                .
+            </p>
+            {/* Own paragraph, not muted: these are settings the provider's own
+                form gets wrong by default, so they have to survive skimming. */}
+            {help.after && (
+                <p className="text-xs font-medium">{__(help.after)}</p>
+            )}
+        </div>
     );
 }
 
