@@ -2,19 +2,24 @@ import Header from '@/components/partials/header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { tailwindColorClasses } from '@/components/user-info';
-import {
-    findComparisonPage,
-    type ComparisonPage,
-    type ComparisonTestimonial,
-} from '@/data/comparison-pages';
 import { dashboard, login } from '@/routes';
 import { type SharedData } from '@/types';
-import { __ } from '@/utils/i18n';
+import {
+    type ComparisonLabels,
+    type ComparisonPageContent,
+    type ComparisonTestimonial,
+} from '@/types/comparison';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Facehash } from 'facehash';
 import { CheckIcon } from 'lucide-react';
 
-const CTA_LABEL = 'Crear mi cuenta gratis';
+type ComparisonProps = {
+    page: ComparisonPageContent;
+    labels: ComparisonLabels;
+    pageLocale: string;
+    alternates: Record<string, string>;
+    canRegister: boolean;
+};
 
 /**
  * A slot with no real quote yet. Rendering it in production would ship an empty
@@ -26,13 +31,17 @@ function isPending(
     return 'pending' in testimonial;
 }
 
+function withRival(template: string, rival: string): string {
+    return template.replace(':rival', rival);
+}
+
 function Cta({ canRegister, label }: { canRegister: boolean; label: string }) {
     const { auth } = usePage<SharedData>().props;
 
     if (auth.user) {
         return (
             <Button asChild size="lg">
-                <Link href={dashboard()}>{__('Go to Dashboard')}</Link>
+                <Link href={dashboard()}>Dashboard</Link>
             </Button>
         );
     }
@@ -40,7 +49,7 @@ function Cta({ canRegister, label }: { canRegister: boolean; label: string }) {
     if (!canRegister) {
         return (
             <Button asChild size="lg">
-                <Link href={login()}>{__('Log in')}</Link>
+                <Link href={login()}>Log in</Link>
             </Button>
         );
     }
@@ -93,14 +102,20 @@ function Testimonial({
     );
 }
 
-function ComparisonTable({ page }: { page: ComparisonPage }) {
+function ComparisonTable({
+    page,
+    dimensionLabel,
+}: {
+    page: ComparisonPageContent;
+    dimensionLabel: string;
+}) {
     return (
         <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-left text-sm">
                 <thead>
                     <tr className="border-b border-[#e3e3e0] dark:border-[#3E3E3A]">
                         <th className="w-1/5 py-3 pr-4 font-semibold">
-                            Dimensión
+                            {dimensionLabel}
                         </th>
                         <th className="w-2/5 py-3 pr-4 font-semibold">
                             {page.rival}
@@ -132,36 +147,56 @@ function ComparisonTable({ page }: { page: ComparisonPage }) {
 }
 
 export default function Comparison({
-    slug,
+    page,
+    labels,
+    pageLocale,
+    alternates,
     canRegister,
-}: {
-    slug: string;
-    canRegister: boolean;
-}) {
-    const { appUrl } = usePage<SharedData>().props;
-    const page = findComparisonPage(slug);
-
-    if (!page) {
-        return null;
-    }
-
-    const url = `${appUrl}/comparativa/${page.slug}`;
+}: ComparisonProps) {
+    const canonical = alternates[pageLocale];
+    const otherLocale = Object.keys(alternates).find(
+        (locale) => locale !== pageLocale,
+    );
 
     return (
         <>
             <Head title={page.title}>
+                {/* The lang attribute comes from the Blade root, which reads the
+                    locale this route pinned. Setting <html> here instead crashes
+                    Inertia's head manager: that is a Vue-only idiom. */}
                 <meta name="description" content={page.description} />
-                <link rel="canonical" href={url} />
+                <link rel="canonical" href={canonical} />
                 <meta name="robots" content="index, follow" />
+
+                {/* Each language is a separate URL; hreflang ties them together
+                    and x-default names the one to serve an unmatched language. */}
+                {Object.entries(alternates).map(([locale, url]) => (
+                    <link
+                        key={locale}
+                        rel="alternate"
+                        hrefLang={locale}
+                        href={url}
+                    />
+                ))}
+                <link
+                    rel="alternate"
+                    hrefLang="x-default"
+                    href={alternates.en}
+                />
+                <link
+                    rel="alternate"
+                    type="text/markdown"
+                    href={`${canonical}.md`}
+                />
+
                 <meta property="og:site_name" content="Whisper Money" />
                 <meta property="og:title" content={page.title} />
                 <meta property="og:description" content={page.description} />
                 <meta property="og:type" content="article" />
-                <meta property="og:url" content={url} />
-                <meta property="og:locale" content="es_ES" />
+                <meta property="og:url" content={canonical} />
                 <meta
-                    property="og:image"
-                    content={`${appUrl}/images/og_whisper_money.png`}
+                    property="og:locale"
+                    content={pageLocale === 'es' ? 'es_ES' : 'en_US'}
                 />
             </Head>
 
@@ -176,16 +211,30 @@ export default function Comparison({
                         <p className="text-lg leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
                             {page.intro}
                         </p>
+                        {otherLocale && (
+                            <a
+                                href={alternates[otherLocale]}
+                                hrefLang={otherLocale}
+                                className="text-sm text-[#706f6c] underline underline-offset-4 hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
+                            >
+                                {labels.other_language}
+                            </a>
+                        )}
                     </header>
 
                     <section className="flex flex-col gap-4">
-                        <h2 className="text-2xl font-semibold">Cara a cara</h2>
-                        <ComparisonTable page={page} />
+                        <h2 className="text-2xl font-semibold">
+                            {labels.head_to_head}
+                        </h2>
+                        <ComparisonTable
+                            page={page}
+                            dimensionLabel={labels.dimension}
+                        />
                     </section>
 
                     <section className="flex flex-col gap-4">
                         <h2 className="text-2xl font-semibold">
-                            {page.narrativeTitle}
+                            {page.narrative_title}
                         </h2>
                         {page.narrative.map((paragraph) => (
                             <p
@@ -199,7 +248,7 @@ export default function Comparison({
 
                     <section className="flex flex-col gap-4">
                         <h2 className="text-2xl font-semibold">
-                            {`Lo que cambia al pasar de ${page.rival} a Whisper Money`}
+                            {withRival(labels.changes, page.rival)}
                         </h2>
                         <ul className="flex flex-col gap-3">
                             {page.bullets.map((bullet) => (
@@ -218,13 +267,13 @@ export default function Comparison({
 
                     <section className="flex flex-col gap-4">
                         <h2 className="text-2xl font-semibold">
-                            {`Cómo migrar de ${page.rival} a Whisper Money, paso a paso`}
+                            {withRival(labels.migration, page.rival)}
                         </h2>
                         <p className="leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                            {page.migrationIntro}
+                            {page.migration_intro}
                         </p>
                         <ol className="flex flex-col gap-6">
-                            {page.migrationSteps.map((step, index) => (
+                            {page.migration_steps.map((step, index) => (
                                 <li key={step.title} className="flex gap-4">
                                     <span
                                         aria-hidden
@@ -247,7 +296,7 @@ export default function Comparison({
 
                     <section className="flex flex-col gap-4">
                         <h2 className="text-2xl font-semibold">
-                            Lo que dicen quienes ya lo usan
+                            {labels.testimonials}
                         </h2>
                         <div className="grid gap-4 sm:grid-cols-2">
                             {page.testimonials.map((testimonial) =>
@@ -257,6 +306,7 @@ export default function Comparison({
                                             key={testimonial.pending}
                                             className="rounded-2xl border border-dashed border-amber-500 p-6 text-sm text-amber-700 dark:text-amber-400"
                                         >
+                                            TODO: real testimonial pending from{' '}
                                             {testimonial.pending}
                                         </p>
                                     ) : null
@@ -272,18 +322,18 @@ export default function Comparison({
 
                     <section className="flex flex-col items-start gap-4 rounded-2xl border border-[#e3e3e0] p-8 dark:border-[#3E3E3A]">
                         <h2 className="text-2xl font-semibold">
-                            {`Únete a quienes migraron desde ${page.rival}`}
+                            {withRival(labels.closing, page.rival)}
                         </h2>
                         <p className="leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                            {page.closingBody}
+                            {page.closing_body}
                         </p>
                         <div className="flex flex-wrap items-center gap-4">
-                            <Cta canRegister={canRegister} label={CTA_LABEL} />
+                            <Cta canRegister={canRegister} label={labels.cta} />
                             <Link
                                 href="/#pricing"
                                 className="text-sm text-[#706f6c] underline underline-offset-4 hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
                             >
-                                Ver todos los precios
+                                {labels.pricing}
                             </Link>
                         </div>
                     </section>
@@ -292,7 +342,7 @@ export default function Comparison({
                         href="/"
                         className="text-sm text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
                     >
-                        {__('← Back to home')}
+                        ← {labels.back}
                     </Link>
                 </main>
             </div>
