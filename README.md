@@ -18,7 +18,7 @@
 
 **The most secure way to understand your finances.**
 
-Whisper Money is a privacy-first personal finance application that helps you track, categorize, and understand your spending—all while keeping your financial data encrypted and secure.
+Whisper Money is a privacy-first personal finance application that helps you track, categorize, and understand your spending—without selling, sharing, or mining your financial data. The entire codebase is public, so you don't have to take our word for it.
 
 > 🎮 **Try the Demo:** Experience Whisper Money with our [demo account](https://whisper.money/login?demo=1) - no registration required!
 
