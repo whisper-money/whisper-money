@@ -36,6 +36,7 @@ class AccountController extends Controller
         $accounts = $user
             ->accounts()
             ->with(['bank', 'loanDetail', 'realEstateDetail'])
+            ->orderBy('archived')
             ->orderBy('name')
             ->get();
 

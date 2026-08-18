@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AccountType;
+use App\Http\Requests\ArchiveAccountRequest;
 use App\Http\Requests\ReorderAccountsRequest;
-use App\Http\Requests\UpdateAccountVisibilityRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\LoanDetail;
@@ -31,6 +31,7 @@ class AccountController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
+            ->notArchived()
             ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
             ->orderBy('position')
             ->orderBy('name')
@@ -60,9 +61,9 @@ class AccountController extends Controller
         return back();
     }
 
-    public function updateVisibility(UpdateAccountVisibilityRequest $request, Account $account): RedirectResponse
+    public function archive(ArchiveAccountRequest $request, Account $account): RedirectResponse
     {
-        $account->update(['hidden_on_dashboard' => $request->validated('hidden')]);
+        $account->update(['archived' => $request->validated('archived')]);
 
         return back();
     }

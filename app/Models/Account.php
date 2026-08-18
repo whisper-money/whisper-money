@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Models\Concerns\BelongsToSpace;
 use App\Services\BudgetTransactionService;
 use Database\Factories\AccountFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,7 +38,7 @@ class Account extends Model
         'iban',
         'linked_at',
         'position',
-        'hidden_on_dashboard',
+        'archived',
         'ownership_percentage',
         'ownership_applies_to_balance',
     ];
@@ -49,7 +50,6 @@ class Account extends Model
         'bank_id',
         'iban',
         'position',
-        'hidden_on_dashboard',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -82,10 +82,22 @@ class Account extends Model
             'encrypted' => 'boolean',
             'linked_at' => 'datetime',
             'position' => 'integer',
-            'hidden_on_dashboard' => 'boolean',
+            'archived' => 'boolean',
             'ownership_percentage' => 'integer',
             'ownership_applies_to_balance' => 'boolean',
         ];
+    }
+
+    /**
+     * Archived accounts are out of sight everywhere the user picks or reviews
+     * accounts; only the settings list still shows them so they can come back.
+     *
+     * @param  Builder<Account>  $query
+     * @return Builder<Account>
+     */
+    public function scopeNotArchived(Builder $query): Builder
+    {
+        return $query->where('archived', false);
     }
 
     /**

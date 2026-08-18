@@ -6,7 +6,7 @@ use App\Models\Account;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateAccountVisibilityRequest extends FormRequest
+class ArchiveAccountRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -27,7 +27,7 @@ class UpdateAccountVisibilityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'hidden' => ['required', 'boolean'],
+            'archived' => ['required', 'boolean'],
         ];
     }
 }
