@@ -1664,6 +1664,25 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
     );
 }
 
+const FOOTER_LINK_CLASSES = 'hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]';
+
+function FooterColumn({
+    title,
+    children,
+}: {
+    title: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className="flex flex-col gap-3">
+            <h2 className="font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
+                {title}
+            </h2>
+            <ul className="flex flex-col gap-2">{children}</ul>
+        </div>
+    );
+}
+
 export default function Welcome({
     canRegister,
     popularBanks,
@@ -2660,63 +2679,77 @@ export default function Welcome({
                 </main>
 
                 <footer className="py-8 lg:mt-12 dark:border-[#3E3E3A]">
-                    {comparisonLinks.length > 0 && (
-                        <div className="mx-auto mb-8 flex max-w-5xl flex-col gap-3 px-6 text-sm text-[#706f6c] lg:px-8 dark:text-[#A1A09A]">
-                            <h2 className="font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
-                                {__('Compare')}
-                            </h2>
-                            <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="mx-auto grid max-w-5xl gap-8 px-6 text-sm text-[#706f6c] sm:grid-cols-[1.5fr_1fr_1fr] lg:px-8 dark:text-[#A1A09A]">
+                        {comparisonLinks.length > 0 && (
+                            <FooterColumn title={__('Compare')}>
                                 {comparisonLinks.map((link) => (
                                     <li key={link.slug}>
                                         <Link
                                             href={link.path}
-                                            className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
+                                            className={FOOTER_LINK_CLASSES}
                                         >
                                             {link.heading}
                                         </Link>
                                     </li>
                                 ))}
-                            </ul>
-                        </div>
-                    )}
-                    <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#706f6c] sm:flex-row lg:px-8 dark:text-[#A1A09A]">
-                        <p>
-                            © {new Date().getFullYear()}
-                            {__(
-                                'Whisper Money. All\n                            rights reserved.',
-                            )}
-                        </p>
-                        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-                            <Link
-                                href={roadmap()}
-                                className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                            >
-                                {__('Roadmap')}
-                            </Link>
-                            <Link
-                                href="/privacy"
-                                className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                            >
-                                {__('Privacy Policy')}
-                            </Link>
-                            <Link
-                                href="/terms"
-                                className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                            >
-                                {__('Terms of Service')}
-                            </Link>
-                            {LANGUAGE_OPTIONS.filter(
-                                (option) => option.code !== locale,
-                            ).map((option) => (
-                                <a
-                                    key={option.code}
-                                    href={`/?lang=${option.code}`}
-                                    className="cursor-pointer hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                                >
-                                    {option.label}
-                                </a>
+                            </FooterColumn>
+                        )}
+
+                        <FooterColumn title={__('Language')}>
+                            {LANGUAGE_OPTIONS.map((option) => (
+                                <li key={option.code}>
+                                    {option.code === locale ? (
+                                        <span className="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                            {option.label}
+                                        </span>
+                                    ) : (
+                                        <a
+                                            href={`/?lang=${option.code}`}
+                                            className={cn(
+                                                'cursor-pointer',
+                                                FOOTER_LINK_CLASSES,
+                                            )}
+                                        >
+                                            {option.label}
+                                        </a>
+                                    )}
+                                </li>
                             ))}
-                        </div>
+                        </FooterColumn>
+
+                        <FooterColumn title={__('Other')}>
+                            <li>
+                                <Link
+                                    href={roadmap()}
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Roadmap')}
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href="/privacy"
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Privacy Policy')}
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href="/terms"
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Terms of Service')}
+                                </Link>
+                            </li>
+                        </FooterColumn>
+                    </div>
+
+                    <div className="mx-auto mt-10 max-w-5xl px-6 text-sm text-[#706f6c] lg:px-8 dark:text-[#A1A09A]">
+                        <p>
+                            © {new Date().getFullYear()}{' '}
+                            {__('Whisper Money. All rights reserved.')}
+                        </p>
                     </div>
                 </footer>
             </div>
