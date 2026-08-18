@@ -16,6 +16,7 @@ import {
 import { ArrowUpDown, Link2, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
+import { archive } from '@/actions/App/Http/Controllers/AccountController';
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { AccountName } from '@/components/accounts/account-name';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
@@ -47,6 +48,23 @@ import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, formatAccountType } from '@/types/account';
 
+/**
+ * Archiving takes an account out of the dashboard, the accounts page and every
+ * account picker; this settings list is the only place it stays visible so it
+ * can be brought back.
+ */
+function toggleArchive(account: Account) {
+    router.patch(
+        archive.url(account.id),
+        { archived: !account.archived },
+        { preserveScroll: true },
+    );
+}
+
+function archiveLabel(account: Account) {
+    return account.archived ? __('Unarchive') : __('Archive');
+}
+
 function AccountActions({
     account,
     onSuccess,
@@ -74,6 +92,9 @@ function AccountActions({
                     <DropdownMenuLabel>{__('Actions')}</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
                         {__('Edit')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleArchive(account)}>
+                        {archiveLabel(account)}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
@@ -139,6 +160,9 @@ function AccountRow({
                     <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
                         {__('Edit')}
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => toggleArchive(account)}>
+                        {archiveLabel(account)}
                     </ContextMenuItem>
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
@@ -212,6 +236,9 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                             account={row.original}
                             length={{ min: 10, max: 20 }}
                         />
+                        {row.original.archived && (
+                            <Badge variant="secondary">{__('Archived')}</Badge>
+                        )}
                     </div>
                 );
             },

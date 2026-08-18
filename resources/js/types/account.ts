@@ -52,6 +52,7 @@ export interface Account {
     external_account_id: string | null;
     linked_at: string | null;
     linked_loan_account_id?: UUID | null;
+    archived?: boolean;
     ownership_percentage?: number;
     ownership_applies_to_balance?: boolean;
 }
@@ -179,11 +180,17 @@ export function accountIconByType(type: AccountType): LucideIcon {
     return typeMap[type] ?? BadgeQuestionMarkIcon;
 }
 
-export function filterTransactionalAccounts<T extends { type: AccountType }>(
-    accounts: T[],
-): T[] {
+/**
+ * The accounts money can be assigned to: everything but the types without a
+ * ledger and anything the user has archived.
+ */
+export function filterTransactionalAccounts<
+    T extends { type: AccountType; archived?: boolean },
+>(accounts: T[]): T[] {
     return accounts.filter(
-        (account) => !NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type),
+        (account) =>
+            !account.archived &&
+            !NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type),
     );
 }
 

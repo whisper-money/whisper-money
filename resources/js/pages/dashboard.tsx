@@ -1,6 +1,6 @@
 import {
+    archive,
     reorder,
-    updateVisibility,
 } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
 import { AccountsManagerDialog } from '@/components/dashboard/accounts-manager-dialog';
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
-    type AccountWithMetrics,
     type NetWorthEvolutionData,
     deriveAccountMetrics,
 } from '@/hooks/use-dashboard-data';
@@ -63,15 +62,31 @@ export default function Dashboard() {
         !!props.openIntegrationRequests,
     );
 
-    const netWorthEvolution = useMemo(
-        () =>
-            props.netWorthEvolution ?? {
-                data: [],
-                accounts: {},
-                currency_code: 'USD',
-            },
-        [props.netWorthEvolution],
-    );
+    // Accounts archived during this visit, so the card, the chart segment and
+    // the manager row all disappear at once without refetching the deferred
+    // net worth payload (which would flash the skeleton).
+    const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
+
+    const netWorthEvolution = useMemo(() => {
+        const evolution = props.netWorthEvolution ?? {
+            data: [],
+            accounts: {},
+            currency_code: 'USD',
+        };
+
+        if (archivedIds.size === 0) {
+            return evolution;
+        }
+
+        return {
+            ...evolution,
+            accounts: Object.fromEntries(
+                Object.entries(evolution.accounts).filter(
+                    ([id]) => !archivedIds.has(id),
+                ),
+            ),
+        };
+    }, [props.netWorthEvolution, archivedIds]);
 
     const accountMetrics = useMemo(
         () => deriveAccountMetrics(netWorthEvolution, locale),
@@ -111,22 +126,6 @@ export default function Dashboard() {
         return [...ordered, ...rest];
     }, [manageableAccounts, order]);
 
-    // Optimistic visibility overrides keyed by account id; falls back to the
-    // server flag until the next full reload.
-    const [hiddenOverrides, setHiddenOverrides] = useState<
-        Record<string, boolean>
-    >({});
-    const isHidden = useCallback(
-        (account: AccountWithMetrics) =>
-            hiddenOverrides[account.id] ?? account.hidden_on_dashboard,
-        [hiddenOverrides],
-    );
-
-    const gridAccounts = useMemo(
-        () => orderedAccounts.filter((a) => !isHidden(a)),
-        [orderedAccounts, isHidden],
-    );
-
     const handleReorder = useCallback((ids: string[]) => {
         setOrder(ids);
         // Persist only; keep the deferred netWorthEvolution prop in place by
@@ -142,21 +141,18 @@ export default function Dashboard() {
         );
     }, []);
 
-    const handleToggleVisibility = useCallback(
-        (id: string, hidden: boolean) => {
-            setHiddenOverrides((prev) => ({ ...prev, [id]: hidden }));
-            router.patch(
-                updateVisibility.url(id),
-                { hidden },
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    only: ['showEncryptionPrompt'],
-                },
-            );
-        },
-        [],
-    );
+    const handleArchive = useCallback((id: string) => {
+        setArchivedIds((prev) => new Set(prev).add(id));
+        router.patch(
+            archive.url(id),
+            { archived: true },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['showEncryptionPrompt'],
+            },
+        );
+    }, []);
 
     // Build linked loan metrics map keyed by real estate account ID
     const linkedLoanMetricsMap = useMemo(() => {
@@ -312,7 +308,7 @@ export default function Dashboard() {
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
-                        {gridAccounts.map((account) => (
+                        {orderedAccounts.map((account) => (
                             <AccountBalanceCard
                                 key={account.id}
                                 account={account}
@@ -331,9 +327,8 @@ export default function Dashboard() {
                         open={editOpen}
                         onOpenChange={setEditOpen}
                         accounts={orderedAccounts}
-                        isHidden={isHidden}
                         onReorder={handleReorder}
-                        onToggleVisibility={handleToggleVisibility}
+                        onArchive={handleArchive}
                     />
                 </Deferred>
 
