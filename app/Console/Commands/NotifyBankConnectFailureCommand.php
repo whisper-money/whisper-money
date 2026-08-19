@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Console\Commands\Concerns\NotifiesBankUsers;
-use App\Enums\BankingConnectionStatus;
 use App\Enums\DripEmailType;
 use App\Mail\BankConnectFailedEmail;
 use App\Models\BankingConnection;
@@ -13,7 +12,6 @@ use Closure;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Collection;
 
 /**
@@ -28,13 +26,6 @@ use Illuminate\Support\Collection;
 class NotifyBankConnectFailureCommand extends Command implements Isolatable
 {
     use NotifiesBankUsers;
-
-    /**
-     * How many distinct people must have hit the bank before the copy's claim
-     * that it fails for everyone can be defended. One user cancelling twice at
-     * their bank leaves the same trace as a broken connector.
-     */
-    private const MIN_AFFECTED_USERS = 2;
 
     /**
      * The name and signature of the console command.
@@ -107,28 +98,6 @@ class NotifyBankConnectFailureCommand extends Command implements Isolatable
         );
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Attempts the bank itself sent back as an error.
-     *
-     * A soft-deleted `pending` row is the fingerprint: AuthorizationController::
-     * handleAuthorizationError() is the only path that deletes a connection while
-     * it is still pending, and a manual disconnect sets Revoked before deleting.
-     * A `pending` row that is *not* deleted means the user simply never came back
-     * from the bank, which is not something to apologise for.
-     */
-    private function failedAuthorizations(Closure $matchesBank): Closure
-    {
-        return fn (Builder $query) => $query
-            ->tap($matchesBank)
-            // Only the soft-deleted rows: a rejected callback deletes the
-            // connection, so every attempt worth reporting is trashed. The column
-            // is qualified because this also runs as a subquery against `users`,
-            // which has a `deleted_at` of its own.
-            ->withoutGlobalScope(SoftDeletingScope::class)
-            ->whereNotNull('banking_connections.deleted_at')
-            ->where('status', BankingConnectionStatus::Pending);
     }
 
     /**

@@ -11,6 +11,7 @@ Schedule::command('loans:generate-balances')->monthlyOn(1, '00:00');
 Schedule::command('email:paywall-follow-up')->dailyAt('10:00')->timezone('Europe/Madrid');
 Schedule::command('email:ai-consent-follow-up')->dailyAt('10:15')->timezone('Europe/Madrid');
 Schedule::command('email:user-emails-report')->monthlyOn(1, '09:05')->timezone('Europe/Madrid');
+Schedule::command('banking:health --email')->dailyAt('09:30')->timezone('Europe/Madrid');
 Schedule::command('stats:daily-report')->dailyAt('09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:ai-cohort-report')->monthlyOn(1, '09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:subscription-funnel')->weekly()->mondays()->at('09:15')->timezone('Europe/Madrid');
