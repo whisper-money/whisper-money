@@ -56,5 +56,5 @@
 {{ __('If you try it, hit reply and tell us what you asked it first. We read every email.') }}
 
 Víctor Falcón Ruíz<br>
-{{ __('Founder and solo developer, Whisper Money') }}
+{{ __('Co-founder and solo developer, Whisper Money') }}
 </x-mail::message>
