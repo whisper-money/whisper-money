@@ -43,6 +43,7 @@ class BankHealthCommand extends Command
         'failing' => 0,
         'failing_users' => 0,
         'newest_sync' => null,
+        'newest_failing_sync' => null,
     ];
 
     /**
@@ -98,7 +99,7 @@ class BankHealthCommand extends Command
             ->map(fn (array $bank, string $key) => $this->summarise([
                 ...$bank,
                 ...($failures->get($key) ?? ['failed_authorizations' => 0, 'affected_users' => 0]),
-                ...($sync->get($key) ?? self::NO_LIVE_CONNECTIONS),
+                ...($sync[$key] ?? self::NO_LIVE_CONNECTIONS),
             ]))
             ->sortBy([['severity', 'desc'], ['failing', 'desc'], ['users', 'desc'], ['name', 'asc']])
             ->values();
@@ -160,9 +161,9 @@ class BankHealthCommand extends Command
      * which keeps the two states below readable instead of hidden in conditional
      * SQL aggregates.
      *
-     * @return Collection<string, array<string, mixed>>
+     * @return array<array-key, array{live: int, live_users: int, rate_limited: int, syncing: int, failing: int, failing_users: int, newest_sync: CarbonInterface|null, newest_failing_sync: CarbonInterface|null}>
      */
-    private function syncHealth(): Collection
+    private function syncHealth(): array
     {
         return BankingConnection::query()
             ->tap($this->matchesOutage($this->matchesEnableBanking()))
@@ -171,12 +172,13 @@ class BankHealthCommand extends Command
                 (string) $connection->aspsp_name,
                 (string) $connection->aspsp_country,
             ))
-            ->map(fn (Collection $connections): array => $this->summariseSync($connections));
+            ->map(fn (Collection $connections): array => $this->summariseSync($connections))
+            ->all();
     }
 
     /**
      * @param  Collection<int, BankingConnection>  $connections
-     * @return array{live: int, live_users: int, rate_limited: int, syncing: int, failing: int, failing_users: int, newest_sync: CarbonInterface|null}
+     * @return array{live: int, live_users: int, rate_limited: int, syncing: int, failing: int, failing_users: int, newest_sync: CarbonInterface|null, newest_failing_sync: CarbonInterface|null}
      */
     private function summariseSync(Collection $connections): array
     {
@@ -191,6 +193,10 @@ class BankHealthCommand extends Command
             'failing' => $failing->count(),
             'failing_users' => $failing->unique('user_id')->count(),
             'newest_sync' => $connections->max('last_synced_at'),
+            // Separate from the column above on purpose: a throttled connection
+            // syncing an hour ago says nothing about the ones that are down, and
+            // quoting it would make the alert read better than the truth.
+            'newest_failing_sync' => $failing->max('last_synced_at'),
         ];
     }
 
@@ -387,13 +393,13 @@ class BankHealthCommand extends Command
         }
 
         if ($this->isFullyDown($bank)) {
-            $lastSync = $bank['newest_sync'] instanceof CarbonInterface
-                ? 'the newest sync of any of them is '.$bank['newest_sync']->diffForHumans()
+            $lastSync = $bank['newest_failing_sync'] instanceof CarbonInterface
+                ? 'the most recent of them synced '.$bank['newest_failing_sync']->diffForHumans()
                 : 'not one of them has ever synced';
 
-            return "All {$bank['failing']} of its {$bank['syncing']} live connection(s) have stopped syncing, across "
+            return "All {$bank['failing']} of its {$bank['syncing']} connection(s) that should be syncing have stopped, across "
                 ."{$bank['failing_users']} user(s); {$lastSync}."
-                .($bank['rate_limited'] > 0 ? " {$bank['rate_limited']} further connection(s) are rate limited and left out." : '');
+                .($bank['rate_limited'] > 0 ? " A further {$bank['rate_limited']} are rate limited and left out of that count." : '');
         }
 
         return null;
@@ -405,7 +411,7 @@ class BankHealthCommand extends Command
     private function renderReport(Collection $banks): void
     {
         $this->table(
-            ['Bank', 'Country', 'Attempts', 'Rejected', 'Users', 'Connected', 'Live', 'Not syncing', 'Throttled', 'Newest sync', 'State'],
+            ['Bank', 'Country', 'Attempts', 'Failed auth', 'Users', 'Connected', 'Live', 'Not syncing', 'Throttled', 'Newest sync', 'State'],
             $banks->map(fn (array $bank): array => [
                 $bank['name'],
                 $bank['country'],
@@ -459,13 +465,39 @@ class BankHealthCommand extends Command
             return self::SUCCESS;
         }
 
-        Mail::to($recipients)->send(new BankHealthAlertEmail($fresh->all(), $this->repeatAfter()));
+        Mail::to($recipients)->send(new BankHealthAlertEmail(
+            $fresh->all(),
+            $this->repeatAfter(),
+            $this->looksLikeProviderOutage($banks, $broken),
+        ));
 
         $this->suppressUntilWindowElapses($fresh);
 
         $this->warn("Alerted about {$fresh->count()} bank(s): ".$fresh->pluck('display_name')->implode(', ').'.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Whether this many banks failing at once is better explained by Enable
+     * Banking than by the banks themselves.
+     *
+     * It matters because of what the email asks for: every notify command in it
+     * tells that bank's users their bank is broken. If the provider is down, that
+     * diagnosis is wrong for all of them at once, and the outage notice is the one
+     * mistake here that cannot be taken back.
+     *
+     * @param  Collection<int, array<string, mixed>>  $banks
+     * @param  Collection<int, array<string, mixed>>  $broken
+     */
+    private function looksLikeProviderOutage(Collection $banks, Collection $broken): bool
+    {
+        $connected = $banks->where('live', '>', 0)->count();
+        $down = $broken->where('live', '>', 0)->count();
+
+        // Half of everything that has a live connection, and never on the two or
+        // three banks that are simply always broken.
+        return $down >= 3 && $down * 2 > $connected;
     }
 
     /**

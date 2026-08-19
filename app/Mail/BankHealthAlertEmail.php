@@ -23,10 +23,12 @@ class BankHealthAlertEmail extends Mailable
     /**
      * @param  array<int, array<string, mixed>>  $banks
      * @param  int  $repeatAfterDays  Days before the same bank is reported again
+     * @param  bool  $looksLikeProviderOutage  Too many banks at once to blame the banks
      */
     public function __construct(
         public array $banks,
         public int $repeatAfterDays,
+        public bool $looksLikeProviderOutage = false,
     ) {}
 
     public function envelope(): Envelope
@@ -47,6 +49,7 @@ class BankHealthAlertEmail extends Mailable
             with: [
                 'banks' => $this->banks,
                 'repeatAfterDays' => $this->repeatAfterDays,
+                'looksLikeProviderOutage' => $this->looksLikeProviderOutage,
             ],
         );
     }

@@ -6,6 +6,13 @@ data. Each one has a command that tells its users, ready to paste — it runs as
 dry run, so it only lists who would be emailed. Drop `--dry-run` from the end to
 actually send it, and it will ask for confirmation first.
 
+@if ($looksLikeProviderOutage)
+**Check Enable Banking first.** This is most of the banks we have a live
+connection to, which one bank being down cannot explain. If the provider is the
+one that is failing, every command below would tell those users something untrue
+about their own bank.
+
+@endif
 @foreach ($banks as $bank)
 ## {{ $bank['display_name'] }}
 

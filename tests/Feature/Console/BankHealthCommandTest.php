@@ -107,7 +107,7 @@ test('alerts about a bank whose every live connection has stopped syncing', func
 
     expect(alertedBanks()[0]['notify_command'])
         ->toBe('php artisan banking:notify-outage "Dead Bank" --country=ES')
-        ->and(alertedBanks()[0]['reason'])->toContain('All 2 of its 2 live connection(s) have stopped syncing');
+        ->and(alertedBanks()[0]['reason'])->toContain('All 2 of its 2 connection(s) that should be syncing have stopped');
 });
 
 test('counts a connection stuck on an error as failing, however fresh its clock', function () {
@@ -169,18 +169,23 @@ test('does not read a rate limited connection as a bank-side outage', function (
 });
 
 test('still alerts when a throttled connection sits beside connections that are genuinely down', function () {
-    stalledConnection('Half Throttled Bank');
-    stalledConnection('Half Throttled Bank');
+    healthConnection('Half Throttled Bank', ['last_synced_at' => null]);
+    healthConnection('Half Throttled Bank', ['last_synced_at' => null]);
+    // Throttled, and the only connection to this bank with a recent sync.
     healthConnection('Half Throttled Bank', [
-        'last_synced_at' => null,
+        'last_synced_at' => now()->subHour(),
         'rate_limited_until' => now()->addHour(),
     ]);
 
     artisan('banking:health', ['--email' => true])->assertSuccessful();
 
     expect(alertedBanks()[0]['reason'])
-        ->toContain('All 2 of its 2 live connection(s) have stopped syncing')
-        ->toContain('1 further connection(s) are rate limited and left out');
+        ->toContain('All 2 of its 2 connection(s) that should be syncing have stopped')
+        ->toContain('A further 1 are rate limited and left out of that count')
+        // The throttled connection is the one that synced an hour ago. Quoting it
+        // here would make the alert read better than the failing set really is.
+        ->toContain('not one of them has ever synced')
+        ->not->toContain('1 hour ago');
 });
 
 test('ignores connections the user has to reconnect themselves', function () {
@@ -291,4 +296,26 @@ test('a bank that connects for others is not broken for the users it rejected', 
         ->assertSuccessful();
 
     Mail::assertNothingOutgoing();
+});
+
+test('names the provider when too many banks fail at once to blame the banks', function () {
+    foreach (['Bank A', 'Bank B', 'Bank C'] as $bank) {
+        stalledConnection($bank);
+        stalledConnection($bank);
+    }
+
+    artisan('banking:health', ['--email' => true])->assertSuccessful();
+
+    Mail::assertSent(BankHealthAlertEmail::class, fn (BankHealthAlertEmail $mail) => $mail->looksLikeProviderOutage);
+});
+
+test('blames the bank when it is the only one failing', function () {
+    stalledConnection('Dead Bank');
+    stalledConnection('Dead Bank');
+    healthConnection('Healthy Bank');
+    healthConnection('Another Healthy Bank');
+
+    artisan('banking:health', ['--email' => true])->assertSuccessful();
+
+    Mail::assertSent(BankHealthAlertEmail::class, fn (BankHealthAlertEmail $mail) => ! $mail->looksLikeProviderOutage);
 });
