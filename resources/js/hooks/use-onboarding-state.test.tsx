@@ -79,6 +79,47 @@ describe('useOnboardingState', () => {
         expect(result.current.hasSelectedConnectedAccount).toBe(true);
     });
 
+    describe('skipping the AI step for a free signup', () => {
+        it('walks from syncing straight to categorize-transactions', () => {
+            const { result } = renderHook(() =>
+                useOnboardingState({ skipAiSuggestions: true }),
+            );
+
+            act(() => {
+                result.current.goToStep('syncing');
+            });
+            act(() => {
+                result.current.goNext();
+            });
+
+            expect(result.current.currentStep).toBe('categorize-transactions');
+        });
+
+        it('drops the AI step from the progress counter', () => {
+            const { result: free } = renderHook(() =>
+                useOnboardingState({ skipAiSuggestions: true }),
+            );
+            const { result: standard } = renderHook(() => useOnboardingState());
+
+            expect(free.current.totalSteps).toBe(
+                standard.current.totalSteps - 1,
+            );
+        });
+
+        it('keeps the AI step for every other signup', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.goToStep('syncing');
+            });
+            act(() => {
+                result.current.goNext();
+            });
+
+            expect(result.current.currentStep).toBe('ai-suggestions');
+        });
+    });
+
     it('remembers connected account setup when a connected account appears later', () => {
         const { result, rerender } = renderHook(
             ({ hasConnectedAccount }: { hasConnectedAccount: boolean }) =>
