@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property bool $has_pending_accounts
+ * @property string|null $aspsp_name
+ * @property string|null $aspsp_country
  * @property BankingProvider $provider
  * @property BankingConnectionStatus $status
  * @property Carbon|null $valid_until
@@ -62,6 +64,24 @@ class BankingConnection extends Model
         'state_token',
         'session_id',
     ];
+
+    /**
+     * How this connection identifies itself in a log line.
+     *
+     * Which bank it is decides whether a wave of failures is one connector
+     * misbehaving or the provider as a whole, and that is the first question
+     * every sync investigation starts with.
+     *
+     * @return array<string, string|null>
+     */
+    public function logContext(): array
+    {
+        return [
+            'connection_id' => $this->id,
+            'aspsp_name' => $this->aspsp_name,
+            'aspsp_country' => $this->aspsp_country,
+        ];
+    }
 
     protected function casts(): array
     {

@@ -10,6 +10,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\BalanceSyncService;
+use App\Services\Banking\EnableBankingProvider;
 use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use App\Services\Banking\TransactionSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -282,6 +283,30 @@ function createAccountViaUI($page, string $displayName, string $bankName, string
         ->wait(0.3)
         ->click('[data-testid="submit-account"]')
         ->wait(2);
+}
+
+/**
+ * An EnableBankingProvider signing with a throwaway key, for tests that drive
+ * the real provider against a faked HTTP layer.
+ */
+function enableBankingProviderForTest(): EnableBankingProvider
+{
+    // Generated once per process rather than committed: a working RSA key in a
+    // public repo is a bad pattern to keep, and the signature is never verified
+    // by anything but the faked HTTP layer.
+    static $path = null;
+
+    if ($path === null) {
+        openssl_pkey_export(openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]), $privateKey);
+
+        $path = tempnam(sys_get_temp_dir(), 'enablebanking-test-key');
+        file_put_contents($path, $privateKey);
+    }
+
+    return new EnableBankingProvider('test-app-id', $path);
 }
 
 /**

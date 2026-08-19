@@ -3,6 +3,7 @@
 namespace App\Services\Banking\Sync;
 
 use App\Enums\TransactionSource;
+use App\Exceptions\Banking\CarriesBankingOperation;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\TransientBankingProviderException;
@@ -54,44 +55,64 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $balanceFailed = 0;
         $transactionFailure = null;
 
+        $accountsAttempted = 0;
+
         $connection->load('accounts.bank');
 
-        foreach ($connection->accounts as $account) {
-            $created = 0;
-            [$dateFrom, $strategy] = $this->resolveWindow($connection, $account, $dateTo, $isFirstSync);
+        try {
+            foreach ($connection->accounts as $account) {
+                $created = 0;
+                $accountsAttempted++;
+                [$dateFrom, $strategy] = $this->resolveWindow($connection, $account, $dateTo, $isFirstSync);
 
-            try {
-                $created = $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy, saveDailyBalances: ! $account->isLinked());
-            } catch (InaccessibleBankAccountException|WrongTransactionsPeriodException $e) {
-                // A single account the bank no longer exposes, or whose history
-                // window it refuses even after narrowing, must not break the
-                // whole connection sync. Skip it; the user can stop syncing it
-                // from the manage-accounts screen.
-                Log::warning('Skipping unsyncable EnableBanking account during sync', [
-                    'connection_id' => $connection->id,
-                    'account_id' => $account->id,
-                    'reason' => $e::class,
-                ]);
+                try {
+                    $created = $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy, saveDailyBalances: ! $account->isLinked());
+                } catch (InaccessibleBankAccountException|WrongTransactionsPeriodException $e) {
+                    // A single account the bank no longer exposes, or whose history
+                    // window it refuses even after narrowing, must not break the
+                    // whole connection sync. Skip it; the user can stop syncing it
+                    // from the manage-accounts screen.
+                    Log::warning('Skipping unsyncable EnableBanking account during sync', [
+                        ...$connection->logContext(),
+                        'account_id' => $account->id,
+                        'reason' => $e::class,
+                    ]);
 
-                continue;
-            } catch (TransientBankingProviderException $e) {
-                $transactionFailure ??= $this->recordAccountTransactionFailure($account, $e);
+                    continue;
+                } catch (TransientBankingProviderException $e) {
+                    $transactionFailure ??= $this->recordAccountTransactionFailure($connection, $account, $e);
+                }
+
+                // Counted before the balances call, which is the one that throws
+                // most often: a tally taken after it would report zero imported
+                // for a run that had in fact just imported them.
+                if ($created > 0) {
+                    $bankName = $account->bank->name ?? __('Unknown Bank');
+                    $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
+                }
+
+                if (! $this->syncBalances($connection, $account, $isFirstSync)) {
+                    $balanceFailed++;
+                }
             }
+        } catch (\Throwable $e) {
+            $this->logAbortedSync($connection, $e, [
+                'accounts_attempted' => $accountsAttempted,
+                'accounts_total' => $connection->accounts->count(),
+                'transactions_synced' => array_sum($transactionsPerBank),
+                'balance_failed' => $balanceFailed,
+            ]);
 
-            if (! $this->syncBalances($account, $isFirstSync)) {
-                $balanceFailed++;
-            }
-
-            if ($created > 0) {
-                $bankName = $account->bank->name ?? __('Unknown Bank');
-                $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
-            }
+            throw $e;
         }
 
         // Report the failure only once every account has had its turn. The run
         // still fails, so the connection keeps its Error state, its retries and its
         // unset last_synced_at exactly as before - the one thing that changes is
         // that the accounts behind the failing one were attempted at all.
+        //
+        // Outside the try on purpose: by here nothing was aborted mid-run, every
+        // account was attempted, and the per-account failure is already logged.
         if ($transactionFailure !== null) {
             throw $transactionFailure;
         }
@@ -107,6 +128,33 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             'transactions_per_bank' => $transactionsPerBank,
             'balance_failed' => $balanceFailed,
         ];
+    }
+
+    /**
+     * Record what the run had already got done when it died.
+     *
+     * A throwing run returns no metadata, so "this connection imported six
+     * transactions and then the rate limit killed the run" was until now only
+     * reconstructable by lining up timestamps across two tables.
+     *
+     * @param  array<string, int>  $progress
+     */
+    private function logAbortedSync(BankingConnection $connection, \Throwable $e, array $progress): void
+    {
+        // A consent that lapsed mid-run is a lifecycle event the job already
+        // records, not a failure worth a second warning.
+        if ($e instanceof ExpiredBankingSessionException) {
+            return;
+        }
+
+        Log::warning('EnableBanking sync aborted mid-run', [
+            ...$connection->logContext(),
+            ...$progress,
+            'operation' => $e instanceof CarriesBankingOperation ? $e->operation : null,
+            'status_code' => $e instanceof RequestException ? $e->response->status() : null,
+            'reason' => $e::class,
+            'error' => $e->getMessage(),
+        ]);
     }
 
     /**
@@ -136,17 +184,18 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
      * path. Only a reply that came back with a status says something about *this*
      * account: the ConnectionException path is the one that leaves statusCode null.
      */
-    private function recordAccountTransactionFailure(Account $account, TransientBankingProviderException $e): TransientBankingProviderException
+    private function recordAccountTransactionFailure(BankingConnection $connection, Account $account, TransientBankingProviderException $e): TransientBankingProviderException
     {
         if ($e->statusCode === null) {
             throw $e;
         }
 
         Log::warning('EnableBanking transaction sync failed for one account, continuing', [
-            'connection_id' => $account->banking_connection_id,
+            ...$connection->logContext(),
             'account_id' => $account->id,
             'status_code' => $e->statusCode,
             'provider_code' => $e->providerCode,
+            'operation' => $e->operation,
             'error' => $e->getMessage(),
         ]);
 
@@ -158,7 +207,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
      *
      * @return bool Whether the balances were synced
      */
-    private function syncBalances(Account $account, bool $isFirstSync): bool
+    private function syncBalances(BankingConnection $connection, Account $account, bool $isFirstSync): bool
     {
         try {
             $this->balanceSync->sync($account);
@@ -180,8 +229,9 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             // nice-to-have next to the transactions we just persisted, and failing
             // here leaves last_synced_at unset.
             Log::warning('EnableBanking balance sync failed, continuing', [
-                'connection_id' => $account->banking_connection_id,
+                ...$connection->logContext(),
                 'account_id' => $account->id,
+                'operation' => 'balances',
                 'reason' => $e::class,
                 'error' => $e->getMessage(),
             ]);
