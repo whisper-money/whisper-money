@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\Middleware\RateLimited;
@@ -37,13 +38,23 @@ class UpdateEmail extends Mailable implements ShouldQueue
         $this->onQueue('emails');
     }
 
+    /**
+     * The subject doubles as a translation key. Laravel hydrates the envelope
+     * inside withLocale(), so it resolves in the recipient's locale, and an
+     * untranslated subject falls back to the string itself, leaving plain
+     * --subject values working unchanged.
+     *
+     * Reply-to is the shared founders inbox rather than the MAIL_FROM_ADDRESS
+     * of the moment, because update emails invite people to write back.
+     */
     public function envelope(): Envelope
     {
-        // Translated in the recipient's locale: Laravel hydrates the envelope
-        // inside withLocale(), and an untranslated subject falls back to the
-        // string itself, so plain --subject values keep working unchanged.
         return new Envelope(
             subject: __($this->emailSubject),
+            replyTo: [new Address(
+                config('mail.drip_from.address', 'hi@whisper.money'),
+                config('mail.drip_from.name', 'Whisper Money'),
+            )],
         );
     }
 

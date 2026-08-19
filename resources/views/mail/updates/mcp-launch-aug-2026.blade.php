@@ -1,3 +1,7 @@
+{{-- Launch email for the AI connector. Send it with exactly this subject, which
+     doubles as the lang/es.json key, or Spanish readers get an English subject:
+
+     php artisan email:update mcp-launch-aug-2026 --subject="Ask ChatGPT how much you spent this month" --exclude-demo --}}
 <x-mail::message>
 # {{ __('I just wanted to know one number') }}
 
@@ -30,18 +34,20 @@
 {{ __('It works with Claude too, if that is the assistant you use.') }}
 
 <x-mail::panel>
-{{ __('One thing I want to be precise about, because this is a privacy first app. Nothing gets connected until you connect it yourself from your settings, and you can undo it whenever you want. While it is connected, the assistant reads your data in order to answer you, and those conversations live in your own account with that assistant, under their rules and not mine. If you never connect it, nothing changes for you.') }}
+{{ __('One thing I want to be precise about, because this is a privacy first app. Nothing gets connected until you connect it yourself, from your settings, under AI Connector. While it is connected, the assistant reads your data in order to answer you, and those conversations live in your own account with that assistant, under their rules and not mine. When you want out, you remove Whisper Money from the connected apps inside ChatGPT and it stops answering. If you never connect it, nothing changes for you.') }}
 </x-mail::panel>
 
-{{ __('Setting it up takes about two minutes, and it is a lot easier to watch than to read. So I recorded myself doing the whole thing, from connecting it to asking the first question.') }}
+{{ __('Connecting it is a handful of clicks, and it is a lot easier to watch than to read. So I recorded myself doing the whole thing, from connecting it to asking the first question.') }}
+
+{{-- The video is Spanish already, so this heads-up is deliberately untranslated
+     and only ships to the other locales. Do not add its key to lang/es.json. --}}
+@unless (app()->isLocale('es'))
+{{ __('The video is in Spanish. YouTube auto-generated subtitles do a decent job if you need them.') }}
+@endunless
 
 <x-mail::button :url="'https://youtu.be/QSSd6z5UZ_M'">
 {{ __('Watch how it works') }}
 </x-mail::button>
-
-@if (app()->getLocale() !== 'es')
-{{ __('The video is in Spanish. YouTube auto-generated subtitles do a decent job if you need them.') }}
-@endif
 
 {{ __('It comes with Pro, by the way.') }}
 

@@ -10,7 +10,7 @@ const MCP_LAUNCH_SUBJECT = 'Ask ChatGPT how much you spent this month';
 
 /**
  * Queue the launch email to a user with the given locale and hand back the
- * mailable the fake captured, so each test asserts on what that user receives.
+ * mailable, so each test asserts on exactly what that user receives.
  */
 function queueMcpLaunchEmail(string $locale): UpdateEmail
 {
@@ -20,16 +20,12 @@ function queueMcpLaunchEmail(string $locale): UpdateEmail
 
     (new SendUpdateEmailJob($user, MCP_LAUNCH_VIEW, MCP_LAUNCH_VIEW, MCP_LAUNCH_SUBJECT))->handle();
 
-    $queued = null;
-
     // The mailable is ShouldQueue, so the fake records it as queued, not sent.
-    Mail::assertQueued(UpdateEmail::class, function (UpdateEmail $mail) use (&$queued): bool {
-        $queued = $mail;
+    $mail = Mail::queued(UpdateEmail::class)->first();
 
-        return true;
-    });
+    expect($mail)->toBeInstanceOf(UpdateEmail::class);
 
-    return $queued;
+    return $mail;
 }
 
 it('renders the launch email in English', function () {
@@ -45,7 +41,7 @@ it('renders the launch email in English', function () {
     $mail->assertSeeInHtml('The video is in Spanish.');
 });
 
-it('renders the launch email in Spanish, video language warning aside', function () {
+it('renders the launch email in Spanish without the video language note', function () {
     $mail = queueMcpLaunchEmail('es');
 
     $mail->assertHasSubject('Pregúntale a ChatGPT cuánto has gastado este mes');
@@ -56,20 +52,19 @@ it('renders the launch email in Spanish, video language warning aside', function
     $mail->assertSeeInHtml('Va incluido en Pro, por cierto.');
     $mail->assertSeeInHtml('https://youtu.be/QSSd6z5UZ_M', escape: false);
 
-    // The video is already in Spanish, so the heads-up only ships in other locales.
+    // The video is already in Spanish, so the heads-up only ships elsewhere.
     $mail->assertDontSeeInHtml('The video is in Spanish.');
 });
 
-it('leaves an untranslated subject untouched', function () {
-    Mail::fake();
+it('only promises what the connector actually does', function () {
+    $mail = queueMcpLaunchEmail('en');
 
-    $user = User::factory()->create(['locale' => 'es']);
+    // Write access over an OAuth connection is what makes this claim true;
+    // see WriteTool and tests/Feature/Mcp/McpOAuthTest.php.
+    $mail->assertSeeInHtml('note down 40 euros on groceries');
 
-    (new SendUpdateEmailJob($user, MCP_LAUNCH_VIEW, MCP_LAUNCH_VIEW, 'Update from Whisper Money'))->handle();
-
-    Mail::assertQueued(UpdateEmail::class, function (UpdateEmail $mail): bool {
-        $mail->assertHasSubject('Update from Whisper Money');
-
-        return true;
-    });
+    // Whisper Money has no screen to revoke an OAuth connection, so the email
+    // must not promise one.
+    $mail->assertDontSeeInHtml('you can undo it whenever you want');
+    $mail->assertSeeInHtml('remove Whisper Money from the connected apps inside ChatGPT');
 });
