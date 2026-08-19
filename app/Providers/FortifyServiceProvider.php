@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\CreateDefaultCategories;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Enums\SignupPlan;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
 use App\Models\User;
@@ -91,10 +92,15 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(function () {
+        Fortify::registerView(function (Request $request) {
             abort_if(! config('auth.registration_enabled'), 403);
 
-            return Inertia::render('auth/register');
+            return Inertia::render('auth/register', [
+                // Which landing pricing card sent them here. Read server-side
+                // because this page is server-rendered; unknown values drop to
+                // null, which is the untouched default flow.
+                'signupPlan' => SignupPlan::tryFrom((string) $request->query('plan', ''))?->value,
+            ]);
         });
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));

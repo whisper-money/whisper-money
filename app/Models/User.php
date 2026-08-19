@@ -37,6 +37,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $transactions_last_visited_at
  * @property ?Carbon $ai_consent_prompt_dismissed_at
  * @property ?string $price_arm
+ * @property ?string $signup_plan
  */
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
@@ -60,6 +61,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'timezone',
         'current_space_id',
         'price_arm',
+        'signup_plan',
     ];
 
     /**
@@ -78,6 +80,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'trial_ends_at',
         'encryption_salt',
         'price_arm',
+        'signup_plan',
     ];
 
     /**

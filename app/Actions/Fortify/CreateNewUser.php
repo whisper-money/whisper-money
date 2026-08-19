@@ -3,6 +3,7 @@
 namespace App\Actions\Fortify;
 
 use App\Enums\Locale;
+use App\Enums\SignupPlan;
 use App\Models\User;
 use App\Services\Subscriptions\PriceExperiment;
 use Illuminate\Support\Facades\Validator;
@@ -33,7 +34,10 @@ class CreateNewUser implements CreatesNewUsers
             ],
             'password' => $this->passwordRules(),
             'timezone' => ['nullable', 'string', 'max:255'],
+            'signup_plan' => ['nullable', 'string', 'max:255'],
         ])->validate();
+
+        $signupPlan = SignupPlan::tryFrom((string) ($input['signup_plan'] ?? ''));
 
         $user = User::create([
             'name' => $input['name'],
@@ -45,6 +49,12 @@ class CreateNewUser implements CreatesNewUsers
             // the price on the landing is the price at checkout. Null when they
             // arrived without a cookie: those users pay the control price.
             'price_arm' => PriceExperiment::sanitize(request()->cookie(PriceExperiment::COOKIE)),
+            // Which pricing card they came from, so onboarding can hide the paid
+            // options from someone who signed up for the free plan.
+            'signup_plan' => $signupPlan?->value,
+            // Someone who picked the free plan has already answered the paywall
+            // question, so skip bouncing them through it at the end of onboarding.
+            'paywall_seen_at' => $signupPlan === SignupPlan::Free ? now() : null,
         ]);
 
         if (! config('mail.email_verification_enabled')) {

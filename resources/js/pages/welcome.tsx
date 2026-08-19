@@ -1418,7 +1418,10 @@ const PRO_ONLY_FEATURES = [
  * is behind guest middleware - so for an authenticated visitor those CTAs would
  * bounce to the dashboard with copy that does not match where they end up.
  */
-function useLandingCta(canRegister?: boolean): {
+function useLandingCta(
+    canRegister?: boolean,
+    plan?: 'free' | 'paid',
+): {
     href: string;
     isSignedIn: boolean;
 } {
@@ -1428,7 +1431,10 @@ function useLandingCta(canRegister?: boolean): {
         href: auth.user
             ? dashboard().url
             : canRegister
-              ? '/register'
+              ? // Only the pricing cards pass a plan: onboarding adapts to the
+                // card that was clicked, and every other CTA stays a bare
+                // /register with the untouched flow behind it.
+                `/register${plan ? `?plan=${plan}` : ''}`
               : '/login',
         isSignedIn: Boolean(auth.user),
     };
@@ -1442,7 +1448,7 @@ function FreePlanCard({
     canRegister?: boolean;
 }) {
     const excluded = new Set(PRO_ONLY_FEATURES);
-    const cta = useLandingCta(canRegister);
+    const cta = useLandingCta(canRegister, 'free');
 
     return (
         <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#161615]">
@@ -1529,7 +1535,7 @@ function LandingPlanCard({
 }) {
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
-    const cta = useLandingCta(canRegister);
+    const cta = useLandingCta(canRegister, 'paid');
 
     return (
         <div
