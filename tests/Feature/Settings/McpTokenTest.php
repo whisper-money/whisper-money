@@ -1,31 +1,20 @@
 <?php
 
-use App\Features\Mcp;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
 /**
- * A user with the MCP rollout feature flag enabled.
+ * A user for the MCP settings tests.
  */
 function mcpUser(): User
 {
-    $user = User::factory()->create();
-    Feature::for($user)->activate(Mcp::class);
-
-    return $user;
+    return User::factory()->create();
 }
 
 it('requires authentication to view the MCP page', function () {
     get(route('mcp.index'))->assertRedirect();
-});
-
-it('hides the MCP settings page when the feature flag is off', function () {
-    actingAs(User::factory()->create())
-        ->get(route('mcp.index'))
-        ->assertNotFound();
 });
 
 it('renders the MCP settings page', function () {

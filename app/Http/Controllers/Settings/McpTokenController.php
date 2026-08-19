@@ -2,36 +2,16 @@
 
 namespace App\Http\Controllers\Settings;
 
-use App\Features\Mcp;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreMcpTokenRequest;
-use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controllers\HasMiddleware;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 use Laravel\Sanctum\PersonalAccessToken;
 
-class McpTokenController extends Controller implements HasMiddleware
+class McpTokenController extends Controller
 {
-    /**
-     * Hide the whole MCP settings surface behind the rollout feature flag.
-     *
-     * @return array<int, Closure>
-     */
-    public static function middleware(): array
-    {
-        return [
-            function (Request $request, Closure $next): mixed {
-                abort_unless(Feature::active(Mcp::class), 404);
-
-                return $next($request);
-            },
-        ];
-    }
-
     /**
      * Show the MCP access page: existing tokens, connection details and the
      * one-time plaintext secret when a token was just created.
