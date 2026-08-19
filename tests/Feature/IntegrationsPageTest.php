@@ -182,7 +182,9 @@ test('the worldwide group comes first and is not counted as a country', function
     expect(IntegrationsPage::content($locale)['banks_intro'])->toContain((string) $countries);
 })->with(MarketingContent::LOCALES);
 
-test('every entry carries a logo to render', function (string $locale) {
+test('the catalogue carries a logo for every entry, whether or not the page paints it', function (string $locale) {
+    // The list renders names only. The logos stay in the payload because they
+    // are what the provider gives us and what any future logo treatment needs.
     foreach (IntegrationsPage::countries($locale) as $group) {
         foreach ($group['entries'] as $entry) {
             expect($entry['logo'])->not->toBeEmpty("{$entry['name']} has no logo");
@@ -247,7 +249,7 @@ test('the prose counts match the catalogue rendered under it', function (string 
     $countries = IntegrationsPage::countries($locale);
     $entries = array_sum(array_map(fn (array $country): int => count($country['entries']), $countries));
 
-    expect($content['banks_intro'])->toContain(number_format($entries))
+    expect($content['banks_intro'])->toContain(IntegrationsPage::formatCount($entries, $locale))
         ->and($content['banks_intro'])->not->toContain(':count')
         ->and($content['banks_intro'])->not->toContain(':countries');
 })->with(MarketingContent::LOCALES);
@@ -272,6 +274,11 @@ test('the filter counter keeps the placeholder the browser fills', function (str
         ->and($content['matches'])->not->toContain(':count')
         ->and($content['matches_one'])->not->toContain(':');
 })->with(MarketingContent::LOCALES);
+
+test('a four figure count is written the way each language writes it', function () {
+    expect(IntegrationsPage::formatCount(2223, 'en'))->toBe('2,223')
+        ->and(IntegrationsPage::formatCount(2223, 'es'))->toBe('2.223');
+});
 
 test('the sitemap lists both languages with their alternates, and no markdown twin', function () {
     $content = $this->get('/sitemap.xml')->assertSuccessful()->content();

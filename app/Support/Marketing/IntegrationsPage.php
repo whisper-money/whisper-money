@@ -50,7 +50,7 @@ final class IntegrationsPage
         $countries = array_filter($groups, fn (array $group): bool => $group['code'] !== MarketingContent::WORLDWIDE);
 
         $replacements = [
-            ':count' => number_format(array_sum(array_map(fn (array $group): int => count($group['entries']), $groups))),
+            ':count' => self::formatCount(array_sum(array_map(fn (array $group): int => count($group['entries']), $groups)), $locale),
             ':countries' => (string) count($countries),
         ];
 
@@ -194,6 +194,19 @@ final class IntegrationsPage
             'path' => '/'.self::path($locale),
             'url' => self::url($locale),
         ];
+    }
+
+    /**
+     * A count with the thousands separator the language uses, so a Spanish
+     * reader is not shown "2,223" for two thousand.
+     *
+     * @api Consumed by the test suite, which static analysis does not scan.
+     */
+    public static function formatCount(int $count, string $locale): string
+    {
+        return $locale === 'en'
+            ? number_format($count)
+            : number_format($count, 0, ',', '.');
     }
 
     /**
