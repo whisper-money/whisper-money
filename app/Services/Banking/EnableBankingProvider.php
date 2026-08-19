@@ -3,6 +3,7 @@
 namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
+use App\Exceptions\Banking\BankingRequestException;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\TransientBankingProviderException;
@@ -103,23 +104,10 @@ class EnableBankingProvider implements BankingProviderInterface
             throw new TransientBankingProviderException(
                 'EnableBanking did not respond while fetching account transactions.',
                 provider: 'enablebanking',
+                operation: 'transactions',
                 previous: $e,
             );
         } catch (RequestException $e) {
-            if ($this->requiresReconnect($e)) {
-                throw new ExpiredBankingSessionException(
-                    'EnableBanking needs the user to reconnect before it will serve account transactions.',
-                    previous: $e,
-                );
-            }
-
-            if ($this->isInaccessibleAccount($e)) {
-                throw new InaccessibleBankAccountException(
-                    'EnableBanking account is no longer accessible while fetching transactions.',
-                    previous: $e,
-                );
-            }
-
             if ($this->isWrongPeriod($e)) {
                 throw new WrongTransactionsPeriodException(
                     'EnableBanking rejected the requested transactions period as too wide.',
@@ -127,30 +115,7 @@ class EnableBankingProvider implements BankingProviderInterface
                 );
             }
 
-            if ($this->isTransientServerError($e) || $this->isPsuActionRequired($e)) {
-                throw new TransientBankingProviderException(
-                    'EnableBanking could not serve account transactions right now.',
-                    provider: 'enablebanking',
-                    statusCode: $e->response->status(),
-                    providerCode: $this->detailErrorName($e),
-                    previous: $e,
-                );
-            }
-
-            if (! $this->isAspspError($e)) {
-                throw $e;
-            }
-
-            $body = $this->errorBody($e);
-            $providerCode = $body['error'] ?? null;
-
-            throw new TransientBankingProviderException(
-                'EnableBanking bank connector failed while fetching account transactions.',
-                provider: 'enablebanking',
-                statusCode: $e->response->status(),
-                providerCode: is_string($providerCode) ? $providerCode : null,
-                previous: $e,
-            );
+            $this->rethrowRequestFailure($e, 'transactions');
         }
 
         $data = $response->json();
@@ -171,47 +136,11 @@ class EnableBankingProvider implements BankingProviderInterface
             throw new TransientBankingProviderException(
                 'EnableBanking did not respond while fetching account balances.',
                 provider: 'enablebanking',
+                operation: 'balances',
                 previous: $e,
             );
         } catch (RequestException $e) {
-            if ($this->requiresReconnect($e)) {
-                throw new ExpiredBankingSessionException(
-                    'EnableBanking needs the user to reconnect before it will serve account balances.',
-                    previous: $e,
-                );
-            }
-
-            if ($this->isInaccessibleAccount($e)) {
-                throw new InaccessibleBankAccountException(
-                    'EnableBanking account is no longer accessible while fetching balances.',
-                    previous: $e,
-                );
-            }
-
-            if ($this->isTransientServerError($e) || $this->isPsuActionRequired($e)) {
-                throw new TransientBankingProviderException(
-                    'EnableBanking could not serve account balances right now.',
-                    provider: 'enablebanking',
-                    statusCode: $e->response->status(),
-                    providerCode: $this->detailErrorName($e),
-                    previous: $e,
-                );
-            }
-
-            if (! $this->isAspspError($e)) {
-                throw $e;
-            }
-
-            $body = $this->errorBody($e);
-            $providerCode = $body['error'] ?? null;
-
-            throw new TransientBankingProviderException(
-                'EnableBanking bank connector failed while fetching account balances.',
-                provider: 'enablebanking',
-                statusCode: $e->response->status(),
-                providerCode: is_string($providerCode) ? $providerCode : null,
-                previous: $e,
-            );
+            $this->rethrowRequestFailure($e, 'balances');
         }
 
         return $response->json();
@@ -240,6 +169,58 @@ class EnableBankingProvider implements BankingProviderInterface
         $response = $this->client()->delete("/sessions/{$sessionId}");
 
         $response->throw();
+    }
+
+    /**
+     * Re-raise a failed EnableBanking request as the classified exception the
+     * caller expects, tagged with the operation it came from.
+     *
+     * The tag is the whole point. A 429 matches none of the branches below and
+     * leaves as a plain request failure, which is why nothing downstream has
+     * ever been able to say whether it is balances or transactions that hits
+     * the limit.
+     */
+    private function rethrowRequestFailure(RequestException $e, string $operation): never
+    {
+        if ($this->requiresReconnect($e)) {
+            throw new ExpiredBankingSessionException(
+                "EnableBanking needs the user to reconnect before it will serve account {$operation}.",
+                previous: $e,
+            );
+        }
+
+        if ($this->isInaccessibleAccount($e)) {
+            throw new InaccessibleBankAccountException(
+                "EnableBanking account is no longer accessible while fetching {$operation}.",
+                previous: $e,
+            );
+        }
+
+        if ($this->isTransientServerError($e) || $this->isPsuActionRequired($e)) {
+            throw new TransientBankingProviderException(
+                "EnableBanking could not serve account {$operation} right now.",
+                provider: 'enablebanking',
+                statusCode: $e->response->status(),
+                providerCode: $this->detailErrorName($e),
+                operation: $operation,
+                previous: $e,
+            );
+        }
+
+        if ($this->isAspspError($e)) {
+            $providerCode = $this->errorBody($e)['error'] ?? null;
+
+            throw new TransientBankingProviderException(
+                "EnableBanking bank connector failed while fetching account {$operation}.",
+                provider: 'enablebanking',
+                statusCode: $e->response->status(),
+                providerCode: is_string($providerCode) ? $providerCode : null,
+                operation: $operation,
+                previous: $e,
+            );
+        }
+
+        throw new BankingRequestException($e->response, $operation);
     }
 
     private function isAspspError(RequestException $e): bool
@@ -349,11 +330,27 @@ class EnableBankingProvider implements BankingProviderInterface
                     'status' => $response->status(),
                     // Which endpoint failed tells one bad account apart from a
                     // whole connection or a provider-wide wave.
-                    'path' => $response->effectiveUri()?->getPath(),
+                    'path' => $this->redactedPath($response->effectiveUri()?->getPath()),
                     'body' => $response->json(),
                     'exception' => get_class($exception),
                 ]);
             });
+    }
+
+    /**
+     * The endpoint that failed, with the bank's own identifiers stripped out.
+     *
+     * The shape of the path is what has diagnostic value; the account and
+     * session ids in it are a bank's handle on a real person's account, and
+     * these logs leave the building. Keep the shape, drop the ids.
+     */
+    private function redactedPath(?string $path): ?string
+    {
+        if ($path === null) {
+            return null;
+        }
+
+        return preg_replace('#/(accounts|sessions)/[^/]+#', '/$1/{id}', $path);
     }
 
     private function generateJwt(): string

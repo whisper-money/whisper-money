@@ -13,6 +13,7 @@ class TransientBankingProviderException extends Exception implements ShouldntRep
         public readonly ?string $provider = null,
         public readonly ?int $statusCode = null,
         public readonly ?string $providerCode = null,
+        public readonly ?string $operation = null,
         ?Throwable $previous = null,
     ) {
         parent::__construct($message, 0, $previous);
