@@ -33,6 +33,69 @@ final class MarketingContent
     public const BASE_PATHS = ['en' => 'compare', 'es' => 'comparativa'];
 
     /**
+     * The integrations page path per language. One page per language, not one
+     * page per bank: a few thousand near-identical pages is a doorway pattern.
+     */
+    public const INTEGRATION_PATHS = ['en' => 'integrations', 'es' => 'integraciones'];
+
+    /**
+     * Countries the bank connect flow offers, with the name to print in each
+     * language. The codes mirror CONNECT_COUNTRIES in the frontend connect
+     * flow; a test fails if the two lists stop agreeing.
+     */
+    public const COUNTRIES = [
+        'ES' => ['en' => 'Spain', 'es' => 'España'],
+        'DE' => ['en' => 'Germany', 'es' => 'Alemania'],
+        'FR' => ['en' => 'France', 'es' => 'Francia'],
+        'IT' => ['en' => 'Italy', 'es' => 'Italia'],
+        'NL' => ['en' => 'Netherlands', 'es' => 'Países Bajos'],
+        'PT' => ['en' => 'Portugal', 'es' => 'Portugal'],
+        'BE' => ['en' => 'Belgium', 'es' => 'Bélgica'],
+        'AT' => ['en' => 'Austria', 'es' => 'Austria'],
+        'FI' => ['en' => 'Finland', 'es' => 'Finlandia'],
+        'IE' => ['en' => 'Ireland', 'es' => 'Irlanda'],
+        'LT' => ['en' => 'Lithuania', 'es' => 'Lituania'],
+        'LV' => ['en' => 'Latvia', 'es' => 'Letonia'],
+        'EE' => ['en' => 'Estonia', 'es' => 'Estonia'],
+        'SE' => ['en' => 'Sweden', 'es' => 'Suecia'],
+        'NO' => ['en' => 'Norway', 'es' => 'Noruega'],
+        'DK' => ['en' => 'Denmark', 'es' => 'Dinamarca'],
+        'PL' => ['en' => 'Poland', 'es' => 'Polonia'],
+        'GB' => ['en' => 'United Kingdom', 'es' => 'Reino Unido'],
+    ];
+
+    /**
+     * The code for the group that holds what is not tied to one country: the
+     * crypto exchanges, Wise and Interactive Brokers.
+     */
+    public const WORLDWIDE = 'WW';
+
+    /**
+     * Name of the worldwide group per language.
+     */
+    public const WORLDWIDE_NAMES = ['en' => 'Worldwide', 'es' => 'En todo el mundo'];
+
+    /**
+     * The apps that connect with a key the user creates, rather than by
+     * approving access at a bank. They are listed among the banks, in the
+     * country group they belong to, because a visitor looking for Coinbase is
+     * asking the same question as one looking for BBVA.
+     *
+     * The names and logos are the join with the frontend registry: a test
+     * asserts both still match CONNECT_PROVIDERS in
+     * resources/js/lib/connect-providers, so one cannot change without the
+     * other.
+     */
+    public const API_PROVIDERS = [
+        'Indexa Capital' => ['country' => 'ES', 'logo' => '/images/banks/logos/indexa-capital.jpg'],
+        'Binance' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/t1h5rqi19dJTPl6ZadziPjNwm0lrcdTFBRzB3iCy.png'],
+        'Bitpanda' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png'],
+        'Coinbase' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/coinbase.png'],
+        'Wise' => ['country' => self::WORLDWIDE, 'logo' => '/images/banks/logos/wise.png'],
+        'Interactive Brokers' => ['country' => self::WORLDWIDE, 'logo' => '/images/banks/logos/interactive-brokers.png'],
+    ];
+
+    /**
      * Section headings shared by every comparison page, so the eight pages do
      * not each carry their own copy of them.
      *
@@ -144,6 +207,78 @@ final class MarketingContent
                     'A web app in any browser, installable as an app on iPhone and Android. Interface in English, Spanish and French.',
                 ],
             ],
+        ];
+    }
+
+    /**
+     * The integrations page: what a visitor can connect, before they register.
+     *
+     * Written for someone who has never heard of PSD2 or open banking, because
+     * that is nearly everyone. It says what they get, not how it is plumbed:
+     * the regulation's name tells a reader nothing, and "you approve it on your
+     * bank's own site, so we never see your login" tells them everything.
+     *
+     * The :count and :countries placeholders are filled from the committed
+     * catalogue so the figures cannot go stale against the list right below
+     * them. The filter's own counter uses :matches instead, which the browser
+     * fills per keystroke.
+     *
+     * @return array<string, mixed>
+     */
+    public static function integrations(string $locale): array
+    {
+        return $locale === 'es' ? [
+            'title' => 'Bancos y apps compatibles',
+            'description' => 'Comprueba antes de registrarte si podemos conectar tu banco: :count entidades y apps de :countries países, más Binance, Bitpanda, Coinbase, Wise e Interactive Brokers. Busca la tuya en la lista.',
+            'heading' => 'Qué bancos y apps puedes conectar',
+            'intro' => 'Conectas una cuenta una vez y sus movimientos y saldos siguen llegando solos: tus cuentas, tus inversiones y tu cripto en un mismo sitio, sin apuntar nada a mano. El permiso lo das en la web de tu propio banco, así que tus claves nunca pasan por nosotros. Busca abajo lo que quieras seguir.',
+            'banks_title' => 'Todo lo que puedes conectar',
+            'banks_intro' => ':count entidades y apps de :countries países. Busca la tuya: si está en esta lista, puedes conectarla.',
+            'banks_note' => 'El permiso se firma en la web de tu banco, así que nosotros no vemos ni guardamos tus claves. Las marcadas con una llave se conectan con un código que creas tú en su propia web y que puedes limitar a solo lectura. Las cuentas conectadas están en el plan de pago; la tarifa vigente está en la página de precios.',
+            'search_label' => 'Filtrar la lista',
+            'search_placeholder' => 'Busca tu banco o tu app',
+            'matches' => ':matches coincidencias',
+            'matches_one' => '1 coincidencia',
+            'empty_title' => '¿No está en la lista?',
+            'empty_body' => 'Entonces todavía no se conecta sola, pero no te quedas fuera: puedes traerla con su extracto, tal y como se explica justo debajo.',
+            'importer_title' => 'Y si tu banco no está, su extracto sí entra',
+            'importer_body' => 'Descargas el extracto de tu banco y lo sueltas aquí, tal cual, en CSV, XLS o XLSX. No tienes que ordenar ni renombrar nada: reconoce las columnas por su cuenta, tanto si vienen en español como en inglés, entiende las fechas escritas de cuatro formas distintas y recuerda cómo era el fichero para la próxima vez. Si repites un mes que ya habías subido, te avisa de lo repetido y lo deja sin marcar, así que no acabas con nada por duplicado.',
+            'notes_title' => 'Lo que conviene saber antes de registrarte',
+            'notes' => [
+                'Las cuentas conectadas, la categorización automática y el acceso desde un asistente están en el plan de pago. Con el plan gratuito llevas cuentas a mano e importas extractos.',
+                'Un permiso bancario caduca a los pocos meses y se renueva en un par de clics. Es la norma de los bancos, no nuestra: pedimos 90 días, y cada entidad concede lo que quiere.',
+                'Cuánto histórico te entrega tu banco, y cada cuánto te pide renovar, lo decide él y no nosotros. Hay entidades que dan varios años y otras que dan unas semanas.',
+                'Todavía no hay un botón de exportar en la aplicación. Para sacar tus datos de forma automática está el acceso desde un asistente, en el plan de pago.',
+                'Tus datos se guardan sin cifrar en nuestra base de datos. Lo que sí puedes comprobar es el código, que es público en GitHub.',
+            ],
+            'closing_title' => 'Cuando quieras',
+            'closing_body' => 'El plan gratuito no pide tarjeta. Si tu banco está en la lista, tenerlo conectado es cuestión de un par de minutos.',
+        ] : [
+            'title' => 'Supported Banks and Apps',
+            'description' => 'Check before you sign up whether we can connect your bank: :count banks and apps across :countries countries, plus Binance, Bitpanda, Coinbase, Wise and Interactive Brokers. Search the list for yours.',
+            'heading' => 'Which banks and apps you can connect',
+            'intro' => 'Connect an account once and its balances and transactions keep arriving on their own: your accounts, your investments and your crypto in one place, with nothing typed in by hand. You give permission on your own bank\'s website, so your login details never pass through us. Search below for whatever you want to track.',
+            'banks_title' => 'Everything you can connect',
+            'banks_intro' => ':count banks and apps across :countries countries. Search for yours: if it is on this list, you can connect it.',
+            'banks_note' => 'You give permission on your bank\'s own website, so we never see or store your login details. The ones marked with a key connect with a code you create on their own site, which you can limit to reading only. Connected accounts are on the paid plan; the current rate is on the pricing page.',
+            'search_label' => 'Filter the list',
+            'search_placeholder' => 'Search for your bank or app',
+            'matches' => ':matches matches',
+            'matches_one' => '1 match',
+            'empty_title' => 'Not on the list?',
+            'empty_body' => 'Then it does not connect on its own yet, but you are not stuck: you can bring it in from its statement, exactly as described below.',
+            'importer_title' => 'And if your bank is not there, its statement still is',
+            'importer_body' => 'Download the statement from your bank and drop it in as it comes, in CSV, XLS or XLSX. You do not have to tidy it up or rename anything: it works out the columns on its own, whether they arrive in English or in Spanish, reads dates written four different ways, and remembers the shape of the file for next time. Re-upload a month you already had and it points out what is repeated and leaves it unticked, so you never end up with anything twice.',
+            'notes_title' => 'Worth knowing before you sign up',
+            'notes' => [
+                'Connected accounts, automatic categorising and access from an assistant are on the paid plan. On the free plan you keep accounts by hand and import statements.',
+                'A bank permission expires after a few months and takes a couple of clicks to renew. That is the banks\' rule rather than ours: we ask for 90 days, and each one grants what it likes.',
+                'How much history your bank hands over, and how often it asks you to renew, is its decision and not ours. Some give several years, others give a few weeks.',
+                'There is no export button in the app yet. To pull your data out automatically there is access from an assistant, on the paid plan.',
+                'Your data is stored unencrypted in our database. What you can verify instead is the code, which is public on GitHub.',
+            ],
+            'closing_title' => 'Ready when you are',
+            'closing_body' => 'The free plan asks for no card. If your bank is on the list, having it connected is a couple of minutes\' work.',
         ];
     }
 

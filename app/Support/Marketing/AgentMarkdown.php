@@ -80,6 +80,70 @@ final class AgentMarkdown
     }
 
     /**
+     * The integrations page as Markdown: the same list the HTML page renders,
+     * in the shape an agent asked "does it support my bank" can read.
+     */
+    public static function integrations(string $locale): string
+    {
+        $content = IntegrationsPage::content($locale);
+
+        $lines = [
+            '# '.$content['heading'],
+            '',
+            '> '.$content['description'],
+            '',
+            $content['intro'],
+            '',
+            '## '.$content['banks_title'],
+            '',
+            $content['banks_intro'],
+            '',
+            $content['banks_note'],
+            '',
+        ];
+
+        foreach (IntegrationsPage::countries($locale) as $country) {
+            $names = array_map(
+                // A key marks what connects with a code the user creates, the
+                // same distinction the page draws with an icon.
+                fn (array $entry): string => $entry['key'] ? $entry['name'].' (key)' : $entry['name'],
+                $country['entries'],
+            );
+
+            $lines = [
+                ...$lines,
+                '### '.$country['name'].' ('.$country['code'].')',
+                '',
+                implode(', ', $names),
+                '',
+            ];
+        }
+
+        $lines = [
+            ...$lines,
+            '## '.$content['importer_title'],
+            '',
+            $content['importer_body'],
+            '',
+            '## '.$content['notes_title'],
+            '',
+        ];
+
+        foreach ($content['notes'] as $note) {
+            $lines[] = '- '.$note;
+        }
+
+        return implode("\n", [
+            ...$lines,
+            '',
+            '## '.$content['closing_title'],
+            '',
+            $content['closing_body'],
+            '',
+        ]);
+    }
+
+    /**
      * The product summary as Markdown.
      */
     public static function landing(string $locale): string
@@ -121,8 +185,15 @@ final class AgentMarkdown
             '- [Roadmap]('.$baseUrl.'/roadmap): what is planned, in progress and shipped.',
             '- [Privacy policy]('.$baseUrl.'/privacy)',
             '- [Terms of service]('.$baseUrl.'/terms)',
-            '',
         ];
+
+        foreach (MarketingContent::LOCALES as $locale) {
+            $link = IntegrationsPage::link($locale);
+
+            $lines[] = '- ['.$link['heading'].']('.$link['url'].'): every bank and app that can be connected, in '.($locale === 'es' ? 'Spanish' : 'English').'. Also at '.$link['url'].'.md';
+        }
+
+        $lines[] = '';
 
         foreach (MarketingContent::LOCALES as $locale) {
             $lines = [

@@ -25,6 +25,7 @@ import { Facehash } from 'facehash';
 import {
     ArrowDownLeftIcon,
     ArrowLeftRightIcon,
+    ArrowRightIcon,
     ArrowUpRightIcon,
     BoltIcon,
     BriefcaseIcon,
@@ -1693,10 +1694,12 @@ export default function Welcome({
     canRegister,
     popularBanks,
     comparisonLinks,
+    integrationsLink,
 }: {
     canRegister?: boolean;
     popularBanks: PopularBank[];
     comparisonLinks: ComparisonLink[];
+    integrationsLink: { heading: string; path: string };
 }) {
     const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
         usePage<SharedData>().props;
@@ -2201,6 +2204,15 @@ export default function Welcome({
                                                 </span>
                                             </li>
                                         </ul>
+                                        <div className="mt-6">
+                                            <Link
+                                                href={integrationsLink.path}
+                                                className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 hover:text-[#706f6c] dark:hover:text-[#A1A09A]"
+                                            >
+                                                {__('See all supported banks')}
+                                                <ArrowRightIcon className="size-4" />
+                                            </Link>
+                                        </div>
                                     </div>
                                     <div className="relative min-h-[320px]">
                                         <BankConnectionsPreview
@@ -2724,6 +2736,14 @@ export default function Welcome({
                         </FooterColumn>
 
                         <FooterColumn title={__('Other')}>
+                            <li>
+                                <Link
+                                    href={integrationsLink.path}
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {integrationsLink.heading}
+                                </Link>
+                            </li>
                             <li>
                                 <Link
                                     href={roadmap()}

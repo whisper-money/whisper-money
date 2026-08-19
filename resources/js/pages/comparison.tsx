@@ -1,15 +1,16 @@
+import {
+    MarketingFooter,
+    MarketingHead,
+    MarketingLanguageSwitch,
+} from '@/components/marketing-page';
 import Header from '@/components/partials/header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { tailwindColorClasses } from '@/components/user-info';
-import { dashboard, login } from '@/routes';
-import { type SharedData } from '@/types';
 import {
     type ComparisonLabels,
     type ComparisonPageContent,
     type ComparisonTestimonial,
 } from '@/types/comparison';
-import { Head, Link, usePage } from '@inertiajs/react';
 import { Facehash } from 'facehash';
 import { CheckIcon } from 'lucide-react';
 
@@ -23,32 +24,6 @@ type ComparisonProps = {
 
 function withRival(template: string, rival: string): string {
     return template.replace(':rival', rival);
-}
-
-function Cta({ canRegister, label }: { canRegister: boolean; label: string }) {
-    const { auth } = usePage<SharedData>().props;
-
-    if (auth.user) {
-        return (
-            <Button asChild size="lg">
-                <Link href={dashboard()}>Dashboard</Link>
-            </Button>
-        );
-    }
-
-    if (!canRegister) {
-        return (
-            <Button asChild size="lg">
-                <Link href={login()}>Log in</Link>
-            </Button>
-        );
-    }
-
-    return (
-        <Button asChild size="lg">
-            <Link href="/register">{label}</Link>
-        </Button>
-    );
 }
 
 function Testimonial({ testimonial }: { testimonial: ComparisonTestimonial }) {
@@ -139,52 +114,14 @@ export default function Comparison({
     alternates,
     canRegister,
 }: ComparisonProps) {
-    const canonical = alternates[pageLocale];
-    const otherLocale = Object.keys(alternates).find(
-        (locale) => locale !== pageLocale,
-    );
-
     return (
         <>
-            <Head title={page.title}>
-                {/* The lang attribute comes from the Blade root, which reads the
-                    locale this route pinned. Setting <html> here instead crashes
-                    Inertia's head manager: that is a Vue-only idiom. */}
-                <meta name="description" content={page.description} />
-                <link rel="canonical" href={canonical} />
-                <meta name="robots" content="index, follow" />
-
-                {/* Each language is a separate URL; hreflang ties them together
-                    and x-default names the one to serve an unmatched language. */}
-                {Object.entries(alternates).map(([locale, url]) => (
-                    <link
-                        key={locale}
-                        rel="alternate"
-                        hrefLang={locale}
-                        href={url}
-                    />
-                ))}
-                <link
-                    rel="alternate"
-                    hrefLang="x-default"
-                    href={alternates.en}
-                />
-                <link
-                    rel="alternate"
-                    type="text/markdown"
-                    href={`${canonical}.md`}
-                />
-
-                <meta property="og:site_name" content="Whisper Money" />
-                <meta property="og:title" content={page.title} />
-                <meta property="og:description" content={page.description} />
-                <meta property="og:type" content="article" />
-                <meta property="og:url" content={canonical} />
-                <meta
-                    property="og:locale"
-                    content={pageLocale === 'es' ? 'es_ES' : 'en_US'}
-                />
-            </Head>
+            <MarketingHead
+                title={page.title}
+                description={page.description}
+                pageLocale={pageLocale}
+                alternates={alternates}
+            />
 
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 <Header canRegister={canRegister} />
@@ -197,15 +134,11 @@ export default function Comparison({
                         <p className="text-lg leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
                             {page.intro}
                         </p>
-                        {otherLocale && (
-                            <a
-                                href={alternates[otherLocale]}
-                                hrefLang={otherLocale}
-                                className="text-sm text-[#706f6c] underline underline-offset-4 hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
-                            >
-                                {labels.other_language}
-                            </a>
-                        )}
+                        <MarketingLanguageSwitch
+                            pageLocale={pageLocale}
+                            alternates={alternates}
+                            label={labels.other_language}
+                        />
                     </header>
 
                     <section className="flex flex-col gap-4">
@@ -294,30 +227,14 @@ export default function Comparison({
                         </div>
                     </section>
 
-                    <section className="flex flex-col items-start gap-4 rounded-2xl border border-[#e3e3e0] p-8 dark:border-[#3E3E3A]">
-                        <h2 className="text-2xl font-semibold">
-                            {withRival(labels.closing, page.rival)}
-                        </h2>
-                        <p className="leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                            {page.closing_body}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-4">
-                            <Cta canRegister={canRegister} label={labels.cta} />
-                            <Link
-                                href="/#pricing"
-                                className="text-sm text-[#706f6c] underline underline-offset-4 hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
-                            >
-                                {labels.pricing}
-                            </Link>
-                        </div>
-                    </section>
-
-                    <Link
-                        href="/"
-                        className="text-sm text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
-                    >
-                        ← {labels.back}
-                    </Link>
+                    <MarketingFooter
+                        title={withRival(labels.closing, page.rival)}
+                        body={page.closing_body}
+                        canRegister={canRegister}
+                        ctaLabel={labels.cta}
+                        pricingLabel={labels.pricing}
+                        backLabel={labels.back}
+                    />
                 </main>
             </div>
         </>

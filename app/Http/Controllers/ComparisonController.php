@@ -42,7 +42,7 @@ class ComparisonController extends Controller
         // The page also declares these in its head, but that head is rendered by
         // the SSR process; the header is what survives if SSR is unavailable and
         // the page falls back to rendering in the browser.
-        $response->headers->set('Link', self::seoLinks($locale, $slug, $alternates), false);
+        $response->headers->set('Link', self::seoLinks(ComparisonPages::url($locale, $slug), $alternates), false);
 
         return $response;
     }
@@ -64,14 +64,13 @@ class ComparisonController extends Controller
 
     /**
      * Canonical, the other languages of this page, and its Markdown twin, in the
-     * form Google accepts as an alternative to markup in the head.
+     * form Google accepts as an alternative to markup in the head. Shared with
+     * the integrations page, which needs exactly the same header.
      *
      * @param  array<string, string>  $alternates
      */
-    private static function seoLinks(string $locale, string $slug, array $alternates): string
+    public static function seoLinks(string $canonical, array $alternates): string
     {
-        $canonical = ComparisonPages::url($locale, $slug);
-
         $links = ['<'.$canonical.'>; rel="canonical"'];
 
         foreach ($alternates as $alternateLocale => $url) {
