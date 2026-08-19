@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Contracts\BankingConnectionSyncer;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
+use App\Exceptions\Banking\BankingRequestException;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Mail\BankingConnectionAuthFailedEmail;
@@ -17,6 +18,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
@@ -51,6 +53,22 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
      * a connection in Error state before requiring manual intervention.
      */
     public const int MAX_SCHEDULED_RETRIES = 3;
+
+    /**
+     * Response headers logged verbatim on a failure, so that "the provider told
+     * us to wait N" is distinguishable from "we defaulted to an hour".
+     *
+     * @var list<string>
+     */
+    private const array RATE_LIMIT_HEADERS = [
+        'Retry-After',
+        'RateLimit-Limit',
+        'RateLimit-Remaining',
+        'RateLimit-Reset',
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+        'X-RateLimit-Reset',
+    ];
 
     public function __construct(
         public BankingConnection $bankingConnection,
@@ -126,42 +144,45 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
             return;
         } catch (\Throwable $e) {
-            $context = [
-                'connection_id' => $connection->id,
-                'error' => $e->getMessage(),
-                'attempt' => $this->attempts(),
-            ];
-
-            if ($e instanceof TransientBankingProviderException) {
-                $context['provider'] = $e->provider;
-                $context['status_code'] = $e->statusCode;
-                $context['provider_code'] = $e->providerCode;
-            }
-
-            // Only report once the connection actually gives up. Transient errors on a
-            // non-final attempt are recovered by the retry and would otherwise spam one
-            // warning per scheduled cycle for connections that ultimately sync fine.
-            if ($this->attempts() >= $this->tries || $this->isAuthError($e)) {
-                Log::log($e instanceof TransientBankingProviderException ? 'warning' : 'error', 'Banking sync failed', $context);
-            }
-
-            if ($this->isRateLimitError($e)) {
-                $this->applyRateLimitBackoff($connection, $e);
-                $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
-
-                return;
-            }
-
-            $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
-
-            if ($this->isAuthError($e)) {
-                $this->handlePermanentError($connection, $syncer, $e);
-
-                return;
-            }
-
-            $this->handleTemporaryError($connection, $e);
+            $this->handleSyncFailure($connection, $syncer, $e, $startTime);
         }
+    }
+
+    /**
+     * Classify a failed run, record it, and leave the connection in the state
+     * that classification calls for.
+     */
+    private function handleSyncFailure(
+        BankingConnection $connection,
+        BankingConnectionSyncer $syncer,
+        \Throwable $e,
+        float $startTime,
+    ): void {
+        $context = $this->failureContext($connection, $e);
+
+        // Only report once the connection actually gives up. Transient errors on a
+        // non-final attempt are recovered by the retry and would otherwise spam one
+        // warning per scheduled cycle for connections that ultimately sync fine.
+        if ($this->attempts() >= $this->tries || $this->isAuthError($e)) {
+            Log::log($e instanceof TransientBankingProviderException ? 'warning' : 'error', 'Banking sync failed', $context);
+        }
+
+        if ($this->isRateLimitError($e)) {
+            $this->applyRateLimitBackoff($connection, $e, $context);
+            $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e, $context);
+
+            return;
+        }
+
+        $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e, $context);
+
+        if ($this->isAuthError($e)) {
+            $this->handlePermanentError($connection, $syncer, $e);
+
+            return;
+        }
+
+        $this->handleTemporaryError($connection, $e);
     }
 
     /**
@@ -358,6 +379,111 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         ]);
     }
 
+    /**
+     * Everything worth knowing about a failed sync, shared by the warning that
+     * reaches Sentry and the sync-log row that stays in the database.
+     *
+     * @return array<string, mixed>
+     */
+    private function failureContext(BankingConnection $connection, \Throwable $e): array
+    {
+        $context = [
+            'connection_id' => $connection->id,
+            // Without the bank there is no way to tell a provider-wide wave from
+            // one connector misbehaving, which is the first question every one of
+            // these investigations starts with.
+            'aspsp_name' => $connection->aspsp_name,
+            'aspsp_country' => $connection->aspsp_country,
+            'operation' => $this->resolveOperation($e),
+            'error' => $e->getMessage(),
+            'error_class' => $e::class,
+            'attempt' => $this->attempts(),
+        ];
+
+        if ($e instanceof TransientBankingProviderException) {
+            $context['provider'] = $e->provider;
+            $context['status_code'] = $e->statusCode;
+            $context['provider_code'] = $e->providerCode;
+        }
+
+        return [...$context, ...$this->responseContext($e)];
+    }
+
+    /**
+     * Which endpoint the provider was serving when it failed, when the provider
+     * bothered to say.
+     */
+    private function resolveOperation(\Throwable $e): ?string
+    {
+        return match (true) {
+            $e instanceof BankingRequestException => $e->operation,
+            $e instanceof TransientBankingProviderException => $e->operation,
+            default => null,
+        };
+    }
+
+    /**
+     * What the provider actually replied, for the failures that got a reply.
+     *
+     * @return array<string, mixed>
+     */
+    private function responseContext(\Throwable $e): array
+    {
+        $failure = $this->requestFailure($e);
+
+        if ($failure === null) {
+            return [];
+        }
+
+        return [
+            'status_code' => $failure->response->status(),
+            // Error bodies only - a RequestException never carries a successful
+            // payload - and truncated, so that a provider which starts answering
+            // with account data on an error status cannot empty it into the logs.
+            'response_body' => Str::limit($failure->response->body(), 500),
+            'rate_limit_headers' => $this->rateLimitHeaders($failure->response),
+        ];
+    }
+
+    /**
+     * The HTTP failure behind an exception, whether it is the exception itself
+     * or the one the provider wrapped.
+     */
+    private function requestFailure(\Throwable $e): ?RequestException
+    {
+        if ($e instanceof RequestException) {
+            return $e;
+        }
+
+        $previous = $e->getPrevious();
+
+        return $previous instanceof RequestException ? $previous : null;
+    }
+
+    /**
+     * The provider's own account of the limit it is enforcing.
+     *
+     * Allow-listed rather than dumped wholesale: response headers are the one
+     * place a token or a cookie could ride along into a log this project keeps
+     * in public.
+     *
+     * @return array<string, string>
+     */
+    private function rateLimitHeaders(Response $response): array
+    {
+        $headers = [];
+
+        foreach (self::RATE_LIMIT_HEADERS as $name) {
+            $value = $response->header($name);
+
+            if ($value !== '') {
+                $headers[$name] = $value;
+            }
+        }
+
+        return $headers;
+    }
+
     private function friendlyErrorMessage(\Throwable $e): string
     {
         if ($e instanceof TransientBankingProviderException) {
@@ -387,7 +513,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
      * Persist a backoff window so the scheduler stops re-dispatching
      * the same connection until the provider quota resets.
      */
-    private function applyRateLimitBackoff(BankingConnection $connection, \Throwable $e): void
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function applyRateLimitBackoff(BankingConnection $connection, \Throwable $e, array $context): void
     {
         $until = $this->resolveRateLimitBackoffUntil($e);
 
@@ -396,8 +525,11 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'error_message' => $this->friendlyErrorMessage($e),
         ]);
 
+        // The line above this one only fires on the final attempt, so for a rate
+        // limit this is usually the only record that reaches the logs. It carries
+        // the full context for that reason.
         Log::warning('Banking connection rate limited, backing off', [
-            'connection_id' => $connection->id,
+            ...$context,
             'rate_limited_until' => $until->toIso8601String(),
         ]);
     }
