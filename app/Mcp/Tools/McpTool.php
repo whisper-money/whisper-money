@@ -59,7 +59,7 @@ abstract class McpTool extends Tool
         // The demo account's credentials are public and its data is shared, so
         // it never drives the MCP — an OAuth connection would otherwise carry
         // write access to it (see WriteTool).
-        if ($user->isDemoAccount()) {
+        if ($user->isRestrictedDemoAccount()) {
             return Response::error('The demo account cannot be connected to an AI assistant.');
         }
 

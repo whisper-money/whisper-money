@@ -489,6 +489,15 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->email === config('app.demo.email');
     }
 
+    /**
+     * Whether the demo account's restrictions apply. Local is exempt so the
+     * account stays usable in development, matching BlockDemoAccountActions.
+     */
+    public function isRestrictedDemoAccount(): bool
+    {
+        return $this->isDemoAccount() && ! app()->environment('local');
+    }
+
     public function isAdmin(): bool
     {
         return $this->email === config('mail.admin_email');
