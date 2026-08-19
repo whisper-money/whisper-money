@@ -11,6 +11,7 @@ import { store as storeConsent } from '@/routes/ai/consent';
 import { accept, generate, show } from '@/routes/ai/rule-suggestions';
 import { type SharedData } from '@/types';
 import { type Category } from '@/types/category';
+import { type SignupPlan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
@@ -45,12 +46,14 @@ interface AcceptResponse {
 interface StepAiSuggestionsProps {
     categories: Category[];
     hasConnectedAccount: boolean;
+    signupPlan?: SignupPlan | null;
     onComplete: () => void;
 }
 
 export function StepAiSuggestions({
     categories,
     hasConnectedAccount,
+    signupPlan = null,
     onComplete,
 }: StepAiSuggestionsProps) {
     const [state, setState] = useState<SuggestionState | null>(null);
@@ -322,7 +325,12 @@ export function StepAiSuggestions({
                         'With your permission, we’ll send merchant names from your transactions to our AI provider to suggest categorization rules. We never send your full financial picture, and you review every rule before it’s created.',
                     )}
                 />
-                {state.requires_upgrade && <UpgradeNotice />}
+                {/* Someone who signed up from a paid card has already agreed to
+                    pay, so the upgrade warning would only be noise. They still
+                    give consent explicitly: what gets sent stays on screen. */}
+                {state.requires_upgrade && signupPlan !== 'paid' && (
+                    <UpgradeNotice />
+                )}
                 <div className="flex flex-col items-center gap-3">
                     <StepButton
                         text={__('Suggest my rules with AI')}

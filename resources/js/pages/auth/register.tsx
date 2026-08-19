@@ -13,8 +13,13 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type SignupPlan } from '@/types/pricing';
 
-export default function Register() {
+export default function Register({
+    signupPlan,
+}: {
+    signupPlan?: SignupPlan | null;
+}) {
     const detectedTimezone =
         typeof window !== 'undefined'
             ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
@@ -49,6 +54,14 @@ export default function Register() {
                         />
 
                         <InputError message={errors.timezone} />
+
+                        {signupPlan && (
+                            <input
+                                type="hidden"
+                                name="signup_plan"
+                                value={signupPlan}
+                            />
+                        )}
 
                         <div className="grid gap-6">
                             <div className="grid gap-2">
