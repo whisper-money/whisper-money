@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
+import { type SignupPlan } from '@/pages/onboarding';
 import { type SharedData } from '@/types';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
@@ -61,6 +62,7 @@ interface StepCreateAccountProps {
     existingAccounts?: ExistingAccount[];
     createdAccounts?: CreatedAccountDisplay[];
     hasSelectedConnectedAccount?: boolean;
+    signupPlan?: SignupPlan | null;
     onAccountCreated: (account: CreatedAccount) => void;
     onConnectedAccountSelected?: () => void;
     onContinue?: () => void;
@@ -72,15 +74,22 @@ export function StepCreateAccount({
     existingAccounts = [],
     createdAccounts = [],
     hasSelectedConnectedAccount = false,
+    signupPlan = null,
     onAccountCreated,
     onConnectedAccountSelected,
     onContinue,
 }: StepCreateAccountProps) {
     const { pricing, subscriptionsEnabled, locale } =
         usePage<SharedData>().props;
-    const [mode, setMode] = useState<AccountMode>('select');
+    // Someone who signed up from the free card gets no bank connections, so the
+    // two-card chooser has a single option left: drop it and open the manual
+    // form straight away.
+    const isFreePlan = signupPlan === 'free';
+    const [mode, setMode] = useState<AccountMode>(
+        isFreePlan ? 'manual' : 'select',
+    );
     const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
-        'connected',
+        isFreePlan ? 'manual' : 'connected',
     );
     const [isAddingAnother, setIsAddingAnother] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -568,15 +577,23 @@ export function StepCreateAccount({
                         text={__('Create Account')}
                     />
 
-                    <Button
-                        type="button"
-                        size="lg"
-                        className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
-                        variant="ghost"
-                        onClick={() => setMode('select')}
-                    >
-                        {__('Back')}
-                    </Button>
+                    {(!isFreePlan ||
+                        hasCreatedAccounts ||
+                        hasExistingAccounts) && (
+                        <Button
+                            type="button"
+                            size="lg"
+                            className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
+                            variant="ghost"
+                            onClick={() =>
+                                isFreePlan
+                                    ? setIsAddingAnother(false)
+                                    : setMode('select')
+                            }
+                        >
+                            {__('Back')}
+                        </Button>
+                    )}
                 </form>
             </div>
         );
@@ -661,6 +678,7 @@ export function StepCreateAccount({
 
                 {selectedMode === 'connected' &&
                     subscriptionsEnabled &&
+                    signupPlan !== 'paid' &&
                     !hasSelectedConnectedAccount && (
                         <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-900/20">
                             <p className="text-center text-sm text-emerald-700 dark:text-emerald-300">

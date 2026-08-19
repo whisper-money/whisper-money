@@ -54,6 +54,7 @@ interface UseOnboardingStateOptions {
     existingAccountsCount?: number;
     initialStep?: OnboardingStep;
     hasConnectedAccount?: boolean;
+    skipAiSuggestions?: boolean;
 }
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
@@ -61,9 +62,18 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         existingAccountsCount = 0,
         initialStep,
         hasConnectedAccount = false,
+        skipAiSuggestions = false,
     } = options;
 
-    const primarySteps = PRIMARY_STEPS;
+    // Dropped from the array rather than short-circuited in the component, so
+    // the progress counter and goNext() agree on how many steps there are.
+    const primarySteps = useMemo(
+        () =>
+            skipAiSuggestions
+                ? PRIMARY_STEPS.filter((step) => step !== 'ai-suggestions')
+                : PRIMARY_STEPS,
+        [skipAiSuggestions],
+    );
 
     // Determine initial step based on existing state
     const resolvedInitialStep = useMemo((): OnboardingStep => {

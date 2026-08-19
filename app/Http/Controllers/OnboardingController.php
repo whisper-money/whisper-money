@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\SignupPlan;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
@@ -62,8 +63,16 @@ class OnboardingController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
+        $signupPlan = SignupPlan::tryFrom((string) $user->signup_plan);
+
+        // A free-plan signup never sees the AI step, so a deep link must not
+        // drop them onto it either.
+        $validSteps = $signupPlan === SignupPlan::Free
+            ? array_values(array_diff(self::VALID_STEPS, ['ai-suggestions']))
+            : self::VALID_STEPS;
+
         $step = $request->query('step');
-        $initialStep = is_string($step) && in_array($step, self::VALID_STEPS, true)
+        $initialStep = is_string($step) && in_array($step, $validSteps, true)
             ? $step
             : null;
 
@@ -73,6 +82,7 @@ class OnboardingController extends Controller
             'categories' => $categories,
             'transactions' => $transactions,
             'initialStep' => $initialStep,
+            'signupPlan' => $signupPlan?->value,
         ]);
     }
 

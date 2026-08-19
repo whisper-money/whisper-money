@@ -40,12 +40,20 @@ interface ExistingAccount {
     };
 }
 
+/**
+ * Which landing pricing card the user registered from. `free` hides the paid
+ * options, `paid` drops the "you'll choose a plan later" warnings, and null —
+ * every other entry point — leaves the flow untouched.
+ */
+export type SignupPlan = 'free' | 'paid';
+
 interface OnboardingProps {
     banks: Bank[];
     accounts: ExistingAccount[];
     categories: Category[];
     transactions: Transaction[];
     initialStep?: OnboardingStep | null;
+    signupPlan?: SignupPlan | null;
 }
 
 const VALID_STEPS: OnboardingStep[] = [
@@ -69,14 +77,20 @@ export default function Onboarding({
     categories,
     transactions,
     initialStep: initialStepProp,
+    signupPlan = null,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
     const hasSyncedRef = useRef(false);
+    const isFreePlan = signupPlan === 'free';
 
     // Prefer the server-validated step; fall back to ?step= from the URL so
     // client-side deep links keep working.
     const initialStep = useMemo((): OnboardingStep | undefined => {
-        if (initialStepProp && VALID_STEPS.includes(initialStepProp)) {
+        const validSteps = isFreePlan
+            ? VALID_STEPS.filter((step) => step !== 'ai-suggestions')
+            : VALID_STEPS;
+
+        if (initialStepProp && validSteps.includes(initialStepProp)) {
             return initialStepProp;
         }
         if (typeof window === 'undefined') {
@@ -84,8 +98,8 @@ export default function Onboarding({
         }
         const params = new URLSearchParams(window.location.search);
         const step = params.get('step') as OnboardingStep | null;
-        return step && VALID_STEPS.includes(step) ? step : undefined;
-    }, [initialStepProp]);
+        return step && validSteps.includes(step) ? step : undefined;
+    }, [initialStepProp, isFreePlan]);
 
     // Sync banks on mount to ensure IndexedDB has the latest data
     useEffect(() => {
@@ -116,6 +130,7 @@ export default function Onboarding({
         existingAccountsCount: accounts.length,
         initialStep,
         hasConnectedAccount,
+        skipAiSuggestions: isFreePlan,
     });
 
     // While on the connections step, poll for connections finalized elsewhere
@@ -198,6 +213,7 @@ export default function Onboarding({
                         onConnectedAccountSelected={
                             markConnectedAccountSelected
                         }
+                        signupPlan={signupPlan}
                         onContinue={goNext}
                     />
                 );
@@ -224,6 +240,7 @@ export default function Onboarding({
                     <StepAiSuggestions
                         categories={categories}
                         hasConnectedAccount={hasConnectedAccount}
+                        signupPlan={signupPlan}
                         onComplete={goNext}
                     />
                 );
