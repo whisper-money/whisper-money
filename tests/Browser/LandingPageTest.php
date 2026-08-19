@@ -18,6 +18,9 @@ it('keeps a signed-in visitor on the landing page', function () {
 });
 
 it('carries the pricing card plan into registration, and nothing else does', function () {
+    // The pricing section only renders when there is something to sell.
+    config(['subscriptions.enabled' => true]);
+
     $page = visit('/#pricing');
 
     // The whole feature hinges on this split: only the two pricing cards name a
