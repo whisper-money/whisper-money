@@ -197,6 +197,28 @@ test('mail blade signatures use alvaro before victor', function () {
     }
 });
 
+test('update email translates its subject and leaves untranslated ones verbatim', function () {
+    $user = User::factory()->create(['locale' => 'es']);
+
+    // The subject doubles as a translation key, resolved in the user's locale.
+    (new UpdateEmail($user, 'first-update-jan-2026', 'Ask ChatGPT how much you spent this month'))
+        ->locale($user->preferredLocale())
+        ->assertHasSubject('Pregúntale a ChatGPT cuánto has gastado este mes');
+
+    // A subject with no translation still goes out exactly as it was typed.
+    (new UpdateEmail($user, 'first-update-jan-2026', 'Update from Whisper Money'))
+        ->locale($user->preferredLocale())
+        ->assertHasSubject('Update from Whisper Money');
+});
+
+test('update email invites replies to a real inbox', function () {
+    $user = User::factory()->create();
+
+    $replyTo = (new UpdateEmail($user, 'first-update-jan-2026'))->envelope()->replyTo;
+
+    expect($replyTo)->toEqual([new Address('hi@whisper.money', 'Álvaro and Víctor')]);
+});
+
 test('enable banking cancellation email includes dashboard access messaging', function () {
     $user = User::factory()->create(['name' => 'Test User']);
 
