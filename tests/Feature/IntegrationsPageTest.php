@@ -35,6 +35,21 @@ function connectCountryCodes(): array
     return $matches[1];
 }
 
+/**
+ * A provider that only knows two Spanish banks, for the sync command tests.
+ */
+function fakeInstitutions(): void
+{
+    test()->mock(BankingProviderInterface::class)
+        ->shouldReceive('getInstitutions')
+        ->andReturnUsing(fn (string $country): array => $country === 'ES' ? [
+            ['name' => 'BBVA', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
+            ['name' => 'BBVA', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
+            ['name' => 'Abanca', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
+            ['name' => IntegrationsPage::TEST_INSTITUTION, 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
+        ] : []);
+}
+
 test('the integrations page renders in its own language', function (string $locale) {
     $this->get('/'.IntegrationsPage::path($locale))
         ->assertSuccessful()
@@ -44,7 +59,7 @@ test('the integrations page renders in its own language', function (string $loca
             ->where('content.heading', MarketingContent::integrations($locale)['heading'])
             ->has('countries')
             ->has('providers', count(MarketingContent::apiProviders()))
-            ->has('labels')
+            ->has('labels', 4)
         );
 })->with(MarketingContent::LOCALES);
 
@@ -145,7 +160,7 @@ test('the committed catalogue is a real one, deduplicated per country', function
     foreach ($catalogue['countries'] as $code => $banks) {
         expect(MarketingContent::COUNTRIES)->toHaveKey($code)
             ->and($banks)->toBe(array_values(array_unique($banks)), "{$code} lists a bank twice")
-            ->and($banks)->not->toContain('Mock ASPSP');
+            ->and($banks)->not->toContain(IntegrationsPage::TEST_INSTITUTION);
     }
 });
 
@@ -174,6 +189,16 @@ test('the prose counts match the catalogue rendered under it', function (string 
         ->and($content['banks_intro'])->toContain((string) count($countries))
         ->and($content['banks_intro'])->not->toContain(':count');
 })->with(MarketingContent::LOCALES);
+
+test('the page is sent only the chrome labels it uses, none with a stray placeholder', function () {
+    $labels = IntegrationsPage::labels('en');
+
+    expect(array_keys($labels))->toEqualCanonicalizing(['cta', 'pricing', 'back', 'other_language']);
+
+    foreach ($labels as $key => $label) {
+        expect($label)->not->toContain(':rival', "{$key} still carries a comparison placeholder");
+    }
+});
 
 test('the sitemap lists both languages with their alternates, and no markdown twin', function () {
     $content = $this->get('/sitemap.xml')->assertSuccessful()->content();
@@ -204,18 +229,11 @@ test('the landing footer links the page in the visitor language', function () {
 });
 
 test('the sync command deduplicates, drops the provider test bank and writes provenance', function () {
-    $this->mock(BankingProviderInterface::class)
-        ->shouldReceive('getInstitutions')
-        ->andReturnUsing(fn (string $country): array => $country === 'ES' ? [
-            ['name' => 'BBVA', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
-            ['name' => 'BBVA', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
-            ['name' => 'Abanca', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
-            ['name' => 'Mock ASPSP', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
-        ] : []);
+    fakeInstitutions();
 
     $relative = 'storage/framework/testing/catalogue.json';
 
-    $this->artisan('banks:sync-institutions', ['--path' => $relative])->assertSuccessful();
+    $this->artisan('banks:sync-institutions', ['--path' => $relative, '--force' => true])->assertSuccessful();
 
     $written = json_decode((string) file_get_contents(base_path($relative)), true);
 
@@ -226,4 +244,17 @@ test('the sync command deduplicates, drops the provider test bank and writes pro
         ->and($written['generated_at'])->not->toBeEmpty();
 
     unlink(base_path($relative));
+});
+
+test('the sync command refuses to overwrite when a country loses most of its banks', function () {
+    // What a restricted provider app looks like: it answers, with almost nothing.
+    fakeInstitutions();
+
+    $relative = 'storage/framework/testing/catalogue.json';
+
+    $this->artisan('banks:sync-institutions', ['--path' => $relative])
+        ->expectsOutputToContain('Refusing to write')
+        ->assertFailed();
+
+    expect(is_file(base_path($relative)))->toBeFalse();
 });

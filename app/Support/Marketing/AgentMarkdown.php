@@ -196,7 +196,7 @@ final class AgentMarkdown
         foreach (MarketingContent::LOCALES as $locale) {
             $link = IntegrationsPage::link($locale);
 
-            $lines[] = '- ['.$link['heading'].']('.$link['url'].'.md): which banks connect over PSD2 and which apps connect by API key ('.$locale.'). '.$link['url'];
+            $lines[] = '- ['.$link['heading'].']('.$link['url'].'): which banks connect over PSD2 and which apps connect by API key, in '.($locale === 'es' ? 'Spanish' : 'English').'. Also at '.$link['url'].'.md';
         }
 
         $lines[] = '';

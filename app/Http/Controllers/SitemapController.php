@@ -39,7 +39,7 @@ class SitemapController extends Controller
 
         return array_values(array_map(fn (string $url): array => [
             'loc' => $url,
-            'changefreq' => 'weekly',
+            'changefreq' => 'monthly',
             'priority' => '0.8',
             'alternates' => $alternates,
         ], $alternates));

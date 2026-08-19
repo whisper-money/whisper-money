@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Support\Marketing\AgentMarkdown;
 use App\Support\Marketing\IntegrationsPage;
-use App\Support\Marketing\MarketingContent;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\App;
@@ -32,7 +31,7 @@ class IntegrationsController extends Controller
             'content' => IntegrationsPage::content($locale),
             'countries' => IntegrationsPage::countries($locale),
             'providers' => IntegrationsPage::providers($locale),
-            'labels' => MarketingContent::labels($locale),
+            'labels' => IntegrationsPage::labels($locale),
             'pageLocale' => $locale,
             'alternates' => $alternates,
             'canRegister' => config('auth.registration_enabled'),

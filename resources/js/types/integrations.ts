@@ -10,6 +10,7 @@ export type IntegrationsContent = {
     search_label: string;
     search_placeholder: string;
     matches: string;
+    matches_one: string;
     empty_title: string;
     empty_body: string;
     providers_title: string;
@@ -27,6 +28,14 @@ export type IntegrationsCountry = {
     code: string;
     name: string;
     banks: string[];
+};
+
+/** The shared marketing chrome labels this page uses. */
+export type IntegrationsLabels = {
+    cta: string;
+    pricing: string;
+    back: string;
+    other_language: string;
 };
 
 /** An integration that connects with an API key rather than over PSD2. */

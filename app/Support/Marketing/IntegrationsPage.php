@@ -22,6 +22,17 @@ final class IntegrationsPage
     public const CATALOGUE = 'resources/data/bank-institutions.json';
 
     /**
+     * The provider's own test institution, which is not a bank anyone can
+     * connect and so never reaches a public page.
+     */
+    public const TEST_INSTITUTION = 'Mock ASPSP';
+
+    /**
+     * @var array<string, list<string>>|null
+     */
+    private static ?array $catalogue = null;
+
+    /**
      * The page copy with the catalogue's own figures substituted in, so the
      * counts in the prose cannot disagree with the list underneath them.
      *
@@ -64,6 +75,21 @@ final class IntegrationsPage
         }
 
         return $groups;
+    }
+
+    /**
+     * The shared chrome labels this page actually uses. The comparison set is
+     * not sent whole: most of it is section headings for a table this page does
+     * not have, and one of them still carries an unresolved :rival.
+     *
+     * @return array<string, string>
+     */
+    public static function labels(string $locale): array
+    {
+        return array_intersect_key(
+            MarketingContent::labels($locale),
+            array_flip(['cta', 'pricing', 'back', 'other_language']),
+        );
     }
 
     /**
@@ -128,10 +154,21 @@ final class IntegrationsPage
         $locale = in_array($locale, MarketingContent::LOCALES, true) ? $locale : 'en';
 
         return [
-            'heading' => MarketingContent::integrations($locale)['heading'],
+            'heading' => self::content($locale)['heading'],
             'path' => '/'.self::path($locale),
             'url' => self::url($locale),
         ];
+    }
+
+    /**
+     * How many banks the committed catalogue holds per country, for the sync
+     * command to compare a fresh fetch against.
+     *
+     * @return array<string, int>
+     */
+    public static function committedCounts(): array
+    {
+        return array_map('count', self::catalogue());
     }
 
     /**
@@ -142,14 +179,18 @@ final class IntegrationsPage
      */
     private static function catalogue(): array
     {
+        if (self::$catalogue !== null) {
+            return self::$catalogue;
+        }
+
         $path = base_path(self::CATALOGUE);
 
         if (! is_file($path)) {
-            return [];
+            return self::$catalogue = [];
         }
 
         $decoded = json_decode((string) file_get_contents($path), true);
 
-        return is_array($decoded['countries'] ?? null) ? $decoded['countries'] : [];
+        return self::$catalogue = is_array($decoded['countries'] ?? null) ? $decoded['countries'] : [];
     }
 }
