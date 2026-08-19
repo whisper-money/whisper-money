@@ -1687,10 +1687,12 @@ export default function Welcome({
     canRegister,
     popularBanks,
     comparisonLinks,
+    integrationsLink,
 }: {
     canRegister?: boolean;
     popularBanks: PopularBank[];
     comparisonLinks: ComparisonLink[];
+    integrationsLink: { heading: string; path: string };
 }) {
     const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
         usePage<SharedData>().props;
@@ -2718,6 +2720,14 @@ export default function Welcome({
                         </FooterColumn>
 
                         <FooterColumn title={__('Other')}>
+                            <li>
+                                <Link
+                                    href={integrationsLink.path}
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {integrationsLink.heading}
+                                </Link>
+                            </li>
                             <li>
                                 <Link
                                     href={roadmap()}
