@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
-import { type SignupPlan } from '@/pages/onboarding';
 import { type SharedData } from '@/types';
+import { type SignupPlan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
@@ -577,6 +577,10 @@ export function StepCreateAccount({
                         text={__('Create Account')}
                     />
 
+                    {/* A free signup skips the mode chooser, so its only way
+                        back is the account list — which exists exactly when one
+                        of the early returns above was passed via "Add another
+                        account". With no accounts yet there is nowhere to go. */}
                     {(!isFreePlan ||
                         hasCreatedAccounts ||
                         hasExistingAccounts) && (
@@ -591,7 +595,7 @@ export function StepCreateAccount({
                                     : setMode('select')
                             }
                         >
-                            {__('Back')}
+                            {isFreePlan ? __('Back to accounts') : __('Back')}
                         </Button>
                     )}
                 </form>

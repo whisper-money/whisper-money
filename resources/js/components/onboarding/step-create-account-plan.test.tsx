@@ -5,30 +5,11 @@ import { StepCreateAccount } from './step-create-account';
 const PLAN_WARNING =
     "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.";
 
-vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({
-        props: {
-            locale: 'en',
-            subscriptionsEnabled: true,
-            pricing: {
-                plans: {
-                    yearly: {
-                        name: 'Standard Yearly',
-                        price: 23.88,
-                        original_price: 47.88,
-                        stripe_lookup_key: null,
-                        billing_period: 'year',
-                        features: [],
-                    },
-                },
-                defaultPlan: 'yearly',
-                bestValuePlan: 'yearly',
-                promo: { enabled: false, code: '', description: '', badge: '' },
-                currency: 'EUR',
-            },
-        },
-    }),
-}));
+vi.mock('@inertiajs/react', async () => {
+    const { pageProps } = await import('@/lib/onboarding-page-props');
+
+    return { usePage: () => ({ props: pageProps }) };
+});
 
 // The manual form pulls in the account form's own data fetching, which has
 // nothing to do with the plan intent.

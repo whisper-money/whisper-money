@@ -19,4 +19,15 @@ enum SignupPlan: string
     case Free = 'free';
 
     case Paid = 'paid';
+
+    /**
+     * The plan named by an untrusted value — a query param, a form field, a
+     * column — or null for anything else. Guards against the non-string a
+     * request can always send (`?plan[]=free`), which a bare tryFrom() would
+     * turn into an array-to-string warning and a 500.
+     */
+    public static function fromRequest(mixed $value): ?self
+    {
+        return is_string($value) ? self::tryFrom($value) : null;
+    }
 }

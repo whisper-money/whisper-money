@@ -63,7 +63,11 @@ class OnboardingController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        $signupPlan = SignupPlan::tryFrom((string) $user->signup_plan);
+        // Nothing to hide or warn about when nothing is paid, so a hand-typed
+        // ?plan= on a self-hosted instance changes nothing.
+        $signupPlan = config('subscriptions.enabled')
+            ? SignupPlan::fromRequest($user->signup_plan)
+            : null;
 
         // A free-plan signup never sees the AI step, so a deep link must not
         // drop them onto it either.

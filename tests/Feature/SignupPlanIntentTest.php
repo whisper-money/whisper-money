@@ -25,6 +25,7 @@ function registeredUser(): User
 
 beforeEach(function () {
     Queue::fake();
+    config(['subscriptions.enabled' => true]);
 });
 
 it('passes the plan from the register link to the register page', function (?string $query, ?string $expected) {
@@ -43,6 +44,12 @@ it('passes the plan from the register link to the register page', function (?str
     'empty' => ['', null],
     'no plan at all' => [null, null],
 ]);
+
+it('survives a plan query param that is not a string', function () {
+    $this->get(route('register').'?plan[]=free')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page->where('signupPlan', null));
+});
 
 it('stores the plan the user registered from', function (?string $submitted, ?string $stored) {
     registerWith($submitted === null ? [] : ['signup_plan' => $submitted]);
@@ -92,6 +99,19 @@ it('refuses to deep link a free signup into the AI step', function () {
     $this->actingAs($user)->get('/onboarding?step=ai-suggestions')
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page->where('initialStep', null));
+});
+
+it('ignores the plan entirely when nothing is paid', function () {
+    config(['subscriptions.enabled' => false]);
+
+    $user = User::factory()->create(['onboarded_at' => null, 'signup_plan' => 'free']);
+
+    $this->actingAs($user)->get('/onboarding?step=ai-suggestions')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('signupPlan', null)
+            ->where('initialStep', 'ai-suggestions')
+        );
 });
 
 it('still allows the AI step deep link for every other signup', function (?string $plan) {

@@ -19,6 +19,7 @@ import {
 import OnboardingLayout from '@/layouts/onboarding-layout';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
+import { type SignupPlan } from '@/types/pricing';
 import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Head, usePoll } from '@inertiajs/react';
@@ -39,13 +40,6 @@ interface ExistingAccount {
         logo: string | null;
     };
 }
-
-/**
- * Which landing pricing card the user registered from. `free` hides the paid
- * options, `paid` drops the "you'll choose a plan later" warnings, and null —
- * every other entry point — leaves the flow untouched.
- */
-export type SignupPlan = 'free' | 'paid';
 
 interface OnboardingProps {
     banks: Bank[];
@@ -143,12 +137,12 @@ export default function Onboarding({
     );
 
     useEffect(() => {
-        if (currentStep === 'create-account') {
+        if (currentStep === 'create-account' && !isFreePlan) {
             start();
         } else {
             stop();
         }
-    }, [currentStep, start, stop]);
+    }, [currentStep, isFreePlan, start, stop]);
 
     const handleAccountCreated = async (account: CreatedAccount) => {
         // Connected accounts already exist server-side (in existingAccounts prop);

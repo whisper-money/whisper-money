@@ -37,7 +37,7 @@ class CreateNewUser implements CreatesNewUsers
             'signup_plan' => ['nullable', 'string', 'max:255'],
         ])->validate();
 
-        $signupPlan = SignupPlan::tryFrom((string) ($input['signup_plan'] ?? ''));
+        $signupPlan = SignupPlan::fromRequest($input['signup_plan'] ?? null);
 
         $user = User::create([
             'name' => $input['name'],

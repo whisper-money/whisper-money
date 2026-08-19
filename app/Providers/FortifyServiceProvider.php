@@ -99,7 +99,7 @@ class FortifyServiceProvider extends ServiceProvider
                 // Which landing pricing card sent them here. Read server-side
                 // because this page is server-rendered; unknown values drop to
                 // null, which is the untouched default flow.
-                'signupPlan' => SignupPlan::tryFrom((string) $request->query('plan', ''))?->value,
+                'signupPlan' => SignupPlan::fromRequest($request->query('plan'))?->value,
             ]);
         });
 
