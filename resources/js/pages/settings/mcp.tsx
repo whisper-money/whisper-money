@@ -105,8 +105,9 @@ export default function Mcp() {
 
     function createToken(event: React.FormEvent) {
         event.preventDefault();
+        // No preserveScroll: the one-time secret renders above the developer
+        // section this form lives in, so staying put would hide it.
         form.post(store().url, {
-            preserveScroll: true,
             onSuccess: () => form.setData('name', ''),
         });
     }

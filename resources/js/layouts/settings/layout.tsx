@@ -36,7 +36,6 @@ import { type PropsWithChildren } from 'react';
 const getNavItems = (
     subscriptionsEnabled: boolean,
     isDemoAccount: boolean,
-    mcpEnabled: boolean,
 ): (NavItem | NavSectionHeader | NavDivider)[] => [
     {
         type: 'nav-item' as const,
@@ -68,7 +67,7 @@ const getNavItems = (
         href: labelsIndex(),
         icon: null,
     },
-    ...(mcpEnabled
+    ...(!isDemoAccount
         ? [
               {
                   type: 'nav-item' as const,
@@ -191,8 +190,7 @@ function renderMobileNavGroups(
 }
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
-    const { subscriptionsEnabled, auth, features } =
-        usePage<SharedData>().props;
+    const { subscriptionsEnabled, auth } = usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
 
     // When server-side rendering, we only render the layout on the client...
@@ -201,11 +199,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     }
 
     const currentPath = window.location.pathname;
-    const sidebarNavItems = getNavItems(
-        subscriptionsEnabled,
-        isDemoAccount,
-        features.mcp,
-    );
+    const sidebarNavItems = getNavItems(subscriptionsEnabled, isDemoAccount);
 
     const activeNavItem = sidebarNavItems.find(
         (item): item is NavItem =>

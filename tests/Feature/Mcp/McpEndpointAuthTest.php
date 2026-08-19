@@ -1,5 +1,7 @@
 <?php
 
+use App\Mcp\Servers\WhisperMoneyServer;
+use App\Mcp\Tools\ListSpaces;
 use App\Models\User;
 
 use function Pest\Laravel\postJson;
@@ -29,4 +31,14 @@ it('accepts a token carrying the mcp:read ability', function () use ($rpc) {
     withHeaders(['Authorization' => "Bearer {$plain}"])
         ->postJson('/mcp', $rpc)
         ->assertOk();
+});
+
+it('rejects the demo account, whose credentials are public and data is shared', function () {
+    config(['app.demo.email' => 'demo@example.test']);
+    $user = User::factory()->create(['email' => 'demo@example.test']);
+    $user->withAccessToken($user->createToken('mcp', ['mcp:read'])->accessToken);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListSpaces::class)
+        ->assertHasErrors();
 });
