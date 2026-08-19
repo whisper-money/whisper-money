@@ -18,6 +18,8 @@ class McpTokenController extends Controller
      */
     public function index(Request $request): Response
     {
+        abort_if($request->user()->isDemoAccount(), 404);
+
         return Inertia::render('settings/mcp', [
             'tokens' => $this->tokensFor($request),
             'serverUrl' => url('/mcp'),

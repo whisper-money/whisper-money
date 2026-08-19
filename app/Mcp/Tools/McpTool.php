@@ -56,6 +56,13 @@ abstract class McpTool extends Tool
             return Response::error('Authentication required.');
         }
 
+        // The demo account's credentials are public and its data is shared, so
+        // it never drives the MCP — an OAuth connection would otherwise carry
+        // write access to it (see WriteTool).
+        if ($user->isDemoAccount()) {
+            return Response::error('The demo account cannot be connected to an AI assistant.');
+        }
+
         if (! $user->canUseFeature(PlanFeature::McpAccess)) {
             return Response::error(
                 'A paid (Pro) plan is required to use the Whisper Money MCP. Upgrade your account at '.route('subscribe')

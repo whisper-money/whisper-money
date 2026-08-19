@@ -67,12 +67,16 @@ const getNavItems = (
         href: labelsIndex(),
         icon: null,
     },
-    {
-        type: 'nav-item' as const,
-        title: 'AI Connector',
-        href: mcpIndex(),
-        icon: null,
-    },
+    ...(!isDemoAccount
+        ? [
+              {
+                  type: 'nav-item' as const,
+                  title: 'AI Connector',
+                  href: mcpIndex(),
+                  icon: null,
+              },
+          ]
+        : []),
     { type: 'divider' },
     {
         type: 'section-header',
