@@ -36,6 +36,11 @@ final class IntegrationsPage
      * The page copy with the catalogue's own figures substituted in, so the
      * counts in the prose cannot disagree with the list underneath them.
      *
+     * Only :count and :countries are filled here. The filter's own counter
+     * changes per keystroke, so it keeps a :matches placeholder the browser
+     * fills — deliberately a different name, because this substitution walks
+     * every string and would otherwise bake the total into it.
+     *
      * @return array<string, mixed>
      */
     public static function content(string $locale): array

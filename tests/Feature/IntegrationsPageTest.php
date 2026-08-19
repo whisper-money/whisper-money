@@ -200,6 +200,17 @@ test('the page is sent only the chrome labels it uses, none with a stray placeho
     }
 });
 
+test('the filter counter keeps the placeholder the browser fills', function (string $locale) {
+    // The server-side substitution walks every string, so a counter template
+    // sharing :count with the prose would arrive pre-filled with the total and
+    // never move off it, however the visitor filtered.
+    $content = IntegrationsPage::content($locale);
+
+    expect($content['matches'])->toContain(':matches')
+        ->and($content['matches'])->not->toContain(':count')
+        ->and($content['matches_one'])->not->toContain(':');
+})->with(MarketingContent::LOCALES);
+
 test('the sitemap lists both languages with their alternates, and no markdown twin', function () {
     $content = $this->get('/sitemap.xml')->assertSuccessful()->content();
 

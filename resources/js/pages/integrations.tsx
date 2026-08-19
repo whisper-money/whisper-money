@@ -193,7 +193,7 @@ export default function Integrations({
                                     (matchCount === 1
                                         ? content.matches_one
                                         : content.matches.replace(
-                                              ':count',
+                                              ':matches',
                                               matchCount.toLocaleString(
                                                   pageLocale,
                                               ),
