@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Contracts\BankingConnectionSyncer;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
-use App\Exceptions\Banking\BankingRequestException;
+use App\Exceptions\Banking\CarriesBankingOperation;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Mail\BankingConnectionAuthFailedEmail;
@@ -388,13 +388,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     private function failureContext(BankingConnection $connection, \Throwable $e): array
     {
         $context = [
-            'connection_id' => $connection->id,
-            // Without the bank there is no way to tell a provider-wide wave from
-            // one connector misbehaving, which is the first question every one of
-            // these investigations starts with.
-            'aspsp_name' => $connection->aspsp_name,
-            'aspsp_country' => $connection->aspsp_country,
-            'operation' => $this->resolveOperation($e),
+            ...$connection->logContext(),
+            'operation' => $e instanceof CarriesBankingOperation ? $e->operation : null,
             'error' => $e->getMessage(),
             'error_class' => $e::class,
             'attempt' => $this->attempts(),
@@ -402,24 +397,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
         if ($e instanceof TransientBankingProviderException) {
             $context['provider'] = $e->provider;
-            $context['status_code'] = $e->statusCode;
             $context['provider_code'] = $e->providerCode;
         }
 
         return [...$context, ...$this->responseContext($e)];
-    }
-
-    /**
-     * Which endpoint the provider was serving when it failed, when the provider
-     * bothered to say.
-     */
-    private function resolveOperation(\Throwable $e): ?string
-    {
-        return match (true) {
-            $e instanceof BankingRequestException => $e->operation,
-            $e instanceof TransientBankingProviderException => $e->operation,
-            default => null,
-        };
     }
 
     /**
@@ -512,8 +493,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     /**
      * Persist a backoff window so the scheduler stops re-dispatching
      * the same connection until the provider quota resets.
-     */
-    /**
+     *
      * @param  array<string, mixed>  $context
      */
     private function applyRateLimitBackoff(BankingConnection $connection, \Throwable $e, array $context): void

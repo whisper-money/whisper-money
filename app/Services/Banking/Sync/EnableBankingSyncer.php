@@ -3,7 +3,7 @@
 namespace App\Services\Banking\Sync;
 
 use App\Enums\TransactionSource;
-use App\Exceptions\Banking\BankingRequestException;
+use App\Exceptions\Banking\CarriesBankingOperation;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\TransientBankingProviderException;
@@ -73,7 +73,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                     // whole connection sync. Skip it; the user can stop syncing it
                     // from the manage-accounts screen.
                     Log::warning('Skipping unsyncable EnableBanking account during sync', [
-                        ...$this->bankContext($connection),
+                        ...$connection->logContext(),
                         'account_id' => $account->id,
                         'reason' => $e::class,
                     ]);
@@ -95,14 +95,6 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                     $balanceFailed++;
                 }
             }
-
-            // Report the failure only once every account has had its turn. The run
-            // still fails, so the connection keeps its Error state, its retries and its
-            // unset last_synced_at exactly as before - the one thing that changes is
-            // that the accounts behind the failing one were attempted at all.
-            if ($transactionFailure !== null) {
-                throw $transactionFailure;
-            }
         } catch (\Throwable $e) {
             $this->logAbortedSync($connection, $e, [
                 'accounts_attempted' => $accountsAttempted,
@@ -112,6 +104,17 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             ]);
 
             throw $e;
+        }
+
+        // Report the failure only once every account has had its turn. The run
+        // still fails, so the connection keeps its Error state, its retries and its
+        // unset last_synced_at exactly as before - the one thing that changes is
+        // that the accounts behind the failing one were attempted at all.
+        //
+        // Outside the try on purpose: by here nothing was aborted mid-run, every
+        // account was attempted, and the per-account failure is already logged.
+        if ($transactionFailure !== null) {
+            throw $transactionFailure;
         }
 
         if ($isFirstSync) {
@@ -124,24 +127,6 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             'transactions_synced' => array_sum($transactionsPerBank),
             'transactions_per_bank' => $transactionsPerBank,
             'balance_failed' => $balanceFailed,
-        ];
-    }
-
-    /**
-     * The connection and the bank behind it, on every log this syncer writes.
-     *
-     * Which bank it is decides whether a wave of failures is one connector
-     * misbehaving or the provider as a whole, and until now none of these lines
-     * carried it.
-     *
-     * @return array<string, string|null>
-     */
-    private function bankContext(BankingConnection $connection): array
-    {
-        return [
-            'connection_id' => $connection->id,
-            'aspsp_name' => $connection->aspsp_name,
-            'aspsp_country' => $connection->aspsp_country,
         ];
     }
 
@@ -163,11 +148,9 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         }
 
         Log::warning('EnableBanking sync aborted mid-run', [
-            ...$this->bankContext($connection),
+            ...$connection->logContext(),
             ...$progress,
-            'operation' => $e instanceof TransientBankingProviderException || $e instanceof BankingRequestException
-                ? $e->operation
-                : null,
+            'operation' => $e instanceof CarriesBankingOperation ? $e->operation : null,
             'status_code' => $e instanceof RequestException ? $e->response->status() : null,
             'reason' => $e::class,
             'error' => $e->getMessage(),
@@ -208,7 +191,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         }
 
         Log::warning('EnableBanking transaction sync failed for one account, continuing', [
-            ...$this->bankContext($connection),
+            ...$connection->logContext(),
             'account_id' => $account->id,
             'status_code' => $e->statusCode,
             'provider_code' => $e->providerCode,
@@ -246,8 +229,9 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             // nice-to-have next to the transactions we just persisted, and failing
             // here leaves last_synced_at unset.
             Log::warning('EnableBanking balance sync failed, continuing', [
-                ...$this->bankContext($connection),
+                ...$connection->logContext(),
                 'account_id' => $account->id,
+                'operation' => 'balances',
                 'reason' => $e::class,
                 'error' => $e->getMessage(),
             ]);

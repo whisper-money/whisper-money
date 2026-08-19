@@ -15,7 +15,7 @@ use Illuminate\Http\Client\Response;
  * as it was while giving the logs the one thing they were missing: whether it
  * was the balances or the transactions endpoint that hit the limit.
  */
-class BankingRequestException extends RequestException
+class BankingRequestException extends RequestException implements CarriesBankingOperation
 {
     public function __construct(Response $response, public readonly string $operation)
     {

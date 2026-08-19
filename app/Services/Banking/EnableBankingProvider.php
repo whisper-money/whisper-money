@@ -14,6 +14,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class EnableBankingProvider implements BankingProviderInterface
 {
@@ -331,7 +332,10 @@ class EnableBankingProvider implements BankingProviderInterface
                     // Which endpoint failed tells one bad account apart from a
                     // whole connection or a provider-wide wave.
                     'path' => $this->redactedPath($response->effectiveUri()?->getPath()),
-                    'body' => $response->json(),
+                    // Capped like every other body this project logs: an error
+                    // body is provider boilerplate today, but nothing guarantees
+                    // a bank will not answer with account data on an error status.
+                    'body' => Str::limit($response->body(), 500),
                     'exception' => get_class($exception),
                 ]);
             });

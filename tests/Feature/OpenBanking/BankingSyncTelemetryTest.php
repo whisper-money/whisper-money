@@ -58,7 +58,7 @@ function telemetryJob(BankingConnection $connection): SyncBankingConnectionJob
  *
  * @return array<int, array{0: string, 1: array<string, mixed>}>
  */
-function captureLogs(callable $callback): array
+function telemetryLogs(callable $callback): array
 {
     $logged = [];
 
@@ -75,7 +75,7 @@ function captureLogs(callable $callback): array
  * @param  array<int, array{0: string, 1: array<string, mixed>}>  $logged
  * @return array<string, mixed>
  */
-function logContext(array $logged, string $message): array
+function telemetryLogContext(array $logged, string $message): array
 {
     foreach ($logged as [$loggedMessage, $context]) {
         if ($loggedMessage === $message) {
@@ -89,7 +89,7 @@ function logContext(array $logged, string $message): array
 /**
  * @return array<string, mixed>
  */
-function transactionsPayload(int $count = 2): array
+function telemetryTransactionsPayload(int $count = 2): array
 {
     $transactions = [];
 
@@ -106,20 +106,31 @@ function transactionsPayload(int $count = 2): array
     return ['transactions' => $transactions, 'continuation_key' => null];
 }
 
+/**
+ * Transactions the bank serves, balances it rate limits: the shape the whole
+ * investigation is about.
+ *
+ * @param  array<string, string>  $headers
+ */
+function fakeRateLimitedBalances(string $message = 'Too many requests', array $headers = []): void
+{
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(telemetryTransactionsPayload()),
+        'api.enablebanking.com/accounts/ext-1/balances*' => Http::response([
+            'code' => 429,
+            'message' => $message,
+        ], 429, $headers),
+    ]);
+}
+
 test('a rate limit on balances says so in the log the backoff writes', function () {
     $connection = telemetryConnection();
 
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(transactionsPayload()),
-        'api.enablebanking.com/accounts/ext-1/balances*' => Http::response([
-            'code' => 429,
-            'message' => 'Maximum daily access exceeded',
-        ], 429, ['Retry-After' => '1800']),
-    ]);
+    fakeRateLimitedBalances('Maximum daily access exceeded', ['Retry-After' => '1800']);
 
-    $logged = captureLogs(fn () => runSync(telemetryJob($connection)));
+    $logged = telemetryLogs(fn () => runSync(telemetryJob($connection)));
 
-    $context = logContext($logged, 'Banking connection rate limited, backing off');
+    $context = telemetryLogContext($logged, 'Banking connection rate limited, backing off');
 
     expect($context['operation'])->toBe('balances')
         ->and($context['status_code'])->toBe(429)
@@ -140,9 +151,9 @@ test('a rate limit on transactions says so in the log the backoff writes', funct
         'api.enablebanking.com/accounts/ext-1/balances*' => Http::response(['balances' => []]),
     ]);
 
-    $logged = captureLogs(fn () => runSync(telemetryJob($connection)));
+    $logged = telemetryLogs(fn () => runSync(telemetryJob($connection)));
 
-    $context = logContext($logged, 'Banking connection rate limited, backing off');
+    $context = telemetryLogContext($logged, 'Banking connection rate limited, backing off');
 
     expect($context['operation'])->toBe('transactions')
         ->and($context['status_code'])->toBe(429)
@@ -155,17 +166,11 @@ test('a rate limit on transactions says so in the log the backoff writes', funct
 test('a run killed by the rate limit reports what it had already imported', function () {
     $connection = telemetryConnection();
 
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(transactionsPayload(2)),
-        'api.enablebanking.com/accounts/ext-1/balances*' => Http::response([
-            'code' => 429,
-            'message' => 'Too many requests',
-        ], 429),
-    ]);
+    fakeRateLimitedBalances();
 
-    $logged = captureLogs(fn () => runSync(telemetryJob($connection)));
+    $logged = telemetryLogs(fn () => runSync(telemetryJob($connection)));
 
-    $context = logContext($logged, 'EnableBanking sync aborted mid-run');
+    $context = telemetryLogContext($logged, 'EnableBanking sync aborted mid-run');
 
     expect($context['transactions_synced'])->toBe(2)
         ->and($context['accounts_attempted'])->toBe(1)
@@ -178,13 +183,7 @@ test('a run killed by the rate limit reports what it had already imported', func
 test('the failed sync log row carries the same context as the warning', function () {
     $connection = telemetryConnection();
 
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(transactionsPayload()),
-        'api.enablebanking.com/accounts/ext-1/balances*' => Http::response([
-            'code' => 429,
-            'message' => 'Too many requests',
-        ], 429),
-    ]);
+    fakeRateLimitedBalances();
 
     runSync(telemetryJob($connection));
 
@@ -202,13 +201,13 @@ test('an oversized error body is truncated before it reaches the logs', function
     $connection = telemetryConnection();
 
     Http::fake([
-        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(transactionsPayload()),
+        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(telemetryTransactionsPayload()),
         'api.enablebanking.com/accounts/ext-1/balances*' => Http::response(str_repeat('x', 5000), 429),
     ]);
 
-    $logged = captureLogs(fn () => runSync(telemetryJob($connection)));
+    $logged = telemetryLogs(fn () => runSync(telemetryJob($connection)));
 
-    $context = logContext($logged, 'Banking connection rate limited, backing off');
+    $context = telemetryLogContext($logged, 'Banking connection rate limited, backing off');
 
     // Str::limit keeps 500 characters and appends an ellipsis.
     expect(strlen($context['response_body']))->toBeLessThanOrEqual(510);
@@ -218,7 +217,7 @@ test('a successful payload never reaches the logs', function () {
     $connection = telemetryConnection();
 
     Http::fake([
-        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(transactionsPayload()),
+        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(telemetryTransactionsPayload()),
         'api.enablebanking.com/accounts/ext-1/balances*' => Http::response(['balances' => [[
             'balance_amount' => ['amount' => '1234.56', 'currency' => 'EUR'],
             'balance_type' => 'CLBD',
@@ -227,7 +226,7 @@ test('a successful payload never reaches the logs', function () {
         ]]]),
     ]);
 
-    $logged = captureLogs(fn () => runSync(telemetryJob($connection)));
+    $logged = telemetryLogs(fn () => runSync(telemetryJob($connection)));
 
     $connection->refresh();
     expect($connection->last_synced_at)->not->toBeNull();

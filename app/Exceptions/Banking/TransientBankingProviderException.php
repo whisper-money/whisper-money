@@ -6,7 +6,7 @@ use Exception;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Throwable;
 
-class TransientBankingProviderException extends Exception implements ShouldntReport
+class TransientBankingProviderException extends Exception implements CarriesBankingOperation, ShouldntReport
 {
     public function __construct(
         string $message,

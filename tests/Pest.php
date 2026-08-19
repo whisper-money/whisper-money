@@ -286,53 +286,34 @@ function createAccountViaUI($page, string $displayName, string $bankName, string
 }
 
 /**
- * Run the banking sync job through the real syncer factory, binding any
- * EnableBanking sync-service mocks the test provides so the resolved syncer
- * uses them instead of the container defaults.
- */
-/**
  * An EnableBankingProvider signing with a throwaway key, for tests that drive
  * the real provider against a faked HTTP layer.
  */
 function enableBankingProviderForTest(): EnableBankingProvider
 {
-    $privateKey = <<<'PEM'
------BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDWoizjYmPaLQqn
-uGJQxJCl18MxlJmTgoDzITt/hIW2CEFegbuKuynz7HCFM7xdAg6WRmHfOevLXVuq
-+erPk9gcqC1ePLWzwzmNLIIPpPrO4pkFTZF91T46kJY9/J6QclzbrbI4wB9l3SKA
-14h0O2R2sh1DubnSN5H7JeHyZtIal+aJe7jxuLyKxKkWY80a/jq7rGIzQFJFCFFV
-zLcRKyqs80l4nGLT00lubmlJj1y2/p0OH7B8ZLwxr2LrH+NAPw9L6/e8jEhHSxHs
-LLgOeCEIHO3f7tAfWN6dld08I9puT5JtXp8c5OpkrciDD5C3HvOGjQFNj/W7EmRg
-GVIBeDf7AgMBAAECggEAAJOXLJWl9T70krfCfztGFx3MNtmv/P8GF0OPFp/KnsU1
-SoMenxzkb8OkyPYyMPxhi0PemEdAvlByTnk6EwxvgEoNDNa2rXb5gy1zUCPUWMrq
-806Ur9AI3Muj7/s57LvJ6HMnalyb58BBvEbwjLNgmiEsRhrML8pA9hd4sGam/vq/
-Xb1BoT8FRPVlmz32w9RFrcQaZ4tO/r8rRNlWFtEV0iOdocK+4NizJvJvCyPYesck
-F8+wAoPrHARSOhmzWfzYXXFwJdXcpkuMshQ+COzD2TTZnTZbRn8tWMcL32Bb9b55
-E1CKVPUB99eE182oCHaWNE7HO+2VbMFqExU9oZU+fQKBgQD8HjrFlP234WDChook
-ED5btDxJqSpGuHvzgP083Ej8sOLtWcpVJOFEsLiKRzUqBm6wjFrfk8yq+Vk3OgoA
-CDV6owfQGwn0Jj7yhYPDlMUf1mqytbeFSrziIaFs8YcV1nxykXbJCQyDIAhjOlXf
-je9SifsrBDxOv6re2ky8mzzp1QKBgQDZ8DF64aEntI78SP6CW72fUrQkA9HOnV5s
-dZLE/RbybTG/oozjJzJ0OTHiwtz14UVxTXTCEkF4nsrv9W19pw5E/C4wLqq7tdDn
-gXxS0CAQ1zCBqQAMrgeMA+mmNc3j7rp/TthMQ+Z+wStOqptkIvigv6EZ/9+jzdSA
-C5O5nq4yjwKBgEzhpwhze79kIg6P2nZO4cUzPCM2S+cPAPVrg03Y2wT7p+e7NuEq
-AuvgfBXmywaKuZxq4JdHSeVlblhSAZSq7Cv+pTZH2Iw0UYPBRUISDt67kwP2OAWU
-me7XVJOVP51gL8j8JN3/PWqLDSO9OUyXysA/xXEDtKRK/H9C0J2/NR8VAoGASr4B
-ei8fYcqerw8pmfN0mMt4VFGrBr0ZwQChkUVrNUEVqq9Iui6bMxjabvZ9aSYU9sKl
-pFk2cvOijaESJ+G/FxGVlZirnSzBtGPIC26tUJk8XXtkNPUKSY6d9w7EycL52udj
-buRqjFYbUCNan4EO27JcwdnrDPZuRmuyAhrViykCgYEA4pLCByU4uISinHpFKWD4
-TMGRZNdyFw1UWET/t3UgYA05iFzgrlaz5WtWy27LVHGIpDZqmR/pqw43tsOX67qi
-r6aIG0QnM0a0BlAPUi+7BBZL76TatYBoYlqbvLOaRRaYsL4s4jGph+KUS4Sr/JmK
-+Y9QVqKpHPmUKWPRdA7INQ0=
------END PRIVATE KEY-----
-PEM;
+    // Generated once per process rather than committed: a working RSA key in a
+    // public repo is a bad pattern to keep, and the signature is never verified
+    // by anything but the faked HTTP layer.
+    static $path = null;
 
-    $path = sys_get_temp_dir().'/enablebanking-test-key.pem';
-    file_put_contents($path, $privateKey);
+    if ($path === null) {
+        openssl_pkey_export(openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]), $privateKey);
+
+        $path = tempnam(sys_get_temp_dir(), 'enablebanking-test-key');
+        file_put_contents($path, $privateKey);
+    }
 
     return new EnableBankingProvider('test-app-id', $path);
 }
 
+/**
+ * Run the banking sync job through the real syncer factory, binding any
+ * EnableBanking sync-service mocks the test provides so the resolved syncer
+ * uses them instead of the container defaults.
+ */
 function runSync(
     SyncBankingConnectionJob $job,
     ?object $transactionSync = null,
