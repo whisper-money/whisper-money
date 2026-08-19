@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands\Concerns;
 
-use App\Enums\BankingProvider;
 use App\Enums\DripEmailType;
 use App\Models\BankingConnection;
 use App\Models\User;
@@ -22,10 +21,8 @@ use Illuminate\Support\Str;
  * review the recipients, email one message per user, and never mail the same
  * user twice for the same bank.
  *
- * A bank is identified by `aspsp_name` + `aspsp_country`, which is also how
- * Enable Banking identifies an ASPSP: `banking_connections` has no bank_id, and
- * the `banks` table is per-user, so a bank UUID means nothing outside the one
- * account it belongs to.
+ * The definitions of a broken bank, and how one is identified, are in
+ * {@see QueriesBankFailures}.
  *
  * A command using this must declare all four shared options in its signature —
  * `--country`, `--dry-run`, `--force` and `--resend` — because the helpers here
@@ -35,6 +32,8 @@ use Illuminate\Support\Str;
  */
 trait NotifiesBankUsers
 {
+    use QueriesBankFailures;
+
     /**
      * The withCount alias the recipient tables read.
      */
@@ -46,17 +45,6 @@ trait NotifiesBankUsers
     protected function countryOption(): ?string
     {
         return $this->option('country') ? Str::upper((string) $this->option('country')) : null;
-    }
-
-    /**
-     * Every Enable Banking connection to the bank the operator named.
-     */
-    protected function matchesBank(string $aspsp, ?string $country): Closure
-    {
-        return fn (Builder $query) => $query
-            ->where('provider', BankingProvider::EnableBanking)
-            ->where('aspsp_name', $aspsp)
-            ->when($country, fn (Builder $query) => $query->where('aspsp_country', $country));
     }
 
     /**
@@ -96,14 +84,6 @@ trait NotifiesBankUsers
         }
 
         return $country ?? (string) $countries->first();
-    }
-
-    /**
-     * The ledger key for one bank's notice, stable across re-runs.
-     */
-    protected function bankIdentifier(string $bankName, string $country): string
-    {
-        return Str::slug("{$bankName}-{$country}");
     }
 
     /**
@@ -189,7 +169,7 @@ trait NotifiesBankUsers
         // The usual mistake is the right name with the wrong country, so say
         // where that bank does exist before offering other names.
         $countries = BankingConnection::withTrashed()
-            ->where('provider', BankingProvider::EnableBanking)
+            ->tap($this->matchesEnableBanking())
             ->where('aspsp_name', $aspsp)
             ->distinct()
             ->orderBy('aspsp_country')
@@ -202,7 +182,7 @@ trait NotifiesBankUsers
         }
 
         $similar = BankingConnection::withTrashed()
-            ->where('provider', BankingProvider::EnableBanking)
+            ->tap($this->matchesEnableBanking())
             ->where('aspsp_name', 'like', '%'.$aspsp.'%')
             ->where('aspsp_name', '!=', $aspsp)
             ->distinct()

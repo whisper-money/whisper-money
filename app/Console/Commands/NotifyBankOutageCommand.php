@@ -3,16 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Console\Commands\Concerns\NotifiesBankUsers;
-use App\Enums\BankingConnectionStatus;
 use App\Enums\DripEmailType;
-use App\Jobs\SyncBankingConnectionJob;
 use App\Mail\BankOutageEmail;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Closure;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -92,28 +89,6 @@ class NotifyBankOutageCommand extends Command implements Isolatable
         );
 
         return self::SUCCESS;
-    }
-
-    /**
-     * The connections an outage at the bank actually explains: the ones the
-     * scheduler will keep retrying, mirroring SyncAllBankingConnectionsJob.
-     *
-     * This is what makes the email honest. An expired, revoked or retry-capped
-     * connection is stuck for its own reason and its owner does have to
-     * reconnect — the exact opposite of what this notice tells them.
-     */
-    private function matchesOutage(Closure $matchesBank): Closure
-    {
-        return fn (Builder $query) => $query
-            ->tap($matchesBank)
-            ->where(fn (Builder $query) => $query
-                ->where('status', BankingConnectionStatus::Active)
-                ->orWhere(fn (Builder $query) => $query
-                    ->where('status', BankingConnectionStatus::Error)
-                    ->where('consecutive_sync_failures', '<', SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES)))
-            ->where(fn (Builder $query) => $query
-                ->whereNull('valid_until')
-                ->orWhere('valid_until', '>', now()));
     }
 
     /**
