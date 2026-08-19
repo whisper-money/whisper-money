@@ -30,7 +30,6 @@ class IntegrationsController extends Controller
         $response = Inertia::render('integrations', [
             'content' => IntegrationsPage::content($locale),
             'countries' => IntegrationsPage::countries($locale),
-            'providers' => IntegrationsPage::providers($locale),
             'labels' => IntegrationsPage::labels($locale),
             'pageLocale' => $locale,
             'alternates' => $alternates,

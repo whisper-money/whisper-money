@@ -13,8 +13,6 @@ export type IntegrationsContent = {
     matches_one: string;
     empty_title: string;
     empty_body: string;
-    providers_title: string;
-    providers_intro: string;
     importer_title: string;
     importer_body: string;
     notes_title: string;
@@ -23,11 +21,19 @@ export type IntegrationsContent = {
     closing_body: string;
 };
 
-/** One country's slice of the catalogue, named in the page's language. */
+/** One bank or app in the list. */
+export type IntegrationsEntry = {
+    name: string;
+    logo: string | null;
+    /** Connects with a code the user creates, rather than by approving at a bank. */
+    key: boolean;
+};
+
+/** One country's slice of the list, named in the page's language. */
 export type IntegrationsCountry = {
     code: string;
     name: string;
-    banks: string[];
+    entries: IntegrationsEntry[];
 };
 
 /** The shared marketing chrome labels this page uses. */
@@ -36,10 +42,4 @@ export type IntegrationsLabels = {
     pricing: string;
     back: string;
     other_language: string;
-};
-
-/** An integration that connects with an API key rather than over PSD2. */
-export type IntegrationsProvider = {
-    name: string;
-    description: string;
 };

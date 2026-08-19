@@ -80,8 +80,8 @@ final class AgentMarkdown
     }
 
     /**
-     * The integrations page as Markdown: the same catalogue the HTML page
-     * renders, in the shape an agent asked "does it support my bank" can read.
+     * The integrations page as Markdown: the same list the HTML page renders,
+     * in the shape an agent asked "does it support my bank" can read.
      */
     public static function integrations(string $locale): string
     {
@@ -94,19 +94,6 @@ final class AgentMarkdown
             '',
             $content['intro'],
             '',
-            '## '.$content['providers_title'],
-            '',
-            $content['providers_intro'],
-            '',
-        ];
-
-        foreach (IntegrationsPage::providers($locale) as $provider) {
-            $lines[] = '- **'.$provider['name'].'** — '.$provider['description'];
-        }
-
-        $lines = [
-            ...$lines,
-            '',
             '## '.$content['banks_title'],
             '',
             $content['banks_intro'],
@@ -116,11 +103,18 @@ final class AgentMarkdown
         ];
 
         foreach (IntegrationsPage::countries($locale) as $country) {
+            $names = array_map(
+                // A key marks what connects with a code the user creates, the
+                // same distinction the page draws with an icon.
+                fn (array $entry): string => $entry['key'] ? $entry['name'].' (key)' : $entry['name'],
+                $country['entries'],
+            );
+
             $lines = [
                 ...$lines,
                 '### '.$country['name'].' ('.$country['code'].')',
                 '',
-                implode(', ', $country['banks']),
+                implode(', ', $names),
                 '',
             ];
         }
@@ -196,7 +190,7 @@ final class AgentMarkdown
         foreach (MarketingContent::LOCALES as $locale) {
             $link = IntegrationsPage::link($locale);
 
-            $lines[] = '- ['.$link['heading'].']('.$link['url'].'): which banks connect over PSD2 and which apps connect by API key, in '.($locale === 'es' ? 'Spanish' : 'English').'. Also at '.$link['url'].'.md';
+            $lines[] = '- ['.$link['heading'].']('.$link['url'].'): every bank and app that can be connected, in '.($locale === 'es' ? 'Spanish' : 'English').'. Also at '.$link['url'].'.md';
         }
 
         $lines[] = '';

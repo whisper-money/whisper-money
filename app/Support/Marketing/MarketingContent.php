@@ -65,44 +65,35 @@ final class MarketingContent
     ];
 
     /**
-     * The API-key integrations, keyed by the display name the connect flow
-     * uses, each with what it is and how it authorises, in both languages.
-     *
-     * The names are the join with the frontend registry: a test asserts these
-     * keys still match CONNECT_PROVIDERS in resources/js/lib/connect-providers,
-     * so adding a provider there without describing it here fails.
-     *
-     * @return array<string, array<string, string>>
+     * The code for the group that holds what is not tied to one country: the
+     * crypto exchanges, Wise and Interactive Brokers.
      */
-    public static function apiProviders(): array
-    {
-        return [
-            'Indexa Capital' => [
-                'en' => 'Automated index-fund portfolios and pension plans, Spain only. You paste a read-only API token generated in your own Indexa dashboard.',
-                'es' => 'Carteras indexadas y planes de pensiones, solo en España. Pegas un token de API de solo lectura que generas en tu propio panel de Indexa.',
-            ],
-            'Binance' => [
-                'en' => 'Crypto balances across your Binance account, valued in your currency. You generate the key and secret yourself; leave trading permissions off.',
-                'es' => 'Saldos de cripto de tu cuenta de Binance, valorados en tu moneda. La clave y el secreto los generas tú; deja los permisos de trading desactivados.',
-            ],
-            'Bitpanda' => [
-                'en' => 'Crypto, metals and ETF holdings held at Bitpanda. One read-only API key generated in your Bitpanda account.',
-                'es' => 'Cripto, metales y ETFs que tengas en Bitpanda. Una única clave de API de solo lectura generada en tu cuenta de Bitpanda.',
-            ],
-            'Coinbase' => [
-                'en' => 'Crypto balances held at Coinbase, through a view-only CDP API key you create in the Coinbase Developer Platform.',
-                'es' => 'Saldos de cripto en Coinbase, mediante una clave de API de CDP de solo lectura que creas en el Coinbase Developer Platform.',
-            ],
-            'Wise' => [
-                'en' => 'Multi-currency balances at Wise, with a personal API token from your Wise developer settings.',
-                'es' => 'Saldos multidivisa de Wise, con un token de API personal de los ajustes de desarrollador de tu cuenta.',
-            ],
-            'Interactive Brokers' => [
-                'en' => 'Portfolio value and open positions, read through the Flex Web Service rather than the trading API: you create an activity Flex Query and a token, and we can only read that query.',
-                'es' => 'Valor de la cartera y posiciones abiertas, leídos por el Flex Web Service y no por la API de trading: creas una Flex Query de actividad y un token, y nosotros solo podemos leer esa consulta.',
-            ],
-        ];
-    }
+    public const WORLDWIDE = 'WW';
+
+    /**
+     * Name of the worldwide group per language.
+     */
+    public const WORLDWIDE_NAMES = ['en' => 'Worldwide', 'es' => 'En todo el mundo'];
+
+    /**
+     * The apps that connect with a key the user creates, rather than by
+     * approving access at a bank. They are listed among the banks, in the
+     * country group they belong to, because a visitor looking for Coinbase is
+     * asking the same question as one looking for BBVA.
+     *
+     * The names and logos are the join with the frontend registry: a test
+     * asserts both still match CONNECT_PROVIDERS in
+     * resources/js/lib/connect-providers, so one cannot change without the
+     * other.
+     */
+    public const API_PROVIDERS = [
+        'Indexa Capital' => ['country' => 'ES', 'logo' => '/images/banks/logos/indexa-capital.jpg'],
+        'Binance' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/t1h5rqi19dJTPl6ZadziPjNwm0lrcdTFBRzB3iCy.png'],
+        'Bitpanda' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png'],
+        'Coinbase' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/coinbase.png'],
+        'Wise' => ['country' => self::WORLDWIDE, 'logo' => '/images/banks/logos/wise.png'],
+        'Interactive Brokers' => ['country' => self::WORLDWIDE, 'logo' => '/images/banks/logos/interactive-brokers.png'],
+    ];
 
     /**
      * Section headings shared by every comparison page, so the eight pages do
@@ -222,66 +213,69 @@ final class MarketingContent
     /**
      * The integrations page: what a visitor can connect, before they register.
      *
-     * The `:count` and `:countries` placeholders are filled from the committed
-     * catalogue so the figures cannot go stale against the list right below them.
+     * Written for someone who has never heard of PSD2 or open banking, because
+     * that is nearly everyone. It says what they get, not how it is plumbed:
+     * the regulation's name tells a reader nothing, and "you approve it on your
+     * bank's own site, so we never see your login" tells them everything.
+     *
+     * The :count and :countries placeholders are filled from the committed
+     * catalogue so the figures cannot go stale against the list right below
+     * them. The filter's own counter uses :matches instead, which the browser
+     * fills per keystroke.
      *
      * @return array<string, mixed>
      */
     public static function integrations(string $locale): array
     {
         return $locale === 'es' ? [
-            'title' => 'Bancos e integraciones compatibles',
-            'description' => 'Comprueba antes de registrarte si tu banco conecta con Whisper Money: :count entidades de :countries países europeos por PSD2, más Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda y Coinbase con claves de API que generas tú.',
-            'heading' => 'Bancos e integraciones compatibles',
-            'intro' => 'Antes de crear una cuenta, comprueba que está lo que quieres seguir. Los bancos conectan por PSD2, la normativa europea de banca abierta, y la autorización la firmas en la web de tu propio banco. Los brokers y los exchanges conectan con claves de API que generas tú y que puedes limitar a solo lectura. Lo que no haga ninguna de las dos cosas puede entrar como fichero de extracto.',
-            'banks_title' => 'Bancos por PSD2',
-            'banks_intro' => ':count entidades y emisores de tarjetas de :countries países, tal y como los lista hoy nuestro proveedor de banca abierta. Busca el tuyo: si está en esta lista, puedes conectarlo.',
-            'banks_note' => 'La autorización se firma en la web de tu banco, así que nosotros no vemos ni guardamos tus credenciales. Las cuentas conectadas requieren el plan de pago; la tarifa vigente está en la página de precios.',
-            'search_label' => 'Filtrar la lista de bancos',
-            'search_placeholder' => 'Busca tu banco',
+            'title' => 'Bancos y apps compatibles',
+            'description' => 'Comprueba antes de registrarte si podemos conectar tu banco: :count entidades y apps de :countries países, más Binance, Bitpanda, Coinbase, Wise e Interactive Brokers. Busca la tuya en la lista.',
+            'heading' => 'Qué bancos y apps puedes conectar',
+            'intro' => 'Conectas una cuenta una vez y sus movimientos y saldos siguen llegando solos: tus cuentas, tus inversiones y tu cripto en un mismo sitio, sin apuntar nada a mano. El permiso lo das en la web de tu propio banco, así que tus claves nunca pasan por nosotros. Busca abajo lo que quieras seguir.',
+            'banks_title' => 'Todo lo que puedes conectar',
+            'banks_intro' => ':count entidades y apps de :countries países. Busca la tuya: si está en esta lista, puedes conectarla.',
+            'banks_note' => 'El permiso se firma en la web de tu banco, así que nosotros no vemos ni guardamos tus claves. Las marcadas con una llave se conectan con un código que creas tú en su propia web y que puedes limitar a solo lectura. Las cuentas conectadas están en el plan de pago; la tarifa vigente está en la página de precios.',
+            'search_label' => 'Filtrar la lista',
+            'search_placeholder' => 'Busca tu banco o tu app',
             'matches' => ':matches coincidencias',
             'matches_one' => '1 coincidencia',
             'empty_title' => '¿No está en la lista?',
-            'empty_body' => 'Entonces todavía no conecta de forma automática, pero no te quedas fuera: puedes traerlo como extracto, tal y como se explica justo debajo.',
-            'providers_title' => 'Apps, brokers y exchanges',
-            'providers_intro' => 'Estos no pasan por PSD2. Generas tú la clave de API en el proveedor y la pegas aquí; genérala de solo lectura, porque nosotros nunca hacemos más que leer saldos y posiciones.',
-            'importer_title' => 'Importación de extractos, para todo lo demás',
-            'importer_body' => 'Descarga el extracto de tu banco en CSV, XLS o XLSX e impórtalo. El importador reconoce por su cuenta las cabeceras habituales, tanto en español (Fecha, F. Valor, Concepto, Descripción, Importe, Saldo) como en inglés (date, description, amount, balance, payee), entiende cuatro formatos de fecha, guarda el mapeo de columnas por cuenta y marca los duplicados desmarcados, así que puedes repetir la importación de un mes sin duplicar nada. Cualquier cuenta puede llevarse así, también las manuales del plan gratuito.',
+            'empty_body' => 'Entonces todavía no se conecta sola, pero no te quedas fuera: puedes traerla con su extracto, tal y como se explica justo debajo.',
+            'importer_title' => 'Y si tu banco no está, su extracto sí entra',
+            'importer_body' => 'Descargas el extracto de tu banco y lo sueltas aquí, tal cual, en CSV, XLS o XLSX. No tienes que ordenar ni renombrar nada: reconoce las columnas por su cuenta, tanto si vienen en español como en inglés, entiende las fechas escritas de cuatro formas distintas y recuerda cómo era el fichero para la próxima vez. Si repites un mes que ya habías subido, te avisa de lo repetido y lo deja sin marcar, así que no acabas con nada por duplicado.',
             'notes_title' => 'Lo que conviene saber antes de registrarte',
             'notes' => [
-                'Las cuentas conectadas, la categorización con IA y el acceso por MCP están en el plan de pago. El plan gratuito tiene cuentas manuales e importación de extractos.',
-                'Una autorización PSD2 es temporal por normativa y hay que renovarla en el banco. Nosotros pedimos 90 días; cuánto concede de verdad lo decide tu entidad, y hay bancos que dan menos y bancos que dan más.',
-                'Que una cuenta conecte bien lo decide tu banco, no nosotros: algunas entidades de la lista entregan saldos pero poco histórico, y otras piden reautorizar más a menudo.',
-                'No hay botón de exportación en la interfaz. La vía para sacar los datos de forma programática es el acceso por MCP, en el plan de pago.',
-                'Los datos se guardan sin cifrar en reposo, en nuestra propia base de datos. Lo que sí puedes comprobar es el código, que es público en GitHub.',
+                'Las cuentas conectadas, la categorización automática y el acceso desde un asistente están en el plan de pago. Con el plan gratuito llevas cuentas a mano e importas extractos.',
+                'Un permiso bancario caduca a los pocos meses y se renueva en un par de clics. Es la norma de los bancos, no nuestra: pedimos 90 días, y cada entidad concede lo que quiere.',
+                'Cuánto histórico te entrega tu banco, y cada cuánto te pide renovar, lo decide él y no nosotros. Hay entidades que dan varios años y otras que dan unas semanas.',
+                'Todavía no hay un botón de exportar en la aplicación. Para sacar tus datos de forma automática está el acceso desde un asistente, en el plan de pago.',
+                'Tus datos se guardan sin cifrar en nuestra base de datos. Lo que sí puedes comprobar es el código, que es público en GitHub.',
             ],
             'closing_title' => 'Cuando quieras',
             'closing_body' => 'El plan gratuito no pide tarjeta. Si tu banco está en la lista, tenerlo conectado es cuestión de un par de minutos.',
         ] : [
-            'title' => 'Supported Banks and Integrations',
-            'description' => 'Check whether your bank connects to Whisper Money before you sign up: :count institutions across :countries European countries over PSD2, plus Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda and Coinbase through API keys you generate yourself.',
-            'heading' => 'Supported banks and integrations',
-            'intro' => 'Before you create an account, check that what you want to track is here. Banks connect over PSD2, the European open banking standard, and you sign the authorisation on your own bank\'s website. Brokers and exchanges connect with API keys you generate yourself and can restrict to reading. Anything that does neither can still come in as a statement file.',
-            'banks_title' => 'Banks over PSD2',
-            'banks_intro' => ':count institutions and card issuers across :countries countries, as our open banking provider lists them today. Search for yours: if it is on this list, you can connect it.',
-            'banks_note' => 'You sign the authorisation on your bank\'s own website, so we never see or store your credentials. Connected accounts need the paid plan; the current rate is on the pricing page.',
-            'search_label' => 'Filter the bank list',
-            'search_placeholder' => 'Search for your bank',
+            'title' => 'Supported Banks and Apps',
+            'description' => 'Check before you sign up whether we can connect your bank: :count banks and apps across :countries countries, plus Binance, Bitpanda, Coinbase, Wise and Interactive Brokers. Search the list for yours.',
+            'heading' => 'Which banks and apps you can connect',
+            'intro' => 'Connect an account once and its balances and transactions keep arriving on their own: your accounts, your investments and your crypto in one place, with nothing typed in by hand. You give permission on your own bank\'s website, so your login details never pass through us. Search below for whatever you want to track.',
+            'banks_title' => 'Everything you can connect',
+            'banks_intro' => ':count banks and apps across :countries countries. Search for yours: if it is on this list, you can connect it.',
+            'banks_note' => 'You give permission on your bank\'s own website, so we never see or store your login details. The ones marked with a key connect with a code you create on their own site, which you can limit to reading only. Connected accounts are on the paid plan; the current rate is on the pricing page.',
+            'search_label' => 'Filter the list',
+            'search_placeholder' => 'Search for your bank or app',
             'matches' => ':matches matches',
             'matches_one' => '1 match',
             'empty_title' => 'Not on the list?',
-            'empty_body' => 'Then it does not connect automatically yet, but you are not stuck: you can bring it in as a statement, exactly as described below.',
-            'providers_title' => 'Apps, brokers and exchanges',
-            'providers_intro' => 'These do not go through PSD2. You generate the API key at the provider and paste it in; generate it read-only, because reading balances and positions is the only thing we ever do with it.',
-            'importer_title' => 'Statement import, for everything else',
-            'importer_body' => 'Download your bank\'s statement in CSV, XLS or XLSX and import it. The importer works out the usual column headers on its own, in English (date, description, amount, balance, payee) and in Spanish (Fecha, F. Valor, Concepto, Descripción, Importe, Saldo) alike, understands four date formats, saves the column mapping per account and leaves duplicates unticked, so you can re-import a month without doubling it up. Any account can be kept this way, including the manual ones on the free plan.',
+            'empty_body' => 'Then it does not connect on its own yet, but you are not stuck: you can bring it in from its statement, exactly as described below.',
+            'importer_title' => 'And if your bank is not there, its statement still is',
+            'importer_body' => 'Download the statement from your bank and drop it in as it comes, in CSV, XLS or XLSX. You do not have to tidy it up or rename anything: it works out the columns on its own, whether they arrive in English or in Spanish, reads dates written four different ways, and remembers the shape of the file for next time. Re-upload a month you already had and it points out what is repeated and leaves it unticked, so you never end up with anything twice.',
             'notes_title' => 'Worth knowing before you sign up',
             'notes' => [
-                'Connected accounts, AI categorisation and MCP access are on the paid plan. The free plan has manual accounts and statement import.',
-                'A PSD2 authorisation is temporary by regulation and has to be renewed at your bank. We ask for 90 days; how long you actually get is your bank\'s decision, and some grant less while others grant more.',
-                'How well an account connects is your bank\'s decision, not ours: some institutions on this list serve balances but little history, and some ask you to re-authorise more often than others.',
-                'There is no export button in the interface. The way to pull your data out programmatically is MCP access, on the paid plan.',
-                'Data is stored unencrypted at rest, in our own database. What you can verify instead is the code, which is public on GitHub.',
+                'Connected accounts, automatic categorising and access from an assistant are on the paid plan. On the free plan you keep accounts by hand and import statements.',
+                'A bank permission expires after a few months and takes a couple of clicks to renew. That is the banks\' rule rather than ours: we ask for 90 days, and each one grants what it likes.',
+                'How much history your bank hands over, and how often it asks you to renew, is its decision and not ours. Some give several years, others give a few weeks.',
+                'There is no export button in the app yet. To pull your data out automatically there is access from an assistant, on the paid plan.',
+                'Your data is stored unencrypted in our database. What you can verify instead is the code, which is public on GitHub.',
             ],
             'closing_title' => 'Ready when you are',
             'closing_body' => 'The free plan asks for no card. If your bank is on the list, having it connected is a couple of minutes\' work.',

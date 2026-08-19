@@ -28,7 +28,7 @@ final class IntegrationsPage
     public const TEST_INSTITUTION = 'Mock ASPSP';
 
     /**
-     * @var array<string, list<string>>|null
+     * @var array<string, list<array{name: string, logo: string|null}>>|null
      */
     private static ?array $catalogue = null;
 
@@ -47,9 +47,11 @@ final class IntegrationsPage
     {
         $groups = self::countries($locale);
 
+        $countries = array_filter($groups, fn (array $group): bool => $group['code'] !== MarketingContent::WORLDWIDE);
+
         $replacements = [
-            ':count' => number_format(array_sum(array_map(fn (array $group): int => count($group['banks']), $groups))),
-            ':countries' => (string) count($groups),
+            ':count' => number_format(array_sum(array_map(fn (array $group): int => count($group['entries']), $groups))),
+            ':countries' => (string) count($countries),
         ];
 
         return array_map(
@@ -59,27 +61,72 @@ final class IntegrationsPage
     }
 
     /**
-     * The catalogue grouped by country, each country named in this language and
-     * its banks sorted, in the order the connect flow offers the countries.
+     * Everything connectable, grouped by country and named in this language:
+     * the bank catalogue plus the API-key apps folded into the group they
+     * belong to. A visitor searching for Coinbase is asking the same question
+     * as one searching for BBVA, so they share one list.
      *
-     * @return list<array{code: string, name: string, banks: list<string>}>
+     * The worldwide group comes first because it applies to every visitor,
+     * whichever country they bank in.
+     *
+     * @return list<array{code: string, name: string, entries: list<array{name: string, logo: string|null, key: bool}>}>
      */
     public static function countries(string $locale): array
     {
         $catalogue = self::catalogue();
+        $apps = self::appsByCountry();
+
+        $codes = [MarketingContent::WORLDWIDE, ...array_keys(MarketingContent::COUNTRIES)];
         $groups = [];
 
-        foreach (MarketingContent::COUNTRIES as $code => $names) {
-            $banks = $catalogue[$code] ?? [];
+        foreach ($codes as $code) {
+            $entries = [
+                ...($apps[$code] ?? []),
+                ...array_map(fn (array $bank): array => [
+                    'name' => $bank['name'],
+                    'logo' => $bank['logo'] ?? null,
+                    'key' => false,
+                ], $catalogue[$code] ?? []),
+            ];
 
-            if ($banks === []) {
+            if ($entries === []) {
                 continue;
             }
 
-            $groups[] = ['code' => $code, 'name' => $names[$locale] ?? $names['en'], 'banks' => $banks];
+            $groups[] = ['code' => $code, 'name' => self::countryName($code, $locale), 'entries' => $entries];
         }
 
         return $groups;
+    }
+
+    /**
+     * The API-key apps grouped by the country code they belong to. Indexa
+     * Capital is Spain-only in the connect flow, so it sits with the Spanish
+     * banks rather than in the worldwide group.
+     *
+     * @return array<string, list<array{name: string, logo: string|null, key: bool}>>
+     */
+    private static function appsByCountry(): array
+    {
+        $apps = [];
+
+        foreach (MarketingContent::API_PROVIDERS as $name => $app) {
+            $apps[$app['country']][] = ['name' => $name, 'logo' => $app['logo'], 'key' => true];
+        }
+
+        return $apps;
+    }
+
+    /**
+     * Name of a country group, the worldwide one included.
+     */
+    private static function countryName(string $code, string $locale): string
+    {
+        $names = $code === MarketingContent::WORLDWIDE
+            ? MarketingContent::WORLDWIDE_NAMES
+            : (MarketingContent::COUNTRIES[$code] ?? MarketingContent::WORLDWIDE_NAMES);
+
+        return $names[$locale] ?? $names['en'];
     }
 
     /**
@@ -95,22 +142,6 @@ final class IntegrationsPage
             MarketingContent::labels($locale),
             array_flip(['cta', 'pricing', 'back', 'other_language']),
         );
-    }
-
-    /**
-     * The API-key integrations with their description in this language.
-     *
-     * @return list<array{name: string, description: string}>
-     */
-    public static function providers(string $locale): array
-    {
-        $providers = [];
-
-        foreach (MarketingContent::apiProviders() as $name => $description) {
-            $providers[] = ['name' => $name, 'description' => $description[$locale] ?? $description['en']];
-        }
-
-        return $providers;
     }
 
     /**
@@ -180,7 +211,7 @@ final class IntegrationsPage
      * The committed catalogue, keyed by country code. A missing file leaves the
      * page standing with no bank list rather than 500ing on a marketing URL.
      *
-     * @return array<string, list<string>>
+     * @return array<string, list<array{name: string, logo: string|null}>>
      */
     private static function catalogue(): array
     {

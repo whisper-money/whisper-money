@@ -3,770 +3,3135 @@
     "generated_at": "2026-08-19",
     "source": "EnableBanking GET /aspsps?country=XX&psu_type=personal",
     "countries": {
-        "ES": ["Banco de Sabadell", "BBVA"],
+        "ES": [
+            {
+                "name": "Banco de Sabadell",
+                "logo": "https://enablebanking.com/brands/ES/Banco%20de%20Sabadell/"
+            },
+            {
+                "name": "BBVA",
+                "logo": "https://enablebanking.com/brands/ES/BBVA/"
+            }
+        ],
         "DE": [
-            "Aachener Bank",
-            "Abtsgmünder Bank -Raiffeisen",
-            "Airbus Bank",
-            "Aktivbank",
-            "Alxing-Brucker Genossenschaftsbank",
-            "Bank 1 Saar",
-            "Bank11",
-            "Bank für Kirche und Diakonie - KD-Bank",
-            "Bank für Sozialwirtschaft",
-            "Bankhaus Anton Hafner",
-            "Bankhaus Bauer",
-            "Bankhaus E. Mayer",
-            "Bankhaus Ellwanger & Geiger",
-            "Bankhaus Gebr. Martin",
-            "Bankhaus Max Flessa",
-            "Bankhaus Rautenschlein",
-            "Bankhaus RSA",
-            "Bankhaus Werhahn",
-            "Bank im Bistum Essen",
-            "BBBank",
-            "BBVA",
-            "Bensberger Bank",
-            "Berliner Volksbank",
-            "Bernhauser Bank",
-            "BfW - Bank für Wohnungswirtschaft",
-            "Bopfinger Bank Sechta-Ries",
-            "Brandenburger Bank Volksbank-Raiffeisenbank",
-            "Bremische Volksbank",
-            "Brühler Bank",
-            "BTV",
-            "Budenheimer Volksbank",
-            "Cronbank",
-            "CVW-Privatbank",
-            "Dettinger Bank",
-            "Dithmarscher Volks- und Raiffeisenbank",
-            "DKB",
-            "DKM Darlehnskasse Münster",
-            "Donau-Iller Bank",
-            "Donner & Reuschel",
-            "Dortmunder Volksbank",
-            "DZ BANK",
-            "Echterdinger Bank",
-            "Eckernförder Bank Volksbank-Raiffeisenbank",
-            "Edekabank",
-            "Emsländische Volksbank",
-            "EthikBank",
-            "Eurocity Bank",
-            "Evangelische Bank",
-            "Evenord-Bank",
-            "Frankfurter Bankgesellschaft",
-            "Frankfurter Volksbank",
-            "Freisinger Bank Volksbank-Raiffeisenbank",
-            "Fürst Fugger Privatbank",
-            "Fürstlich Castell'sche Bank Credit-Casse",
-            "Gabler-Saliter Bankgeschäft",
-            "GENO BANK ESSEN",
-            "Genossenschaftsbank München",
-            "Genossenschaftsbank Unterallgäu",
-            "Genossenschaftsbank Weil im Schönbuch",
-            "Gladbacher Bank von 1922",
-            "GLS Gemeinschaftsbank",
-            "Grafschafter Volksbank",
-            "GRENKE BANK",
-            "Hagnauer Volksbank",
-            "Hamburger Volksbank",
-            "Hannoversche Volksbank",
-            "Harzer Volksbank",
-            "Hausbank München",
-            "Heidenheimer Volksbank",
-            "Hoerner Bank",
-            "Hümmlinger Volksbank",
-            "Hüttenberger Bank",
-            "IBM Deutschland Kreditbank",
-            "Ihre Volksbank Neckar Odenwald Main Tauber",
-            "Ikano Bank",
-            "Internationales Bankhaus Bodensee",
-            "J&T Direktbank",
-            "Kieler Volksbank",
-            "Kurhessische Landbank",
-            "Landbank Horlofftal",
-            "Leipziger Volksbank",
-            "levoBank",
-            "LIGA Bank",
-            "M.M. Warburg & CO",
-            "Marcard, Stein & Co Bankiers",
-            "meine Volksbank Raiffeisenbank",
-            "Mendener Bank",
-            "MERKUR PRIVATBANK",
-            "MKB Mittelstandskreditbank",
-            "MLP Finanzdienstleistungen",
-            "Märkische Bank",
-            "Münchner Bank",
-            "National-Bank",
-            "Oberbank",
-            "Oldenburger Volksbank",
-            "Onstmettinger Bank",
-            "Ostfriesische Volksbank",
-            "Otto M. Schröder Bank",
-            "Pax-Bank für Kirche und Caritas",
-            "PSD Bank Braunschweig",
-            "PSD Bank Hannover",
-            "PSD Bank Hessen-Thüringen",
-            "PSD Bank Karlsruhe-Neustadt",
-            "PSD Bank Koblenz",
-            "PSD Bank München",
-            "PSD Bank Nord",
-            "PSD Bank Nürnberg",
-            "PSD Bank Rhein-Ruhr",
-            "PSD Bank RheinNeckarSaar",
-            "PSD Bank West",
-            "Raiffeisen-Bank Eschweiler",
-            "Raiffeisen - meine Bank",
-            "Raiffeisen-Volksbank",
-            "Raiffeisen-Volksbank Donauwörth",
-            "Raiffeisen-Volksbank Ebersberg",
-            "Raiffeisen-Volksbank Fresena",
-            "Raiffeisen-Volksbank Haßberge",
-            "Raiffeisen-Volksbank Hermsdorfer Kreuz",
-            "Raiffeisen-Volksbank Neustadt",
-            "Raiffeisen-Volksbank Oder-Spree",
-            "Raiffeisen-Volksbank Ries",
-            "Raiffeisen-Volksbank Tüssling-Unterneukirchen",
-            "Raiffeisenbank Aichhalden-Hardt- Sulgen",
-            "Raiffeisenbank Aidlingen",
-            "Raiffeisenbank Aitrang-Ruderatshofen",
-            "Raiffeisenbank Alteglofsheim-Hagelstadt",
-            "Raiffeisenbank Altmühl-Jura",
-            "Raiffeisenbank Altschweier",
-            "Raiffeisenbank am Kulm",
-            "Raiffeisenbank Anger",
-            "Raiffeisenbank Aresing-Gerolsbach",
-            "Raiffeisenbank Arnstorf",
-            "Raiffeisenbank Aschau-Samerberg",
-            "Raiffeisenbank Auerbach-Freihung",
-            "Raiffeisenbank Augsburger Land West",
-            "Raiffeisenbank Bad Kötzting",
-            "Raiffeisenbank Bad Saulgau",
-            "Raiffeisenbank Bad Windsheim",
-            "Raiffeisenbank Baiertal",
-            "Raiffeisenbank Baisweil-Eggenthal-Friesenried",
-            "Raiffeisenbank Baunatal",
-            "Raiffeisenbank Bechhofen",
-            "Raiffeisenbank Berghülen",
-            "Raiffeisenbank Beuerberg-Eurasburg",
-            "Raiffeisenbank Bidingen",
-            "Raiffeisenbank Biebergrund-Petersberg",
-            "Raiffeisenbank Bobingen",
-            "Raiffeisenbank Buch-Eching",
-            "Raiffeisenbank Burgebrach-Stegaurach",
-            "Raiffeisenbank Böllingertal",
-            "Raiffeisenbank Bühlertal",
-            "Raiffeisenbank Bütthard-Gaukönigshofen",
-            "Raiffeisenbank Chamer Land",
-            "Raiffeisenbank Chiemgau-Nord-Obing",
-            "Raiffeisenbank Deggendorf-Plattling-Sonnenwald",
-            "Raiffeisenbank Denzlingen-Sexau",
-            "Raiffeisenbank Dietersheim und Umgebung",
-            "Raiffeisenbank Donau-Heuberg",
-            "Raiffeisenbank DreiFranken",
-            "Raiffeisenbank Eifel",
-            "Raiffeisenbank Elbmarsch",
-            "Raiffeisenbank Elsavatal",
-            "Raiffeisenbank Elztal",
-            "Raiffeisenbank Ems-Vechte",
-            "Raiffeisenbank Erlenbach",
-            "Raiffeisenbank Ersingen",
-            "Raiffeisenbank Eschlkam-Lam- Lohberg-Neukirchen b. Hl. Blut",
-            "Raiffeisenbank Falkenstein-Wörth",
-            "Raiffeisenbank Flachsmeer",
-            "Raiffeisenbank Floß",
-            "Raiffeisenbank Frankenhardt-Stimpfach",
-            "Raiffeisenbank Fränkische Schweiz",
-            "Raiffeisenbank Geiselhöring-Pfaffenberg",
-            "Raiffeisenbank Geislingen-Rosenfeld",
-            "Raiffeisenbank Gilching",
-            "Raiffeisenbank Gmund am Tegernsee",
-            "Raiffeisenbank Goldener Steig - Dreisessel",
-            "Raiffeisenbank Grainet",
-            "Raiffeisenbank Griesstätt-Halfing",
-            "Raiffeisenbank Grimma",
-            "Raiffeisenbank Gruibingen",
-            "Raiffeisenbank Grävenwiesbach",
-            "Raiffeisenbank Gymnich",
-            "Raiffeisenbank Haag-Gars-Maitenbeth",
-            "Raiffeisenbank Hallertau",
-            "Raiffeisenbank Hardt-Bruhrain",
-            "Raiffeisenbank Hengersberg-Schöllnach",
-            "Raiffeisenbank HessenNord",
-            "Raiffeisenbank Hiltenfingen",
-            "Raiffeisenbank Hirschau",
-            "Raiffeisenbank Hochfranken West",
-            "Raiffeisenbank Hohenloher Land",
-            "Raiffeisenbank Holzkirchen-Otterfing",
-            "Raiffeisenbank Höchberg",
-            "Raiffeisenbank Ichenhausen",
-            "Raiffeisenbank im Allgäuer Land",
-            "Raiffeisenbank im Breisgau",
-            "Raiffeisenbank im Donautal",
-            "Raiffeisenbank im Fuldaer Land",
-            "Raiffeisenbank im Grabfeld",
-            "Raiffeisenbank im Kreis Calw",
-            "Raiffeisenbank im Landkreis Passau-Nord",
-            "Raiffeisenbank im Nürnberger Land",
-            "Raiffeisenbank im Oberland",
-            "Raiffeisenbank im Oberpfälzer Jura",
-            "Raiffeisenbank in Rheinhessen",
-            "Raiffeisenbank Isar-Loisachtal",
-            "Raiffeisenbank Kaarst",
-            "Raiffeisenbank Kaiserstuhl",
-            "Raiffeisenbank Kalbe-Bismark",
-            "Raiffeisenbank Kastellaun",
-            "Raiffeisenbank Kieselbronn",
-            "Raiffeisenbank Kirchweihtal",
-            "Raiffeisenbank Kirtorf",
-            "Raiffeisenbank Knoblauchsland-Bibertgrund",
-            "Raiffeisenbank Kreis Kelheim",
-            "Raiffeisenbank Küps-Mitwitz-Stockheim",
-            "Raiffeisenbank Landshuter Land",
-            "Raiffeisenbank Lauenburg",
-            "Raiffeisenbank Lech-Donau",
-            "Raiffeisenbank Lechrain",
-            "Raiffeisenbank Leezen",
-            "Raiffeisenbank Lorup",
-            "Raiffeisenbank Main-Spessart",
-            "Raiffeisenbank Mainschleife - Steigerwald",
-            "Raiffeisenbank Maitis",
-            "Raiffeisenbank Mecklenburger Seenplatte",
-            "Raiffeisenbank MEHR",
-            "Raiffeisenbank Mehring-Leiwen",
-            "Raiffeisenbank Mittelschwaben",
-            "Raiffeisenbank Mittenwald",
-            "Raiffeisenbank Moormerland",
-            "Raiffeisenbank München-Nord",
-            "Raiffeisenbank München-Süd",
-            "Raiffeisenbank Nahe",
-            "Raiffeisenbank Neumarkt- St. Veit - Reischach",
-            "Raiffeisenbank Neumarkt i.d.OPf.",
-            "Raiffeisenbank Neustadt",
-            "Raiffeisenbank Niedere Alb",
-            "Raiffeisenbank Niederwallmenach",
-            "Raiffeisenbank Nördliche Bergstraße",
-            "Raiffeisenbank Oberaudorf",
-            "Raiffeisenbank Oberferrieden-Burgthann",
-            "Raiffeisenbank Oberland",
-            "Raiffeisenbank Oberpfalz NordWest",
-            "Raiffeisenbank Oberpfalz Süd",
-            "Raiffeisenbank Oberteuringen-Meckenbeuren",
-            "Raiffeisenbank Ortenburg-Kirchberg v.W.",
-            "Raiffeisenbank Ostprignitz - Ruppin",
-            "Raiffeisenbank Ottenbach",
-            "Raiffeisenbank Owschlag",
-            "Raiffeisenbank Parkstetten",
-            "Raiffeisenbank Pfaffenhausen",
-            "Raiffeisenbank Pfaffenhofen a.d.Glonn",
-            "Raiffeisenbank Pfaffenwinkel",
-            "Raiffeisenbank Plankstetten",
-            "Raiffeisenbank Rannungen Hambach Maßbach Nüdlingen",
-            "Raiffeisenbank Rastede",
-            "Raiffeisenbank Rattiszell-Konzell",
-            "Raiffeisenbank Regensburg-Wenzenbach",
-            "Raiffeisenbank Regenstauf",
-            "Raiffeisenbank Rehling",
-            "Raiffeisenbank Reute-Gaisbeuren",
-            "Raiffeisenbank Rodenbach",
-            "Raiffeisenbank Rosenstein",
-            "Raiffeisenbank Rupertiwinkel",
-            "Raiffeisenbank Scharrel",
-            "Raiffeisenbank Schrobenhausener Land",
-            "Raiffeisenbank Schrozberg- Rot am See",
-            "Raiffeisenbank Schwaben Mitte",
-            "Raiffeisenbank Schwabmünchen-Stauden",
-            "Raiffeisenbank Seestermühe",
-            "Raiffeisenbank Singoldtal",
-            "Raiffeisenbank Sinzing",
-            "Raiffeisenbank Sondelfingen",
-            "Raiffeisenbank Steingaden",
-            "Raiffeisenbank Straubing",
-            "Raiffeisenbank Strücklingen- Idafehn",
-            "Raiffeisenbank Südhardt",
-            "Raiffeisenbank Südliches Ostallgäu",
-            "Raiffeisenbank Südstormarn Mölln",
-            "Raiffeisenbank Taufkirchen-Oberneukirchen",
-            "Raiffeisenbank Thannhausen",
-            "Raiffeisenbank Todenbüttel",
-            "Raiffeisenbank Tüngental",
-            "Raiffeisenbank Türkheim",
-            "Raiffeisenbank Unteres Inntal",
-            "Raiffeisenbank Unteres Vilstal",
-            "Raiffeisenbank Unteres Zusamtal",
-            "Raiffeisenbank Wald-Görisried",
-            "Raiffeisenbank Wallgau-Krün",
-            "Raiffeisenbank Wangen",
-            "Raiffeisenbank Wegscheid",
-            "Raiffeisenbank Welling",
-            "Raiffeisenbank Werratal-Landeck",
-            "Raiffeisenbank Wesermarsch-Süd",
-            "Raiffeisenbank Westeifel",
-            "Raiffeisenbank Westhausen",
-            "Raiffeisenbank Westkreis Fürstenfeldbruck",
-            "Raiffeisenbank Wiesedermeer- Wiesede-Marcardsmoor",
-            "Raiffeisenbank Wittelsbacher Land",
-            "Raiffeisenbank Wyhl",
-            "Raiffeisenbank Wüstenselbitz",
-            "Raiffeisenbank Ühlfeld-Dachsbach",
-            "Raiffeisen Spar+Kreditbank",
-            "Rheingauer Volksbank",
-            "RSB Retail+Service Bank",
-            "Schrobenhausener Bank",
-            "Spar- u. Kredit-Bank",
-            "Spar- und Darlehnskasse Bockum-Hövel",
-            "Spar- und Darlehnskasse Börde Lamstedt-Hechthausen",
-            "Spar- und Kreditbank Bühlertal",
-            "Spar- und Kreditbank des Bundes Freier evangelischer Gemeinden",
-            "Spar- und Kreditbank Evangelisch-Freikirchlicher Gemeinden",
-            "Spar- und Kreditbank Hammah",
-            "Spar- und Kreditbank Rheinstetten",
-            "Sparda-Bank Augsburg",
-            "Sparda-Bank Baden-Württemberg",
-            "Sparda-Bank Berlin",
-            "Sparda-Bank Hamburg",
-            "Sparda-Bank Hannover",
-            "Sparda-Bank Hessen",
-            "Sparda-Bank München",
-            "Sparda-Bank Nürnberg",
-            "Sparda-Bank Ostbayern",
-            "Sparda-Bank Südwest",
-            "Sparda-Bank West",
-            "Spreewaldbank",
-            "St. Galler Kantonalbank",
-            "Steyler Bank",
-            "Sylter Bank",
-            "Südtiroler Sparkasse",
-            "Südwestbank",
-            "Triodos Bank",
-            "UmweltBank",
-            "Union-Bank",
-            "VakifBank International",
-            "VBU Volksbank im Unterland",
-            "VerbundVolksbank OWL",
-            "Vereinigte Raiffeisenbank Burgstädt",
-            "Vereinigte Volksbank Brakel",
-            "Vereinigte Volksbanken Sindelfingen",
-            "Vereinigte Volksbank Ganderkesee - Hude - Bookholzberg - Lemwerder",
-            "Vereinigte Volksbank Raiffeisenbank",
-            "Vereinigte Volksbank Raiffeisenbank Reinheim",
-            "Vereinigte Volksbank Saarlouis - Losheim am See - Sulzbach/Saar",
-            "Vereinigte Volksbank Bramgau Osnabrück Wittlage",
-            "Vereinigte VR Bank Kur- und Rheinpfalz",
-            "Vereinigte VR Bank Wyk auf Föhr",
-            "Vereinte Volksbank",
-            "VietinBank",
-            "Volks- und Raiffeisenbank Fürstenwalde Seelow-Wriezen",
-            "Volks- und Raiffeisenbank Muldental",
-            "Volks- und Raiffeisenbank Prignitz",
-            "Volks- und Raiffeisenbank Saale-Unstrut",
-            "Volksbank-Raiffeisenbank Glauchau",
-            "Volksbank Adelebsen",
-            "Volksbank Alb",
-            "Volksbank Allgäu-Oberschwaben",
-            "Volksbank Alzey-Worms",
-            "Volksbank am Württemberg",
-            "Volksbank an der Niers",
-            "Volksbank Anröchte",
-            "Volksbank Ascheberg-Herbern",
-            "Volksbank Backnang",
-            "Volksbank Bad Laer-Borgloh-Hilter-Melle",
-            "Volksbank Bad Salzuflen",
-            "Volksbank Baumberge",
-            "Volksbank Beilstein-Ilsfeld- Abstatt",
-            "Volksbank Berg",
-            "Volksbank Bocholt",
-            "Volksbank Bochum Witten",
-            "Volksbank Bodensee-Oberschwaben",
-            "Volksbank Brandoberndorf",
-            "Volksbank Braunlage",
-            "Volksbank BRAWO",
-            "Volksbank Breisgau- Markgräflerland",
-            "Volksbank Breisgau Nord",
-            "Volksbank Bremen-Nord",
-            "Volksbank Brenztal",
-            "Volksbank Butzbach",
-            "Volksbank Bönen",
-            "Volksbank Börde-Bernburg",
-            "Volksbank Börßum-Hornburg",
-            "Volksbank Bühl",
-            "Volksbank Chemnitz",
-            "Volksbank Daaden",
-            "Volksbank Dammer Berge",
-            "Volksbank Darmstadt Mainz",
-            "Volksbank Deisslingen",
-            "Volksbank Delbrück-Rietberg",
-            "Volksbank Delitzsch",
-            "Volksbank Demmin",
-            "Volksbank Dessau-Anhalt",
-            "Volksbank Dettenhausen",
-            "Volksbank Die Gestalterbank",
-            "Volksbank Dreiländereck",
-            "Volksbank Dresden-Bautzen",
-            "Volksbank Dünnwald-Holweide",
-            "Volksbank Düsseldorf Neuss",
-            "Volksbank Düte-Ems",
-            "Volksbank Eisenberg",
-            "Volksbank Elsen-Wewer-Borchen",
-            "Volksbank Emmerich-Rees",
-            "Volksbank Emstal",
-            "Volksbank Emstek Essen Cappeln",
-            "Volksbank Enniger-Ostenfelde-Westkirchen",
-            "Volksbank Erft",
-            "Volksbank Ermstal-Alb",
-            "Volksbank Ettlingen",
-            "Volksbank Euskirchen",
-            "Volksbank Eutin Raiffeisenbank",
-            "Volksbank Filder",
-            "Volksbank Flein-Talheim",
-            "Volksbank Franken",
-            "Volksbank Fredenbeck",
-            "Volksbank Freiburg",
-            "Volksbank Friesoythe",
-            "Volksbank Gardelegen",
-            "Volksbank Gebhardshain",
-            "Volksbank Geest",
-            "Volksbank Geeste-Nord",
-            "Volksbank Gera · Jena · Rudolstadt",
-            "Volksbank Gescher",
-            "Volksbank Glan-Münchweiler",
-            "Volksbank Grebenhain",
-            "Volksbank Gronau-Ahaus",
-            "Volksbank Göppingen",
-            "Volksbank Halle (Saale)",
-            "Volksbank Halle/Westf.",
-            "Volksbank Hameln-Stadthagen",
-            "Volksbank Hamm / Sieg",
-            "Volksbank Haselünne",
-            "Volksbank Heidelberg-Neckartal",
-            "Volksbank Heiden",
-            "Volksbank Heimbach",
-            "Volksbank Heinsberg",
-            "Volksbank Hellweg",
-            "Volksbank Heuchelheim",
-            "Volksbank Hildesheim-Lehrte-Pattensen",
-            "Volksbank Hochrhein",
-            "Volksbank Hohenlimburg",
-            "Volksbank Hohenlohe",
-            "Volksbank im Bergischen Land",
-            "Volksbank im Elbe-Weser-Dreieck",
-            "Volksbank im Harz",
-            "Volksbank im Hochsauerland",
-            "Volksbank Immenstadt",
-            "Volksbank im Münsterland",
-            "Volksbank im Rheinland",
-            "Volksbank im Wesertal",
-            "Volksbank in der Hohen Mark",
-            "Volksbank in der Region",
-            "Volksbank in Ostwestfalen",
-            "Volksbank in Schaumburg und Nienburg",
-            "Volksbank in Südwestfalen",
-            "Volksbank Jade-Weser",
-            "Volksbank Jerichower Land",
-            "Volksbank Kaiserslautern",
-            "Volksbank Kassel Göttingen",
-            "Volksbank Kempen-Grefrath",
-            "Volksbank Kierspe",
-            "Volksbank Kirnau-Krautheim",
-            "Volksbank Klettgau-Wutöschingen",
-            "Volksbank Kleverland",
-            "Volksbank Kraichgau",
-            "Volksbank Krefeld",
-            "Volksbank Kurpfalz",
-            "Volksbank Köln Bonn",
-            "Volksbank Köthen-Bitterfeld",
-            "Volksbank Lahr",
-            "Volksbank Langendernbach",
-            "Volksbank Lastrup",
-            "Volksbank Lauterecken",
-            "Volksbank Leonberg-Strohgäu",
-            "Volksbank Limbach",
-            "Volksbank Lindenberg",
-            "Volksbank Lohne-Dinklage-Steinfeld-Mühlen",
-            "Volksbank Löbau-Zittau",
-            "Volksbank Löningen",
-            "Volksbank Lübeck",
-            "Volksbank Lüneburger Heide",
-            "Volksbank Magdeburg",
-            "Volksbank Mainspitze",
-            "Volksbank Marl-Recklinghausen",
-            "Volksbank Mittelhessen",
-            "Volksbank Mittlerer Neckar",
-            "Volksbank Mittlerer Schwarzwald",
-            "Volksbank Mittleres Erzgebirge",
-            "Volksbank Mittweida",
-            "Volksbank Möckmühl",
-            "Volksbank Münsingen",
-            "Volksbank Niedergrafschaft",
-            "Volksbank Niederrhein",
-            "Volksbank Niedersachsen-Mitte",
-            "Volksbank Nordharz",
-            "Volksbank Nordhümmling",
-            "Volksbank Nordschwarzwald",
-            "Volksbank Nottuln",
-            "Volksbank Ober-Mörlen",
-            "Volksbank Oberberg",
-            "Volksbank Ochtrup-Laer",
-            "Volksbank Oldenburg-Land Delmenhorst",
-            "Volksbank Olpe-Wenden-Drolshagen",
-            "Volksbank Osterholz-Scharmbeck",
-            "Volksbank Ostlippe",
-            "Volksbank Oyten",
-            "Volksbank Pfullendorf",
-            "Volksbank Pirna",
-            "Volksbank Plochingen",
-            "Volksbank PLUS",
-            "Volksbank pur",
-            "Volksbank Raesfeld und Erle",
-            "Volksbank Raiffeisenbank AmmerGäu",
-            "Volksbank Raiffeisenbank Bad Kissingen",
-            "Volksbank Raiffeisenbank Bayern Mitte",
-            "Volksbank Raiffeisenbank Dachau",
-            "Volksbank Raiffeisenbank Fürstenfeldbruck",
-            "Volksbank Raiffeisenbank Itzehoe",
-            "Volksbank Raiffeisenbank Meißen Großenhain",
-            "Volksbank Raiffeisenbank Niederschlesien",
-            "Volksbank Raiffeisenbank Nordoberpfalz",
-            "Volksbank Raiffeisenbank Oberbayern Südost",
-            "Volksbank Raiffeisenbank Obermain",
-            "Volksbank Raiffeisenbank Regensburg-Schwandorf",
-            "Volksbank Raiffeisenbank Würzburg",
-            "Volksbank Rathenow",
-            "Volksbank Remseck",
-            "Volksbank Rhede",
-            "Volksbank Rhein-Erft-Köln",
-            "Volksbank Rhein-Lahn-Limburg",
-            "Volksbank Rhein-Lippe",
-            "Volksbank Rhein-Nahe-Hunsrück",
-            "Volksbank Rhein-Ruhr",
-            "Volksbank Rheinböllen",
-            "Volksbank Riesa",
-            "Volksbank Rot",
-            "Volksbank Rottweil",
-            "Volksbank Ruhr Mitte",
-            "Volksbank Sandhofen",
-            "Volksbank Sangerhausen",
-            "Volksbank Sauerland",
-            "Volksbank Schermbeck",
-            "Volksbank Schlangen",
-            "Volksbank Schwanewede",
-            "Volksbank Schwarzwald-Donau-Neckar",
-            "Volksbank Seesen",
-            "Volksbank Seligenstadt",
-            "Volksbank Selm-Bork",
-            "Volksbank Senden",
-            "Volksbank Solling",
-            "Volksbank Spree-Neiße",
-            "Volksbank Sprockhövel",
-            "Volksbank Stade-Cuxhaven",
-            "Volksbank Staufen",
-            "Volksbank Stendal",
-            "Volksbank Stuttgart",
-            "Volksbank Störmede-Westenholz-Hörste",
-            "Volksbank Sulmtal",
-            "Volksbank Süd-Emsland",
-            "Volksbank Südheide - Isenhagener Land - Altmark",
-            "Volksbank Südkirchen-Capelle-Nordkirchen",
-            "Volksbank Thüringen Mitte",
-            "Volksbank Trier Eifel",
-            "Volksbank Trossingen",
-            "Volksbank Uelzen-Salzwedel",
-            "Volksbank Ulm-Biberach",
-            "Volksbank Ulrichstein",
-            "Volksbank Vechta",
-            "Volksbank Versmold",
-            "Volksbank Viersen",
-            "Volksbank Visbek",
-            "Volksbank Vogtland-Saale-Orla",
-            "Volksbank Vorpommern",
-            "Volksbank Weschnitztal",
-            "Volksbank Westerstede",
-            "Volksbank Westmünsterland",
-            "Volksbank Westrhauderfehn",
-            "Volksbank Wilhelmshaven",
-            "Volksbank Winsener Marsch",
-            "Volksbank Wittenberg",
-            "Volksbank Wittgenstein",
-            "Volksbank Wißmar",
-            "Volksbank Wolfenbüttel",
-            "Volksbank Worpswede",
-            "Volksbank Zollernalb",
-            "Volksbank Zuffenhausen",
-            "Volksbank Zwickau",
-            "Volksbank Überherrn",
-            "Volksbank Überlingen",
-            "VR-Bank Alb-Blau-Donau",
-            "VR-Bank Altenburger Land",
-            "VR-Bank Bonn Rhein-Sieg",
-            "VR-Bank Coburg",
-            "VR-Bank Donau-Mindel",
-            "VR-Bank Ehningen-Nufringen",
-            "VR-Bank Ellwangen",
-            "VR-Bank Erding",
-            "VR-Bank Fichtelgebirge- Frankenwald",
-            "VR-Bank Fläming-Elsterland",
-            "VR-Bank Freudenberg-Niederfischbach",
-            "VR-Bank Handels- und Gewerbebank",
-            "VR-Bank im südlichen Franken",
-            "VR-Bank in Mittelbaden",
-            "VR-Bank in Nordhessen Westthüringen",
-            "VR-Bank in Südniedersachsen",
-            "VR-Bank in Südoldenburg",
-            "VR-Bank Isar-Vils",
-            "VR-Bank Ismaning Hallbergmoos Neufahrn",
-            "VR-Bank Landau-Mengkofen",
-            "VR-Bank Landsberg-Ammersee",
-            "VR-Bank Landshut",
-            "VR-Bank Lichtenfels-Ebern",
-            "VR-Bank Ludwigsburg",
-            "VR-Bank Main-Rhön",
-            "VR-Bank Memmingen",
-            "VR-Bank Mitte",
-            "VR-Bank Mittelfranken Mitte",
-            "VR-Bank Mittelsachsen",
-            "VR-Bank Neu-Ulm",
-            "VR-Bank Nordeifel",
-            "VR-Bank NordRhön",
-            "VR-Bank Osnabrücker Nordland",
-            "VR-Bank Ostalb",
-            "VR-Bank Ostbayern-Mitte",
-            "VR-Bank Passau",
-            "VR-Bank Rottal-Inn",
-            "VR-Bank Spangenberg-Morschen",
-            "VR-Bank Südwestpfalz Pirmasens - Zweibrücken",
-            "VR-Bank Taufkirchen-Dorfen",
-            "VR-Bank Uckermark-Randow",
-            "VR-Bank Vilshofen-Pocking",
-            "VR-Bank Würselen",
-            "VR-MainBank",
-            "VR Bank Alsheim",
-            "VR Bank Amberg-Sulzbach",
-            "VR Bank Augsburg-Ostallgäu",
-            "VR Bank Bad Orb-Gelnhausen",
-            "VR Bank Bamberg-Forchheim",
-            "VR Bank Bayreuth-Hof",
-            "VR Bank Bergisch Gladbach-Leverkusen",
-            "VR Bank Burglengenfeld",
-            "VR Bank Donau-Oberschwaben",
-            "VR Bank Dreieich-Offenbach",
-            "VR Bank Fulda",
-            "VR Bank Heilbronn Schwäbisch Hall",
-            "VR Bank Ihre Heimatbank",
-            "VR Bank in Holstein",
-            "VR Bank in Thüringen",
-            "VR Bank Kempten-Oberallgäu",
-            "VR Bank Kitzingen",
-            "VR Bank Lahn-Dill",
-            "VR Bank Lausitz",
-            "VR Bank Main-Kinzig-Büdingen",
-            "VR Bank Mecklenburg",
-            "VR Bank Metropolregion Nürnberg",
-            "VR Bank Mittelhaardt",
-            "VR Bank Mittlere Oberpfalz",
-            "VR Bank Monheim am Rhein",
-            "VR Bank München Land",
-            "VR Bank Neuburg-Rain",
-            "VR Bank Niederbayern-Oberpfalz",
-            "VR Bank Nord",
-            "VR Bank Oberfranken Mitte",
-            "VR Bank Rhein-Neckar",
-            "VR Bank RheinAhrEifel",
-            "VR Bank Ried-Überwald",
-            "VR Bank Schleswig-Holstein Mitte",
-            "VR Bank Schwäbischer Wald",
-            "VR Bank Starnberg-Zugspitze",
-            "VR Bank Südliche Weinstraße-Wasgau",
-            "VR Bank Südpfalz",
-            "VR Bank Weimar",
-            "VR Bank Westfalen-Lippe",
-            "VR Bank zwischen den Meeren",
-            "VR GenoBank DonauWald",
-            "VR PartnerBank Chattengau-Schwalm-Eder",
-            "VR PLUS Altmark-Wendland",
-            "VR SüdBank",
-            "VR VerbundBank",
-            "Waldeck-Frankenberger Bank",
-            "WEG Bank",
-            "Westerwald Bank",
-            "Wiesbadener Volksbank",
-            "Winterbacher Bank"
+            {
+                "name": "Aachener Bank",
+                "logo": "https://enablebanking.com/brands/DE/Aachener%20Bank/"
+            },
+            {
+                "name": "Abtsgmünder Bank -Raiffeisen",
+                "logo": "https://enablebanking.com/brands/DE/Abtsgm%C3%BCnder%20Bank%20-Raiffeisen/"
+            },
+            {
+                "name": "Airbus Bank",
+                "logo": "https://enablebanking.com/brands/DE/Airbus%20Bank/"
+            },
+            {
+                "name": "Aktivbank",
+                "logo": "https://enablebanking.com/brands/DE/Aktivbank/"
+            },
+            {
+                "name": "Alxing-Brucker Genossenschaftsbank",
+                "logo": "https://enablebanking.com/brands/DE/Alxing-Brucker%20Genossenschaftsbank/"
+            },
+            {
+                "name": "Bank 1 Saar",
+                "logo": "https://enablebanking.com/brands/DE/Bank%201%20Saar/"
+            },
+            {
+                "name": "Bank11",
+                "logo": "https://enablebanking.com/brands/DE/Bank11/"
+            },
+            {
+                "name": "Bank für Kirche und Diakonie - KD-Bank",
+                "logo": "https://enablebanking.com/brands/DE/Bank%20f%C3%BCr%20Kirche%20und%20Diakonie%20-%20KD-Bank/"
+            },
+            {
+                "name": "Bank für Sozialwirtschaft",
+                "logo": "https://enablebanking.com/brands/DE/Bank%20f%C3%BCr%20Sozialwirtschaft/"
+            },
+            {
+                "name": "Bankhaus Anton Hafner",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20Anton%20Hafner/"
+            },
+            {
+                "name": "Bankhaus Bauer",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20Bauer/"
+            },
+            {
+                "name": "Bankhaus E. Mayer",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20E.%20Mayer/"
+            },
+            {
+                "name": "Bankhaus Ellwanger & Geiger",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20Ellwanger%20%26%20Geiger/"
+            },
+            {
+                "name": "Bankhaus Gebr. Martin",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20Gebr.%20Martin/"
+            },
+            {
+                "name": "Bankhaus Max Flessa",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20Max%20Flessa/"
+            },
+            {
+                "name": "Bankhaus Rautenschlein",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20Rautenschlein/"
+            },
+            {
+                "name": "Bankhaus RSA",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20RSA/"
+            },
+            {
+                "name": "Bankhaus Werhahn",
+                "logo": "https://enablebanking.com/brands/DE/Bankhaus%20Werhahn/"
+            },
+            {
+                "name": "Bank im Bistum Essen",
+                "logo": "https://enablebanking.com/brands/DE/Bank%20im%20Bistum%20Essen/"
+            },
+            {
+                "name": "BBBank",
+                "logo": "https://enablebanking.com/brands/DE/BBBank/"
+            },
+            {
+                "name": "BBVA",
+                "logo": "https://enablebanking.com/brands/DE/BBVA/"
+            },
+            {
+                "name": "Bensberger Bank",
+                "logo": "https://enablebanking.com/brands/DE/Bensberger%20Bank/"
+            },
+            {
+                "name": "Berliner Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Berliner%20Volksbank/"
+            },
+            {
+                "name": "Bernhauser Bank",
+                "logo": "https://enablebanking.com/brands/DE/Bernhauser%20Bank/"
+            },
+            {
+                "name": "BfW - Bank für Wohnungswirtschaft",
+                "logo": "https://enablebanking.com/brands/DE/BfW%20-%20Bank%20f%C3%BCr%20Wohnungswirtschaft/"
+            },
+            {
+                "name": "Bopfinger Bank Sechta-Ries",
+                "logo": "https://enablebanking.com/brands/DE/Bopfinger%20Bank%20Sechta-Ries/"
+            },
+            {
+                "name": "Brandenburger Bank Volksbank-Raiffeisenbank",
+                "logo": "https://enablebanking.com/brands/DE/Brandenburger%20Bank%20Volksbank-Raiffeisenbank/"
+            },
+            {
+                "name": "Bremische Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Bremische%20Volksbank/"
+            },
+            {
+                "name": "Brühler Bank",
+                "logo": "https://enablebanking.com/brands/DE/Br%C3%BChler%20Bank/"
+            },
+            {
+                "name": "BTV",
+                "logo": "https://enablebanking.com/brands/DE/BTV/"
+            },
+            {
+                "name": "Budenheimer Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Budenheimer%20Volksbank/"
+            },
+            {
+                "name": "Cronbank",
+                "logo": "https://enablebanking.com/brands/DE/Cronbank/"
+            },
+            {
+                "name": "CVW-Privatbank",
+                "logo": "https://enablebanking.com/brands/DE/CVW-Privatbank/"
+            },
+            {
+                "name": "Dettinger Bank",
+                "logo": "https://enablebanking.com/brands/DE/Dettinger%20Bank/"
+            },
+            {
+                "name": "Dithmarscher Volks- und Raiffeisenbank",
+                "logo": "https://enablebanking.com/brands/DE/Dithmarscher%20Volks-%20und%20Raiffeisenbank/"
+            },
+            {
+                "name": "DKB",
+                "logo": "https://enablebanking.com/brands/DE/DKB/"
+            },
+            {
+                "name": "DKM Darlehnskasse Münster",
+                "logo": "https://enablebanking.com/brands/DE/DKM%20Darlehnskasse%20M%C3%BCnster/"
+            },
+            {
+                "name": "Donau-Iller Bank",
+                "logo": "https://enablebanking.com/brands/DE/Donau-Iller%20Bank/"
+            },
+            {
+                "name": "Donner & Reuschel",
+                "logo": "https://enablebanking.com/brands/DE/Donner%20%26%20Reuschel/"
+            },
+            {
+                "name": "Dortmunder Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Dortmunder%20Volksbank/"
+            },
+            {
+                "name": "DZ BANK",
+                "logo": "https://enablebanking.com/brands/DE/DZ%20BANK/"
+            },
+            {
+                "name": "Echterdinger Bank",
+                "logo": "https://enablebanking.com/brands/DE/Echterdinger%20Bank/"
+            },
+            {
+                "name": "Eckernförder Bank Volksbank-Raiffeisenbank",
+                "logo": "https://enablebanking.com/brands/DE/Eckernf%C3%B6rder%20Bank%20Volksbank-Raiffeisenbank/"
+            },
+            {
+                "name": "Edekabank",
+                "logo": "https://enablebanking.com/brands/DE/Edekabank/"
+            },
+            {
+                "name": "Emsländische Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Emsl%C3%A4ndische%20Volksbank/"
+            },
+            {
+                "name": "EthikBank",
+                "logo": "https://enablebanking.com/brands/DE/EthikBank/"
+            },
+            {
+                "name": "Eurocity Bank",
+                "logo": "https://enablebanking.com/brands/DE/Eurocity%20Bank/"
+            },
+            {
+                "name": "Evangelische Bank",
+                "logo": "https://enablebanking.com/brands/DE/Evangelische%20Bank/"
+            },
+            {
+                "name": "Evenord-Bank",
+                "logo": "https://enablebanking.com/brands/DE/Evenord-Bank/"
+            },
+            {
+                "name": "Frankfurter Bankgesellschaft",
+                "logo": "https://enablebanking.com/brands/DE/Frankfurter%20Bankgesellschaft/"
+            },
+            {
+                "name": "Frankfurter Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Frankfurter%20Volksbank/"
+            },
+            {
+                "name": "Freisinger Bank Volksbank-Raiffeisenbank",
+                "logo": "https://enablebanking.com/brands/DE/Freisinger%20Bank%20Volksbank-Raiffeisenbank/"
+            },
+            {
+                "name": "Fürst Fugger Privatbank",
+                "logo": "https://enablebanking.com/brands/DE/F%C3%BCrst%20Fugger%20Privatbank/"
+            },
+            {
+                "name": "Fürstlich Castell'sche Bank Credit-Casse",
+                "logo": "https://enablebanking.com/brands/DE/F%C3%BCrstlich%20Castell%27sche%20Bank%20Credit-Casse/"
+            },
+            {
+                "name": "Gabler-Saliter Bankgeschäft",
+                "logo": "https://enablebanking.com/brands/DE/Gabler-Saliter%20Bankgesch%C3%A4ft/"
+            },
+            {
+                "name": "GENO BANK ESSEN",
+                "logo": "https://enablebanking.com/brands/DE/GENO%20BANK%20ESSEN/"
+            },
+            {
+                "name": "Genossenschaftsbank München",
+                "logo": "https://enablebanking.com/brands/DE/Genossenschaftsbank%20M%C3%BCnchen/"
+            },
+            {
+                "name": "Genossenschaftsbank Unterallgäu",
+                "logo": "https://enablebanking.com/brands/DE/Genossenschaftsbank%20Unterallg%C3%A4u/"
+            },
+            {
+                "name": "Genossenschaftsbank Weil im Schönbuch",
+                "logo": "https://enablebanking.com/brands/DE/Genossenschaftsbank%20Weil%20im%20Sch%C3%B6nbuch/"
+            },
+            {
+                "name": "Gladbacher Bank von 1922",
+                "logo": "https://enablebanking.com/brands/DE/Gladbacher%20Bank%20von%201922/"
+            },
+            {
+                "name": "GLS Gemeinschaftsbank",
+                "logo": "https://enablebanking.com/brands/DE/GLS%20Gemeinschaftsbank/"
+            },
+            {
+                "name": "Grafschafter Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Grafschafter%20Volksbank/"
+            },
+            {
+                "name": "GRENKE BANK",
+                "logo": "https://enablebanking.com/brands/DE/GRENKE%20BANK/"
+            },
+            {
+                "name": "Hagnauer Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Hagnauer%20Volksbank/"
+            },
+            {
+                "name": "Hamburger Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Hamburger%20Volksbank/"
+            },
+            {
+                "name": "Hannoversche Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Hannoversche%20Volksbank/"
+            },
+            {
+                "name": "Harzer Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Harzer%20Volksbank/"
+            },
+            {
+                "name": "Hausbank München",
+                "logo": "https://enablebanking.com/brands/DE/Hausbank%20M%C3%BCnchen/"
+            },
+            {
+                "name": "Heidenheimer Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Heidenheimer%20Volksbank/"
+            },
+            {
+                "name": "Hoerner Bank",
+                "logo": "https://enablebanking.com/brands/DE/Hoerner%20Bank/"
+            },
+            {
+                "name": "Hümmlinger Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/H%C3%BCmmlinger%20Volksbank/"
+            },
+            {
+                "name": "Hüttenberger Bank",
+                "logo": "https://enablebanking.com/brands/DE/H%C3%BCttenberger%20Bank/"
+            },
+            {
+                "name": "IBM Deutschland Kreditbank",
+                "logo": "https://enablebanking.com/brands/DE/IBM%20Deutschland%20Kreditbank/"
+            },
+            {
+                "name": "Ihre Volksbank Neckar Odenwald Main Tauber",
+                "logo": "https://enablebanking.com/brands/DE/Ihre%20Volksbank%20Neckar%20Odenwald%20Main%20Tauber/"
+            },
+            {
+                "name": "Ikano Bank",
+                "logo": "https://enablebanking.com/brands/DE/Ikano%20Bank/"
+            },
+            {
+                "name": "Internationales Bankhaus Bodensee",
+                "logo": "https://enablebanking.com/brands/DE/Internationales%20Bankhaus%20Bodensee/"
+            },
+            {
+                "name": "J&T Direktbank",
+                "logo": "https://enablebanking.com/brands/DE/J%26T%20Direktbank/"
+            },
+            {
+                "name": "Kieler Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Kieler%20Volksbank/"
+            },
+            {
+                "name": "Kurhessische Landbank",
+                "logo": "https://enablebanking.com/brands/DE/Kurhessische%20Landbank/"
+            },
+            {
+                "name": "Landbank Horlofftal",
+                "logo": "https://enablebanking.com/brands/DE/Landbank%20Horlofftal/"
+            },
+            {
+                "name": "Leipziger Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Leipziger%20Volksbank/"
+            },
+            {
+                "name": "levoBank",
+                "logo": "https://enablebanking.com/brands/DE/levoBank/"
+            },
+            {
+                "name": "LIGA Bank",
+                "logo": "https://enablebanking.com/brands/DE/LIGA%20Bank/"
+            },
+            {
+                "name": "M.M. Warburg & CO",
+                "logo": "https://enablebanking.com/brands/DE/M.M.%20Warburg%20%26%20CO/"
+            },
+            {
+                "name": "Marcard, Stein & Co Bankiers",
+                "logo": "https://enablebanking.com/brands/DE/Marcard%2C%20Stein%20%26%20Co%20Bankiers/"
+            },
+            {
+                "name": "meine Volksbank Raiffeisenbank",
+                "logo": "https://enablebanking.com/brands/DE/meine%20Volksbank%20Raiffeisenbank/"
+            },
+            {
+                "name": "Mendener Bank",
+                "logo": "https://enablebanking.com/brands/DE/Mendener%20Bank/"
+            },
+            {
+                "name": "MERKUR PRIVATBANK",
+                "logo": "https://enablebanking.com/brands/DE/MERKUR%20PRIVATBANK/"
+            },
+            {
+                "name": "MKB Mittelstandskreditbank",
+                "logo": "https://enablebanking.com/brands/DE/MKB%20Mittelstandskreditbank/"
+            },
+            {
+                "name": "MLP Finanzdienstleistungen",
+                "logo": "https://enablebanking.com/brands/DE/MLP%20Finanzdienstleistungen/"
+            },
+            {
+                "name": "Märkische Bank",
+                "logo": "https://enablebanking.com/brands/DE/M%C3%A4rkische%20Bank/"
+            },
+            {
+                "name": "Münchner Bank",
+                "logo": "https://enablebanking.com/brands/DE/M%C3%BCnchner%20Bank/"
+            },
+            {
+                "name": "National-Bank",
+                "logo": "https://enablebanking.com/brands/DE/National-Bank/"
+            },
+            {
+                "name": "Oberbank",
+                "logo": "https://enablebanking.com/brands/DE/Oberbank/"
+            },
+            {
+                "name": "Oldenburger Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Oldenburg%20Volksbank/"
+            },
+            {
+                "name": "Onstmettinger Bank",
+                "logo": "https://enablebanking.com/brands/DE/Onstmettinger%20Bank/"
+            },
+            {
+                "name": "Ostfriesische Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Ostfriesische%20Volksbank/"
+            },
+            {
+                "name": "Otto M. Schröder Bank",
+                "logo": "https://enablebanking.com/brands/DE/Otto%20M.%20Schr%C3%B6der%20Bank/"
+            },
+            {
+                "name": "Pax-Bank für Kirche und Caritas",
+                "logo": "https://enablebanking.com/brands/DE/Pax-Bank%20f%C3%BCr%20Kirche%20und%20Caritas/"
+            },
+            {
+                "name": "PSD Bank Braunschweig",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20Braunschweig/"
+            },
+            {
+                "name": "PSD Bank Hannover",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20Hannover/"
+            },
+            {
+                "name": "PSD Bank Hessen-Thüringen",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20Hessen-Th%C3%BCringen/"
+            },
+            {
+                "name": "PSD Bank Karlsruhe-Neustadt",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20Karlsruhe-Neustadt/"
+            },
+            {
+                "name": "PSD Bank Koblenz",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20Koblenz/"
+            },
+            {
+                "name": "PSD Bank München",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20M%C3%BCnchen/"
+            },
+            {
+                "name": "PSD Bank Nord",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20Nord/"
+            },
+            {
+                "name": "PSD Bank Nürnberg",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20N%C3%BCrnberg/"
+            },
+            {
+                "name": "PSD Bank Rhein-Ruhr",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20Rhein-Ruhr/"
+            },
+            {
+                "name": "PSD Bank RheinNeckarSaar",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20RheinNeckarSaar/"
+            },
+            {
+                "name": "PSD Bank West",
+                "logo": "https://enablebanking.com/brands/DE/PSD%20Bank%20West/"
+            },
+            {
+                "name": "Raiffeisen-Bank Eschweiler",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Bank%20Eschweiler/"
+            },
+            {
+                "name": "Raiffeisen - meine Bank",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen%20-%20meine%20Bank/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Donauwörth",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20Donauw%C3%B6rth/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Ebersberg",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20Ebersberg/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Fresena",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20Fresena/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Haßberge",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20Ha%C3%9Fberge/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Hermsdorfer Kreuz",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20Hermsdorfer%20Kreuz/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Neustadt",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20Neustadt/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Oder-Spree",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20Oder-Spree/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Ries",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20Ries/"
+            },
+            {
+                "name": "Raiffeisen-Volksbank Tüssling-Unterneukirchen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen-Volksbank%20T%C3%BCssling-Unterneukirchen/"
+            },
+            {
+                "name": "Raiffeisenbank Aichhalden-Hardt- Sulgen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Aichhalden-Hardt-%20Sulgen/"
+            },
+            {
+                "name": "Raiffeisenbank Aidlingen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Aidlingen/"
+            },
+            {
+                "name": "Raiffeisenbank Aitrang-Ruderatshofen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Aitrang-Ruderatshofen/"
+            },
+            {
+                "name": "Raiffeisenbank Alteglofsheim-Hagelstadt",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Alteglofsheim-Hagelstadt/"
+            },
+            {
+                "name": "Raiffeisenbank Altmühl-Jura",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Altm%C3%BChl-Jura/"
+            },
+            {
+                "name": "Raiffeisenbank Altschweier",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Altschweier/"
+            },
+            {
+                "name": "Raiffeisenbank am Kulm",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20am%20Kulm/"
+            },
+            {
+                "name": "Raiffeisenbank Anger",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Anger/"
+            },
+            {
+                "name": "Raiffeisenbank Aresing-Gerolsbach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Aresing-Gerolsbach/"
+            },
+            {
+                "name": "Raiffeisenbank Arnstorf",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Arnstorf/"
+            },
+            {
+                "name": "Raiffeisenbank Aschau-Samerberg",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Aschau-Samerberg/"
+            },
+            {
+                "name": "Raiffeisenbank Auerbach-Freihung",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Auerbach-Freihung/"
+            },
+            {
+                "name": "Raiffeisenbank Augsburger Land West",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Augsburger%20Land%20West/"
+            },
+            {
+                "name": "Raiffeisenbank Bad Kötzting",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Bad%20K%C3%B6tzting/"
+            },
+            {
+                "name": "Raiffeisenbank Bad Saulgau",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Bad%20Saulgau/"
+            },
+            {
+                "name": "Raiffeisenbank Bad Windsheim",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Bad%20Windsheim/"
+            },
+            {
+                "name": "Raiffeisenbank Baiertal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Baiertal/"
+            },
+            {
+                "name": "Raiffeisenbank Baisweil-Eggenthal-Friesenried",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Baisweil-Eggenthal-Friesenried/"
+            },
+            {
+                "name": "Raiffeisenbank Baunatal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Baunatal/"
+            },
+            {
+                "name": "Raiffeisenbank Bechhofen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Bechhofen/"
+            },
+            {
+                "name": "Raiffeisenbank Berghülen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Bergh%C3%BClen/"
+            },
+            {
+                "name": "Raiffeisenbank Beuerberg-Eurasburg",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Beuerberg-Eurasburg/"
+            },
+            {
+                "name": "Raiffeisenbank Bidingen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Bidingen/"
+            },
+            {
+                "name": "Raiffeisenbank Biebergrund-Petersberg",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Biebergrund-Petersberg/"
+            },
+            {
+                "name": "Raiffeisenbank Bobingen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Bobingen/"
+            },
+            {
+                "name": "Raiffeisenbank Buch-Eching",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Buch-Eching/"
+            },
+            {
+                "name": "Raiffeisenbank Burgebrach-Stegaurach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Burgebrach-Stegaurach/"
+            },
+            {
+                "name": "Raiffeisenbank Böllingertal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20B%C3%B6llingertal/"
+            },
+            {
+                "name": "Raiffeisenbank Bühlertal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20B%C3%BChlertal/"
+            },
+            {
+                "name": "Raiffeisenbank Bütthard-Gaukönigshofen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20B%C3%BCtthard-Gauk%C3%B6nigshofen/"
+            },
+            {
+                "name": "Raiffeisenbank Chamer Land",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Chamer%20Land/"
+            },
+            {
+                "name": "Raiffeisenbank Chiemgau-Nord-Obing",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Chiemgau-Nord-Obing/"
+            },
+            {
+                "name": "Raiffeisenbank Deggendorf-Plattling-Sonnenwald",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Deggendorf-Plattling-Sonnenwald/"
+            },
+            {
+                "name": "Raiffeisenbank Denzlingen-Sexau",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Denzlingen-Sexau/"
+            },
+            {
+                "name": "Raiffeisenbank Dietersheim und Umgebung",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Dietersheim%20und%20Umgebung/"
+            },
+            {
+                "name": "Raiffeisenbank Donau-Heuberg",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Donau-Heuberg/"
+            },
+            {
+                "name": "Raiffeisenbank DreiFranken",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20DreiFranken/"
+            },
+            {
+                "name": "Raiffeisenbank Eifel",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Eifel/"
+            },
+            {
+                "name": "Raiffeisenbank Elbmarsch",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Elbmarsch/"
+            },
+            {
+                "name": "Raiffeisenbank Elsavatal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Elsavatal/"
+            },
+            {
+                "name": "Raiffeisenbank Elztal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Elztal/"
+            },
+            {
+                "name": "Raiffeisenbank Ems-Vechte",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Ems-Vechte/"
+            },
+            {
+                "name": "Raiffeisenbank Erlenbach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Erlenbach/"
+            },
+            {
+                "name": "Raiffeisenbank Ersingen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Ersingen/"
+            },
+            {
+                "name": "Raiffeisenbank Eschlkam-Lam- Lohberg-Neukirchen b. Hl. Blut",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Eschlkam-Lam-%20Lohberg-Neukirchen%20b.%20Hl.%20Blut/"
+            },
+            {
+                "name": "Raiffeisenbank Falkenstein-Wörth",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Falkenstein-W%C3%B6rth/"
+            },
+            {
+                "name": "Raiffeisenbank Flachsmeer",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Flachsmeer/"
+            },
+            {
+                "name": "Raiffeisenbank Floß",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Flo%C3%9F/"
+            },
+            {
+                "name": "Raiffeisenbank Frankenhardt-Stimpfach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Frankenhardt-Stimpfach/"
+            },
+            {
+                "name": "Raiffeisenbank Fränkische Schweiz",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Fr%C3%A4nkische%20Schweiz/"
+            },
+            {
+                "name": "Raiffeisenbank Geiselhöring-Pfaffenberg",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Geiselh%C3%B6ring-Pfaffenberg/"
+            },
+            {
+                "name": "Raiffeisenbank Geislingen-Rosenfeld",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Geislingen-Rosenfeld/"
+            },
+            {
+                "name": "Raiffeisenbank Gilching",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Gilching/"
+            },
+            {
+                "name": "Raiffeisenbank Gmund am Tegernsee",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Gmund%20am%20Tegernsee/"
+            },
+            {
+                "name": "Raiffeisenbank Goldener Steig - Dreisessel",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Goldener%20Steig%20-%20Dreisessel/"
+            },
+            {
+                "name": "Raiffeisenbank Grainet",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Grainet/"
+            },
+            {
+                "name": "Raiffeisenbank Griesstätt-Halfing",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Griesst%C3%A4tt-Halfing/"
+            },
+            {
+                "name": "Raiffeisenbank Grimma",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Grimma/"
+            },
+            {
+                "name": "Raiffeisenbank Gruibingen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Gruibingen/"
+            },
+            {
+                "name": "Raiffeisenbank Grävenwiesbach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Gr%C3%A4venwiesbach/"
+            },
+            {
+                "name": "Raiffeisenbank Gymnich",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Gymnich/"
+            },
+            {
+                "name": "Raiffeisenbank Haag-Gars-Maitenbeth",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Haag-Gars-Maitenbeth/"
+            },
+            {
+                "name": "Raiffeisenbank Hallertau",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Hallertau/"
+            },
+            {
+                "name": "Raiffeisenbank Hardt-Bruhrain",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Hardt-Bruhrain/"
+            },
+            {
+                "name": "Raiffeisenbank Hengersberg-Schöllnach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Hengersberg-Sch%C3%B6llnach/"
+            },
+            {
+                "name": "Raiffeisenbank HessenNord",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20HessenNord/"
+            },
+            {
+                "name": "Raiffeisenbank Hiltenfingen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Hiltenfingen/"
+            },
+            {
+                "name": "Raiffeisenbank Hirschau",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Hirschau/"
+            },
+            {
+                "name": "Raiffeisenbank Hochfranken West",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Hochfranken%20West/"
+            },
+            {
+                "name": "Raiffeisenbank Hohenloher Land",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Hohenloher%20Land/"
+            },
+            {
+                "name": "Raiffeisenbank Holzkirchen-Otterfing",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Holzkirchen-Otterfing/"
+            },
+            {
+                "name": "Raiffeisenbank Höchberg",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20H%C3%B6chberg/"
+            },
+            {
+                "name": "Raiffeisenbank Ichenhausen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Ichenhausen/"
+            },
+            {
+                "name": "Raiffeisenbank im Allgäuer Land",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Allg%C3%A4uer%20Land/"
+            },
+            {
+                "name": "Raiffeisenbank im Breisgau",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Breisgau/"
+            },
+            {
+                "name": "Raiffeisenbank im Donautal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Donautal/"
+            },
+            {
+                "name": "Raiffeisenbank im Fuldaer Land",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Fuldaer%20Land/"
+            },
+            {
+                "name": "Raiffeisenbank im Grabfeld",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Grabfeld/"
+            },
+            {
+                "name": "Raiffeisenbank im Kreis Calw",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Kreis%20Calw/"
+            },
+            {
+                "name": "Raiffeisenbank im Landkreis Passau-Nord",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Landkreis%20Passau-Nord/"
+            },
+            {
+                "name": "Raiffeisenbank im Nürnberger Land",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20N%C3%BCrnberger%20Land/"
+            },
+            {
+                "name": "Raiffeisenbank im Oberland",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Oberland/"
+            },
+            {
+                "name": "Raiffeisenbank im Oberpfälzer Jura",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20im%20Oberpf%C3%A4lzer%20Jura/"
+            },
+            {
+                "name": "Raiffeisenbank in Rheinhessen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20in%20Rheinhessen/"
+            },
+            {
+                "name": "Raiffeisenbank Isar-Loisachtal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Isar-Loisachtal/"
+            },
+            {
+                "name": "Raiffeisenbank Kaarst",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Kaarst/"
+            },
+            {
+                "name": "Raiffeisenbank Kaiserstuhl",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Kaiserstuhl/"
+            },
+            {
+                "name": "Raiffeisenbank Kalbe-Bismark",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Kalbe-Bismark/"
+            },
+            {
+                "name": "Raiffeisenbank Kastellaun",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Kastellaun/"
+            },
+            {
+                "name": "Raiffeisenbank Kieselbronn",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Kieselbronn/"
+            },
+            {
+                "name": "Raiffeisenbank Kirchweihtal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Kirchweihtal/"
+            },
+            {
+                "name": "Raiffeisenbank Kirtorf",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Kirtorf/"
+            },
+            {
+                "name": "Raiffeisenbank Knoblauchsland-Bibertgrund",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Knoblauchsland-Bibertgrund/"
+            },
+            {
+                "name": "Raiffeisenbank Kreis Kelheim",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Kreis%20Kelheim/"
+            },
+            {
+                "name": "Raiffeisenbank Küps-Mitwitz-Stockheim",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20K%C3%BCps-Mitwitz-Stockheim/"
+            },
+            {
+                "name": "Raiffeisenbank Landshuter Land",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Landshuter%20Land/"
+            },
+            {
+                "name": "Raiffeisenbank Lauenburg",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Lauenburg/"
+            },
+            {
+                "name": "Raiffeisenbank Lech-Donau",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Lech-Donau/"
+            },
+            {
+                "name": "Raiffeisenbank Lechrain",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Lechrain/"
+            },
+            {
+                "name": "Raiffeisenbank Leezen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Leezen/"
+            },
+            {
+                "name": "Raiffeisenbank Lorup",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Lorup/"
+            },
+            {
+                "name": "Raiffeisenbank Main-Spessart",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Main-Spessart/"
+            },
+            {
+                "name": "Raiffeisenbank Mainschleife - Steigerwald",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Mainschleife%20-%20Steigerwald/"
+            },
+            {
+                "name": "Raiffeisenbank Maitis",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Maitis/"
+            },
+            {
+                "name": "Raiffeisenbank Mecklenburger Seenplatte",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Mecklenburger%20Seenplatte/"
+            },
+            {
+                "name": "Raiffeisenbank MEHR",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20MEHR/"
+            },
+            {
+                "name": "Raiffeisenbank Mehring-Leiwen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Mehring-Leiwen/"
+            },
+            {
+                "name": "Raiffeisenbank Mittelschwaben",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Mittelschwaben/"
+            },
+            {
+                "name": "Raiffeisenbank Mittenwald",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Mittenwald/"
+            },
+            {
+                "name": "Raiffeisenbank Moormerland",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Moormerland/"
+            },
+            {
+                "name": "Raiffeisenbank München-Nord",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20M%C3%BCnchen-Nord/"
+            },
+            {
+                "name": "Raiffeisenbank München-Süd",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20M%C3%BCnchen-S%C3%BCd/"
+            },
+            {
+                "name": "Raiffeisenbank Nahe",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Nahe/"
+            },
+            {
+                "name": "Raiffeisenbank Neumarkt- St. Veit - Reischach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Neumarkt-%20St.%20Veit%20-%20Reischach/"
+            },
+            {
+                "name": "Raiffeisenbank Neumarkt i.d.OPf.",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Neumarkt%20i.d.OPf./"
+            },
+            {
+                "name": "Raiffeisenbank Neustadt",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Neustadt/"
+            },
+            {
+                "name": "Raiffeisenbank Niedere Alb",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Niedere%20Alb/"
+            },
+            {
+                "name": "Raiffeisenbank Niederwallmenach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Niederwallmenach/"
+            },
+            {
+                "name": "Raiffeisenbank Nördliche Bergstraße",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20N%C3%B6rdliche%20Bergstra%C3%9Fe/"
+            },
+            {
+                "name": "Raiffeisenbank Oberaudorf",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Oberaudorf/"
+            },
+            {
+                "name": "Raiffeisenbank Oberferrieden-Burgthann",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Oberferrieden-Burgthann/"
+            },
+            {
+                "name": "Raiffeisenbank Oberland",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Oberland/"
+            },
+            {
+                "name": "Raiffeisenbank Oberpfalz NordWest",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Oberpfalz%20NordWest/"
+            },
+            {
+                "name": "Raiffeisenbank Oberpfalz Süd",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Oberpfalz%20S%C3%BCd/"
+            },
+            {
+                "name": "Raiffeisenbank Oberteuringen-Meckenbeuren",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Oberteuringen-Meckenbeuren/"
+            },
+            {
+                "name": "Raiffeisenbank Ortenburg-Kirchberg v.W.",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Ortenburg-Kirchberg%20v.W./"
+            },
+            {
+                "name": "Raiffeisenbank Ostprignitz - Ruppin",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Ostprignitz%20-%20Ruppin/"
+            },
+            {
+                "name": "Raiffeisenbank Ottenbach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Ottenbach/"
+            },
+            {
+                "name": "Raiffeisenbank Owschlag",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Owschlag/"
+            },
+            {
+                "name": "Raiffeisenbank Parkstetten",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Parkstetten/"
+            },
+            {
+                "name": "Raiffeisenbank Pfaffenhausen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Pfaffenhausen/"
+            },
+            {
+                "name": "Raiffeisenbank Pfaffenhofen a.d.Glonn",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Pfaffenhofen%20a.d.Glonn/"
+            },
+            {
+                "name": "Raiffeisenbank Pfaffenwinkel",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Pfaffenwinkel/"
+            },
+            {
+                "name": "Raiffeisenbank Plankstetten",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Plankstetten/"
+            },
+            {
+                "name": "Raiffeisenbank Rannungen Hambach Maßbach Nüdlingen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Rannungen%20Hambach%20Ma%C3%9Fbach%20N%C3%BCdlingen/"
+            },
+            {
+                "name": "Raiffeisenbank Rastede",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Rastede/"
+            },
+            {
+                "name": "Raiffeisenbank Rattiszell-Konzell",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Rattiszell-Konzell/"
+            },
+            {
+                "name": "Raiffeisenbank Regensburg-Wenzenbach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Regensburg-Wenzenbach/"
+            },
+            {
+                "name": "Raiffeisenbank Regenstauf",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Regenstauf/"
+            },
+            {
+                "name": "Raiffeisenbank Rehling",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Rehling/"
+            },
+            {
+                "name": "Raiffeisenbank Reute-Gaisbeuren",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Reute-Gaisbeuren/"
+            },
+            {
+                "name": "Raiffeisenbank Rodenbach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Rodenbach/"
+            },
+            {
+                "name": "Raiffeisenbank Rosenstein",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Rosenstein/"
+            },
+            {
+                "name": "Raiffeisenbank Rupertiwinkel",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Rupertiwinkel/"
+            },
+            {
+                "name": "Raiffeisenbank Scharrel",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Scharrel/"
+            },
+            {
+                "name": "Raiffeisenbank Schrobenhausener Land",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Schrobenhausener%20Land/"
+            },
+            {
+                "name": "Raiffeisenbank Schrozberg- Rot am See",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Schrozberg-%20Rot%20am%20See/"
+            },
+            {
+                "name": "Raiffeisenbank Schwaben Mitte",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Schwaben%20Mitte/"
+            },
+            {
+                "name": "Raiffeisenbank Schwabmünchen-Stauden",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Schwabm%C3%BCnchen-Stauden/"
+            },
+            {
+                "name": "Raiffeisenbank Seestermühe",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Seesterm%C3%BChe/"
+            },
+            {
+                "name": "Raiffeisenbank Singoldtal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Singoldtal/"
+            },
+            {
+                "name": "Raiffeisenbank Sinzing",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Sinzing/"
+            },
+            {
+                "name": "Raiffeisenbank Sondelfingen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Sondelfingen/"
+            },
+            {
+                "name": "Raiffeisenbank Steingaden",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Steingaden/"
+            },
+            {
+                "name": "Raiffeisenbank Straubing",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Straubing/"
+            },
+            {
+                "name": "Raiffeisenbank Strücklingen- Idafehn",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Str%C3%BCcklingen-%20Idafehn/"
+            },
+            {
+                "name": "Raiffeisenbank Südhardt",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20S%C3%BCdhardt/"
+            },
+            {
+                "name": "Raiffeisenbank Südliches Ostallgäu",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20S%C3%BCdliches%20Ostallg%C3%A4u/"
+            },
+            {
+                "name": "Raiffeisenbank Südstormarn Mölln",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20S%C3%BCdstormarn%20M%C3%B6lln/"
+            },
+            {
+                "name": "Raiffeisenbank Taufkirchen-Oberneukirchen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Taufkirchen-Oberneukirchen/"
+            },
+            {
+                "name": "Raiffeisenbank Thannhausen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Thannhausen/"
+            },
+            {
+                "name": "Raiffeisenbank Todenbüttel",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Todenb%C3%BCttel/"
+            },
+            {
+                "name": "Raiffeisenbank Tüngental",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20T%C3%BCngental/"
+            },
+            {
+                "name": "Raiffeisenbank Türkheim",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20T%C3%BCrkheim/"
+            },
+            {
+                "name": "Raiffeisenbank Unteres Inntal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Unteres%20Inntal/"
+            },
+            {
+                "name": "Raiffeisenbank Unteres Vilstal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Unteres%20Vilstal/"
+            },
+            {
+                "name": "Raiffeisenbank Unteres Zusamtal",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Unteres%20Zusamtal/"
+            },
+            {
+                "name": "Raiffeisenbank Wald-Görisried",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Wald-G%C3%B6risried/"
+            },
+            {
+                "name": "Raiffeisenbank Wallgau-Krün",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Wallgau-Kr%C3%BCn/"
+            },
+            {
+                "name": "Raiffeisenbank Wangen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Wangen/"
+            },
+            {
+                "name": "Raiffeisenbank Wegscheid",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Wegscheid/"
+            },
+            {
+                "name": "Raiffeisenbank Welling",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Welling/"
+            },
+            {
+                "name": "Raiffeisenbank Werratal-Landeck",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Werratal-Landeck/"
+            },
+            {
+                "name": "Raiffeisenbank Wesermarsch-Süd",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Wesermarsch-S%C3%BCd/"
+            },
+            {
+                "name": "Raiffeisenbank Westeifel",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Westeifel/"
+            },
+            {
+                "name": "Raiffeisenbank Westhausen",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Westhausen/"
+            },
+            {
+                "name": "Raiffeisenbank Westkreis Fürstenfeldbruck",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Westkreis%20F%C3%BCrstenfeldbruck/"
+            },
+            {
+                "name": "Raiffeisenbank Wiesedermeer- Wiesede-Marcardsmoor",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Wiesedermeer-%20Wiesede-Marcardsmoor/"
+            },
+            {
+                "name": "Raiffeisenbank Wittelsbacher Land",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Wittelsbacher%20Land/"
+            },
+            {
+                "name": "Raiffeisenbank Wyhl",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20Wyhl/"
+            },
+            {
+                "name": "Raiffeisenbank Wüstenselbitz",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20W%C3%BCstenselbitz/"
+            },
+            {
+                "name": "Raiffeisenbank Ühlfeld-Dachsbach",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisenbank%20%C3%9Chlfeld-Dachsbach/"
+            },
+            {
+                "name": "Raiffeisen Spar+Kreditbank",
+                "logo": "https://enablebanking.com/brands/DE/Raiffeisen%20Spar%2BKreditbank/"
+            },
+            {
+                "name": "Rheingauer Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Rheingauer%20Volksbank/"
+            },
+            {
+                "name": "RSB Retail+Service Bank",
+                "logo": "https://enablebanking.com/brands/DE/RSB%20Retail%2BService%20Bank/"
+            },
+            {
+                "name": "Schrobenhausener Bank",
+                "logo": "https://enablebanking.com/brands/DE/Schrobenhausener%20Bank/"
+            },
+            {
+                "name": "Spar- u. Kredit-Bank",
+                "logo": "https://enablebanking.com/brands/DE/Spar-%20u.%20Kredit-Bank/"
+            },
+            {
+                "name": "Spar- und Darlehnskasse Bockum-Hövel",
+                "logo": "https://enablebanking.com/brands/DE/Spar-%20und%20Darlehnskasse%20Bockum-H%C3%B6vel/"
+            },
+            {
+                "name": "Spar- und Darlehnskasse Börde Lamstedt-Hechthausen",
+                "logo": "https://enablebanking.com/brands/DE/Spar-%20und%20Darlehnskasse%20B%C3%B6rde%20Lamstedt-Hechthausen/"
+            },
+            {
+                "name": "Spar- und Kreditbank Bühlertal",
+                "logo": "https://enablebanking.com/brands/DE/Spar-%20und%20Kreditbank%20B%C3%BChlertal/"
+            },
+            {
+                "name": "Spar- und Kreditbank des Bundes Freier evangelischer Gemeinden",
+                "logo": "https://enablebanking.com/brands/DE/Spar-%20und%20Kreditbank%20des%20Bundes%20Freier%20evangelischer%20Gemeinden/"
+            },
+            {
+                "name": "Spar- und Kreditbank Evangelisch-Freikirchlicher Gemeinden",
+                "logo": "https://enablebanking.com/brands/DE/Spar-%20und%20Kreditbank%20Evangelisch-Freikirchlicher%20Gemeinden/"
+            },
+            {
+                "name": "Spar- und Kreditbank Hammah",
+                "logo": "https://enablebanking.com/brands/DE/Spar-%20und%20Kreditbank%20Hammah/"
+            },
+            {
+                "name": "Spar- und Kreditbank Rheinstetten",
+                "logo": "https://enablebanking.com/brands/DE/Spar-%20und%20Kreditbank%20Rheinstetten/"
+            },
+            {
+                "name": "Sparda-Bank Augsburg",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20Augsburg/"
+            },
+            {
+                "name": "Sparda-Bank Baden-Württemberg",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20Baden-W%C3%BCrttemberg/"
+            },
+            {
+                "name": "Sparda-Bank Berlin",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20Berlin/"
+            },
+            {
+                "name": "Sparda-Bank Hamburg",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20Hamburg/"
+            },
+            {
+                "name": "Sparda-Bank Hannover",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20Hannover/"
+            },
+            {
+                "name": "Sparda-Bank Hessen",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20Hessen/"
+            },
+            {
+                "name": "Sparda-Bank München",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20M%C3%BCnchen/"
+            },
+            {
+                "name": "Sparda-Bank Nürnberg",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20N%C3%BCrnberg/"
+            },
+            {
+                "name": "Sparda-Bank Ostbayern",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20Ostbayern/"
+            },
+            {
+                "name": "Sparda-Bank Südwest",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20S%C3%BCdwest/"
+            },
+            {
+                "name": "Sparda-Bank West",
+                "logo": "https://enablebanking.com/brands/DE/Sparda-Bank%20West/"
+            },
+            {
+                "name": "Spreewaldbank",
+                "logo": "https://enablebanking.com/brands/DE/Spreewaldbank/"
+            },
+            {
+                "name": "St. Galler Kantonalbank",
+                "logo": "https://enablebanking.com/brands/DE/St.%20Galler%20Kantonalbank/"
+            },
+            {
+                "name": "Steyler Bank",
+                "logo": "https://enablebanking.com/brands/DE/Steyler%20Bank/"
+            },
+            {
+                "name": "Sylter Bank",
+                "logo": "https://enablebanking.com/brands/DE/Sylter%20Bank/"
+            },
+            {
+                "name": "Südtiroler Sparkasse",
+                "logo": "https://enablebanking.com/brands/DE/S%C3%BCdtiroler%20Sparkasse/"
+            },
+            {
+                "name": "Südwestbank",
+                "logo": "https://enablebanking.com/brands/DE/S%C3%BCdwestbank/"
+            },
+            {
+                "name": "Triodos Bank",
+                "logo": "https://enablebanking.com/brands/DE/Triodos%20Bank/"
+            },
+            {
+                "name": "UmweltBank",
+                "logo": "https://enablebanking.com/brands/DE/UmweltBank/"
+            },
+            {
+                "name": "Union-Bank",
+                "logo": "https://enablebanking.com/brands/DE/Union-Bank/"
+            },
+            {
+                "name": "VakifBank International",
+                "logo": "https://enablebanking.com/brands/DE/VakifBank%20International/"
+            },
+            {
+                "name": "VBU Volksbank im Unterland",
+                "logo": "https://enablebanking.com/brands/DE/VBU%20Volksbank%20im%20Unterland/"
+            },
+            {
+                "name": "VerbundVolksbank OWL",
+                "logo": "https://enablebanking.com/brands/DE/VerbundVolksbank%20OWL/"
+            },
+            {
+                "name": "Vereinigte Raiffeisenbank Burgstädt",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20Raiffeisenbank%20Burgst%C3%A4dt/"
+            },
+            {
+                "name": "Vereinigte Volksbank Brakel",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20Volksbank%20Brakel/"
+            },
+            {
+                "name": "Vereinigte Volksbanken Sindelfingen",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20Volksbanken%20Sindelfingen/"
+            },
+            {
+                "name": "Vereinigte Volksbank Ganderkesee - Hude - Bookholzberg - Lemwerder",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20Volksbank%20Ganderkesee%20-%20Hude%20-%20Bookholzberg%20-%20Lemwerder/"
+            },
+            {
+                "name": "Vereinigte Volksbank Raiffeisenbank",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20Volksbank%20Raiffeisenbank/"
+            },
+            {
+                "name": "Vereinigte Volksbank Raiffeisenbank Reinheim",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20Volksbank%20Raiffeisenbank%20Reinheim/"
+            },
+            {
+                "name": "Vereinigte Volksbank Saarlouis - Losheim am See - Sulzbach/Saar",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20Volksbank%20Saarlouis%20-%20Losheim%20am%20See%20-%20Sulzbach/Saar/"
+            },
+            {
+                "name": "Vereinigte Volksbank Bramgau Osnabrück Wittlage",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20Volksbank%C2%A0Bramgau%20Osnabr%C3%BCck%20Wittlage/"
+            },
+            {
+                "name": "Vereinigte VR Bank Kur- und Rheinpfalz",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20VR%20Bank%20Kur-%20und%20Rheinpfalz/"
+            },
+            {
+                "name": "Vereinigte VR Bank Wyk auf Föhr",
+                "logo": "https://enablebanking.com/brands/DE/Vereinigte%20VR%20Bank%20Wyk%20auf%20F%C3%B6hr/"
+            },
+            {
+                "name": "Vereinte Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Vereinte%20Volksbank/"
+            },
+            {
+                "name": "VietinBank",
+                "logo": "https://enablebanking.com/brands/DE/VietinBank/"
+            },
+            {
+                "name": "Volks- und Raiffeisenbank Fürstenwalde Seelow-Wriezen",
+                "logo": "https://enablebanking.com/brands/DE/Volks-%20und%20Raiffeisenbank%20F%C3%BCrstenwalde%20Seelow-Wriezen/"
+            },
+            {
+                "name": "Volks- und Raiffeisenbank Muldental",
+                "logo": "https://enablebanking.com/brands/DE/Volks-%20und%20Raiffeisenbank%20Muldental/"
+            },
+            {
+                "name": "Volks- und Raiffeisenbank Prignitz",
+                "logo": "https://enablebanking.com/brands/DE/Volks-%20und%20Raiffeisenbank%20Prignitz/"
+            },
+            {
+                "name": "Volks- und Raiffeisenbank Saale-Unstrut",
+                "logo": "https://enablebanking.com/brands/DE/Volks-%20und%20Raiffeisenbank%20Saale-Unstrut/"
+            },
+            {
+                "name": "Volksbank-Raiffeisenbank Glauchau",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank-Raiffeisenbank%20Glauchau/"
+            },
+            {
+                "name": "Volksbank Adelebsen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Adelebsen/"
+            },
+            {
+                "name": "Volksbank Alb",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Alb/"
+            },
+            {
+                "name": "Volksbank Allgäu-Oberschwaben",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Allg%C3%A4u-Oberschwaben/"
+            },
+            {
+                "name": "Volksbank Alzey-Worms",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Alzey-Worms/"
+            },
+            {
+                "name": "Volksbank am Württemberg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20am%20W%C3%BCrttemberg/"
+            },
+            {
+                "name": "Volksbank an der Niers",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20an%20der%20Niers/"
+            },
+            {
+                "name": "Volksbank Anröchte",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Anr%C3%B6chte/"
+            },
+            {
+                "name": "Volksbank Ascheberg-Herbern",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ascheberg-Herbern/"
+            },
+            {
+                "name": "Volksbank Backnang",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Backnang/"
+            },
+            {
+                "name": "Volksbank Bad Laer-Borgloh-Hilter-Melle",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Bad%20Laer-Borgloh-Hilter-Melle/"
+            },
+            {
+                "name": "Volksbank Bad Salzuflen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Bad%20Salzuflen/"
+            },
+            {
+                "name": "Volksbank Baumberge",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Baumberge/"
+            },
+            {
+                "name": "Volksbank Beilstein-Ilsfeld- Abstatt",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Beilstein-Ilsfeld-%20Abstatt/"
+            },
+            {
+                "name": "Volksbank Berg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Berg/"
+            },
+            {
+                "name": "Volksbank Bocholt",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Bocholt/"
+            },
+            {
+                "name": "Volksbank Bochum Witten",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Bochum%20Witten/"
+            },
+            {
+                "name": "Volksbank Bodensee-Oberschwaben",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Bodensee-Oberschwaben/"
+            },
+            {
+                "name": "Volksbank Brandoberndorf",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Brandoberndorf/"
+            },
+            {
+                "name": "Volksbank Braunlage",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Braunlage/"
+            },
+            {
+                "name": "Volksbank BRAWO",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20BRAWO/"
+            },
+            {
+                "name": "Volksbank Breisgau- Markgräflerland",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Breisgau-%20Markgr%C3%A4flerland/"
+            },
+            {
+                "name": "Volksbank Breisgau Nord",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Breisgau%20Nord/"
+            },
+            {
+                "name": "Volksbank Bremen-Nord",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Bremen-Nord/"
+            },
+            {
+                "name": "Volksbank Brenztal",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Brenztal/"
+            },
+            {
+                "name": "Volksbank Butzbach",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Butzbach/"
+            },
+            {
+                "name": "Volksbank Bönen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20B%C3%B6nen/"
+            },
+            {
+                "name": "Volksbank Börde-Bernburg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20B%C3%B6rde-Bernburg/"
+            },
+            {
+                "name": "Volksbank Börßum-Hornburg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20B%C3%B6r%C3%9Fum-Hornburg/"
+            },
+            {
+                "name": "Volksbank Bühl",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20B%C3%BChl/"
+            },
+            {
+                "name": "Volksbank Chemnitz",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Chemnitz/"
+            },
+            {
+                "name": "Volksbank Daaden",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Daaden/"
+            },
+            {
+                "name": "Volksbank Dammer Berge",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Dammer%20Berge/"
+            },
+            {
+                "name": "Volksbank Darmstadt Mainz",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Darmstadt%20Mainz/"
+            },
+            {
+                "name": "Volksbank Deisslingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Deisslingen/"
+            },
+            {
+                "name": "Volksbank Delbrück-Rietberg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Delbr%C3%BCck-Rietberg/"
+            },
+            {
+                "name": "Volksbank Delitzsch",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Delitzsch/"
+            },
+            {
+                "name": "Volksbank Demmin",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Demmin/"
+            },
+            {
+                "name": "Volksbank Dessau-Anhalt",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Dessau-Anhalt/"
+            },
+            {
+                "name": "Volksbank Dettenhausen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Dettenhausen/"
+            },
+            {
+                "name": "Volksbank Die Gestalterbank",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Die%20Gestalterbank/"
+            },
+            {
+                "name": "Volksbank Dreiländereck",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Dreil%C3%A4ndereck/"
+            },
+            {
+                "name": "Volksbank Dresden-Bautzen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Dresden-Bautzen/"
+            },
+            {
+                "name": "Volksbank Dünnwald-Holweide",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20D%C3%BCnnwald-Holweide/"
+            },
+            {
+                "name": "Volksbank Düsseldorf Neuss",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20D%C3%BCsseldorf%20Neuss/"
+            },
+            {
+                "name": "Volksbank Düte-Ems",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20D%C3%BCte-Ems/"
+            },
+            {
+                "name": "Volksbank Eisenberg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Eisenberg/"
+            },
+            {
+                "name": "Volksbank Elsen-Wewer-Borchen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Elsen-Wewer-Borchen/"
+            },
+            {
+                "name": "Volksbank Emmerich-Rees",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Emmerich-Rees/"
+            },
+            {
+                "name": "Volksbank Emstal",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Emstal/"
+            },
+            {
+                "name": "Volksbank Emstek Essen Cappeln",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Emstek%20Essen%20Cappeln/"
+            },
+            {
+                "name": "Volksbank Enniger-Ostenfelde-Westkirchen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Enniger-Ostenfelde-Westkirchen/"
+            },
+            {
+                "name": "Volksbank Erft",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Erft/"
+            },
+            {
+                "name": "Volksbank Ermstal-Alb",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ermstal-Alb/"
+            },
+            {
+                "name": "Volksbank Ettlingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ettlingen/"
+            },
+            {
+                "name": "Volksbank Euskirchen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Euskirchen/"
+            },
+            {
+                "name": "Volksbank Eutin Raiffeisenbank",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Eutin%20Raiffeisenbank/"
+            },
+            {
+                "name": "Volksbank Filder",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Filder/"
+            },
+            {
+                "name": "Volksbank Flein-Talheim",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Flein-Talheim/"
+            },
+            {
+                "name": "Volksbank Franken",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Franken/"
+            },
+            {
+                "name": "Volksbank Fredenbeck",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Fredenbeck/"
+            },
+            {
+                "name": "Volksbank Freiburg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Freiburg/"
+            },
+            {
+                "name": "Volksbank Friesoythe",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Friesoythe/"
+            },
+            {
+                "name": "Volksbank Gardelegen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Gardelegen/"
+            },
+            {
+                "name": "Volksbank Gebhardshain",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Gebhardshain/"
+            },
+            {
+                "name": "Volksbank Geest",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Geest/"
+            },
+            {
+                "name": "Volksbank Geeste-Nord",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Geeste-Nord/"
+            },
+            {
+                "name": "Volksbank Gera · Jena · Rudolstadt",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Gera%20%C2%B7%20Jena%20%C2%B7%20Rudolstadt/"
+            },
+            {
+                "name": "Volksbank Gescher",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Gescher/"
+            },
+            {
+                "name": "Volksbank Glan-Münchweiler",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Glan-M%C3%BCnchweiler/"
+            },
+            {
+                "name": "Volksbank Grebenhain",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Grebenhain/"
+            },
+            {
+                "name": "Volksbank Gronau-Ahaus",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Gronau-Ahaus/"
+            },
+            {
+                "name": "Volksbank Göppingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20G%C3%B6ppingen/"
+            },
+            {
+                "name": "Volksbank Halle (Saale)",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Halle%20%28Saale%29/"
+            },
+            {
+                "name": "Volksbank Halle/Westf.",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Halle/Westf./"
+            },
+            {
+                "name": "Volksbank Hameln-Stadthagen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Hameln-Stadthagen/"
+            },
+            {
+                "name": "Volksbank Hamm / Sieg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Hamm%20/%20Sieg/"
+            },
+            {
+                "name": "Volksbank Haselünne",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Hasel%C3%BCnne/"
+            },
+            {
+                "name": "Volksbank Heidelberg-Neckartal",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Heidelberg-Neckartal/"
+            },
+            {
+                "name": "Volksbank Heiden",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Heiden/"
+            },
+            {
+                "name": "Volksbank Heimbach",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Heimbach/"
+            },
+            {
+                "name": "Volksbank Heinsberg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Heinsberg/"
+            },
+            {
+                "name": "Volksbank Hellweg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Hellweg/"
+            },
+            {
+                "name": "Volksbank Heuchelheim",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Heuchelheim/"
+            },
+            {
+                "name": "Volksbank Hildesheim-Lehrte-Pattensen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Hildesheim-Lehrte-Pattensen/"
+            },
+            {
+                "name": "Volksbank Hochrhein",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Hochrhein/"
+            },
+            {
+                "name": "Volksbank Hohenlimburg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Hohenlimburg/"
+            },
+            {
+                "name": "Volksbank Hohenlohe",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Hohenlohe/"
+            },
+            {
+                "name": "Volksbank im Bergischen Land",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20im%20Bergischen%20Land/"
+            },
+            {
+                "name": "Volksbank im Elbe-Weser-Dreieck",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20im%20Elbe-Weser-Dreieck/"
+            },
+            {
+                "name": "Volksbank im Harz",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20im%20Harz/"
+            },
+            {
+                "name": "Volksbank im Hochsauerland",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20im%20Hochsauerland/"
+            },
+            {
+                "name": "Volksbank Immenstadt",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Immenstadt/"
+            },
+            {
+                "name": "Volksbank im Münsterland",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20im%20M%C3%BCnsterland/"
+            },
+            {
+                "name": "Volksbank im Rheinland",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20im%20Rheinland/"
+            },
+            {
+                "name": "Volksbank im Wesertal",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20im%20Wesertal/"
+            },
+            {
+                "name": "Volksbank in der Hohen Mark",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20in%20der%20Hohen%20Mark/"
+            },
+            {
+                "name": "Volksbank in der Region",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20in%20der%20Region/"
+            },
+            {
+                "name": "Volksbank in Ostwestfalen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20in%20Ostwestfalen/"
+            },
+            {
+                "name": "Volksbank in Schaumburg und Nienburg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20in%20Schaumburg%20und%20Nienburg/"
+            },
+            {
+                "name": "Volksbank in Südwestfalen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20in%20S%C3%BCdwestfalen/"
+            },
+            {
+                "name": "Volksbank Jade-Weser",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Jade-Weser/"
+            },
+            {
+                "name": "Volksbank Jerichower Land",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Jerichower%20Land/"
+            },
+            {
+                "name": "Volksbank Kaiserslautern",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Kaiserslautern/"
+            },
+            {
+                "name": "Volksbank Kassel Göttingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Kassel%20G%C3%B6ttingen/"
+            },
+            {
+                "name": "Volksbank Kempen-Grefrath",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Kempen-Grefrath/"
+            },
+            {
+                "name": "Volksbank Kierspe",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Kierspe/"
+            },
+            {
+                "name": "Volksbank Kirnau-Krautheim",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Kirnau-Krautheim/"
+            },
+            {
+                "name": "Volksbank Klettgau-Wutöschingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Klettgau-Wut%C3%B6schingen/"
+            },
+            {
+                "name": "Volksbank Kleverland",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Kleverland/"
+            },
+            {
+                "name": "Volksbank Kraichgau",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Kraichgau/"
+            },
+            {
+                "name": "Volksbank Krefeld",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Krefeld/"
+            },
+            {
+                "name": "Volksbank Kurpfalz",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Kurpfalz/"
+            },
+            {
+                "name": "Volksbank Köln Bonn",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20K%C3%B6ln%20Bonn/"
+            },
+            {
+                "name": "Volksbank Köthen-Bitterfeld",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20K%C3%B6then-Bitterfeld/"
+            },
+            {
+                "name": "Volksbank Lahr",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Lahr/"
+            },
+            {
+                "name": "Volksbank Langendernbach",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Langendernbach/"
+            },
+            {
+                "name": "Volksbank Lastrup",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Lastrup/"
+            },
+            {
+                "name": "Volksbank Lauterecken",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Lauterecken/"
+            },
+            {
+                "name": "Volksbank Leonberg-Strohgäu",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Leonberg-Strohg%C3%A4u/"
+            },
+            {
+                "name": "Volksbank Limbach",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Limbach/"
+            },
+            {
+                "name": "Volksbank Lindenberg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Lindenberg/"
+            },
+            {
+                "name": "Volksbank Lohne-Dinklage-Steinfeld-Mühlen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Lohne-Dinklage-Steinfeld-M%C3%BChlen/"
+            },
+            {
+                "name": "Volksbank Löbau-Zittau",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20L%C3%B6bau-Zittau/"
+            },
+            {
+                "name": "Volksbank Löningen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20L%C3%B6ningen/"
+            },
+            {
+                "name": "Volksbank Lübeck",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20L%C3%BCbeck/"
+            },
+            {
+                "name": "Volksbank Lüneburger Heide",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20L%C3%BCneburger%20Heide/"
+            },
+            {
+                "name": "Volksbank Magdeburg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Magdeburg/"
+            },
+            {
+                "name": "Volksbank Mainspitze",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Mainspitze/"
+            },
+            {
+                "name": "Volksbank Marl-Recklinghausen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Marl-Recklinghausen/"
+            },
+            {
+                "name": "Volksbank Mittelhessen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Mittelhessen/"
+            },
+            {
+                "name": "Volksbank Mittlerer Neckar",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Mittlerer%20Neckar/"
+            },
+            {
+                "name": "Volksbank Mittlerer Schwarzwald",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Mittlerer%20Schwarzwald/"
+            },
+            {
+                "name": "Volksbank Mittleres Erzgebirge",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Mittleres%20Erzgebirge/"
+            },
+            {
+                "name": "Volksbank Mittweida",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Mittweida/"
+            },
+            {
+                "name": "Volksbank Möckmühl",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20M%C3%B6ckm%C3%BChl/"
+            },
+            {
+                "name": "Volksbank Münsingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20M%C3%BCnsingen/"
+            },
+            {
+                "name": "Volksbank Niedergrafschaft",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Niedergrafschaft/"
+            },
+            {
+                "name": "Volksbank Niederrhein",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Niederrhein/"
+            },
+            {
+                "name": "Volksbank Niedersachsen-Mitte",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Niedersachsen-Mitte/"
+            },
+            {
+                "name": "Volksbank Nordharz",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Nordharz/"
+            },
+            {
+                "name": "Volksbank Nordhümmling",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Nordh%C3%BCmmling/"
+            },
+            {
+                "name": "Volksbank Nordschwarzwald",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Nordschwarzwald/"
+            },
+            {
+                "name": "Volksbank Nottuln",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Nottuln/"
+            },
+            {
+                "name": "Volksbank Ober-Mörlen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ober-M%C3%B6rlen/"
+            },
+            {
+                "name": "Volksbank Oberberg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Oberberg/"
+            },
+            {
+                "name": "Volksbank Ochtrup-Laer",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ochtrup-Laer/"
+            },
+            {
+                "name": "Volksbank Oldenburg-Land Delmenhorst",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Oldenburg-Land%20Delmenhorst/"
+            },
+            {
+                "name": "Volksbank Olpe-Wenden-Drolshagen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Olpe-Wenden-Drolshagen/"
+            },
+            {
+                "name": "Volksbank Osterholz-Scharmbeck",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Osterholz-Scharmbeck/"
+            },
+            {
+                "name": "Volksbank Ostlippe",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ostlippe/"
+            },
+            {
+                "name": "Volksbank Oyten",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Oyten/"
+            },
+            {
+                "name": "Volksbank Pfullendorf",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Pfullendorf/"
+            },
+            {
+                "name": "Volksbank Pirna",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Pirna/"
+            },
+            {
+                "name": "Volksbank Plochingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Plochingen/"
+            },
+            {
+                "name": "Volksbank PLUS",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20PLUS/"
+            },
+            {
+                "name": "Volksbank pur",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20pur/"
+            },
+            {
+                "name": "Volksbank Raesfeld und Erle",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raesfeld%20und%20Erle/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank AmmerGäu",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20AmmerG%C3%A4u/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Bad Kissingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Bad%20Kissingen/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Bayern Mitte",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Bayern%20Mitte/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Dachau",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Dachau/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Fürstenfeldbruck",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20F%C3%BCrstenfeldbruck/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Itzehoe",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Itzehoe/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Meißen Großenhain",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Mei%C3%9Fen%20Gro%C3%9Fenhain/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Niederschlesien",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Niederschlesien/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Nordoberpfalz",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Nordoberpfalz/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Oberbayern Südost",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Oberbayern%20S%C3%BCdost/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Obermain",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Obermain/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Regensburg-Schwandorf",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20Regensburg-Schwandorf/"
+            },
+            {
+                "name": "Volksbank Raiffeisenbank Würzburg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Raiffeisenbank%20W%C3%BCrzburg/"
+            },
+            {
+                "name": "Volksbank Rathenow",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rathenow/"
+            },
+            {
+                "name": "Volksbank Remseck",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Remseck/"
+            },
+            {
+                "name": "Volksbank Rhede",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rhede/"
+            },
+            {
+                "name": "Volksbank Rhein-Erft-Köln",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rhein-Erft-K%C3%B6ln/"
+            },
+            {
+                "name": "Volksbank Rhein-Lahn-Limburg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rhein-Lahn-Limburg/"
+            },
+            {
+                "name": "Volksbank Rhein-Lippe",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rhein-Lippe/"
+            },
+            {
+                "name": "Volksbank Rhein-Nahe-Hunsrück",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rhein-Nahe-Hunsr%C3%BCck/"
+            },
+            {
+                "name": "Volksbank Rhein-Ruhr",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rhein-Ruhr/"
+            },
+            {
+                "name": "Volksbank Rheinböllen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rheinb%C3%B6llen/"
+            },
+            {
+                "name": "Volksbank Riesa",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Riesa/"
+            },
+            {
+                "name": "Volksbank Rot",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rot/"
+            },
+            {
+                "name": "Volksbank Rottweil",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Rottweil/"
+            },
+            {
+                "name": "Volksbank Ruhr Mitte",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ruhr%20Mitte/"
+            },
+            {
+                "name": "Volksbank Sandhofen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Sandhofen/"
+            },
+            {
+                "name": "Volksbank Sangerhausen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Sangerhausen/"
+            },
+            {
+                "name": "Volksbank Sauerland",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Sauerland/"
+            },
+            {
+                "name": "Volksbank Schermbeck",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Schermbeck/"
+            },
+            {
+                "name": "Volksbank Schlangen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Schlangen/"
+            },
+            {
+                "name": "Volksbank Schwanewede",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Schwanewede/"
+            },
+            {
+                "name": "Volksbank Schwarzwald-Donau-Neckar",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Schwarzwald-Donau-Neckar/"
+            },
+            {
+                "name": "Volksbank Seesen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Seesen/"
+            },
+            {
+                "name": "Volksbank Seligenstadt",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Seligenstadt/"
+            },
+            {
+                "name": "Volksbank Selm-Bork",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Selm-Bork/"
+            },
+            {
+                "name": "Volksbank Senden",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Senden/"
+            },
+            {
+                "name": "Volksbank Solling",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Solling/"
+            },
+            {
+                "name": "Volksbank Spree-Neiße",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Spree-Nei%C3%9Fe/"
+            },
+            {
+                "name": "Volksbank Sprockhövel",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Sprockh%C3%B6vel/"
+            },
+            {
+                "name": "Volksbank Stade-Cuxhaven",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Stade-Cuxhaven/"
+            },
+            {
+                "name": "Volksbank Staufen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Staufen/"
+            },
+            {
+                "name": "Volksbank Stendal",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Stendal/"
+            },
+            {
+                "name": "Volksbank Stuttgart",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Stuttgart/"
+            },
+            {
+                "name": "Volksbank Störmede-Westenholz-Hörste",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20St%C3%B6rmede-Westenholz-H%C3%B6rste/"
+            },
+            {
+                "name": "Volksbank Sulmtal",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Sulmtal/"
+            },
+            {
+                "name": "Volksbank Süd-Emsland",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20S%C3%BCd-Emsland/"
+            },
+            {
+                "name": "Volksbank Südheide - Isenhagener Land - Altmark",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20S%C3%BCdheide%20-%20Isenhagener%20Land%20-%20Altmark/"
+            },
+            {
+                "name": "Volksbank Südkirchen-Capelle-Nordkirchen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20S%C3%BCdkirchen-Capelle-Nordkirchen/"
+            },
+            {
+                "name": "Volksbank Thüringen Mitte",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Th%C3%BCringen%20Mitte/"
+            },
+            {
+                "name": "Volksbank Trier Eifel",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Trier%20Eifel/"
+            },
+            {
+                "name": "Volksbank Trossingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Trossingen/"
+            },
+            {
+                "name": "Volksbank Uelzen-Salzwedel",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Uelzen-Salzwedel/"
+            },
+            {
+                "name": "Volksbank Ulm-Biberach",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ulm-Biberach/"
+            },
+            {
+                "name": "Volksbank Ulrichstein",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Ulrichstein/"
+            },
+            {
+                "name": "Volksbank Vechta",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Vechta/"
+            },
+            {
+                "name": "Volksbank Versmold",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Versmold/"
+            },
+            {
+                "name": "Volksbank Viersen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Viersen/"
+            },
+            {
+                "name": "Volksbank Visbek",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Visbek/"
+            },
+            {
+                "name": "Volksbank Vogtland-Saale-Orla",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Vogtland-Saale-Orla/"
+            },
+            {
+                "name": "Volksbank Vorpommern",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Vorpommern/"
+            },
+            {
+                "name": "Volksbank Weschnitztal",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Weschnitztal/"
+            },
+            {
+                "name": "Volksbank Westerstede",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Westerstede/"
+            },
+            {
+                "name": "Volksbank Westmünsterland",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Westm%C3%BCnsterland/"
+            },
+            {
+                "name": "Volksbank Westrhauderfehn",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Westrhauderfehn/"
+            },
+            {
+                "name": "Volksbank Wilhelmshaven",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Wilhelmshaven/"
+            },
+            {
+                "name": "Volksbank Winsener Marsch",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Winsener%20Marsch/"
+            },
+            {
+                "name": "Volksbank Wittenberg",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Wittenberg/"
+            },
+            {
+                "name": "Volksbank Wittgenstein",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Wittgenstein/"
+            },
+            {
+                "name": "Volksbank Wißmar",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Wi%C3%9Fmar/"
+            },
+            {
+                "name": "Volksbank Wolfenbüttel",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Wolfenb%C3%BCttel/"
+            },
+            {
+                "name": "Volksbank Worpswede",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Worpswede/"
+            },
+            {
+                "name": "Volksbank Zollernalb",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Zollernalb/"
+            },
+            {
+                "name": "Volksbank Zuffenhausen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Zuffenhausen/"
+            },
+            {
+                "name": "Volksbank Zwickau",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20Zwickau/"
+            },
+            {
+                "name": "Volksbank Überherrn",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20%C3%9Cberherrn/"
+            },
+            {
+                "name": "Volksbank Überlingen",
+                "logo": "https://enablebanking.com/brands/DE/Volksbank%20%C3%9Cberlingen/"
+            },
+            {
+                "name": "VR-Bank Alb-Blau-Donau",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Alb-Blau-Donau/"
+            },
+            {
+                "name": "VR-Bank Altenburger Land",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Altenburger%20Land/"
+            },
+            {
+                "name": "VR-Bank Bonn Rhein-Sieg",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Bonn%20Rhein-Sieg/"
+            },
+            {
+                "name": "VR-Bank Coburg",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Coburg/"
+            },
+            {
+                "name": "VR-Bank Donau-Mindel",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Donau-Mindel/"
+            },
+            {
+                "name": "VR-Bank Ehningen-Nufringen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Ehningen-Nufringen/"
+            },
+            {
+                "name": "VR-Bank Ellwangen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Ellwangen/"
+            },
+            {
+                "name": "VR-Bank Erding",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Erding/"
+            },
+            {
+                "name": "VR-Bank Fichtelgebirge- Frankenwald",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Fichtelgebirge-%20Frankenwald/"
+            },
+            {
+                "name": "VR-Bank Fläming-Elsterland",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Fl%C3%A4ming-Elsterland/"
+            },
+            {
+                "name": "VR-Bank Freudenberg-Niederfischbach",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Freudenberg-Niederfischbach/"
+            },
+            {
+                "name": "VR-Bank Handels- und Gewerbebank",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Handels-%20und%20Gewerbebank/"
+            },
+            {
+                "name": "VR-Bank im südlichen Franken",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20im%20s%C3%BCdlichen%20Franken/"
+            },
+            {
+                "name": "VR-Bank in Mittelbaden",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20in%20Mittelbaden/"
+            },
+            {
+                "name": "VR-Bank in Nordhessen Westthüringen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20in%20Nordhessen%20Westth%C3%BCringen/"
+            },
+            {
+                "name": "VR-Bank in Südniedersachsen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20in%20S%C3%BCdniedersachsen/"
+            },
+            {
+                "name": "VR-Bank in Südoldenburg",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20in%20S%C3%BCdoldenburg/"
+            },
+            {
+                "name": "VR-Bank Isar-Vils",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Isar-Vils/"
+            },
+            {
+                "name": "VR-Bank Ismaning Hallbergmoos Neufahrn",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Ismaning%20Hallbergmoos%20Neufahrn/"
+            },
+            {
+                "name": "VR-Bank Landau-Mengkofen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Landau-Mengkofen/"
+            },
+            {
+                "name": "VR-Bank Landsberg-Ammersee",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Landsberg-Ammersee/"
+            },
+            {
+                "name": "VR-Bank Landshut",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Landshut/"
+            },
+            {
+                "name": "VR-Bank Lichtenfels-Ebern",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Lichtenfels-Ebern/"
+            },
+            {
+                "name": "VR-Bank Ludwigsburg",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Ludwigsburg/"
+            },
+            {
+                "name": "VR-Bank Main-Rhön",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Main-Rh%C3%B6n/"
+            },
+            {
+                "name": "VR-Bank Memmingen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Memmingen/"
+            },
+            {
+                "name": "VR-Bank Mitte",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Mitte/"
+            },
+            {
+                "name": "VR-Bank Mittelfranken Mitte",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Mittelfranken%20Mitte/"
+            },
+            {
+                "name": "VR-Bank Mittelsachsen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Mittelsachsen/"
+            },
+            {
+                "name": "VR-Bank Neu-Ulm",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Neu-Ulm/"
+            },
+            {
+                "name": "VR-Bank Nordeifel",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Nordeifel/"
+            },
+            {
+                "name": "VR-Bank NordRhön",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20NordRh%C3%B6n/"
+            },
+            {
+                "name": "VR-Bank Osnabrücker Nordland",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Osnabr%C3%BCcker%20Nordland/"
+            },
+            {
+                "name": "VR-Bank Ostalb",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Ostalb/"
+            },
+            {
+                "name": "VR-Bank Ostbayern-Mitte",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Ostbayern-Mitte/"
+            },
+            {
+                "name": "VR-Bank Passau",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Passau/"
+            },
+            {
+                "name": "VR-Bank Rottal-Inn",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Rottal-Inn/"
+            },
+            {
+                "name": "VR-Bank Spangenberg-Morschen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Spangenberg-Morschen/"
+            },
+            {
+                "name": "VR-Bank Südwestpfalz Pirmasens - Zweibrücken",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20S%C3%BCdwestpfalz%20Pirmasens%20-%20Zweibr%C3%BCcken/"
+            },
+            {
+                "name": "VR-Bank Taufkirchen-Dorfen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Taufkirchen-Dorfen/"
+            },
+            {
+                "name": "VR-Bank Uckermark-Randow",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Uckermark-Randow/"
+            },
+            {
+                "name": "VR-Bank Vilshofen-Pocking",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20Vilshofen-Pocking/"
+            },
+            {
+                "name": "VR-Bank Würselen",
+                "logo": "https://enablebanking.com/brands/DE/VR-Bank%20W%C3%BCrselen/"
+            },
+            {
+                "name": "VR-MainBank",
+                "logo": "https://enablebanking.com/brands/DE/VR-MainBank/"
+            },
+            {
+                "name": "VR Bank Alsheim",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Alsheim/"
+            },
+            {
+                "name": "VR Bank Amberg-Sulzbach",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Amberg-Sulzbach/"
+            },
+            {
+                "name": "VR Bank Augsburg-Ostallgäu",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Augsburg-Ostallg%C3%A4u/"
+            },
+            {
+                "name": "VR Bank Bad Orb-Gelnhausen",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Bad%20Orb-Gelnhausen/"
+            },
+            {
+                "name": "VR Bank Bamberg-Forchheim",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Bamberg-Forchheim/"
+            },
+            {
+                "name": "VR Bank Bayreuth-Hof",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Bayreuth-Hof/"
+            },
+            {
+                "name": "VR Bank Bergisch Gladbach-Leverkusen",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Bergisch%20Gladbach-Leverkusen/"
+            },
+            {
+                "name": "VR Bank Burglengenfeld",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Burglengenfeld/"
+            },
+            {
+                "name": "VR Bank Donau-Oberschwaben",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Donau-Oberschwaben/"
+            },
+            {
+                "name": "VR Bank Dreieich-Offenbach",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Dreieich-Offenbach/"
+            },
+            {
+                "name": "VR Bank Fulda",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Fulda/"
+            },
+            {
+                "name": "VR Bank Heilbronn Schwäbisch Hall",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Heilbronn%20Schw%C3%A4bisch%20Hall/"
+            },
+            {
+                "name": "VR Bank Ihre Heimatbank",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Ihre%20Heimatbank/"
+            },
+            {
+                "name": "VR Bank in Holstein",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20in%20Holstein/"
+            },
+            {
+                "name": "VR Bank in Thüringen",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20in%20Th%C3%BCringen/"
+            },
+            {
+                "name": "VR Bank Kempten-Oberallgäu",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Kempten-Oberallg%C3%A4u/"
+            },
+            {
+                "name": "VR Bank Kitzingen",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Kitzingen/"
+            },
+            {
+                "name": "VR Bank Lahn-Dill",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Lahn-Dill/"
+            },
+            {
+                "name": "VR Bank Lausitz",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Lausitz/"
+            },
+            {
+                "name": "VR Bank Main-Kinzig-Büdingen",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Main-Kinzig-B%C3%BCdingen/"
+            },
+            {
+                "name": "VR Bank Mecklenburg",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Mecklenburg/"
+            },
+            {
+                "name": "VR Bank Metropolregion Nürnberg",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Metropolregion%20N%C3%BCrnberg/"
+            },
+            {
+                "name": "VR Bank Mittelhaardt",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Mittelhaardt/"
+            },
+            {
+                "name": "VR Bank Mittlere Oberpfalz",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Mittlere%20Oberpfalz/"
+            },
+            {
+                "name": "VR Bank Monheim am Rhein",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Monheim%20am%20Rhein/"
+            },
+            {
+                "name": "VR Bank München Land",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20M%C3%BCnchen%20Land/"
+            },
+            {
+                "name": "VR Bank Neuburg-Rain",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Neuburg-Rain/"
+            },
+            {
+                "name": "VR Bank Niederbayern-Oberpfalz",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Niederbayern-Oberpfalz/"
+            },
+            {
+                "name": "VR Bank Nord",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Nord/"
+            },
+            {
+                "name": "VR Bank Oberfranken Mitte",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Oberfranken%20Mitte/"
+            },
+            {
+                "name": "VR Bank Rhein-Neckar",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Rhein-Neckar/"
+            },
+            {
+                "name": "VR Bank RheinAhrEifel",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20RheinAhrEifel/"
+            },
+            {
+                "name": "VR Bank Ried-Überwald",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Ried-%C3%9Cberwald/"
+            },
+            {
+                "name": "VR Bank Schleswig-Holstein Mitte",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Schleswig-Holstein%20Mitte/"
+            },
+            {
+                "name": "VR Bank Schwäbischer Wald",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Schw%C3%A4bischer%20Wald/"
+            },
+            {
+                "name": "VR Bank Starnberg-Zugspitze",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Starnberg-Zugspitze/"
+            },
+            {
+                "name": "VR Bank Südliche Weinstraße-Wasgau",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20S%C3%BCdliche%20Weinstra%C3%9Fe-Wasgau/"
+            },
+            {
+                "name": "VR Bank Südpfalz",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20S%C3%BCdpfalz/"
+            },
+            {
+                "name": "VR Bank Weimar",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Weimar/"
+            },
+            {
+                "name": "VR Bank Westfalen-Lippe",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20Westfalen-Lippe/"
+            },
+            {
+                "name": "VR Bank zwischen den Meeren",
+                "logo": "https://enablebanking.com/brands/DE/VR%20Bank%20zwischen%20den%20Meeren/"
+            },
+            {
+                "name": "VR GenoBank DonauWald",
+                "logo": "https://enablebanking.com/brands/DE/VR%20GenoBank%20DonauWald/"
+            },
+            {
+                "name": "VR PartnerBank Chattengau-Schwalm-Eder",
+                "logo": "https://enablebanking.com/brands/DE/VR%20PartnerBank%20Chattengau-Schwalm-Eder/"
+            },
+            {
+                "name": "VR PLUS Altmark-Wendland",
+                "logo": "https://enablebanking.com/brands/DE/VR%20PLUS%20Altmark-Wendland/"
+            },
+            {
+                "name": "VR SüdBank",
+                "logo": "https://enablebanking.com/brands/DE/VR%20S%C3%BCdBank/"
+            },
+            {
+                "name": "VR VerbundBank",
+                "logo": "https://enablebanking.com/brands/DE/VR%20VerbundBank/"
+            },
+            {
+                "name": "Waldeck-Frankenberger Bank",
+                "logo": "https://enablebanking.com/brands/DE/Waldeck-Frankenberger%20Bank/"
+            },
+            {
+                "name": "WEG Bank",
+                "logo": "https://enablebanking.com/brands/DE/WEG%20Bank/"
+            },
+            {
+                "name": "Westerwald Bank",
+                "logo": "https://enablebanking.com/brands/DE/Westerwald%20Bank/"
+            },
+            {
+                "name": "Wiesbadener Volksbank",
+                "logo": "https://enablebanking.com/brands/DE/Wiesbadener%20Volksbank/"
+            },
+            {
+                "name": "Winterbacher Bank",
+                "logo": "https://enablebanking.com/brands/DE/Winterbacher%20Bank/"
+            }
         ],
-        "FR": ["BBVA"],
-        "IT": ["BBVA", "UniCredit"],
-        "NL": ["Handelsbanken", "Rabobank"],
-        "PT": ["BBVA"],
-        "BE": ["BBVA"],
-        "AT": ["Oberbank"],
-        "FI": ["Nordea", "OP", "S-Pankki"],
+        "FR": [
+            {
+                "name": "BBVA",
+                "logo": "https://enablebanking.com/brands/FR/BBVA/"
+            }
+        ],
+        "IT": [
+            {
+                "name": "BBVA",
+                "logo": "https://enablebanking.com/brands/IT/BBVA/"
+            },
+            {
+                "name": "UniCredit",
+                "logo": "https://enablebanking.com/brands/IT/UniCredit/"
+            }
+        ],
+        "NL": [
+            {
+                "name": "Handelsbanken",
+                "logo": "https://enablebanking.com/brands/NL/Handelsbanken/"
+            },
+            {
+                "name": "Rabobank",
+                "logo": "https://enablebanking.com/brands/NL/Rabobank/"
+            }
+        ],
+        "PT": [
+            {
+                "name": "BBVA",
+                "logo": "https://enablebanking.com/brands/PT/BBVA/"
+            }
+        ],
+        "BE": [
+            {
+                "name": "BBVA",
+                "logo": "https://enablebanking.com/brands/BE/BBVA/"
+            }
+        ],
+        "AT": [
+            {
+                "name": "Oberbank",
+                "logo": "https://enablebanking.com/brands/AT/Oberbank/"
+            }
+        ],
+        "FI": [
+            {
+                "name": "Nordea",
+                "logo": "https://enablebanking.com/brands/FI/Nordea/"
+            },
+            {
+                "name": "OP",
+                "logo": "https://enablebanking.com/brands/FI/OP/"
+            },
+            {
+                "name": "S-Pankki",
+                "logo": "https://enablebanking.com/brands/FI/S-Pankki/"
+            }
+        ],
         "IE": [],
-        "LT": ["Artea", "Citadele", "Luminor", "Swedbank"],
-        "LV": ["Citadele", "Luminor", "Swedbank"],
-        "EE": ["Citadele", "LHV Pank", "Luminor", "Swedbank"],
-        "SE": [
-            "Bergslagens Sparbank",
-            "Bjursås Sparbank",
-            "Dalslands Sparbank",
-            "Ekeby Sparbank",
-            "Falkenbergs Sparbank",
-            "Fryksdalens Sparbank",
-            "Handelsbanken",
-            "Hälsinglands Sparbank",
-            "Häradssparbanken Mönsterås",
-            "Högsby Sparbank",
-            "Ivetofta Sparbank i Bromölla",
-            "Kinda-Ydre Sparbank",
-            "Laholms Sparbank",
-            "Lekebergs Sparbank",
-            "Leksands Sparbank",
-            "Lönneberga-Tuna-Vena Sparbank",
-            "Markaryds Sparbank",
-            "Mjöbäcks Sparbank",
-            "Nordea",
-            "Norrbärke Sparbank",
-            "Orusts Sparbank",
-            "Roslagens Sparbank",
-            "Sala Sparbank",
-            "Sidensjö Sparbank",
-            "Skandia",
-            "Skurups Sparbank",
-            "Snapphanebygdens Sparbank",
-            "Sparbanken Alingsås",
-            "Sparbanken Boken",
-            "Sparbanken Eken",
-            "Sparbanken Gotland",
-            "Sparbanken Göinge",
-            "Sparbanken i Enköping",
-            "Sparbanken i Karlshamn",
-            "Sparbanken Lidköping",
-            "Sparbanken Nord",
-            "Sparbanken Rekarne",
-            "Sparbanken Sjuhärad",
-            "Sparbanken Skaraborg",
-            "Sparbanken Skåne",
-            "Sparbanken Spira",
-            "Sparbanken Tanum",
-            "Sparbanken Tranemo",
-            "Sparbanken Västra Mälardalen",
-            "Swedbank",
-            "Södra Hestra Sparbank",
-            "Sölvesborg-Mjällby Sparbank",
-            "Sörmlands Sparbank",
-            "Tidaholms Sparbank",
-            "Tjörns Sparbank",
-            "Ulricehamns Sparbank",
-            "Vadstena Sparbank",
-            "Valdemarsviks Sparbank",
-            "Varbergs Sparbank",
-            "Vimmerby Sparbank",
-            "Virserums Sparbank",
-            "Westra Wermlands Sparbank",
-            "Ålems Sparbank",
-            "Åse Viste Sparbank",
-            "Ölands Bank"
+        "LT": [
+            {
+                "name": "Artea",
+                "logo": "https://enablebanking.com/brands/LT/Artea/"
+            },
+            {
+                "name": "Citadele",
+                "logo": "https://enablebanking.com/brands/LT/Citadele/"
+            },
+            {
+                "name": "Luminor",
+                "logo": "https://enablebanking.com/brands/LT/Luminor/"
+            },
+            {
+                "name": "Swedbank",
+                "logo": "https://enablebanking.com/brands/LT/Swedbank/"
+            }
         ],
-        "NO": ["Nordea"],
-        "DK": ["Nordea", "Saxo Bank", "Vestjysk Bank"],
-        "PL": ["Bank Millennium"],
+        "LV": [
+            {
+                "name": "Citadele",
+                "logo": "https://enablebanking.com/brands/LV/Citadele/"
+            },
+            {
+                "name": "Luminor",
+                "logo": "https://enablebanking.com/brands/LV/Luminor/"
+            },
+            {
+                "name": "Swedbank",
+                "logo": "https://enablebanking.com/brands/LV/Swedbank/"
+            }
+        ],
+        "EE": [
+            {
+                "name": "Citadele",
+                "logo": "https://enablebanking.com/brands/EE/Citadele/"
+            },
+            {
+                "name": "LHV Pank",
+                "logo": "https://enablebanking.com/brands/EE/LHV%20Pank/"
+            },
+            {
+                "name": "Luminor",
+                "logo": "https://enablebanking.com/brands/EE/Luminor/"
+            },
+            {
+                "name": "Swedbank",
+                "logo": "https://enablebanking.com/brands/EE/Swedbank/"
+            }
+        ],
+        "SE": [
+            {
+                "name": "Bergslagens Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Bergslagens%20Sparbank/"
+            },
+            {
+                "name": "Bjursås Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Bjurs%C3%A5s%20Sparbank/"
+            },
+            {
+                "name": "Dalslands Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Dalslands%20Sparbank/"
+            },
+            {
+                "name": "Ekeby Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Ekeby%20Sparbank/"
+            },
+            {
+                "name": "Falkenbergs Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Falkenbergs%20Sparbank/"
+            },
+            {
+                "name": "Fryksdalens Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Fryksdalens%20Sparbank/"
+            },
+            {
+                "name": "Handelsbanken",
+                "logo": "https://enablebanking.com/brands/SE/Handelsbanken/"
+            },
+            {
+                "name": "Hälsinglands Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/H%C3%A4lsinglands%20Sparbank/"
+            },
+            {
+                "name": "Häradssparbanken Mönsterås",
+                "logo": "https://enablebanking.com/brands/SE/H%C3%A4radssparbanken%20M%C3%B6nster%C3%A5s/"
+            },
+            {
+                "name": "Högsby Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/H%C3%B6gsby%20Sparbank/"
+            },
+            {
+                "name": "Ivetofta Sparbank i Bromölla",
+                "logo": "https://enablebanking.com/brands/SE/Ivetofta%20Sparbank%20i%20Brom%C3%B6lla/"
+            },
+            {
+                "name": "Kinda-Ydre Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Kinda-Ydre%20Sparbank/"
+            },
+            {
+                "name": "Laholms Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Laholms%20Sparbank/"
+            },
+            {
+                "name": "Lekebergs Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Lekebergs%20Sparbank/"
+            },
+            {
+                "name": "Leksands Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Leksands%20Sparbank/"
+            },
+            {
+                "name": "Lönneberga-Tuna-Vena Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/L%C3%B6nneberga-Tuna-Vena%20Sparbank/"
+            },
+            {
+                "name": "Markaryds Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Markaryds%20Sparbank/"
+            },
+            {
+                "name": "Mjöbäcks Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Mj%C3%B6b%C3%A4cks%20Sparbank/"
+            },
+            {
+                "name": "Nordea",
+                "logo": "https://enablebanking.com/brands/SE/Nordea/"
+            },
+            {
+                "name": "Norrbärke Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Norrb%C3%A4rke%20Sparbank/"
+            },
+            {
+                "name": "Orusts Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Orusts%20Sparbank/"
+            },
+            {
+                "name": "Roslagens Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Roslagens%20Sparbank/"
+            },
+            {
+                "name": "Sala Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Sala%20Sparbank/"
+            },
+            {
+                "name": "Sidensjö Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Sidensj%C3%B6%20Sparbank/"
+            },
+            {
+                "name": "Skandia",
+                "logo": "https://enablebanking.com/brands/SE/Skandia/"
+            },
+            {
+                "name": "Skurups Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Skurups%20Sparbank/"
+            },
+            {
+                "name": "Snapphanebygdens Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Snapphanebygdens%20Sparbank/"
+            },
+            {
+                "name": "Sparbanken Alingsås",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Alings%C3%A5s/"
+            },
+            {
+                "name": "Sparbanken Boken",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Boken/"
+            },
+            {
+                "name": "Sparbanken Eken",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Eken/"
+            },
+            {
+                "name": "Sparbanken Gotland",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Gotland/"
+            },
+            {
+                "name": "Sparbanken Göinge",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20G%C3%B6inge/"
+            },
+            {
+                "name": "Sparbanken i Enköping",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20i%20Enk%C3%B6ping/"
+            },
+            {
+                "name": "Sparbanken i Karlshamn",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20i%20Karlshamn/"
+            },
+            {
+                "name": "Sparbanken Lidköping",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Lidk%C3%B6ping/"
+            },
+            {
+                "name": "Sparbanken Nord",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Nord/"
+            },
+            {
+                "name": "Sparbanken Rekarne",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Rekarne/"
+            },
+            {
+                "name": "Sparbanken Sjuhärad",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Sjuh%C3%A4rad/"
+            },
+            {
+                "name": "Sparbanken Skaraborg",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Skaraborg/"
+            },
+            {
+                "name": "Sparbanken Skåne",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Sk%C3%A5ne/"
+            },
+            {
+                "name": "Sparbanken Spira",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Spira/"
+            },
+            {
+                "name": "Sparbanken Tanum",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Tanum/"
+            },
+            {
+                "name": "Sparbanken Tranemo",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20Tranemo/"
+            },
+            {
+                "name": "Sparbanken Västra Mälardalen",
+                "logo": "https://enablebanking.com/brands/SE/Sparbanken%20V%C3%A4stra%20M%C3%A4lardalen/"
+            },
+            {
+                "name": "Swedbank",
+                "logo": "https://enablebanking.com/brands/SE/Swedbank/"
+            },
+            {
+                "name": "Södra Hestra Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/S%C3%B6dra%20Hestra%20Sparbank/"
+            },
+            {
+                "name": "Sölvesborg-Mjällby Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/S%C3%B6lvesborg-Mj%C3%A4llby%20Sparbank/"
+            },
+            {
+                "name": "Sörmlands Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/S%C3%B6rmlands%20Sparbank/"
+            },
+            {
+                "name": "Tidaholms Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Tidaholms%20Sparbank/"
+            },
+            {
+                "name": "Tjörns Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Tj%C3%B6rns%20Sparbank/"
+            },
+            {
+                "name": "Ulricehamns Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Ulricehamns%20Sparbank/"
+            },
+            {
+                "name": "Vadstena Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Vadstena%20Sparbank/"
+            },
+            {
+                "name": "Valdemarsviks Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Valdemarsviks%20Sparbank/"
+            },
+            {
+                "name": "Varbergs Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Varbergs%20Sparbank/"
+            },
+            {
+                "name": "Vimmerby Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Vimmerby%20Sparbank/"
+            },
+            {
+                "name": "Virserums Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Virserums%20Sparbank/"
+            },
+            {
+                "name": "Westra Wermlands Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/Westra%20Wermlands%20Sparbank/"
+            },
+            {
+                "name": "Ålems Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/%C3%85lems%20Sparbank/"
+            },
+            {
+                "name": "Åse Viste Sparbank",
+                "logo": "https://enablebanking.com/brands/SE/%C3%85se%20Viste%20Sparbank/"
+            },
+            {
+                "name": "Ölands Bank",
+                "logo": "https://enablebanking.com/brands/SE/%C3%96lands%20Bank/"
+            }
+        ],
+        "NO": [
+            {
+                "name": "Nordea",
+                "logo": "https://enablebanking.com/brands/NO/Nordea/"
+            }
+        ],
+        "DK": [
+            {
+                "name": "Nordea",
+                "logo": "https://enablebanking.com/brands/DK/Nordea/"
+            },
+            {
+                "name": "Saxo Bank",
+                "logo": "https://enablebanking.com/brands/DK/Saxo%20Bank/"
+            },
+            {
+                "name": "Vestjysk Bank",
+                "logo": "https://enablebanking.com/brands/DK/Vestjysk%20Bank/"
+            }
+        ],
+        "PL": [
+            {
+                "name": "Bank Millennium",
+                "logo": "https://enablebanking.com/brands/PL/Bank%20Millennium/"
+            }
+        ],
         "GB": []
     }
 }

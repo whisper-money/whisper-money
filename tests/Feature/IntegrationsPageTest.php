@@ -13,11 +13,26 @@ use Inertia\Testing\AssertableInertia;
  */
 function connectProviderNames(): array
 {
+    return array_keys(connectProviderRegistry());
+}
+
+/**
+ * Name to logo, as the frontend registry declares them.
+ *
+ * @return array<string, string>
+ */
+function connectProviderRegistry(): array
+{
     $registry = file_get_contents(base_path('resources/js/lib/connect-providers.tsx'));
 
-    preg_match_all("/institution: \{\s*name: '([^']+)'/", (string) $registry, $matches);
+    preg_match_all(
+        "/institution: \{\s*name: '([^']+)',\s*country: '[^']+',\s*logo: '([^']+)'/",
+        (string) $registry,
+        $matches,
+        PREG_SET_ORDER,
+    );
 
-    return $matches[1];
+    return array_column($matches, 2, 1);
 }
 
 /**
@@ -43,9 +58,9 @@ function fakeInstitutions(): void
     test()->mock(BankingProviderInterface::class)
         ->shouldReceive('getInstitutions')
         ->andReturnUsing(fn (string $country): array => $country === 'ES' ? [
-            ['name' => 'BBVA', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
-            ['name' => 'BBVA', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
-            ['name' => 'Abanca', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
+            ['name' => 'BBVA', 'country' => 'ES', 'logo' => 'https://logos.test/bbva.png', 'maximum_consent_validity' => null],
+            ['name' => 'BBVA', 'country' => 'ES', 'logo' => 'https://logos.test/bbva.png', 'maximum_consent_validity' => null],
+            ['name' => 'Abanca', 'country' => 'ES', 'logo' => 'https://logos.test/abanca.png', 'maximum_consent_validity' => null],
             ['name' => IntegrationsPage::TEST_INSTITUTION, 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => null],
         ] : []);
 }
@@ -58,7 +73,6 @@ test('the integrations page renders in its own language', function (string $loca
             ->where('pageLocale', $locale)
             ->where('content.heading', MarketingContent::integrations($locale)['heading'])
             ->has('countries')
-            ->has('providers', count(MarketingContent::apiProviders()))
             ->has('labels', 4)
         );
 })->with(MarketingContent::LOCALES);
@@ -126,18 +140,64 @@ test('the spanish and english pages are distinct translations of each other', fu
         ->and(IntegrationsPage::path('es'))->toBe('integraciones');
 });
 
-test('the copy names the same api providers as the connect flow', function () {
-    expect(array_keys(MarketingContent::apiProviders()))
-        ->toEqualCanonicalizing(connectProviderNames());
-});
+test('the copy names the same api providers, with the same logos, as the connect flow', function () {
+    $registry = connectProviderRegistry();
 
-test('every api provider is described in every language', function () {
-    foreach (MarketingContent::apiProviders() as $name => $descriptions) {
-        foreach (MarketingContent::LOCALES as $locale) {
-            expect($descriptions[$locale] ?? '')->not->toBeEmpty("{$name} has no {$locale} description");
-        }
+    expect(array_keys(MarketingContent::API_PROVIDERS))->toEqualCanonicalizing(array_keys($registry));
+
+    foreach (MarketingContent::API_PROVIDERS as $name => $app) {
+        expect($app['logo'])->toBe($registry[$name], "{$name} has a different logo here than in the connect flow");
     }
 });
+
+test('every api key app is listed in the country group the connect flow offers it in', function (string $locale) {
+    $groups = collect(IntegrationsPage::countries($locale))->keyBy('code');
+
+    foreach (MarketingContent::API_PROVIDERS as $name => $app) {
+        $group = $groups->get($app['country']);
+
+        expect($group)->not->toBeNull("{$name} belongs to {$app['country']}, which the page does not render")
+            ->and(collect($group['entries'])->firstWhere('name', $name))->not->toBeNull("{$name} is missing from {$app['country']}")
+            ->and(collect($group['entries'])->firstWhere('name', $name)['key'])->toBeTrue();
+    }
+})->with(MarketingContent::LOCALES);
+
+test('indexa capital sits with the spanish banks, not in the worldwide group', function () {
+    // The connect flow only offers it when Spain is selected.
+    expect(MarketingContent::API_PROVIDERS['Indexa Capital']['country'])->toBe('ES');
+
+    $worldwide = collect(IntegrationsPage::countries('en'))->firstWhere('code', MarketingContent::WORLDWIDE);
+
+    expect(collect($worldwide['entries'])->pluck('name'))->not->toContain('Indexa Capital');
+});
+
+test('the worldwide group comes first and is not counted as a country', function (string $locale) {
+    $groups = IntegrationsPage::countries($locale);
+
+    expect($groups[0]['code'])->toBe(MarketingContent::WORLDWIDE)
+        ->and($groups[0]['name'])->toBe(MarketingContent::WORLDWIDE_NAMES[$locale]);
+
+    $countries = count($groups) - 1;
+
+    expect(IntegrationsPage::content($locale)['banks_intro'])->toContain((string) $countries);
+})->with(MarketingContent::LOCALES);
+
+test('every entry carries a logo to render', function (string $locale) {
+    foreach (IntegrationsPage::countries($locale) as $group) {
+        foreach ($group['entries'] as $entry) {
+            expect($entry['logo'])->not->toBeEmpty("{$entry['name']} has no logo");
+        }
+    }
+})->with(MarketingContent::LOCALES);
+
+test('the page speaks to someone who has never heard of open banking', function (string $locale) {
+    $content = IntegrationsPage::content($locale);
+    $prose = json_encode($content, JSON_UNESCAPED_UNICODE);
+
+    foreach (['PSD2', 'open banking', 'banca abierta', 'API key', 'clave de API', 'aspsp', 'MCP'] as $jargon) {
+        expect(strtolower((string) $prose))->not->toContain(strtolower($jargon), "the copy still says \"{$jargon}\"");
+    }
+})->with(MarketingContent::LOCALES);
 
 test('the countries offered on the page are the ones the connect flow offers', function () {
     expect(array_keys(MarketingContent::COUNTRIES))->toEqualCanonicalizing(connectCountryCodes());
@@ -158,21 +218,23 @@ test('the committed catalogue is a real one, deduplicated per country', function
         ->and($catalogue['countries'] ?? [])->not->toBeEmpty();
 
     foreach ($catalogue['countries'] as $code => $banks) {
+        $names = array_column($banks, 'name');
+
         expect(MarketingContent::COUNTRIES)->toHaveKey($code)
-            ->and($banks)->toBe(array_values(array_unique($banks)), "{$code} lists a bank twice")
-            ->and($banks)->not->toContain(IntegrationsPage::TEST_INSTITUTION);
+            ->and($names)->toBe(array_values(array_unique($names)), "{$code} lists a bank twice")
+            ->and($names)->not->toContain(IntegrationsPage::TEST_INSTITUTION);
     }
 });
 
 test('the served page carries the bank names, which is the point of it', function (string $locale) {
     $countries = IntegrationsPage::countries($locale);
-    $banks = collect($countries)->flatMap(fn (array $country): array => $country['banks']);
+    $names = collect($countries)->flatMap(fn (array $country): array => array_column($country['entries'], 'name'));
     $markdown = $this->get('/'.IntegrationsPage::path($locale).'.md')->assertSuccessful()->content();
 
-    expect($banks)->not->toBeEmpty();
+    expect($names)->not->toBeEmpty();
 
-    foreach ($banks->take(25) as $bank) {
-        expect($markdown)->toContain($bank);
+    foreach ($names->take(25) as $name) {
+        expect($markdown)->toContain($name);
     }
 
     foreach ($countries as $country) {
@@ -183,11 +245,11 @@ test('the served page carries the bank names, which is the point of it', functio
 test('the prose counts match the catalogue rendered under it', function (string $locale) {
     $content = IntegrationsPage::content($locale);
     $countries = IntegrationsPage::countries($locale);
-    $banks = array_sum(array_map(fn (array $country): int => count($country['banks']), $countries));
+    $entries = array_sum(array_map(fn (array $country): int => count($country['entries']), $countries));
 
-    expect($content['banks_intro'])->toContain(number_format($banks))
-        ->and($content['banks_intro'])->toContain((string) count($countries))
-        ->and($content['banks_intro'])->not->toContain(':count');
+    expect($content['banks_intro'])->toContain(number_format($entries))
+        ->and($content['banks_intro'])->not->toContain(':count')
+        ->and($content['banks_intro'])->not->toContain(':countries');
 })->with(MarketingContent::LOCALES);
 
 test('the page is sent only the chrome labels it uses, none with a stray placeholder', function () {
@@ -248,7 +310,8 @@ test('the sync command deduplicates, drops the provider test bank and writes pro
 
     $written = json_decode((string) file_get_contents(base_path($relative)), true);
 
-    expect($written['countries']['ES'])->toBe(['Abanca', 'BBVA'])
+    expect(array_column($written['countries']['ES'], 'name'))->toBe(['Abanca', 'BBVA'])
+        ->and($written['countries']['ES'][0]['logo'])->toBe('https://logos.test/abanca.png')
         ->and($written['countries']['GB'])->toBe([])
         ->and($written['source'])->toContain('/aspsps')
         ->and($written['generated_by'])->toContain('banks:sync-institutions')

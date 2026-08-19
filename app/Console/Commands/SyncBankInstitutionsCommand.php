@@ -41,11 +41,14 @@ class SyncBankInstitutionsCommand extends Command
             // per authorisation method it supports; the page lists banks, not
             // authorisation methods.
             $banks = collect($provider->getInstitutions($country))
-                ->pluck('name')
-                ->filter()
-                ->reject(fn (string $name): bool => str_contains($name, IntegrationsPage::TEST_INSTITUTION))
-                ->unique()
-                ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+                ->filter(fn (array $bank): bool => ! empty($bank['name']))
+                ->reject(fn (array $bank): bool => str_contains($bank['name'], IntegrationsPage::TEST_INSTITUTION))
+                ->unique('name')
+                ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+                ->map(fn (array $bank): array => [
+                    'name' => $bank['name'],
+                    'logo' => $bank['logo'] ?: null,
+                ])
                 ->values()
                 ->all();
 
@@ -85,7 +88,7 @@ class SyncBankInstitutionsCommand extends Command
      * an error, which is how a page promising a bank list ends up promising two
      * banks; that has happened, so it is worth refusing to overwrite.
      *
-     * @param  array<string, list<string>>  $countries
+     * @param  array<string, list<array{name: string, logo: string|null}>>  $countries
      * @return list<string>
      */
     private function collapsedCountries(array $countries): array

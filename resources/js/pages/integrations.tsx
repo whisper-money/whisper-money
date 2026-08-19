@@ -1,3 +1,4 @@
+import { BankLogo } from '@/components/bank-logo';
 import {
     MarketingFooter,
     MarketingHead,
@@ -8,8 +9,8 @@ import { Input } from '@/components/ui/input';
 import {
     type IntegrationsContent,
     type IntegrationsCountry,
+    type IntegrationsEntry,
     type IntegrationsLabels,
-    type IntegrationsProvider,
 } from '@/types/integrations';
 import { ChevronRightIcon, KeyRoundIcon, SearchIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -17,12 +18,14 @@ import { useMemo, useState } from 'react';
 type IntegrationsProps = {
     content: IntegrationsContent;
     countries: IntegrationsCountry[];
-    providers: IntegrationsProvider[];
     labels: IntegrationsLabels;
     pageLocale: string;
     alternates: Record<string, string>;
     canRegister: boolean;
 };
+
+/** The group that holds what is not tied to one country. */
+const WORLDWIDE = 'WW';
 
 /**
  * Lowercase and strip accents, so someone typing "halsinglands" still finds
@@ -46,6 +49,42 @@ function matchesAll(haystack: string, needles: string[]): boolean {
 }
 
 /**
+ * A country code as its flag, straight from the two letters: 'ES' is the pair
+ * of regional indicator symbols that renders as 🇪🇸. No asset, no request, and
+ * a platform that has no flag glyphs falls back to showing the letters.
+ */
+function flag(code: string): string {
+    if (code === WORLDWIDE) {
+        return '🌍';
+    }
+
+    return String.fromCodePoint(
+        ...[...code].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65),
+    );
+}
+
+function Entry({ entry }: { entry: IntegrationsEntry }) {
+    return (
+        <li className="flex items-start gap-2.5 py-1">
+            <BankLogo
+                src={entry.logo}
+                name={entry.name}
+                loading="lazy"
+                fallback="letter"
+                className="mt-px size-6 shrink-0 bg-white text-[10px] dark:bg-white/90"
+            />
+            <span className="leading-snug">{entry.name}</span>
+            {entry.key && (
+                <KeyRoundIcon
+                    aria-hidden
+                    className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400"
+                />
+            )}
+        </li>
+    );
+}
+
+/**
  * One country, collapsed by default. `details` keeps every name in the served
  * HTML — which is the entire SEO point of the page — while stopping the largest
  * country from burying the rest of the list. A filter forces it open, so results
@@ -61,21 +100,24 @@ function CountryGroup({
     return (
         <details
             open={open}
-            className="group rounded-xl border border-[#e3e3e0] px-4 py-3 dark:border-[#3E3E3A]"
+            className="group rounded-xl border border-[#e3e3e0] px-4 py-3.5 dark:border-[#3E3E3A]"
         >
             <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold">
                 <ChevronRightIcon
                     aria-hidden
                     className="size-4 shrink-0 transition-transform group-open:rotate-90"
                 />
+                <span aria-hidden className="text-base leading-none">
+                    {flag(country.code)}
+                </span>
                 {country.name}
                 <span className="font-normal text-[#706f6c] dark:text-[#A1A09A]">
-                    ({country.banks.length})
+                    ({country.entries.length})
                 </span>
             </summary>
-            <ul className="mt-3 grid gap-x-6 gap-y-1 text-sm text-[#706f6c] sm:grid-cols-2 lg:grid-cols-3 dark:text-[#A1A09A]">
-                {country.banks.map((bank) => (
-                    <li key={bank}>{bank}</li>
+            <ul className="mt-4 grid gap-x-8 gap-y-1.5 text-sm text-[#706f6c] sm:grid-cols-2 lg:grid-cols-3 dark:text-[#A1A09A]">
+                {country.entries.map((entry) => (
+                    <Entry key={entry.name} entry={entry} />
                 ))}
             </ul>
         </details>
@@ -85,7 +127,6 @@ function CountryGroup({
 export default function Integrations({
     content,
     countries,
-    providers,
     labels,
     pageLocale,
     alternates,
@@ -98,8 +139,8 @@ export default function Integrations({
         [query],
     );
 
-    // The whole catalogue is in the served HTML, which is the point of the page;
-    // the filter only narrows what is already there, with no request.
+    // The whole list is in the served HTML, which is the point of the page; the
+    // filter only narrows what is already there, with no request.
     const matches = useMemo(() => {
         if (needles.length === 0) {
             return countries;
@@ -113,16 +154,16 @@ export default function Integrations({
                     ? country
                     : {
                           ...country,
-                          banks: country.banks.filter((bank) =>
-                              matchesAll(bank, needles),
+                          entries: country.entries.filter((entry) =>
+                              matchesAll(entry.name, needles),
                           ),
                       },
             )
-            .filter((country) => country.banks.length > 0);
+            .filter((country) => country.entries.length > 0);
     }, [countries, needles]);
 
     const matchCount = matches.reduce(
-        (total, country) => total + country.banks.length,
+        (total, country) => total + country.entries.length,
         0,
     );
 
@@ -155,8 +196,8 @@ export default function Integrations({
                         />
                     </header>
 
-                    {/* Banks first: "is my bank here" is the question that brought
-                        the visitor, so the search box comes before everything. */}
+                    {/* One list, banks and apps together: "can I connect this"
+                        is the same question whichever of the two it is. */}
                     <section className="flex flex-col gap-4">
                         <h2 className="text-2xl font-semibold">
                             {content.banks_title}
@@ -201,8 +242,12 @@ export default function Integrations({
                             </p>
                         </div>
 
-                        <p className="text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                            {content.banks_note}
+                        <p className="flex gap-2 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                            <KeyRoundIcon
+                                aria-hidden
+                                className="mt-1 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                            />
+                            <span>{content.banks_note}</span>
                         </p>
 
                         {matches.length > 0 ? (
@@ -225,34 +270,6 @@ export default function Integrations({
                                 </p>
                             </div>
                         )}
-                    </section>
-
-                    <section className="flex flex-col gap-4">
-                        <h2 className="text-2xl font-semibold">
-                            {content.providers_title}
-                        </h2>
-                        <p className="leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                            {content.providers_intro}
-                        </p>
-                        <ul className="grid gap-4 sm:grid-cols-2">
-                            {providers.map((provider) => (
-                                <li
-                                    key={provider.name}
-                                    className="flex flex-col gap-2 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-5 dark:border-[#3E3E3A] dark:bg-[#161615]"
-                                >
-                                    <h3 className="flex items-center gap-2 font-semibold">
-                                        <KeyRoundIcon
-                                            aria-hidden
-                                            className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                                        />
-                                        {provider.name}
-                                    </h3>
-                                    <p className="text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                                        {provider.description}
-                                    </p>
-                                </li>
-                            ))}
-                        </ul>
                     </section>
 
                     <section className="flex flex-col gap-4">
