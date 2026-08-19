@@ -39,8 +39,11 @@ class UpdateEmail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        // Translated in the recipient's locale: Laravel hydrates the envelope
+        // inside withLocale(), and an untranslated subject falls back to the
+        // string itself, so plain --subject values keep working unchanged.
         return new Envelope(
-            subject: $this->emailSubject,
+            subject: __($this->emailSubject),
         );
     }
 
