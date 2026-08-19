@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { StepCreateAccount } from './step-create-account';
 
+const PRICE_HINT = /^From\s*€/;
+
 const PLAN_WARNING =
     "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.";
 
@@ -36,17 +38,19 @@ describe('StepCreateAccount plan intent', () => {
         expect(screen.getByTestId('account-form')).toBeInTheDocument();
     });
 
-    it('offers the connected option without the plan warning to a paid signup', () => {
+    it('quotes no price to a paid signup, who has just seen one', () => {
         renderStep('paid');
 
         expect(screen.getByText('Connected')).toBeInTheDocument();
         expect(screen.queryByText(PLAN_WARNING)).not.toBeInTheDocument();
+        expect(screen.queryByText(PRICE_HINT)).not.toBeInTheDocument();
     });
 
-    it('keeps the connected option and the plan warning for every other signup', () => {
+    it('keeps the connected option, the price and the plan warning for every other signup', () => {
         renderStep(null);
 
         expect(screen.getByText('Connected')).toBeInTheDocument();
         expect(screen.getByText(PLAN_WARNING)).toBeInTheDocument();
+        expect(screen.getByText(PRICE_HINT)).toBeInTheDocument();
     });
 });

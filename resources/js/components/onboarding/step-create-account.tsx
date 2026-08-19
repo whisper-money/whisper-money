@@ -665,6 +665,7 @@ export function StepCreateAccount({
                             )}
                         </p>
                         {subscriptionsEnabled &&
+                            signupPlan !== 'paid' &&
                             !hasSelectedConnectedAccount &&
                             cheapestMonthlyPrice !== null && (
                                 <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
