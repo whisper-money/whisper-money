@@ -1,4 +1,3 @@
-import { BankLogo } from '@/components/bank-logo';
 import {
     MarketingFooter,
     MarketingHead,
@@ -66,13 +65,6 @@ function flag(code: string): string {
 function Entry({ entry }: { entry: IntegrationsEntry }) {
     return (
         <li className="flex items-start gap-2.5 py-1">
-            <BankLogo
-                src={entry.logo}
-                name={entry.name}
-                loading="lazy"
-                fallback="letter"
-                className="mt-px size-6 shrink-0 bg-white text-[10px] dark:bg-white/90"
-            />
             <span className="leading-snug">{entry.name}</span>
             {entry.key && (
                 <KeyRoundIcon
@@ -115,7 +107,7 @@ function CountryGroup({
                     ({country.entries.length})
                 </span>
             </summary>
-            <ul className="mt-4 grid gap-x-8 gap-y-1.5 text-sm text-[#706f6c] sm:grid-cols-2 lg:grid-cols-3 dark:text-[#A1A09A]">
+            <ul className="mt-4 grid gap-x-8 gap-y-1.5 text-sm text-[#706f6c] sm:ml-6 sm:grid-cols-2 lg:grid-cols-3 dark:text-[#A1A09A]">
                 {country.entries.map((entry) => (
                     <Entry key={entry.name} entry={entry} />
                 ))}

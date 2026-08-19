@@ -6,8 +6,6 @@ interface BankLogoProps {
     name?: string;
     className?: string;
     fallback?: 'letter' | 'icon' | 'empty' | 'none';
-    /** `lazy` for long lists, so a few hundred logos cost nothing up front. */
-    loading?: 'lazy' | 'eager';
 }
 
 export function BankLogo({
@@ -15,14 +13,12 @@ export function BankLogo({
     name,
     className,
     fallback = 'none',
-    loading,
 }: BankLogoProps) {
     if (src) {
         return (
             <img
                 src={src}
                 alt={name || ''}
-                loading={loading}
                 className={cn('rounded-full object-contain', className)}
             />
         );
