@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Marketing\ComparisonPages;
+use App\Support\Marketing\IntegrationsPage;
 use App\Support\Marketing\MarketingContent;
 use Illuminate\Http\Response;
 
@@ -18,11 +19,30 @@ class SitemapController extends Controller
             ['loc' => "{$baseUrl}/privacy", 'changefreq' => 'monthly', 'priority' => '0.5'],
             ['loc' => "{$baseUrl}/terms", 'changefreq' => 'monthly', 'priority' => '0.5'],
             ['loc' => "{$baseUrl}/llms.txt", 'changefreq' => 'weekly', 'priority' => '0.3'],
+            ...$this->integrationUrls(),
             ...$this->comparisonUrls(),
         ];
 
         return response($this->render($urls), 200)
             ->header('Content-Type', 'application/xml');
+    }
+
+    /**
+     * The integrations page in every language, each carrying the others as
+     * alternates. The Markdown twins stay out: they are non-canonical URLs.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function integrationUrls(): array
+    {
+        $alternates = IntegrationsPage::alternates();
+
+        return array_values(array_map(fn (string $url): array => [
+            'loc' => $url,
+            'changefreq' => 'weekly',
+            'priority' => '0.8',
+            'alternates' => $alternates,
+        ], $alternates));
     }
 
     /**
