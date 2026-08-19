@@ -13,7 +13,9 @@
 
 **{{ __('The data was never the problem. Getting an answer out of it was.') }}**
 
-{{ __('So I went and fixed that.') }}
+{{ __('Álvaro and I had been going round on that one for a while.') }}
+
+{{ __('So I went and built it.') }}
 
 {{ __('You can now connect Whisper Money to ChatGPT and just ask:') }}
 
@@ -34,7 +36,7 @@
 {{ __('It works with Claude too, if that is the assistant you use.') }}
 
 <x-mail::panel>
-{{ __('One thing I want to be precise about, because this is a privacy first app. Nothing gets connected until you connect it yourself, from your settings, under AI Connector. While it is connected, the assistant reads your data in order to answer you, and those conversations live in your own account with that assistant, under their rules and not mine. When you want out, you remove Whisper Money from the connected apps inside ChatGPT and it stops answering. If you never connect it, nothing changes for you.') }}
+{{ __('One thing we want to be precise about, because this is a privacy first app. Nothing gets connected until you connect it yourself, from your settings, under AI Connector. While it is connected, the assistant reads your data in order to answer you, and those conversations live in your own account with that assistant, under their rules and not ours. When you want out, you remove Whisper Money from the connected apps inside ChatGPT and it stops answering. If you never connect it, nothing changes for you.') }}
 </x-mail::panel>
 
 {{ __('Connecting it is a handful of clicks, and it is a lot easier to watch than to read. So I recorded myself doing the whole thing, from connecting it to asking the first question.') }}
@@ -51,7 +53,7 @@
 
 {{ __('It comes with Pro, by the way.') }}
 
-{{ __('If you try it, hit reply and tell me what you asked it first. I read every email.') }}
+{{ __('If you try it, hit reply and tell us what you asked it first. We read every email.') }}
 
 Víctor Falcón Ruíz<br>
 {{ __('Founder and solo developer, Whisper Money') }}
