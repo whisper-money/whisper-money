@@ -89,8 +89,13 @@ export default function Dashboard() {
         return ids;
     }, [accountMetrics]);
 
+    // Archived accounts stay in the payload so the chart keeps their history,
+    // but they are off the dashboard itself: no card, no row in the manager.
     const manageableAccounts = useMemo(
-        () => accountMetrics.filter((a) => !linkedLoanAccountIds.has(a.id)),
+        () =>
+            accountMetrics.filter(
+                (a) => !linkedLoanAccountIds.has(a.id) && !a.archived_at,
+            ),
         [accountMetrics, linkedLoanAccountIds],
     );
 

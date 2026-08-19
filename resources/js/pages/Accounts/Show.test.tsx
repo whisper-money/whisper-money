@@ -7,13 +7,14 @@ import AccountShow from './Show';
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
-    router: { reload: vi.fn() },
+    router: { reload: vi.fn(), patch: vi.fn() },
     Deferred: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('@/actions/App/Http/Controllers/AccountController', () => ({
     index: () => ({ url: '/accounts' }),
     show: { url: (id: string) => `/accounts/${id}` },
+    updateArchived: { url: (id: string) => `/accounts/${id}/archived` },
 }));
 
 vi.mock('@/actions/App/Http/Controllers/LoanDetailController', () => ({
@@ -32,6 +33,10 @@ vi.mock('@/layouts/app/app-sidebar-layout', () => ({
 
 vi.mock('@/components/accounts/account-balance-chart', () => ({
     AccountBalanceChart: () => null,
+}));
+
+vi.mock('@/components/accounts/archive-account-dialog', () => ({
+    ArchiveAccountDialog: () => null,
 }));
 
 vi.mock('@/components/accounts/balances-modal', () => ({

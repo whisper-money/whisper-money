@@ -16,8 +16,10 @@ import {
 import { ArrowUpDown, Link2, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
+import { updateArchived } from '@/actions/App/Http/Controllers/AccountController';
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { AccountName } from '@/components/accounts/account-name';
+import { ArchiveAccountDialog } from '@/components/accounts/archive-account-dialog';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
@@ -47,6 +49,19 @@ import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, formatAccountType } from '@/types/account';
 
+/**
+ * This settings list is the one place an archived account stays visible, so it
+ * can be brought back. Restoring needs no warning; archiving explains itself in
+ * ArchiveAccountDialog first.
+ */
+function unarchive(account: Account) {
+    router.patch(
+        updateArchived.url(account.id),
+        { archived: false },
+        { preserveScroll: true, preserveState: true },
+    );
+}
+
 function AccountActions({
     account,
     onSuccess,
@@ -56,6 +71,7 @@ function AccountActions({
 }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [archiveOpen, setArchiveOpen] = useState(false);
 
     return (
         <>
@@ -75,6 +91,15 @@ function AccountActions({
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
                         {__('Edit')}
                     </DropdownMenuItem>
+                    {account.archived_at ? (
+                        <DropdownMenuItem onClick={() => unarchive(account)}>
+                            {__('Unarchive')}
+                        </DropdownMenuItem>
+                    ) : (
+                        <DropdownMenuItem onClick={() => setArchiveOpen(true)}>
+                            {__('Archive')}
+                        </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         className="text-red-600"
@@ -97,6 +122,13 @@ function AccountActions({
                 onOpenChange={setDeleteOpen}
                 onSuccess={onSuccess}
             />
+
+            <ArchiveAccountDialog
+                account={account}
+                open={archiveOpen}
+                onOpenChange={setArchiveOpen}
+                onSuccess={onSuccess}
+            />
         </>
     );
 }
@@ -111,6 +143,7 @@ function AccountRow({
     const account = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [archiveOpen, setArchiveOpen] = useState(false);
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
 
     return (
@@ -140,6 +173,15 @@ function AccountRow({
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
                         {__('Edit')}
                     </ContextMenuItem>
+                    {account.archived_at ? (
+                        <ContextMenuItem onClick={() => unarchive(account)}>
+                            {__('Unarchive')}
+                        </ContextMenuItem>
+                    ) : (
+                        <ContextMenuItem onClick={() => setArchiveOpen(true)}>
+                            {__('Archive')}
+                        </ContextMenuItem>
+                    )}
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
                         className="text-red-600"
@@ -160,6 +202,13 @@ function AccountRow({
                 account={account}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
+                onSuccess={onSuccess}
+            />
+
+            <ArchiveAccountDialog
+                account={account}
+                open={archiveOpen}
+                onOpenChange={setArchiveOpen}
                 onSuccess={onSuccess}
             />
         </>
@@ -212,6 +261,9 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                             account={row.original}
                             length={{ min: 10, max: 20 }}
                         />
+                        {row.original.archived_at && (
+                            <Badge variant="secondary">{__('Archived')}</Badge>
+                        )}
                     </div>
                 );
             },
