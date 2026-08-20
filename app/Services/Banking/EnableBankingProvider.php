@@ -224,6 +224,47 @@ class EnableBankingProvider implements BankingProviderInterface
         throw new BankingRequestException($e->response, $operation);
     }
 
+    /**
+     * Whether a failed request is one an unattended sync should expect.
+     *
+     * A flaky bank connector, a consent the user has to renew, a period the bank
+     * won't serve, a quota the bank meters: the caller handles all of these, so
+     * they belong in the log as warnings rather than as application errors.
+     * Reported as errors, the metered quota alone was 120 of the 134 error-level
+     * entries a day - enough to bury the ones that are real, as it did for three
+     * nights while a scheduled command was dying with nothing but one line in
+     * there to show for it.
+     *
+     * This is not a claim that a 429 is always handled well. The backoff that
+     * answers one is only partly effective, and deliberately so:
+     * `isExhaustedAccessAllowance` parks the connection until midnight for the
+     * daily-allowance wordings, while a bare "Too many requests" gets an hour
+     * against a six-hourly schedule, so that park usually expires unused.
+     * Widening the match to cover it was tried and dropped, because 1.7% of
+     * those retries do recover and a day-long park would forfeit them. The claim
+     * is only that a metered quota is never an application defect.
+     *
+     * An upstream 5xx is not on the list. That is the provider failing rather
+     * than the provider working as designed, and nothing here can answer it.
+     *
+     * Note this also covers the interactive paths - the bank picker and the
+     * authorization flow - where nothing parks anything and a user is watching.
+     * Those let the exception escape unwrapped, so it still reaches Sentry.
+     */
+    private function isExpectedProviderOutcome(RequestException $e): bool
+    {
+        return $this->isAspspError($e)
+            || $this->requiresReconnect($e)
+            || $this->isPsuActionRequired($e)
+            || $this->isRateLimited($e)
+            || $e->response->status() === 422;
+    }
+
+    private function isRateLimited(RequestException $e): bool
+    {
+        return $e->response->status() === 429;
+    }
+
     private function isAspspError(RequestException $e): bool
     {
         $body = $this->errorBody($e);
@@ -236,7 +277,10 @@ class EnableBankingProvider implements BankingProviderInterface
     {
         // Any upstream 5xx (EnableBanking itself or the ASPSP behind it) is a
         // transient server-side failure — same class as a ConnectionException,
-        // so retry/self-heal rather than report it as an app error.
+        // so retry and self-heal rather than fail the connection over it. Note
+        // that it does still log as an error, unlike the outcomes in
+        // `isExpectedProviderOutcome`: the caller recovering from a provider
+        // outage is not the same as the outage being expected.
         return $e->response->status() >= 500;
     }
 
@@ -318,23 +362,7 @@ class EnableBankingProvider implements BankingProviderInterface
             ->withToken($this->generateJwt())
             ->acceptJson()
             ->throw(function ($response, RequestException $exception) {
-                // Expected outcomes of an unattended sync — a flaky bank connector,
-                // a consent the user has to renew, a period the bank won't serve,
-                // a quota the bank meters — are the caller's to handle, so they
-                // log as warnings rather than as application errors.
-                //
-                // 429 belongs on that list: the job already answers it by parking
-                // the connection until the quota resets and saying so in its own
-                // warning, and against a provider that meters access it is the
-                // routine outcome, not a defect. Reported as an error it was 120
-                // of the 134 error-level entries a day, which is enough to bury
-                // the ones that are real.
-                $isExpected = $this->isAspspError($exception)
-                    || $this->requiresReconnect($exception)
-                    || $this->isPsuActionRequired($exception)
-                    || in_array($response->status(), [422, 429], true);
-
-                Log::log($isExpected ? 'warning' : 'error', 'EnableBanking API error', [
+                Log::log($this->isExpectedProviderOutcome($exception) ? 'warning' : 'error', 'EnableBanking API error', [
                     'status' => $response->status(),
                     // Which endpoint failed tells one bad account apart from a
                     // whole connection or a provider-wide wave.
