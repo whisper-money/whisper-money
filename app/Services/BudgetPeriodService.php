@@ -104,22 +104,27 @@ class BudgetPeriodService
      *
      * `period_start_day` is validated as 0-31 for every period type, because for
      * weekly and biweekly budgets it is a day of the week and 0 is Sunday. For a
-     * monthly budget that 0 goes to `Carbon::day(0)`, which resolves to the last
-     * day of the *previous* month - so the window ends before the month does and
-     * the last days of some months are covered by no period at all. The budget
-     * then has no current period on those days, `getCurrentPeriod()` returns
-     * null, and anything dated in them counts towards nothing.
+     * monthly budget that 0 reaches `Carbon::day(0)`, which resolves to the last
+     * day of the *previous* month - and chained generation can never escape it:
+     * the reference date is the previous period's end plus one day, `day(0)`
+     * snaps back to the period that already exists, and `firstOrCreate` hands
+     * back that same row forever. Three live budgets have been frozen that way
+     * since 2026-07-30, with no current period at all.
      *
-     * Only the floor is applied. A day past the end of a short month overflows
-     * into the next one (February plus 31 days is 3 March) and `subMonth` walks
-     * the window back from there, which makes the boundary wander - but it never
-     * leaves a day uncovered, and 8 live budgets are anchored that way. Moving
-     * their windows to fix a wander nobody has reported would re-bucket real
-     * transactions; that belongs in its own change with its own migration.
+     * Only the floor is applied, and the missing ceiling is its own bug rather
+     * than a tidy carve-out. A day past the end of a short month overflows into
+     * the next one (February plus 31 days is 3 March) and `subMonth` walks the
+     * window back from there, which can return a window that *starts after* the
+     * reference date: day 30 asked for on 1 February yields 2 February to 1
+     * March. Four live budgets are anchored at 30 or 31, and they meet it on the
+     * on-demand path only - a budget created that day renders "No active period"
+     * until the following day, rather than freezing. Fixing it needs a clamp
+     * *and* month arithmetic that does not overflow, which moves windows that
+     * currently work, so it needs its own change and its own repair.
      */
     private function startDayOfMonth(Budget $budget): int
     {
-        return max(1, $budget->period_start_day ?? 1);
+        return max(1, (int) $budget->period_start_day);
     }
 
     /**
