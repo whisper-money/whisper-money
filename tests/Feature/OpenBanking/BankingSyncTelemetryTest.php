@@ -160,7 +160,12 @@ test('a rate limit on balances says so in the logs and still keeps the run', fun
 
     expect($backoff['operation'])->toBe('balances')
         ->and($backoff['status_code'])->toBe(429)
-        ->and($backoff['aspsp_name'])->toBe('Trade Republic');
+        ->and($backoff['aspsp_name'])->toBe('Trade Republic')
+        // Which of the two limits this is, and whether the wait is the provider's
+        // or our default: the same two questions the failed path answers with
+        // response_body and rate_limit_headers.
+        ->and($backoff['provider_message'])->toBe('Maximum daily access exceeded')
+        ->and($backoff['retry_after'])->toBe('1800');
 
     $connection->refresh();
     $log = BankingSyncLog::query()

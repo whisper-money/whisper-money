@@ -129,12 +129,13 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             $isFirstSync = ! $connection->last_synced_at || $this->fullSync;
 
             $metadata = $syncer->sync($connection, $isFirstSync);
+            $rateLimitedUntil = $this->balanceRateLimitBackoff($connection, $metadata);
 
             $connection->update([
                 'status' => BankingConnectionStatus::Active,
                 'last_synced_at' => $syncedAt,
                 'error_message' => null,
-                'rate_limited_until' => $this->balanceRateLimitBackoff($connection, $metadata),
+                'rate_limited_until' => $rateLimitedUntil,
                 'consecutive_sync_failures' => 0,
             ]);
 
@@ -517,12 +518,12 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     private function resolveRateLimitBackoffUntil(\Throwable $e): Carbon
     {
         if (! $e instanceof RequestException) {
-            return $this->rateLimitBackoffUntil(null, '');
+            return $this->backoffUntil(null, '');
         }
 
         $body = $e->response->json();
 
-        return $this->rateLimitBackoffUntil(
+        return $this->backoffUntil(
             $e->response->header('Retry-After'),
             is_array($body) ? (string) ($body['message'] ?? '') : '',
         );
@@ -547,18 +548,20 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
 
         $retryAfter = $rateLimit['retry_after'] ?? null;
-        $until = $this->rateLimitBackoffUntil(
-            is_string($retryAfter) ? $retryAfter : null,
-            (string) ($rateLimit['message'] ?? ''),
-        );
+        $message = (string) ($rateLimit['message'] ?? '');
+        $until = $this->backoffUntil(is_string($retryAfter) ? $retryAfter : null, $message);
 
         // Same message as the failed-run path, which is what these get searched
-        // for. What the provider replied is already in the syncer's own warning
-        // and in the metadata of the sync log this run writes.
+        // for. It carries what the failed path reads off the response - which of
+        // the two limits this is, and whether the wait is the provider's or our
+        // default - under different keys, because here they come from the
+        // metadata rather than from a response this class never sees.
         Log::warning('Banking connection rate limited, backing off', [
             ...$connection->logContext(),
             'operation' => 'balances',
             'status_code' => 429,
+            'provider_message' => $message,
+            'retry_after' => $retryAfter,
             'rate_limited_until' => $until->toIso8601String(),
             'run_recorded_as' => BankingSyncLogStatus::Success->value,
         ]);
@@ -573,7 +576,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
      * run that succeeded with only its balance call rate limited, which has the
      * JSON-safe facts the syncer put in the metadata.
      */
-    private function rateLimitBackoffUntil(?string $retryAfter, string $message): Carbon
+    private function backoffUntil(?string $retryAfter, string $message): Carbon
     {
         $now = now();
 

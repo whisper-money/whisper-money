@@ -183,3 +183,41 @@ test('a rate limit still reaches the job instead of being swallowed per account'
     $connection->refresh();
     expect($connection->rate_limited_until)->not->toBeNull();
 });
+
+test('a balance rate limit still backs off when a later account fails the run', function () {
+    $connection = enableBankingConnectionWithAccounts(2);
+    $refusedAccountId = $connection->accounts[1]->id;
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(function ($account) use ($refusedAccountId) {
+        if ($account->id === $refusedAccountId) {
+            throw aspspError();
+        }
+
+        return 5;
+    });
+
+    // Account 1's balances are rate limited, then account 2's transactions fail
+    // the run outright, so the metadata that carries the backoff is never
+    // returned.
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once()->andThrow(
+        new RequestException(new Illuminate\Http\Client\Response(
+            new Response(429, [], json_encode(['code' => 429, 'message' => 'Maximum daily access exceeded']))
+        ))
+    );
+
+    try {
+        runSync(finalAttemptJobFor($connection), $transactionSync, $balanceSync);
+    } catch (RequestException|TransientBankingProviderException) {
+        // Either type means the run failed. Which of the two the job is handed is
+        // the whole point, and rate_limited_until below is the proof.
+    }
+
+    $connection->refresh();
+
+    // Without it the job retries twice more, straight into an allowance it already
+    // knows is spent.
+    expect($connection->rate_limited_until)->not->toBeNull()
+        ->and($connection->rate_limited_until->equalTo(now()->utc()->addDay()->startOfDay()))->toBeTrue();
+});

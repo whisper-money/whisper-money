@@ -53,7 +53,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 
         $transactionsPerBank = [];
         $balanceFailed = 0;
-        $balanceRateLimit = null;
+        $balanceRateLimitFailure = null;
         $transactionFailure = null;
 
         $accountsAttempted = 0;
@@ -84,15 +84,9 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                     $transactionFailure ??= $this->recordAccountTransactionFailure($connection, $account, $e);
                 }
 
-                // Counted before the balances call, which is the one that throws
-                // most often: a tally taken after it would report zero imported
-                // for a run that had in fact just imported them.
-                if ($created > 0) {
-                    $bankName = $account->bank->name ?? __('Unknown Bank');
-                    $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
-                }
+                $transactionsPerBank = $this->tally($transactionsPerBank, $account, $created);
 
-                if (! $this->syncBalances($connection, $account, $isFirstSync, $balanceRateLimit)) {
+                if (! $this->syncBalances($connection, $account, $isFirstSync, $balanceRateLimitFailure)) {
                     $balanceFailed++;
                 }
             }
@@ -102,6 +96,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 'accounts_total' => $connection->accounts->count(),
                 'transactions_synced' => array_sum($transactionsPerBank),
                 'balance_failed' => $balanceFailed,
+                'balance_rate_limited' => $balanceRateLimitFailure !== null,
             ]);
 
             throw $e;
@@ -115,7 +110,11 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         // Outside the try on purpose: by here nothing was aborted mid-run, every
         // account was attempted, and the per-account failure is already logged.
         if ($transactionFailure !== null) {
-            throw $transactionFailure;
+            // A balance rate limit has no channel once the run throws instead of
+            // returning its metadata, and the job would retry straight into an
+            // allowance it knows is spent. Handing it the 429 instead gets the
+            // backoff applied exactly as it was before the run was worth keeping.
+            throw $balanceRateLimitFailure ?? $transactionFailure;
         }
 
         if ($isFirstSync) {
@@ -128,7 +127,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             'transactions_synced' => array_sum($transactionsPerBank),
             'transactions_per_bank' => $transactionsPerBank,
             'balance_failed' => $balanceFailed,
-            'balance_rate_limit' => $balanceRateLimit,
+            'balance_rate_limit' => $this->rateLimitFacts($balanceRateLimitFailure),
         ];
     }
 
@@ -139,7 +138,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
      * transactions and then the rate limit killed the run" was until now only
      * reconstructable by lining up timestamps across two tables.
      *
-     * @param  array<string, int>  $progress
+     * @param  array<string, bool|int>  $progress
      */
     private function logAbortedSync(BankingConnection $connection, \Throwable $e, array $progress): void
     {
@@ -207,21 +206,18 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
     /**
      * Sync one account's balances, tolerating a provider that will not serve them.
      *
-     * `$rateLimit` is filled in when the provider rate limited the call, so the
-     * caller can hand the job what its backoff policy needs. It travels in the
-     * metadata that gets persisted as JSON on the sync log, which is why it
-     * carries the facts of the 429 and not the exception itself.
+     * `$rateLimitFailure` is filled in with the 429 when the provider rate limited
+     * the call, so the caller can hand the job what its backoff policy needs.
      *
      * Arriving with it already filled in means an earlier account in the same run
      * was rate limited: the allowance is spent for the whole consent, so this call
      * is not made at all rather than burning what is left of it.
      *
-     * @param  array{retry_after: string|null, message: string}|null  $rateLimit
      * @return bool Whether the balances were synced
      */
-    private function syncBalances(BankingConnection $connection, Account $account, bool $isFirstSync, ?array &$rateLimit = null): bool
+    private function syncBalances(BankingConnection $connection, Account $account, bool $isFirstSync, ?RequestException &$rateLimitFailure): bool
     {
-        if ($rateLimit !== null) {
+        if ($rateLimitFailure !== null) {
             return false;
         }
 
@@ -246,7 +242,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             // worth keeping, so it is reported instead of thrown: without it the
             // remaining scheduled runs keep burning the daily allowance.
             if ($e instanceof RequestException && $e->response->status() === 429) {
-                $rateLimit = $this->rateLimitFacts($e);
+                $rateLimitFailure = $e;
             }
 
             // No balance failure is worth losing the run over. Balances are a
@@ -258,7 +254,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 'operation' => 'balances',
                 'reason' => $e::class,
                 'status_code' => $e instanceof RequestException ? $e->response->status() : null,
-                'rate_limited' => $rateLimit !== null,
+                'rate_limited' => $rateLimitFailure !== null,
                 'error' => $e->getMessage(),
             ]);
 
@@ -267,13 +263,40 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
     }
 
     /**
-     * What the provider's 429 said, in the JSON-safe shape the job's backoff
-     * policy reads.
+     * Tally what one account imported, under the bank it came from.
      *
-     * @return array{retry_after: string|null, message: string}
+     * Counted before the balances call, which is the one that throws most often:
+     * a tally taken after it would report zero imported for a run that had in
+     * fact just imported them.
+     *
+     * @param  array<string, int>  $transactionsPerBank
+     * @return array<string, int>
      */
-    private function rateLimitFacts(RequestException $e): array
+    private function tally(array $transactionsPerBank, Account $account, int $created): array
     {
+        if ($created <= 0) {
+            return $transactionsPerBank;
+        }
+
+        $bankName = $account->bank->name ?? __('Unknown Bank');
+        $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
+
+        return $transactionsPerBank;
+    }
+
+    /**
+     * What the provider's 429 said, in the JSON-safe shape the job's backoff
+     * policy reads - the exception itself cannot go in the metadata, which is
+     * persisted as JSON on the sync log. Null when no balance call was limited.
+     *
+     * @return array{retry_after: string|null, message: string}|null
+     */
+    private function rateLimitFacts(?RequestException $e): ?array
+    {
+        if ($e === null) {
+            return null;
+        }
+
         $body = $e->response->json();
 
         return [
