@@ -11,6 +11,7 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 test('getTransactions wraps EnableBanking ASPSP errors as non-reportable transient errors', function () {
     Http::fake([
@@ -538,18 +539,15 @@ test('the API error log keeps the endpoint shape but not the bank identifiers', 
         ->and(json_encode($logged))->not->toContain('ext-secret-123');
 });
 
-test('a metered quota logs as a warning, an unexpected status as an error', function (int $status, string $level) {
+test('a metered quota logs as a warning, an unexpected status as an error', function (int $status, string $level, string $notLevel) {
     Http::fake([
         'api.enablebanking.com/accounts/ext-123/balances*' => Http::response([
             'code' => $status,
-            'message' => 'Too many requests',
+            'message' => 'Nope',
         ], $status),
     ]);
 
-    $levels = [];
-    Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$levels): void {
-        $levels[] = $event->level;
-    });
+    Log::spy();
 
     try {
         enableBankingProviderForTest()->getBalances('ext-123');
@@ -557,10 +555,17 @@ test('a metered quota logs as a warning, an unexpected status as an error', func
         // What it throws is the caller's business; this is about what it logs.
     }
 
-    // A 429 is answered by parking the connection until the quota resets, so
-    // reporting it as an application error only buries the real ones.
-    expect($levels)->toContain($level);
+    // Asserting the absence too, because the point of the change is that the
+    // error-level entry stops being written - collecting levels and looking for
+    // the one you want passes just as well when both are there.
+    Log::shouldHaveReceived('log')->with($level, 'EnableBanking API error', Mockery::any())->once();
+    Log::shouldNotHaveReceived('log', [$notLevel, 'EnableBanking API error', Mockery::any()]);
 })->with([
-    [429, 'warning'],
-    [500, 'error'],
+    // A quota the bank meters, which the app answers with a backoff.
+    [429, 'warning', 'error'],
+    // Nothing recognises this one, so it stays an application error. Deliberately
+    // not a 5xx: `isTransientServerError` and `WiseClient` both read a 5xx as
+    // "not an app error", so pinning a level for it here would be taking a side
+    // in a disagreement this change has no business settling.
+    [404, 'error', 'warning'],
 ]);
