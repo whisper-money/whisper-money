@@ -59,7 +59,10 @@ export function StepRow({
 
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex flex-wrap items-center gap-2 text-base leading-tight font-medium">
-                    {title}
+                    {/* The title keeps its own element so an exact-text lookup
+                        (Pest's click/assertSee) resolves to the title alone
+                        rather than to "title + badge". */}
+                    <span>{title}</span>
                     {badge}
                 </span>
                 {description && (

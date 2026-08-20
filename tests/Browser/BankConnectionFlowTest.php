@@ -35,13 +35,12 @@ it('connects a bank during onboarding', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to')
+    $page->assertSee('Welcome to Whisper Money')
         ->click("Let's Get Started")
         ->waitForText('Account Types', 5)
         ->click('Create Your First Account')
         ->waitForText('How would you like to set up this account?', 5)
         ->click('Connected')
-        ->click('Continue')
         ->waitForText('Connect Your Bank', 5)
         ->click('[role="combobox"]')
         ->wait(0.5)
