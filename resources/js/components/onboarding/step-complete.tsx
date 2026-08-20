@@ -15,7 +15,13 @@ export function StepComplete() {
             complete.url(),
             {},
             {
-                onError: () => {
+                // `onError` only fires for a response Inertia could read, so a
+                // request that died on the network left the last step of
+                // onboarding behind a spinning, disabled button with no way out
+                // but a page reload. `onFinish` runs on every outcome, so the
+                // toast that already explains the failure comes with a button
+                // the user can press again.
+                onFinish: () => {
                     setIsRedirecting(false);
                 },
             },
