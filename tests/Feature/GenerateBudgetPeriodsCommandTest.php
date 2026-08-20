@@ -77,3 +77,16 @@ it('does not disturb the period the user is spending in', function () {
         ->and($current->end_date->toDateString())->toBe('2026-08-31')
         ->and($current->allocated_amount)->toBe(10000);
 });
+
+it('restarts a budget whose last period ended months ago on today', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $budget = monthlyBudgetWithPeriods([['2026-02-01', '2026-02-28']]);
+
+    $this->artisan('budgets:generate-periods')->assertSuccessful();
+
+    $current = $budget->fresh()->getCurrentPeriod();
+
+    expect($current)->not->toBeNull()
+        ->and($current->start_date->toDateString())->toBe('2026-08-01');
+});

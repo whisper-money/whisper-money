@@ -33,7 +33,10 @@ class GenerateBudgetPeriods extends Command
             $currentPeriod = $budget->getCurrentPeriod();
 
             if (! $currentPeriod) {
-                $this->budgetPeriodService->generatePeriod($budget);
+                // Anchored on today, not on the end of the chain: a budget whose
+                // last period ended months ago needs the period covering now, or
+                // it crawls forward one period per night before it works again.
+                $this->budgetPeriodService->generatePeriod($budget, null, today());
                 $generatedCount++;
                 $this->info("Generated initial period for budget: {$budget->name}");
             }

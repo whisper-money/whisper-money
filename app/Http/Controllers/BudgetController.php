@@ -61,7 +61,11 @@ class BudgetController extends Controller
             $viewedPeriod = $budget->getCurrentPeriod();
 
             if (! $viewedPeriod) {
-                $viewedPeriod = $this->budgetPeriodService->generatePeriod($budget);
+                // Same anchoring as the scheduled command: without an explicit
+                // start date this picks up where the chain ends, which can be in
+                // the past - showing a stale period as the current one and
+                // appending another row on every visit.
+                $viewedPeriod = $this->budgetPeriodService->generatePeriod($budget, null, today());
             }
         }
 
