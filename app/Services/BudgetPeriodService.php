@@ -74,7 +74,7 @@ class BudgetPeriodService
             }
         }
 
-        $nextPeriod = $this->periodFollowing($budget, $period)
+        $nextPeriod = $budget->periodFollowing($period)
             ?? $this->generatePeriod(
                 $budget,
                 $period->allocated_amount,
@@ -82,14 +82,6 @@ class BudgetPeriodService
             );
 
         $nextPeriod->update(['carried_over_amount' => $carriedOverAmount]);
-    }
-
-    protected function periodFollowing(Budget $budget, BudgetPeriod $period): ?BudgetPeriod
-    {
-        return $budget->periods()
-            ->where('start_date', '>', $period->end_date)
-            ->orderBy('start_date')
-            ->first();
     }
 
     public function calculatePeriodDates(Budget $budget, Carbon $referenceDate): array
