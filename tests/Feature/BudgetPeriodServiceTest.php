@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\BudgetPeriodType;
+use App\Enums\RolloverType;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
+use App\Models\BudgetTransaction;
 use App\Models\User;
 use App\Services\BudgetPeriodService;
 use Carbon\Carbon;
@@ -134,4 +136,129 @@ test('generatePeriod creates current calendar year when yearly budget has no pri
 
     expect($period->start_date->toDateString())->toBe('2026-01-01');
     expect($period->end_date->toDateString())->toBe('2026-12-31');
+});
+
+test('closePeriod carries the leftover into the period that already follows', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 1,
+        'rollover_type' => RolloverType::CarryOver,
+    ]);
+
+    $july = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-07-01',
+        'end_date' => '2026-07-31',
+        'allocated_amount' => 10000,
+    ]);
+    $august = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-08-01',
+        'end_date' => '2026-08-31',
+        'allocated_amount' => 10000,
+    ]);
+
+    BudgetTransaction::factory()->create([
+        'budget_period_id' => $july->id,
+        'amount' => 4000,
+    ]);
+
+    app(BudgetPeriodService::class)->closePeriod($july->fresh());
+
+    // The leftover belongs on the period the user is spending in now, not on a
+    // fresh one appended past the end of the chain.
+    expect($august->fresh()->carried_over_amount)->toBe(6000)
+        ->and(BudgetPeriod::where('budget_id', $budget->id)->count())->toBe(2);
+});
+
+test('closePeriod leaves nothing behind for a budget that resets each period', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 1,
+        'rollover_type' => RolloverType::Reset,
+    ]);
+
+    $july = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-07-01',
+        'end_date' => '2026-07-31',
+        'allocated_amount' => 10000,
+    ]);
+    $august = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-08-01',
+        'end_date' => '2026-08-31',
+        'allocated_amount' => 10000,
+    ]);
+
+    app(BudgetPeriodService::class)->closePeriod($july);
+
+    expect($august->fresh()->carried_over_amount)->toBe(0);
+});
+
+test('closePeriod stops appending periods when the same period is closed again', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 1,
+        'rollover_type' => RolloverType::CarryOver,
+    ]);
+
+    $july = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-07-01',
+        'end_date' => '2026-07-31',
+        'allocated_amount' => 10000,
+    ]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-08-01',
+        'end_date' => '2026-08-31',
+        'allocated_amount' => 10000,
+    ]);
+
+    $service = app(BudgetPeriodService::class);
+    $service->closePeriod($july);
+    $service->closePeriod($july);
+    $service->closePeriod($july);
+
+    expect(BudgetPeriod::where('budget_id', $budget->id)->count())->toBe(2);
+});
+
+test('closePeriod builds the missing successor next to the closed period', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 1,
+        'rollover_type' => RolloverType::CarryOver,
+    ]);
+
+    $july = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-07-01',
+        'end_date' => '2026-07-31',
+        'allocated_amount' => 10000,
+    ]);
+
+    app(BudgetPeriodService::class)->closePeriod($july);
+
+    $created = BudgetPeriod::where('budget_id', $budget->id)
+        ->where('start_date', '>', $july->end_date)
+        ->sole();
+
+    expect($created->start_date->toDateString())->toBe('2026-08-01');
 });

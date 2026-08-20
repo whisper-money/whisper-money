@@ -22,7 +22,10 @@ class GenerateBudgetPeriods extends Command
     {
         $this->info('Generating budget periods...');
 
-        $budgets = Budget::with('periods')->get();
+        // Not eager loading the periods: everything below re-queries them, and
+        // loading every period of every budget is what eventually exhausted the
+        // 128M limit and killed this command outright.
+        $budgets = Budget::query()->get();
         $generatedCount = 0;
         $closedCount = 0;
 
@@ -40,10 +43,8 @@ class GenerateBudgetPeriods extends Command
                 ->get();
 
             foreach ($completedPeriods as $period) {
-                if ($period->end_date < today()) {
-                    $this->budgetPeriodService->closePeriod($period);
-                    $closedCount++;
-                }
+                $this->budgetPeriodService->closePeriod($period);
+                $closedCount++;
             }
 
             $futurePeriods = $budget->periods()
