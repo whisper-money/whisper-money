@@ -95,3 +95,19 @@ it('does not reach across budgets', function () {
         ->and(BudgetPeriod::find($theirFirst->id))->not->toBeNull()
         ->and(BudgetPeriod::find($theirSecond->id))->not->toBeNull();
 });
+
+it('clears the invented carry-over from the periods it keeps', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $budget = budgetUnderRepair();
+    $current = periodUnderRepair($budget, '2026-08-01', '2026-08-31');
+    $current->update(['carried_over_amount' => 750]);
+    $kept = periodUnderRepair($budget, '2026-09-01', '2026-09-30');
+    $kept->update(['carried_over_amount' => 999999999991725246]);
+
+    runDeleteRunawayFutureBudgetPeriodsMigration();
+
+    expect($kept->fresh()->carried_over_amount)->toBe(0)
+        // Whatever the past and the present hold was earned, not invented.
+        ->and($current->fresh()->carried_over_amount)->toBe(750);
+});

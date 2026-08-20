@@ -47,6 +47,16 @@ return new class extends Migration
                     ->whereDoesntHave('budgetTransactions')
                     ->delete();
             });
+
+        // The ones that survive are still carrying numbers the bug made up -
+        // 327 of them, the worst reading 999,999,999,991,725,246 cents - and
+        // each becomes the current period within a cycle or two. A carry-over
+        // is only ever earned when the period before it closes, so nothing
+        // ahead of today has any business holding one yet.
+        BudgetPeriod::query()
+            ->where('start_date', '>', today())
+            ->where('carried_over_amount', '<>', 0)
+            ->update(['carried_over_amount' => 0]);
     }
 
     public function down(): void
