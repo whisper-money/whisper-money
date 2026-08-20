@@ -45,3 +45,41 @@ export function hasLiveConnectionForProvider(
         (c) => c.provider === provider && isLiveConnection(c),
     );
 }
+
+/**
+ * Whether a first sync is genuinely still running.
+ *
+ * A connection only gets a `last_synced_at` once a run finishes, so a
+ * never-synced active connection normally means "syncing". Not once it has
+ * recorded an error: a rate limit leaves the status Active and stores only the
+ * message, so `last_synced_at` would stay null forever and the spinner with it.
+ */
+export function isFirstSyncRunning(connection: BankingConnection): boolean {
+    return (
+        connection.status === 'active' &&
+        !connection.last_synced_at &&
+        !connection.error_message
+    );
+}
+
+/**
+ * The other half of {@link isFirstSyncRunning}: the bank refused the first sync.
+ * Not an error state - the transactions do import - only a wait for the access
+ * window to reopen.
+ */
+export function isWaitingForBank(connection: BankingConnection): boolean {
+    return (
+        connection.status === 'active' &&
+        !connection.last_synced_at &&
+        !!connection.error_message
+    );
+}
+
+/**
+ * Whether the user may spend an access call on demand. Computed server-side from
+ * the backoff, which is the enforcing side too; the flag is only present on the
+ * connections page payload.
+ */
+export function canSyncManually(connection: BankingConnection): boolean {
+    return connection.can_sync_manually !== false;
+}

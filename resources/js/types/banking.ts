@@ -17,6 +17,8 @@ export interface BankingConnection {
     error_message: string | null;
     accounts_count: number;
     has_pending_accounts?: boolean;
+    next_sync_attempt_at?: string | null;
+    can_sync_manually?: boolean;
     created_at: string;
     updated_at: string;
 }

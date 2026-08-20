@@ -37,6 +37,27 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
+vi.mock('@/components/ui/dropdown-menu', () => ({
+    DropdownMenu: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+    ),
+    DropdownMenuTrigger: () => null,
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+    ),
+    DropdownMenuItem: ({
+        children,
+        onClick,
+    }: {
+        children: React.ReactNode;
+        onClick?: () => void;
+    }) => (
+        <div role="menuitem" onClick={onClick}>
+            {children}
+        </div>
+    ),
+}));
+
 vi.mock('@/layouts/app-layout', () => ({
     default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -59,12 +80,6 @@ vi.mock('@/components/open-banking/update-credentials-dialog', () => ({
 
 vi.mock('@/components/subscription/upgrade-dialog', () => ({
     UpgradeDialog: () => null,
-}));
-
-vi.mock('@/components/open-banking/connection-status-badge', () => ({
-    ConnectionStatusBadge: ({ status }: { status: string }) => (
-        <span>{status}</span>
-    ),
 }));
 
 function makeConnection(
@@ -112,5 +127,107 @@ describe('ConnectionsPage', () => {
         expect(
             screen.getAllByRole('button', { name: /reconnect/i }),
         ).toHaveLength(2);
+    });
+
+    it('polls and spins while a first sync is genuinely running', () => {
+        render(
+            <ConnectionsPage
+                connections={[makeConnection({ last_synced_at: null })]}
+            />,
+        );
+
+        expect(
+            screen.getByText(/syncing transactions and balances/i),
+        ).toBeInTheDocument();
+        expect(mocks.pollStart).toHaveBeenCalled();
+    });
+
+    it('shows a waiting state instead of an endless spinner once the bank refused us', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        last_synced_at: null,
+                        error_message: 'Rate limit exceeded.',
+                        next_sync_attempt_at: '2999-01-01T12:00:00.000000Z',
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText(/waiting for the bank/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/your bank limits how often/i),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/next attempt/i)).toBeInTheDocument();
+        expect(
+            screen.queryByText(/syncing transactions and balances/i),
+        ).not.toBeInTheDocument();
+        expect(mocks.pollStart).not.toHaveBeenCalled();
+    });
+
+    it('drops the next attempt line when the server could not name one', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        last_synced_at: null,
+                        error_message: 'Rate limit exceeded.',
+                        next_sync_attempt_at: null,
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText(/waiting for the bank/i)).toBeInTheDocument();
+        expect(screen.queryByText(/next attempt/i)).not.toBeInTheDocument();
+    });
+
+    it('hides the manual sync while the bank has told us to back off', () => {
+        render(
+            <ConnectionsPage
+                connections={[makeConnection({ can_sync_manually: false })]}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('menuitem', { name: /sync now/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('menuitem', { name: /disconnect/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps Retry on an errored connection even while a backoff is set', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        status: 'error',
+                        error_message: 'Something went wrong.',
+                        can_sync_manually: false,
+                    }),
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('menuitem', { name: /retry/i }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /retry/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the manual sync when no backoff is in the way', () => {
+        render(
+            <ConnectionsPage
+                connections={[makeConnection({ can_sync_manually: true })]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('menuitem', { name: /sync now/i }),
+        ).toBeInTheDocument();
     });
 });
