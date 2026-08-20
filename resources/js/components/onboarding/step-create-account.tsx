@@ -12,6 +12,7 @@ import {
     StepChevron,
     StepList,
     StepRow,
+    StepSectionLabel,
 } from '@/components/onboarding/step-list';
 import {
     StepError,
@@ -443,7 +444,7 @@ export function StepCreateAccount({
                 <div className="flex flex-col gap-1">
                     {accountGroups.map((group) => (
                         <div key={group.bankName}>
-                            <div className="flex items-center gap-2.5 pt-4 pb-2.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                            <StepSectionLabel>
                                 <BankLogo
                                     src={group.bankLogo}
                                     name={group.bankName}
@@ -451,7 +452,7 @@ export function StepCreateAccount({
                                     className="size-7 rounded-md text-xs"
                                 />
                                 {group.bankName}
-                            </div>
+                            </StepSectionLabel>
                             <StepList>
                                 {group.accounts.map((account) => (
                                     <StepRow

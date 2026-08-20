@@ -1,4 +1,4 @@
-import { PricingConfig } from '@/types/pricing';
+import { pricingFixture as pricing } from '@/lib/pricing-fixture';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UpgradeDialog } from './upgrade-dialog';
@@ -6,33 +6,6 @@ import { UpgradeDialog } from './upgrade-dialog';
 const mocks = vi.hoisted(() => ({ captureEvent: vi.fn() }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
-
-const pricing: PricingConfig = {
-    plans: {
-        monthly: {
-            name: 'Monthly',
-            price: 3.99,
-            original_price: null,
-            stripe_lookup_key: 'monthly',
-            billing_period: 'month',
-            trial_days: 7,
-            features: [],
-        },
-        yearly: {
-            name: 'Annual',
-            price: 23.88,
-            original_price: 47.88,
-            stripe_lookup_key: 'yearly',
-            billing_period: 'year',
-            trial_days: 15,
-            features: [],
-        },
-    },
-    defaultPlan: 'yearly',
-    bestValuePlan: 'yearly',
-    promo: { enabled: false, code: '', description: '', badge: '' },
-    currency: 'EUR',
-};
 
 vi.mock('@inertiajs/react', () => ({
     usePage: () => ({ props: { pricing, locale: 'en' } }),
@@ -67,9 +40,9 @@ describe('UpgradeDialog', () => {
     it('links checkout with the selected plan and the upsell source', () => {
         renderDialog();
 
-        const link = screen
-            .getByRole('button', { name: /Upgrade to Standard Plan/ })
-            .closest('a');
+        // The CTA is the anchor itself — checkout is a server redirect into
+        // Stripe, so it cannot be an Inertia visit.
+        const link = screen.getByRole('link', { name: /Start a plan/ });
         // Default plan is the configured default (yearly), and the source rides
         // along so the subscription can be attributed to this upsell point.
         expect(link).toHaveAttribute(
@@ -85,9 +58,7 @@ describe('UpgradeDialog', () => {
     it('captures a checkout-started event tagged with the source', () => {
         renderDialog();
 
-        fireEvent.click(
-            screen.getByRole('button', { name: /Upgrade to Standard Plan/ }),
-        );
+        fireEvent.click(screen.getByRole('link', { name: /Start a plan/ }));
 
         expect(mocks.captureEvent).toHaveBeenCalledWith(
             'upgrade_checkout_started',

@@ -667,7 +667,8 @@ it('shows free plan option on subscribe page when no bank was connected', functi
     $page = visit('/subscribe');
 
     $page->assertPathIs('/subscribe')
-        ->assertSee('Continue for free')
+        ->assertSee('Continue with the free plan')
+        ->assertDontSee('Need help?')
         ->assertNoJavascriptErrors();
 });
 
@@ -682,8 +683,9 @@ it('forces a plan choice on subscribe when a bank is connected', function () {
     $page = visit('/subscribe');
 
     $page->assertPathIs('/subscribe')
-        ->assertSee('Start My Financial Journey')
-        ->assertDontSee('Continue for free')
+        ->assertSee('Choose your plan')
+        ->assertSee('Need help?')
+        ->assertDontSee('Continue with the free plan')
         ->assertNoJavascriptErrors();
 });
 
@@ -698,7 +700,8 @@ it('forces a plan choice on subscribe when AI consent is active', function () {
     $page = visit('/subscribe');
 
     $page->assertPathIs('/subscribe')
-        ->assertSee('Start My Financial Journey')
-        ->assertDontSee('Continue for free')
+        ->assertSee('Choose your plan')
+        ->assertSee('Need help?')
+        ->assertDontSee('Continue with the free plan')
         ->assertNoJavascriptErrors();
 });
