@@ -161,11 +161,20 @@ it('does not send once the user has come back', function () {
 it('renders the email in the user locale', function () {
     app()->setLocale('es');
 
-    $user = User::factory()->make(['name' => 'Ada']);
-    $html = (new InactiveNoBankEmail($user))->render();
-
-    app()->setLocale('en');
+    try {
+        $html = (new InactiveNoBankEmail(User::factory()->make(['name' => 'Ada'])))->render();
+    } finally {
+        app()->setLocale('en');
+    }
 
     expect($html)->toContain('Tus números llevan una semana sin actualizarse, Ada');
     expect($html)->toContain('Conectar un banco');
+});
+
+it('tags its link so the click is attributable in PostHog', function () {
+    $html = (new InactiveNoBankEmail(User::factory()->make()))->render();
+
+    expect($html)->toContain('utm_source=drip')
+        ->toContain('utm_medium=email')
+        ->toContain('utm_campaign=inactive-no-bank');
 });

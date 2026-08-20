@@ -50,6 +50,22 @@ abstract class DripMail extends Mailable implements ShouldQueue
     }
 
     /**
+     * UTM parameters for every link in a drip email, so PostHog attributes the
+     * landing pageview to the email that produced it. Merge in a `utm_content`
+     * at the call site when a mail carries more than one link.
+     *
+     * @return array<string, string>
+     */
+    protected function utmParameters(): array
+    {
+        return [
+            'utm_source' => 'drip',
+            'utm_medium' => 'email',
+            'utm_campaign' => str($this->template())->afterLast('.')->value(),
+        ];
+    }
+
+    /**
      * Whether replies should route back to the drip sender address.
      */
     protected function repliesToSender(): bool
@@ -77,6 +93,7 @@ abstract class DripMail extends Mailable implements ShouldQueue
             markdown: $this->template(),
             with: [
                 'userName' => $this->user->name,
+                'emailUtm' => $this->utmParameters(),
                 ...$this->contentData(),
             ],
         );

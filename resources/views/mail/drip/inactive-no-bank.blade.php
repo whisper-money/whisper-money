@@ -11,7 +11,7 @@
 **{{ __('Or import a CSV') }}**
 {{ __('Export the transactions from your bank and upload the file. We map the columns for you, and it works with most banks.') }}
 
-<x-mail::button :url="route('settings.connections.index')">
+<x-mail::button :url="route('settings.connections.index', $emailUtm)">
 {{ __('Connect a bank') }}
 </x-mail::button>
 
