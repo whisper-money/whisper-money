@@ -495,6 +495,12 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
      * Persist a backoff window so the scheduler stops re-dispatching
      * the same connection until the provider quota resets.
      *
+     * This is the only failure path that records a message while leaving the
+     * status Active, and the connections page relies on that: an active,
+     * never-synced connection carrying a message is rendered as waiting for the
+     * bank, with copy that names a rate limit. A second path that stored a
+     * message without flipping the status would tell users the wrong story.
+     *
      * @param  array<string, mixed>  $context
      */
     private function applyRateLimitBackoff(BankingConnection $connection, \Throwable $e, array $context): void

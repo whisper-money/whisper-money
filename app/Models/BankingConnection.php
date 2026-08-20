@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property bool $has_pending_accounts
+ * @property bool $can_sync_manually
+ * @property Carbon|null $next_sync_attempt_at
  * @property string|null $aspsp_name
  * @property string|null $aspsp_country
  * @property BankingProvider $provider

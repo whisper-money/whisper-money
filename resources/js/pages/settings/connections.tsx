@@ -3,6 +3,7 @@ import { ConnectionStatusBadge } from '@/components/open-banking/connection-stat
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
 import { UpdateCredentialsDialog } from '@/components/open-banking/update-credentials-dialog';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -21,6 +22,11 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import {
+    canSyncManually,
+    isFirstSyncRunning,
+    isWaitingForBank,
+} from '@/lib/banking-connections';
 import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
 import { leavePage } from '@/lib/leave-page';
@@ -31,6 +37,7 @@ import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import {
     AlertCircle,
     ArrowRight,
+    Clock,
     KeyRound,
     MoreHorizontal,
     RefreshCw,
@@ -57,9 +64,7 @@ export default function ConnectionsPage({ connections }: Props) {
         useState<BankingConnection | null>(null);
     const [reconnectingId, setReconnectingId] = useState<string | null>(null);
 
-    const hasSyncing = connections.some(
-        (c) => c.status === 'active' && !c.last_synced_at && !c.error_message,
-    );
+    const hasSyncing = connections.some(isFirstSyncRunning);
 
     const { start, stop } = usePoll(5000, {}, { autoStart: false });
 
@@ -156,25 +161,6 @@ export default function ConnectionsPage({ connections }: Props) {
         );
     }
 
-    /**
-     * The bank refused the very first sync, so last_synced_at will never be set and
-     * the spinner would run forever. The connection is not broken - transactions do
-     * import - it is only waiting for the access window to reopen.
-     */
-    function isWaitingForBank(connection: BankingConnection): boolean {
-        return (
-            connection.status === 'active' &&
-            !connection.last_synced_at &&
-            !!connection.error_message
-        );
-    }
-
-    function nextSyncAttempt(connection: BankingConnection): string | null {
-        const at = connection.rate_limited_until;
-
-        return at && new Date(at) > new Date() ? at : null;
-    }
-
     function canManageAccounts(connection: BankingConnection): boolean {
         return (
             connection.provider === 'enablebanking' &&
@@ -252,13 +238,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <ConnectionStatusBadge
-                                                status={connection.status}
-                                                lastSyncedAt={
-                                                    connection.last_synced_at
-                                                }
-                                                errorMessage={
-                                                    connection.error_message
-                                                }
+                                                connection={connection}
                                             />
                                             {connection.status === 'expired' &&
                                                 canReconnect(connection) && (
@@ -356,8 +336,11 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             {__('Reconnect')}
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {(connection.status ===
-                                                        'active' ||
+                                                    {((connection.status ===
+                                                        'active' &&
+                                                        canSyncManually(
+                                                            connection,
+                                                        )) ||
                                                         (connection.status ===
                                                             'error' &&
                                                             !isEnableBankingAuthError(
@@ -403,11 +386,9 @@ export default function ConnectionsPage({ connections }: Props) {
                                                         'Accounts need to be mapped before syncing can begin.',
                                                     )}
                                                 </span>
-                                            ) : isWaitingForBank(
+                                            ) : isFirstSyncRunning(
                                                   connection,
-                                              ) ? null : connection.status ===
-                                                  'active' &&
-                                              !connection.last_synced_at ? (
+                                              ) ? (
                                                 <span className="flex items-center gap-1.5">
                                                     <Spinner className="size-3" />
                                                     {[
@@ -423,7 +404,9 @@ export default function ConnectionsPage({ connections }: Props) {
                                                               'Syncing transactions and balances…',
                                                           )}
                                                 </span>
-                                            ) : (
+                                            ) : isWaitingForBank(
+                                                  connection,
+                                              ) ? null : (
                                                 <span>
                                                     {__('Last synced')}:{' '}
                                                     {formatDate(
@@ -441,25 +424,25 @@ export default function ConnectionsPage({ connections }: Props) {
                                             )}
                                         </div>
                                         {isWaitingForBank(connection) && (
-                                            <div className="mt-3 space-y-1 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-                                                <p>
-                                                    {__(
-                                                        'Your bank limits how often we can fetch your data. We will retry automatically.',
-                                                    )}
-                                                </p>
-                                                {nextSyncAttempt(
-                                                    connection,
-                                                ) && (
+                                            <Alert className="mt-3 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                                                <Clock />
+                                                <AlertDescription className="text-amber-700 dark:text-amber-300">
                                                     <p>
-                                                        {__('Next attempt')}:{' '}
-                                                        {formatDate(
-                                                            nextSyncAttempt(
-                                                                connection,
-                                                            ),
+                                                        {__(
+                                                            'Your bank limits how often we can fetch your data. We will retry automatically.',
                                                         )}
                                                     </p>
-                                                )}
-                                            </div>
+                                                    {connection.next_sync_attempt_at && (
+                                                        <p>
+                                                            {__('Next attempt')}
+                                                            :{' '}
+                                                            {formatDate(
+                                                                connection.next_sync_attempt_at,
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                </AlertDescription>
+                                            </Alert>
                                         )}
                                         {connection.status === 'error' && (
                                             <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">

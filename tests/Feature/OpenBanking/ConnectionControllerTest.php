@@ -2,11 +2,13 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -205,6 +207,113 @@ test('disconnecting indexa capital connection does not revoke session', function
     $account->refresh();
     expect($account->banking_connection_id)->toBeNull();
     expect($account->external_account_id)->toBeNull();
+});
+
+test('users cannot manually sync a connection the bank has told us to back off from', function () {
+    Queue::fake();
+
+    $backoff = now()->addHour();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'rate_limited_until' => $backoff,
+    ]);
+
+    $response = $this->actingAs($user)->post("/settings/connections/{$connection->id}/sync");
+
+    $response->assertRedirect();
+    $response->assertSessionHas('error');
+
+    Queue::assertNotPushed(SyncBankingConnectionJob::class);
+
+    expect($connection->refresh()->rate_limited_until->toDateTimeString())
+        ->toBe($backoff->toDateTimeString());
+});
+
+test('a lapsed backoff does not block a manual sync', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'rate_limited_until' => now()->subHour(),
+    ]);
+
+    $response = $this->actingAs($user)->post("/settings/connections/{$connection->id}/sync");
+
+    $response->assertSessionHas('success');
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
+});
+
+test('a stranded connection can still be retried while a backoff is set', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Error,
+        'rate_limited_until' => now()->addHour(),
+        'consecutive_sync_failures' => 3,
+    ]);
+
+    $response = $this->actingAs($user)->post("/settings/connections/{$connection->id}/sync");
+
+    $response->assertSessionHas('success');
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
+    expect($connection->refresh()->rate_limited_until)->toBeNull();
+});
+
+test('connections page reports whether each connection can be synced on demand', function () {
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Backed off bank',
+        'rate_limited_until' => now()->addHour(),
+        'created_at' => now(),
+    ]);
+    BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Healthy bank',
+        'rate_limited_until' => null,
+        'created_at' => now()->subDay(),
+    ]);
+
+    $response = $this->actingAs($user)->get('/settings/connections');
+
+    $response->assertInertia(fn ($page) => $page
+        ->where('connections.0.aspsp_name', 'Backed off bank')
+        ->where('connections.0.can_sync_manually', false)
+        ->where('connections.1.aspsp_name', 'Healthy bank')
+        ->where('connections.1.can_sync_manually', true)
+    );
+});
+
+test('the next attempt shown to the user is never sooner than the scheduled sync', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'last_synced_at' => null,
+        'error_message' => 'Rate limit exceeded.',
+        // A backoff that has already lapsed, which is how these connections
+        // spend most of their life: the window is an hour, the sweep is six.
+        'rate_limited_until' => now()->subHours(2),
+    ]);
+
+    $response = $this->actingAs($user)->get('/settings/connections');
+
+    $response->assertInertia(fn ($page) => $page
+        ->where('connections.0.id', $connection->id)
+        ->where(
+            'connections.0.next_sync_attempt_at',
+            fn ($at) => $at !== null && Carbon::parse($at)->isFuture()
+        )
+    );
 });
 
 test('users cannot sync expired connection', function () {

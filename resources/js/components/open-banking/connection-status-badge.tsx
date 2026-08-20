@@ -1,7 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
+import { isWaitingForBank } from '@/lib/banking-connections';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
+
+/** Matches the amber callout the waiting state renders below the card. */
+const AMBER_BADGE =
+    'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300';
 
 const statusConfig: Record<
     BankingConnection['status'],
@@ -43,23 +48,15 @@ const statusConfig: Record<
 };
 
 export function ConnectionStatusBadge({
-    status,
-    lastSyncedAt,
-    errorMessage,
+    connection,
 }: {
-    status: BankingConnection['status'];
-    lastSyncedAt?: string | null;
-    errorMessage?: string | null;
+    connection: BankingConnection;
 }) {
-    // An active connection that never synced *and* already recorded an error is
-    // not syncing: the bank refused us and the job stopped. Only the message is
-    // stored, so last_synced_at stays null forever and the spinner would too.
-    if (status === 'active' && !lastSyncedAt && errorMessage) {
+    const { status, last_synced_at: lastSyncedAt } = connection;
+
+    if (isWaitingForBank(connection)) {
         return (
-            <Badge
-                variant="secondary"
-                className={statusConfig.pending.className}
-            >
+            <Badge variant="secondary" className={AMBER_BADGE}>
                 {__('Waiting for the bank')}
             </Badge>
         );
