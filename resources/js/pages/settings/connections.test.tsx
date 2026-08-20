@@ -37,6 +37,27 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
+vi.mock('@/components/ui/dropdown-menu', () => ({
+    DropdownMenu: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+    ),
+    DropdownMenuTrigger: () => null,
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+    ),
+    DropdownMenuItem: ({
+        children,
+        onClick,
+    }: {
+        children: React.ReactNode;
+        onClick?: () => void;
+    }) => (
+        <div role="menuitem" onClick={onClick}>
+            {children}
+        </div>
+    ),
+}));
+
 vi.mock('@/layouts/app-layout', () => ({
     default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -61,12 +82,6 @@ vi.mock('@/components/subscription/upgrade-dialog', () => ({
     UpgradeDialog: () => null,
 }));
 
-vi.mock('@/components/open-banking/connection-status-badge', () => ({
-    ConnectionStatusBadge: ({ status }: { status: string }) => (
-        <span>{status}</span>
-    ),
-}));
-
 function makeConnection(
     overrides: Partial<BankingConnection> = {},
 ): BankingConnection {
@@ -79,6 +94,7 @@ function makeConnection(
         valid_until: null,
         last_synced_at: '2026-01-01T00:00:00.000000Z',
         error_message: null,
+        rate_limited_until: null,
         accounts_count: 1,
         created_at: '2026-01-01T00:00:00.000000Z',
         updated_at: '2026-01-01T00:00:00.000000Z',
@@ -112,5 +128,59 @@ describe('ConnectionsPage', () => {
         expect(
             screen.getAllByRole('button', { name: /reconnect/i }),
         ).toHaveLength(2);
+    });
+
+    it('polls and spins while a first sync is genuinely running', () => {
+        render(
+            <ConnectionsPage
+                connections={[makeConnection({ last_synced_at: null })]}
+            />,
+        );
+
+        expect(
+            screen.getByText(/syncing transactions and balances/i),
+        ).toBeInTheDocument();
+        expect(mocks.pollStart).toHaveBeenCalled();
+    });
+
+    it('shows a waiting state instead of an endless spinner once the bank refused us', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        last_synced_at: null,
+                        error_message: 'Rate limit exceeded.',
+                        rate_limited_until: '2999-01-01T12:00:00.000000Z',
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText(/waiting for the bank/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/your bank limits how often/i),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/next attempt/i)).toBeInTheDocument();
+        expect(
+            screen.queryByText(/syncing transactions and balances/i),
+        ).not.toBeInTheDocument();
+        expect(mocks.pollStart).not.toHaveBeenCalled();
+    });
+
+    it('drops the next attempt line when the backoff window has already passed', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        last_synced_at: null,
+                        error_message: 'Rate limit exceeded.',
+                        rate_limited_until: '2020-01-01T12:00:00.000000Z',
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText(/waiting for the bank/i)).toBeInTheDocument();
+        expect(screen.queryByText(/next attempt/i)).not.toBeInTheDocument();
     });
 });

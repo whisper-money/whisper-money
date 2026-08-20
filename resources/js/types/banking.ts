@@ -15,6 +15,7 @@ export interface BankingConnection {
     valid_until: string | null;
     last_synced_at: string | null;
     error_message: string | null;
+    rate_limited_until: string | null;
     accounts_count: number;
     has_pending_accounts?: boolean;
     created_at: string;

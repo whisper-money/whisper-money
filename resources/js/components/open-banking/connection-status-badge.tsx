@@ -45,10 +45,26 @@ const statusConfig: Record<
 export function ConnectionStatusBadge({
     status,
     lastSyncedAt,
+    errorMessage,
 }: {
     status: BankingConnection['status'];
     lastSyncedAt?: string | null;
+    errorMessage?: string | null;
 }) {
+    // An active connection that never synced *and* already recorded an error is
+    // not syncing: the bank refused us and the job stopped. Only the message is
+    // stored, so last_synced_at stays null forever and the spinner would too.
+    if (status === 'active' && !lastSyncedAt && errorMessage) {
+        return (
+            <Badge
+                variant="secondary"
+                className={statusConfig.pending.className}
+            >
+                {__('Waiting for the bank')}
+            </Badge>
+        );
+    }
+
     if (status === 'active' && !lastSyncedAt) {
         return (
             <Badge

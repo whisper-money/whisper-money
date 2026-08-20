@@ -58,7 +58,7 @@ export default function ConnectionsPage({ connections }: Props) {
     const [reconnectingId, setReconnectingId] = useState<string | null>(null);
 
     const hasSyncing = connections.some(
-        (c) => c.status === 'active' && !c.last_synced_at,
+        (c) => c.status === 'active' && !c.last_synced_at && !c.error_message,
     );
 
     const { start, stop } = usePoll(5000, {}, { autoStart: false });
@@ -156,6 +156,25 @@ export default function ConnectionsPage({ connections }: Props) {
         );
     }
 
+    /**
+     * The bank refused the very first sync, so last_synced_at will never be set and
+     * the spinner would run forever. The connection is not broken - transactions do
+     * import - it is only waiting for the access window to reopen.
+     */
+    function isWaitingForBank(connection: BankingConnection): boolean {
+        return (
+            connection.status === 'active' &&
+            !connection.last_synced_at &&
+            !!connection.error_message
+        );
+    }
+
+    function nextSyncAttempt(connection: BankingConnection): string | null {
+        const at = connection.rate_limited_until;
+
+        return at && new Date(at) > new Date() ? at : null;
+    }
+
     function canManageAccounts(connection: BankingConnection): boolean {
         return (
             connection.provider === 'enablebanking' &&
@@ -236,6 +255,9 @@ export default function ConnectionsPage({ connections }: Props) {
                                                 status={connection.status}
                                                 lastSyncedAt={
                                                     connection.last_synced_at
+                                                }
+                                                errorMessage={
+                                                    connection.error_message
                                                 }
                                             />
                                             {connection.status === 'expired' &&
@@ -381,7 +403,9 @@ export default function ConnectionsPage({ connections }: Props) {
                                                         'Accounts need to be mapped before syncing can begin.',
                                                     )}
                                                 </span>
-                                            ) : connection.status ===
+                                            ) : isWaitingForBank(
+                                                  connection,
+                                              ) ? null : connection.status ===
                                                   'active' &&
                                               !connection.last_synced_at ? (
                                                 <span className="flex items-center gap-1.5">
@@ -416,6 +440,27 @@ export default function ConnectionsPage({ connections }: Props) {
                                                 </span>
                                             )}
                                         </div>
+                                        {isWaitingForBank(connection) && (
+                                            <div className="mt-3 space-y-1 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+                                                <p>
+                                                    {__(
+                                                        'Your bank limits how often we can fetch your data. We will retry automatically.',
+                                                    )}
+                                                </p>
+                                                {nextSyncAttempt(
+                                                    connection,
+                                                ) && (
+                                                    <p>
+                                                        {__('Next attempt')}:{' '}
+                                                        {formatDate(
+                                                            nextSyncAttempt(
+                                                                connection,
+                                                            ),
+                                                        )}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
                                         {connection.status === 'error' && (
                                             <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
                                                 <div className="flex items-start gap-2">
