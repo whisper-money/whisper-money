@@ -92,6 +92,11 @@ export default function Paywall() {
             <StepScreen
                 title={title}
                 description={gateDescription(gate, stats, locale)}
+                // The longest screen in this vocabulary: at 1280x720 an inline
+                // footer puts the primary action 137px below the fold, and even
+                // at 1440x900 it clears by only 43px, so one extra line of copy
+                // would bury it. Pinned at every width instead.
+                pinFooter
                 footer={
                     <>
                         {gate !== 'former-subscriber' && (

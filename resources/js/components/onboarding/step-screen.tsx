@@ -11,6 +11,13 @@ interface StepScreenProps {
     align?: 'top' | 'center';
     /** The categorizer needs a wider column than a form does. */
     width?: 'md' | 'xl';
+    /**
+     * Keep the action pinned on desktop too. The onboarding steps are short
+     * enough that an inline footer sits inside the viewport; a screen whose
+     * content is taller than the window needs its action reachable without
+     * scrolling for it.
+     */
+    pinFooter?: boolean;
 }
 
 /**
@@ -23,13 +30,15 @@ export function StepScreen({
     footer,
     align = 'top',
     width = 'md',
+    pinFooter = false,
     children,
 }: PropsWithChildren<StepScreenProps>) {
     return (
         <main className="flex flex-1 flex-col px-5 md:items-center md:px-7">
             <div
                 className={cn(
-                    'flex w-full flex-1 flex-col md:py-20',
+                    'flex w-full flex-1 flex-col',
+                    pinFooter ? 'md:pt-10 md:pb-20' : 'md:py-20',
                     // Hug the content on desktop so the actions sit under it,
                     // except when the state is meant to be centred in the page.
                     align === 'center' ? 'md:flex-1' : 'md:flex-none',
@@ -61,7 +70,13 @@ export function StepScreen({
                 </div>
 
                 {footer && (
-                    <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2.5 border-t bg-background px-5 pt-3.5 pb-[calc(1.375rem+var(--safe-area-bottom))] md:static md:mx-0 md:mt-7 md:border-0 md:px-0 md:pt-0 md:pb-0">
+                    <div
+                        className={cn(
+                            'sticky bottom-0 z-10 -mx-5 flex flex-col gap-2.5 border-t bg-background px-5 pt-3.5 pb-[calc(1.375rem+var(--safe-area-bottom))]',
+                            !pinFooter &&
+                                'md:static md:mx-0 md:mt-7 md:border-0 md:px-0 md:pt-0 md:pb-0',
+                        )}
+                    >
                         {footer}
                     </div>
                 )}
