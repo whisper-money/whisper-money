@@ -104,12 +104,15 @@ function UpgradeSection({
     plans,
     defaultPlan,
     currency,
+    locale,
 }: {
     plans: Record<string, Plan>;
     defaultPlan: string;
     currency: string;
+    locale: string;
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
+    const terms = planTerms(plans[selectedPlan], currency, locale);
 
     return (
         <div className="space-y-6">
@@ -138,9 +141,7 @@ function UpgradeSection({
                     size="compact"
                 />
 
-                <p className="mt-4 text-sm font-medium">
-                    {planTerms(plans[selectedPlan])}
-                </p>
+                {terms && <p className="mt-4 text-sm font-medium">{terms}</p>}
 
                 <Button asChild className="mt-4 w-full">
                     <a href={checkout.url({ query: { plan: selectedPlan } })}>
@@ -375,6 +376,7 @@ export default function Billing() {
                             plans={pricing.plans}
                             defaultPlan={pricing.defaultPlan}
                             currency={pricing.currency}
+                            locale={locale}
                         />
                     )}
 

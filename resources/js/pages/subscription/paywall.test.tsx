@@ -1,10 +1,11 @@
-import { PricingConfig } from '@/types/pricing';
+import { pricingFixture as pricing } from '@/lib/pricing-fixture';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Paywall from './paywall';
 
 const mocks = vi.hoisted(() => ({
     visit: vi.fn(),
+    captureEvent: vi.fn(),
     props: {
         canUseFreePlan: false,
         canManageConnectionsForFreePlan: false,
@@ -16,32 +17,7 @@ const mocks = vi.hoisted(() => ({
     },
 }));
 
-const pricing: PricingConfig = {
-    plans: {
-        monthly: {
-            name: 'Standard Monthly',
-            price: 3.99,
-            original_price: null,
-            stripe_lookup_key: 'monthly',
-            billing_period: 'month',
-            trial_days: 7,
-            features: [],
-        },
-        yearly: {
-            name: 'Standard Yearly',
-            price: 23.88,
-            original_price: 47.88,
-            stripe_lookup_key: 'yearly',
-            billing_period: 'year',
-            trial_days: 15,
-            features: [],
-        },
-    },
-    defaultPlan: 'yearly',
-    bestValuePlan: 'yearly',
-    promo: { enabled: false, code: '', description: '', badge: '' },
-    currency: 'EUR',
-};
+vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
 
 // The paywall shell renders the app logo, which reads the privacy-mode
 // context the real app provides app-wide from app.tsx.
@@ -80,10 +56,9 @@ describe('Paywall', () => {
     it('starts on the configured default plan and carries it into checkout', () => {
         render(<Paywall />);
 
-        expect(screen.getByRole('link', { name: /Continue/ })).toHaveAttribute(
-            'href',
-            expect.stringContaining('plan=yearly'),
-        );
+        expect(
+            screen.getByRole('link', { name: /Start a plan/ }),
+        ).toHaveAttribute('href', expect.stringContaining('plan=yearly'));
     });
 
     it('carries the plan the user picks into checkout', () => {
@@ -91,10 +66,9 @@ describe('Paywall', () => {
 
         fireEvent.click(screen.getByText('Monthly'));
 
-        expect(screen.getByRole('link', { name: /Continue/ })).toHaveAttribute(
-            'href',
-            expect.stringContaining('plan=monthly'),
-        );
+        expect(
+            screen.getByRole('link', { name: /Start a plan/ }),
+        ).toHaveAttribute('href', expect.stringContaining('plan=monthly'));
     });
 
     it('renders the price the server hands over, per experiment arm', () => {
@@ -153,6 +127,57 @@ describe('Paywall', () => {
         expect(mocks.visit).toHaveBeenCalledWith('/dashboard');
     });
 
+    it('states the amount and the date next to the button', () => {
+        render(<Paywall />);
+
+        // The commitment line has to stand on its own: the selected row can be
+        // scrolled off, or sit behind the sticky footer.
+        expect(
+            screen.getByText(
+                'Free for 15 days, then €23.88 a year. Cancel before then and you are not charged.',
+            ),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Monthly'));
+
+        expect(
+            screen.getByText(
+                'Free for 7 days, then €3.99 a month. Cancel before then and you are not charged.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('only promises features that are actually gated', () => {
+        render(<Paywall />);
+
+        // The three cases of App\Enums\PlanFeature — and nothing about limits,
+        // which the free plan does not have either.
+        expect(screen.getByText('Connected banks')).toBeInTheDocument();
+        expect(screen.getByText('AI suggestions')).toBeInTheDocument();
+        expect(screen.getByText('Your AI assistant')).toBeInTheDocument();
+        expect(screen.queryByText(/No limits/)).not.toBeInTheDocument();
+    });
+
+    it('reports the gate it rendered so the free door can be measured', () => {
+        mocks.props.canUseFreePlan = true;
+
+        render(<Paywall />);
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith('paywall_viewed', {
+            gate: 'soft',
+        });
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Continue with the free plan',
+            }),
+        );
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'paywall_free_plan_chosen',
+        );
+    });
+
     it('offers the disconnect route to a former subscriber', () => {
         mocks.props.canManageConnectionsForFreePlan = true;
 
@@ -161,6 +186,6 @@ describe('Paywall', () => {
         expect(screen.getByText('Your plan has ended')).toBeInTheDocument();
         expect(screen.getByText('Disconnect your banks')).toBeInTheDocument();
         // A former subscriber is not sold the product again.
-        expect(screen.queryByText('No limits')).not.toBeInTheDocument();
+        expect(screen.queryByText('Your AI assistant')).not.toBeInTheDocument();
     });
 });

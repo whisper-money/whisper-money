@@ -143,6 +143,18 @@ export function StepBadge({ children }: PropsWithChildren) {
     );
 }
 
+/**
+ * The label above a {@link StepList} that needs naming — a bank a group of
+ * accounts belongs to, or an alternative to the main action on the screen.
+ */
+export function StepSectionLabel({ children }: PropsWithChildren) {
+    return (
+        <div className="flex items-center gap-2.5 pt-4 pb-2.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            {children}
+        </div>
+    );
+}
+
 /** The numbered marker used by the "export from your bank" instructions. */
 export function StepNumber({ children }: PropsWithChildren) {
     return (

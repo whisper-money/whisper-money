@@ -1,4 +1,4 @@
-import { PricingConfig } from '@/types/pricing';
+import { pricingFixture as pricing } from '@/lib/pricing-fixture';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,33 +18,6 @@ vi.mock('axios', () => ({
         isAxiosError: () => false,
     },
 }));
-
-const pricing: PricingConfig = {
-    plans: {
-        monthly: {
-            name: 'Monthly',
-            price: 3.99,
-            original_price: null,
-            stripe_lookup_key: 'monthly',
-            billing_period: 'month',
-            trial_days: 7,
-            features: [],
-        },
-        yearly: {
-            name: 'Annual',
-            price: 23.88,
-            original_price: 47.88,
-            stripe_lookup_key: 'yearly',
-            billing_period: 'year',
-            trial_days: 15,
-            features: [],
-        },
-    },
-    defaultPlan: 'yearly',
-    bestValuePlan: 'yearly',
-    promo: { enabled: false, code: '', description: '', badge: '' },
-    currency: 'EUR',
-};
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,

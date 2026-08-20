@@ -39,8 +39,13 @@ export function UpgradeDialog({
     description: string;
     source: UpsellSource;
 }) {
-    const { pricing } = usePage<SharedData>().props;
+    const { pricing, locale } = usePage<SharedData>().props;
     const [selectedPlan, setSelectedPlan] = useState(pricing.defaultPlan);
+    const terms = planTerms(
+        pricing.plans[selectedPlan],
+        pricing.currency,
+        locale,
+    );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,9 +63,7 @@ export function UpgradeDialog({
                 />
 
                 <div className="flex flex-col gap-2.5">
-                    <StepNote emphasis>
-                        {planTerms(pricing.plans[selectedPlan])}
-                    </StepNote>
+                    {terms && <StepNote emphasis>{terms}</StepNote>}
 
                     <StepButton
                         text={__('Start a plan')}

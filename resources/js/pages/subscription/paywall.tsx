@@ -3,19 +3,21 @@ import {
     StepChevron,
     StepList,
     StepRow,
+    StepSectionLabel,
 } from '@/components/onboarding/step-list';
 import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
 import { SupportDialog } from '@/components/support-dialog';
 import SubscriptionLayout from '@/layouts/subscription-layout';
+import { captureEvent } from '@/lib/posthog';
 import { dashboard } from '@/routes';
 import { index as connectionsIndex } from '@/routes/settings/connections';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Landmark, LifeBuoy, Sparkles, WalletMinimal } from 'lucide-react';
-import { useState } from 'react';
+import { Landmark, LifeBuoy, Plug, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface PaywallStats {
     accountsCount: number;
@@ -28,6 +30,13 @@ interface PaywallPageProps extends SharedData {
     canUseFreePlan: boolean;
     canManageConnectionsForFreePlan: boolean;
 }
+
+/**
+ * Which of the three screens the user gets. The two server flags are mutually
+ * exclusive today, but reading them at seven separate sites left the incoherent
+ * combination renderable; collapsing them once makes it unrepresentable.
+ */
+type PaywallGate = 'former-subscriber' | 'soft' | 'hard';
 
 export default function Paywall() {
     const {
@@ -42,46 +51,61 @@ export default function Paywall() {
     const [selectedPlan, setSelectedPlan] = useState(pricing.defaultPlan);
     const [supportOpen, setSupportOpen] = useState(false);
 
+    const gate: PaywallGate = canManageConnectionsForFreePlan
+        ? 'former-subscriber'
+        : canUseFreePlan
+          ? 'soft'
+          : 'hard';
+
+    // This is the highest-leverage screen in the product and it carried no
+    // instrumentation at all, so moving the escape hatch to first paint would
+    // have shipped unmeasurable. `paywall_seen_at` is stamped on view, so it
+    // cannot stand in for the choice.
+    useEffect(() => {
+        captureEvent('paywall_viewed', { gate });
+    }, [gate]);
+
     if (Object.keys(pricing.plans).length === 0) {
         return null;
     }
 
-    // Someone who already paid once does not need the product explained to
-    // them — they need the two doors: start again, or disconnect and go free.
-    const isFormerSubscriber = canManageConnectionsForFreePlan;
+    const title =
+        gate === 'former-subscriber'
+            ? __('Your plan has ended')
+            : __('Choose your plan');
+
+    const terms = planTerms(
+        pricing.plans[selectedPlan],
+        pricing.currency,
+        locale,
+    );
+
+    const continueFree = () => {
+        captureEvent('paywall_free_plan_chosen');
+        router.visit(dashboard().url);
+    };
 
     return (
         <SubscriptionLayout>
-            <Head title={__('Choose your plan')} />
+            <Head title={title} />
 
             <StepScreen
-                title={
-                    isFormerSubscriber
-                        ? __('Your plan has ended')
-                        : __('Choose your plan')
-                }
-                description={description({
-                    canUseFreePlan,
-                    isFormerSubscriber,
-                    stats,
-                    locale,
-                })}
+                title={title}
+                description={gateDescription(gate, stats, locale)}
                 footer={
                     <>
-                        {!isFormerSubscriber && (
+                        {gate !== 'former-subscriber' && (
                             <StepNote>
                                 {__(
-                                    '4,000+ people track their money here. We never sell your data.',
+                                    '4,000+ people have signed up. We never sell your data.',
                                 )}
                             </StepNote>
                         )}
 
-                        <StepNote emphasis>
-                            {planTerms(pricing.plans[selectedPlan])}
-                        </StepNote>
+                        {terms && <StepNote emphasis>{terms}</StepNote>}
 
                         <StepButton
-                            text={__('Continue')}
+                            text={__('Start a plan')}
                             href={checkout.url({
                                 query: { plan: selectedPlan },
                             })}
@@ -92,11 +116,11 @@ export default function Paywall() {
                             and on the soft gate it hides a choice they are
                             entitled to make — the filled-versus-muted
                             hierarchy already says which one is the offer. */}
-                        {canUseFreePlan ? (
+                        {gate === 'soft' ? (
                             <StepButton
                                 text={__('Continue with the free plan')}
                                 variant="ghost"
-                                onClick={() => router.visit(dashboard().url)}
+                                onClick={continueFree}
                             />
                         ) : (
                             <StepButton
@@ -109,7 +133,7 @@ export default function Paywall() {
                     </>
                 }
             >
-                {!isFormerSubscriber && <Features />}
+                {gate !== 'former-subscriber' && <PaidFeatures />}
 
                 <PlanPicker
                     plans={pricing.plans}
@@ -118,11 +142,9 @@ export default function Paywall() {
                     onSelect={setSelectedPlan}
                 />
 
-                {isFormerSubscriber && (
+                {gate === 'former-subscriber' && (
                     <div>
-                        <div className="pt-4 pb-2.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                            {__('Or go free')}
-                        </div>
+                        <StepSectionLabel>{__('Or go free')}</StepSectionLabel>
                         <StepList>
                             <StepRow
                                 icon={Landmark}
@@ -143,17 +165,24 @@ export default function Paywall() {
                 )}
             </StepScreen>
 
-            <SupportDialog
-                open={supportOpen}
-                onOpenChange={setSupportOpen}
-                user={auth.user}
-            />
+            {gate !== 'soft' && (
+                <SupportDialog
+                    open={supportOpen}
+                    onOpenChange={setSupportOpen}
+                    user={auth.user}
+                />
+            )}
         </SubscriptionLayout>
     );
 }
 
-/** What a paid plan adds, in the list vocabulary the rest of the flow uses. */
-function Features() {
+/**
+ * What a paid plan actually adds — the three features `App\Enums\PlanFeature`
+ * gates. Not the config `features` array, most of which the free plan already
+ * does: there is no account or transaction limit anywhere in the app, and the
+ * landing page correctly lists "unlimited" as a free-plan property.
+ */
+function PaidFeatures() {
     return (
         <StepList>
             <StepRow
@@ -169,9 +198,9 @@ function Features() {
                 )}
             />
             <StepRow
-                icon={WalletMinimal}
-                title={__('No limits')}
-                description={__('Accounts, transactions and categories.')}
+                icon={Plug}
+                title={__('Your AI assistant')}
+                description={__('Ask Claude or ChatGPT about your finances.')}
             />
         </StepList>
     );
@@ -182,33 +211,27 @@ function Features() {
  * the user already has here, because that is what is being withheld; the soft
  * gate does not, because nothing is.
  */
-function description({
-    canUseFreePlan,
-    isFormerSubscriber,
-    stats,
-    locale,
-}: {
-    canUseFreePlan: boolean;
-    isFormerSubscriber: boolean;
-    stats: PaywallStats;
-    locale: string;
-}): string {
-    if (isFormerSubscriber) {
+function gateDescription(
+    gate: PaywallGate,
+    stats: PaywallStats,
+    locale: string,
+): string {
+    if (gate === 'former-subscriber') {
         return __(
             'Your connected banks stopped syncing. Start a plan to turn them back on, or disconnect them and keep going for free.',
         );
     }
 
-    if (canUseFreePlan) {
+    if (gate === 'soft') {
         return __(
-            'Syncing and AI suggestions need a paid plan. Everything else in Whisper Money stays free.',
+            'Bank syncing, AI suggestions and the AI assistant need a paid plan. Everything else in Whisper Money stays free.',
         );
     }
 
-    const gate = __('Bank syncing and AI suggestions need a paid plan.');
+    const opening = __('Bank syncing and AI suggestions need a paid plan.');
     const snapshot = snapshotSentence(stats, locale);
 
-    return snapshot ? `${gate} ${snapshot}` : gate;
+    return snapshot ? `${opening} ${snapshot}` : opening;
 }
 
 /**
