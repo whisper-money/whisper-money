@@ -21,7 +21,11 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { isWaitingForBankQuota } from '@/lib/banking-connections';
+import {
+    isFirstSyncInProgress,
+    isFirstSyncStalled,
+    isWaitingForBankQuota,
+} from '@/lib/banking-connections';
 import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
 import { leavePage } from '@/lib/leave-page';
@@ -58,18 +62,18 @@ export default function ConnectionsPage({ connections }: Props) {
         useState<BankingConnection | null>(null);
     const [reconnectingId, setReconnectingId] = useState<string | null>(null);
 
-    // A connection parked until the bank's quota resets is not going to change
-    // in the next five seconds, so it must not keep the poll alive - otherwise
-    // one that has never completed a first sync polls for as long as the page
-    // is open, forever.
-    const hasSyncing = connections.some(
-        (c) =>
-            c.status === 'active' &&
-            !c.last_synced_at &&
-            !isWaitingForBankQuota(c),
-    );
+    const hasSyncing = connections.some(isFirstSyncInProgress);
 
+    // A connection whose first sync already failed is not going to change in the
+    // next five seconds, but it can still come good on the next scheduled run -
+    // so it gets a slow poll instead of driving the fast one, and a page left
+    // open still notices when it recovers.
+    const hasStalled = connections.some(isFirstSyncStalled);
+
+    // Two instances on purpose: `usePoll` captures its interval on mount (its
+    // effect has an empty dependency list), so one hook cannot switch cadence.
     const { start, stop } = usePoll(5000, {}, { autoStart: false });
+    const slowPoll = usePoll(60_000, {}, { autoStart: false });
 
     useEffect(() => {
         if (flash?.error) {
@@ -87,6 +91,14 @@ export default function ConnectionsPage({ connections }: Props) {
             stop();
         }
     }, [hasSyncing, start, stop]);
+
+    useEffect(() => {
+        if (hasStalled && !hasSyncing) {
+            slowPoll.start();
+        } else {
+            slowPoll.stop();
+        }
+    }, [hasStalled, hasSyncing, slowPoll]);
 
     function handleSync(connection: BankingConnection) {
         router.post(`/settings/connections/${connection.id}/sync`);
@@ -171,6 +183,62 @@ export default function ConnectionsPage({ connections }: Props) {
         );
     }
 
+    /**
+     * What the card says about this connection's syncing, in one place.
+     *
+     * Was a four-arm nested ternary in the JSX. The arms are not
+     * interchangeable - a stalled first sync has to be told apart from one that
+     * is running, and both from a connection that simply synced a while ago - so
+     * early returns read better than indentation.
+     */
+    function syncStatusLine(connection: BankingConnection): React.ReactNode {
+        if (connection.status === 'awaiting_mapping') {
+            return (
+                <span>
+                    {__('Accounts need to be mapped before syncing can begin.')}
+                </span>
+            );
+        }
+
+        if (isFirstSyncStalled(connection)) {
+            return (
+                <span>
+                    {isWaitingForBankQuota(connection)
+                        ? __(
+                              'The bank limited how often we can ask. We will not try again before :time.',
+                              {
+                                  time: formatDate(
+                                      connection.rate_limited_until,
+                                  ),
+                              },
+                          )
+                        : __(
+                              'The bank limited how often we can ask. The next scheduled sync will try again.',
+                          )}
+                </span>
+            );
+        }
+
+        if (isFirstSyncInProgress(connection)) {
+            return (
+                <span className="flex items-center gap-1.5">
+                    <Spinner className="size-3" />
+                    {['indexacapital', 'interactivebrokers'].includes(
+                        connection.provider,
+                    )
+                        ? __('Syncing balances…')
+                        : __('Syncing transactions and balances…')}
+                </span>
+            );
+        }
+
+        return (
+            <span>
+                {__('Last synced')}: {formatDate(connection.last_synced_at)}
+            </span>
+        );
+    }
+
     function formatDate(dateString: string | null): string {
         if (!dateString) return __('Never');
         return new Date(dateString).toLocaleDateString(undefined, {
@@ -241,10 +309,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <ConnectionStatusBadge
-                                                status={connection.status}
-                                                lastSyncedAt={
-                                                    connection.last_synced_at
-                                                }
+                                                connection={connection}
                                             />
                                             {connection.status === 'expired' &&
                                                 canReconnect(connection) && (
@@ -382,54 +447,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex gap-6 text-sm text-muted-foreground">
-                                            {connection.status ===
-                                            'awaiting_mapping' ? (
-                                                <span>
-                                                    {__(
-                                                        'Accounts need to be mapped before syncing can begin.',
-                                                    )}
-                                                </span>
-                                            ) : connection.status ===
-                                                  'active' &&
-                                              isWaitingForBankQuota(
-                                                  connection,
-                                              ) ? (
-                                                <span>
-                                                    {__(
-                                                        'The bank limited how often we can ask. Next attempt after :time.',
-                                                        {
-                                                            time: formatDate(
-                                                                connection.rate_limited_until,
-                                                            ),
-                                                        },
-                                                    )}
-                                                </span>
-                                            ) : connection.status ===
-                                                  'active' &&
-                                              !connection.last_synced_at ? (
-                                                <span className="flex items-center gap-1.5">
-                                                    <Spinner className="size-3" />
-                                                    {[
-                                                        'indexacapital',
-                                                        'interactivebrokers',
-                                                    ].includes(
-                                                        connection.provider,
-                                                    )
-                                                        ? __(
-                                                              'Syncing balances…',
-                                                          )
-                                                        : __(
-                                                              'Syncing transactions and balances…',
-                                                          )}
-                                                </span>
-                                            ) : (
-                                                <span>
-                                                    {__('Last synced')}:{' '}
-                                                    {formatDate(
-                                                        connection.last_synced_at,
-                                                    )}
-                                                </span>
-                                            )}
+                                            {syncStatusLine(connection)}
                                             {connection.valid_until && (
                                                 <span>
                                                     {__('Expires')}:{' '}

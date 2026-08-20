@@ -1,5 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    isFirstSyncInProgress,
+    isFirstSyncStalled,
+} from '@/lib/banking-connections';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 
@@ -43,13 +47,16 @@ const statusConfig: Record<
 };
 
 export function ConnectionStatusBadge({
-    status,
-    lastSyncedAt,
+    connection,
 }: {
-    status: BankingConnection['status'];
-    lastSyncedAt?: string | null;
+    connection: BankingConnection;
 }) {
-    if (status === 'active' && !lastSyncedAt) {
+    const status = connection.status;
+
+    // Only a first sync that is actually running gets the spinner. A connection
+    // the bank has refused stays `active` with nothing synced, and saying
+    // "Syncing" over it is the whole reason a stalled connection looked healthy.
+    if (isFirstSyncInProgress(connection)) {
         return (
             <Badge
                 variant="secondary"
@@ -57,6 +64,14 @@ export function ConnectionStatusBadge({
             >
                 <Spinner className="size-3" />
                 {__('Syncing')}
+            </Badge>
+        );
+    }
+
+    if (isFirstSyncStalled(connection)) {
+        return (
+            <Badge variant="outline" className="dark:text-muted-foreground">
+                {__('Waiting to sync')}
             </Badge>
         );
     }

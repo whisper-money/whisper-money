@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
     alreadyConnectedBankNames,
     hasLiveConnectionForProvider,
+    isFirstSyncInProgress,
+    isFirstSyncStalled,
     isWaitingForBankQuota,
 } from './banking-connections';
 
@@ -111,5 +113,60 @@ describe('isWaitingForBankQuota', () => {
                 now,
             ),
         ).toBe(false);
+    });
+
+    it('reads the clock itself when no now is passed, as both callers do', () => {
+        expect(
+            isWaitingForBankQuota(
+                connection({ rate_limited_until: '2099-01-01T00:00:00Z' }),
+            ),
+        ).toBe(true);
+        expect(
+            isWaitingForBankQuota(
+                connection({ rate_limited_until: '2020-01-01T00:00:00Z' }),
+            ),
+        ).toBe(false);
+    });
+});
+
+describe('isFirstSyncInProgress / isFirstSyncStalled', () => {
+    it('separates a running first sync from one that already failed', () => {
+        const running = connection({
+            last_synced_at: null,
+            error_message: null,
+        });
+        const stalled = connection({
+            last_synced_at: null,
+            error_message: 'Rate limit exceeded.',
+        });
+
+        expect(isFirstSyncInProgress(running)).toBe(true);
+        expect(isFirstSyncStalled(running)).toBe(false);
+        expect(isFirstSyncInProgress(stalled)).toBe(false);
+        expect(isFirstSyncStalled(stalled)).toBe(true);
+    });
+
+    it('says neither once a first sync has landed', () => {
+        // The population that would otherwise lose its "Last synced" line:
+        // throttled on the balance call only, transactions imported fine.
+        const throttledButWorking = connection({
+            last_synced_at: '2026-08-20T06:03:00Z',
+            error_message: 'Rate limit exceeded.',
+            rate_limited_until: '2099-01-01T00:00:00Z',
+        });
+
+        expect(isFirstSyncInProgress(throttledButWorking)).toBe(false);
+        expect(isFirstSyncStalled(throttledButWorking)).toBe(false);
+    });
+
+    it('ignores a connection that is not active', () => {
+        const expired = connection({
+            status: 'expired',
+            last_synced_at: null,
+            error_message: 'Session expired.',
+        });
+
+        expect(isFirstSyncInProgress(expired)).toBe(false);
+        expect(isFirstSyncStalled(expired)).toBe(false);
     });
 });

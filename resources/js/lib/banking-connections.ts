@@ -47,15 +47,47 @@ export function hasLiveConnectionForProvider(
 }
 
 /**
- * Whether the bank has told us to come back later.
+ * Whether a connection's first sync is genuinely still running.
  *
- * A rate-limited connection stays `active` with its own sync parked until the
- * quota resets, which can be the next hour or the next midnight. Without asking
- * this, a connection that has never managed a first sync is indistinguishable
- * from one that is still working: the page shows "Syncing transactions and
- * balances…" and polls every 5 seconds for as long as it is open, and in
- * production 11 connections have been in exactly that state - some with well
- * over a hundred transactions already imported.
+ * "Active with nothing synced yet" is not enough on its own, and that was the
+ * bug: a connection the bank has refused stays `active` with `last_synced_at`
+ * still null, so it was indistinguishable from one that had just been
+ * authorized. Fourteen connections in production sat in that state - twelve of
+ * them Trade Republic, one created a month ago and never synced once - each
+ * showing a spinner that would never resolve while the page asked the server
+ * for news every five seconds.
+ *
+ * The thing that separates them is whether an attempt has already failed.
+ * `error_message` holds that and survives the backoff window elapsing, unlike
+ * `rate_limited_until`: a bare "Too many requests" gets a one-hour park against
+ * a six-hourly schedule, so for five hours out of every six the park has lapsed
+ * while the connection is no closer to working.
+ */
+export function isFirstSyncInProgress(connection: BankingConnection): boolean {
+    return (
+        connection.status === 'active' &&
+        !connection.last_synced_at &&
+        connection.error_message === null
+    );
+}
+
+/**
+ * Whether a connection has never delivered anything and its last attempt failed.
+ */
+export function isFirstSyncStalled(connection: BankingConnection): boolean {
+    return (
+        connection.status === 'active' &&
+        !connection.last_synced_at &&
+        connection.error_message !== null
+    );
+}
+
+/**
+ * Whether the bank's own retry window is still open, so a time can be named.
+ *
+ * Only ever used to decide whether to print one. Whether a connection is stuck
+ * is `isFirstSyncStalled`'s question, because this one is false for most of the
+ * time a connection spends stuck.
  */
 export function isWaitingForBankQuota(
     connection: BankingConnection,

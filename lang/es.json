@@ -2454,5 +2454,7 @@
     "Your plan has ended": "Tu plan ha terminado",
     "Your plan is active": "Tu plan está activo",
     "Your plan is on. Connected banks, AI suggestions and the AI assistant are all available now.": "Tu plan ya está activo. Los bancos conectados, las sugerencias de IA y el asistente de IA están disponibles.",
-    "The bank limited how often we can ask. Next attempt after :time.": "El banco ha limitado la frecuencia con la que podemos consultar. Pr\u00f3ximo intento a partir de las :time."
+    "The bank limited how often we can ask. We will not try again before :time.": "El banco ha limitado la frecuencia con la que podemos consultar. No volveremos a intentarlo antes de :time.",
+    "The bank limited how often we can ask. The next scheduled sync will try again.": "El banco ha limitado la frecuencia con la que podemos consultar. La próxima sincronización programada volverá a intentarlo.",
+    "Waiting to sync": "Esperando para sincronizar"
 }
