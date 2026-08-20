@@ -1,30 +1,21 @@
+import { StepButton } from '@/components/onboarding/step-button';
+import {
+    StepChevron,
+    StepList,
+    StepRow,
+} from '@/components/onboarding/step-list';
+import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
+import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
 import { SupportDialog } from '@/components/support-dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { useCountUp } from '@/hooks/use-count-up';
-import { useLocale } from '@/hooks/use-locale';
-import { cn } from '@/lib/utils';
+import SubscriptionLayout from '@/layouts/subscription-layout';
 import { dashboard } from '@/routes';
 import { index as connectionsIndex } from '@/routes/settings/connections';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
-import { Plan } from '@/types/pricing';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
-import {
-    CheckIcon,
-    FolderIcon,
-    LandmarkIcon,
-    LifeBuoy,
-    LockIcon,
-    PiggyBankIcon,
-    ReceiptIcon,
-    TrendingUpIcon,
-    UsersIcon,
-    XIcon,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Landmark, LifeBuoy, Sparkles, WalletMinimal } from 'lucide-react';
+import { useState } from 'react';
 
 interface PaywallStats {
     accountsCount: number;
@@ -38,470 +29,214 @@ interface PaywallPageProps extends SharedData {
     canManageConnectionsForFreePlan: boolean;
 }
 
-function TrialTerms({ days }: { days: number }) {
-    if (days <= 0) {
-        return null;
-    }
+export default function Paywall() {
+    const {
+        auth,
+        locale,
+        pricing,
+        stats,
+        canUseFreePlan,
+        canManageConnectionsForFreePlan,
+    } = usePage<PaywallPageProps>().props;
 
-    return (
-        <div className="rounded-lg border bg-muted/30 p-3 text-center text-sm">
-            <p className="font-medium">
-                {__(':days-day free trial', { days })}
-            </p>
-            <p className="mt-1 text-muted-foreground">
-                {__(
-                    "You won't be charged until your :days-day trial ends. Cancel anytime before then.",
-                    { days },
-                )}
-            </p>
-        </div>
-    );
-}
-
-function getEquivalentBillingLabel(
-    billingPeriod: string | null,
-    t: typeof __,
-): string {
-    if (!billingPeriod) {
-        return t('one-time');
-    }
-
-    return t('/month');
-}
-
-const socialProofs = [
-    {
-        icon: TrendingUpIcon,
-        highlightKey: '15% more savings',
-        textKey: 'after 3 months',
-    },
-    {
-        icon: PiggyBankIcon,
-        highlightKey: '23% better',
-        textKey: 'spending awareness',
-    },
-    {
-        icon: LockIcon,
-        highlightKey: '100% private',
-        textKey: '- we never sell your data',
-    },
-    {
-        icon: UsersIcon,
-        highlightKey: '2,500+ users',
-        textKey: 'trusting us',
-    },
-];
-
-function SocialProofSlider() {
-    const [currentIndex, setCurrentIndex] = useState(0);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % socialProofs.length);
-        }, 4000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const currentProof = socialProofs[currentIndex];
-    const Icon = currentProof.icon;
-
-    return (
-        <div className="flex flex-col items-center gap-4">
-            <div
-                key={`icon-${currentIndex}`}
-                className="flex h-14 w-14 animate-in items-center justify-center rounded-full bg-emerald-100 duration-500 zoom-in-95 fade-in dark:bg-emerald-900/30"
-            >
-                <Icon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-            </div>
-
-            <div className="relative w-full overflow-hidden text-center">
-                <p
-                    key={currentIndex}
-                    className="animate-in text-lg text-balance duration-500 fade-in slide-in-from-right-4"
-                >
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        {__(currentProof.highlightKey)}
-                    </span>{' '}
-                    <span className="text-muted-foreground">
-                        {__(currentProof.textKey)}
-                    </span>
-                </p>
-            </div>
-
-            <div className="flex gap-1.5">
-                {socialProofs.map((_, index) => (
-                    <button
-                        key={index}
-                        onClick={() => setCurrentIndex(index)}
-                        className={cn(
-                            'h-1.5 rounded-full transition-all',
-                            index === currentIndex
-                                ? 'w-4 bg-emerald-500'
-                                : 'w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50',
-                        )}
-                        aria-label={`Go to slide ${index + 1}`}
-                    />
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function StatItem({
-    icon: Icon,
-    value,
-    label,
-    delay = 0,
-}: {
-    icon: React.ElementType;
-    value: number;
-    label: string;
-    delay?: number;
-}) {
-    const animatedValue = useCountUp(value, { delay });
-
-    return (
-        <div className="flex flex-1 flex-col items-center gap-0.5">
-            <Icon className="mb-1.5 h-4 w-4 text-emerald-500" />
-            <span className="text-xl font-bold">{animatedValue}</span>
-            <span className="text-xs text-muted-foreground">{label}</span>
-        </div>
-    );
-}
-
-function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
-    const hasData =
-        stats.accountsCount > 0 ||
-        stats.transactionsCount > 0 ||
-        stats.categoriesCount > 0;
-
-    if (!hasData) {
-        return null;
-    }
-
-    return (
-        <Card className="animate-in duration-500 [animation-delay:200ms] fade-in">
-            <CardContent className="flex flex-row gap-6">
-                {stats.accountsCount > 0 && (
-                    <StatItem
-                        icon={PiggyBankIcon}
-                        value={stats.accountsCount}
-                        label={__('Accounts')}
-                        delay={100}
-                    />
-                )}
-                {stats.transactionsCount > 0 && (
-                    <StatItem
-                        icon={ReceiptIcon}
-                        value={stats.transactionsCount}
-                        label={__('Transactions')}
-                        delay={200}
-                    />
-                )}
-                {stats.categoriesCount > 0 && (
-                    <StatItem
-                        icon={FolderIcon}
-                        value={stats.categoriesCount}
-                        label={__('Categories')}
-                        delay={300}
-                    />
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
-function FeaturesSection({ features }: { features: string[] }) {
-    return (
-        <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 rounded-lg border border-emerald-100/50 bg-emerald-50/25 px-4 py-3 dark:border-emerald-800/50 dark:bg-emerald-950/20">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                    <LandmarkIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div className="flex-1">
-                    <p className="text-sm font-semibold">
-                        {__('Connected banks')}
-                    </p>
-                    <p className="text-xs text-balance text-muted-foreground">
-                        {__(
-                            'Sync transactions and balances automatically. Forget about manually importing CSVs from your bank.',
-                        )}
-                    </p>
-                </div>
-                <CheckIcon className="h-4 w-4 shrink-0 text-emerald-500" />
-            </div>
-
-            {features.length > 0 && (
-                <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-1">
-                    {features.map((feature) => (
-                        <li key={feature} className="flex items-center gap-1.5">
-                            <CheckIcon className="size-3.5 shrink-0 text-emerald-500" />
-                            <span className="text-xs text-muted-foreground">
-                                {__(feature)}
-                            </span>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-}
-
-function CompactPlanCard({
-    plan,
-    isSelected,
-    onSelect,
-    currency,
-}: {
-    plan: Plan;
-    isSelected: boolean;
-    onSelect: () => void;
-    currency: string;
-}) {
-    const locale = useLocale();
-    const savingsPercent =
-        plan.original_price && plan.billing_period === 'year'
-            ? Math.round(
-                  ((plan.original_price - plan.price) / plan.original_price) *
-                      100,
-              )
-            : null;
-    const monthlyEquivalent =
-        plan.billing_period === 'year' ? plan.price / 12 : plan.price;
-
-    return (
-        <button
-            onClick={onSelect}
-            className={cn(
-                'flex flex-1 flex-col rounded-lg border p-3 text-left transition-all',
-                isSelected
-                    ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 dark:bg-emerald-950/30'
-                    : 'border-border bg-card hover:border-muted-foreground/50',
-            )}
-        >
-            <div className="flex items-center gap-2">
-                <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    {plan.billing_period === 'year'
-                        ? __('Annual')
-                        : __('Monthly')}
-                </span>
-                {savingsPercent && savingsPercent > 0 && (
-                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        {__('Saving')} {savingsPercent}%
-                    </span>
-                )}
-            </div>
-            <div className="mt-1 flex items-baseline gap-1">
-                <span className="text-xl font-bold">
-                    {formatCurrency(monthlyEquivalent * 100, currency, locale)}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                    {getEquivalentBillingLabel(plan.billing_period, __)}
-                </span>
-            </div>
-            {plan.billing_period === 'year' && (
-                <span className="mt-2 text-xs text-muted-foreground">
-                    {__('Billed annually at')}{' '}
-                    {formatCurrency(plan.price * 100, currency, locale)}
-                </span>
-            )}
-            {plan.trial_days > 0 && (
-                <span className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                    {__(':days days free', { days: plan.trial_days })}
-                </span>
-            )}
-        </button>
-    );
-}
-
-function PricingSection({
-    planEntries,
-    defaultPlan,
-    currency,
-    canUseFreePlan,
-    canManageConnectionsForFreePlan,
-}: {
-    planEntries: [string, Plan][];
-    defaultPlan: string;
-    currency: string;
-    canUseFreePlan: boolean;
-    canManageConnectionsForFreePlan: boolean;
-}) {
-    const { auth } = usePage<SharedData>().props;
-    const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
-    const [escapeVisible, setEscapeVisible] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState(pricing.defaultPlan);
     const [supportOpen, setSupportOpen] = useState(false);
 
-    const selectedPlanData = planEntries.find(
-        ([key]) => key === selectedPlan,
-    )?.[1];
+    if (Object.keys(pricing.plans).length === 0) {
+        return null;
+    }
 
-    useEffect(() => {
-        const delay = canUseFreePlan ? 5000 : 7000;
-        const timer = setTimeout(() => setEscapeVisible(true), delay);
-        return () => clearTimeout(timer);
-    }, [canUseFreePlan]);
-
-    const continueForFree = () => router.visit(dashboard().url);
-    const revealClasses = escapeVisible
-        ? 'opacity-100'
-        : 'pointer-events-none opacity-0';
+    // Someone who already paid once does not need the product explained to
+    // them — they need the two doors: start again, or disconnect and go free.
+    const isFormerSubscriber = canManageConnectionsForFreePlan;
 
     return (
-        <div className="flex flex-col gap-4">
-            {canUseFreePlan ? (
-                <div
-                    className={cn(
-                        'fixed top-4 right-4 z-50 transition-opacity duration-1000 md:hidden',
-                        revealClasses,
-                    )}
-                >
-                    <button
-                        onClick={continueForFree}
-                        aria-label={__('Continue for free')}
-                        className="flex size-11 items-center justify-center rounded-full border border-border/75 bg-sidebar/50 text-primary shadow-lg shadow-black/20 backdrop-blur transition-all duration-200 hover:bg-sidebar/80 active:scale-95"
-                    >
-                        <XIcon className="size-5" />
-                    </button>
-                </div>
-            ) : (
-                <div
-                    className={cn(
-                        'fixed top-4 right-4 z-50 transition-opacity duration-1000 md:hidden',
-                        revealClasses,
-                    )}
-                >
-                    <button
-                        onClick={() => setSupportOpen(true)}
-                        aria-label={__('Need help?')}
-                        className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                        <LifeBuoy className="size-5" />
-                    </button>
-                </div>
-            )}
+        <SubscriptionLayout>
+            <Head title={__('Choose your plan')} />
 
-            {selectedPlanData && (
-                <FeaturesSection
-                    features={selectedPlanData.features.filter(
-                        (feature) => feature !== 'Connect bank accounts',
-                    )}
-                />
-            )}
-
-            <div className="flex gap-3">
-                {planEntries.map(([key, plan]) => (
-                    <CompactPlanCard
-                        key={key}
-                        plan={plan}
-                        isSelected={key === selectedPlan}
-                        onSelect={() => setSelectedPlan(key)}
-                        currency={currency}
-                    />
-                ))}
-            </div>
-
-            <TrialTerms days={selectedPlanData?.trial_days ?? 0} />
-
-            <a href={checkout.url({ query: { plan: selectedPlan } })}>
-                <Button
-                    className="w-full bg-emerald-600 py-6 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
-                    size="lg"
-                >
-                    {__('Start My Financial Journey')}
-                </Button>
-            </a>
-
-            {canManageConnectionsForFreePlan && (
-                <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                    <p className="mb-3 text-sm text-muted-foreground">
-                        {__(
-                            'Want to continue for free? Disconnect all bank connections in Settings.',
+            <StepScreen
+                title={
+                    isFormerSubscriber
+                        ? __('Your plan has ended')
+                        : __('Choose your plan')
+                }
+                description={description({
+                    canUseFreePlan,
+                    isFormerSubscriber,
+                    stats,
+                    locale,
+                })}
+                footer={
+                    <>
+                        {!isFormerSubscriber && (
+                            <StepNote>
+                                {__(
+                                    '4,000+ people track their money here. We never sell your data.',
+                                )}
+                            </StepNote>
                         )}
-                    </p>
-                    <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => router.visit(connectionsIndex().url)}
-                    >
-                        {__('Go to Settings')}
-                    </Button>
-                </div>
-            )}
 
-            {canUseFreePlan ? (
-                <div
-                    className={cn(
-                        'hidden transition-opacity duration-1000 md:block',
-                        revealClasses,
-                    )}
-                >
-                    <Button
-                        variant="ghost"
-                        className="w-full"
-                        onClick={continueForFree}
-                    >
-                        {__('Continue for free')}
-                    </Button>
-                </div>
-            ) : (
-                <div
-                    className={cn(
-                        'hidden transition-opacity duration-1000 md:block',
-                        revealClasses,
-                    )}
-                >
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-muted-foreground"
-                        onClick={() => setSupportOpen(true)}
-                    >
-                        <LifeBuoy className="size-4" />
-                        {__('Need help?')}
-                    </Button>
-                </div>
-            )}
+                        <StepNote emphasis>
+                            {planTerms(pricing.plans[selectedPlan])}
+                        </StepNote>
+
+                        <StepButton
+                            text={__('Continue')}
+                            href={checkout.url({
+                                query: { plan: selectedPlan },
+                            })}
+                        />
+
+                        {/* The way out is here from the first paint. A timed
+                            reveal hides the only exit a hard-gated user has,
+                            and on the soft gate it hides a choice they are
+                            entitled to make — the filled-versus-muted
+                            hierarchy already says which one is the offer. */}
+                        {canUseFreePlan ? (
+                            <StepButton
+                                text={__('Continue with the free plan')}
+                                variant="ghost"
+                                onClick={() => router.visit(dashboard().url)}
+                            />
+                        ) : (
+                            <StepButton
+                                text={__('Need help?')}
+                                variant="ghost"
+                                icon={LifeBuoy}
+                                onClick={() => setSupportOpen(true)}
+                            />
+                        )}
+                    </>
+                }
+            >
+                {!isFormerSubscriber && <Features />}
+
+                <PlanPicker
+                    plans={pricing.plans}
+                    currency={pricing.currency}
+                    selectedPlan={selectedPlan}
+                    onSelect={setSelectedPlan}
+                />
+
+                {isFormerSubscriber && (
+                    <div>
+                        <div className="pt-4 pb-2.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                            {__('Or go free')}
+                        </div>
+                        <StepList>
+                            <StepRow
+                                icon={Landmark}
+                                title={__('Disconnect your banks')}
+                                description={__(
+                                    'In Settings, under Connections.',
+                                )}
+                                meta={__(
+                                    'Your accounts stop updating. Every transaction already imported stays.',
+                                )}
+                                trailing={<StepChevron />}
+                                onClick={() =>
+                                    router.visit(connectionsIndex().url)
+                                }
+                            />
+                        </StepList>
+                    </div>
+                )}
+            </StepScreen>
 
             <SupportDialog
                 open={supportOpen}
                 onOpenChange={setSupportOpen}
                 user={auth.user}
             />
-        </div>
+        </SubscriptionLayout>
     );
 }
 
-export default function Paywall() {
-    const { pricing, stats, canUseFreePlan, canManageConnectionsForFreePlan } =
-        usePage<PaywallPageProps>().props;
-    const planEntries = Object.entries(pricing.plans);
+/** What a paid plan adds, in the list vocabulary the rest of the flow uses. */
+function Features() {
+    return (
+        <StepList>
+            <StepRow
+                icon={Landmark}
+                title={__('Connected banks')}
+                description={__('Transactions and balances sync themselves.')}
+            />
+            <StepRow
+                icon={Sparkles}
+                title={__('AI suggestions')}
+                description={__(
+                    'Rules learned from how you already categorize.',
+                )}
+            />
+            <StepRow
+                icon={WalletMinimal}
+                title={__('No limits')}
+                description={__('Accounts, transactions and categories.')}
+            />
+        </StepList>
+    );
+}
 
-    if (planEntries.length === 0) {
+/**
+ * Each gate argues the one thing that is true for it. The hard gate names what
+ * the user already has here, because that is what is being withheld; the soft
+ * gate does not, because nothing is.
+ */
+function description({
+    canUseFreePlan,
+    isFormerSubscriber,
+    stats,
+    locale,
+}: {
+    canUseFreePlan: boolean;
+    isFormerSubscriber: boolean;
+    stats: PaywallStats;
+    locale: string;
+}): string {
+    if (isFormerSubscriber) {
+        return __(
+            'Your connected banks stopped syncing. Start a plan to turn them back on, or disconnect them and keep going for free.',
+        );
+    }
+
+    if (canUseFreePlan) {
+        return __(
+            'Syncing and AI suggestions need a paid plan. Everything else in Whisper Money stays free.',
+        );
+    }
+
+    const gate = __('Bank syncing and AI suggestions need a paid plan.');
+    const snapshot = snapshotSentence(stats, locale);
+
+    return snapshot ? `${gate} ${snapshot}` : gate;
+}
+
+/**
+ * The one personal, honest argument on the page: the data the user has already
+ * put in. Both counts have to be there for the sentence to read, so it is
+ * dropped whole rather than degrading into "0 transactions".
+ */
+function snapshotSentence(stats: PaywallStats, locale: string): string | null {
+    if (stats.accountsCount === 0 || stats.transactionsCount === 0) {
         return null;
     }
 
-    return (
-        <>
-            <Head title={__('Start Your Financial Journey')} />
+    const accounts =
+        stats.accountsCount === 1
+            ? __('1 account')
+            : __(':count accounts', {
+                  count: stats.accountsCount.toLocaleString(locale),
+              });
 
-            <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
-                <div className="flex w-full max-w-md flex-col gap-6">
-                    <SocialProofSlider />
+    const transactions =
+        stats.transactionsCount === 1
+            ? __('1 transaction')
+            : __(':count transactions', {
+                  count: stats.transactionsCount.toLocaleString(locale),
+              });
 
-                    <FinancialSnapshot stats={stats} />
-
-                    <PricingSection
-                        planEntries={planEntries}
-                        defaultPlan={pricing.defaultPlan}
-                        currency={pricing.currency}
-                        canUseFreePlan={canUseFreePlan}
-                        canManageConnectionsForFreePlan={
-                            canManageConnectionsForFreePlan
-                        }
-                    />
-                </div>
-            </div>
-        </>
-    );
+    return __('Your :accounts and :transactions are already here.', {
+        accounts,
+        transactions,
+    });
 }

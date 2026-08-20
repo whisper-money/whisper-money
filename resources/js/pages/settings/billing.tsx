@@ -1,9 +1,7 @@
 import HeadingSmall from '@/components/heading-small';
 import { ProBadge } from '@/components/pro-badge';
-import {
-    PlanCard,
-    UpgradeDialog,
-} from '@/components/subscription/upgrade-dialog';
+import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
+import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,7 +28,6 @@ import {
     LandmarkIcon,
     ShieldCheckIcon,
     SparklesIcon,
-    ZapIcon,
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -104,20 +101,15 @@ function BenefitsGrid() {
 }
 
 function UpgradeSection({
-    planEntries,
+    plans,
     defaultPlan,
     currency,
-    locale,
 }: {
-    planEntries: [string, Plan][];
+    plans: Record<string, Plan>;
     defaultPlan: string;
     currency: string;
-    locale: string;
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
-    const selectedPlanData = planEntries.find(
-        ([key]) => key === selectedPlan,
-    )?.[1];
 
     return (
         <div className="space-y-6">
@@ -131,52 +123,30 @@ function UpgradeSection({
             <BenefitsGrid />
 
             <div className="rounded-lg border bg-card p-5">
-                <p className="mb-4 text-sm font-medium">
+                <p className="mb-2 text-sm font-medium">
                     {__('Choose your billing cycle')}
                 </p>
 
-                <div className="flex gap-3">
-                    {planEntries.map(([key, plan]) => (
-                        <PlanCard
-                            key={key}
-                            plan={plan}
-                            isSelected={key === selectedPlan}
-                            onSelect={() => setSelectedPlan(key)}
-                            currency={currency}
-                            locale={locale}
-                        />
-                    ))}
-                </div>
+                {/* The same picker as the paywall and the upgrade dialog, at
+                    the app's own density — 52px rows would read as the
+                    onboarding leaking into a settings page. */}
+                <PlanPicker
+                    plans={plans}
+                    currency={currency}
+                    selectedPlan={selectedPlan}
+                    onSelect={setSelectedPlan}
+                    size="compact"
+                />
 
-                {selectedPlanData && selectedPlanData.features.length > 0 && (
-                    <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5">
-                        {selectedPlanData.features
-                            .slice(0, 4)
-                            .map((feature) => (
-                                <li
-                                    key={feature}
-                                    className="flex items-center gap-1.5"
-                                >
-                                    <CheckIcon className="size-3.5 shrink-0 text-emerald-500" />
-                                    <span className="text-xs text-muted-foreground">
-                                        {__(feature)}
-                                    </span>
-                                </li>
-                            ))}
-                    </ul>
-                )}
+                <p className="mt-4 text-sm font-medium">
+                    {planTerms(plans[selectedPlan])}
+                </p>
 
-                <a
-                    href={checkout.url({
-                        query: { plan: selectedPlan },
-                    })}
-                    className="mt-4 block"
-                >
-                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700">
-                        <ZapIcon className="size-4" />
-                        {__('Upgrade to Standard Plan')}
-                    </Button>
-                </a>
+                <Button asChild className="mt-4 w-full">
+                    <a href={checkout.url({ query: { plan: selectedPlan } })}>
+                        {__('Start a plan')}
+                    </a>
+                </Button>
             </div>
         </div>
     );
@@ -378,7 +348,6 @@ export default function Billing() {
     >().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
     const hasProPlan = auth?.hasProPlan ?? false;
-    const planEntries = Object.entries(pricing.plans);
     const defaultPlan = pricing.plans[pricing.defaultPlan];
     const [showAiUpgrade, setShowAiUpgrade] = useState(false);
 
@@ -403,10 +372,9 @@ export default function Billing() {
                         />
                     ) : (
                         <UpgradeSection
-                            planEntries={planEntries}
+                            plans={pricing.plans}
                             defaultPlan={pricing.defaultPlan}
                             currency={pricing.currency}
-                            locale={locale}
                         />
                     )}
 
