@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\GenerateBudgetPeriods;
 use App\Models\BudgetPeriod;
 use Illuminate\Database\Migrations\Migration;
 
@@ -19,7 +20,7 @@ return new class extends Migration
      * so nothing has been generated or closed since, and their allocated and
      * carried-over amounts are noise nobody ever chose.
      *
-     * Two are kept ahead of today because that is what the command maintains, so
+     * What is kept ahead of today comes from the command itself, so
      * the first run after this leaves the chain exactly as it finds it. Anything
      * holding budget transactions is left alone on principle - a future period
      * cannot have any today (verified: zero of the 37,338), but deleting one
@@ -36,7 +37,7 @@ return new class extends Migration
                     ->where('budget_id', $budgetId)
                     ->where('start_date', '>', today())
                     ->orderBy('start_date')
-                    ->limit(2)
+                    ->limit(GenerateBudgetPeriods::PERIODS_KEPT_AHEAD)
                     ->pluck('id');
 
                 BudgetPeriod::query()

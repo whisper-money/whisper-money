@@ -13,6 +13,16 @@ class GenerateBudgetPeriods extends Command
 
     protected $description = 'Generate upcoming budget periods and close completed ones';
 
+    /**
+     * How far ahead of today the chain is kept.
+     *
+     * The repair migration that trims the runaway chains reads this, so that its
+     * result is exactly what the first run afterwards expects to find. Raising
+     * it here without re-running that migration only means the next run tops the
+     * chain up, which is harmless - the two disagreeing silently is not.
+     */
+    public const PERIODS_KEPT_AHEAD = 2;
+
     public function __construct(protected BudgetPeriodService $budgetPeriodService)
     {
         parent::__construct();
@@ -24,8 +34,9 @@ class GenerateBudgetPeriods extends Command
 
         // Not eager loading the periods: everything below re-queries them, and
         // loading every period of every budget is what eventually exhausted the
-        // 128M limit and killed this command outright.
-        $budgets = Budget::query()->get();
+        // 128M limit and killed this command outright. Lazily for the same
+        // reason - nothing here needs every budget in memory at once.
+        $budgets = Budget::query()->lazyById();
         $generatedCount = 0;
         $closedCount = 0;
 
@@ -58,7 +69,7 @@ class GenerateBudgetPeriods extends Command
                 ->where('start_date', '>', today())
                 ->count();
 
-            if ($futurePeriods < 2) {
+            if ($futurePeriods < self::PERIODS_KEPT_AHEAD) {
                 $this->budgetPeriodService->generatePeriod($budget);
                 $generatedCount++;
             }
