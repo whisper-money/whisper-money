@@ -73,7 +73,7 @@ class BudgetPeriodService
 
         switch ($budget->period_type) {
             case BudgetPeriodType::Monthly:
-                $startDate->day($budget->period_start_day ?? 1);
+                $startDate->day($this->startDayOfMonth($budget));
                 if ($startDate > $referenceDate) {
                     $startDate->subMonth();
                 }
@@ -97,6 +97,29 @@ class BudgetPeriodService
         }
 
         return [$startDate, $endDate];
+    }
+
+    /**
+     * The budget's start day as a real day of the month.
+     *
+     * `period_start_day` is validated as 0-31 for every period type, because for
+     * weekly and biweekly budgets it is a day of the week and 0 is Sunday. For a
+     * monthly budget that 0 goes to `Carbon::day(0)`, which resolves to the last
+     * day of the *previous* month - so the window ends before the month does and
+     * the last days of some months are covered by no period at all. The budget
+     * then has no current period on those days, `getCurrentPeriod()` returns
+     * null, and anything dated in them counts towards nothing.
+     *
+     * Only the floor is applied. A day past the end of a short month overflows
+     * into the next one (February plus 31 days is 3 March) and `subMonth` walks
+     * the window back from there, which makes the boundary wander - but it never
+     * leaves a day uncovered, and 8 live budgets are anchored that way. Moving
+     * their windows to fix a wander nobody has reported would re-bucket real
+     * transactions; that belongs in its own change with its own migration.
+     */
+    private function startDayOfMonth(Budget $budget): int
+    {
+        return max(1, $budget->period_start_day ?? 1);
     }
 
     /**
