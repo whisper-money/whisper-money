@@ -45,3 +45,25 @@ export function hasLiveConnectionForProvider(
         (c) => c.provider === provider && isLiveConnection(c),
     );
 }
+
+/**
+ * Whether the bank has told us to come back later.
+ *
+ * A rate-limited connection stays `active` with its own sync parked until the
+ * quota resets, which can be the next hour or the next midnight. Without asking
+ * this, a connection that has never managed a first sync is indistinguishable
+ * from one that is still working: the page shows "Syncing transactions and
+ * balances…" and polls every 5 seconds for as long as it is open, and in
+ * production 11 connections have been in exactly that state - some with well
+ * over a hundred transactions already imported.
+ */
+export function isWaitingForBankQuota(
+    connection: BankingConnection,
+    now: Date = new Date(),
+): boolean {
+    if (connection.rate_limited_until === null) {
+        return false;
+    }
+
+    return new Date(connection.rate_limited_until) > now;
+}

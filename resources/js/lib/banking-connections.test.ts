@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     alreadyConnectedBankNames,
     hasLiveConnectionForProvider,
+    isWaitingForBankQuota,
 } from './banking-connections';
 
 function connection(
@@ -17,6 +18,7 @@ function connection(
         valid_until: null,
         last_synced_at: null,
         error_message: null,
+        rate_limited_until: null,
         accounts_count: 1,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -78,5 +80,36 @@ describe('hasLiveConnectionForProvider', () => {
         expect(hasLiveConnectionForProvider(connections, 'coinbase')).toBe(
             false,
         );
+    });
+});
+
+describe('isWaitingForBankQuota', () => {
+    const now = new Date('2026-08-20T15:00:00Z');
+
+    it('is waiting while the bank has told us to come back later', () => {
+        expect(
+            isWaitingForBankQuota(
+                connection({ rate_limited_until: '2026-08-20T18:00:00Z' }),
+                now,
+            ),
+        ).toBe(true);
+    });
+
+    it('is not waiting once the window has passed', () => {
+        expect(
+            isWaitingForBankQuota(
+                connection({ rate_limited_until: '2026-08-20T14:59:00Z' }),
+                now,
+            ),
+        ).toBe(false);
+    });
+
+    it('is not waiting when the bank never limited us', () => {
+        expect(
+            isWaitingForBankQuota(
+                connection({ rate_limited_until: null }),
+                now,
+            ),
+        ).toBe(false);
     });
 });

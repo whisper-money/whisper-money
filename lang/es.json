@@ -2453,5 +2453,6 @@
     "Your payment went through. If anything still looks locked, reload in a minute.": "Tu pago se ha completado. Si algo sigue bloqueado, recarga en un minuto.",
     "Your plan has ended": "Tu plan ha terminado",
     "Your plan is active": "Tu plan está activo",
-    "Your plan is on. Connected banks, AI suggestions and the AI assistant are all available now.": "Tu plan ya está activo. Los bancos conectados, las sugerencias de IA y el asistente de IA están disponibles."
+    "Your plan is on. Connected banks, AI suggestions and the AI assistant are all available now.": "Tu plan ya está activo. Los bancos conectados, las sugerencias de IA y el asistente de IA están disponibles.",
+    "The bank limited how often we can ask. Next attempt after :time.": "El banco ha limitado la frecuencia con la que podemos consultar. Pr\u00f3ximo intento a partir de las :time."
 }

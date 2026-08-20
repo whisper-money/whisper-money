@@ -21,6 +21,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { isWaitingForBankQuota } from '@/lib/banking-connections';
 import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
 import { leavePage } from '@/lib/leave-page';
@@ -57,8 +58,15 @@ export default function ConnectionsPage({ connections }: Props) {
         useState<BankingConnection | null>(null);
     const [reconnectingId, setReconnectingId] = useState<string | null>(null);
 
+    // A connection parked until the bank's quota resets is not going to change
+    // in the next five seconds, so it must not keep the poll alive - otherwise
+    // one that has never completed a first sync polls for as long as the page
+    // is open, forever.
     const hasSyncing = connections.some(
-        (c) => c.status === 'active' && !c.last_synced_at,
+        (c) =>
+            c.status === 'active' &&
+            !c.last_synced_at &&
+            !isWaitingForBankQuota(c),
     );
 
     const { start, stop } = usePoll(5000, {}, { autoStart: false });
@@ -379,6 +387,21 @@ export default function ConnectionsPage({ connections }: Props) {
                                                 <span>
                                                     {__(
                                                         'Accounts need to be mapped before syncing can begin.',
+                                                    )}
+                                                </span>
+                                            ) : connection.status ===
+                                                  'active' &&
+                                              isWaitingForBankQuota(
+                                                  connection,
+                                              ) ? (
+                                                <span>
+                                                    {__(
+                                                        'The bank limited how often we can ask. Next attempt after :time.',
+                                                        {
+                                                            time: formatDate(
+                                                                connection.rate_limited_until,
+                                                            ),
+                                                        },
                                                     )}
                                                 </span>
                                             ) : connection.status ===
