@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StepComplete } from './step-complete';
 
 const post = vi.fn();
@@ -15,31 +15,55 @@ type VisitCallbacks = {
 };
 
 /**
- * What Inertia does to a visit whose request never reached the server: it
- * reports the transport failure and settles the chain. `onError` is not part of
- * it — that only runs for a response Inertia could read.
+ * Every way `POST /onboarding/complete` can end without moving the user on.
+ * Only the first of them reaches `onError`, which is why resetting the button
+ * from there left the last step of onboarding behind a dead, spinning button.
  */
-function failOnTheNetwork(callbacks: VisitCallbacks): void {
-    callbacks.onNetworkError?.(new Error('Network error'));
-    callbacks.onFinish?.();
-}
+const failures: Array<[string, (callbacks: VisitCallbacks) => void]> = [
+    [
+        'the server rejects the request',
+        (callbacks) => {
+            callbacks.onError?.();
+            callbacks.onFinish?.();
+        },
+    ],
+    [
+        'the request never reaches the server',
+        (callbacks) => {
+            callbacks.onNetworkError?.(new Error('Network error'));
+            callbacks.onFinish?.();
+        },
+    ],
+    [
+        'the answer is one Inertia cannot read',
+        (callbacks) => {
+            callbacks.onFinish?.();
+        },
+    ],
+];
 
 describe('StepComplete', () => {
-    it('lets the user try again when the request never reaches the server', async () => {
-        render(<StepComplete />);
-
-        fireEvent.click(screen.getByRole('button'));
-
-        expect(screen.getByRole('button')).toBeDisabled();
-
-        const callbacks = post.mock.calls[0]?.[2] as VisitCallbacks;
-
-        await act(async () => {
-            failOnTheNetwork(callbacks);
-        });
-
-        // StepButton disables itself while loading, so staying in that state
-        // leaves the last step of onboarding behind a dead button.
-        expect(screen.getByRole('button')).toBeEnabled();
+    afterEach(() => {
+        post.mockReset();
     });
+
+    it.each(failures)(
+        'lets the user try again when %s',
+        async (_failure, settle) => {
+            render(<StepComplete />);
+
+            fireEvent.click(screen.getByRole('button'));
+
+            expect(post).toHaveBeenCalledOnce();
+            expect(screen.getByRole('button')).toBeDisabled();
+
+            await act(async () => {
+                settle(post.mock.calls[0][2] as VisitCallbacks);
+            });
+
+            // StepButton disables itself while loading, so staying in that
+            // state is a one-way door out of onboarding.
+            expect(screen.getByRole('button')).toBeEnabled();
+        },
+    );
 });
