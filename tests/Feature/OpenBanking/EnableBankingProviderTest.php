@@ -537,3 +537,30 @@ test('the API error log keeps the endpoint shape but not the bank identifiers', 
     expect($paths)->toContain('/accounts/{id}/balances')
         ->and(json_encode($logged))->not->toContain('ext-secret-123');
 });
+
+test('a metered quota logs as a warning, an unexpected status as an error', function (int $status, string $level) {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/balances*' => Http::response([
+            'code' => $status,
+            'message' => 'Too many requests',
+        ], $status),
+    ]);
+
+    $levels = [];
+    Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$levels): void {
+        $levels[] = $event->level;
+    });
+
+    try {
+        enableBankingProviderForTest()->getBalances('ext-123');
+    } catch (Throwable) {
+        // What it throws is the caller's business; this is about what it logs.
+    }
+
+    // A 429 is answered by parking the connection until the quota resets, so
+    // reporting it as an application error only buries the real ones.
+    expect($levels)->toContain($level);
+})->with([
+    [429, 'warning'],
+    [500, 'error'],
+]);

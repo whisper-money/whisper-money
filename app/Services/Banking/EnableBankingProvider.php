@@ -319,13 +319,20 @@ class EnableBankingProvider implements BankingProviderInterface
             ->acceptJson()
             ->throw(function ($response, RequestException $exception) {
                 // Expected outcomes of an unattended sync — a flaky bank connector,
-                // a consent the user has to renew, a period the bank won't serve —
-                // are the caller's to handle, so they log as warnings rather than
-                // as application errors.
+                // a consent the user has to renew, a period the bank won't serve,
+                // a quota the bank meters — are the caller's to handle, so they
+                // log as warnings rather than as application errors.
+                //
+                // 429 belongs on that list: the job already answers it by parking
+                // the connection until the quota resets and saying so in its own
+                // warning, and against a provider that meters access it is the
+                // routine outcome, not a defect. Reported as an error it was 120
+                // of the 134 error-level entries a day, which is enough to bury
+                // the ones that are real.
                 $isExpected = $this->isAspspError($exception)
                     || $this->requiresReconnect($exception)
                     || $this->isPsuActionRequired($exception)
-                    || $response->status() === 422;
+                    || in_array($response->status(), [422, 429], true);
 
                 Log::log($isExpected ? 'warning' : 'error', 'EnableBanking API error', [
                     'status' => $response->status(),
