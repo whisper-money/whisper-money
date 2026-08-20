@@ -91,11 +91,18 @@ class Budget extends Model
      * Lives here rather than on the service so that the query is scoped to the
      * budget by construction - stamping one budget's leftover onto another
      * budget's period is not a mistake worth leaving reachable.
+     *
+     * Inclusive of a period starting on the given one's end date, because not
+     * every chain is a clean tiling: 25 live budgets have periods that touch or
+     * overlap, most of them biweekly, since `calculatePeriodDates` snaps to a
+     * weekday rather than to a 14-day grid. Excluding that day skipped the real
+     * successor and appended yet another period alongside it.
      */
     public function periodFollowing(BudgetPeriod $period): ?BudgetPeriod
     {
         return $this->periods()
-            ->where('start_date', '>', $period->end_date)
+            ->whereKeyNot($period->getKey())
+            ->where('start_date', '>=', $period->end_date)
             ->orderBy('start_date')
             ->first();
     }

@@ -314,3 +314,44 @@ test('closePeriod builds the missing successor next to the closed period', funct
 
     expect($created->start_date->toDateString())->toBe('2026-08-01');
 });
+
+test('closePeriod finds a successor that starts on the closed period last day', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $budget = Budget::factory()->create([
+        'user_id' => User::factory()->create(['onboarded_at' => now()])->id,
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 0,
+        'rollover_type' => RolloverType::CarryOver,
+    ]);
+
+    // Periods that touch rather than tile. 25 live budgets look like this - the
+    // ones whose start day is 0 or past the 28th, where `calculatePeriodDates`
+    // resolves the day to the end of the previous month.
+    $ended = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-06-30',
+        'end_date' => '2026-07-30',
+        'allocated_amount' => 10000,
+    ]);
+    $current = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-07-30',
+        'end_date' => '2026-08-30',
+        'allocated_amount' => 10000,
+    ]);
+
+    BudgetTransaction::factory()->create([
+        'budget_period_id' => $ended->id,
+        'amount' => 4000,
+    ]);
+
+    app(BudgetPeriodService::class)->closePeriod($ended->fresh());
+
+    // Skipping that shared day used to send the fallback back through
+    // `calculatePeriodDates`, which resolved to the closed period itself - so
+    // the leftover was carried onto the period it came from.
+    expect($current->fresh()->carried_over_amount)->toBe(6000)
+        ->and($ended->fresh()->carried_over_amount)->toBe(0)
+        ->and(BudgetPeriod::where('budget_id', $budget->id)->count())->toBe(2);
+});

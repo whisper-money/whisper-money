@@ -41,8 +41,12 @@ class GenerateBudgetPeriods extends Command
                 $this->info("Generated initial period for budget: {$budget->name}");
             }
 
+            // Oldest first, so that when two ended periods share a successor
+            // the most recent one has the last word instead of whichever row
+            // MySQL happened to return first.
             $completedPeriods = BudgetPeriod::where('budget_id', $budget->id)
                 ->where('end_date', '<', today())
+                ->orderBy('start_date')
                 ->get();
 
             foreach ($completedPeriods as $period) {
