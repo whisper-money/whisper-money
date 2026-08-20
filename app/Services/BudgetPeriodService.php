@@ -50,6 +50,17 @@ class BudgetPeriodService
         return $this->generatePeriod($budget, $allocatedAmount ?? $period->allocated_amount, $referenceDate, $processHistorical);
     }
 
+    /**
+     * Roll what is left of a finished period into the period that follows it.
+     *
+     * Looking the successor up is what makes this safe to run again: closing the
+     * same period twice writes the same number to the same row. It used to ask
+     * for a period instead, with no start date - which anchors to the end of the
+     * chain, and the chain moves every time. So the nightly pass over every
+     * period that had ever ended appended one row per closed period per run,
+     * pushing one budget's periods out to the year 2143, and stamped the leftover
+     * on that far-future row instead of the period the user is spending in.
+     */
     public function closePeriod(BudgetPeriod $period): void
     {
         $budget = $period->budget;
@@ -63,7 +74,13 @@ class BudgetPeriodService
             }
         }
 
-        $nextPeriod = $this->generatePeriod($budget, $period->allocated_amount);
+        $nextPeriod = $budget->periodFollowing($period)
+            ?? $this->generatePeriod(
+                $budget,
+                $period->allocated_amount,
+                $period->end_date->copy()->addDay(),
+            );
+
         $nextPeriod->update(['carried_over_amount' => $carriedOverAmount]);
     }
 
