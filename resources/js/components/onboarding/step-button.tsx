@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
+import { type ReactNode } from 'react';
 
 interface StepButtonProps {
     text: string;
@@ -9,10 +11,20 @@ interface StepButtonProps {
     loading?: boolean;
     loadingText?: string;
     type?: 'button' | 'submit';
+    /** Submits a form rendered outside the button, e.g. one in the step body. */
+    form?: string;
+    variant?: 'default' | 'outline' | 'ghost';
+    icon?: LucideIcon;
+    /** Rendered after the label, e.g. a keyboard shortcut hint. */
+    trailing?: ReactNode;
     'data-testid'?: string;
     className?: string;
 }
 
+/**
+ * The onboarding action: full width and 52px tall, so it stays an easy target
+ * on a phone while keeping the app's radius and type.
+ */
 export function StepButton({
     text,
     onClick,
@@ -20,17 +32,23 @@ export function StepButton({
     loading = false,
     loadingText,
     type = 'button',
+    form,
+    variant = 'default',
+    icon: Icon,
+    trailing,
     'data-testid': testId,
     className = '',
 }: StepButtonProps) {
     return (
         <Button
             type={type}
-            size="lg"
+            form={form}
+            variant={variant}
             onClick={onClick}
             disabled={disabled || loading}
             className={cn(
-                'group w-full gap-2 py-6 sm:w-auto sm:py-4',
+                'h-13 w-full rounded-lg text-[15px] font-medium',
+                variant === 'ghost' && 'text-muted-foreground',
                 className,
             )}
             data-testid={testId}
@@ -41,7 +59,11 @@ export function StepButton({
                     {loadingText || text}
                 </>
             ) : (
-                <>{text}</>
+                <>
+                    {Icon && <Icon className="size-[18px]" />}
+                    {text}
+                    {trailing}
+                </>
             )}
         </Button>
     );
