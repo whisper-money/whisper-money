@@ -168,13 +168,22 @@ it('renders the email in the user locale', function () {
     }
 
     expect($html)->toContain('Tus números llevan una semana sin actualizarse, Ada');
-    expect($html)->toContain('Conectar un banco');
+    expect($html)->toContain('Ir al Panel');
 });
 
-it('tags its link so the click is attributable in PostHog', function () {
+it('points its button at the dashboard and offers connecting a bank as a link', function () {
+    $html = (new InactiveNoBankEmail(User::factory()->make()))->render();
+
+    expect($html)->toContain(route('dashboard').'?')
+        ->toContain(route('settings.connections.index').'?');
+});
+
+it('tags both links so the clicks are attributable in PostHog', function () {
     $html = (new InactiveNoBankEmail(User::factory()->make()))->render();
 
     expect($html)->toContain('utm_source=drip')
         ->toContain('utm_medium=email')
-        ->toContain('utm_campaign=inactive-no-bank');
+        ->toContain('utm_campaign=inactive-no-bank')
+        ->toContain('utm_content=dashboard')
+        ->toContain('utm_content=connect-bank');
 });

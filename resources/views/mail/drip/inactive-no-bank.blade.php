@@ -5,14 +5,14 @@
 
 {{ __('There are two ways to fix that, and both take a couple of minutes.') }}
 
-**{{ __('Connect your bank') }}**
-{{ __('Your transactions then arrive on their own, every day, and we email you a summary when they do.') }}
+**{{ __('Import a CSV') }}**
+{{ __('Export the transactions from your bank, then upload the file from your dashboard. We map the columns for you, and it works with most banks.') }}
 
-**{{ __('Or import a CSV') }}**
-{{ __('Export the transactions from your bank and upload the file. We map the columns for you, and it works with most banks.') }}
+**{{ __('Or connect your bank') }}**
+{{ __('Your transactions then arrive on their own, every day, and we email you a summary when they do.') }} [{{ __('Connect a bank') }}]({!! route('settings.connections.index', $emailUtm + ['utm_content' => 'connect-bank']) !!})
 
-<x-mail::button :url="route('settings.connections.index', $emailUtm)">
-{{ __('Connect a bank') }}
+<x-mail::button :url="route('dashboard', $emailUtm + ['utm_content' => 'dashboard'])">
+{{ __('Go to Dashboard') }}
 </x-mail::button>
 
 {{ __("If something got in the way, your bank is missing, the import failed, or Whisper Money just is not what you were looking for, reply to this email and tell us. We read every reply ourselves.") }}

@@ -2461,10 +2461,10 @@
     "Your numbers are a week out of date, :name": "Tus números llevan una semana sin actualizarse, :name",
     "Hi! It's Víctor and Álvaro, the founders of Whisper Money. It's been a week since you last stopped by, and nothing has arrived on its own in the meantime: you have no bank connected, so nothing syncs in the background. Whatever Whisper Money is showing you right now is a week old.": "¡Hola! Somos Víctor y Álvaro, los fundadores de Whisper Money. Ha pasado una semana desde la última vez que entraste y desde entonces no ha llegado nada por su cuenta: no tienes ningún banco conectado, así que no se sincroniza nada en segundo plano. Lo que Whisper Money te muestra ahora mismo tiene una semana de retraso.",
     "Your transactions then arrive on their own, every day, and we email you a summary when they do.": "Tus transacciones llegarán solas, cada día, y te enviamos un resumen por email cuando lo hagan.",
-    "Export the transactions from your bank and upload the file. We map the columns for you, and it works with most banks.": "Exporta las transacciones de tu banco y sube el archivo. Nosotros mapeamos las columnas por ti y funciona con la mayoría de bancos.",
+    "Import a CSV": "Importa un CSV",
+    "Export the transactions from your bank, then upload the file from your dashboard. We map the columns for you, and it works with most banks.": "Exporta las transacciones de tu banco y sube el archivo desde tu panel. Nosotros mapeamos las columnas por ti y funciona con la mayoría de bancos.",
+    "Or connect your bank": "O conecta tu banco",
     "There are two ways to fix that, and both take a couple of minutes.": "Hay dos formas de arreglarlo y las dos te llevan un par de minutos.",
-    "Connect your bank": "Conecta tu banco",
-    "Or import a CSV": "O importa un CSV",
     "Connect a bank": "Conectar un banco",
     "If something got in the way, your bank is missing, the import failed, or Whisper Money just is not what you were looking for, reply to this email and tell us. We read every reply ourselves.": "Si algo se ha puesto por medio, falta tu banco, la importación ha fallado o simplemente Whisper Money no es lo que buscabas, responde a este email y cuéntanoslo. Leemos todas las respuestas personalmente."
 }
