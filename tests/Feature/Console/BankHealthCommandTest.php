@@ -150,8 +150,8 @@ test('will not call a bank broken on one person\'s evidence alone', function () 
 });
 
 test('does not read a rate limited connection as a bank-side outage', function () {
-    // The 429 lands after the transactions import and the discarded run never
-    // writes last_synced_at, so these look permanently stale while working fine.
+    // A connection whose every run 429s never writes last_synced_at, so it looks
+    // permanently stale while the transactions it did import are fine.
     healthConnection('Trade Republic', [
         'last_synced_at' => null,
         'rate_limited_until' => now()->addHour(),

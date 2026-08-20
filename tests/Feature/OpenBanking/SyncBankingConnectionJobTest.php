@@ -11,6 +11,7 @@ use App\Jobs\SyncBinanceHistoricalBalancesJob;
 use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\Account;
+use App\Models\AccountBalance;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\BankingSyncLog;
@@ -98,6 +99,12 @@ test('subsequent syncs do not calculate historical balances', function () {
         'user_id' => $user->id,
         'banking_connection_id' => $connection->id,
         'external_account_id' => 'ext-123',
+    ]);
+    // The backfill already landed once, which is what makes it a routine sync
+    // rather than one still owed a balance to walk back from.
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subDay()->toDateString(),
     ]);
 
     $transactionSync = Mockery::mock(TransactionSyncService::class);
@@ -297,7 +304,10 @@ test('a failing balance call does not fail the whole sync', function () {
         ->and($connection->last_synced_at)->not->toBeNull()
         ->and($account->transactions()->count())->toBe(1)
         ->and($log->status)->toBe(BankingSyncLogStatus::Success)
-        ->and($log->metadata['balance_failed'])->toBe(1);
+        ->and($log->metadata['balance_failed'])->toBe(1)
+        // What makes the daily bank-transactions email start working at all: the
+        // first kept run sets the cutoff, so nothing already imported is mailed.
+        ->and($connection->bank_transactions_email_cutoff_at)->not->toBeNull();
 });
 
 test('a rate limited balance call keeps the transactions and still backs off', function () {
@@ -343,7 +353,10 @@ test('a rate limited balance call keeps the transactions and still backs off', f
         ->and($connection->rate_limited_until->isFuture())->toBeTrue()
         ->and($account->transactions()->count())->toBe(1)
         ->and($log->status)->toBe(BankingSyncLogStatus::Success)
-        ->and($log->metadata['balance_failed'])->toBe(1);
+        ->and($log->metadata['balance_failed'])->toBe(1)
+        // What makes the daily bank-transactions email start working at all: the
+        // first kept run sets the cutoff, so nothing already imported is mailed.
+        ->and($connection->bank_transactions_email_cutoff_at)->not->toBeNull();
 });
 
 test('a rate limited balance call stops asking for the remaining accounts', function () {
@@ -1862,4 +1875,31 @@ test('still reports MaxAttemptsExceededException raised for other jobs', functio
     $exception = MaxAttemptsExceededException::forJob($queueJob);
 
     expect(app(ExceptionHandler::class)->shouldReport($exception))->toBeTrue();
+});
+
+test('a first sync that could not read balances is still owed its history', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        // The first sync already happened: it kept its transactions and set this,
+        // and its balance call was the one the provider refused.
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->once()->andReturn(0);
+
+    // Not a first sync any more, so the historical balances would have been lost
+    // for good: the account has never had a balance to walk back from.
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
+
+    $job = new SyncBankingConnectionJob($connection);
+    runSync($job, $transactionSync, $balanceSync);
 });

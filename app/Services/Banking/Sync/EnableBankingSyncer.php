@@ -15,6 +15,7 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 {
@@ -110,11 +111,14 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         // Outside the try on purpose: by here nothing was aborted mid-run, every
         // account was attempted, and the per-account failure is already logged.
         if ($transactionFailure !== null) {
-            // A balance rate limit has no channel once the run throws instead of
-            // returning its metadata, and the job would retry straight into an
-            // allowance it knows is spent. Handing it the 429 instead gets the
-            // backoff applied exactly as it was before the run was worth keeping.
-            throw $balanceRateLimitFailure ?? $transactionFailure;
+            // The balance rate limit has no channel here - the metadata only
+            // travels on the success path - so a run that dies like this loses its
+            // backoff and retries into an allowance it knows is spent. Throwing
+            // the 429 instead would buy the backoff at the price of the sync log
+            // blaming the balances endpoint for a run the transactions ended, so
+            // the abort is recorded with `balance_rate_limited` and the next
+            // attempt's own 429 is what applies the window.
+            throw $transactionFailure;
         }
 
         if ($isFirstSync) {
@@ -221,10 +225,17 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             return false;
         }
 
+        // Read before the sync below writes today's row. The backfill used to be
+        // spent on the first sync alone, which was safe while a refused balance
+        // call discarded the whole run and left the next one a first sync too.
+        // Now that the run is kept, an account that has never had a balance is
+        // still owed it; the backfill only ever writes dates it has not written.
+        $backfillPending = $isFirstSync || $account->balances()->doesntExist();
+
         try {
             $this->balanceSync->sync($account);
 
-            if ($isFirstSync && ! $account->isLinked()) {
+            if ($backfillPending && ! $account->isLinked()) {
                 $this->balanceSync->calculateHistoricalBalances($account);
             }
 
@@ -301,7 +312,9 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 
         return [
             'retry_after' => $e->response->header('Retry-After') ?: null,
-            'message' => is_array($body) ? (string) ($body['message'] ?? '') : '',
+            // Capped like the response body the job logs: a provider that answers
+            // an error with something enormous must not empty it into the row.
+            'message' => is_array($body) ? Str::limit((string) ($body['message'] ?? ''), 500) : '',
         ];
     }
 

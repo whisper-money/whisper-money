@@ -210,9 +210,13 @@ class BankHealthCommand extends Command
      * the bank in this report's alert with an outage notice its users must not get.
      *
      * They used to look permanently stale too, because the rethrown 429 discarded
-     * the whole run and never wrote `last_synced_at`. That is fixed, so this now
-     * only holds them out of `syncing`: whether a connection that syncs while
-     * throttled belongs in that count is a question for the report, not for here.
+     * the whole run and never wrote `last_synced_at`. Now that such a run is kept,
+     * a backoff is written on *successful* runs as well, so this partition also
+     * holds connections that are throttled and completely up to date: `syncing`
+     * under-counts them and `rate_limited` counts them every day. Folding them
+     * back would mean one healthy connection could mask a bank whose others have
+     * all stopped, which is the masking this partition exists to prevent - so the
+     * count stays as it is and the report prints both numbers.
      *
      * The window, rather than `rate_limited_until` simply being in the future,
      * covers the gap between a backoff elapsing and the next scheduled sync
