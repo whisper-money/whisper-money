@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Http;
  * provider serves happily and balances it rate limits. Which of the two hits the
  * limit is the question the logs have never been able to answer.
  */
-function telemetryConnection(): BankingConnection
+function telemetryConnection(int $accounts = 1): BankingConnection
 {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
@@ -27,11 +27,13 @@ function telemetryConnection(): BankingConnection
         'last_synced_at' => now()->subDay(),
     ]);
 
-    Account::factory()->connected()->create([
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-        'external_account_id' => 'ext-1',
-    ]);
+    for ($i = 1; $i <= $accounts; $i++) {
+        Account::factory()->connected()->create([
+            'user_id' => $user->id,
+            'banking_connection_id' => $connection->id,
+            'external_account_id' => "ext-{$i}",
+        ]);
+    }
 
     app()->instance(BankingProviderInterface::class, enableBankingProviderForTest());
 
@@ -123,21 +125,57 @@ function fakeRateLimitedBalances(string $message = 'Too many requests', array $h
     ]);
 }
 
-test('a rate limit on balances says so in the log the backoff writes', function () {
+/**
+ * The other way round: the limit lands on the transactions of `$account`, which
+ * is the shape that still costs the whole run.
+ */
+function fakeRateLimitedTransactions(string $account = 'ext-1', mixed $body = ['code' => 429, 'message' => 'Too many requests']): void
+{
+    Http::fake([
+        "api.enablebanking.com/accounts/{$account}/transactions*" => Http::response($body, 429),
+        'api.enablebanking.com/accounts/*/transactions*' => Http::response(telemetryTransactionsPayload()),
+        'api.enablebanking.com/accounts/*/balances*' => Http::response(['balances' => []]),
+    ]);
+}
+
+test('a rate limit on balances says so in the logs and still keeps the run', function () {
     $connection = telemetryConnection();
 
     fakeRateLimitedBalances('Maximum daily access exceeded', ['Retry-After' => '1800']);
 
     $logged = telemetryLogs(fn () => runSync(telemetryJob($connection)));
 
-    $context = telemetryLogContext($logged, 'Banking connection rate limited, backing off');
+    // The transactions were already persisted when the 429 arrived, so the run is
+    // no longer thrown away: the balance failure is reported and the run goes on.
+    $failure = telemetryLogContext($logged, 'EnableBanking balance sync failed, continuing');
 
-    expect($context['operation'])->toBe('balances')
-        ->and($context['status_code'])->toBe(429)
-        ->and($context['aspsp_name'])->toBe('Trade Republic')
-        ->and($context['aspsp_country'])->toBe('DE')
-        ->and($context['response_body'])->toContain('Maximum daily access exceeded')
-        ->and($context['rate_limit_headers'])->toBe(['Retry-After' => '1800']);
+    expect($failure['operation'])->toBe('balances')
+        ->and($failure['status_code'])->toBe(429)
+        ->and($failure['rate_limited'])->toBeTrue()
+        ->and($failure['aspsp_name'])->toBe('Trade Republic')
+        ->and($failure['aspsp_country'])->toBe('DE');
+
+    // The backoff the provider asked for is applied all the same.
+    $backoff = telemetryLogContext($logged, 'Banking connection rate limited, backing off');
+
+    expect($backoff['operation'])->toBe('balances')
+        ->and($backoff['status_code'])->toBe(429)
+        ->and($backoff['aspsp_name'])->toBe('Trade Republic');
+
+    $connection->refresh();
+    $log = BankingSyncLog::query()
+        ->where('banking_connection_id', $connection->id)
+        ->latest('created_at')
+        ->firstOrFail();
+
+    expect($connection->last_synced_at)->not->toBeNull()
+        ->and($connection->rate_limited_until->diffInMinutes(now(), true))->toBeGreaterThanOrEqual(29)
+        ->and($log->status)->toBe(BankingSyncLogStatus::Success)
+        // MySQL normalises the key order of a JSON column, hence toMatchArray.
+        ->and($log->metadata['balance_rate_limit'])->toMatchArray([
+            'retry_after' => '1800',
+            'message' => 'Maximum daily access exceeded',
+        ]);
 });
 
 test('a rate limit on transactions says so in the log the backoff writes', function () {
@@ -164,18 +202,20 @@ test('a rate limit on transactions says so in the log the backoff writes', funct
 });
 
 test('a run killed by the rate limit reports what it had already imported', function () {
-    $connection = telemetryConnection();
+    // Two accounts, and the limit lands on the second one's transactions: the run
+    // dies there, after the first account's transactions were already imported.
+    $connection = telemetryConnection(accounts: 2);
 
-    fakeRateLimitedBalances();
+    fakeRateLimitedTransactions('ext-2');
 
     $logged = telemetryLogs(fn () => runSync(telemetryJob($connection)));
 
     $context = telemetryLogContext($logged, 'EnableBanking sync aborted mid-run');
 
     expect($context['transactions_synced'])->toBe(2)
-        ->and($context['accounts_attempted'])->toBe(1)
-        ->and($context['accounts_total'])->toBe(1)
-        ->and($context['operation'])->toBe('balances')
+        ->and($context['accounts_attempted'])->toBe(2)
+        ->and($context['accounts_total'])->toBe(2)
+        ->and($context['operation'])->toBe('transactions')
         ->and($context['status_code'])->toBe(429)
         ->and($context['aspsp_name'])->toBe('Trade Republic');
 });
@@ -183,7 +223,7 @@ test('a run killed by the rate limit reports what it had already imported', func
 test('the failed sync log row carries the same context as the warning', function () {
     $connection = telemetryConnection();
 
-    fakeRateLimitedBalances();
+    fakeRateLimitedTransactions();
 
     runSync(telemetryJob($connection));
 
@@ -192,7 +232,7 @@ test('the failed sync log row carries the same context as the warning', function
         ->where('status', BankingSyncLogStatus::Failed)
         ->firstOrFail();
 
-    expect($log->metadata['operation'])->toBe('balances')
+    expect($log->metadata['operation'])->toBe('transactions')
         ->and($log->metadata['status_code'])->toBe(429)
         ->and($log->metadata['aspsp_name'])->toBe('Trade Republic');
 });
@@ -200,10 +240,7 @@ test('the failed sync log row carries the same context as the warning', function
 test('an oversized error body is truncated before it reaches the logs', function () {
     $connection = telemetryConnection();
 
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response(telemetryTransactionsPayload()),
-        'api.enablebanking.com/accounts/ext-1/balances*' => Http::response(str_repeat('x', 5000), 429),
-    ]);
+    fakeRateLimitedTransactions('ext-1', str_repeat('x', 5000));
 
     $logged = telemetryLogs(fn () => runSync(telemetryJob($connection)));
 

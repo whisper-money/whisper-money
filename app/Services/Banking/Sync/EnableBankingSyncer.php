@@ -53,6 +53,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 
         $transactionsPerBank = [];
         $balanceFailed = 0;
+        $balanceRateLimit = null;
         $transactionFailure = null;
 
         $accountsAttempted = 0;
@@ -91,7 +92,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                     $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
                 }
 
-                if (! $this->syncBalances($connection, $account, $isFirstSync)) {
+                if (! $this->syncBalances($connection, $account, $isFirstSync, $balanceRateLimit)) {
                     $balanceFailed++;
                 }
             }
@@ -127,6 +128,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             'transactions_synced' => array_sum($transactionsPerBank),
             'transactions_per_bank' => $transactionsPerBank,
             'balance_failed' => $balanceFailed,
+            'balance_rate_limit' => $balanceRateLimit,
         ];
     }
 
@@ -205,10 +207,24 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
     /**
      * Sync one account's balances, tolerating a provider that will not serve them.
      *
+     * `$rateLimit` is filled in when the provider rate limited the call, so the
+     * caller can hand the job what its backoff policy needs. It travels in the
+     * metadata that gets persisted as JSON on the sync log, which is why it
+     * carries the facts of the 429 and not the exception itself.
+     *
+     * Arriving with it already filled in means an earlier account in the same run
+     * was rate limited: the allowance is spent for the whole consent, so this call
+     * is not made at all rather than burning what is left of it.
+     *
+     * @param  array{retry_after: string|null, message: string}|null  $rateLimit
      * @return bool Whether the balances were synced
      */
-    private function syncBalances(BankingConnection $connection, Account $account, bool $isFirstSync): bool
+    private function syncBalances(BankingConnection $connection, Account $account, bool $isFirstSync, ?array &$rateLimit = null): bool
     {
+        if ($rateLimit !== null) {
+            return false;
+        }
+
         try {
             $this->balanceSync->sync($account);
 
@@ -218,14 +234,22 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 
             return true;
         } catch (\Throwable $e) {
-            // An expired consent needs the user to reconnect, and a rate limit has
-            // to reach the job so it applies the provider backoff: swallowing it
-            // would keep burning the remaining daily quota.
-            if ($e instanceof ExpiredBankingSessionException || $this->isRateLimit($e)) {
+            // An expired consent needs the user to reconnect, so it still has to
+            // reach the job.
+            if ($e instanceof ExpiredBankingSessionException) {
                 throw $e;
             }
 
-            // Anything else is not worth losing the run over. Balances are a
+            // A rate limit used to be rethrown so the job would apply the provider
+            // backoff, which threw away a run whose transactions were already
+            // persisted - and with them last_synced_at. The backoff is the part
+            // worth keeping, so it is reported instead of thrown: without it the
+            // remaining scheduled runs keep burning the daily allowance.
+            if ($e instanceof RequestException && $e->response->status() === 429) {
+                $rateLimit = $this->rateLimitFacts($e);
+            }
+
+            // No balance failure is worth losing the run over. Balances are a
             // nice-to-have next to the transactions we just persisted, and failing
             // here leaves last_synced_at unset.
             Log::warning('EnableBanking balance sync failed, continuing', [
@@ -233,11 +257,29 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 'account_id' => $account->id,
                 'operation' => 'balances',
                 'reason' => $e::class,
+                'status_code' => $e instanceof RequestException ? $e->response->status() : null,
+                'rate_limited' => $rateLimit !== null,
                 'error' => $e->getMessage(),
             ]);
 
             return false;
         }
+    }
+
+    /**
+     * What the provider's 429 said, in the JSON-safe shape the job's backoff
+     * policy reads.
+     *
+     * @return array{retry_after: string|null, message: string}
+     */
+    private function rateLimitFacts(RequestException $e): array
+    {
+        $body = $e->response->json();
+
+        return [
+            'retry_after' => $e->response->header('Retry-After') ?: null,
+            'message' => is_array($body) ? (string) ($body['message'] ?? '') : '',
+        ];
     }
 
     /**
@@ -269,10 +311,5 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $start = $watermark->toDateString() > $dateTo ? now() : $watermark;
 
         return $start->copy()->subDays(self::WATERMARK_OVERLAP_DAYS)->toDateString();
-    }
-
-    private function isRateLimit(\Throwable $e): bool
-    {
-        return $e instanceof RequestException && $e->response->status() === 429;
     }
 }

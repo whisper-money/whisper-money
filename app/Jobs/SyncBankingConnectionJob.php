@@ -134,7 +134,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 'status' => BankingConnectionStatus::Active,
                 'last_synced_at' => $syncedAt,
                 'error_message' => null,
-                'rate_limited_until' => null,
+                'rate_limited_until' => $this->balanceRateLimitBackoff($connection, $metadata),
                 'consecutive_sync_failures' => 0,
             ]);
 
@@ -516,21 +516,73 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     private function resolveRateLimitBackoffUntil(\Throwable $e): Carbon
     {
+        if (! $e instanceof RequestException) {
+            return $this->rateLimitBackoffUntil(null, '');
+        }
+
+        $body = $e->response->json();
+
+        return $this->rateLimitBackoffUntil(
+            $e->response->header('Retry-After'),
+            is_array($body) ? (string) ($body['message'] ?? '') : '',
+        );
+    }
+
+    /**
+     * The backoff a *successful* run still has to carry, because the provider
+     * rate limited the balance call after the transactions had already been
+     * persisted. Null on every other run, which is what clears an old backoff.
+     *
+     * The exception cannot travel in the metadata - it is persisted as JSON on
+     * the sync log - so the syncer reports the two facts the policy keys on.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    private function balanceRateLimitBackoff(BankingConnection $connection, array $metadata): ?Carbon
+    {
+        $rateLimit = $metadata['balance_rate_limit'] ?? null;
+
+        if (! is_array($rateLimit)) {
+            return null;
+        }
+
+        $retryAfter = $rateLimit['retry_after'] ?? null;
+        $until = $this->rateLimitBackoffUntil(
+            is_string($retryAfter) ? $retryAfter : null,
+            (string) ($rateLimit['message'] ?? ''),
+        );
+
+        // Same message as the failed-run path, which is what these get searched
+        // for. What the provider replied is already in the syncer's own warning
+        // and in the metadata of the sync log this run writes.
+        Log::warning('Banking connection rate limited, backing off', [
+            ...$connection->logContext(),
+            'operation' => 'balances',
+            'status_code' => 429,
+            'rate_limited_until' => $until->toIso8601String(),
+            'run_recorded_as' => BankingSyncLogStatus::Success->value,
+        ]);
+
+        return $until;
+    }
+
+    /**
+     * How long to stop asking the provider for, given what its 429 said.
+     *
+     * Shared by the failed run, which still has the exception in hand, and the
+     * run that succeeded with only its balance call rate limited, which has the
+     * JSON-safe facts the syncer put in the metadata.
+     */
+    private function rateLimitBackoffUntil(?string $retryAfter, string $message): Carbon
+    {
         $now = now();
 
-        if ($e instanceof RequestException) {
-            $retryAfter = $e->response->header('Retry-After');
+        if (is_numeric($retryAfter) && (int) $retryAfter > 0) {
+            return $now->copy()->addSeconds((int) $retryAfter);
+        }
 
-            if (is_numeric($retryAfter) && (int) $retryAfter > 0) {
-                return $now->copy()->addSeconds((int) $retryAfter);
-            }
-
-            $body = $e->response->json();
-            $message = is_array($body) ? (string) ($body['message'] ?? '') : '';
-
-            if ($this->isExhaustedAccessAllowance($message)) {
-                return $now->copy()->utc()->addDay()->startOfDay();
-            }
+        if ($this->isExhaustedAccessAllowance($message)) {
+            return $now->copy()->utc()->addDay()->startOfDay();
         }
 
         // Default: back off one hour for a burst limit we know nothing else about.
