@@ -119,7 +119,18 @@ test('promo code email adds the founder promo code to its view data', function (
     $user = User::factory()->create();
 
     expect((new PromoCodeEmail($user))->content()->with)
-        ->toEqual(['userName' => $user->name, 'promoCode' => 'FOUNDER']);
+        ->toMatchArray(['userName' => $user->name, 'promoCode' => 'FOUNDER']);
+});
+
+test('drip mailables hand their template UTM parameters for PostHog attribution', function () {
+    $user = User::factory()->create();
+
+    expect((new PromoCodeEmail($user))->content()->with['emailUtm'])
+        ->toBe([
+            'utm_source' => 'drip',
+            'utm_medium' => 'email',
+            'utm_campaign' => 'promo-code',
+        ]);
 });
 
 test('default sender is used for active non-drip mailables', function (string $mailableClass) {

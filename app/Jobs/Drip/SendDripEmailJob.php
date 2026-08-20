@@ -27,6 +27,16 @@ abstract class SendDripEmailJob implements ShouldQueue
     abstract protected function buildMail(): Mailable;
 
     /**
+     * Dedupe key stored alongside the email type. Emails that may legitimately
+     * be sent to the same user more than once override this with a per-send
+     * value (e.g. a date); the default makes them one-per-user-ever.
+     */
+    protected function emailIdentifier(): string
+    {
+        return $this->emailType()->value;
+    }
+
+    /**
      * Per-email eligibility checks beyond the shared "can receive" and
      * "not already sent" guards.
      */
@@ -41,7 +51,7 @@ abstract class SendDripEmailJob implements ShouldQueue
             return;
         }
 
-        if ($this->user->hasReceivedEmail($this->emailType())) {
+        if ($this->hasAlreadyBeenSent()) {
             return;
         }
 
@@ -54,8 +64,16 @@ abstract class SendDripEmailJob implements ShouldQueue
         UserMailLog::create([
             'user_id' => $this->user->id,
             'email_type' => $this->emailType(),
-            'email_identifier' => $this->emailType()->value,
+            'email_identifier' => $this->emailIdentifier(),
             'sent_at' => now(),
         ]);
+    }
+
+    private function hasAlreadyBeenSent(): bool
+    {
+        return $this->user->mailLogs()
+            ->where('email_type', $this->emailType())
+            ->where('email_identifier', $this->emailIdentifier())
+            ->exists();
     }
 }

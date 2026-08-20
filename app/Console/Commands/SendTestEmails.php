@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\Drip\FeedbackEmail;
 use App\Mail\Drip\ImportHelpEmail;
+use App\Mail\Drip\InactiveNoBankEmail;
 use App\Mail\Drip\OnboardingReminderEmail;
 use App\Mail\Drip\PromoCodeEmail;
 use App\Mail\Drip\WelcomeEmail;
@@ -44,6 +45,7 @@ class SendTestEmails extends Command
             'Import Help Email' => new ImportHelpEmail($user),
             'Onboarding Reminder Email' => new OnboardingReminderEmail($user),
             'Promo Code Email' => new PromoCodeEmail($user),
+            'Inactive No Bank Email' => new InactiveNoBankEmail($user),
         ];
 
         foreach ($emails as $name => $mailable) {

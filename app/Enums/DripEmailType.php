@@ -16,4 +16,5 @@ enum DripEmailType: string
     case Update = 'update';
     case BankOutage = 'bank_outage';
     case BankConnectFailed = 'bank_connect_failed';
+    case InactiveNoBank = 'inactive_no_bank';
 }
