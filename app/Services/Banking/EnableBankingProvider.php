@@ -257,7 +257,12 @@ class EnableBankingProvider implements BankingProviderInterface
             || $this->requiresReconnect($e)
             || $this->isPsuActionRequired($e)
             || $this->isRateLimited($e)
-            || $e->response->status() === 422;
+            // Narrowed to the window refusal rather than every 422, because
+            // `isWrongPeriod` exists to let a genuine validation 422 - a
+            // malformed date, say - surface, and downgrading all of them here
+            // was quietly defeating that. Inert today: production has not seen a
+            // 422 from this provider in a fortnight.
+            || $this->isWrongPeriod($e);
     }
 
     private function isRateLimited(RequestException $e): bool

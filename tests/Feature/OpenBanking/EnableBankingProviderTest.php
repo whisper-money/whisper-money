@@ -569,3 +569,26 @@ test('a metered quota logs as a warning, an unexpected status as an error', func
     // in a disagreement this change has no business settling.
     [404, 'error', 'warning'],
 ]);
+
+test('a 422 the bank did not raise about the period stays an application error', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 422,
+            'message' => 'Validation error',
+            'detail' => ['error_name' => 'ValidationError'],
+        ], 422),
+    ]);
+
+    Log::spy();
+
+    try {
+        enableBankingProviderForTest()->getTransactions('ext-123', 'not-a-date', 'not-a-date');
+    } catch (Throwable) {
+        // What it throws is the caller's business; this is about the level.
+    }
+
+    // `isWrongPeriod` narrows 422 to the window the bank refused, so that a
+    // genuine validation error still surfaces. Downgrading every 422 in the
+    // logging closure was quietly defeating that.
+    Log::shouldHaveReceived('log')->with('error', 'EnableBanking API error', Mockery::any())->once();
+});
