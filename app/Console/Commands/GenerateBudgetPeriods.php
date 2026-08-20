@@ -20,6 +20,9 @@ class GenerateBudgetPeriods extends Command
      * result is exactly what the first run afterwards expects to find. Raising
      * it here without re-running that migration only means the next run tops the
      * chain up, which is harmless - the two disagreeing silently is not.
+     *
+     * @api Read from a migration, which PHPStan does not analyse - only `app` is
+     *      in its paths, so without this the constant reads as unused.
      */
     public const PERIODS_KEPT_AHEAD = 2;
 
