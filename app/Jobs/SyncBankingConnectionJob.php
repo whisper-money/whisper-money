@@ -129,12 +129,13 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             $isFirstSync = ! $connection->last_synced_at || $this->fullSync;
 
             $metadata = $syncer->sync($connection, $isFirstSync);
+            $rateLimitedUntil = $this->balanceRateLimitBackoff($connection, $metadata);
 
             $connection->update([
                 'status' => BankingConnectionStatus::Active,
                 'last_synced_at' => $syncedAt,
                 'error_message' => null,
-                'rate_limited_until' => null,
+                'rate_limited_until' => $rateLimitedUntil,
                 'consecutive_sync_failures' => 0,
             ]);
 
@@ -516,21 +517,75 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     private function resolveRateLimitBackoffUntil(\Throwable $e): Carbon
     {
+        if (! $e instanceof RequestException) {
+            return $this->backoffUntil(null, '');
+        }
+
+        $body = $e->response->json();
+
+        return $this->backoffUntil(
+            $e->response->header('Retry-After'),
+            is_array($body) ? (string) ($body['message'] ?? '') : '',
+        );
+    }
+
+    /**
+     * The backoff a *successful* run still has to carry, because the provider
+     * rate limited the balance call after the transactions had already been
+     * persisted. Null on every other run, which is what clears an old backoff.
+     *
+     * The exception cannot travel in the metadata - it is persisted as JSON on
+     * the sync log - so the syncer reports the two facts the policy keys on.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    private function balanceRateLimitBackoff(BankingConnection $connection, array $metadata): ?Carbon
+    {
+        $rateLimit = $metadata['balance_rate_limit'] ?? null;
+
+        if (! is_array($rateLimit)) {
+            return null;
+        }
+
+        $retryAfter = $rateLimit['retry_after'] ?? null;
+        $message = (string) ($rateLimit['message'] ?? '');
+        $until = $this->backoffUntil(is_string($retryAfter) ? $retryAfter : null, $message);
+
+        // Same message as the failed-run path, which is what these get searched
+        // for. It carries what the failed path reads off the response - which of
+        // the two limits this is, and whether the wait is the provider's or our
+        // default - under different keys, because here they come from the
+        // metadata rather than from a response this class never sees.
+        Log::warning('Banking connection rate limited, backing off', [
+            ...$connection->logContext(),
+            'operation' => 'balances',
+            'status_code' => 429,
+            'provider_message' => $message,
+            'retry_after' => $retryAfter,
+            'rate_limited_until' => $until->toIso8601String(),
+            'run_recorded_as' => BankingSyncLogStatus::Success->value,
+        ]);
+
+        return $until;
+    }
+
+    /**
+     * How long to stop asking the provider for, given what its 429 said.
+     *
+     * Shared by the failed run, which still has the exception in hand, and the
+     * run that succeeded with only its balance call rate limited, which has the
+     * JSON-safe facts the syncer put in the metadata.
+     */
+    private function backoffUntil(?string $retryAfter, string $message): Carbon
+    {
         $now = now();
 
-        if ($e instanceof RequestException) {
-            $retryAfter = $e->response->header('Retry-After');
+        if (is_numeric($retryAfter) && (int) $retryAfter > 0) {
+            return $now->copy()->addSeconds((int) $retryAfter);
+        }
 
-            if (is_numeric($retryAfter) && (int) $retryAfter > 0) {
-                return $now->copy()->addSeconds((int) $retryAfter);
-            }
-
-            $body = $e->response->json();
-            $message = is_array($body) ? (string) ($body['message'] ?? '') : '';
-
-            if ($this->isExhaustedAccessAllowance($message)) {
-                return $now->copy()->utc()->addDay()->startOfDay();
-            }
+        if ($this->isExhaustedAccessAllowance($message)) {
+            return $now->copy()->utc()->addDay()->startOfDay();
         }
 
         // Default: back off one hour for a burst limit we know nothing else about.

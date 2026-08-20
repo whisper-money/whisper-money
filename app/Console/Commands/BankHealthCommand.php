@@ -205,11 +205,18 @@ class BankHealthCommand extends Command
      *
      * This is the one state the report has to hold apart by hand. Trade Republic
      * accounts for most of our rate limits and its 429 lands on the balances call,
-     * *after* the transactions import; the syncer rethrows so the job can set a
-     * backoff, which discards the whole run and never writes `last_synced_at`. So
-     * a connection can be importing data perfectly and still look permanently
-     * stale. Counted as failing it would put the bank in this report's alert with
-     * an outage notice its users must not get.
+     * *after* the transactions import, so these connections import data perfectly
+     * and back off daily on their balances alone. Counted as failing they would put
+     * the bank in this report's alert with an outage notice its users must not get.
+     *
+     * They used to look permanently stale too, because the rethrown 429 discarded
+     * the whole run and never wrote `last_synced_at`. Now that such a run is kept,
+     * a backoff is written on *successful* runs as well, so this partition also
+     * holds connections that are throttled and completely up to date: `syncing`
+     * under-counts them and `rate_limited` counts them every day. Folding them
+     * back would mean one healthy connection could mask a bank whose others have
+     * all stopped, which is the masking this partition exists to prevent - so the
+     * count stays as it is and the report prints both numbers.
      *
      * The window, rather than `rate_limited_until` simply being in the future,
      * covers the gap between a backoff elapsing and the next scheduled sync

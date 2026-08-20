@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingSyncLogStatus;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
+use App\Models\BankingSyncLog;
 use App\Models\User;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
@@ -182,4 +184,48 @@ test('a rate limit still reaches the job instead of being swallowed per account'
     expect($attempted)->toBe(1);
     $connection->refresh();
     expect($connection->rate_limited_until)->not->toBeNull();
+});
+
+test('a balance rate limit does not make a failed run blame the balances', function () {
+    $connection = enableBankingConnectionWithAccounts(2);
+    $refusedAccountId = $connection->accounts[1]->id;
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(function ($account) use ($refusedAccountId) {
+        if ($account->id === $refusedAccountId) {
+            throw aspspError();
+        }
+
+        return 5;
+    });
+
+    // Account 1's balances are rate limited, then account 2's transactions end the
+    // run: two failures, and only one of them killed it.
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once()->andThrow(
+        new RequestException(new Illuminate\Http\Client\Response(
+            new Response(429, [], json_encode(['code' => 429, 'message' => 'Maximum daily access exceeded']))
+        ))
+    );
+
+    try {
+        runSync(finalAttemptJobFor($connection), $transactionSync, $balanceSync);
+    } catch (TransientBankingProviderException) {
+        // Expected: the transactions failure is what the job is handed.
+    }
+
+    $connection->refresh();
+    $log = BankingSyncLog::query()
+        ->where('banking_connection_id', $connection->id)
+        ->where('status', BankingSyncLogStatus::Failed)
+        ->firstOrFail();
+
+    // Handing the job the 429 instead would buy a backoff at the price of the log
+    // blaming the balances endpoint, and of the connection sitting Active with a
+    // persistent per-account failure nobody is told about.
+    expect($log->error_class)->toBe(TransientBankingProviderException::class)
+        ->and($connection->status)->toBe(BankingConnectionStatus::Error)
+        // The known cost, recorded on the aborted-run warning instead: this run
+        // takes no backoff with it, and the next attempt's own 429 applies one.
+        ->and($connection->rate_limited_until)->toBeNull();
 });
