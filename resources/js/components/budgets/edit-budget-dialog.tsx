@@ -214,7 +214,7 @@ export function EditBudgetDialog({
                                     disabled
                                     type="number"
                                     className="mt-1"
-                                    min="0"
+                                    min={periodType === 'monthly' ? '1' : '0'}
                                     max={periodType === 'monthly' ? '31' : '6'}
                                     value={periodStartDay}
                                     onChange={(e) =>

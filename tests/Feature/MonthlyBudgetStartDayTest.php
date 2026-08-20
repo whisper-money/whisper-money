@@ -3,6 +3,7 @@
 use App\Enums\BudgetPeriodType;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
+use App\Models\Category;
 use App\Models\User;
 use App\Services\BudgetPeriodService;
 use Carbon\Carbon;
@@ -101,4 +102,41 @@ test('the nightly command gets a frozen day-0 budget moving again', function () 
     $this->artisan('budgets:generate-periods')->assertSuccessful();
 
     expect($budget->fresh()->getCurrentPeriod())->not->toBeNull();
+});
+
+test('the form refuses day 0 for a monthly budget but keeps it for a weekly one', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $payload = [
+        'name' => 'Rent',
+        'period_start_day' => 0,
+        'category_ids' => [$category->id],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 100000,
+    ];
+
+    // Where all three production day-0 budgets came from: the web form accepted
+    // the union of both ranges, and the MCP tool never would have.
+    $this->actingAs($user)
+        ->post('/budgets', [...$payload, 'period_type' => 'monthly'])
+        ->assertSessionHasErrors('period_start_day');
+
+    // Still Sunday, and still allowed.
+    $this->actingAs($user)
+        ->post('/budgets', [...$payload, 'period_type' => 'weekly'])
+        ->assertSessionHasNoErrors();
+});
+
+test('editing a budget without naming its period type still validates against that type', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/budgets/{$budget->id}", ['period_start_day' => 0])
+        ->assertSessionHasErrors('period_start_day');
 });

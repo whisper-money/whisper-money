@@ -22,7 +22,7 @@ class StoreBudgetRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'period_type' => ['required', Rule::enum(BudgetPeriodType::class)],
-            'period_start_day' => ['nullable', 'integer', 'min:0', 'max:31'],
+            'period_start_day' => ['nullable', 'integer', ...$this->periodType()->startDayRules()],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => [$this->userOwned('categories')],
             'label_ids' => ['nullable', 'array'],
@@ -31,6 +31,11 @@ class StoreBudgetRequest extends FormRequest
             'allocated_amount' => ['required', 'integer', 'min:0'],
             'is_catch_all' => ['sometimes', 'boolean'],
         ];
+    }
+
+    private function periodType(): BudgetPeriodType
+    {
+        return BudgetPeriodType::tryFrom((string) $this->input('period_type')) ?? BudgetPeriodType::Monthly;
     }
 
     public function withValidator($validator): void
