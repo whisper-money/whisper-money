@@ -1,3 +1,4 @@
+import { type AccountType } from '@/types/account';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export type OnboardingStep =
@@ -31,6 +32,21 @@ const PRIMARY_STEPS: OnboardingStep[] = [
 // Steps that are sub-steps (shown under the same progress position as 'create-account')
 const SUB_STEPS: OnboardingStep[] = ['import-transactions', 'import-balances'];
 
+/**
+ * Steps the header's back arrow is offered on. Everything else is left out on
+ * purpose: 'welcome' has nowhere to go; 'create-account' carries its own back
+ * buttons inside the bank flow and the manual form; backing out of 'syncing',
+ * 'ai-suggestions' or 'complete' would abandon work already in flight; and
+ * 'customize-categories' is not in PRIMARY_STEPS, so goBack() there is a no-op.
+ */
+export const BACKABLE_STEPS: OnboardingStep[] = [
+    'account-types',
+    'category-types',
+    'smart-rules',
+    'import-transactions',
+    'import-balances',
+];
+
 export interface OnboardingState {
     currentStep: OnboardingStep;
     stepIndex: number;
@@ -43,7 +59,7 @@ export interface OnboardingState {
 export interface CreatedAccount {
     id: string;
     name: string;
-    type: string;
+    type: AccountType;
     currencyCode: string;
     bankName?: string;
     bankLogo?: string | null;

@@ -15,6 +15,22 @@ export function StepList({
     );
 }
 
+/** Trailing marker for a row that leads somewhere. */
+export function StepChevron() {
+    return (
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground/45 transition-colors group-hover:text-muted-foreground" />
+    );
+}
+
+/** Trailing marker for a row that is already done or selected. */
+export function StepCheck({ muted = false }: { muted?: boolean }) {
+    return (
+        <Check
+            className={cn('size-5 shrink-0', muted && 'text-muted-foreground')}
+        />
+    );
+}
+
 interface StepRowProps {
     icon?: LucideIcon;
     /** Replaces the icon: a step number, a bank logo, a checkbox. */
@@ -25,9 +41,9 @@ interface StepRowProps {
     meta?: ReactNode;
     /** Small pill next to the title. */
     badge?: ReactNode;
-    trailing?: 'chevron' | 'check' | ReactNode;
+    /** Right-hand marker: a {@link StepChevron}, a {@link StepCheck}, a badge. */
+    trailing?: ReactNode;
     onClick?: () => void;
-    'data-testid'?: string;
 }
 
 export function StepRow({
@@ -39,17 +55,7 @@ export function StepRow({
     badge,
     trailing,
     onClick,
-    'data-testid': testId,
 }: StepRowProps) {
-    const trailingNode =
-        trailing === 'chevron' ? (
-            <ChevronRight className="size-5 shrink-0 text-muted-foreground/45 transition-colors group-hover:text-muted-foreground" />
-        ) : trailing === 'check' ? (
-            <Check className="size-5 shrink-0" />
-        ) : (
-            trailing
-        );
-
     const content = (
         <>
             {leading ??
@@ -77,7 +83,7 @@ export function StepRow({
                 )}
             </span>
 
-            {trailingNode}
+            {trailing}
         </>
     );
 
@@ -91,7 +97,6 @@ export function StepRow({
         <button
             type="button"
             onClick={onClick}
-            data-testid={testId}
             className={cn(
                 shared,
                 'group cursor-pointer rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',

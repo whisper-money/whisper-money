@@ -8,21 +8,28 @@ import { BankLogo } from '@/components/bank-logo';
 import { StepButton } from '@/components/onboarding/step-button';
 import {
     StepBadge,
+    StepCheck,
+    StepChevron,
     StepList,
     StepRow,
 } from '@/components/onboarding/step-list';
-import { StepScreen } from '@/components/onboarding/step-screen';
+import {
+    StepError,
+    StepScreen,
+    stepFormClass,
+} from '@/components/onboarding/step-screen';
 import { ConnectAccountInline } from '@/components/open-banking/connect-account-inline';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { getCsrfToken } from '@/lib/csrf';
+import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { formatAccountType, type AccountType } from '@/types/account';
 import { type SignupPlan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
-import { AlertCircle, Check, PencilLine, Plus, Zap } from 'lucide-react';
+import { PencilLine, Plus, Zap } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 type AccountMode = 'select' | 'manual' | 'connected';
@@ -42,22 +49,12 @@ interface AccountGroup {
     accounts: AccountLine[];
 }
 
-interface CreatedAccountDisplay {
-    id: string;
-    name: string;
-    type: string;
-    currencyCode: string;
-    bankName?: string;
-    bankLogo?: string | null;
-    connected?: boolean;
-}
-
 export interface ExistingAccount {
     id: string;
     name: string;
     name_iv: string | null;
     encrypted: boolean;
-    type: string;
+    type: AccountType;
     currency_code: string;
     bank_id: string;
     banking_connection_id: string | null;
@@ -72,7 +69,7 @@ interface StepCreateAccountProps {
     banks: { id: string; name: string; logo: string | null }[];
     isFirstAccount: boolean;
     existingAccounts?: ExistingAccount[];
-    createdAccounts?: CreatedAccountDisplay[];
+    createdAccounts?: CreatedAccount[];
     hasSelectedConnectedAccount?: boolean;
     signupPlan?: SignupPlan | null;
     onAccountCreated: (account: CreatedAccount) => void;
@@ -310,26 +307,33 @@ export function StepCreateAccount({
     }
 
     // Shown until the user has committed to a connected account once; after
-    // that repeating the price on every extra account is just noise.
+    // that repeating the price on every extra account is just noise. The
+    // commitment sentence never depends on the price: with no plans configured
+    // the row would otherwise sell a paid feature with no disclosure at all.
     const connectedPlanNotice = useMemo(() => {
         if (
             !subscriptionsEnabled ||
             signupPlan === 'paid' ||
-            hasSelectedConnectedAccount ||
-            cheapestMonthlyPrice === null
+            hasSelectedConnectedAccount
         ) {
             return undefined;
         }
 
-        return __(
-            'Standard plan, from :price/month. You will choose a plan at the end of the onboarding.',
-            {
-                price: formatCurrency(
-                    cheapestMonthlyPrice * 100,
-                    pricing.currency,
-                    locale,
-                ),
-            },
+        return (
+            <>
+                {cheapestMonthlyPrice !== null && (
+                    <>
+                        {__('Standard plan, from :price/month.', {
+                            price: formatCurrency(
+                                cheapestMonthlyPrice * 100,
+                                pricing.currency,
+                                locale,
+                            ),
+                        })}{' '}
+                    </>
+                )}
+                {__("You'll choose a plan at the end of the onboarding.")}
+            </>
         );
     }, [
         subscriptionsEnabled,
@@ -352,14 +356,14 @@ export function StepCreateAccount({
                   name: account.name,
                   bankName: account.bankName ?? __('Bank'),
                   bankLogo: account.bankLogo ?? null,
-                  meta: `${formatAccountType(account.type as AccountType)} \u00b7 ${account.currencyCode}`,
+                  meta: `${formatAccountType(account.type)} \u00b7 ${account.currencyCode}`,
               }))
             : existingAccounts.map((account) => ({
                   id: account.id,
                   name: account.name || __('Account'),
                   bankName: account.bank?.name ?? __('Bank'),
                   bankLogo: account.bank?.logo ?? null,
-                  meta: `${formatAccountType(account.type as AccountType)} \u00b7 ${account.currency_code}`,
+                  meta: `${formatAccountType(account.type)} \u00b7 ${account.currency_code}`,
               }));
 
         const groups = new Map<string, AccountGroup>();
@@ -454,9 +458,7 @@ export function StepCreateAccount({
                                         key={account.id}
                                         title={account.name}
                                         description={account.meta}
-                                        trailing={
-                                            <Check className="size-5 shrink-0 text-muted-foreground" />
-                                        }
+                                        trailing={<StepCheck muted />}
                                     />
                                 ))}
                             </StepList>
@@ -467,16 +469,10 @@ export function StepCreateAccount({
         );
     }
 
-    // Connected account inline flow
+    // Connected account inline flow. It renders its own StepScreen so each of
+    // its sub-steps gets the pinned action footer.
     if (mode === 'connected') {
-        return (
-            <StepScreen
-                title={__('Connect Your Bank')}
-                description={__('Select your country and bank to get started.')}
-            >
-                <ConnectAccountInline onBack={() => setMode('select')} />
-            </StepScreen>
-        );
+        return <ConnectAccountInline onBack={() => setMode('select')} />;
     }
 
     // Manual account form
@@ -498,8 +494,9 @@ export function StepCreateAccount({
                         {/* A free signup skips the mode chooser, so its only
                             way back is the account list — which exists exactly
                             when one of the early returns above was passed via
-                            "Add another account". With no accounts yet there is
-                            nowhere to go. */}
+                            "Add another account". On a first account there is
+                            genuinely nowhere to go, and the header offers no
+                            arrow on this step either. */}
                         {(!isFreePlan ||
                             hasCreatedAccounts ||
                             hasExistingAccounts) && (
@@ -524,7 +521,7 @@ export function StepCreateAccount({
                     id="onboarding-account"
                     onSubmit={handleSubmit}
                     autoFocus
-                    className="flex flex-col gap-4"
+                    className={cn('flex flex-col gap-4', stepFormClass)}
                 >
                     <AccountForm
                         onChange={handleFormChange}
@@ -535,12 +532,7 @@ export function StepCreateAccount({
                         }
                     />
 
-                    {error && (
-                        <p className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                            <AlertCircle className="size-4 shrink-0" />
-                            {error}
-                        </p>
-                    )}
+                    {error && <StepError>{error}</StepError>}
                 </form>
             </StepScreen>
         );
@@ -567,7 +559,7 @@ export function StepCreateAccount({
                             ) : undefined
                         }
                         meta={connectedPlanNotice}
-                        trailing="chevron"
+                        trailing={<StepChevron />}
                         onClick={() => selectMode('connected')}
                     />
                     <StepRow
@@ -576,7 +568,7 @@ export function StepCreateAccount({
                         description={__(
                             'Enter transactions yourself or import a CSV file',
                         )}
-                        trailing="chevron"
+                        trailing={<StepChevron />}
                         onClick={() => selectMode('manual')}
                     />
                 </StepList>

@@ -142,9 +142,12 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
                 <Loader2 className="size-7 animate-spin" />
 
                 <div className="flex flex-col gap-2">
-                    <p className="text-[17px] font-medium transition-all duration-500">
+                    <h1
+                        className="text-[17px] font-medium transition-all duration-500"
+                        aria-live="polite"
+                    >
                         {__(MESSAGES[messageIndex])}
-                    </p>
+                    </h1>
                     <p className="text-[15px] text-muted-foreground">
                         {__('This will only take a moment.')}
                     </p>

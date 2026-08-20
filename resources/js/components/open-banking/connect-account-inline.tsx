@@ -2,11 +2,14 @@ import { BankLogo } from '@/components/bank-logo';
 import { StepButton } from '@/components/onboarding/step-button';
 import {
     StepBadge,
+    StepCheck,
     StepList,
     StepRow,
 } from '@/components/onboarding/step-list';
 import {
+    StepError,
     StepField,
+    StepScreen,
     stepControlClass,
 } from '@/components/onboarding/step-screen';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
@@ -21,9 +24,10 @@ import {
 import { CONNECT_COUNTRIES, useConnectFlow } from '@/hooks/use-connect-flow';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { ProviderCredentialFields } from '@/lib/connect-providers';
+import { cn } from '@/lib/utils';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { Check, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useCallback } from 'react';
 
 interface ConnectAccountInlineProps {
@@ -85,58 +89,53 @@ export function ConnectAccountInline({
         />
     );
 
-    return (
-        <div className="flex w-full flex-col gap-6">
-            {error && (
-                <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {error}
-                </p>
-            )}
-
-            {step === 'country' && (
+    // Owning the whole screen (not just its middle) is what puts this flow's
+    // primary action in the same pinned footer as every other step.
+    const { body, action } = {
+        country: {
+            body: (
+                <StepField label={__('Country')}>
+                    <Select value={country} onValueChange={setCountry}>
+                        <SelectTrigger className={stepControlClass}>
+                            <SelectValue placeholder={__('Select country')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {CONNECT_COUNTRIES.map((c) => (
+                                <SelectItem key={c.code} value={c.code}>
+                                    {__(c.name)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </StepField>
+            ),
+            action: (
+                <StepButton
+                    text={isLoading ? __('Loading...') : __('Continue')}
+                    disabled={!country || isLoading}
+                    onClick={() => fetchInstitutions(country)}
+                />
+            ),
+        },
+        bank: {
+            body: (
                 <>
-                    <StepField label={__('Country')}>
-                        <Select value={country} onValueChange={setCountry}>
-                            <SelectTrigger className={stepControlClass}>
-                                <SelectValue
-                                    placeholder={__('Select country')}
-                                />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {CONNECT_COUNTRIES.map((c) => (
-                                    <SelectItem key={c.code} value={c.code}>
-                                        {__(c.name)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </StepField>
-
-                    <div className="flex flex-col gap-2.5">
-                        <StepButton
-                            text={isLoading ? __('Loading...') : __('Continue')}
-                            disabled={!country || isLoading}
-                            onClick={() => fetchInstitutions(country)}
-                        />
-                        {back}
-                    </div>
-                </>
-            )}
-
-            {step === 'bank' && (
-                <>
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder={__('Search banks...')}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            autoFocus
-                            className={`${stepControlClass} pl-11`}
-                        />
+                    {/* Sticky so refining the search stays possible part-way
+                        down a 300-bank country list. */}
+                    <div className="sticky top-0 z-10 -mx-1 bg-background px-1 pb-2">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder={__('Search banks...')}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                autoFocus
+                                className={cn(stepControlClass, 'pl-11')}
+                            />
+                        </div>
                     </div>
 
-                    <div className="max-h-[22rem] overflow-y-auto">
+                    {filteredInstitutions.length > 0 ? (
                         <StepList>
                             {filteredInstitutions.map((institution, index) => {
                                 const isSelected =
@@ -156,7 +155,7 @@ export function ConnectAccountInline({
                                         title={institution.name}
                                         trailing={
                                             isSelected ? (
-                                                <Check className="size-5 shrink-0" />
+                                                <StepCheck />
                                             ) : connectedBankNames.has(
                                                   institution.name,
                                               ) ? (
@@ -172,26 +171,23 @@ export function ConnectAccountInline({
                                 );
                             })}
                         </StepList>
-
-                        {filteredInstitutions.length === 0 && (
-                            <p className="py-6 text-center text-sm text-muted-foreground">
-                                {__('No banks found.')}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col gap-2.5">
-                        <StepButton
-                            text={__('Continue')}
-                            disabled={!selectedBank}
-                            onClick={() => setStep('confirm')}
-                        />
-                        {back}
-                    </div>
+                    ) : (
+                        <p className="py-6 text-center text-sm text-muted-foreground">
+                            {__('No banks found.')}
+                        </p>
+                    )}
                 </>
-            )}
-
-            {step === 'confirm' && selectedBank && (
+            ),
+            action: (
+                <StepButton
+                    text={__('Continue')}
+                    disabled={!selectedBank}
+                    onClick={() => setStep('confirm')}
+                />
+            ),
+        },
+        confirm: {
+            body: selectedBank && (
                 <>
                     <div className="flex items-center gap-3.5 rounded-lg border p-4">
                         <BankLogo
@@ -229,21 +225,31 @@ export function ConnectAccountInline({
                             idPrefix="inline"
                         />
                     )}
-
-                    <div className="flex flex-col gap-2.5">
-                        <StepButton
-                            text={
-                                isSubmitting
-                                    ? __('Connecting...')
-                                    : __('Connect')
-                            }
-                            onClick={handleAuthorize}
-                            disabled={!canSubmit}
-                        />
-                        {back}
-                    </div>
                 </>
-            )}
-        </div>
+            ),
+            action: (
+                <StepButton
+                    text={isSubmitting ? __('Connecting...') : __('Connect')}
+                    onClick={handleAuthorize}
+                    disabled={!canSubmit}
+                />
+            ),
+        },
+    }[step];
+
+    return (
+        <StepScreen
+            title={__('Connect Your Bank')}
+            description={__('Select your country and bank to get started.')}
+            footer={
+                <>
+                    {action}
+                    {back}
+                </>
+            }
+        >
+            {error && <StepError>{error}</StepError>}
+            {body}
+        </StepScreen>
     );
 }

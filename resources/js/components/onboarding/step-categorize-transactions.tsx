@@ -221,6 +221,7 @@ export function StepCategorizeTransactions({
                         text={__('Skip')}
                         variant="outline"
                         icon={SkipForward}
+                        trailing={<Kbd>{__('Ctrl+N')}</Kbd>}
                         onClick={handleSkip}
                         disabled={
                             animationState !== 'idle' ||
@@ -236,6 +237,8 @@ export function StepCategorizeTransactions({
                 </div>
             }
         >
+            <h1 className="sr-only">{__('Categorize Your Transactions')}</h1>
+
             <div className="flex flex-col gap-5">
                 <div className="flex justify-end">
                     <Popover open={showRulesHint} onOpenChange={() => {}}>

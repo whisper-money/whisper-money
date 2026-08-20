@@ -42,7 +42,6 @@ export function StepComplete() {
             <StepList>
                 <StepRow icon={Check} title={__('Accounts Created')} />
                 <StepRow icon={Check} title={__('Categories Ready')} />
-                <StepRow icon={Check} title={__('Data Imported')} />
             </StepList>
         </StepScreen>
     );

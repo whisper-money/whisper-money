@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
+import { type ReactNode } from 'react';
 
 interface StepButtonProps {
     text: string;
@@ -14,6 +15,8 @@ interface StepButtonProps {
     form?: string;
     variant?: 'default' | 'outline' | 'ghost';
     icon?: LucideIcon;
+    /** Rendered after the label, e.g. a keyboard shortcut hint. */
+    trailing?: ReactNode;
     'data-testid'?: string;
     className?: string;
 }
@@ -32,6 +35,7 @@ export function StepButton({
     form,
     variant = 'default',
     icon: Icon,
+    trailing,
     'data-testid': testId,
     className = '',
 }: StepButtonProps) {
@@ -58,6 +62,7 @@ export function StepButton({
                 <>
                     {Icon && <Icon className="size-[18px]" />}
                     {text}
+                    {trailing}
                 </>
             )}
         </Button>

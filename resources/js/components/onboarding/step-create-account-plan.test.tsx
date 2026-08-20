@@ -2,10 +2,10 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { StepCreateAccount } from './step-create-account';
 
-const PRICE_HINT = /^From\s*€/;
-
-const PLAN_WARNING =
-    "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.";
+// The price and the plan condition are one line inside the connected row now,
+// so a single matcher covers both.
+const PLAN_NOTICE = /^Standard plan, from\s*€.*choose a plan at the end/;
+const PLAN_CONDITION = /choose a plan at the end of the onboarding/;
 
 vi.mock('@inertiajs/react', async () => {
     const { pageProps } = await import('@/lib/onboarding-page-props');
@@ -42,15 +42,13 @@ describe('StepCreateAccount plan intent', () => {
         renderStep('paid');
 
         expect(screen.getByText('Connected')).toBeInTheDocument();
-        expect(screen.queryByText(PLAN_WARNING)).not.toBeInTheDocument();
-        expect(screen.queryByText(PRICE_HINT)).not.toBeInTheDocument();
+        expect(screen.queryByText(PLAN_CONDITION)).not.toBeInTheDocument();
     });
 
     it('keeps the connected option, the price and the plan warning for every other signup', () => {
         renderStep(null);
 
         expect(screen.getByText('Connected')).toBeInTheDocument();
-        expect(screen.getByText(PLAN_WARNING)).toBeInTheDocument();
-        expect(screen.getByText(PRICE_HINT)).toBeInTheDocument();
+        expect(screen.getByText(PLAN_NOTICE)).toBeInTheDocument();
     });
 });

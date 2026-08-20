@@ -15,6 +15,7 @@ import { StepSyncing } from '@/components/onboarding/step-syncing';
 import { StepWelcome } from '@/components/onboarding/step-welcome';
 import { useSyncContext } from '@/contexts/sync-context';
 import {
+    BACKABLE_STEPS,
     CreatedAccount,
     OnboardingStep,
     useOnboardingState,
@@ -282,7 +283,9 @@ export default function Onboarding({
                 currentStep={stepIndex}
                 totalSteps={totalSteps}
                 stepKey={currentStep}
-                onBack={currentStep === 'welcome' ? undefined : goBack}
+                onBack={
+                    BACKABLE_STEPS.includes(currentStep) ? goBack : undefined
+                }
             >
                 {renderStep()}
             </OnboardingLayout>

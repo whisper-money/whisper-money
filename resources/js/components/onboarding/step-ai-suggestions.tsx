@@ -4,6 +4,7 @@ import {
     SuggestionDraft,
 } from '@/components/onboarding/ai-suggestion-card';
 import { StepButton } from '@/components/onboarding/step-button';
+import { StepList } from '@/components/onboarding/step-list';
 import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
@@ -295,11 +296,11 @@ export function StepAiSuggestions({
                 <div className="flex flex-col gap-5">
                     <GeneratingMessages />
 
-                    <div className="flex flex-col divide-y border-t">
+                    <StepList>
                         <SuggestionCardSkeleton />
                         <SuggestionCardSkeleton />
                         <SuggestionCardSkeleton />
-                    </div>
+                    </StepList>
 
                     <p className="text-[13px] text-muted-foreground">
                         {__('This can take up to two minutes.')}
@@ -437,7 +438,7 @@ export function StepAiSuggestions({
                 </>
             }
         >
-            <div className="flex flex-col divide-y border-t">
+            <StepList>
                 {state.suggestions.map((suggestion) => (
                     <AiSuggestionCard
                         key={suggestion.id}
@@ -465,7 +466,7 @@ export function StepAiSuggestions({
                         }
                     />
                 ))}
-            </div>
+            </StepList>
         </StepScreen>
     );
 }
@@ -482,20 +483,20 @@ function UpgradeNotice() {
 
     return (
         <>
-            <StepNote>
+            <StepNote emphasis>
                 {__(
                     "AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.",
                 )}
             </StepNote>
             {cheapestMonthlyPrice !== null && (
                 <StepNote>
-                    {__('From')}{' '}
-                    {formatCurrency(
-                        cheapestMonthlyPrice * 100,
-                        pricing.currency,
-                        locale,
-                    )}
-                    {__('/month')}
+                    {__('Standard plan, from :price/month.', {
+                        price: formatCurrency(
+                            cheapestMonthlyPrice * 100,
+                            pricing.currency,
+                            locale,
+                        ),
+                    })}
                 </StepNote>
             )}
         </>

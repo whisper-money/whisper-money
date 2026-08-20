@@ -1,5 +1,6 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import {
+    StepError,
     StepField,
     StepScreen,
     stepControlClass,
@@ -7,7 +8,6 @@ import {
 import { AmountInput } from '@/components/ui/amount-input';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { __ } from '@/utils/i18n';
-import { AlertCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 interface StepImportBalancesProps {
@@ -77,12 +77,7 @@ export function StepImportBalances({
                     />
                 </StepField>
 
-                {error && (
-                    <p className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                        <AlertCircle className="size-4 shrink-0" />
-                        {error}
-                    </p>
-                )}
+                {error && <StepError>{error}</StepError>}
             </form>
 
             <ul className="flex flex-col gap-2.5 text-sm text-muted-foreground">

@@ -26,25 +26,27 @@ export default function OnboardingLayout({
         return () => clearTimeout(timer);
     }, [stepKey]);
 
-    const progress = Math.round((currentStep / totalSteps) * 100);
+    const progress = Math.round(((currentStep + 1) / totalSteps) * 100);
 
     return (
         <div className="flex min-h-svh flex-col bg-background">
             {/* Progress reads as a hairline at the very top edge: present when
                 looked for, invisible otherwise. */}
-            <div className="h-0.5 shrink-0 bg-border">
+            <div
+                className="h-0.5 shrink-0 bg-border"
+                role="progressbar"
+                aria-valuenow={currentStep + 1}
+                aria-valuemin={1}
+                aria-valuemax={totalSteps}
+                aria-label={__('Onboarding progress')}
+            >
                 <div
                     className="h-full bg-foreground transition-[width] duration-500 ease-out"
                     style={{ width: `${progress}%` }}
-                    role="progressbar"
-                    aria-valuenow={currentStep}
-                    aria-valuemin={0}
-                    aria-valuemax={totalSteps}
-                    aria-label={__('Onboarding progress')}
                 />
             </div>
 
-            <header className="pt-safe flex h-14 shrink-0 items-center justify-between gap-3 px-5 md:h-18 md:px-7">
+            <header className="pt-safe flex min-h-14 shrink-0 items-center justify-between gap-3 px-5 md:min-h-18 md:px-7">
                 {onBack ? (
                     <button
                         type="button"
@@ -57,8 +59,6 @@ export default function OnboardingLayout({
                 ) : (
                     <AppLogoIcon className="size-6 fill-current text-foreground" />
                 )}
-
-                <div className="size-6" />
             </header>
 
             <div

@@ -382,7 +382,7 @@ it('hides the connected plan warning after connected setup is selected once', fu
 
     $this->actingAs($user);
 
-    $warning = 'You will choose a plan at the end of the onboarding.';
+    $warning = "You'll choose a plan at the end of the onboarding.";
 
     $page = visit('/onboarding');
 
