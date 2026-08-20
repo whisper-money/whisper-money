@@ -1,12 +1,14 @@
 import AppLogoIcon from '@/components/app-logo-icon';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
+import { ArrowLeft } from 'lucide-react';
 import { type PropsWithChildren, useEffect, useState } from 'react';
 
 interface OnboardingLayoutProps {
     currentStep: number;
     totalSteps: number;
     stepKey: string;
-    align?: 'start' | 'center';
+    onBack?: () => void;
 }
 
 export default function OnboardingLayout({
@@ -14,7 +16,7 @@ export default function OnboardingLayout({
     currentStep,
     totalSteps,
     stepKey,
-    align = 'start',
+    onBack,
 }: PropsWithChildren<OnboardingLayoutProps>) {
     const [isVisible, setIsVisible] = useState(false);
 
@@ -24,53 +26,52 @@ export default function OnboardingLayout({
         return () => clearTimeout(timer);
     }, [stepKey]);
 
+    const progress = Math.round((currentStep / totalSteps) * 100);
+
     return (
         <div className="flex min-h-svh flex-col bg-background">
-            <header className="pt-safe flex items-center justify-between p-4 md:p-6">
-                <AppLogoIcon
-                    className={cn([
-                        'size-6 fill-current text-[var(--foreground)] sm:opacity-75 dark:text-white',
-                        { 'opacity-0': currentStep === 0 },
-                    ])}
+            {/* Progress reads as a hairline at the very top edge: present when
+                looked for, invisible otherwise. */}
+            <div className="h-0.5 shrink-0 bg-border">
+                <div
+                    className="h-full bg-foreground transition-[width] duration-500 ease-out"
+                    style={{ width: `${progress}%` }}
+                    role="progressbar"
+                    aria-valuenow={currentStep}
+                    aria-valuemin={0}
+                    aria-valuemax={totalSteps}
+                    aria-label={__('Onboarding progress')}
                 />
+            </div>
 
-                <div className="flex items-center gap-2">
-                    {Array.from({ length: totalSteps }).map((_, index) => (
-                        <div
-                            key={index}
-                            className={cn(
-                                'h-2 w-2 rounded-full transition-all duration-300',
-                                index < currentStep
-                                    ? 'bg-primary'
-                                    : index === currentStep
-                                      ? 'scale-125 bg-primary'
-                                      : 'bg-primary/15',
-                            )}
-                        />
-                    ))}
-                </div>
+            <header className="pt-safe flex h-14 shrink-0 items-center justify-between gap-3 px-5 md:h-18 md:px-7">
+                {onBack ? (
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        aria-label={__('Back')}
+                        className="-ml-2 cursor-pointer rounded-md p-2 text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    >
+                        <ArrowLeft className="size-6" />
+                    </button>
+                ) : (
+                    <AppLogoIcon className="size-6 fill-current text-foreground" />
+                )}
 
-                <div className="size-6"></div>
+                <div className="size-6" />
             </header>
 
-            <main
+            <div
+                key={stepKey}
                 className={cn(
-                    'flex flex-1 flex-col items-center justify-start px-4 pt-4 pb-12 md:px-6 md:pt-12',
-                    align === 'center' && 'sm:justify-center',
+                    'flex flex-1 flex-col transition-all duration-300 ease-out',
+                    isVisible
+                        ? 'translate-y-0 opacity-100'
+                        : 'translate-y-3 opacity-0',
                 )}
             >
-                <div
-                    key={stepKey}
-                    className={cn(
-                        'w-full max-w-2xl transition-all duration-300 ease-out',
-                        isVisible
-                            ? 'translate-y-0 opacity-100'
-                            : 'translate-y-5 opacity-0',
-                    )}
-                >
-                    {children}
-                </div>
-            </main>
+                {children}
+            </div>
         </div>
     );
 }

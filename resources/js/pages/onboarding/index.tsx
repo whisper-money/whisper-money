@@ -3,7 +3,10 @@ import { StepAiSuggestions } from '@/components/onboarding/step-ai-suggestions';
 import { StepCategorizeTransactions } from '@/components/onboarding/step-categorize-transactions';
 import { StepCategoryTypes } from '@/components/onboarding/step-category-types';
 import { StepComplete } from '@/components/onboarding/step-complete';
-import { StepCreateAccount } from '@/components/onboarding/step-create-account';
+import {
+    StepCreateAccount,
+    type ExistingAccount,
+} from '@/components/onboarding/step-create-account';
 import { StepCustomizeCategories } from '@/components/onboarding/step-customize-categories';
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
 import { StepImportTransactions } from '@/components/onboarding/step-import-transactions';
@@ -24,22 +27,6 @@ import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Head, usePoll } from '@inertiajs/react';
 import { useEffect, useMemo, useRef } from 'react';
-
-interface ExistingAccount {
-    id: string;
-    name: string;
-    name_iv: string | null;
-    encrypted: boolean;
-    type: string;
-    currency_code: string;
-    bank_id: string;
-    banking_connection_id: string | null;
-    bank?: {
-        id: string;
-        name: string;
-        logo: string | null;
-    };
-}
 
 interface OnboardingProps {
     banks: Bank[];
@@ -118,6 +105,7 @@ export default function Onboarding({
         hasSelectedConnectedAccount,
         goToStep,
         goNext,
+        goBack,
         addCreatedAccount,
         markConnectedAccountSelected,
     } = useOnboardingState({
@@ -216,12 +204,7 @@ export default function Onboarding({
                 return <StepCategoryTypes onContinue={goNext} />;
 
             case 'customize-categories':
-                return (
-                    <StepCustomizeCategories
-                        onContinue={goNext}
-                        onSkip={goNext}
-                    />
-                );
+                return <StepCustomizeCategories onContinue={goNext} />;
 
             case 'smart-rules':
                 return <StepSmartRules onContinue={goNext} />;
@@ -299,6 +282,7 @@ export default function Onboarding({
                 currentStep={stepIndex}
                 totalSteps={totalSteps}
                 stepKey={currentStep}
+                onBack={currentStep === 'welcome' ? undefined : goBack}
             >
                 {renderStep()}
             </OnboardingLayout>

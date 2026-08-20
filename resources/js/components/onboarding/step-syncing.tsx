@@ -1,10 +1,10 @@
 import { StepButton } from '@/components/onboarding/step-button';
-import { StepHeader } from '@/components/onboarding/step-header';
+import { StepScreen } from '@/components/onboarding/step-screen';
 import { syncStatus } from '@/routes/onboarding';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
-import { CloudOff, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Client-side give-up: the sync keeps running on the queue, but this guarantees
@@ -120,17 +120,14 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
 
     if (hasStalled) {
         return (
-            <div className="flex animate-in flex-col items-center gap-6 pb-4 duration-500 fade-in slide-in-from-bottom-4">
-                <StepHeader
-                    icon={CloudOff}
-                    iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
-                    title={__('We couldn’t finish importing right now')}
-                    description={__(
-                        'Your bank is taking longer than expected. We’ll keep trying in the background and your transactions will show up automatically.',
-                    )}
-                />
-                <StepButton text={__('Continue')} onClick={advance} />
-            </div>
+            <StepScreen
+                align="center"
+                title={__('We couldn’t finish importing right now')}
+                description={__(
+                    'Your bank is taking longer than expected. We’ll keep trying in the background and your transactions will show up automatically.',
+                )}
+                footer={<StepButton text={__('Continue')} onClick={advance} />}
+            />
         );
     }
 
@@ -140,19 +137,19 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
     }
 
     return (
-        <div className="flex w-full flex-col items-center gap-8 py-8 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-                <Loader2 className="h-10 w-10 animate-spin text-violet-600 dark:text-violet-400" />
-            </div>
+        <StepScreen align="center">
+            <div className="flex flex-col items-center gap-6 text-center">
+                <Loader2 className="size-7 animate-spin" />
 
-            <div className="space-y-2">
-                <p className="text-base font-medium text-foreground transition-all duration-500">
-                    {__(MESSAGES[messageIndex])}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                    {__('This will only take a moment.')}
-                </p>
+                <div className="flex flex-col gap-2">
+                    <p className="text-[17px] font-medium transition-all duration-500">
+                        {__(MESSAGES[messageIndex])}
+                    </p>
+                    <p className="text-[15px] text-muted-foreground">
+                        {__('This will only take a moment.')}
+                    </p>
+                </div>
             </div>
-        </div>
+        </StepScreen>
     );
 }

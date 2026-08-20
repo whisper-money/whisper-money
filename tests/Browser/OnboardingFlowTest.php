@@ -54,7 +54,7 @@ it('syncs user currency from first onboarding account after signup', function ()
     $page = visit('/onboarding');
 
     $page->assertPathIs('/onboarding')
-        ->assertSee('Welcome to')
+        ->assertSee('Welcome to Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
         ->assertSee('Account Types')
@@ -62,8 +62,6 @@ it('syncs user currency from first onboarding account after signup', function ()
         ->wait(1)
         ->assertSee('Create an Account')
         ->click('Manual')
-        ->wait(1)
-        ->click('Continue')
         ->wait(1)
         ->fill('#display_name', 'Euro Checking Account')
         ->click('Select bank...')
@@ -129,8 +127,7 @@ it('shows welcome step as first onboarding step', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
+    $page->assertSee('Welcome to Whisper Money')
         ->assertSee("Let's Get Started")
         ->assertNoJavascriptErrors();
 });
@@ -144,8 +141,7 @@ it('navigates from welcome to account types', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
+    $page->assertSee('Welcome to Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
         ->assertSee('Account Types')
@@ -260,7 +256,7 @@ it('returns to the accounts step when bank authorization fails during onboarding
         ->assertQueryStringHas('step', 'create-account')
         ->assertSee('Your Accounts')
         ->assertSee('Connected Bank')
-        ->assertDontSee('Welcome to')
+        ->assertDontSee('Welcome to Whisper Money')
         ->assertNoJavascriptErrors();
 
     $connection->refresh();
@@ -280,7 +276,7 @@ it('deep links straight to the connections step via ?step=create-account', funct
         // Lands on the connections step, skipping the welcome step entirely.
         ->assertSee('Create an Account')
         ->assertSee('Manual')
-        ->assertDontSee('Welcome to')
+        ->assertDontSee('Welcome to Whisper Money')
         ->assertNoJavascriptErrors();
 });
 
@@ -386,7 +382,7 @@ it('hides the connected plan warning after connected setup is selected once', fu
 
     $this->actingAs($user);
 
-    $warning = "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.";
+    $warning = 'You will choose a plan at the end of the onboarding.';
 
     $page = visit('/onboarding');
 
@@ -396,7 +392,7 @@ it('hides the connected plan warning after connected setup is selected once', fu
         ->wait(1)
         ->assertSee($warning)
         ->assertSee('/month')
-        ->click('Continue')
+        ->click('Connected')
         ->wait(1)
         ->assertSee('Connect Your Bank')
         ->click('Back')
@@ -422,8 +418,6 @@ it('creates a real estate account during onboarding by default', function () {
         ->wait(1)
         ->assertSee('Create an Account')
         ->click('Manual')
-        ->wait(1)
-        ->click('Continue')
         ->wait(1)
         ->fill('#display_name', 'My Apartment')
         ->click('Select account type')
@@ -477,8 +471,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->assertNoJavascriptErrors();
 
     // Step 1: Welcome
-    $page->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
+    $page->assertSee('Welcome to Whisper Money')
         ->click("Let's Get Started")
         ->wait(1);
 
@@ -491,8 +484,6 @@ it('completes entire onboarding flow with account creation, transaction import, 
     $page->assertSee('Create an Account')
         ->assertSee('Manual')
         ->click('Manual')
-        ->wait(1)
-        ->click('Continue')
         ->wait(1)
         ->fill('#display_name', 'My Checking Account')
         ->click('Select bank...')

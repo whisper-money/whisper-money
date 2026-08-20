@@ -4,9 +4,9 @@ import {
     SuggestionDraft,
 } from '@/components/onboarding/ai-suggestion-card';
 import { StepButton } from '@/components/onboarding/step-button';
-import { StepHeader } from '@/components/onboarding/step-header';
-import { Button } from '@/components/ui/button';
+import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import { store as storeConsent } from '@/routes/ai/consent';
 import { accept, generate, show } from '@/routes/ai/rule-suggestions';
 import { type SharedData } from '@/types';
@@ -16,8 +16,8 @@ import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { Loader2, PartyPopper, Sparkles, Wand2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Client-side give-up: the backend marks the run failed on timeout/crash, but
 // this guarantees the spinner resolves even if the worker dies before it can.
@@ -266,45 +266,46 @@ export function StepAiSuggestions({
 
     if (summary) {
         return (
-            <Centered>
-                <StepHeader
-                    icon={PartyPopper}
-                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-green-500"
-                    title={__('Rules created')}
-                    description={__(
-                        'We created :rules rules and categorized :count transactions for you.',
-                        {
-                            rules: summary.rules_created,
-                            count: summary.transactions_categorized,
-                        },
-                    )}
-                />
-                <StepButton text={__('Continue')} onClick={onComplete} />
-            </Centered>
+            <StepScreen
+                align="center"
+                title={__('Rules created')}
+                description={__(
+                    'We created :rules rules and categorized :count transactions for you.',
+                    {
+                        rules: summary.rules_created,
+                        count: summary.transactions_categorized,
+                    },
+                )}
+                footer={
+                    <StepButton text={__('Continue')} onClick={onComplete} />
+                }
+            />
         );
     }
 
     if (!timedOut && (!state || busy || isRunning(state))) {
         return (
-            <Centered>
-                <StepHeader
-                    icon={Wand2}
-                    iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
-                    title={__('Looking for patterns')}
-                    description={__(
-                        'We’re finding the rules that will categorize most of your transactions automatically.',
-                    )}
-                />
-                <GeneratingMessages />
-                <div className="w-full max-w-2xl space-y-3">
-                    <SuggestionCardSkeleton />
-                    <SuggestionCardSkeleton />
-                    <SuggestionCardSkeleton />
+            <StepScreen
+                width="xl"
+                title={__('Looking for patterns')}
+                description={__(
+                    'We’re finding the rules that will categorize most of your transactions automatically.',
+                )}
+            >
+                <div className="flex flex-col gap-5">
+                    <GeneratingMessages />
+
+                    <div className="flex flex-col divide-y border-t">
+                        <SuggestionCardSkeleton />
+                        <SuggestionCardSkeleton />
+                        <SuggestionCardSkeleton />
+                    </div>
+
+                    <p className="text-[13px] text-muted-foreground">
+                        {__('This can take up to two minutes.')}
+                    </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    {__('This can take up to two minutes.')}
-                </p>
-            </Centered>
+            </StepScreen>
         );
     }
 
@@ -316,89 +317,90 @@ export function StepAiSuggestions({
 
     if (!state.consented) {
         return (
-            <Centered>
-                <StepHeader
-                    icon={Sparkles}
-                    iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
-                    title={__('Let AI organize your money')}
-                    description={__(
-                        'With your permission, we’ll send merchant names from your transactions to our AI provider to suggest categorization rules. We never send your full financial picture, and you review every rule before it’s created.',
-                    )}
-                />
-                {/* Someone who signed up from a paid card has already agreed to
-                    pay, so the upgrade warning would only be noise. They still
-                    give consent explicitly: what gets sent stays on screen. */}
-                {state.requires_upgrade && signupPlan !== 'paid' && (
-                    <UpgradeNotice />
+            <StepScreen
+                title={__('Let AI organize your money')}
+                description={__(
+                    'With your permission, we’ll send merchant names from your transactions to our AI provider to suggest categorization rules. We never send your full financial picture, and you review every rule before it’s created.',
                 )}
-                <div className="flex flex-col items-center gap-3">
-                    <StepButton
-                        text={__('Suggest my rules with AI')}
-                        onClick={acceptConsent}
-                        loading={busy}
-                    />
-                    <Button variant="ghost" onClick={onComplete}>
-                        {__('No thanks')}
-                    </Button>
-                </div>
-            </Centered>
+                footer={
+                    <>
+                        {/* Someone who signed up from a paid card has already
+                            agreed to pay, so the upgrade warning would only be
+                            noise. They still give consent explicitly: what gets
+                            sent stays on screen. */}
+                        {state.requires_upgrade && signupPlan !== 'paid' && (
+                            <UpgradeNotice />
+                        )}
+                        <StepButton
+                            text={__('Suggest my rules with AI')}
+                            icon={Sparkles}
+                            onClick={acceptConsent}
+                            loading={busy}
+                        />
+                        <StepButton
+                            text={__('No thanks')}
+                            variant="ghost"
+                            onClick={onComplete}
+                        />
+                    </>
+                }
+            />
         );
     }
 
     if (!state.eligible) {
         return (
-            <Centered>
-                <StepHeader
-                    icon={Sparkles}
-                    iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
-                    title={__('AI suggestions need more data')}
-                    description={__(
-                        'Once you have at least :count transactions, you can generate rule suggestions from Settings → Automation rules.',
-                        { count: state.min_transactions },
-                    )}
-                />
-                <StepButton text={__('Continue')} onClick={onComplete} />
-            </Centered>
+            <StepScreen
+                align="center"
+                title={__('AI suggestions need more data')}
+                description={__(
+                    'Once you have at least :count transactions, you can generate rule suggestions from Settings → Automation rules.',
+                    { count: state.min_transactions },
+                )}
+                footer={
+                    <StepButton text={__('Continue')} onClick={onComplete} />
+                }
+            />
         );
     }
 
     if (timedOut || state.run?.status === 'failed') {
         return (
-            <Centered>
-                <StepHeader
-                    icon={Wand2}
-                    iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
-                    title={__('We couldn’t generate suggestions')}
-                    description={__(
-                        'Something went wrong. You can try again or skip for now.',
-                    )}
-                />
-                <div className="flex flex-col items-center gap-3">
-                    <StepButton
-                        text={__('Try again')}
-                        onClick={startGenerate}
-                    />
-                    <Button variant="ghost" onClick={onComplete}>
-                        {__('Skip for now')}
-                    </Button>
-                </div>
-            </Centered>
+            <StepScreen
+                align="center"
+                title={__('We couldn’t generate suggestions')}
+                description={__(
+                    'Something went wrong. You can try again or skip for now.',
+                )}
+                footer={
+                    <>
+                        <StepButton
+                            text={__('Try again')}
+                            onClick={startGenerate}
+                        />
+                        <StepButton
+                            text={__('Skip for now')}
+                            variant="ghost"
+                            onClick={onComplete}
+                        />
+                    </>
+                }
+            />
         );
     }
 
     if (state.run?.status === 'empty' || state.suggestions.length === 0) {
         return (
-            <Centered>
-                <StepHeader
-                    icon={Sparkles}
-                    iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
-                    title={__('No clear patterns yet')}
-                    description={__(
-                        'We couldn’t find confident rules to suggest right now. You can categorize your transactions in the next step.',
-                    )}
-                />
-                <StepButton text={__('Continue')} onClick={onComplete} />
-            </Centered>
+            <StepScreen
+                align="center"
+                title={__('No clear patterns yet')}
+                description={__(
+                    'We couldn’t find confident rules to suggest right now. You can categorize your transactions in the next step.',
+                )}
+                footer={
+                    <StepButton text={__('Continue')} onClick={onComplete} />
+                }
+            />
         );
     }
 
@@ -407,17 +409,35 @@ export function StepAiSuggestions({
     ).length;
 
     return (
-        <div className="flex animate-in flex-col items-center pb-4 duration-500 fade-in slide-in-from-bottom-4">
-            <StepHeader
-                icon={Wand2}
-                iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
-                title={__('Review your suggested rules')}
-                description={__(
-                    'We found these patterns. Tweak anything you like, then create the rules — we’ll apply them to your transactions right away.',
-                )}
-            />
-
-            <div className="mb-5 w-full max-w-2xl space-y-3">
+        <StepScreen
+            width="xl"
+            title={__('Review your suggested rules')}
+            description={__(
+                'We found these patterns. Tweak anything you like, then create the rules — we’ll apply them to your transactions right away.',
+            )}
+            footer={
+                <>
+                    <StepButton
+                        text={
+                            selectedCount > 0
+                                ? __('Create :count rules & apply', {
+                                      count: selectedCount,
+                                  })
+                                : __('Continue')
+                        }
+                        onClick={submit}
+                        loading={submitting}
+                        loadingText={__('Applying…')}
+                    />
+                    <StepButton
+                        text={__('Skip for now')}
+                        variant="ghost"
+                        onClick={onComplete}
+                    />
+                </>
+            }
+        >
+            <div className="flex flex-col divide-y border-t">
                 {state.suggestions.map((suggestion) => (
                     <AiSuggestionCard
                         key={suggestion.id}
@@ -446,25 +466,7 @@ export function StepAiSuggestions({
                     />
                 ))}
             </div>
-
-            <div className="flex flex-col items-center gap-3">
-                <StepButton
-                    text={
-                        selectedCount > 0
-                            ? __('Create :count rules & apply', {
-                                  count: selectedCount,
-                              })
-                            : __('Continue')
-                    }
-                    onClick={submit}
-                    loading={submitting}
-                    loadingText={__('Applying…')}
-                />
-                <Button variant="ghost" onClick={onComplete}>
-                    {__('Skip for now')}
-                </Button>
-            </div>
-        </div>
+        </StepScreen>
     );
 }
 
@@ -476,27 +478,17 @@ export function StepAiSuggestions({
 function UpgradeNotice() {
     const { pricing, locale } = usePage<SharedData>().props;
 
-    const cheapestMonthlyPrice = useMemo(() => {
-        const plans = Object.values(pricing.plans);
-        if (plans.length === 0) {
-            return null;
-        }
-        return Math.min(
-            ...plans.map((plan) =>
-                plan.billing_period === 'year' ? plan.price / 12 : plan.price,
-            ),
-        );
-    }, [pricing.plans]);
+    const cheapestMonthlyPrice = useCheapestMonthlyPrice();
 
     return (
-        <div className="w-full max-w-md rounded-lg border border-emerald-100 bg-emerald-50 p-3 dark:border-emerald-900/50 dark:bg-emerald-900/20">
-            <p className="text-center text-sm text-balance text-emerald-700 dark:text-emerald-300">
+        <>
+            <StepNote>
                 {__(
                     "AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.",
                 )}
-            </p>
+            </StepNote>
             {cheapestMonthlyPrice !== null && (
-                <p className="mt-1 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <StepNote>
                     {__('From')}{' '}
                     {formatCurrency(
                         cheapestMonthlyPrice * 100,
@@ -504,17 +496,9 @@ function UpgradeNotice() {
                         locale,
                     )}
                     {__('/month')}
-                </p>
+                </StepNote>
             )}
-        </div>
-    );
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="flex animate-in flex-col items-center gap-6 pb-4 duration-500 fade-in slide-in-from-bottom-4">
-            {children}
-        </div>
+        </>
     );
 }
 
@@ -545,8 +529,8 @@ function GeneratingMessages() {
     }, []);
 
     return (
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Loader2 className="size-4 shrink-0 animate-spin text-violet-500" />
+        <div className="flex items-center gap-2.5 text-[15px] font-medium">
+            <Loader2 className="size-4 shrink-0 animate-spin" />
             <span
                 key={index}
                 className="animate-in duration-300 fade-in"
@@ -564,8 +548,8 @@ function GeneratingMessages() {
  */
 function SuggestionCardSkeleton() {
     return (
-        <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
-            <Skeleton className="size-4 shrink-0 rounded" />
+        <div className="flex items-center gap-3.5 py-4">
+            <Skeleton className="size-5 shrink-0 rounded-md" />
             <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Skeleton className="h-4 w-32 max-w-[45%]" />
                 <Skeleton className="h-4 w-20 max-w-[30%]" />

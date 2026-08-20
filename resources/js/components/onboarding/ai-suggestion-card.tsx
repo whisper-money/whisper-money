@@ -251,29 +251,29 @@ export function AiSuggestionCard({
     };
 
     return (
-        <div className="overflow-hidden rounded-xl border bg-card">
-            {/* Collapsed header: select + summary + expand toggle */}
-            <div className="flex items-center gap-3 p-3">
+        <div>
+            {/* Collapsed row: select + summary + expand toggle */}
+            <div className="flex min-h-11 items-center gap-3.5 py-4">
                 <Checkbox
                     checked={draft.include}
                     onCheckedChange={(checked) =>
                         onChange({ ...draft, include: checked === true })
                     }
                     aria-label={__('Include this rule')}
-                    className="shrink-0"
+                    className="size-5 shrink-0 rounded-md"
                 />
                 <button
                     type="button"
                     onClick={() => setExpanded((value) => !value)}
                     aria-expanded={expanded}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
                 >
-                    <span className="min-w-0 flex-1 truncate text-sm">
+                    <span className="min-w-0 flex-1 truncate text-base">
                         <span className="font-medium">{valuesSummary}</span>
                         <span className="text-muted-foreground"> → </span>
                         <span>{categoryLabel}</span>
                     </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                    <span className="shrink-0 text-[13px] text-muted-foreground">
                         {previewFailed
                             ? __('? matches')
                             : __(':count matches', { count: matchCount })}
@@ -286,7 +286,7 @@ export function AiSuggestionCard({
 
             {/* Expanded body: edit values, category, preview */}
             {expanded && (
-                <div className="space-y-3 border-t p-4">
+                <div className="space-y-3 pb-5">
                     <Label className="text-xs text-muted-foreground">
                         {__('If the transaction matches any of')}
                     </Label>
@@ -360,7 +360,7 @@ export function AiSuggestionCard({
                             />
                             {!draft.categoryId &&
                                 suggestion.new_category_name && (
-                                    <Badge className="gap-1 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                                    <Badge variant="outline" className="gap-1">
                                         <Sparkles className="size-3" />
                                         {__('New: :name', {
                                             name: suggestion.new_category_name,

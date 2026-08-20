@@ -5,30 +5,42 @@ import {
     AccountFormData,
 } from '@/components/accounts/account-form';
 import { BankLogo } from '@/components/bank-logo';
-import { StepHeader } from '@/components/onboarding/step-header';
+import { StepButton } from '@/components/onboarding/step-button';
+import {
+    StepBadge,
+    StepList,
+    StepRow,
+} from '@/components/onboarding/step-list';
+import { StepScreen } from '@/components/onboarding/step-screen';
 import { ConnectAccountInline } from '@/components/open-banking/connect-account-inline';
-import { Button } from '@/components/ui/button';
+import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { getCsrfToken } from '@/lib/csrf';
-import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
+import { formatAccountType, type AccountType } from '@/types/account';
 import { type SignupPlan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
-import {
-    AlertCircle,
-    Check,
-    CreditCard,
-    Link2,
-    PencilLine,
-    Plus,
-    Zap,
-} from 'lucide-react';
+import { AlertCircle, Check, PencilLine, Plus, Zap } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { StepButton } from './step-button';
 
 type AccountMode = 'select' | 'manual' | 'connected';
+
+/** One account row, however it reached the screen. */
+interface AccountLine {
+    id: string;
+    name: string;
+    bankName: string;
+    bankLogo: string | null;
+    meta: string;
+}
+
+interface AccountGroup {
+    bankName: string;
+    bankLogo: string | null;
+    accounts: AccountLine[];
+}
 
 interface CreatedAccountDisplay {
     id: string;
@@ -40,7 +52,7 @@ interface CreatedAccountDisplay {
     connected?: boolean;
 }
 
-interface ExistingAccount {
+export interface ExistingAccount {
     id: string;
     name: string;
     name_iv: string | null;
@@ -81,15 +93,13 @@ export function StepCreateAccount({
 }: StepCreateAccountProps) {
     const { pricing, subscriptionsEnabled, locale } =
         usePage<SharedData>().props;
+    const cheapestMonthlyPrice = useCheapestMonthlyPrice();
     // Someone who signed up from the free card gets no bank connections, so the
-    // two-card chooser has a single option left: drop it and open the manual
-    // form straight away.
+    // chooser has a single option left: drop it and open the manual form
+    // straight away.
     const isFreePlan = signupPlan === 'free';
     const [mode, setMode] = useState<AccountMode>(
         isFreePlan ? 'manual' : 'select',
-    );
-    const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
-        isFreePlan ? 'manual' : 'connected',
     );
     const [isAddingAnother, setIsAddingAnother] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,19 +114,6 @@ export function StepCreateAccount({
         realEstate: null,
         loan: null,
     });
-
-    // Compute cheapest monthly equivalent across all plans
-    const cheapestMonthlyPrice = useMemo(() => {
-        const plans = Object.values(pricing.plans);
-        if (plans.length === 0) {
-            return null;
-        }
-        return Math.min(
-            ...plans.map((plan) =>
-                plan.billing_period === 'year' ? plan.price / 12 : plan.price,
-            ),
-        );
-    }, [pricing.plans]);
 
     const handleFormChange = useCallback((data: AccountFormData) => {
         formDataRef.current = data;
@@ -152,12 +149,12 @@ export function StepCreateAccount({
         return data.id;
     }
 
-    function handleModeContinue() {
-        if (selectedMode === 'connected') {
+    function selectMode(next: 'manual' | 'connected') {
+        if (next === 'connected') {
             onConnectedAccountSelected?.();
         }
 
-        setMode(selectedMode);
+        setMode(next);
     }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -312,32 +309,83 @@ export function StepCreateAccount({
         }
     }
 
+    // Shown until the user has committed to a connected account once; after
+    // that repeating the price on every extra account is just noise.
+    const connectedPlanNotice = useMemo(() => {
+        if (
+            !subscriptionsEnabled ||
+            signupPlan === 'paid' ||
+            hasSelectedConnectedAccount ||
+            cheapestMonthlyPrice === null
+        ) {
+            return undefined;
+        }
+
+        return __(
+            'Standard plan, from :price/month. You will choose a plan at the end of the onboarding.',
+            {
+                price: formatCurrency(
+                    cheapestMonthlyPrice * 100,
+                    pricing.currency,
+                    locale,
+                ),
+            },
+        );
+    }, [
+        subscriptionsEnabled,
+        signupPlan,
+        hasSelectedConnectedAccount,
+        cheapestMonthlyPrice,
+        pricing.currency,
+        locale,
+    ]);
+
     const hasExistingAccounts = existingAccounts.length > 0;
     const hasCreatedAccounts = createdAccounts.length > 0;
 
-    const createdAccountsByBank = useMemo(() => {
-        const groups = new Map<string, CreatedAccountDisplay[]>();
-        for (const account of createdAccounts) {
-            const key = account.bankName ?? 'Bank';
-            const group = groups.get(key) ?? [];
-            group.push(account);
-            groups.set(key, group);
-        }
-        return Array.from(groups.entries());
-    }, [createdAccounts]);
+    // Created and existing accounts render as the same grouped list, so both
+    // shapes are normalised once instead of being laid out twice.
+    const accountGroups = useMemo((): AccountGroup[] => {
+        const source: AccountLine[] = hasCreatedAccounts
+            ? createdAccounts.map((account) => ({
+                  id: account.id,
+                  name: account.name,
+                  bankName: account.bankName ?? __('Bank'),
+                  bankLogo: account.bankLogo ?? null,
+                  meta: `${formatAccountType(account.type as AccountType)} \u00b7 ${account.currencyCode}`,
+              }))
+            : existingAccounts.map((account) => ({
+                  id: account.id,
+                  name: account.name || __('Account'),
+                  bankName: account.bank?.name ?? __('Bank'),
+                  bankLogo: account.bank?.logo ?? null,
+                  meta: `${formatAccountType(account.type as AccountType)} \u00b7 ${account.currency_code}`,
+              }));
 
-    const existingAccountsByBank = useMemo(() => {
-        const groups = new Map<string, ExistingAccount[]>();
-        for (const account of existingAccounts) {
-            const key = account.bank?.name ?? 'Bank';
-            const group = groups.get(key) ?? [];
-            group.push(account);
-            groups.set(key, group);
+        const groups = new Map<string, AccountGroup>();
+
+        for (const line of source) {
+            const group = groups.get(line.bankName) ?? {
+                bankName: line.bankName,
+                bankLogo: line.bankLogo,
+                accounts: [],
+            };
+            group.accounts.push(line);
+            groups.set(line.bankName, group);
         }
-        return Array.from(groups.entries());
-    }, [existingAccounts]);
+
+        return Array.from(groups.values());
+    }, [hasCreatedAccounts, createdAccounts, existingAccounts]);
 
     const { title, description } = useMemo(() => {
+        if (hasCreatedAccounts && !isAddingAnother) {
+            return {
+                title: __('Your Accounts'),
+                description: __(
+                    'Add more accounts or continue to set up your categories.',
+                ),
+            };
+        }
         if (hasExistingAccounts && !isAddingAnother && !hasCreatedAccounts) {
             return {
                 title: __('Your Accounts'),
@@ -367,190 +415,116 @@ export function StepCreateAccount({
         hasCreatedAccounts,
     ]);
 
-    // Show created accounts list view (after creating accounts in this session)
-    if (hasCreatedAccounts && !isAddingAnother) {
+    // Accounts already set up: one grouped list for both created and existing.
+    if (accountGroups.length > 0 && !isAddingAnother) {
         return (
-            <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-                <StepHeader
-                    icon={CreditCard}
-                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
-                    title={__('Your Accounts')}
-                    description={__(
-                        'Add more accounts or continue to set up your categories.',
-                    )}
-                />
-
-                <div className="mb-6 w-full max-w-md space-y-3">
-                    {createdAccountsByBank.map(([bankName, accounts]) => (
-                        <div
-                            key={bankName}
-                            className="overflow-hidden rounded-lg border bg-card"
-                        >
-                            <div className="flex items-center gap-2 border-b px-3 py-2.5">
+            <StepScreen
+                title={title}
+                description={description}
+                footer={
+                    <>
+                        <StepButton
+                            text={__('Add another account')}
+                            variant="outline"
+                            icon={Plus}
+                            onClick={() => setIsAddingAnother(true)}
+                        />
+                        <StepButton
+                            text={__('Continue')}
+                            onClick={onContinue}
+                        />
+                    </>
+                }
+            >
+                <div className="flex flex-col gap-1">
+                    {accountGroups.map((group) => (
+                        <div key={group.bankName}>
+                            <div className="flex items-center gap-2.5 pt-4 pb-2.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
                                 <BankLogo
-                                    src={accounts[0].bankLogo}
-                                    name={bankName}
+                                    src={group.bankLogo}
+                                    name={group.bankName}
                                     fallback="letter"
-                                    className="h-5 w-5 text-[10px]"
+                                    className="size-7 rounded-md text-xs"
                                 />
-                                <span className="text-sm font-medium">
-                                    {bankName}
-                                </span>
+                                {group.bankName}
                             </div>
-                            <div className="divide-y">
-                                {accounts.map((account) => (
-                                    <div
+                            <StepList>
+                                {group.accounts.map((account) => (
+                                    <StepRow
                                         key={account.id}
-                                        className="flex items-center gap-2 px-3 py-2"
-                                    >
-                                        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                                        <span className="flex-1 text-sm">
-                                            {account.name}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                            {account.currencyCode}
-                                        </span>
-                                    </div>
+                                        title={account.name}
+                                        description={account.meta}
+                                        trailing={
+                                            <Check className="size-5 shrink-0 text-muted-foreground" />
+                                        }
+                                    />
                                 ))}
-                            </div>
+                            </StepList>
                         </div>
                     ))}
                 </div>
-
-                <div className="w-full max-w-md space-y-3">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full gap-2"
-                        onClick={() => setIsAddingAnother(true)}
-                    >
-                        <Plus className="h-4 w-4" />
-                        {__('Add another account')}
-                    </Button>
-
-                    <StepButton
-                        text={__('Continue')}
-                        className="w-full sm:w-full"
-                        onClick={onContinue}
-                    />
-                </div>
-            </div>
-        );
-    }
-
-    // Show existing accounts view
-    if (hasExistingAccounts && !isAddingAnother) {
-        return (
-            <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-                <StepHeader
-                    icon={CreditCard}
-                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
-                    title={title}
-                    description={description}
-                />
-
-                <div className="w-full max-w-md">
-                    <div className="mb-6 space-y-3">
-                        {existingAccountsByBank.map(([bankName, accounts]) => (
-                            <div
-                                key={bankName}
-                                className="overflow-hidden rounded-lg border bg-card"
-                            >
-                                <div className="flex items-center gap-2 border-b px-3 py-2.5">
-                                    <BankLogo
-                                        src={accounts[0].bank?.logo}
-                                        name={bankName}
-                                        fallback="letter"
-                                        className="h-5 w-5 text-[10px]"
-                                    />
-                                    <span className="text-sm font-medium">
-                                        {bankName}
-                                    </span>
-                                </div>
-                                <div className="divide-y">
-                                    {accounts.map((account) => (
-                                        <div
-                                            key={account.id}
-                                            className="flex items-center gap-2 px-3 py-2"
-                                        >
-                                            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                                            <span className="flex-1 text-sm">
-                                                {account.name || 'Account'}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                                {account.type
-                                                    .split('_')
-                                                    .map(
-                                                        (w) =>
-                                                            w
-                                                                .charAt(0)
-                                                                .toUpperCase() +
-                                                            w.slice(1),
-                                                    )
-                                                    .join(' ')}{' '}
-                                                &middot; {account.currency_code}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full gap-2"
-                            onClick={() => setIsAddingAnother(true)}
-                        >
-                            <Plus className="h-4 w-4" />
-                            {__('Add another account')}
-                        </Button>
-
-                        <StepButton
-                            text={__('Continue')}
-                            className="w-full sm:w-full"
-                            onClick={onContinue}
-                        />
-                    </div>
-                </div>
-            </div>
+            </StepScreen>
         );
     }
 
     // Connected account inline flow
     if (mode === 'connected') {
         return (
-            <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-                <StepHeader
-                    icon={Link2}
-                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
-                    title={__('Connect Your Bank')}
-                    description={__(
-                        'Select your country and bank to get started.',
-                    )}
-                />
+            <StepScreen
+                title={__('Connect Your Bank')}
+                description={__('Select your country and bank to get started.')}
+            >
                 <ConnectAccountInline onBack={() => setMode('select')} />
-            </div>
+            </StepScreen>
         );
     }
 
     // Manual account form
     if (mode === 'manual') {
         return (
-            <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-                <StepHeader
-                    icon={CreditCard}
-                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
-                    title={title}
-                    description={description}
-                />
-
+            <StepScreen
+                title={title}
+                description={description}
+                footer={
+                    <>
+                        <StepButton
+                            type="submit"
+                            form="onboarding-account"
+                            disabled={isSubmitting}
+                            loading={isSubmitting}
+                            loadingText={__('Creating...')}
+                            text={__('Create Account')}
+                        />
+                        {/* A free signup skips the mode chooser, so its only
+                            way back is the account list — which exists exactly
+                            when one of the early returns above was passed via
+                            "Add another account". With no accounts yet there is
+                            nowhere to go. */}
+                        {(!isFreePlan ||
+                            hasCreatedAccounts ||
+                            hasExistingAccounts) && (
+                            <StepButton
+                                text={
+                                    isFreePlan
+                                        ? __('Back to accounts')
+                                        : __('Back')
+                                }
+                                variant="ghost"
+                                onClick={() =>
+                                    isFreePlan
+                                        ? setIsAddingAnother(false)
+                                        : setMode('select')
+                                }
+                            />
+                        )}
+                    </>
+                }
+            >
                 <form
+                    id="onboarding-account"
                     onSubmit={handleSubmit}
                     autoFocus
-                    className="w-full max-w-md space-y-4"
+                    className="flex flex-col gap-4"
                 >
                     <AccountForm
                         onChange={handleFormChange}
@@ -562,157 +536,59 @@ export function StepCreateAccount({
                     />
 
                     {error && (
-                        <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                            <AlertCircle className="h-4 w-4 shrink-0" />
+                        <p className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                            <AlertCircle className="size-4 shrink-0" />
                             {error}
-                        </div>
-                    )}
-
-                    <StepButton
-                        type="submit"
-                        className="w-full sm:w-full"
-                        disabled={isSubmitting}
-                        loading={isSubmitting}
-                        loadingText={__('Creating...')}
-                        text={__('Create Account')}
-                    />
-
-                    {/* A free signup skips the mode chooser, so its only way
-                        back is the account list — which exists exactly when one
-                        of the early returns above was passed via "Add another
-                        account". With no accounts yet there is nowhere to go. */}
-                    {(!isFreePlan ||
-                        hasCreatedAccounts ||
-                        hasExistingAccounts) && (
-                        <Button
-                            type="button"
-                            size="lg"
-                            className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
-                            variant="ghost"
-                            onClick={() =>
-                                isFreePlan
-                                    ? setIsAddingAnother(false)
-                                    : setMode('select')
-                            }
-                        >
-                            {isFreePlan ? __('Back to accounts') : __('Back')}
-                        </Button>
+                        </p>
                     )}
                 </form>
-            </div>
+            </StepScreen>
         );
     }
 
-    // Account type selection screen (default)
+    // How to set the account up. Tapping a row commits the choice, so the plan
+    // price has to be readable inside the row itself.
     return (
-        <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <StepHeader
-                icon={CreditCard}
-                iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
-                title={title}
-                description={__('How would you like to set up this account?')}
-            />
-
-            <div className="w-full max-w-md space-y-4">
-                <div className={cn('grid gap-3', 'grid-cols-2')}>
-                    {/* Manual Account Card */}
-                    <button
-                        type="button"
-                        onClick={() => setSelectedMode('manual')}
-                        className={cn(
-                            'flex flex-col rounded-xl border p-4 text-left transition-all duration-200',
-                            selectedMode === 'manual'
-                                ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 dark:bg-emerald-950/30'
-                                : 'border-border bg-card hover:border-muted-foreground/40',
+        <StepScreen
+            title={title}
+            description={__('How would you like to set up this account?')}
+        >
+            <div className="flex flex-col gap-5">
+                <StepList>
+                    <StepRow
+                        icon={Zap}
+                        title={__('Connected')}
+                        description={__(
+                            'Auto-sync transactions directly from your bank',
                         )}
-                    >
-                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
-                            <PencilLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <p className="text-sm font-semibold">{__('Manual')}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            {__(
-                                'Enter transactions yourself or import a CSV file',
-                            )}
-                        </p>
-                    </button>
-
-                    {/* Connected Account Card */}
-                    <button
-                        type="button"
-                        onClick={() => setSelectedMode('connected')}
-                        className={cn(
-                            'relative flex flex-col rounded-xl border p-4 text-left transition-all duration-200',
-                            selectedMode === 'connected'
-                                ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 dark:bg-emerald-950/30'
-                                : 'border-border bg-card hover:border-muted-foreground/40',
-                        )}
-                    >
-                        {subscriptionsEnabled && (
-                            <span className="absolute top-2.5 right-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
-                                Standard
-                            </span>
-                        )}
-                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
-                            <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <p className="text-sm font-semibold">
-                            {__('Connected')}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            {__(
-                                'Auto-sync transactions directly from your bank',
-                            )}
-                        </p>
-                        {subscriptionsEnabled &&
-                            signupPlan !== 'paid' &&
-                            !hasSelectedConnectedAccount &&
-                            cheapestMonthlyPrice !== null && (
-                                <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                    {__('From')}{' '}
-                                    {formatCurrency(
-                                        cheapestMonthlyPrice * 100,
-                                        pricing.currency,
-                                        locale,
-                                    )}
-                                    {__('/month')}
-                                </p>
-                            )}
-                    </button>
-                </div>
-
-                {selectedMode === 'connected' &&
-                    subscriptionsEnabled &&
-                    signupPlan !== 'paid' &&
-                    !hasSelectedConnectedAccount && (
-                        <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-900/20">
-                            <p className="text-center text-sm text-emerald-700 dark:text-emerald-300">
-                                {__(
-                                    "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.",
-                                )}
-                            </p>
-                        </div>
-                    )}
-
-                <div className="w-full max-w-md space-y-2">
-                    <StepButton
-                        className="w-full sm:w-full"
-                        text={__('Continue')}
-                        onClick={handleModeContinue}
+                        badge={
+                            subscriptionsEnabled ? (
+                                <StepBadge>Standard</StepBadge>
+                            ) : undefined
+                        }
+                        meta={connectedPlanNotice}
+                        trailing="chevron"
+                        onClick={() => selectMode('connected')}
                     />
+                    <StepRow
+                        icon={PencilLine}
+                        title={__('Manual')}
+                        description={__(
+                            'Enter transactions yourself or import a CSV file',
+                        )}
+                        trailing="chevron"
+                        onClick={() => selectMode('manual')}
+                    />
+                </StepList>
 
-                    {(hasCreatedAccounts || hasExistingAccounts) && (
-                        <Button
-                            type="button"
-                            className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
-                            variant="ghost"
-                            onClick={() => setIsAddingAnother(false)}
-                        >
-                            {__('Back to accounts')}
-                        </Button>
-                    )}
-                </div>
+                {(hasCreatedAccounts || hasExistingAccounts) && (
+                    <StepButton
+                        text={__('Back to accounts')}
+                        variant="ghost"
+                        onClick={() => setIsAddingAnother(false)}
+                    />
+                )}
             </div>
-        </div>
+        </StepScreen>
     );
 }
