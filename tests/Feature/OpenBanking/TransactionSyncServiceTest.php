@@ -805,3 +805,48 @@ test('sync does not retry when the rejected window is already narrow', function 
     expect(fn () => $service->sync($account, '2026-07-04', '2026-07-07', saveDailyBalances: false))
         ->toThrow(WrongTransactionsPeriodException::class);
 });
+
+test('sync dedupes the N26 settled copy of a card payment it already imported as pending', function () {
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'N26', 'user_id' => $user->id]);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    // N26 delivers the same purchase twice — un-posted, then settled — with a
+    // freshly minted entry_reference and a mutated transaction code, so neither
+    // the id key nor a code-sensitive content hash recognises the second one.
+    $pending = [
+        'entry_reference' => '95d1119e-92d2-11f1-a38e-4d2ca6090c88',
+        'transaction_amount' => ['amount' => '13.80', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2026-08-08',
+        'status' => 'BOOK',
+        'creditor' => ['name' => 'EL QUEMAITO'],
+        'bank_transaction_code' => ['code' => 'MCRD', 'sub_code' => 'UPCT'],
+        'remittance_information' => ['EL QUEMAITO'],
+    ];
+
+    $settled = array_replace($pending, [
+        'entry_reference' => '95d11175-92d2-11f1-822e-49adef1560a6',
+        'bank_transaction_code' => ['code' => 'CCRD', 'sub_code' => 'POSD'],
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->twice()
+        ->andReturn(
+            ['transactions' => [$pending], 'continuation_key' => null],
+            ['transactions' => [$settled], 'continuation_key' => null],
+        );
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+
+    expect($service->sync($account, '2026-08-06', '2026-08-10'))->toBe(1);
+    expect($service->sync($account, '2026-08-06', '2026-08-10'))->toBe(0);
+    expect($account->transactions()->count())->toBe(1);
+});

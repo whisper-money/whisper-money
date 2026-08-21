@@ -10,11 +10,27 @@ namespace App\Services\Banking;
 class TransactionFingerprint
 {
     /**
+     * Banks that key the same transaction differently on each delivery, so no
+     * upstream id identifies it. N26 delivers a card payment twice — once
+     * un-posted, once settled — minting a fresh `entry_reference` UUID each
+     * time (and since 2026-08-14 sending none at all), and flipping
+     * `bank_transaction_code` from MCRD/UPCT to CCRD/POSD on settlement. Every
+     * other field is byte-identical between the two, so keying on either the
+     * reference or a hash that includes the code imports the transaction twice.
+     * For these banks we hash content only, with the transaction code left out.
+     *
+     * @var list<string>
+     */
+    private const array UNSTABLE_ID_BANKS = ['n26'];
+
+    /**
      * @param  array<string, mixed>  $data
      */
-    public static function for(array $data): string
+    public static function for(array $data, ?string $bankName = null): string
     {
-        if (($data['transaction_id'] ?? null) !== null) {
+        $contentOnly = $bankName !== null && in_array(mb_strtolower($bankName), self::UNSTABLE_ID_BANKS, true);
+
+        if (! $contentOnly && ($data['transaction_id'] ?? null) !== null) {
             return self::hash(['transaction_id', $data['transaction_id']]);
         }
 
@@ -34,9 +50,11 @@ class TransactionFingerprint
         // silent under-count over the systematic duplication it fixes. Fixing
         // both needs occurrence-aware dedup in the consumer (a schema change),
         // tracked as a follow-up.
-        if ($entryReference !== null && ! self::isPositionalReference($entryReference)) {
+        if (! $contentOnly && $entryReference !== null && ! self::isPositionalReference($entryReference)) {
             return self::hash(['entry_reference', $entryReference]);
         }
+
+        $transactionCode = $contentOnly ? ['', ''] : [$data['bank_transaction_code']['code'] ?? '', $data['bank_transaction_code']['sub_code'] ?? ''];
 
         return self::hash([
             $data['booking_date'] ?? '',
@@ -49,8 +67,7 @@ class TransactionFingerprint
             $data['debtor_account']['iban'] ?? '',
             $data['debtor_account']['other']['identification'] ?? '',
             $data['creditor_account']['other']['identification'] ?? '',
-            $data['bank_transaction_code']['code'] ?? '',
-            $data['bank_transaction_code']['sub_code'] ?? '',
+            ...$transactionCode,
             $data['reference_number'] ?? '',
             self::remittance($data['remittance_information'] ?? []),
         ]);

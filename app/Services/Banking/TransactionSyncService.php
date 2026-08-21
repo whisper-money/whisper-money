@@ -159,7 +159,7 @@ class TransactionSyncService
     private function importTransaction(Account $account, array $data, ?string $bankName, array &$knownFingerprints, array &$knownExternalIds): bool
     {
         $externalId = $data['transaction_id'] ?? $data['entry_reference'] ?? null;
-        $fingerprint = TransactionFingerprint::for($data);
+        $fingerprint = TransactionFingerprint::for($data, $bankName);
 
         // Mirror of the previous exists() probe against the preloaded sets:
         // match on the fingerprint, or — for legacy rows keyed solely on the
