@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AutomationRule;
 use App\Models\User;
 use Illuminate\Support\Facades\Notification;
 
@@ -139,8 +140,8 @@ it('can select different field types and operators', function () {
         ->wait(0.5)
         ->click('[role="option"]:has-text("Amount")')
         ->wait(1)
-        // After selecting Amount, the value input changes to number type
-        ->fill('input[type="number"][placeholder="Value"]', '100')
+        // After selecting Amount, the value input becomes the masked AmountInput
+        ->fill('input[placeholder="Value"]', '-5')
         ->click('[data-testid="action-category-select"]')
         ->wait(0.5)
         ->click('Bills')
@@ -152,10 +153,11 @@ it('can select different field types and operators', function () {
     $page->assertSee('Amount Rule')
         ->assertNoJavascriptErrors();
 
-    $this->assertDatabaseHas('automation_rules', [
-        'user_id' => $user->id,
-        'title' => 'Amount Rule',
-    ]);
+    $rule = AutomationRule::where('user_id', $user->id)->sole();
+
+    // AmountInput speaks cents, the rule stores currency units: -5, not -500.
+    expect(json_encode($rule->rules_json))->toContain('"amount"', '-5')
+        ->not->toContain('-500');
 });
 
 it('can edit an existing rule with visual builder', function () {

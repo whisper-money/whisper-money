@@ -1,4 +1,5 @@
 import InputError from '@/components/input-error';
+import { AmountInput } from '@/components/ui/amount-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,7 +21,9 @@ import {
     OPERATOR_LABELS,
     type RuleStructure,
 } from '@/lib/rule-builder-utils';
+import type { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { ChevronDown, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -231,6 +234,15 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
     );
 }
 
+/**
+ * `condition.value` is stored as a string in currency units ("-21.99") because
+ * that is what `buildJsonLogic` and the backend expect, while `AmountInput`
+ * speaks cents.
+ */
+function unitsToCents(value: string): number {
+    return Math.round(parseFloat(value) * 100) || 0;
+}
+
 interface ConditionRowProps {
     condition: Condition;
     onChange: (condition: Condition) => void;
@@ -246,6 +258,8 @@ function ConditionRow({
 }: ConditionRowProps) {
     const fieldConfig = FIELD_CONFIG[condition.field];
     const availableOperators = fieldConfig?.operators || [];
+    const currencyCode =
+        usePage<SharedData>().props.auth.user.currency_code || 'USD';
 
     const handleFieldChange = (field: string) => {
         const newFieldConfig = FIELD_CONFIG[field];
@@ -273,9 +287,9 @@ function ConditionRow({
         condition.operator !== 'is_empty' &&
         condition.operator !== 'is_not_empty';
 
-    const inputType = fieldConfig?.type === 'number' ? 'number' : 'text';
+    const isAmountField = fieldConfig?.type === 'number';
 
-    const showAmountHint = showValueInput && inputType === 'number';
+    const showAmountHint = showValueInput && isAmountField;
 
     return (
         <div className="flex flex-col gap-1">
@@ -312,16 +326,39 @@ function ConditionRow({
                     </SelectContent>
                 </Select>
 
-                {showValueInput && (
+                {showValueInput && isAmountField && (
+                    <div className="w-full sm:flex-1">
+                        <AmountInput
+                            value={unitsToCents(condition.value)}
+                            onChange={(valueInCents) =>
+                                onChange({
+                                    ...condition,
+                                    // AmountInput renders 0 as an empty field, so
+                                    // 0 maps back to an empty value: a field the
+                                    // user never filled in must stay incomplete.
+                                    value:
+                                        valueInCents === 0
+                                            ? ''
+                                            : String(valueInCents / 100),
+                                })
+                            }
+                            currencyCode={currencyCode}
+                            placeholder={__('Value')}
+                            className="w-full"
+                            allowNegative
+                        />
+                    </div>
+                )}
+
+                {showValueInput && !isAmountField && (
                     <Input
-                        type={inputType}
+                        type="text"
                         value={condition.value}
                         onChange={(e) =>
                             onChange({ ...condition, value: e.target.value })
                         }
                         placeholder={__('Value')}
                         className="w-full sm:flex-1"
-                        step={inputType === 'number' ? 'any' : undefined}
                     />
                 )}
 
