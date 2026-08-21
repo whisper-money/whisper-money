@@ -61,6 +61,11 @@ class AuthorizationController extends Controller
             // the connections screen renders stored connections and never sees
             // the provider's catalogue again. `banking:backfill-aspsp-beta`
             // repairs the rows the picker never told us about.
+            //
+            // A picker that says nothing means "not beta", never "unknown": it
+            // has just read the catalogue, so silence is an answer. The backfill
+            // command is the one that leaves a row null, because a bank missing
+            // from the catalogue really is unknown.
             'aspsp_beta' => $request->boolean('beta'),
             'status' => BankingConnectionStatus::Pending,
         ]);

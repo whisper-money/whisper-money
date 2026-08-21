@@ -19,6 +19,12 @@ use Illuminate\Support\Collection;
  *
  * Deliberately a command and not part of the migration: a migration that calls
  * an external API fails the deploy when the API is down.
+ *
+ * A country whose catalogue will not load stops the run. Countries already
+ * written stay written - each row is stamped on its own and the query only
+ * picks up rows that are still null, so a rerun continues where this left off
+ * rather than redoing it. That is preferred over holding a transaction open
+ * across an HTTP call per country.
  */
 class BackfillAspspBetaCommand extends Command
 {
@@ -80,7 +86,15 @@ class BackfillAspspBetaCommand extends Command
         ));
 
         if ($unknown !== []) {
-            $this->warn(sprintf('Left unstamped, no longer in the catalogue: %s.', implode(', ', array_unique($unknown))));
+            // One per line: on the real catalogue this list runs to over a
+            // hundred banks, and a single comma-joined line is unreadable.
+            $unique = array_unique($unknown);
+
+            $this->warn(sprintf('%d left unstamped, no longer in the catalogue:', count($unique)));
+
+            foreach ($unique as $bank) {
+                $this->line("  {$bank}");
+            }
         }
 
         return self::SUCCESS;

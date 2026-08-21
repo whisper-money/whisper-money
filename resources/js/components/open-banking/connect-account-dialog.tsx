@@ -164,7 +164,7 @@ export function ConnectAccountDialog({
                                             <button
                                                 key={`${institution.name}-${institution.country}-${index}`}
                                                 type="button"
-                                                className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
+                                                className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
                                                     selectedBank?.name ===
                                                     institution.name
                                                         ? 'bg-accent'

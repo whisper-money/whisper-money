@@ -114,7 +114,7 @@ test('it skips connections that already know their flag and other providers', fu
         ->assertSuccessful();
 });
 
-test('it fails without writing anything when the provider is down', function () {
+test('it fails loudly when the provider is down, leaving the row for a rerun', function () {
     $connection = BankingConnection::factory()->create([
         'provider' => BankingProvider::EnableBanking,
         'aspsp_name' => 'Openbank',
