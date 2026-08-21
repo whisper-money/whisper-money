@@ -30,7 +30,7 @@ class DedupeN26Transactions extends Command
         {--apply : Write the changes. Without it the command only reports what it would do}
         {--user= : Filter by user email address}';
 
-    protected $description = 'Soft-delete the N26 transactions duplicated by the pending/settled double delivery and realign the survivors on the fixed dedup fingerprint';
+    protected $description = 'Soft-delete the N26 transactions duplicated by its per-delivery entry_reference and realign the survivors on the fixed dedup fingerprint';
 
     private const string BANK_NAME = 'N26';
 
