@@ -110,7 +110,7 @@ class DedupeN26Transactions extends Command
         if ($survivor === null) {
             if ($live->count() > 1) {
                 $this->tally($report, $key, 'skipped', $live->count() - 1);
-                $this->line("  {$key}: left {$live->count()} copies of \"{$live->first()->description}\" alone — more than one carries user data");
+                $this->line("  {$key}: left {$live->count()} copies of \"{$live->first()->description}\" alone — more than one carries notes or labels");
             }
 
             return;
@@ -148,28 +148,31 @@ class DedupeN26Transactions extends Command
     }
 
     /**
-     * The copy to keep: the one the user has touched, else the one imported
-     * first. Null when two copies both carry user data — merging those is a
-     * judgement call this command does not get to make.
+     * The copy to keep: the one carrying notes or labels, else the one the user
+     * categorized by hand, else the one imported first. Null when two copies
+     * both carry notes or labels — that text cannot be reconstructed from the
+     * survivor, so merging them is a judgement call this command does not get
+     * to make. A manual category is not grounds to bail: the copies are the
+     * same transaction, so the survivor's own category says the same thing.
      *
      * @param  Collection<int, Transaction>  $live
      */
     private function resolveSurvivor(Collection $live): ?Transaction
     {
-        $edited = $live->filter(fn (Transaction $transaction): bool => $this->carriesUserData($transaction));
+        $irreplaceable = $live->filter(fn (Transaction $transaction): bool => $this->carriesOwnText($transaction));
 
-        if ($edited->count() > 1) {
+        if ($irreplaceable->count() > 1) {
             return null;
         }
 
-        return $edited->first() ?? $live->first();
+        return $irreplaceable->first()
+            ?? $live->first(fn (Transaction $transaction): bool => $transaction->category_source === CategorySource::Manual)
+            ?? $live->first();
     }
 
-    private function carriesUserData(Transaction $transaction): bool
+    private function carriesOwnText(Transaction $transaction): bool
     {
-        return filled($transaction->notes)
-            || $transaction->labels->isNotEmpty()
-            || $transaction->category_source === CategorySource::Manual;
+        return filled($transaction->notes) || $transaction->labels->isNotEmpty();
     }
 
     /**

@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\BankingProviderInterface;
+use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
 use App\Models\Account;
 use App\Models\Bank;
@@ -102,21 +103,21 @@ test('apply soft-deletes the settled copy and realigns the survivor on the fixed
         ->and($account->transactions()->count())->toBe(1);
 });
 
-test('a duplicate carrying user data on both copies is reported and left alone', function () {
+test('a duplicate carrying notes on both copies is reported and left alone', function () {
     [, $pending, $settled] = n26AccountWithDuplicate(
         ['notes' => 'Dinner with Ana'],
         ['notes' => 'Split with Ana'],
     );
 
     $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])
-        ->expectsOutputToContain('more than one carries user data')
+        ->expectsOutputToContain('more than one carries notes or labels')
         ->assertSuccessful();
 
     expect($pending->fresh()->trashed())->toBeFalse()
         ->and($settled->fresh()->trashed())->toBeFalse();
 });
 
-test('the copy the user edited is the one that survives', function () {
+test('the copy carrying the user\'s notes is the one that survives', function () {
     [, $pending, $settled] = n26AccountWithDuplicate([], ['notes' => 'Dinner with Ana']);
 
     $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])->assertSuccessful();
@@ -124,6 +125,19 @@ test('the copy the user edited is the one that survives', function () {
     expect($pending->fresh()->trashed())->toBeTrue()
         ->and($settled->fresh()->trashed())->toBeFalse()
         ->and($settled->fresh()->notes)->toBe('Dinner with Ana');
+});
+
+test('a manually categorized copy is preferred over the older one but does not block the cleanup', function () {
+    // A manual category on both copies is not irreconcilable — they are the
+    // same transaction — so the cleanup still runs.
+    [, $pending, $settled] = n26AccountWithDuplicate([], ['category_source' => CategorySource::Manual]);
+
+    $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])
+        ->expectsOutputToContain('1 duplicate(s) soft-deleted')
+        ->assertSuccessful();
+
+    expect($pending->fresh()->trashed())->toBeTrue()
+        ->and($settled->fresh()->trashed())->toBeFalse();
 });
 
 test('transactions from other banks are left untouched', function () {
