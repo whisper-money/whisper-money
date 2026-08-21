@@ -56,7 +56,7 @@ class DedupeN26Transactions extends Command
             $userId = $user->id;
         }
 
-        /** @var array<string, array{deleted: int, realigned: int, skipped: int}> $report */
+        /** @var array<string, array<string, int>> $report */
         $report = [];
 
         Account::query()
@@ -73,12 +73,12 @@ class DedupeN26Transactions extends Command
     }
 
     /**
-     * @param  array<string, array{deleted: int, realigned: int, skipped: int}>  $report
+     * @param  array<string, array<string, int>>  $report
      */
     private function dedupeAccount(Account $account, bool $apply, array &$report): void
     {
         $bankName = $account->bank?->name;
-        $key = $account->user?->email ?? $account->user_id;
+        $key = $account->user->email;
 
         // withTrashed: a fingerprint already held by a soft-deleted twin still
         // occupies the (account_id, dedup_fingerprint) unique index, and still
@@ -100,7 +100,7 @@ class DedupeN26Transactions extends Command
 
     /**
      * @param  Collection<int, Transaction>  $group
-     * @param  array<string, array{deleted: int, realigned: int, skipped: int}>  $report
+     * @param  array<string, array<string, int>>  $report
      */
     private function dedupeGroup(string $fingerprint, Collection $group, bool $apply, array &$report, string $key): void
     {
@@ -173,7 +173,7 @@ class DedupeN26Transactions extends Command
     }
 
     /**
-     * @param  array<string, array{deleted: int, realigned: int, skipped: int}>  $report
+     * @param  array<string, array<string, int>>  $report
      */
     private function tally(array &$report, string $key, string $metric, int $count): void
     {
@@ -182,7 +182,7 @@ class DedupeN26Transactions extends Command
     }
 
     /**
-     * @param  array<string, array{deleted: int, realigned: int, skipped: int}>  $report
+     * @param  array<string, array<string, int>>  $report
      */
     private function renderReport(array $report, bool $apply): int
     {
