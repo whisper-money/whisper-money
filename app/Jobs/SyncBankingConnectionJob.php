@@ -33,7 +33,20 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    /**
+     * Two attempts, not three.
+     *
+     * The third one recovered 2 of 176 runs over a fortnight in production
+     * (1.1%), and it is not free: an attempt re-syncs every account on the
+     * connection - transactions and balances - against a consent the bank meters
+     * at a couple of accesses a day, so it mostly spends the allowance the next
+     * scheduled cycle needs. The second attempt does earn its keep, at 58
+     * recoveries in 262 (22%), which is why this is 2 and not 1.
+     *
+     * A failure that outlives both attempts is not lost: the connection stays in
+     * the scheduled rotation and is tried again on the next cycle.
+     */
+    public int $tries = 2;
 
     public int $backoff = 30;
 

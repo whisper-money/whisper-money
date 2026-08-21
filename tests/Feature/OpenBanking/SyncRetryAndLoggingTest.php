@@ -47,7 +47,7 @@ test('temporary error on non-final attempt does not set error status', function 
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
-    // Simulate attempt 1 of 3
+    // Simulate the first attempt, with one still to come
     $job = new SyncBankingConnectionJob($connection);
     $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(1);
@@ -68,6 +68,54 @@ test('temporary error on non-final attempt does not set error status', function 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
     expect($connection->error_message)->toBeNull();
+    expect($connection->consecutive_sync_failures)->toBe(0);
+});
+
+test('the second attempt is the last one a failing sync gets', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(
+        new TransientBankingProviderException(
+            'EnableBanking bank connector failed while fetching account transactions.',
+            provider: 'enablebanking',
+            statusCode: 400,
+            providerCode: 'ASPSP_ERROR',
+            operation: 'transactions',
+        )
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(2);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        runSync($job, $transactionSync, $balanceSync);
+    } catch (TransientBankingProviderException) {
+        // Expected
+    }
+
+    // A third attempt would re-sync every account against a metered consent for a
+    // 1.1% chance of recovery, so the run gives up here and waits for the next
+    // scheduled cycle. The counter stays put: the outage is not the connection's
+    // fault, and spending it would drop the connection out of that rotation.
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+    expect($connection->error_message)->not->toBeNull();
     expect($connection->consecutive_sync_failures)->toBe(0);
 });
 
@@ -92,7 +140,7 @@ test('temporary error on final attempt sets error status and increments consecut
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
-    // Simulate final attempt (3 of 3)
+    // Simulate an attempt past the retry budget
     $job = new SyncBankingConnectionJob($connection);
     $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(3);
@@ -711,7 +759,7 @@ test('sync log records attempt number', function () {
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
-    // Simulate attempt 2 of 3
+    // Simulate the second attempt
     $job = new SyncBankingConnectionJob($connection);
     $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(2);
