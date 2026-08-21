@@ -4,8 +4,11 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Concerns\QueriesBankFailures;
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingSyncLogStatus;
 use App\Mail\BankHealthAlertEmail;
 use App\Models\BankingConnection;
+use App\Models\BankingSyncLog;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -23,6 +26,12 @@ use Illuminate\Support\Facades\Mail;
  * decided by those commands' own predicates, shared through
  * {@see QueriesBankFailures}, so the table cannot claim something different from
  * the notice it tells the operator to send.
+ *
+ * Every column but one is a snapshot of right now, which is how a six-day
+ * Openbank outage left no trace in this report the morning it recovered. The
+ * last column is the cure: the same banks measured against `banking_sync_logs`,
+ * the row the sync job writes on every run, so an outage is visible while it is
+ * happening and still legible once it is over.
  *
  * The metric is internal: nothing here is shown to a user, and the email goes to
  * REPORT_RECIPIENTS.
@@ -47,6 +56,24 @@ class BankHealthCommand extends Command
     ];
 
     /**
+     * A bank with no sync run to measure over the window, so the history half of
+     * the report has nothing to say about it either.
+     */
+    private const NO_SYNC_HISTORY = [
+        'runs' => 0,
+        'succeeded_runs' => 0,
+        'failed_runs' => 0,
+        'last_success_at' => null,
+    ];
+
+    /**
+     * How many runs must have failed before a drought counts as the bank's, rather
+     * than as a single bad cycle. The scheduler syncs every six hours, so four is
+     * a full day of them.
+     */
+    private const MIN_FAILED_RUNS = 4;
+
+    /**
      * The name and signature of the console command.
      *
      * @var string
@@ -54,7 +81,8 @@ class BankHealthCommand extends Command
     protected $signature = 'banking:health
                             {--email : Also email the owners about the banks that are broken for everyone}
                             {--repeat-after=7 : Days before the same bank can be alerted about again}
-                            {--stale-hours=48 : Hours without a successful sync before a live connection counts as failing}';
+                            {--stale-hours=48 : Hours without a successful sync before a live connection counts as failing}
+                            {--history-days=7 : Days of sync history to measure each bank\'s success rate over}';
 
     /**
      * The console command description.
@@ -94,12 +122,14 @@ class BankHealthCommand extends Command
     {
         $failures = $this->authorizationFailures();
         $sync = $this->syncHealth();
+        $history = $this->syncHistory();
 
         return $this->attempts()
             ->map(fn (array $bank, string $key) => $this->summarise([
                 ...$bank,
                 ...($failures->get($key) ?? ['failed_authorizations' => 0, 'affected_users' => 0]),
                 ...($sync[$key] ?? self::NO_LIVE_CONNECTIONS),
+                ...($history[$key] ?? self::NO_SYNC_HISTORY),
             ]))
             ->sortBy([['severity', 'desc'], ['failing', 'desc'], ['users', 'desc'], ['name', 'asc']])
             ->values();
@@ -152,6 +182,53 @@ class BankHealthCommand extends Command
                 'failed_authorizations' => (int) $row->failed_authorizations,
                 'affected_users' => (int) $row->affected_users,
             ]);
+    }
+
+    /**
+     * How every bank's syncs have actually gone, from the row the job writes on
+     * every run.
+     *
+     * This is the half of the report that outlives the outage. Everything else
+     * here is measured from the connections as they stand right now, so the six
+     * days Openbank spent answering nothing but 400s read as a healthy bank the
+     * morning it recovered, and read as a healthy bank all the way through too:
+     * only 4 of its 13 connections had gone stale enough for the snapshot to
+     * notice.
+     *
+     * `skipped` rows are left out. A run nobody attempted - a deleted owner, a
+     * lapsed consent, a backoff still in force - is evidence in neither
+     * direction, and rate limits alone account for most of them.
+     *
+     * The join is deliberately raw rather than a relation: it must see the logs
+     * of soft-deleted connections too, because a week of a bank's history should
+     * not disappear the moment one of its users disconnects.
+     *
+     * @return array<array-key, array{runs: int, succeeded_runs: int, failed_runs: int, last_success_at: CarbonInterface|null}>
+     */
+    private function syncHistory(): array
+    {
+        return BankingSyncLog::query()
+            ->join('banking_connections', 'banking_connections.id', '=', 'banking_sync_logs.banking_connection_id')
+            ->tap($this->matchesEnableBanking())
+            ->whereIn('banking_sync_logs.status', [BankingSyncLogStatus::Success, BankingSyncLogStatus::Failed])
+            ->where('banking_sync_logs.created_at', '>=', now()->subDays($this->historyDays()))
+            ->groupBy('banking_connections.aspsp_name', 'banking_connections.aspsp_country')
+            ->selectRaw(
+                'banking_connections.aspsp_name, banking_connections.aspsp_country, COUNT(*) as runs,'
+                .' SUM(CASE WHEN banking_sync_logs.status = ? THEN 1 ELSE 0 END) as succeeded_runs,'
+                .' MAX(CASE WHEN banking_sync_logs.status = ? THEN banking_sync_logs.created_at END) as last_success_at',
+                [BankingSyncLogStatus::Success->value, BankingSyncLogStatus::Success->value],
+            )
+            ->toBase()
+            ->get()
+            ->keyBy(fn (object $row): string => $this->bankIdentifier($row->aspsp_name, $row->aspsp_country))
+            ->map(fn (object $row): array => [
+                'runs' => (int) $row->runs,
+                'succeeded_runs' => (int) $row->succeeded_runs,
+                'failed_runs' => (int) $row->runs - (int) $row->succeeded_runs,
+                'last_success_at' => $row->last_success_at === null ? null : Carbon::parse($row->last_success_at),
+            ])
+            ->all();
     }
 
     /**
@@ -327,7 +404,48 @@ class BankHealthCommand extends Command
             return "unproven: never connects, {$bank['affected_users']} user(s)";
         }
 
+        // Ahead of the snapshot below because it is the better evidence when both
+        // fire: days of runs, rather than how the connections happen to look this
+        // minute.
+        if ($this->isDownInHistory($bank)) {
+            return $bank['last_success_at'] instanceof CarbonInterface
+                ? 'BROKEN: last good sync '.$bank['last_success_at']->diffForHumans()
+                : "BROKEN: no good sync in {$this->historyDays()}d";
+        }
+
         return $this->syncState($bank);
+    }
+
+    /**
+     * Whether the bank has gone this long without a single sync working, while
+     * still failing runs.
+     *
+     * This is the one verdict that does not need MIN_AFFECTED_USERS, and it is why
+     * the floor can stay where it is for the other two. That floor guards a
+     * judgement about single events - one rejected authorization is
+     * indistinguishable from one person cancelling at their bank - and a day of
+     * consecutive failed runs with nothing to show for it is not a single event.
+     * Renta 4 Banco is the bank this exists for: one user, so under the floor
+     * forever, and a transactions endpoint that has 400ed on every call for
+     * months.
+     *
+     * `syncing` rather than `live` is what makes it safe. A throttled connection
+     * fails its 429 run and then skips every run until the backoff elapses, so a
+     * bank that is merely rate limited looks exactly like this in the log -
+     * Trade Republic FR has 24 failed runs, no successes, and is working fine.
+     * isBackingOff() already holds those apart, so requiring one connection the
+     * provider is not throttling keeps them out.
+     *
+     * @param  array<string, mixed>  $bank
+     */
+    private function isDownInHistory(array $bank): bool
+    {
+        if ($bank['syncing'] === 0 || $bank['failed_runs'] < self::MIN_FAILED_RUNS) {
+            return false;
+        }
+
+        return ! $bank['last_success_at'] instanceof CarbonInterface
+            || $bank['last_success_at']->lessThan(now()->subHours($this->staleHours()));
     }
 
     /**
@@ -354,7 +472,7 @@ class BankHealthCommand extends Command
     private function severity(array $bank): int
     {
         return match (true) {
-            $this->neverAuthorizes($bank), $this->isFullyDown($bank) => 3,
+            $this->neverAuthorizes($bank), $this->isFullyDown($bank), $this->isDownInHistory($bank) => 3,
             $this->neverConnected($bank), $bank['failing'] > 0 => 2,
             $bank['rate_limited'] > 0 => 1,
             default => 0,
@@ -371,7 +489,7 @@ class BankHealthCommand extends Command
     {
         $command = match (true) {
             $this->neverAuthorizes($bank) => 'banking:notify-connect-failure',
-            $this->isFullyDown($bank) => 'banking:notify-outage',
+            $this->isFullyDown($bank), $this->isDownInHistory($bank) => 'banking:notify-outage',
             default => null,
         };
 
@@ -399,6 +517,16 @@ class BankHealthCommand extends Command
                 ."from {$bank['affected_users']} user(s), and not a single session in {$bank['attempts']} attempt(s).";
         }
 
+        if ($this->isDownInHistory($bank)) {
+            $lastGoodSync = $bank['last_success_at'] instanceof CarbonInterface
+                ? 'the last one that worked was '.$bank['last_success_at']->diffForHumans()
+                : 'not one has worked in that whole window';
+
+            return "Not a single sync to it has worked lately: {$bank['failed_runs']} failed run(s) out of {$bank['runs']} in the last "
+                ."{$this->historyDays()} day(s), across {$bank['syncing']} connection(s) the scheduler is still retrying, from "
+                ."{$bank['live_users']} user(s); {$lastGoodSync}.";
+        }
+
         if ($this->isFullyDown($bank)) {
             $lastSync = $bank['newest_failing_sync'] instanceof CarbonInterface
                 ? 'the most recent of them synced '.$bank['newest_failing_sync']->diffForHumans()
@@ -418,7 +546,7 @@ class BankHealthCommand extends Command
     private function renderReport(Collection $banks): void
     {
         $this->table(
-            ['Bank', 'Country', 'Attempts', 'Failed auth', 'Users', 'Connected', 'Live', 'Not syncing', 'Throttled', 'Newest sync', 'State'],
+            ['Bank', 'Country', 'Attempts', 'Failed auth', 'Users', 'Connected', 'Live', 'Not syncing', 'Throttled', 'Newest sync', "Runs ok ({$this->historyDays()}d)", 'State'],
             $banks->map(fn (array $bank): array => [
                 $bank['name'],
                 $bank['country'],
@@ -430,6 +558,7 @@ class BankHealthCommand extends Command
                 $bank['syncing'] > 0 ? "{$bank['failing']}/{$bank['syncing']}" : '-',
                 $bank['rate_limited'] ?: '-',
                 $bank['newest_sync'] instanceof CarbonInterface ? $bank['newest_sync']->diffForHumans() : 'never',
+                $this->successRate($bank),
                 $bank['state'],
             ])->all(),
         );
@@ -542,8 +671,32 @@ class BankHealthCommand extends Command
         return max(1, (int) $this->option('repeat-after'));
     }
 
+    /**
+     * What share of the window's runs worked, with the run count beside it so a
+     * bank with three runs is not read as one with three hundred.
+     *
+     * This is the column that keeps an outage legible after it ends: Openbank
+     * recovered on its own and every other column called it healthy the same day,
+     * while this one still read 5% of 405.
+     *
+     * @param  array<string, mixed>  $bank
+     */
+    private function successRate(array $bank): string
+    {
+        if ($bank['runs'] === 0) {
+            return '-';
+        }
+
+        return round($bank['succeeded_runs'] / $bank['runs'] * 100).'% of '.$bank['runs'];
+    }
+
     private function staleHours(): int
     {
         return max(1, (int) $this->option('stale-hours'));
+    }
+
+    private function historyDays(): int
+    {
+        return max(1, (int) $this->option('history-days'));
     }
 }

@@ -144,6 +144,9 @@ test('skips soft-deleted users', function () {
     outageUser('deleted@example.com')->delete();
 
     artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
+        // Nothing syncs a connection whose owner is gone, so it is not waiting on
+        // the bank either - which is what `banking:health` was counting it as.
+        ->expectsOutputToContain('none is waiting on the bank')
         ->assertSuccessful();
 
     Mail::assertNothingOutgoing();

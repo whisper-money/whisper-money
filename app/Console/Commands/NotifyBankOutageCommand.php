@@ -110,7 +110,7 @@ class NotifyBankOutageCommand extends Command implements Isolatable
             - BankingConnection::query()->tap($matchesOutage)->count();
 
         if ($excluded > 0) {
-            $this->warn("Skipping {$excluded} other connection(s) to {$displayName}: expired, revoked or past the retry cap. Those need a reconnect, not this notice.");
+            $this->warn("Skipping {$excluded} other connection(s) to {$displayName}: expired, revoked, past the retry cap, or left behind by a deleted account. Those need a reconnect, not this notice.");
         }
     }
 
@@ -124,7 +124,7 @@ class NotifyBankOutageCommand extends Command implements Isolatable
         $existing = BankingConnection::query()->tap($this->matchesBank($aspsp, $country))->count();
 
         if ($existing > 0) {
-            $this->warn("{$existing} connection(s) to {$displayName} exist, but none is waiting on the bank: expired, revoked or past the retry cap. Those need a reconnect, not this notice.");
+            $this->warn("{$existing} connection(s) to {$displayName} exist, but none is waiting on the bank: expired, revoked, past the retry cap, or left behind by a deleted account. Those need a reconnect, not this notice.");
 
             return self::SUCCESS;
         }
