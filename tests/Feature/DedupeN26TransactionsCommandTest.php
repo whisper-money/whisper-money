@@ -1,11 +1,15 @@
 <?php
 
+use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Banking\TransactionDescriptionFormatter;
 use App\Services\Banking\TransactionFingerprint;
+use App\Services\Banking\TransactionSyncService;
+use Illuminate\Support\Str;
 
 /**
  * The pending and the settled delivery of the same N26 purchase, as they landed
@@ -168,4 +172,35 @@ test('an unknown user email fails instead of running fleet-wide', function () {
         ->assertFailed();
 
     expect(Transaction::count())->toBe(2);
+});
+
+test('after the cleanup the next sync recognises its own rows instead of importing a third copy', function () {
+    // The whole point of realigning the survivor's fingerprint: changing the
+    // formula orphans every value already stored, so without it the first sync
+    // after deploy would not recognise the rows it wrote itself.
+    [$account, $pending] = n26AccountWithDuplicate();
+    $account->update(['external_account_id' => 'ext-n26']);
+    [$pendingPayload, $settledPayload] = n26DuplicatePayloads();
+
+    $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])->assertSuccessful();
+
+    // N26 hands both deliveries back, each with a fresh reference, exactly as
+    // it does inside the 3-day watermark overlap.
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                array_replace($pendingPayload, ['entry_reference' => (string) Str::uuid()]),
+                array_replace($settledPayload, ['entry_reference' => null]),
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $created = (new TransactionSyncService($provider, new TransactionDescriptionFormatter))
+        ->sync($account, '2026-08-06', '2026-08-10');
+
+    expect($created)->toBe(0)
+        ->and($account->transactions()->count())->toBe(1)
+        ->and($account->transactions()->first()->id)->toBe($pending->id);
 });
