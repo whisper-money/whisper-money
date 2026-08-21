@@ -31,7 +31,7 @@ describe('AmountInput sign toggle', () => {
 
         fireEvent.click(screen.getByRole('button'));
 
-        expect(onChange).toHaveBeenCalledWith(-2500);
+        expect(onChange).toHaveBeenCalledWith(-2500, false);
     });
 
     it('flips a negative amount back to positive', () => {
@@ -46,7 +46,24 @@ describe('AmountInput sign toggle', () => {
 
         fireEvent.click(screen.getByRole('button'));
 
-        expect(onChange).toHaveBeenLastCalledWith(2500);
+        expect(onChange).toHaveBeenLastCalledWith(2500, false);
+    });
+
+    it('reports an empty field and a typed zero differently', () => {
+        const onChange = vi.fn();
+        render(
+            <AmountInput value={0} onChange={onChange} currencyCode="USD" />,
+        );
+
+        const input = screen.getByRole('textbox');
+        fireEvent.focus(input);
+        fireEvent.blur(input);
+        expect(onChange).toHaveBeenLastCalledWith(0, true);
+
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: '0' } });
+        fireEvent.blur(input);
+        expect(onChange).toHaveBeenLastCalledWith(0, false);
     });
 
     it('keeps the negative sign when focusing after toggling an empty field', () => {
