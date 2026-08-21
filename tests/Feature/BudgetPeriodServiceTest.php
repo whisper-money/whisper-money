@@ -355,3 +355,42 @@ test('closePeriod finds a successor that starts on the closed period last day', 
         ->and($ended->fresh()->carried_over_amount)->toBe(0)
         ->and(BudgetPeriod::where('budget_id', $budget->id)->count())->toBe(2);
 });
+
+test('generatePreviousPeriod hands back the period immediately before', function (
+    BudgetPeriodType $type,
+    int $startDay,
+    string $today,
+    string $expectedStart,
+    string $expectedEnd,
+) {
+    Carbon::setTestNow(Carbon::parse("{$today} 09:00:00"));
+
+    $budget = Budget::factory()->create([
+        'user_id' => User::factory()->create(['onboarded_at' => now()])->id,
+        'period_type' => $type,
+        'period_start_day' => $startDay,
+    ]);
+
+    $service = app(BudgetPeriodService::class);
+    $current = $service->generatePeriod($budget, 10000, Carbon::parse($today));
+    $previous = $service->generatePreviousPeriod($budget, $current);
+
+    expect($previous->start_date->toDateString())->toBe($expectedStart)
+        ->and($previous->end_date->toDateString())->toBe($expectedEnd)
+        // The point of the whole thing: the two must meet, not overlap. Both are
+        // handed to AssignHistoricalTransactionsToBudget, so a shared day is a
+        // transaction counted twice.
+        ->and($previous->end_date->copy()->addDay()->toDateString())
+        ->toBe($current->start_date->toDateString());
+})->with([
+    // A fortnight rewound to a weekday lands mid-fortnight: every one of the 14
+    // live biweekly budgets in production overlaps its predecessor by a week.
+    'biweekly' => [BudgetPeriodType::Biweekly, 0, '2026-08-20', '2026-08-02', '2026-08-15'],
+    'weekly' => [BudgetPeriodType::Weekly, 0, '2026-08-20', '2026-08-09', '2026-08-15'],
+    // March is the month that breaks any day-counting version of this: 31 days
+    // back from 1 March is January, and February disappears.
+    'monthly across a short month' => [BudgetPeriodType::Monthly, 1, '2026-03-15', '2026-02-01', '2026-02-28'],
+    'monthly across a 30-day month' => [BudgetPeriodType::Monthly, 1, '2026-05-15', '2026-04-01', '2026-04-30'],
+    'monthly across a year boundary' => [BudgetPeriodType::Monthly, 1, '2026-01-15', '2025-12-01', '2025-12-31'],
+    'yearly' => [BudgetPeriodType::Yearly, 1, '2026-08-20', '2025-01-01', '2025-12-31'],
+]);

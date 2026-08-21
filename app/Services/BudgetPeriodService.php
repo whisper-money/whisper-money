@@ -43,11 +43,42 @@ class BudgetPeriodService
         );
     }
 
+    /**
+     * The period immediately before a given one.
+     *
+     * "The day before this one started" reads like the obvious reference and is
+     * what this used to do, but a biweekly period is rewound to a *weekday* -
+     * a seven-day grid under a fourteen-day window - so that day lands in the
+     * middle of the previous fortnight and the two periods overlap by a week.
+     * All 14 live biweekly budgets in production are shaped that way, and since
+     * both periods are handed to `AssignHistoricalTransactionsToBudget`, 17
+     * transactions across 9 budgets are counted twice.
+     */
     public function generatePreviousPeriod(Budget $budget, BudgetPeriod $period, ?int $allocatedAmount = null, bool $processHistorical = false): BudgetPeriod
     {
-        $referenceDate = $period->start_date->copy()->subDay();
+        $referenceDate = $this->onePeriodEarlier($budget, $period);
 
         return $this->generatePeriod($budget, $allocatedAmount ?? $period->allocated_amount, $referenceDate, $processHistorical);
+    }
+
+    /**
+     * One period back from where this one starts.
+     *
+     * Mirrors the step each branch of `calculatePeriodDates` takes forward, which
+     * is the only thing that knows how long a period of this type is. Counting
+     * days instead looks generic and is wrong twice over: it keeps the biweekly
+     * bug, and 31 days back from 1 March is January, skipping February entirely.
+     */
+    private function onePeriodEarlier(Budget $budget, BudgetPeriod $period): Carbon
+    {
+        $start = $period->start_date->copy();
+
+        return match ($budget->period_type) {
+            BudgetPeriodType::Weekly => $start->subWeek(),
+            BudgetPeriodType::Biweekly => $start->subWeeks(2),
+            BudgetPeriodType::Yearly => $start->subYear(),
+            BudgetPeriodType::Monthly => $start->subMonthNoOverflow(),
+        };
     }
 
     /**
