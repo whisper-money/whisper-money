@@ -460,6 +460,22 @@ test('a run nobody attempted is evidence in neither direction', function () {
     Mail::assertNothingOutgoing();
 });
 
+test('leaves a bank alone once its connections are past the retry cap', function () {
+    // Nothing dispatches these any more, so the history stops at whenever they
+    // were given up on. Their owners have to reconnect, which is the opposite of
+    // what banking:notify-outage would tell them - and it refuses them too.
+    failedRuns(healthConnection('Stranded Bank', [
+        'status' => BankingConnectionStatus::Error,
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES,
+    ]), 8);
+
+    artisan('banking:health', ['--email' => true])
+        ->expectsOutputToContain('No bank is broken for everyone. Nothing to alert about.')
+        ->assertSuccessful();
+
+    Mail::assertNothingOutgoing();
+});
+
 test('the history window decides how far back the runs are read', function () {
     $connection = healthConnection('Old News Bank');
 
