@@ -141,6 +141,12 @@ return [
             'allows_account' => true,
         ],
         [
+            'code' => 'KWD',
+            'name' => 'Kuwaiti Dinar',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
             'code' => 'BTC',
             'name' => 'Bitcoin',
             'allows_primary' => false,
