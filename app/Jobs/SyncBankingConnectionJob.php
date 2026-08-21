@@ -235,13 +235,20 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         // connection this was written for is already parked in Error and stays
         // there: 68 failed jobs against 3 sync-log rows, and logging after the
         // guard would have added none of the missing 65.
-        $this->logSyncAttempt(
-            $connection,
-            BankingSyncLogStatus::Failed,
-            startTime: null,
-            error: $e,
-            metadata: ['reason' => 'job_died_outside_handle'],
-        );
+        //
+        // Only for a death handle() did not already record, though: a failure it
+        // classified is in the table with its duration and its real error, and
+        // repeating it here as `job_died_outside_handle` both doubles the row and
+        // misattributes the cause.
+        if (! $this->alreadyRecordedThisAttempt($connection)) {
+            $this->logSyncAttempt(
+                $connection,
+                BankingSyncLogStatus::Failed,
+                startTime: null,
+                error: $e,
+                metadata: ['reason' => 'job_died_outside_handle'],
+            );
+        }
 
         if ($connection->status === BankingConnectionStatus::Error || ! $this->isSyncableStatus($connection)) {
             return;
@@ -255,6 +262,26 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             // the connection back up on its own.
             'error_message' => __('The sync did not finish. We will try again later.'),
         ]);
+    }
+
+    /**
+     * Whether the attempt that just died already recorded its own failure.
+     *
+     * It cannot be answered with a flag on the job: the queue unserializes a
+     * fresh instance of this class to call failed() on, so nothing handle() set
+     * survives the trip. The row it left behind does, and an in-band failure
+     * writes one moments before rethrowing - which is what brings us here - so a
+     * failed row for this same attempt, seconds old, is that row and not another
+     * cycle's. Scheduled cycles are hours apart, so there is nothing else it
+     * could be.
+     */
+    private function alreadyRecordedThisAttempt(BankingConnection $connection): bool
+    {
+        return $connection->syncLogs()
+            ->where('status', BankingSyncLogStatus::Failed)
+            ->where('attempt', $this->attempts())
+            ->where('created_at', '>=', now()->subMinute())
+            ->exists();
     }
 
     /**

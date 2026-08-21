@@ -76,6 +76,7 @@ test('the second attempt is the last one a failing sync gets', function () {
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'last_synced_at' => now()->subDay(),
+        'consecutive_sync_failures' => 0,
     ]);
     Account::factory()->connected()->create([
         'user_id' => $user->id,
@@ -223,7 +224,7 @@ test('temporary error on final attempt is logged', function () {
 
     Log::spy();
 
-    // Final attempt (3 of 3): the connection gives up, so it must be reported.
+    // Past the retry budget: the connection gives up, so it must be reported.
     $job = new SyncBankingConnectionJob($connection);
     $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(3);
@@ -1025,6 +1026,94 @@ test('a second out-of-band death on an already errored connection changes nothin
     // written for happened - so dropping the log here would drop the whole point.
     $log = BankingSyncLog::where('banking_connection_id', $connection->id)->sole();
     expect($log->metadata['reason'])->toBe('job_died_outside_handle');
+});
+
+test('a failure handle() already recorded is not logged twice as a job death', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+        'consecutive_sync_failures' => 0,
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $failure = new TransientBankingProviderException(
+        'EnableBanking bank connector failed while fetching account transactions.',
+        provider: 'enablebanking',
+        statusCode: 400,
+        providerCode: 'ASPSP_ERROR',
+        operation: 'transactions',
+    );
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow($failure);
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(2);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        runSync($job, $transactionSync, $balanceSync);
+    } catch (TransientBankingProviderException) {
+        // Expected: the rethrow is what makes the queue call failed() next.
+    }
+
+    // Which the queue does on a fresh instance of the job, unserialized from the
+    // payload - so nothing handle() left in memory is available here. Modelled
+    // that way on purpose: a check that only works on the same object would pass
+    // a test and do nothing in production.
+    $died = new SyncBankingConnectionJob($connection);
+    $died->job = Mockery::mock(Job::class);
+    $died->job->shouldReceive('attempts')->andReturn(2);
+    $died->failed($failure);
+
+    // One row, the one that knows what actually happened. Counting failures off
+    // this table used to see every classified failure twice.
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)->sole();
+    expect($log->status)->toBe(BankingSyncLogStatus::Failed);
+    expect($log->error_class)->toBe(TransientBankingProviderException::class);
+    expect($log->metadata)->not->toHaveKey('reason');
+    expect($log->duration_ms)->not->toBeNull();
+});
+
+test('a job death on a later attempt is still recorded after an earlier failure', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'consecutive_sync_failures' => 0,
+    ]);
+
+    // The first attempt failed in-band and said so. The second one is then killed
+    // from the outside, which is a different event and has to be recorded as one.
+    BankingSyncLog::create([
+        'banking_connection_id' => $connection->id,
+        'status' => BankingSyncLogStatus::Failed,
+        'attempt' => 1,
+        'error_class' => TransientBankingProviderException::class,
+        'duration_ms' => 1200,
+        'created_at' => now(),
+    ]);
+
+    $died = new SyncBankingConnectionJob($connection);
+    $died->job = Mockery::mock(Job::class);
+    $died->job->shouldReceive('attempts')->andReturn(2);
+    $died->failed(new TimeoutExceededException('App\\Jobs\\SyncBankingConnectionJob has timed out.'));
+
+    $logs = BankingSyncLog::where('banking_connection_id', $connection->id)
+        ->orderBy('attempt')
+        ->get();
+
+    expect($logs)->toHaveCount(2);
+    expect($logs->last()->metadata['reason'])->toBe('job_died_outside_handle');
 });
 
 test('an out-of-band job death is recorded in the connection history', function () {
