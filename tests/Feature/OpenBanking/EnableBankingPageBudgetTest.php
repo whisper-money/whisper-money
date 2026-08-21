@@ -1,0 +1,250 @@
+<?php
+
+use App\Contracts\BankingProviderInterface;
+use App\Enums\TransactionSource;
+use App\Jobs\SyncBankingConnectionJob;
+use App\Models\Account;
+use App\Services\Banking\BalanceSyncService;
+use App\Services\Banking\TransactionDescriptionFormatter;
+use App\Services\Banking\TransactionSyncService;
+use Carbon\Carbon;
+use GuzzleHttp\Psr7\Response as PsrResponse;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response as ClientResponse;
+
+/**
+ * A provider serving one transaction per page, newest first, a day older each
+ * page - the pagination Enable Banking really does, and the shape that let
+ * Trade Republic spend ~19 requests a run on an allowance that runs out around
+ * there. `$newestDate` dates page one; `$lastPage` is the page the continuation
+ * key stops at, so a test can pick between a run the budget cuts short and one
+ * that ends by itself.
+ */
+function pagingProvider(array &$requests, string $newestDate, int $lastPage = 1_000): BankingProviderInterface
+{
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('getTransactions')->andReturnUsing(
+        function (string $accountId, string $dateFrom, string $dateTo) use (&$requests, $newestDate, $lastPage) {
+            $requests[] = ['date_from' => $dateFrom, 'date_to' => $dateTo];
+            $page = count($requests);
+
+            return [
+                'transactions' => [[
+                    'transaction_id' => "txn-{$page}",
+                    'transaction_amount' => ['amount' => '10.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => Carbon::parse($newestDate)->subDays($page - 1)->toDateString(),
+                    'remittance_information' => ["Page {$page}"],
+                ]],
+                'continuation_key' => $page < $lastPage ? "key-{$page}" : null,
+            ];
+        }
+    );
+
+    return $provider;
+}
+
+function budgetedAccount(): Account
+{
+    $connection = enableBankingConnectionWithAccounts(1);
+
+    return $connection->accounts[0];
+}
+
+function rateLimitedTransactions(): RequestException
+{
+    return new RequestException(new ClientResponse(
+        new PsrResponse(429, [], json_encode(['code' => 429, 'message' => 'Too many requests']))
+    ));
+}
+
+test('a run the page budget cuts short records the date the next run resumes from', function () {
+    $account = budgetedAccount();
+    $requests = [];
+
+    // Pages dated 2026-06-08, -07, -06: newest first, as the provider serves them.
+    $service = new TransactionSyncService(
+        pagingProvider($requests, '2026-06-08'),
+        new TransactionDescriptionFormatter,
+    );
+
+    $created = $service->sync($account, '2025-08-21', '2026-08-21', pageBudget: 3);
+
+    expect($requests)->toHaveCount(3)
+        ->and($created)->toBe(3);
+
+    $account->refresh();
+    expect($account->transactions_paginate_before->toDateString())->toBe('2026-06-06');
+});
+
+test('a run that paginates to the end owes nothing and leaves no marker', function () {
+    $account = budgetedAccount();
+    $account->update(['transactions_paginate_before' => '2026-06-03']);
+    $requests = [];
+
+    $service = new TransactionSyncService(
+        pagingProvider($requests, '2026-06-01', lastPage: 2),
+        new TransactionDescriptionFormatter,
+    );
+
+    $service->sync($account, '2025-08-21', '2026-06-03', pageBudget: 5);
+
+    expect($requests)->toHaveCount(2);
+
+    $account->refresh();
+    expect($account->transactions_paginate_before)->toBeNull();
+});
+
+test('a cut-short run that reached nothing older than it was asked for gives up instead of looping', function () {
+    $account = budgetedAccount();
+    $account->update(['transactions_paginate_before' => '2026-06-03']);
+    $requests = [];
+
+    // The one page the budget allows is dated on the window's own end date, so
+    // the frontier cannot move and keeping the marker would re-request this
+    // same window every cycle.
+    $service = new TransactionSyncService(
+        pagingProvider($requests, '2026-06-03'),
+        new TransactionDescriptionFormatter,
+    );
+
+    $service->sync($account, '2025-08-21', '2026-06-03', pageBudget: 1);
+
+    $account->refresh();
+    expect($account->transactions_paginate_before)->toBeNull();
+});
+
+test('a bank with no budget configured paginates to the end as before', function () {
+    $account = budgetedAccount();
+    $requests = [];
+
+    $service = new TransactionSyncService(
+        pagingProvider($requests, '2026-06-01', lastPage: 4),
+        new TransactionDescriptionFormatter,
+    );
+
+    $service->sync($account, '2025-08-21', '2026-08-21');
+
+    expect($requests)->toHaveCount(4);
+
+    $account->refresh();
+    expect($account->transactions_paginate_before)->toBeNull();
+});
+
+test('the budget is read per bank from config, and an unlisted bank stays unbudgeted', function () {
+    config(['banking.transaction_page_budget' => ['default' => null, 'Metered Bank' => 2]]);
+
+    $connection = enableBankingConnectionWithAccounts(1);
+    $connection->update(['aspsp_name' => 'Metered Bank']);
+
+    $budgets = [];
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(
+        function ($account, $dateFrom, $dateTo, $strategy, $saveDailyBalances, $pageBudget) use (&$budgets) {
+            $budgets[] = $pageBudget;
+
+            return 0;
+        }
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andReturnNull();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->andReturnNull();
+
+    runSync(new SyncBankingConnectionJob($connection->refresh()), $transactionSync, $balanceSync);
+
+    expect($budgets)->toBe([2]);
+
+    config(['banking.transaction_page_budget' => ['default' => null]]);
+    $budgets = [];
+
+    runSync(new SyncBankingConnectionJob($connection->refresh()), $transactionSync, $balanceSync);
+
+    expect($budgets)->toBe([PHP_INT_MAX]);
+});
+
+test('the balance request is made before the pagination that used to starve it', function () {
+    $connection = enableBankingConnectionWithAccounts(2);
+
+    $calls = [];
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(function () use (&$calls) {
+        $calls[] = 'transactions';
+
+        return 0;
+    });
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andReturnUsing(function () use (&$calls) {
+        $calls[] = 'balances';
+    });
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->andReturnNull();
+
+    runSync(new SyncBankingConnectionJob($connection), $transactionSync, $balanceSync);
+
+    expect($calls)->toBe(['balances', 'transactions', 'balances', 'transactions']);
+});
+
+test('a rate limit on the transactions call no longer costs the account its balance', function () {
+    $connection = enableBankingConnectionWithAccounts(1);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(rateLimitedTransactions());
+
+    $balanced = 0;
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andReturnUsing(function () use (&$balanced) {
+        $balanced++;
+    });
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->andReturnNull();
+
+    try {
+        runSync(finalAttemptJobFor($connection), $transactionSync, $balanceSync);
+    } catch (RequestException) {
+        // Expected: the run still fails, which is what applies the backoff.
+    }
+
+    // The whole point. In production this request was never made once in a week
+    // of Trade Republic syncs, because the 429 landed before the sync got here.
+    expect($balanced)->toBe(1);
+
+    // And the backoff the 429 exists to trigger is untouched: no reclassifying
+    // the exception, no reporting it as a success.
+    $connection->refresh();
+    expect($connection->rate_limited_until)->not->toBeNull();
+});
+
+test('the next run resumes the history at the marker instead of the watermark', function () {
+    $connection = enableBankingConnectionWithAccounts(1);
+    $connection->accounts[0]->update(['transactions_paginate_before' => '2026-05-01']);
+
+    // A transaction dated today: the watermark a routine window would be built
+    // on, and the reason a naive page cap would never reach the old history.
+    $connection->accounts[0]->transactions()->create([
+        'user_id' => $connection->user_id,
+        'description' => 'Recent',
+        'transaction_date' => now()->toDateString(),
+        'amount' => -100,
+        'currency_code' => 'EUR',
+        'source' => TransactionSource::EnableBanking,
+    ]);
+
+    $window = null;
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(
+        function ($account, $dateFrom, $dateTo) use (&$window) {
+            $window = [$dateFrom, $dateTo];
+
+            return 0;
+        }
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andReturnNull();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->andReturnNull();
+
+    runSync(new SyncBankingConnectionJob($connection), $transactionSync, $balanceSync);
+
+    expect($window)->toBe([now()->subYear()->toDateString(), '2026-05-01']);
+});
