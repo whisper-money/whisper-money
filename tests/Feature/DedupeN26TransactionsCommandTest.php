@@ -3,6 +3,7 @@
 use App\Contracts\BankingProviderInterface;
 use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
+use App\Events\TransactionDeleted;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Transaction;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Services\Banking\TransactionDescriptionFormatter;
 use App\Services\Banking\TransactionFingerprint;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 /**
@@ -78,7 +80,7 @@ test('dry run reports the duplicate without touching anything', function () {
 
     $this->artisan('banking:dedupe-n26-transactions')
         ->expectsOutputToContain('DRY RUN')
-        ->expectsOutputToContain('1 duplicate(s) would be soft-deleted')
+        ->expectsOutputToContain('1 re-delivered duplicate(s) would be soft-deleted')
         ->assertSuccessful();
 
     expect($pending->fresh()->trashed())->toBeFalse()
@@ -91,7 +93,7 @@ test('apply soft-deletes the settled copy and realigns the survivor on the fixed
     [$pendingPayload] = n26DuplicatePayloads();
 
     $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])
-        ->expectsOutputToContain('1 duplicate(s) soft-deleted')
+        ->expectsOutputToContain('1 re-delivered duplicate(s) soft-deleted')
         ->assertSuccessful();
 
     expect($settled->fresh()->trashed())->toBeTrue()
@@ -103,18 +105,89 @@ test('apply soft-deletes the settled copy and realigns the survivor on the fixed
         ->and($account->transactions()->count())->toBe(1);
 });
 
-test('a duplicate carrying notes on both copies is reported and left alone', function () {
+test('a duplicate carrying notes on both copies is left whole but still realigned', function () {
     [, $pending, $settled] = n26AccountWithDuplicate(
         ['notes' => 'Dinner with Ana'],
         ['notes' => 'Split with Ana'],
     );
+    [$pendingPayload] = n26DuplicatePayloads();
 
-    $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])
+    $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true, '-v' => true])
         ->expectsOutputToContain('more than one carries notes or labels')
         ->assertSuccessful();
 
+    // Neither copy is destroyed — that text cannot be reconstructed — but the
+    // group is still realigned, or the next sync would add a third copy.
     expect($pending->fresh()->trashed())->toBeFalse()
-        ->and($settled->fresh()->trashed())->toBeFalse();
+        ->and($settled->fresh()->trashed())->toBeFalse()
+        ->and($pending->fresh()->dedup_fingerprint)
+        ->toBe(TransactionFingerprint::for($pendingPayload, 'N26'));
+});
+
+test('a group whose every copy is already deleted is realigned so the rows stay deleted', function () {
+    // Without this the next sync computes the new fingerprint, matches nothing,
+    // and re-imports a transaction the user had deleted.
+    [$account, $pending, $settled] = n26AccountWithDuplicate();
+    [$pendingPayload] = n26DuplicatePayloads();
+    $pending->delete();
+    $settled->delete();
+
+    $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])->assertSuccessful();
+
+    $fingerprint = TransactionFingerprint::for($pendingPayload, 'N26');
+    expect(Transaction::withTrashed()->where('account_id', $account->id)->pluck('dedup_fingerprint'))
+        ->toContain($fingerprint);
+
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('getTransactions')->once()
+        ->andReturn(['transactions' => [$pendingPayload], 'continuation_key' => null]);
+
+    $account->update(['external_account_id' => 'ext-n26']);
+    $created = (new TransactionSyncService($provider, new TransactionDescriptionFormatter))
+        ->sync($account, '2026-08-06', '2026-08-10');
+
+    expect($created)->toBe(0)
+        ->and($account->transactions()->count())->toBe(0);
+});
+
+test('copies the bank delivered in one response are kept, only later re-deliveries go', function () {
+    // 3 identical charges imported in the same second are the bank stating a
+    // multiplicity (an ad platform billing three times); a 4th copy that turns
+    // up in a later sync run is a re-delivery of what we already hold.
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'N26', 'user_id' => $user->id]);
+    $account = Account::factory()->connected()->create(['user_id' => $user->id, 'bank_id' => $bank->id]);
+    [$payload] = n26DuplicatePayloads();
+
+    $sameRun = now()->subDays(2);
+
+    foreach ([$sameRun, $sameRun, $sameRun, now()->subDay()] as $index => $importedAt) {
+        Transaction::factory()->enableBanking()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+            'notes' => null,
+            'description' => 'AD PLATFORM',
+            'transaction_date' => '2026-08-08',
+            'dedup_fingerprint' => 'fp_legacy_'.$index,
+            'raw_data' => $payload,
+            'created_at' => $importedAt,
+        ]);
+    }
+
+    $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])
+        ->expectsOutputToContain('1 re-delivered duplicate(s) soft-deleted')
+        ->assertSuccessful();
+
+    expect($account->transactions()->count())->toBe(3);
+});
+
+test('soft-deleting a duplicate fires the event that takes it out of its budget', function () {
+    n26AccountWithDuplicate();
+    Event::fake([TransactionDeleted::class]);
+
+    $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])->assertSuccessful();
+
+    Event::assertDispatched(TransactionDeleted::class, 1);
 });
 
 test('the copy carrying the user\'s notes is the one that survives', function () {
@@ -133,7 +206,7 @@ test('a manually categorized copy is preferred over the older one but does not b
     [, $pending, $settled] = n26AccountWithDuplicate([], ['category_source' => CategorySource::Manual]);
 
     $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])
-        ->expectsOutputToContain('1 duplicate(s) soft-deleted')
+        ->expectsOutputToContain('1 re-delivered duplicate(s) soft-deleted')
         ->assertSuccessful();
 
     expect($pending->fresh()->trashed())->toBeTrue()
@@ -159,7 +232,7 @@ test('transactions from other banks are left untouched', function () {
     }
 
     $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true])
-        ->expectsOutputToContain('No N26 duplicates found.')
+        ->expectsOutputToContain('Nothing to clean up.')
         ->assertSuccessful();
 
     expect($account->transactions()->count())->toBe(2);
