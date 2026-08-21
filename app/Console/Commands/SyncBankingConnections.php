@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Enums\BankingSyncTrigger;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
@@ -94,10 +95,10 @@ class SyncBankingConnections extends Command
         $connections->each(function (BankingConnection $connection) use ($sync, $fullSync) {
             if ($sync) {
                 $this->info("Syncing {$connection->provider->value} connection {$connection->id}...");
-                SyncBankingConnectionJob::dispatchSync($connection, $fullSync);
+                SyncBankingConnectionJob::dispatchSync($connection, $fullSync, BankingSyncTrigger::Command);
                 $this->info("Finished syncing {$connection->provider->value} connection {$connection->id}.");
             } else {
-                SyncBankingConnectionJob::dispatch($connection, $fullSync);
+                SyncBankingConnectionJob::dispatch($connection, $fullSync, BankingSyncTrigger::Command);
             }
         });
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Requests\OpenBanking\MapAccountsRequest;
@@ -36,7 +37,7 @@ class AccountMappingController extends Controller
         // During onboarding, skip the mapping UI — auto-create all accounts directly
         if (! $user->isOnboarded()) {
             $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
-            SyncBankingConnectionJob::dispatch($connection);
+            SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Connect);
 
             return redirect()->route('onboarding', ['step' => 'create-account'])
                 ->with('success', 'Bank account connected successfully.');
@@ -143,7 +144,7 @@ class AccountMappingController extends Controller
             'consecutive_sync_failures' => 0,
         ]);
 
-        SyncBankingConnectionJob::dispatch($connection);
+        SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::AccountMapping);
 
         $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
         $redirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];

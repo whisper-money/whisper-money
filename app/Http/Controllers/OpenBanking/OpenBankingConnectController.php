@@ -4,6 +4,7 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -115,7 +116,7 @@ abstract class OpenBankingConnectController extends Controller
     {
         if (! $user->isOnboarded()) {
             $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
-            SyncBankingConnectionJob::dispatch($connection);
+            SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Connect);
 
             return response()->json([
                 'redirect_url' => route('onboarding', ['step' => 'create-account']),

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\OpenBanking;
 
 use App\Contracts\BankingProviderInterface;
+use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OpenBanking\MapConnectionAccountRequest;
 use App\Jobs\SyncBankingConnectionJob;
@@ -97,7 +98,7 @@ class ConnectionAccountController extends Controller
 
         $accountUserCurrencyService->syncFromFirstAccount($account);
 
-        SyncBankingConnectionJob::dispatch($connection);
+        SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::AccountLinked);
 
         return back()->with('success', __('Account synced. Transactions will be updated shortly.'));
     }

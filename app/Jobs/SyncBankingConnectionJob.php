@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Contracts\BankingConnectionSyncer;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
+use App\Enums\BankingSyncTrigger;
 use App\Exceptions\Banking\CarriesBankingOperation;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
@@ -83,10 +84,34 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         'X-RateLimit-Reset',
     ];
 
+    /**
+     * Who asked for this sync. A property rather than something handle() works
+     * out, because it has to travel in the serialized payload: failed() is
+     * called on a fresh instance the queue unserializes, and that is the run
+     * with no other trace of what triggered it.
+     *
+     * Deliberately not promoted, unlike its siblings. A promoted property has no
+     * class-level default - the default lives on the constructor parameter - so
+     * the jobs already queued when this deploys, serialized without the key,
+     * would come back with it *uninitialized* rather than Scheduled, and the
+     * first read would throw. A declared default is what unserialize() leaves in
+     * place for a key the payload does not carry, which is also why it costs
+     * those in-flight jobs nothing: SerializesModels omits a property still
+     * equal to its default, so a scheduled sync does not carry the key either.
+     */
+    public BankingSyncTrigger $trigger = BankingSyncTrigger::Scheduled;
+
+    /**
+     * @param  BankingSyncTrigger  $trigger  Third and last: callers pass
+     *                                       $fullSync positionally.
+     */
     public function __construct(
         public BankingConnection $bankingConnection,
         public bool $fullSync = false,
-    ) {}
+        BankingSyncTrigger $trigger = BankingSyncTrigger::Scheduled,
+    ) {
+        $this->trigger = $trigger;
+    }
 
     public function uniqueId(): string
     {
@@ -415,7 +440,9 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'duration_ms' => $startTime === null
                 ? null
                 : (int) round((microtime(true) - $startTime) * 1000),
-            'metadata' => $metadata,
+            // On every row, including the ones that carry nothing else, so the
+            // trigger can be counted without a join or a null branch.
+            'metadata' => ['trigger' => $this->trigger->value, ...($metadata ?? [])],
             'created_at' => now(),
         ]);
     }

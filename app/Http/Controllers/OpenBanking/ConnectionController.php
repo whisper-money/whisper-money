@@ -5,6 +5,7 @@ namespace App\Http\Controllers\OpenBanking;
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\DestroyConnectionRequest;
@@ -117,7 +118,7 @@ class ConnectionController extends Controller
             'rate_limited_until' => null,
         ]);
 
-        SyncBankingConnectionJob::dispatch($connection);
+        SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Manual);
 
         return back()->with('success', 'Sync started. Transactions will be updated shortly.');
     }
@@ -146,7 +147,7 @@ class ConnectionController extends Controller
             'consecutive_sync_failures' => 0,
         ]);
 
-        SyncBankingConnectionJob::dispatch($connection);
+        SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::CredentialsUpdated);
 
         return back()->with('success', __('Credentials updated. Sync started.'));
     }
