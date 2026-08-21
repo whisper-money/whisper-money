@@ -80,14 +80,6 @@ export default function Notifications({
     budgetDefaults,
     budgets,
 }: Props) {
-    const patchPreference = (key: string, checked: boolean) => {
-        router.patch(
-            update().url,
-            { notifications: { [key]: checked } },
-            patchOptions,
-        );
-    };
-
     const emailToggles = [
         {
             id: 'notify-on-bank-transactions-synced',
@@ -104,10 +96,18 @@ export default function Notifications({
             checked: notifyOnInactiveNoBank,
             label: __('Reminders when no bank is connected'),
             description: __(
-                'Receive a weekly email reminding you to import transactions while you have no bank connected.',
+                "Receive an email if you haven't visited in a week and no bank is connected.",
             ),
         },
     ];
+
+    const patchPreference = (key: string, checked: boolean) => {
+        router.patch(
+            update().url,
+            { notifications: { [key]: checked } },
+            patchOptions,
+        );
+    };
 
     const patchBudget = (id: UUID, key: BudgetToggleKey, checked: boolean) => {
         router.patch(updateBudget(id).url, { [key]: checked }, patchOptions);
@@ -126,29 +126,34 @@ export default function Notifications({
                         )}
                     />
 
-                    {emailToggles.map((toggle) => (
-                        <div key={toggle.id} className="flex items-start gap-3">
-                            <Checkbox
-                                id={toggle.id}
-                                defaultChecked={toggle.checked}
-                                onCheckedChange={(checked) =>
-                                    patchPreference(
-                                        toggle.preferenceKey,
-                                        checked === true,
-                                    )
-                                }
-                                className="mt-0.5"
-                            />
-                            <div className="grid gap-1">
-                                <Label htmlFor={toggle.id}>
-                                    {toggle.label}
-                                </Label>
-                                <p className="text-sm text-muted-foreground">
-                                    {toggle.description}
-                                </p>
+                    <div className="space-y-4">
+                        {emailToggles.map((toggle) => (
+                            <div
+                                key={toggle.id}
+                                className="flex items-start gap-3"
+                            >
+                                <Checkbox
+                                    id={toggle.id}
+                                    defaultChecked={toggle.checked}
+                                    onCheckedChange={(checked) =>
+                                        patchPreference(
+                                            toggle.preferenceKey,
+                                            checked === true,
+                                        )
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <div className="grid gap-1">
+                                    <Label htmlFor={toggle.id}>
+                                        {toggle.label}
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        {toggle.description}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
 
                     <div className="space-y-4">
                         <div>

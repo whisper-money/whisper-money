@@ -89,7 +89,8 @@ test('the inactive-no-bank reminder can be turned off', function () {
         ->patch(route('notifications.update'), [
             'notifications' => ['inactive_no_bank' => false],
         ])
-        ->assertSessionHasNoErrors();
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
 
     expect($user->fresh()->setting->notify_on_inactive_no_bank)->toBeFalse();
 });

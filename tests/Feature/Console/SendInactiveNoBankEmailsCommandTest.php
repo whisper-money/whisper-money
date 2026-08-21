@@ -186,8 +186,10 @@ it('still sends when the user has no settings row at all', function () {
 it('links to the notification settings so the user can opt out', function () {
     $html = (new InactiveNoBankEmail(User::factory()->make()))->render();
 
-    expect($html)->toContain(route('notifications.index').'?')
-        ->toContain('utm_content=notification-settings');
+    expect($html)->toContain(
+        route('notifications.index').'?utm_source=drip&amp;utm_medium=email'
+            .'&amp;utm_campaign=inactive-no-bank&amp;utm_content=notification-settings'
+    );
 });
 
 it('renders the email in the user locale', function () {
@@ -210,7 +212,7 @@ it('points its button at the dashboard and offers connecting a bank as a link', 
         ->toContain(route('settings.connections.index').'?');
 });
 
-it('tags both links so the clicks are attributable in PostHog', function () {
+it('tags its links so the clicks are attributable in PostHog', function () {
     $html = (new InactiveNoBankEmail(User::factory()->make()))->render();
 
     expect($html)->toContain('utm_source=drip')
