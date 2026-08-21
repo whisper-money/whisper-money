@@ -57,6 +57,11 @@ class AuthorizationController extends Controller
             'aspsp_name' => $validated['aspsp_name'],
             'aspsp_country' => $validated['country'],
             'aspsp_logo' => $validated['logo'] ?? null,
+            // Denormalised from the bank picker, exactly like the logo above it:
+            // the connections screen renders stored connections and never sees
+            // the provider's catalogue again. `banking:backfill-aspsp-beta`
+            // repairs the rows the picker never told us about.
+            'aspsp_beta' => $request->boolean('beta'),
             'status' => BankingConnectionStatus::Pending,
         ]);
 

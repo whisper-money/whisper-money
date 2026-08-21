@@ -11,8 +11,8 @@ test('authenticated users can list institutions', function () {
         ->with('ES')
         ->once()
         ->andReturn([
-            ['name' => 'Test Bank', 'country' => 'ES', 'logo' => 'https://example.com/logo.png', 'maximum_consent_validity' => 90],
-            ['name' => 'Another Bank', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => 180],
+            ['name' => 'Test Bank', 'country' => 'ES', 'logo' => 'https://example.com/logo.png', 'maximum_consent_validity' => 90, 'beta' => true],
+            ['name' => 'Another Bank', 'country' => 'ES', 'logo' => null, 'maximum_consent_validity' => 180, 'beta' => false],
         ]);
 
     $this->app->instance(BankingProviderInterface::class, $mockProvider);
@@ -22,6 +22,9 @@ test('authenticated users can list institutions', function () {
     $response->assertOk();
     $response->assertJsonCount(2);
     $response->assertJsonFragment(['name' => 'Test Bank']);
+    // The bank picker needs the beta flag to badge the row, so it has to survive
+    // the trip through the controller.
+    $response->assertJsonFragment(['name' => 'Test Bank', 'beta' => true]);
 });
 
 test('institutions endpoint requires country parameter', function () {

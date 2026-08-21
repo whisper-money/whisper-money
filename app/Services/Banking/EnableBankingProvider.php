@@ -40,6 +40,12 @@ class EnableBankingProvider implements BankingProviderInterface
                 'country' => $aspsp['country'],
                 'logo' => $aspsp['logo'] ?? null,
                 'maximum_consent_validity' => $aspsp['maximum_consent_validity'] ?? null,
+                // The provider's own reliability signal, and by a wide margin
+                // the best one we have: over a week of calls, its beta
+                // connectors failed eleven times as often as the stable ones,
+                // and they are left out of the provider's public status page,
+                // so nobody reports their outages either.
+                'beta' => (bool) ($aspsp['beta'] ?? false),
             ])
             ->all();
     }

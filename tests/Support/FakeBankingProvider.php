@@ -46,8 +46,10 @@ final class FakeBankingProvider implements BankingProviderInterface
     public function getInstitutions(string $countryCode): array
     {
         return [
-            ['name' => 'Banco de Sabadell', 'country' => $countryCode, 'logo' => null, 'maximum_consent_validity' => 7776000],
-            ['name' => 'BBVA', 'country' => $countryCode, 'logo' => null, 'maximum_consent_validity' => 7776000],
+            // Sabadell stands in for a beta connector so the badge and the
+            // confirm-step notice are exercised by the browser flow.
+            ['name' => 'Banco de Sabadell', 'country' => $countryCode, 'logo' => null, 'maximum_consent_validity' => 7776000, 'beta' => true],
+            ['name' => 'BBVA', 'country' => $countryCode, 'logo' => null, 'maximum_consent_validity' => 7776000, 'beta' => false],
         ];
     }
 
