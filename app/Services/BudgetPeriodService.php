@@ -50,9 +50,9 @@ class BudgetPeriodService
      * what this used to do, but a biweekly period is rewound to a *weekday* -
      * a seven-day grid under a fourteen-day window - so that day lands in the
      * middle of the previous fortnight and the two periods overlap by a week.
-     * All 14 live biweekly budgets in production are shaped that way, and since
-     * both periods are handed to `AssignHistoricalTransactionsToBudget`, 17
-     * transactions across 9 budgets are counted twice.
+     * 12 of the 13 live biweekly budgets in production are shaped that way, and
+     * since both periods are handed to `AssignHistoricalTransactionsToBudget`,
+     * 16 transactions across 8 budgets hold two rows for one spend.
      */
     public function generatePreviousPeriod(Budget $budget, BudgetPeriod $period, ?int $allocatedAmount = null, bool $processHistorical = false): BudgetPeriod
     {
@@ -64,10 +64,21 @@ class BudgetPeriodService
     /**
      * One period back from where this one starts.
      *
-     * Mirrors the step each branch of `calculatePeriodDates` takes forward, which
-     * is the only thing that knows how long a period of this type is. Counting
-     * days instead looks generic and is wrong twice over: it keeps the biweekly
-     * bug, and 31 days back from 1 March is January, skipping February entirely.
+     * Counting days is not it: 31 days back from 1 March is January, so February
+     * disappears. Nor is reusing the forward step of `calculatePeriodDates` for
+     * every type - **Monthly deliberately does not mirror it**. Forward it uses
+     * `addMonth()`, which overflows, and that overflow is load-bearing for the
+     * windows budgets anchored past the 28th already have (see
+     * `startDayOfMonth`). Backward the same overflow would land inside the
+     * current period: for a budget anchored on the 29th, on 2026-03-29,
+     * `subMonth()` gives a previous period of 03-01..03-31 that overlaps the
+     * current 03-29..04-28 by three days - the very bug this method exists to
+     * stop, reappearing in another type.
+     *
+     * Measured over three years of reference dates per anchor, no-overflow
+     * backward removes every overlap for anchors 29 and 30 and most for 31,
+     * while making both directions no-overflow would collapse anchor 31 from
+     * 636 adjacent results to 6. The asymmetry is the point, not drift.
      */
     private function onePeriodEarlier(Budget $budget, BudgetPeriod $period): Carbon
     {

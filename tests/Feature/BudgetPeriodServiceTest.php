@@ -425,3 +425,26 @@ test('getCurrentPeriod picks the on-grid window when two periods cover today', f
     expect($budget->getCurrentPeriod()->id)->toBe($onGrid->id)
         ->and($budget->getCurrentPeriod()->id)->not->toBe($spurious->id);
 });
+
+test('generatePreviousPeriod does not overlap a budget anchored past the 28th', function () {
+    Carbon::setTestNow(Carbon::parse('2026-03-29 09:00:00'));
+
+    $budget = Budget::factory()->create([
+        'user_id' => User::factory()->create(['onboarded_at' => now()])->id,
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 29,
+    ]);
+
+    $service = app(BudgetPeriodService::class);
+    $current = $service->generatePeriod($budget, 10000, Carbon::parse('2026-03-29'));
+    $previous = $service->generatePreviousPeriod($budget, $current);
+
+    // Its own test rather than a row in the adjacency dataset: the gap here is
+    // real and owned by the separate `startDayOfMonth` ceiling bug. What matters
+    // is that it does not overlap - stepping back with an overflowing
+    // `subMonth()` would return 03-01..03-31 over a current 03-29..04-28.
+    expect($current->start_date->toDateString())->toBe('2026-03-29')
+        ->and($previous->start_date->toDateString())->toBe('2026-02-01')
+        ->and($previous->end_date->toDateString())->toBe('2026-02-28')
+        ->and($previous->end_date->lt($current->start_date))->toBeTrue();
+});
