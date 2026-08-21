@@ -22,12 +22,19 @@ class TransactionFingerprint
      * Trade-off, the same one the positional-reference block below accepts:
      * with the reference gone, nothing distinguishes two genuinely identical
      * same-day transactions, so they collapse to one row. That is not
-     * hypothetical here — 227 groups of content-identical N26 rows exist in
-     * production (482 redundant rows), and roughly two thirds of them arrived
-     * inside a single API response, which is the bank stating a multiplicity we
-     * can no longer represent. Making both cases right needs occurrence-aware
-     * dedup in the consumer, which the `(account_id, dedup_fingerprint)` unique
-     * index forbids today; tracked as a follow-up.
+     * hypothetical here — production holds 230 groups of content-identical N26
+     * rows, and roughly two thirds of the redundant rows arrived inside a
+     * single API response, which is the bank stating a multiplicity we can no
+     * longer represent. Making both cases right needs occurrence-aware dedup in
+     * the consumer, which the `(account_id, dedup_fingerprint)` unique index
+     * forbids today; tracked as a follow-up.
+     *
+     * Note this changes the fingerprint of rows already stored, so the first
+     * sync after deploy does not recognise the ones whose key moved and imports
+     * one more copy of them. Bounded to the 3-day watermark overlap (30 live
+     * rows when this shipped) and one-off: rows written from here on carry the
+     * new value. Deliberately not repaired — the duplicates already in the
+     * database are being left for users to delete themselves.
      *
      * @var list<string>
      */
@@ -47,17 +54,6 @@ class TransactionFingerprint
 
     /** @var list<string> */
     private const array SETTLED_CARD_CODE = ['CCRD', 'POSD'];
-
-    /**
-     * The banks keyed on content alone, lowercased — the cleanup command scopes
-     * itself with this rather than repeating the list.
-     *
-     * @return list<string>
-     */
-    public static function unstableIdBanks(): array
-    {
-        return self::UNSTABLE_ID_BANKS;
-    }
 
     private static function hasUnstableIds(?string $bankName): bool
     {

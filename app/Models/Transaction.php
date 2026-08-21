@@ -35,7 +35,6 @@ use Illuminate\Support\Facades\DB;
  * @property ?string $ai_suggested_category_id
  * @property ?Carbon $ai_suggested_category_at
  * @property ?string $ai_model
- * @property ?array<string, mixed> $raw_data
  */
 class Transaction extends Model
 {
