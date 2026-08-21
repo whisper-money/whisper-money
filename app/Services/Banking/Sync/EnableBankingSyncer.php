@@ -188,15 +188,37 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         // window is built on has already moved past it.
         $resumeBefore = $account->transactions_paginate_before?->toDateString();
 
+        if ($resumeBefore !== null) {
+            $dateFrom = $this->resolveDateFrom($account, $resumeBefore, forceFullWindow: true);
+
+            // Unless the full window has since closed over the marker: it moves
+            // forward a day at a time, so a marker left alone for long enough
+            // ends up before the start of the history we ask for and there is
+            // nothing left to walk back to. Falling through to the routine
+            // window is what keeps that from inverting into date_from > date_to;
+            // the run that ends without being cut short clears the marker.
+            if ($dateFrom < $resumeBefore) {
+                return [$dateFrom, $resumeBefore, $this->strategyFor($dateFrom)];
+            }
+        }
+
         // A first sync on a connection that has synced before can only come from
         // the --full flag, an explicit request to re-pull the whole history.
-        $forceFullWindow = $resumeBefore !== null || ($isFirstSync && $connection->last_synced_at !== null);
+        $forceFullWindow = $isFirstSync && $connection->last_synced_at !== null;
 
-        $dateTo = $resumeBefore ?? now()->toDateString();
+        $dateTo = now()->toDateString();
         $dateFrom = $this->resolveDateFrom($account, $dateTo, $forceFullWindow);
-        $shortWindowStart = now()->subDays(self::SHORT_WINDOW_DAYS)->toDateString();
 
-        return [$dateFrom, $dateTo, $dateFrom < $shortWindowStart ? 'longest' : null];
+        return [$dateFrom, $dateTo, $this->strategyFor($dateFrom)];
+    }
+
+    /**
+     * The strategy a window starting this far back needs, or null when it is
+     * narrow enough to ask for plainly.
+     */
+    private function strategyFor(string $dateFrom): ?string
+    {
+        return $dateFrom < now()->subDays(self::SHORT_WINDOW_DAYS)->toDateString() ? 'longest' : null;
     }
 
     /**

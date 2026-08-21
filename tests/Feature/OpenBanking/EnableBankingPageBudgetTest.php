@@ -280,3 +280,30 @@ test('a budgeted bank walks its history across runs instead of re-reading the sa
         ->map(fn ($date) => $date->toDateString())->sort()->values()->all())
         ->toBe(['2026-06-07', '2026-06-08', '2026-06-09', '2026-06-10']);
 });
+
+test('a marker the full window has closed over is ignored instead of inverting the window', function () {
+    Carbon::setTestNow('2026-08-21 09:00:00');
+
+    $connection = enableBankingConnectionWithAccounts(1);
+
+    // Written when a year back still reached past it; a year back is now later.
+    $connection->accounts[0]->update(['transactions_paginate_before' => '2025-08-01']);
+
+    $window = null;
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(
+        function ($account, $dateFrom, $dateTo) use (&$window) {
+            $window = [$dateFrom, $dateTo];
+
+            return 0;
+        }
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andReturnNull();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->andReturnNull();
+
+    runSync(new SyncBankingConnectionJob($connection), $transactionSync, $balanceSync);
+
+    expect($window)->toBe(['2025-08-21', '2026-08-21']);
+});
