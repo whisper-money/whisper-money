@@ -248,3 +248,35 @@ test('the next run resumes the history at the marker instead of the watermark', 
 
     expect($window)->toBe([now()->subYear()->toDateString(), '2026-05-01']);
 });
+
+test('a budgeted bank walks its history across runs instead of re-reading the same pages', function () {
+    Carbon::setTestNow('2026-08-21 09:00:00');
+    config(['banking.transaction_page_budget' => ['default' => null, 'Metered Bank' => 2]]);
+
+    $connection = enableBankingConnectionWithAccounts(1);
+    $connection->update(['aspsp_name' => 'Metered Bank']);
+
+    $requests = [];
+    $provider = pagingProvider($requests, '2026-06-10');
+    $provider->shouldReceive('getBalances')->twice()->andReturn(['balances' => []]);
+    app()->instance(BankingProviderInterface::class, $provider);
+
+    // Two runs of the real syncer over the real transaction service, so the
+    // marker written by one is the window read by the next.
+    runSync(new SyncBankingConnectionJob($connection->refresh()));
+    runSync(new SyncBankingConnectionJob($connection->refresh()));
+
+    // Both runs reached the balances endpoint, which is the request Trade
+    // Republic never once made in a week of syncs (Mockery asserts the count).
+    // Run one took pages 1-2 of a window ending today; run two picked the
+    // history up at the date it stopped rather than at today's watermark, which
+    // is what a page cap without a marker would have done for ever.
+    expect($requests)->toHaveCount(4)
+        ->and($requests[0]['date_to'])->toBe('2026-08-21')
+        ->and($requests[2]['date_to'])->toBe('2026-06-09');
+
+    // And the older history the second run reached is actually in the database.
+    expect($connection->accounts[0]->transactions()->pluck('transaction_date')
+        ->map(fn ($date) => $date->toDateString())->sort()->values()->all())
+        ->toBe(['2026-06-07', '2026-06-08', '2026-06-09', '2026-06-10']);
+});
