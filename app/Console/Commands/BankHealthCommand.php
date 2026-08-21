@@ -201,7 +201,13 @@ class BankHealthCommand extends Command
      *
      * The join is deliberately raw rather than a relation: it must see the logs
      * of soft-deleted connections too, because a week of a bank's history should
-     * not disappear the moment one of its users disconnects.
+     * not disappear the moment one of its users disconnects one of them.
+     *
+     * A soft-deleted *owner* is the opposite case, and the reason `users` is
+     * joined at all. Nothing dispatches those connections, so their runs stopped
+     * when their owner left - and counting them would pad the evidence for this
+     * verdict with attempts nobody is making, which is precisely the defect
+     * matchesOutage() was missing its own whereHas('user') for.
      *
      * @return array<array-key, array{runs: int, succeeded_runs: int, failed_runs: int, last_success_at: CarbonInterface|null}>
      */
@@ -209,6 +215,8 @@ class BankHealthCommand extends Command
     {
         return BankingSyncLog::query()
             ->join('banking_connections', 'banking_connections.id', '=', 'banking_sync_logs.banking_connection_id')
+            ->join('users', 'users.id', '=', 'banking_connections.user_id')
+            ->whereNull('users.deleted_at')
             ->tap($this->matchesEnableBanking())
             ->whereIn('banking_sync_logs.status', [BankingSyncLogStatus::Success, BankingSyncLogStatus::Failed])
             ->where('banking_sync_logs.created_at', '>=', now()->subDays($this->historyDays()))
@@ -520,11 +528,14 @@ class BankHealthCommand extends Command
         if ($this->isDownInHistory($bank)) {
             $lastGoodSync = $bank['last_success_at'] instanceof CarbonInterface
                 ? 'the last one that worked was '.$bank['last_success_at']->diffForHumans()
-                : 'not one has worked in that whole window';
+                : 'not one of them has ever worked';
 
-            return "Not a single sync to it has worked lately: {$bank['failed_runs']} failed run(s) out of {$bank['runs']} in the last "
-                ."{$this->historyDays()} day(s), across {$bank['syncing']} connection(s) the scheduler is still retrying, from "
-                ."{$bank['live_users']} user(s); {$lastGoodSync}.";
+            // Two measurements, kept in separate sentences on purpose: the runs are
+            // every attempt in the window, the connections are the ones live right
+            // now, and they do not share a denominator.
+            return "Not a single sync to it has worked lately: {$bank['failed_runs']} of its {$bank['runs']} run(s) in the last "
+                ."{$this->historyDays()} day(s) failed, and {$lastGoodSync}. It still has {$bank['syncing']} connection(s) being "
+                ."retried against it, from {$bank['live_users']} user(s), and they are getting nothing.";
         }
 
         if ($this->isFullyDown($bank)) {

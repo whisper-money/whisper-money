@@ -359,6 +359,24 @@ test('does not blame a bank for the connections of users who deleted their accou
     Mail::assertNothingOutgoing();
 });
 
+test('does not pad a bank\'s failure history with runs from a deleted account', function () {
+    // The same contamination as the snapshot columns, one table over: nothing has
+    // dispatched the departed user's connection since they left, so counting its
+    // runs would let a bank be called broken on evidence nobody is producing.
+    $left = healthConnection('Half Abandoned Bank', ['last_synced_at' => now()->subDays(9)]);
+    failedRuns($left, 8);
+    $left->user->delete();
+
+    // One live connection, failing, but nowhere near a day's worth of cycles.
+    failedRuns(healthConnection('Half Abandoned Bank'), 2);
+
+    artisan('banking:health', ['--email' => true])
+        ->expectsOutputToContain('No bank is broken for everyone. Nothing to alert about.')
+        ->assertSuccessful();
+
+    Mail::assertNothingOutgoing();
+});
+
 test('reports a bank whose every run failed, on one user\'s evidence', function () {
     // Renta 4 Banco's shape: its balances answer, so the connection's clock keeps
     // being written and every snapshot column reads it as healthy, while its
@@ -373,8 +391,8 @@ test('reports a bank whose every run failed, on one user\'s evidence', function 
         ->and(alertedBanks()[0]['notify_command'])
         ->toBe('php artisan banking:notify-outage "Renta 4 Banco" --country=ES')
         ->and(alertedBanks()[0]['reason'])
-        ->toContain('4 failed run(s) out of 4 in the last 7 day(s)')
-        ->toContain('not one has worked in that whole window');
+        ->toContain('4 of its 4 run(s) in the last 7 day(s) failed')
+        ->toContain('not one of them has ever worked');
 });
 
 test('reports a bank still failing every run while some of its connections look fresh', function () {
@@ -391,7 +409,7 @@ test('reports a bank still failing every run while some of its connections look 
     artisan('banking:health', ['--email' => true])->assertSuccessful();
 
     expect(alertedBanks()[0]['reason'])
-        ->toContain('16 failed run(s) out of 17 in the last 7 day(s)')
+        ->toContain('16 of its 17 run(s) in the last 7 day(s) failed')
         ->toContain('the last one that worked was 4 days ago');
 });
 
