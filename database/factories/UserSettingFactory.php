@@ -25,6 +25,7 @@ class UserSettingFactory extends Factory
             'include_loans_in_net_worth_chart' => true,
             'include_real_estate_in_net_worth_chart' => true,
             'notify_on_bank_transactions_synced' => true,
+            'notify_on_inactive_no_bank' => true,
             'budget_notify_on_new_transaction' => false,
             'budget_notify_on_close_to_limit' => true,
             'budget_notify_on_over_limit' => true,
