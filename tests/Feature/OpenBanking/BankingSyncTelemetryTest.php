@@ -352,3 +352,28 @@ test('a sync from the scheduled sweep is recorded as scheduled', function () {
     expect($log->status)->toBe(BankingSyncLogStatus::Success)
         ->and($log->metadata['trigger'])->toBe('scheduled');
 });
+
+/**
+ * The deploy itself: jobs are already on the queue, serialized before $trigger
+ * existed. Promoting the property would bring them back with it uninitialized
+ * rather than Scheduled, and the first read - which is every branch of handle(),
+ * and failed() too - would throw instead of syncing.
+ */
+test('a job queued before the trigger existed still records, as scheduled', function () {
+    $connection = telemetryConnection();
+    fakeSuccessfulSync();
+
+    // Exactly what unserialize() does with an old payload: build the object
+    // without running the constructor, then restore only the keys it carries.
+    $job = (new ReflectionClass(SyncBankingConnectionJob::class))->newInstanceWithoutConstructor();
+    $job->__unserialize(['bankingConnection' => $connection, 'fullSync' => false]);
+
+    expect($job->trigger)->toBe(BankingSyncTrigger::Scheduled);
+
+    runSync(telemetryAttempt($job));
+
+    $log = BankingSyncLog::query()->where('banking_connection_id', $connection->id)->sole();
+
+    expect($log->status)->toBe(BankingSyncLogStatus::Success)
+        ->and($log->metadata['trigger'])->toBe('scheduled');
+});
