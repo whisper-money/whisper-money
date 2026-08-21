@@ -5,6 +5,8 @@ export interface BankingConnection {
     provider: string;
     aspsp_name: string;
     aspsp_country: string;
+    /** Null until `banking:backfill-aspsp-beta` has seen this connection. */
+    aspsp_beta?: boolean | null;
     status:
         | 'pending'
         | 'awaiting_mapping'
@@ -44,4 +46,7 @@ export interface EnableBankingInstitution {
     country: string;
     logo: string | null;
     maximum_consent_validity: number | null;
+    /** The provider's own "this connector is not stable yet" flag. Absent on
+     *  the providers we integrate natively, which have no such notion. */
+    beta?: boolean;
 }

@@ -1,3 +1,4 @@
+import { BetaConnectorBadge } from '@/components/open-banking/beta-connector';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
 import { ConnectionStatusBadge } from '@/components/open-banking/connection-status-badge';
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
@@ -224,8 +225,11 @@ export default function ConnectionsPage({ connections }: Props) {
                                 <Card key={connection.id}>
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <div className="space-y-1">
-                                            <CardTitle className="text-base">
+                                            <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                                                 {connection.aspsp_name}
+                                                {connection.aspsp_beta && (
+                                                    <BetaConnectorBadge />
+                                                )}
                                             </CardTitle>
                                             <CardDescription>
                                                 {connection.aspsp_country}{' '}
@@ -455,6 +459,13 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                     'An unexpected error occurred during sync.',
                                                                 )}
                                                         </p>
+                                                        {connection.aspsp_beta && (
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {__(
+                                                                    'This bank is still in beta at our banking provider, so it fails more often than others. Retrying usually helps.',
+                                                                )}
+                                                            </p>
+                                                        )}
                                                         <div className="flex flex-wrap items-center gap-3">
                                                             {hasAuthError(
                                                                 connection,

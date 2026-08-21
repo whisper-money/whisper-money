@@ -1,5 +1,9 @@
 import { BankLogo } from '@/components/bank-logo';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
+import {
+    BetaConnectorBadge,
+    BetaConnectorNotice,
+} from '@/components/open-banking/beta-connector';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -175,6 +179,9 @@ export function ConnectAccountDialog({
                                                     className="h-6 w-6"
                                                 />
                                                 <span>{institution.name}</span>
+                                                {institution.beta && (
+                                                    <BetaConnectorBadge />
+                                                )}
                                                 {isConnected && (
                                                     <Badge
                                                         variant="secondary"
@@ -245,6 +252,8 @@ export function ConnectAccountDialog({
                                     </div>
                                 </div>
                             </div>
+
+                            {selectedBank.beta && <BetaConnectorNotice />}
 
                             {isAlreadyConnected && (
                                 <ReplaceConnectionWarning
