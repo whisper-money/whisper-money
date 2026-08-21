@@ -146,3 +146,26 @@ test('transactions from other banks are left untouched', function () {
 
     expect($account->transactions()->count())->toBe(2);
 });
+
+test('the user filter scopes the run to that user', function () {
+    [, $mine] = n26AccountWithDuplicate();
+    [, $someoneElse] = n26AccountWithDuplicate();
+
+    $this->artisan('banking:dedupe-n26-transactions', [
+        '--apply' => true,
+        '--user' => $mine->user->email,
+    ])->assertSuccessful();
+
+    expect($mine->account->transactions()->count())->toBe(1)
+        ->and($someoneElse->account->transactions()->count())->toBe(2);
+});
+
+test('an unknown user email fails instead of running fleet-wide', function () {
+    n26AccountWithDuplicate();
+
+    $this->artisan('banking:dedupe-n26-transactions', ['--apply' => true, '--user' => 'nobody@example.com'])
+        ->expectsOutputToContain('not found')
+        ->assertFailed();
+
+    expect(Transaction::count())->toBe(2);
+});
