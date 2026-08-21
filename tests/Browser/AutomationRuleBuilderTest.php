@@ -156,7 +156,10 @@ it('can select different field types and operators', function () {
     $rule = AutomationRule::where('user_id', $user->id)->sole();
 
     // AmountInput speaks cents, the rule stores currency units: -5, not -500.
-    expect($rule->rules_json)->toBe(['<' => [['var' => 'amount'], -5]]);
+    // `rules_json` is persisted as a JSON string, and `equals` is the default
+    // operator for Amount since this test only changes the field.
+    expect(json_decode($rule->rules_json, true))
+        ->toBe(['==' => [['var' => 'amount'], -5]]);
 });
 
 it('can edit an existing rule with visual builder', function () {
