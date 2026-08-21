@@ -10,11 +10,64 @@ namespace App\Services\Banking;
 class TransactionFingerprint
 {
     /**
+     * Banks whose upstream id cannot identify a transaction, because they mint
+     * a new one every time they hand the same transaction over.
+     *
+     * N26 never sends `transaction_id` (null on all 7916 production rows) and
+     * has changed `entry_reference` three times in one month: v1 UUIDs minted
+     * per delivery until 2026-08-13, nothing at all from 2026-08-14, then v3
+     * UUIDs from 2026-08-19 whose stability across deliveries is unverified —
+     * duplicates were still arriving after that date. None of it is a key.
+     *
+     * Trade-off, the same one the positional-reference block below accepts:
+     * with the reference gone, nothing distinguishes two genuinely identical
+     * same-day transactions, so they collapse to one row. That is not
+     * hypothetical here — production holds 230 groups of content-identical N26
+     * rows, and roughly two thirds of the redundant rows arrived inside a
+     * single API response, which is the bank stating a multiplicity we can no
+     * longer represent. Making both cases right needs occurrence-aware dedup in
+     * the consumer, which the `(account_id, dedup_fingerprint)` unique index
+     * forbids today; tracked as a follow-up.
+     *
+     * Note this changes the fingerprint of rows already stored, so the first
+     * sync after deploy does not recognise the ones whose key moved and imports
+     * one more copy of them. Bounded to the 3-day watermark overlap (30 live
+     * rows when this shipped) and one-off: rows written from here on carry the
+     * new value. Deliberately not repaired — the duplicates already in the
+     * database are being left for users to delete themselves.
+     *
+     * @var list<string>
+     */
+    private const array UNSTABLE_ID_BANKS = ['n26'];
+
+    /**
+     * The un-posted form of a card payment, and the settled form of the same
+     * purchase. N26 delivers both, flipping this one content field in between;
+     * it is the only field that ever varies inside a duplicate group (verified
+     * across all 59 production groups whose code moves). Canonicalizing the
+     * pair keeps every other transaction code discriminating, where dropping
+     * the field would not.
+     *
+     * @var list<string>
+     */
+    private const array PENDING_CARD_CODE = ['MCRD', 'UPCT'];
+
+    /** @var list<string> */
+    private const array SETTLED_CARD_CODE = ['CCRD', 'POSD'];
+
+    private static function hasUnstableIds(?string $bankName): bool
+    {
+        return $bankName !== null && in_array(mb_strtolower($bankName), self::UNSTABLE_ID_BANKS, true);
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
-    public static function for(array $data): string
+    public static function for(array $data, ?string $bankName = null): string
     {
-        if (($data['transaction_id'] ?? null) !== null) {
+        $contentOnly = self::hasUnstableIds($bankName);
+
+        if (! $contentOnly && ($data['transaction_id'] ?? null) !== null) {
             return self::hash(['transaction_id', $data['transaction_id']]);
         }
 
@@ -34,7 +87,7 @@ class TransactionFingerprint
         // silent under-count over the systematic duplication it fixes. Fixing
         // both needs occurrence-aware dedup in the consumer (a schema change),
         // tracked as a follow-up.
-        if ($entryReference !== null && ! self::isPositionalReference($entryReference)) {
+        if (! $contentOnly && $entryReference !== null && ! self::isPositionalReference($entryReference)) {
             return self::hash(['entry_reference', $entryReference]);
         }
 
@@ -49,11 +102,33 @@ class TransactionFingerprint
             $data['debtor_account']['iban'] ?? '',
             $data['debtor_account']['other']['identification'] ?? '',
             $data['creditor_account']['other']['identification'] ?? '',
-            $data['bank_transaction_code']['code'] ?? '',
-            $data['bank_transaction_code']['sub_code'] ?? '',
+            ...($contentOnly ? self::canonicalTransactionCode($data) : self::transactionCode($data)),
             $data['reference_number'] ?? '',
             self::remittance($data['remittance_information'] ?? []),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<string>
+     */
+    private static function transactionCode(array $data): array
+    {
+        return [$data['bank_transaction_code']['code'] ?? '', $data['bank_transaction_code']['sub_code'] ?? ''];
+    }
+
+    /**
+     * The settled form of a card payment code, so the un-posted delivery of the
+     * same purchase hashes identically.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<string>
+     */
+    private static function canonicalTransactionCode(array $data): array
+    {
+        $code = self::transactionCode($data);
+
+        return $code === self::PENDING_CARD_CODE ? self::SETTLED_CARD_CODE : $code;
     }
 
     private static function isPositionalReference(string $reference): bool
