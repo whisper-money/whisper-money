@@ -91,10 +91,7 @@ class BackfillAspspBetaCommand extends Command
             $unique = array_unique($unknown);
 
             $this->warn(sprintf('%d left unstamped, no longer in the catalogue:', count($unique)));
-
-            foreach ($unique as $bank) {
-                $this->line("  {$bank}");
-            }
+            $this->line('  '.implode(PHP_EOL.'  ', $unique));
         }
 
         return self::SUCCESS;
