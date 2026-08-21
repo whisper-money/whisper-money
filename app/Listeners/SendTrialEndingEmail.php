@@ -5,8 +5,10 @@ namespace App\Listeners;
 use App\Jobs\Drip\SendTrialEndingEmailJob;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Cashier\Events\WebhookReceived;
+use Throwable;
 
 /**
  * Warns a trialling user three days before their card is charged for the first
@@ -30,10 +32,41 @@ class SendTrialEndingEmail
             return;
         }
 
-        $object = $event->payload['data']['object'] ?? [];
+        $job = $this->buildJob($event->payload['data']['object'] ?? []);
 
-        if (($object['cancel_at_period_end'] ?? false) === true) {
+        if ($job === null) {
             return;
+        }
+
+        $claim = $this->dedupeKey($event->payload);
+
+        if ($claim !== null && ! Cache::add($claim, true, now()->addHours(self::DEDUPE_TTL_HOURS))) {
+            return;
+        }
+
+        // Dispatched through the bus rather than the job's own static helper so
+        // a queue failure surfaces here instead of inside PendingDispatch's
+        // destructor, where the claim below could not be handed back.
+        try {
+            Bus::dispatch($job);
+        } catch (Throwable $exception) {
+            $this->release($claim);
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * Turn the subscription object into the email to send, or null when this
+     * subscription is not one to warn about: already set to cancel, missing the
+     * fields we quote to the user, or not a customer we know.
+     *
+     * @param  array<string, mixed>  $object
+     */
+    private function buildJob(array $object): ?SendTrialEndingEmailJob
+    {
+        if (($object['cancel_at_period_end'] ?? false) === true) {
+            return null;
         }
 
         $customerId = $this->stringOrNull($object['customer'] ?? null);
@@ -42,16 +75,12 @@ class SendTrialEndingEmail
         $amount = (int) ($price['unit_amount'] ?? $price['amount'] ?? 0);
 
         if ($customerId === null || ! is_int($trialEnd) || $amount <= 0) {
-            return;
+            return null;
         }
 
         $user = User::query()->where('stripe_id', $customerId)->first();
 
-        if ($user === null || $this->alreadyProcessed($event->payload)) {
-            return;
-        }
-
-        SendTrialEndingEmailJob::dispatch(
+        return $user === null ? null : new SendTrialEndingEmailJob(
             $user,
             CarbonImmutable::createFromTimestamp($trialEnd),
             $amount,
@@ -66,15 +95,22 @@ class SendTrialEndingEmail
      *
      * @param  array<string, mixed>  $payload
      */
-    private function alreadyProcessed(array $payload): bool
+    private function dedupeKey(array $payload): ?string
     {
         $id = $this->stringOrNull($payload['id'] ?? null);
 
-        if ($id === null) {
-            return false;
-        }
+        return $id === null ? null : 'trial-ending:stripe-event:'.$id;
+    }
 
-        return ! Cache::add('trial-ending:stripe-event:'.$id, true, now()->addHours(self::DEDUPE_TTL_HOURS));
+    /**
+     * Hand the event back if the dispatch never happened, so Stripe's
+     * redelivery gets another go rather than being silently swallowed.
+     */
+    private function release(?string $claim): void
+    {
+        if ($claim !== null) {
+            Cache::forget($claim);
+        }
     }
 
     private function stringOrNull(mixed $value): ?string

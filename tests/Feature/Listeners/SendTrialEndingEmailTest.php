@@ -5,6 +5,8 @@ use App\Listeners\SendTrialEndingEmail;
 use App\Mail\Drip\TrialEndingEmail;
 use App\Models\User;
 use App\Models\UserMailLog;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Cashier\Events\WebhookReceived;
 
@@ -140,4 +142,18 @@ test('the email states the amount from the payload, not a hardcoded price', func
             && str_contains($body, $mail->trialEndsAt->setTimezone($user->timezone)->isoFormat('LL'))
             && str_contains($body, '/settings/billing/portal');
     });
+});
+
+test('a failed dispatch hands the event back so Stripe can redeliver it', function () {
+    User::factory()->create(['stripe_id' => 'cus_123']);
+
+    $this->mock(Dispatcher::class)
+        ->shouldReceive('dispatch')
+        ->once()
+        ->andThrow(new RuntimeException('queue unavailable'));
+
+    expect(fn () => handleTrialWillEnd(trialWillEndPayload()))
+        ->toThrow(RuntimeException::class);
+
+    expect(Cache::has('trial-ending:stripe-event:evt_trial_1'))->toBeFalse();
 });
