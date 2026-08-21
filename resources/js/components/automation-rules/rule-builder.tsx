@@ -239,8 +239,10 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
  * that is what `buildJsonLogic` and the backend expect, while `AmountInput`
  * speaks cents.
  */
-function unitsToCents(value: string): number {
-    return Math.round(parseFloat(value) * 100) || 0;
+function currencyUnitsToCents(value: string): number {
+    const cents = Math.round(parseFloat(value) * 100);
+
+    return Number.isNaN(cents) ? 0 : cents;
 }
 
 interface ConditionRowProps {
@@ -258,8 +260,7 @@ function ConditionRow({
 }: ConditionRowProps) {
     const fieldConfig = FIELD_CONFIG[condition.field];
     const availableOperators = fieldConfig?.operators || [];
-    const currencyCode =
-        usePage<SharedData>().props.auth.user.currency_code || 'USD';
+    const currencyCode = usePage<SharedData>().props.auth.user.currency_code;
 
     const handleFieldChange = (field: string) => {
         const newFieldConfig = FIELD_CONFIG[field];
@@ -326,33 +327,31 @@ function ConditionRow({
                     </SelectContent>
                 </Select>
 
-                {showValueInput && isAmountField && (
+                {!showValueInput ? (
+                    <div className="hidden sm:flex sm:flex-1" />
+                ) : isAmountField ? (
                     <div className="w-full sm:flex-1">
                         <AmountInput
-                            value={unitsToCents(condition.value)}
-                            onChange={(valueInCents) =>
+                            value={currencyUnitsToCents(condition.value)}
+                            onChange={(valueInCents, isEmpty) =>
                                 onChange({
                                     ...condition,
-                                    // AmountInput renders 0 as an empty field, so
-                                    // 0 maps back to an empty value: a field the
-                                    // user never filled in must stay incomplete.
-                                    value:
-                                        valueInCents === 0
-                                            ? ''
-                                            : String(valueInCents / 100),
+                                    // A cleared field and a typed 0 both resolve
+                                    // to 0 cents; only the cleared one may blank
+                                    // the condition, or `amount < 0` would be
+                                    // impossible to express.
+                                    value: isEmpty
+                                        ? ''
+                                        : String(valueInCents / 100),
                                 })
                             }
                             currencyCode={currencyCode}
                             placeholder={__('Value')}
-                            className="w-full"
                             allowNegative
                         />
                     </div>
-                )}
-
-                {showValueInput && !isAmountField && (
+                ) : (
                     <Input
-                        type="text"
                         value={condition.value}
                         onChange={(e) =>
                             onChange({ ...condition, value: e.target.value })
@@ -360,10 +359,6 @@ function ConditionRow({
                         placeholder={__('Value')}
                         className="w-full sm:flex-1"
                     />
-                )}
-
-                {!showValueInput && (
-                    <div className="hidden sm:flex sm:flex-1" />
                 )}
 
                 <Button

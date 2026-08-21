@@ -7,7 +7,11 @@ import { __ } from '@/utils/i18n';
 
 interface AmountInputProps {
     value: number;
-    onChange: (valueInCents: number) => void;
+    /**
+     * `isEmpty` tells apart "the user cleared the field" from "the user typed a
+     * zero": both resolve to 0 cents, and some call sites need the difference.
+     */
+    onChange: (valueInCents: number, isEmpty: boolean) => void;
     currencyCode: string;
     disabled?: boolean;
     required?: boolean;
@@ -198,9 +202,13 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             }
         };
 
+        const commit = (text: string) => {
+            onChange(resolveCents(text), text.trim() === '');
+        };
+
         const handleBlur = () => {
             setIsFocused(false);
-            onChange(resolveCents(displayValue));
+            commit(displayValue);
         };
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,7 +217,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
 
         const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
-                onChange(resolveCents(displayValue));
+                commit(displayValue);
             }
         };
 
@@ -222,7 +230,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                 ? displayValue.replace('-', '')
                 : `-${displayValue}`;
             setDisplayValue(next);
-            onChange(resolveCents(next));
+            commit(next);
         };
 
         const isNegative = displayValue.trim().startsWith('-');

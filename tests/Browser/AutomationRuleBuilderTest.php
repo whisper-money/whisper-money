@@ -156,8 +156,7 @@ it('can select different field types and operators', function () {
     $rule = AutomationRule::where('user_id', $user->id)->sole();
 
     // AmountInput speaks cents, the rule stores currency units: -5, not -500.
-    expect(json_encode($rule->rules_json))->toContain('"amount"', '-5')
-        ->not->toContain('-500');
+    expect($rule->rules_json)->toBe(['<' => [['var' => 'amount'], -5]]);
 });
 
 it('can edit an existing rule with visual builder', function () {
