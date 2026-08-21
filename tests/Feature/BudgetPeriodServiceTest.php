@@ -394,3 +394,34 @@ test('generatePreviousPeriod hands back the period immediately before', function
     'monthly across a year boundary' => [BudgetPeriodType::Monthly, 1, '2026-01-15', '2025-12-01', '2025-12-31'],
     'yearly' => [BudgetPeriodType::Yearly, 1, '2026-08-20', '2025-01-01', '2025-12-31'],
 ]);
+
+test('getCurrentPeriod picks the on-grid window when two periods cover today', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $budget = Budget::factory()->create([
+        'user_id' => User::factory()->create(['onboarded_at' => now()])->id,
+        'period_type' => BudgetPeriodType::Biweekly,
+        'period_start_day' => 0,
+    ]);
+
+    // The shape every biweekly budget created before this fix carries: a
+    // spurious period starting a week early, overlapping the real one.
+    $spurious = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-08-09',
+        'end_date' => '2026-08-22',
+        'allocated_amount' => 10000,
+    ]);
+    $onGrid = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-08-16',
+        'end_date' => '2026-08-29',
+        'allocated_amount' => 10000,
+    ]);
+
+    // Unordered, MySQL hands back the earliest start first - the window the
+    // user never configured, and one `BudgetController::show` cannot navigate
+    // out of.
+    expect($budget->getCurrentPeriod()->id)->toBe($onGrid->id)
+        ->and($budget->getCurrentPeriod()->id)->not->toBe($spurious->id);
+});

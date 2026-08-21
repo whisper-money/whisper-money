@@ -32,8 +32,13 @@ class BudgetController extends Controller
         $budgets = $user
             ->budgets()
             ->with(['categories', 'labels', 'periods' => function ($query) {
+                // Same ordering as Budget::getCurrentPeriod, for the same
+                // reason: the card reads `periods[0]`, and where two periods
+                // cover today the earliest-starting one is the one the user
+                // never configured.
                 $query->where('start_date', '<=', today())
                     ->where('end_date', '>=', today())
+                    ->orderByDesc('start_date')
                     ->with(['budgetTransactions']);
             }])
             ->get();
