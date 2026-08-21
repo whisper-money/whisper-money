@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\assertDatabaseHas;
@@ -404,4 +405,46 @@ test('multiple budgets assign independently', function () {
         'transaction_id' => $transaction2->id,
         'budget_period_id' => $period1->id,
     ]);
+});
+
+test('a biweekly budget counts a spend in its previous period once, not twice', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    // Dated in the week the current period and its predecessor used to share:
+    // the current fortnight opens 2026-08-16, and the old reference date put the
+    // predecessor at 08-09..08-22.
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => '2026-08-18',
+        'amount' => -5000,
+    ]);
+
+    $this->actingAs($this->user)->post('/budgets', [
+        'name' => 'Fortnightly',
+        'period_type' => 'biweekly',
+        'period_start_day' => 0,
+        'category_ids' => [$category->id],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 100000,
+    ])->assertRedirect();
+
+    $this->artisan('queue:work --stop-when-empty');
+
+    // Scoped to the budget rather than to one period: the existing duplicate
+    // test counts within a single `budget_period_id`, which is exactly why a
+    // transaction sitting in two overlapping periods of the same budget went
+    // unnoticed. `BudgetService::create` hands both periods to the backfill.
+    $rows = BudgetTransaction::where('transaction_id', $transaction->id)
+        ->whereIn(
+            'budget_period_id',
+            $this->user->budgets()->first()->periods()->pluck('id'),
+        )
+        ->count();
+
+    expect($rows)->toBe(1);
+
+    Carbon::setTestNow();
 });

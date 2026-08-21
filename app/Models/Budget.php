@@ -77,11 +77,26 @@ class Budget extends Model
         return $this->hasMany(BudgetPeriod::class);
     }
 
+    /**
+     * The period covering today, if there is one.
+     *
+     * Ordered because more than one can cover today. Overlapping periods are
+     * not hypothetical - every biweekly budget created before the fix to
+     * `generatePreviousPeriod` has a pair, and a monthly budget anchored past
+     * the 28th can still produce one - and an unordered `first()` resolves to
+     * whatever MySQL returns first, which on the `(budget_id, start_date)`
+     * index is the *earliest* starting window. That is the wrong one: it is the
+     * period the user did not configure, and `BudgetController::show` cannot
+     * navigate out of it because its previous/next queries are strict
+     * comparisons that step over an overlapping sibling. Taking the latest
+     * start picks the period the chain actually continues from.
+     */
     public function getCurrentPeriod(): ?BudgetPeriod
     {
         return $this->periods()
             ->where('start_date', '<=', today())
             ->where('end_date', '>=', today())
+            ->orderByDesc('start_date')
             ->first();
     }
 
