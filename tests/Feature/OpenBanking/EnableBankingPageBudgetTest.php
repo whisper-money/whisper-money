@@ -2,6 +2,7 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
+use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Services\Banking\BalanceSyncService;
@@ -11,6 +12,7 @@ use Carbon\Carbon;
 use GuzzleHttp\Psr7\Response as PsrResponse;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response as ClientResponse;
+use Illuminate\Support\Facades\Queue;
 
 /**
  * A provider serving one transaction per page, newest first, a day older each
@@ -95,20 +97,41 @@ test('a run that paginates to the end owes nothing and leaves no marker', functi
     expect($account->transactions_paginate_before)->toBeNull();
 });
 
-test('a cut-short run that reached nothing older than it was asked for gives up instead of looping', function () {
+test('a cut-short run that reached nothing older steps over the day instead of looping on it', function () {
     $account = budgetedAccount();
     $account->update(['transactions_paginate_before' => '2026-06-03']);
     $requests = [];
 
     // The one page the budget allows is dated on the window's own end date, so
-    // the frontier cannot move and keeping the marker would re-request this
-    // same window every cycle.
+    // resuming there would re-request the same page every cycle and never reach
+    // the history behind it - which is how a day paginated more finely than the
+    // budget, or a run of pages carrying nothing older, would silently swallow
+    // the rest of the account's history.
     $service = new TransactionSyncService(
         pagingProvider($requests, '2026-06-03'),
         new TransactionDescriptionFormatter,
     );
 
     $service->sync($account, '2025-08-21', '2026-06-03', pageBudget: 1);
+
+    $account->refresh();
+    expect($account->transactions_paginate_before->toDateString())->toBe('2026-06-02');
+});
+
+test('a cut-short run over a window holding nothing at all owes no more history', function () {
+    $account = budgetedAccount();
+    $account->update(['transactions_paginate_before' => '2026-06-03']);
+
+    // Pages, and a continuation key, but no transactions in any of them: there
+    // is nothing behind this window to come back for.
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('getTransactions')->andReturn([
+        'transactions' => [],
+        'continuation_key' => 'more',
+    ]);
+
+    $service = new TransactionSyncService($provider, new TransactionDescriptionFormatter);
+    $service->sync($account, '2025-08-21', '2026-06-03', pageBudget: 2);
 
     $account->refresh();
     expect($account->transactions_paginate_before)->toBeNull();
@@ -305,5 +328,55 @@ test('a marker the full window has closed over is ignored instead of inverting t
 
     runSync(new SyncBankingConnectionJob($connection), $transactionSync, $balanceSync);
 
+    expect($window)->toBe(['2025-08-21', '2026-08-21']);
+});
+
+test('a run still owing history moves the email cutoff instead of announcing it as new', function () {
+    Queue::fake();
+    Carbon::setTestNow('2026-08-21 09:00:00');
+    config(['banking.transaction_page_budget' => ['default' => null, 'Metered Bank' => 2]]);
+
+    $connection = enableBankingConnectionWithAccounts(1);
+    $connection->update(['aspsp_name' => 'Metered Bank']);
+
+    $requests = [];
+    $provider = pagingProvider($requests, '2026-06-10');
+    $provider->shouldReceive('getBalances')->andReturn(['balances' => []]);
+    app()->instance(BankingProviderInterface::class, $provider);
+
+    runSync(new SyncBankingConnectionJob($connection->refresh()));
+
+    // The rows this run imported are dated June; the daily email keys on when a
+    // row was written, so sending it would report a backfill as today's news.
+    Queue::assertNotPushed(SendDailyBankTransactionsSyncedEmailJob::class);
+
+    $connection->refresh();
+    expect($connection->bank_transactions_email_cutoff_at->toDateTimeString())->toBe('2026-08-21 09:00:00');
+});
+
+test('a full resync re-pulls the whole history instead of resuming a leftover marker', function () {
+    Carbon::setTestNow('2026-08-21 09:00:00');
+
+    $connection = enableBankingConnectionWithAccounts(1);
+    $connection->accounts[0]->update(['transactions_paginate_before' => '2026-05-01']);
+
+    $window = null;
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(
+        function ($account, $dateFrom, $dateTo) use (&$window) {
+            $window = [$dateFrom, $dateTo];
+
+            return 0;
+        }
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andReturnNull();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->andReturnNull();
+
+    runSync(new SyncBankingConnectionJob($connection, fullSync: true), $transactionSync, $balanceSync);
+
+    // --full is an explicit request for everything; a marker left by a run the
+    // budget cut short must not quietly narrow it back down.
     expect($window)->toBe(['2025-08-21', '2026-08-21']);
 });

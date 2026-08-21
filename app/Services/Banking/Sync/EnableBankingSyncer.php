@@ -186,7 +186,13 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         // it stopped means ending the window there instead of at today - and
         // asking for the full history again, because the watermark the routine
         // window is built on has already moved past it.
-        $resumeBefore = $account->transactions_paginate_before?->toDateString();
+        //
+        // Until it drains, the account's window ends in the past, so its newest
+        // transactions wait for the backfill to finish. That is the accepted
+        // cost: the balance, which is what reads as zero today, is fetched on
+        // every one of those runs regardless. A --full resync is an explicit
+        // request to re-pull everything, so it starts over rather than resuming.
+        $resumeBefore = $isFirstSync ? null : $account->transactions_paginate_before?->toDateString();
 
         if ($resumeBefore !== null) {
             $dateFrom = $this->resolveDateFrom($account, $resumeBefore, forceFullWindow: true);
@@ -329,7 +335,12 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
      */
     private function notifyRunCompleted(BankingConnection $connection, bool $isFirstSync): void
     {
-        if ($isFirstSync) {
+        // A run still walking an account's history back is importing rows dated
+        // months ago, and the daily email keys on when a row was written rather
+        // than when it happened. Announcing those as today's news is the very
+        // thing the cutoff exists to prevent, so it moves with the backfill and
+        // the email waits until there is no history left owed.
+        if ($isFirstSync || $this->isBackfillingHistory($connection)) {
             $connection->update(['bank_transactions_email_cutoff_at' => now()]);
 
             return;
@@ -338,6 +349,17 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         if ($connection->user->canReceiveEmails()) {
             SendDailyBankTransactionsSyncedEmailJob::dispatch($connection->user, now()->toDateString());
         }
+    }
+
+    /**
+     * Whether any of this connection's accounts still owes history to a run the
+     * page budget cut short.
+     */
+    private function isBackfillingHistory(BankingConnection $connection): bool
+    {
+        return $connection->accounts->contains(
+            fn (Account $account) => $account->transactions_paginate_before !== null
+        );
     }
 
     /**

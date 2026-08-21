@@ -68,6 +68,10 @@ class TransactionSyncService
         // rows; daily balances are keyed by date), and strategy is dropped on
         // the narrowed retry so the explicit date_from is honoured rather than
         // overridden by "longest".
+        // `$pages` deliberately survives a narrowed retry: the budget counts the
+        // requests this run has made, not the ones this attempt has made, so a
+        // bank that refuses two windows before serving one cannot spend three
+        // budgets on a single account.
         while (true) {
             try {
                 $continuationKey = null;
@@ -171,14 +175,19 @@ class TransactionSyncService
      */
     private function recordPaginationFrontier(Account $account, bool $truncated, ?string $oldestSeen, string $dateTo): void
     {
-        $frontier = $truncated && $oldestSeen !== null && $oldestSeen < $dateTo ? $oldestSeen : null;
+        $frontier = $this->nextFrontier($truncated, $oldestSeen, $dateTo);
         $current = $account->transactions_paginate_before?->toDateString();
 
         if ($truncated) {
             Log::warning('Transaction page budget stopped the sync early', [
                 'account_id' => $account->id,
                 'date_to' => $dateTo,
+                'oldest_reached' => $oldestSeen,
                 'resume_before' => $frontier,
+                // The run spent its whole budget without getting past the date
+                // it was already asked for, so the day it stopped on is stepped
+                // over rather than re-read. Worth seeing in the logs.
+                'skipped_remainder_of' => $oldestSeen !== null && $oldestSeen >= $dateTo ? $dateTo : null,
             ]);
         }
 
@@ -187,6 +196,39 @@ class TransactionSyncService
         }
 
         $account->update(['transactions_paginate_before' => $frontier]);
+    }
+
+    /**
+     * Where the next run picks this account's history up, or null when there is
+     * nothing left to pick up.
+     *
+     * Every branch returns either null or a date strictly earlier than the one
+     * this run was asked for, which is what makes the walk terminate: a run
+     * either finishes the history, finds none, or moves the frontier back by at
+     * least a day.
+     */
+    private function nextFrontier(bool $truncated, ?string $oldestSeen, string $dateTo): ?string
+    {
+        // Paginated to the end, or the window held nothing at all: nothing owed.
+        if (! $truncated || $oldestSeen === null) {
+            return null;
+        }
+
+        // The run walked back past the end of the window it was given, which is
+        // the ordinary case: resume from the oldest date it reached.
+        if ($oldestSeen < $dateTo) {
+            return $oldestSeen;
+        }
+
+        // The budget ran out without the run getting past that date at all -
+        // pages carrying nothing older, or a single day with more pages than the
+        // budget. Resuming at the same date would re-read the same pages every
+        // cycle and never reach the history behind them, so step over the day.
+        //
+        // ponytail: costs the tail of that one day. Persisting the provider's
+        // own continuation key would resume exactly instead, if a bank ever
+        // turns out to page a single day more finely than its budget allows.
+        return Carbon::parse($dateTo)->subDay()->toDateString();
     }
 
     /**
