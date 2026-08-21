@@ -2,6 +2,8 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingSyncLogStatus;
+use App\Enums\BankingSyncTrigger;
+use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
@@ -11,6 +13,7 @@ use Illuminate\Contracts\Queue\Job;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 /**
  * The shape production keeps producing: one bank, one account, transactions the
@@ -45,7 +48,16 @@ function telemetryConnection(int $accounts = 1): BankingConnection
  */
 function telemetryJob(BankingConnection $connection): SyncBankingConnectionJob
 {
-    $job = new SyncBankingConnectionJob($connection);
+    return telemetryAttempt(new SyncBankingConnectionJob($connection));
+}
+
+/**
+ * Give an existing job the queue-job mock its attempts() reads, on its final
+ * attempt so the reporting gate is open. Used directly when the job under test
+ * has to be the instance a controller actually dispatched, trigger included.
+ */
+function telemetryAttempt(SyncBankingConnectionJob $job): SyncBankingConnectionJob
+{
     $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(3);
     $job->job->shouldReceive('isReleased')->andReturn(false);
@@ -122,6 +134,17 @@ function fakeRateLimitedBalances(string $message = 'Too many requests', array $h
             'code' => 429,
             'message' => $message,
         ], 429, $headers),
+    ]);
+}
+
+/**
+ * Nothing goes wrong: the bank serves transactions and balances.
+ */
+function fakeSuccessfulSync(): void
+{
+    Http::fake([
+        'api.enablebanking.com/accounts/*/transactions*' => Http::response(telemetryTransactionsPayload()),
+        'api.enablebanking.com/accounts/*/balances*' => Http::response(['balances' => []]),
     ]);
 }
 
@@ -277,4 +300,55 @@ test('a successful payload never reaches the logs', function () {
 
     expect($serialized)->not->toContain('DE89370400440532013000')
         ->and($serialized)->not->toContain('response_body');
+});
+
+/**
+ * Which trigger dispatched a sync is the one thing the sync logs never recorded,
+ * so "how many manual syncs per user per day" - the number a rate limit on the
+ * Sync button has to be sized against - could only be approximated by the hour
+ * a row landed in. These two pin down the pair that matters: the button and the
+ * scheduled sweep it has to be told apart from.
+ */
+test('a sync started from the Sync button is recorded as manual', function () {
+    $connection = telemetryConnection();
+    fakeSuccessfulSync();
+    Queue::fake();
+
+    $this->actingAs($connection->user)
+        ->post("/settings/connections/{$connection->id}/sync")
+        ->assertSessionHas('success');
+
+    // The instance the controller actually dispatched, not a rebuilt one, so the
+    // trigger under test is the one that travelled through the queue payload.
+    /** @var SyncBankingConnectionJob $dispatched */
+    $dispatched = Queue::pushed(SyncBankingConnectionJob::class)->sole();
+
+    expect($dispatched->trigger)->toBe(BankingSyncTrigger::Manual);
+
+    runSync(telemetryAttempt($dispatched));
+
+    $log = BankingSyncLog::query()->where('banking_connection_id', $connection->id)->sole();
+
+    expect($log->status)->toBe(BankingSyncLogStatus::Success)
+        ->and($log->metadata['trigger'])->toBe('manual');
+});
+
+test('a sync from the scheduled sweep is recorded as scheduled', function () {
+    $connection = telemetryConnection();
+    fakeSuccessfulSync();
+    Queue::fake();
+
+    (new SyncAllBankingConnectionsJob)->handle();
+
+    /** @var SyncBankingConnectionJob $dispatched */
+    $dispatched = Queue::pushed(SyncBankingConnectionJob::class)->sole();
+
+    expect($dispatched->trigger)->toBe(BankingSyncTrigger::Scheduled);
+
+    runSync(telemetryAttempt($dispatched));
+
+    $log = BankingSyncLog::query()->where('banking_connection_id', $connection->id)->sole();
+
+    expect($log->status)->toBe(BankingSyncLogStatus::Success)
+        ->and($log->metadata['trigger'])->toBe('scheduled');
 });

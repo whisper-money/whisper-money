@@ -362,7 +362,7 @@ test('expired session marks the connection expired and emails the user instead o
 
     $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
     expect($log->status)->toBe(BankingSyncLogStatus::Skipped);
-    expect($log->metadata)->toBe(['reason' => 'expired']);
+    expect($log->metadata)->toMatchArray(['trigger' => 'scheduled', 'reason' => 'expired']);
 
     Mail::assertQueued(BankingConnectionExpiredEmail::class, function (BankingConnectionExpiredEmail $mail) use ($user, $connection) {
         return $mail->user->is($user)
@@ -684,7 +684,7 @@ test('skipped sync creates a skipped log entry and emails user for newly expired
     expect($connection->status)->toBe(BankingConnectionStatus::Expired);
     expect($log)->not->toBeNull();
     expect($log->status)->toBe(BankingSyncLogStatus::Skipped);
-    expect($log->metadata)->toBe(['reason' => 'expired']);
+    expect($log->metadata)->toMatchArray(['trigger' => 'scheduled', 'reason' => 'expired']);
 
     Mail::assertQueued(BankingConnectionExpiredEmail::class, function (BankingConnectionExpiredEmail $mail) use ($user, $connection) {
         return $mail->user->is($user)

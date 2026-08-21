@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Contracts\BankingConnectionSyncer;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
+use App\Enums\BankingSyncTrigger;
 use App\Exceptions\Banking\CarriesBankingOperation;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
@@ -83,9 +84,20 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         'X-RateLimit-Reset',
     ];
 
+    /**
+     * @param  BankingSyncTrigger  $trigger  Who asked for this sync. Third and
+     *                                       last because callers pass $fullSync
+     *                                       positionally; a constructor property
+     *                                       survives serialization, so failed()
+     *                                       can read it off its fresh instance
+     *                                       and an in-flight payload written
+     *                                       before this existed unserializes to
+     *                                       the default.
+     */
     public function __construct(
         public BankingConnection $bankingConnection,
         public bool $fullSync = false,
+        public BankingSyncTrigger $trigger = BankingSyncTrigger::Scheduled,
     ) {}
 
     public function uniqueId(): string
@@ -415,7 +427,9 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'duration_ms' => $startTime === null
                 ? null
                 : (int) round((microtime(true) - $startTime) * 1000),
-            'metadata' => $metadata,
+            // On every row, including the ones that carry nothing else, so the
+            // trigger can be counted without a join or a null branch.
+            'metadata' => ['trigger' => $this->trigger->value, ...($metadata ?? [])],
             'created_at' => now(),
         ]);
     }

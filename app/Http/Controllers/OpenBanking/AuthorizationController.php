@@ -5,6 +5,7 @@ namespace App\Http\Controllers\OpenBanking;
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -240,7 +241,7 @@ class AuthorizationController extends Controller
 
         $this->refreshAccountIds($connection, $sessionData['accounts']);
 
-        SyncBankingConnectionJob::dispatch($connection);
+        SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Reconnect);
 
         return $this->finishRedirect('settings.connections.index', [], 'success', __('Bank account reconnected successfully.'));
     }
@@ -265,7 +266,7 @@ class AuthorizationController extends Controller
 
         if (! $user->isOnboarded()) {
             $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
-            SyncBankingConnectionJob::dispatch($connection);
+            SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Connect);
 
             return $this->finishRedirect('onboarding', ['step' => 'create-account'], 'success', 'Bank account connected successfully.');
         }
