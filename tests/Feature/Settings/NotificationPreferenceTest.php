@@ -82,6 +82,37 @@ test('bank transactions notification preference is shared with the notifications
     $response->assertInertia(fn ($page) => $page->where('notifyOnBankTransactionsSynced', false));
 });
 
+test('the inactive-no-bank reminder can be turned off', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch(route('notifications.update'), [
+            'notifications' => ['inactive_no_bank' => false],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($user->fresh()->setting->notify_on_inactive_no_bank)->toBeFalse();
+});
+
+test('the inactive-no-bank reminder defaults to true when no setting exists', function () {
+    $user = User::factory()->create();
+
+    expect($user->setting)->toBeNull();
+    expect($user->wantsInactiveNoBankEmail())->toBeTrue();
+});
+
+test('the inactive-no-bank preference is shared with the notifications page', function () {
+    $user = User::factory()->create();
+    UserSetting::factory()->for($user)->create([
+        'notify_on_inactive_no_bank' => false,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('notifications.index'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->where('notifyOnInactiveNoBank', false));
+});
+
 test('budget notification defaults can be updated', function () {
     $user = User::factory()->create();
 

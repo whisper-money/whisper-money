@@ -43,6 +43,7 @@ interface BudgetRow {
 
 interface Props {
     notifyOnBankTransactionsSynced: boolean;
+    notifyOnInactiveNoBank: boolean;
     budgetDefaults: Record<BudgetToggleKey, boolean>;
     budgets: BudgetRow[];
 }
@@ -75,24 +76,38 @@ const patchOptions = { preserveScroll: true, preserveState: true } as const;
 
 export default function Notifications({
     notifyOnBankTransactionsSynced,
+    notifyOnInactiveNoBank,
     budgetDefaults,
     budgets,
 }: Props) {
-    const patchBankTransactions = (checked: boolean) => {
+    const patchPreference = (key: string, checked: boolean) => {
         router.patch(
             update().url,
-            { notifications: { bank_transactions_synced: checked } },
+            { notifications: { [key]: checked } },
             patchOptions,
         );
     };
 
-    const patchDefault = (defaultKey: string, checked: boolean) => {
-        router.patch(
-            update().url,
-            { notifications: { [defaultKey]: checked } },
-            patchOptions,
-        );
-    };
+    const emailToggles = [
+        {
+            id: 'notify-on-bank-transactions-synced',
+            preferenceKey: 'bank_transactions_synced',
+            checked: notifyOnBankTransactionsSynced,
+            label: __('New transactions from connected banks'),
+            description: __(
+                'Receive an email when new transactions are imported from your connected banks. Sent at most once a day.',
+            ),
+        },
+        {
+            id: 'notify-on-inactive-no-bank',
+            preferenceKey: 'inactive_no_bank',
+            checked: notifyOnInactiveNoBank,
+            label: __('Reminders when no bank is connected'),
+            description: __(
+                'Receive a weekly email reminding you to import transactions while you have no bank connected.',
+            ),
+        },
+    ];
 
     const patchBudget = (id: UUID, key: BudgetToggleKey, checked: boolean) => {
         router.patch(updateBudget(id).url, { [key]: checked }, patchOptions);
@@ -111,26 +126,29 @@ export default function Notifications({
                         )}
                     />
 
-                    <div className="flex items-start gap-3">
-                        <Checkbox
-                            id="notify-on-bank-transactions-synced"
-                            defaultChecked={notifyOnBankTransactionsSynced}
-                            onCheckedChange={(checked) =>
-                                patchBankTransactions(checked === true)
-                            }
-                            className="mt-0.5"
-                        />
-                        <div className="grid gap-1">
-                            <Label htmlFor="notify-on-bank-transactions-synced">
-                                {__('New transactions from connected banks')}
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                                {__(
-                                    'Receive an email when new transactions are imported from your connected banks. Sent at most once a day.',
-                                )}
-                            </p>
+                    {emailToggles.map((toggle) => (
+                        <div key={toggle.id} className="flex items-start gap-3">
+                            <Checkbox
+                                id={toggle.id}
+                                defaultChecked={toggle.checked}
+                                onCheckedChange={(checked) =>
+                                    patchPreference(
+                                        toggle.preferenceKey,
+                                        checked === true,
+                                    )
+                                }
+                                className="mt-0.5"
+                            />
+                            <div className="grid gap-1">
+                                <Label htmlFor={toggle.id}>
+                                    {toggle.label}
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                    {toggle.description}
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    ))}
 
                     <div className="space-y-4">
                         <div>
@@ -179,7 +197,7 @@ export default function Notifications({
                                                     onCheckedChange={(
                                                         checked,
                                                     ) =>
-                                                        patchDefault(
+                                                        patchPreference(
                                                             column.defaultKey,
                                                             checked === true,
                                                         )

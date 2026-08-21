@@ -39,7 +39,8 @@ class SendInactiveNoBankEmailJob extends SendDripEmailJob
 
     protected function shouldSend(): bool
     {
-        return $this->user->last_active_at?->toDateString() === $this->dormantOn
+        return $this->user->wantsInactiveNoBankEmail()
+            && $this->user->last_active_at?->toDateString() === $this->dormantOn
             && ! $this->user->bankingConnections()->exists();
     }
 }

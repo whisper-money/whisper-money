@@ -20,4 +20,8 @@
 {{ __('Best,') }}<br>
 {{ __('Víctor & Álvaro') }}<br>
 {{ __('Founders of Whisper Money') }}
+
+<x-slot:subcopy>
+{!! __('Don\'t want these emails? Manage notifications in [notification settings](:url).', ['url' => route('notifications.index', $emailUtm + ['utm_content' => 'notification-settings'])]) !!}
+</x-slot:subcopy>
 </x-mail::message>

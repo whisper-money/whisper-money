@@ -6,6 +6,7 @@ use App\Mail\Drip\InactiveNoBankEmail;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserMailLog;
+use App\Models\UserSetting;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 
@@ -156,6 +157,37 @@ it('does not send once the user has come back', function () {
 
     Mail::assertNothingQueued();
     expect(UserMailLog::where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('does not send when the user turned the reminder off', function () {
+    Mail::fake();
+
+    $user = dormantUser();
+    UserSetting::factory()->for($user)->create(['notify_on_inactive_no_bank' => false]);
+
+    (new SendInactiveNoBankEmailJob($user, $user->last_active_at->toDateString()))->handle();
+
+    Mail::assertNothingQueued();
+    expect(UserMailLog::where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('still sends when the user has no settings row at all', function () {
+    Mail::fake();
+
+    $user = dormantUser();
+
+    expect($user->setting)->toBeNull();
+
+    (new SendInactiveNoBankEmailJob($user, $user->last_active_at->toDateString()))->handle();
+
+    Mail::assertQueued(InactiveNoBankEmail::class);
+});
+
+it('links to the notification settings so the user can opt out', function () {
+    $html = (new InactiveNoBankEmail(User::factory()->make()))->render();
+
+    expect($html)->toContain(route('notifications.index').'?')
+        ->toContain('utm_content=notification-settings');
 });
 
 it('renders the email in the user locale', function () {
