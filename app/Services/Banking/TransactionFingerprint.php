@@ -11,12 +11,13 @@ class TransactionFingerprint
 {
     /**
      * Banks that key the same transaction differently on each delivery, so no
-     * upstream id identifies it. N26 delivers a card payment twice — once
-     * un-posted, once settled — minting a fresh `entry_reference` UUID each
-     * time (and since 2026-08-14 sending none at all), and flipping
-     * `bank_transaction_code` from MCRD/UPCT to CCRD/POSD on settlement. Every
-     * other field is byte-identical between the two, so keying on either the
-     * reference or a hash that includes the code imports the transaction twice.
+     * upstream id identifies it. N26 mints a fresh `entry_reference` UUID every
+     * time it hands us a transaction — the settled copy of a card payment, the
+     * same row on another page, a narrowed retry — and since 2026-08-14 sends
+     * none at all. It also flips `bank_transaction_code` from MCRD/UPCT to
+     * CCRD/POSD when a card payment settles, which is the one content field
+     * that moves; every other field is byte-identical. So both the id key and
+     * a code-sensitive content hash miss, and the transaction imports twice.
      * For these banks we hash content only, with the transaction code left out.
      *
      * @var list<string>
