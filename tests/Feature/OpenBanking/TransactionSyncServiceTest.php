@@ -850,3 +850,134 @@ test('sync dedupes the N26 settled copy of a card payment it already imported as
     expect($service->sync($account, '2026-08-06', '2026-08-10'))->toBe(0);
     expect($account->transactions()->count())->toBe(1);
 });
+
+test('sync skips transactions that have not settled', function (string $status) {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-pending',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['Unsettled purchase'],
+                    'status' => $status,
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+
+    expect($created)->toBe(0);
+    expect($account->transactions()->count())->toBe(0);
+})->with([
+    'pending' => 'PDNG',
+    'hold' => 'HOLD',
+    'scheduled' => 'SCHD',
+    'cancelled' => 'CNCL',
+    'rejected' => 'RJCT',
+]);
+
+test('sync imports booked and unknown-status transactions', function (?string $status) {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $payload = [
+        'transaction_id' => 'txn-booked',
+        'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-01-15',
+        'remittance_information' => ['Settled purchase'],
+    ];
+
+    if ($status !== null) {
+        $payload['status'] = $status;
+    }
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [$payload],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+
+    expect($created)->toBe(1);
+    expect($account->transactions()->count())->toBe(1);
+})->with([
+    'booked' => 'BOOK',
+    'other' => 'OTHR',
+    'absent' => null,
+]);
+
+test('sync waits for the booked copy of a purchase it first saw as pending', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    // Same card purchase delivered twice by one bank: first as an authorisation
+    // hold with its own description shape, later settled with different content
+    // and amount (forex rounding). Only the settled form is real money movement.
+    $pending = [
+        'entry_reference' => 'hold-ref-1',
+        'transaction_amount' => ['amount' => '13.80', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2026-08-20',
+        'status' => 'PDNG',
+        'creditor' => ['name' => 'GITHUB'],
+        'remittance_information' => ['VISA Debitkartenumsatz vom 20.08.2026 GITHUB'],
+    ];
+
+    $settled = [
+        'entry_reference' => 'settled-ref-1',
+        'transaction_amount' => ['amount' => '13.82', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2026-08-21',
+        'status' => 'BOOK',
+        'creditor' => ['name' => 'GITHUB INC'],
+        'remittance_information' => ['Debitk. GITHUB +18774484820 US'],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->twice()
+        ->andReturn(
+            ['transactions' => [$pending], 'continuation_key' => null],
+            ['transactions' => [$settled], 'continuation_key' => null],
+        );
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+
+    expect($service->sync($account, '2026-08-18', '2026-08-22'))->toBe(0);
+    expect($service->sync($account, '2026-08-18', '2026-08-22'))->toBe(1);
+
+    expect($account->transactions()->count())->toBe(1);
+
+    $stored = $account->transactions()->first();
+    expect($stored->amount)->toBe(-1382);
+    expect($stored->raw_data['status'])->toBe('BOOK');
+});

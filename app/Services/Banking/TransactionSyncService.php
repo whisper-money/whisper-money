@@ -22,6 +22,24 @@ class TransactionSyncService
      */
     private const array WRONG_PERIOD_LOOKBACK_DAYS = [90, 30, 7];
 
+    /**
+     * Enable Banking statuses describing a transaction that has not settled:
+     * PDNG expected, HOLD card authorisation hold, SCHD scheduled, CNCL
+     * cancelled, RJCT rejected. Banks deliver a purchase as one of these
+     * first and re-send it later as BOOK with different content (description,
+     * amount, codes), so importing the un-settled form guarantees a duplicate
+     * when the settled form arrives.
+     *
+     * Skipped here rather than via the API's own `transaction_status` query
+     * parameter because not every ASPSP populates `status`; filtering
+     * server-side risks empty responses from banks that never send it.
+     * Statuses absent from this list - BOOK, OTHR, or no field at all -
+     * import as before.
+     *
+     * @var list<string>
+     */
+    private const array UNSETTLED_TRANSACTION_STATUSES = ['PDNG', 'HOLD', 'SCHD', 'CNCL', 'RJCT'];
+
     public function __construct(
         private BankingProviderInterface $provider,
         private TransactionDescriptionFormatter $descriptionFormatter,
@@ -269,6 +287,10 @@ class TransactionSyncService
      */
     private function importTransaction(Account $account, array $data, ?string $bankName, array &$knownFingerprints, array &$knownExternalIds): bool
     {
+        if (in_array($data['status'] ?? null, self::UNSETTLED_TRANSACTION_STATUSES, true)) {
+            return false;
+        }
+
         $externalId = $data['transaction_id'] ?? $data['entry_reference'] ?? null;
         $fingerprint = TransactionFingerprint::for($data, $bankName);
 
