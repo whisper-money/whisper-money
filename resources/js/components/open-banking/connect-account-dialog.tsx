@@ -1,5 +1,9 @@
 import { BankLogo } from '@/components/bank-logo';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
+import {
+    BetaConnectorBadge,
+    BetaConnectorNotice,
+} from '@/components/open-banking/beta-connector';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -160,7 +164,7 @@ export function ConnectAccountDialog({
                                             <button
                                                 key={`${institution.name}-${institution.country}-${index}`}
                                                 type="button"
-                                                className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
+                                                className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
                                                     selectedBank?.name ===
                                                     institution.name
                                                         ? 'bg-accent'
@@ -175,6 +179,9 @@ export function ConnectAccountDialog({
                                                     className="h-6 w-6"
                                                 />
                                                 <span>{institution.name}</span>
+                                                {institution.beta && (
+                                                    <BetaConnectorBadge />
+                                                )}
                                                 {isConnected && (
                                                     <Badge
                                                         variant="secondary"
@@ -245,6 +252,8 @@ export function ConnectAccountDialog({
                                     </div>
                                 </div>
                             </div>
+
+                            {selectedBank.beta && <BetaConnectorNotice />}
 
                             {isAlreadyConnected && (
                                 <ReplaceConnectionWarning

@@ -12,6 +12,10 @@ import {
     StepScreen,
     stepControlClass,
 } from '@/components/onboarding/step-screen';
+import {
+    BetaConnectorBadge,
+    BetaConnectorNotice,
+} from '@/components/open-banking/beta-connector';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Input } from '@/components/ui/input';
 import {
@@ -153,6 +157,11 @@ export function ConnectAccountInline({
                                             />
                                         }
                                         title={institution.name}
+                                        badge={
+                                            institution.beta ? (
+                                                <BetaConnectorBadge />
+                                            ) : undefined
+                                        }
                                         trailing={
                                             isSelected ? (
                                                 <StepCheck />
@@ -209,6 +218,8 @@ export function ConnectAccountInline({
                             </p>
                         </div>
                     </div>
+
+                    {selectedBank.beta && <BetaConnectorNotice />}
 
                     {isAlreadyConnected && (
                         <ReplaceConnectionWarning

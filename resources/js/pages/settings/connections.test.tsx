@@ -230,4 +230,50 @@ describe('ConnectionsPage', () => {
             screen.getByRole('menuitem', { name: /sync now/i }),
         ).toBeInTheDocument();
     });
+
+    it('badges a connection whose bank is a beta connector', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({ id: 'c1', aspsp_beta: true }),
+                    makeConnection({ id: 'c2', aspsp_beta: false }),
+                    makeConnection({ id: 'c3' }),
+                ]}
+            />,
+        );
+
+        // Only the beta one, and neither the stable nor the not-yet-backfilled
+        // connection.
+        expect(screen.getAllByText('Beta')).toHaveLength(1);
+    });
+
+    it('explains a failing beta connector where the user reads the error', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        status: 'error',
+                        error_message: 'Something went wrong.',
+                        aspsp_beta: true,
+                    }),
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByText(/still in beta at our banking provider/i),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the beta explanation out of a healthy connection', () => {
+        render(
+            <ConnectionsPage
+                connections={[makeConnection({ aspsp_beta: true })]}
+            />,
+        );
+
+        expect(
+            screen.queryByText(/still in beta at our banking provider/i),
+        ).not.toBeInTheDocument();
+    });
 });

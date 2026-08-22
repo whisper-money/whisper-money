@@ -73,10 +73,11 @@ type Institution = {
     country: string;
     logo: string;
     maximum_consent_validity: null;
+    beta?: boolean;
 };
 
-function institution(name: string, logo = ''): Institution {
-    return { name, country: 'ES', logo, maximum_consent_validity: null };
+function institution(name: string, logo = '', beta = false): Institution {
+    return { name, country: 'ES', logo, maximum_consent_validity: null, beta };
 }
 
 async function reachBankStep(
@@ -213,5 +214,49 @@ describe('ConnectAccountDialog', () => {
         }
 
         expect(screen.getAllByText('Wise')).toHaveLength(1);
+    });
+
+    it('badges the banks the provider still calls beta', async () => {
+        await reachBankStep(
+            [],
+            [institution('Openbank', '', true), institution('BBVA')],
+        );
+
+        expect(
+            screen.getByRole('button', { name: /Openbank/ }),
+        ).toHaveTextContent('Beta');
+        expect(
+            screen.getByRole('button', { name: /^BBVA/ }),
+        ).not.toHaveTextContent('Beta');
+    });
+
+    it('spells the beta caveat out on the confirm step', async () => {
+        await reachBankStep(
+            [],
+            [institution('Openbank', '', true), institution('BBVA')],
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Openbank/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(
+            screen.getByText('This bank is still in beta'),
+        ).toBeInTheDocument();
+        // Still connectable: beta informs, it does not gate.
+        expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled();
+    });
+
+    it('says nothing about beta for a stable connector', async () => {
+        await reachBankStep(
+            [],
+            [institution('Openbank', '', true), institution('BBVA')],
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /^BBVA/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(
+            screen.queryByText('This bank is still in beta'),
+        ).not.toBeInTheDocument();
     });
 });

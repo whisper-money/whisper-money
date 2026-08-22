@@ -1102,3 +1102,33 @@ test('reconnect hands back the full scheduled retry budget', function () {
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
     expect($connection->consecutive_sync_failures)->toBe(0);
 });
+
+test('the beta flag from the bank picker is stored on the connection', function () {
+    $user = User::factory()->onboarded()->create();
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->twice()
+        ->andReturn([
+            'url' => 'https://bank.example.com/authorize',
+            'authorization_id' => 'auth-123',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->postJson('/open-banking/authorize', [
+        'aspsp_name' => 'Beta Bank',
+        'country' => 'ES',
+        'beta' => true,
+    ])->assertOk();
+
+    // A picker that says nothing (an older cached bundle) means "not beta",
+    // never "unknown": leaving it null would send the backfill command back
+    // over a row it already has an answer for.
+    $this->actingAs($user)->postJson('/open-banking/authorize', [
+        'aspsp_name' => 'Stable Bank',
+        'country' => 'ES',
+    ])->assertOk();
+
+    expect(BankingConnection::query()->where('aspsp_name', 'Beta Bank')->sole()->aspsp_beta)->toBeTrue()
+        ->and(BankingConnection::query()->where('aspsp_name', 'Stable Bank')->sole()->aspsp_beta)->toBeFalse();
+});

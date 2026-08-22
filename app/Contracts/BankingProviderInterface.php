@@ -7,7 +7,7 @@ interface BankingProviderInterface
     /**
      * Get available banking institutions for a country.
      *
-     * @return array<int, array{name: string, country: string, logo: string|null, maximum_consent_validity: int|null}>
+     * @return array<int, array{name: string, country: string, logo: string|null, maximum_consent_validity: int|null, beta: bool}>
      */
     public function getInstitutions(string $countryCode): array;
 

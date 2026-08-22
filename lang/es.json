@@ -2476,5 +2476,9 @@
     "Or connect your bank": "O conecta tu banco",
     "There are two ways to fix that, and both take a couple of minutes.": "Hay dos formas de arreglarlo y las dos te llevan un par de minutos.",
     "Connect a bank": "Conectar un banco",
-    "If something got in the way, your bank is missing, the import failed, or Whisper Money just is not what you were looking for, reply to this email and tell us. We read every reply ourselves.": "Si algo se ha puesto por medio, falta tu banco, la importación ha fallado o simplemente Whisper Money no es lo que buscabas, responde a este email y cuéntanoslo. Leemos todas las respuestas personalmente."
+    "If something got in the way, your bank is missing, the import failed, or Whisper Money just is not what you were looking for, reply to this email and tell us. We read every reply ourselves.": "Si algo se ha puesto por medio, falta tu banco, la importación ha fallado o simplemente Whisper Money no es lo que buscabas, responde a este email y cuéntanoslo. Leemos todas las respuestas personalmente.",
+    "Beta": "Beta",
+    "This bank is still in beta": "Este banco todavía está en beta",
+    "Our banking provider marks this connection as beta, so syncing can fail or pause more often than with other banks. It usually works, and you can reconnect or disconnect whenever you want.": "Nuestro proveedor bancario marca esta conexión como beta, así que la sincronización puede fallar o pausarse más a menudo que con otros bancos. Normalmente funciona, y puedes reconectar o desconectar cuando quieras.",
+    "This bank is still in beta at our banking provider, so it fails more often than others. Retrying usually helps.": "Este banco todavía está en beta en nuestro proveedor bancario, así que falla más a menudo que otros. Reintentar suele ayudar."
 }

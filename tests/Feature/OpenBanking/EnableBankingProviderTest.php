@@ -592,3 +592,23 @@ test('a 422 the bank did not raise about the period stays an application error',
     // logging closure was quietly defeating that.
     Log::shouldHaveReceived('log')->with('error', 'EnableBanking API error', Mockery::any())->once();
 });
+
+test('getInstitutions passes the provider beta flag through, defaulting to stable', function () {
+    Http::fake([
+        'api.enablebanking.com/aspsps*' => Http::response([
+            'aspsps' => [
+                ['name' => 'Openbank', 'country' => 'ES', 'beta' => true],
+                ['name' => 'BBVA', 'country' => 'ES', 'beta' => false],
+                ['name' => 'CaixaBank', 'country' => 'ES'],
+            ],
+        ]),
+    ]);
+
+    $institutions = collect(enableBankingProviderForTest()->getInstitutions('ES'))
+        ->keyBy('name');
+
+    expect($institutions['Openbank']['beta'])->toBeTrue()
+        ->and($institutions['BBVA']['beta'])->toBeFalse()
+        // A connector the provider says nothing about is not a beta connector.
+        ->and($institutions['CaixaBank']['beta'])->toBeFalse();
+});
