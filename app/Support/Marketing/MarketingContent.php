@@ -809,11 +809,10 @@ final class MarketingContent
                     ],
                 ],
                 [
-                    'name' => 'Kenji Saito',
-                    'gravatar' => '13440a401468cb05cf2c123d48202c1e',
+                    'name' => 'Verónica Betancourt',
                     'text' => [
-                        'en' => "Fast, clean, and a dark mode that doesn't fry my eyes at night. And it isn't trying to sell my data. That's everything I wanted.",
-                        'es' => 'Rápida, limpia y con un modo oscuro que no me destroza los ojos de noche. Y no intenta vender mis datos. Es justo todo lo que quería.',
+                        'en' => "I love the concept of the app. It's exactly the tool I had spent a long time looking for, precisely to manage my finances in one place and have a view of everything.",
+                        'es' => 'Me encanta el concepto de la app. Justo es una herramienta que venía buscando hace mucho, precisamente para manejar mis finanzas en un solo lugar y tener una vista de todo.',
                     ],
                 ],
             ],
