@@ -396,8 +396,11 @@ test('an inaccessible account is skipped and the rest of the connection still sy
         return 2;
     });
 
+    // Both accounts, including the dead one: balances come from a different
+    // endpoint and are fetched before the transactions call that refuses it.
     $balanceSync = Mockery::mock(BalanceSyncService::class);
-    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldReceive('sync')->twice();
+    $balanceSync->shouldReceive('calculateHistoricalBalances');
 
     $job = new SyncBankingConnectionJob($connection);
 
@@ -440,7 +443,8 @@ test('an account whose period the bank refuses is skipped, not crashed, and the 
     });
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
-    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldReceive('sync')->twice();
+    $balanceSync->shouldReceive('calculateHistoricalBalances');
 
     $job = new SyncBankingConnectionJob($connection);
 

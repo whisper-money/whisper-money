@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\BankingConnectionStatus;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\BankingConnection;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\Category;
@@ -13,6 +15,7 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -328,6 +331,44 @@ function runSync(
     }
 
     $job->handle(app(BankingConnectionSyncerFactory::class));
+}
+
+/**
+ * A connection whose accounts the bank serves unevenly. Production had a CaixaBank
+ * one in this shape for five weeks: account 1 importing transactions while accounts
+ * 2 and 3 sat frozen at the date of the last complete run.
+ */
+function enableBankingConnectionWithAccounts(int $count): BankingConnection
+{
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'last_synced_at' => now()->subDay(),
+        'consecutive_sync_failures' => 0,
+    ]);
+
+    for ($i = 1; $i <= $count; $i++) {
+        Account::factory()->connected()->create([
+            'user_id' => $user->id,
+            'banking_connection_id' => $connection->id,
+            'external_account_id' => "ext-{$i}",
+        ]);
+    }
+
+    return $connection;
+}
+
+function finalAttemptJobFor(BankingConnection $connection): SyncBankingConnectionJob
+{
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    return $job;
 }
 
 /**

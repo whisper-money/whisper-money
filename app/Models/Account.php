@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * @property AccountType $type
  * @property ?Carbon $archived_at
+ * @property ?Carbon $transactions_paginate_before
  */
 class Account extends Model
 {
@@ -37,6 +38,7 @@ class Account extends Model
         'encrypted',
         'banking_connection_id',
         'external_account_id',
+        'transactions_paginate_before',
         'iban',
         'linked_at',
         'position',
@@ -51,6 +53,7 @@ class Account extends Model
         'user_id',
         'space_id',
         'bank_id',
+        'transactions_paginate_before',
         'iban',
         'position',
         'hidden_on_dashboard',
@@ -85,6 +88,7 @@ class Account extends Model
             'type' => AccountType::class,
             'encrypted' => 'boolean',
             'linked_at' => 'datetime',
+            'transactions_paginate_before' => 'date',
             'position' => 'integer',
             'hidden_on_dashboard' => 'boolean',
             'archived_at' => 'datetime',

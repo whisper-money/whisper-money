@@ -30,15 +30,23 @@ class TransactionSyncService
     /**
      * Sync transactions for a connected account.
      *
+     * `$pageBudget` caps how many pages this run will fetch, for banks that
+     * meter a consent so tightly that unbounded pagination spends the whole
+     * allowance before the sync reaches anything else. The default is as many
+     * as it takes, which is what every bank without an entry in
+     * `config('banking.transaction_page_budget')` gets.
+     *
      * @return int Number of new transactions created
      */
-    public function sync(Account $account, string $dateFrom, string $dateTo, ?string $strategy = null, bool $saveDailyBalances = true): int
+    public function sync(Account $account, string $dateFrom, string $dateTo, ?string $strategy = null, bool $saveDailyBalances = true, int $pageBudget = PHP_INT_MAX): int
     {
         if (! $account->external_account_id) {
             return 0;
         }
 
         $created = 0;
+        $pages = 0;
+        $oldestSeen = null;
         $continuationKey = null;
         $dailyBalances = [];
         $bankName = $account->bank?->name;
@@ -60,6 +68,10 @@ class TransactionSyncService
         // rows; daily balances are keyed by date), and strategy is dropped on
         // the narrowed retry so the explicit date_from is honoured rather than
         // overridden by "longest".
+        // `$pages` deliberately survives a narrowed retry: the budget counts the
+        // requests this run has made, not the ones this attempt has made, so a
+        // bank that refuses two windows before serving one cannot spend three
+        // budgets on a single account.
         while (true) {
             try {
                 $continuationKey = null;
@@ -73,6 +85,8 @@ class TransactionSyncService
                         $strategy,
                     );
 
+                    $pages++;
+
                     foreach ($result['transactions'] as $transaction) {
                         if ($this->importTransaction($account, $transaction, $bankName, $knownFingerprints, $knownExternalIds)) {
                             $created++;
@@ -83,8 +97,9 @@ class TransactionSyncService
                         }
                     }
 
+                    $oldestSeen = $this->oldestDate($oldestSeen, $result['transactions']);
                     $continuationKey = $result['continuation_key'];
-                } while ($continuationKey);
+                } while ($continuationKey && $pages < $pageBudget);
 
                 break;
             } catch (WrongTransactionsPeriodException $e) {
@@ -110,14 +125,110 @@ class TransactionSyncService
             $this->saveDailyBalances($account, $dailyBalances);
         }
 
+        $this->recordPaginationFrontier($account, $continuationKey !== null, $oldestSeen, $dateTo);
+
         Log::info('Synced transactions', [
             'account_id' => $account->id,
             'new_transactions' => $created,
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
+            'pages' => $pages,
         ]);
 
         return $created;
+    }
+
+    /**
+     * The earliest booking date across a page and everything seen before it.
+     *
+     * Dates are 'Y-m-d', where string order is date order.
+     *
+     * @param  array<int, array<string, mixed>>  $transactions
+     */
+    private function oldestDate(?string $oldestSeen, array $transactions): ?string
+    {
+        foreach ($transactions as $transaction) {
+            $date = $this->parseDate($transaction);
+            $oldestSeen = $oldestSeen === null || $date < $oldestSeen ? $date : $oldestSeen;
+        }
+
+        return $oldestSeen;
+    }
+
+    /**
+     * Remember where a run the page budget cut short stopped, so the next one
+     * resumes there instead of re-reading the pages this one already has.
+     *
+     * The marker has to exist because the window start is derived from the
+     * *newest* transaction we hold, while the provider paginates
+     * **newest-first** - verified 2026-08-21 against production insert order,
+     * which runs newest to oldest on every bank we sync, Trade Republic
+     * included. A truncated run therefore holds the recent end of the window
+     * and moves that watermark to today, so without a marker the next run would
+     * ask for the same recent days again and the older history would never be
+     * reached.
+     *
+     * Cleared by a run that paginated to the end, and by one that was cut short
+     * without reaching anything older than it was already asked for: there is
+     * nothing further back to walk to, and keeping the marker would re-request
+     * the same window every cycle.
+     */
+    private function recordPaginationFrontier(Account $account, bool $truncated, ?string $oldestSeen, string $dateTo): void
+    {
+        $frontier = $this->nextFrontier($truncated, $oldestSeen, $dateTo);
+        $current = $account->transactions_paginate_before?->toDateString();
+
+        if ($truncated) {
+            Log::warning('Transaction page budget stopped the sync early', [
+                'account_id' => $account->id,
+                'date_to' => $dateTo,
+                'oldest_reached' => $oldestSeen,
+                'resume_before' => $frontier,
+                // The run spent its whole budget without getting past the date
+                // it was already asked for, so the day it stopped on is stepped
+                // over rather than re-read. Worth seeing in the logs.
+                'skipped_remainder_of' => $oldestSeen !== null && $oldestSeen >= $dateTo ? $dateTo : null,
+            ]);
+        }
+
+        if ($frontier === $current) {
+            return;
+        }
+
+        $account->update(['transactions_paginate_before' => $frontier]);
+    }
+
+    /**
+     * Where the next run picks this account's history up, or null when there is
+     * nothing left to pick up.
+     *
+     * Every branch returns either null or a date strictly earlier than the one
+     * this run was asked for, which is what makes the walk terminate: a run
+     * either finishes the history, finds none, or moves the frontier back by at
+     * least a day.
+     */
+    private function nextFrontier(bool $truncated, ?string $oldestSeen, string $dateTo): ?string
+    {
+        // Paginated to the end, or the window held nothing at all: nothing owed.
+        if (! $truncated || $oldestSeen === null) {
+            return null;
+        }
+
+        // The run walked back past the end of the window it was given, which is
+        // the ordinary case: resume from the oldest date it reached.
+        if ($oldestSeen < $dateTo) {
+            return $oldestSeen;
+        }
+
+        // The budget ran out without the run getting past that date at all -
+        // pages carrying nothing older, or a single day with more pages than the
+        // budget. Resuming at the same date would re-read the same pages every
+        // cycle and never reach the history behind them, so step over the day.
+        //
+        // ponytail: costs the tail of that one day. Persisting the provider's
+        // own continuation key would resume exactly instead, if a bank ever
+        // turns out to page a single day more finely than its budget allows.
+        return Carbon::parse($dateTo)->subDay()->toDateString();
     }
 
     /**

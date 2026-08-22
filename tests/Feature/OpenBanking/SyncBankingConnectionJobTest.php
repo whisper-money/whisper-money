@@ -413,8 +413,10 @@ test('an expired session during the balance call is not swallowed', function () 
         'external_account_id' => 'ext-123',
     ]);
 
+    // Balances are fetched before the transactions pagination, so a consent
+    // that has lapsed is known before a single page is requested.
     $transactionSync = Mockery::mock(TransactionSyncService::class);
-    $transactionSync->shouldReceive('sync')->once()->andReturn(0);
+    $transactionSync->shouldReceive('sync')->never();
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
     $balanceSync->shouldReceive('sync')->once()->andThrow(
