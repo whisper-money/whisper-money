@@ -980,11 +980,10 @@ final class MarketingContent
                     ],
                 ],
                 [
-                    'name' => 'Albert G.',
-                    'gravatar' => 'bb92a036f4feb9d12d0a70dd2d9a5c5f',
+                    'name' => 'Mark',
                     'text' => [
-                        'en' => 'The app is intuitive, functional, and a real help for managing my finances day to day. What stands out most is how much the free version offers — it really shows your commitment to your users. I’ll keep recommending it!',
-                        'es' => 'La aplicación es intuitiva, funcional y de gran ayuda para gestionar mis finanzas en el día a día. Lo que más destaca es la cantidad de opciones de la versión gratuita: demuestra vuestro compromiso con los usuarios. ¡Seguiré recomendándola!',
+                        'en' => "I've tried a load of apps that never quite fitted. Apps also scare me a little, because years ago I spent months entering data into one that was working nicely — I was on the paid version — and six months later it disappeared and I lost all the information, and above all the time. Yours looks very good.",
+                        'es' => 'He probado un montón de aplicaciones que no terminaban de cuadrar. Las aplicaciones también me dan un poco de miedo porque hace años estuve meses metiendo datos en una que iba guay, yo tenía versión de pago, pero a los 6 meses desapareció y perdí toda la información y sobre todo el tiempo. La vuestra pinta muy bien.',
                     ],
                 ],
             ],
