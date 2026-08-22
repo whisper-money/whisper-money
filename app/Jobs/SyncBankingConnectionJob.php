@@ -85,6 +85,15 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     ];
 
     /**
+     * Request query parameters worth keeping on a failed call. Allow-listed for
+     * the same reason the headers above are: a query string is a place a token
+     * could ride along into a log this project keeps in public.
+     *
+     * @var list<string>
+     */
+    private const array LOGGED_QUERY_PARAMS = ['date_from', 'date_to', 'strategy'];
+
+    /**
      * Who asked for this sync. A property rather than something handle() works
      * out, because it has to travel in the serialized payload: failed() is
      * called on a fresh instance the queue unserializes, and that is the run
@@ -491,7 +500,35 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             // with account data on an error status cannot empty it into the logs.
             'response_body' => Str::limit($failure->response->body(), 500),
             'rate_limit_headers' => $this->rateLimitHeaders($failure->response),
+            'request_window' => $this->requestWindow($failure->response),
         ];
+    }
+
+    /**
+     * The date range the failed call asked the bank for.
+     *
+     * The one fact this record was missing. A bank connector answers "Unknown
+     * error" and nothing else, so a run dying because the window was too wide
+     * looked exactly like a flaky bank - which is how one account went 75 days
+     * importing nothing before anyone could tell the two apart.
+     *
+     * @return array<string, string>
+     */
+    private function requestWindow(Response $response): array
+    {
+        parse_str($response->effectiveUri()?->getQuery() ?? '', $query);
+
+        $window = [];
+
+        foreach (self::LOGGED_QUERY_PARAMS as $name) {
+            $value = $query[$name] ?? null;
+
+            if (is_string($value) && $value !== '') {
+                $window[$name] = $value;
+            }
+        }
+
+        return $window;
     }
 
     /**

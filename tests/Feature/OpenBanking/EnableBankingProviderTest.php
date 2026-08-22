@@ -26,7 +26,7 @@ test('getTransactions wraps EnableBanking ASPSP errors as non-reportable transie
     $provider = enableBankingProviderForTest();
 
     try {
-        $provider->getTransactions('ext-123', '2025-05-05', '2026-05-05', strategy: 'longest');
+        $provider->getTransactions('ext-123', '2026-04-08', '2026-07-07');
     } catch (TransientBankingProviderException $e) {
         expect($e)->toBeInstanceOf(ShouldntReport::class)
             ->and($e->provider)->toBe('enablebanking')
@@ -247,6 +247,62 @@ test('getTransactions keeps unrelated 422 validation errors reportable', functio
 
     expect(fn () => $provider->getTransactions('ext-123', '2026-04-06', '2026-07-07'))
         ->toThrow(RequestException::class);
+});
+
+test('getTransactions reads an opaque bank connector failure on a year-wide window as a period refusal', function () {
+    // Exactly what production answers for Renta 4, which sits behind Redsys:
+    // the EXECUTION_DATE_INVALID that Redsys actually raised never reaches us,
+    // so the width of the window we asked for is the only signal there is.
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 400,
+            'message' => 'Error interacting with ASPSP',
+            'detail' => 'Unknown error',
+            'error' => 'ASPSP_ERROR',
+        ], 400),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    expect(fn () => $provider->getTransactions('ext-123', '2025-07-07', '2026-07-07', strategy: 'longest'))
+        ->toThrow(WrongTransactionsPeriodException::class);
+});
+
+test('getTransactions keeps a bank connector failure on a 90-day window transient', function () {
+    // The first rung of the narrowing ladder, and the bound on the retry above:
+    // a 90-day window is not wider than 90 days, so the same body classifies as
+    // an ordinary connector failure and the ladder stops after one extra call.
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 400,
+            'message' => 'Error interacting with ASPSP',
+            'detail' => 'Unknown error',
+            'error' => 'ASPSP_ERROR',
+        ], 400),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    expect(fn () => $provider->getTransactions('ext-123', '2026-04-08', '2026-07-07'))
+        ->toThrow(TransientBankingProviderException::class);
+});
+
+test('getBalances is unaffected by the wide-window rule', function () {
+    // Only the transactions call carries a window, and Renta 4's balances have
+    // been the one thing that works all along. Keep it that way.
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
+            'code' => 400,
+            'message' => 'Error interacting with ASPSP',
+            'detail' => 'Unknown error',
+            'error' => 'ASPSP_ERROR',
+        ], 400),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    expect(fn () => $provider->getBalances('ext-123'))
+        ->toThrow(TransientBankingProviderException::class);
 });
 
 test('getTransactions keeps non-ASPSP client errors reportable', function () {

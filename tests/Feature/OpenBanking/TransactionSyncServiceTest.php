@@ -10,7 +10,9 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\TransactionDescriptionFormatter;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 test('sync creates transactions from provider data', function () {
     $user = User::factory()->onboarded()->create();
@@ -780,6 +782,57 @@ test('sync gives up on the account when even the narrowest window is rejected', 
 
     expect(fn () => $service->sync($account, '2026-04-06', '2026-07-07', saveDailyBalances: false))
         ->toThrow(WrongTransactionsPeriodException::class);
+});
+
+test('sync recovers the year-wide window a bank connector refuses with an opaque 400', function () {
+    // The Renta 4 regression, end to end through the real provider: an account
+    // with no transactions asks for a year, Redsys refuses it as
+    // EXECUTION_DATE_INVALID, and all EnableBanking passes on is an opaque
+    // ASPSP_ERROR. The narrowing ladder has to run off that alone.
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    Http::fake(function (Request $request) {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        if (($query['date_from'] ?? null) === '2025-07-07') {
+            return Http::response([
+                'code' => 400,
+                'message' => 'Error interacting with ASPSP',
+                'detail' => 'Unknown error',
+                'error' => 'ASPSP_ERROR',
+            ], 400);
+        }
+
+        return Http::response([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2026-05-15',
+                    'remittance_information' => ['Renta 4 fee'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+    });
+
+    $service = new TransactionSyncService(enableBankingProviderForTest(), new TransactionDescriptionFormatter);
+    $created = $service->sync($account, '2025-07-07', '2026-07-07', 'longest', saveDailyBalances: false);
+
+    expect($created)->toBe(1);
+
+    // One refusal, one narrowed retry, and no further rungs: the 90-day window
+    // is not wide, so a connector that keeps failing is not worth three calls.
+    Http::assertSentCount(2);
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'date_from=2026-04-08')
+        && ! str_contains($request->url(), 'strategy'));
 });
 
 test('sync does not retry when the rejected window is already narrow', function () {

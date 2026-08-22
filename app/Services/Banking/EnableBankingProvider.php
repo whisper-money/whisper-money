@@ -12,6 +12,7 @@ use Firebase\JWT\JWT;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -19,6 +20,13 @@ use Illuminate\Support\Str;
 class EnableBankingProvider implements BankingProviderInterface
 {
     private const BASE_URL = 'https://api.enablebanking.com';
+
+    /**
+     * The widest transactions window a bank is assumed to serve unattended, and
+     * the first rung of `TransactionSyncService`'s narrowing ladder. Anything
+     * wider is what a bank connector's opaque refusal is read as being about.
+     */
+    private const int WIDE_WINDOW_DAYS = 90;
 
     public function __construct(
         private string $appId,
@@ -115,7 +123,7 @@ class EnableBankingProvider implements BankingProviderInterface
                 previous: $e,
             );
         } catch (RequestException $e) {
-            if ($this->isWrongPeriod($e)) {
+            if ($this->isWrongPeriod($e) || $this->isRefusedWideWindow($e, $dateFrom, $dateTo)) {
                 throw new WrongTransactionsPeriodException(
                     'EnableBanking rejected the requested transactions period as too wide.',
                     previous: $e,
@@ -353,6 +361,30 @@ class EnableBankingProvider implements BankingProviderInterface
         return $e->response->status() === 422
             && is_string($message)
             && str_contains(strtolower($message), 'period');
+    }
+
+    /**
+     * Whether a bank connector that failed opaquely was answering a window
+     * wider than banks behind Redsys will serve.
+     *
+     * Renta 4 sits behind Redsys, which refuses a 365-day range with
+     * `EXECUTION_DATE_INVALID` - but that code only ever appears in the ASPSP
+     * half of the provider's request log. What reaches us, verified against
+     * production on 2026-08-22, is `{"code":400,"message":"Error interacting
+     * with ASPSP","detail":"Unknown error","error":"ASPSP_ERROR"}`: nothing
+     * bank-specific to key on. So the width of the window we asked for is the
+     * signal, and narrowing to 90 days is the cheapest way to find out.
+     *
+     * Self-bounding, which is the point: 90 days is the ladder's first rung and
+     * a 90-day window is not wider than 90 days, so the retry can only classify
+     * as an ordinary connector failure. A bank that 400s for an unrelated
+     * reason therefore costs one extra request against its allowance, not three.
+     */
+    private function isRefusedWideWindow(RequestException $e, string $dateFrom, string $dateTo): bool
+    {
+        // Dates are 'Y-m-d', where string order is date order.
+        return $this->isAspspError($e)
+            && $dateFrom < Carbon::parse($dateTo)->subDays(self::WIDE_WINDOW_DAYS)->toDateString();
     }
 
     /**
