@@ -249,3 +249,30 @@ it('skips results whose category index does not resolve', function () {
     expect($outcomes)->toBe([])
         ->and($transaction->category_id)->toBeNull();
 });
+
+it('routes prompts through the named OrcaRouter provider', function () {
+    config()->set('ai_categorization.provider', 'orcarouter');
+    config()->set('ai_categorization.model', 'orcarouter/auto');
+
+    $user = User::factory()->create();
+    $category = groceries($user);
+    $transaction = uncategorized($user);
+
+    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+
+    TransactionCategorizationAgent::fake([
+        ['results' => [[
+            'ref' => $transaction->id,
+            'category_index' => $index,
+            'confidence' => 0.95,
+            'merchant_unambiguous' => true,
+        ]]],
+    ]);
+
+    app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    TransactionCategorizationAgent::assertPrompted(
+        fn ($prompt): bool => (string) $prompt->provider === 'orcarouter'
+            && $prompt->model === 'orcarouter/auto',
+    );
+});

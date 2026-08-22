@@ -9,15 +9,18 @@ return [
     |
     | Provider and model for automation-rule suggestions, both env-overridable.
     | The provider defaults to Gemini but accepts any laravel/ai provider (a
-    | valid Laravel\Ai\Enums\Lab case — an unknown value fails fast). Any
-    | Flash-tier model suits this constrained task. See the README "AI Provider"
-    | section for the shared options (e.g. local Ollama, the AI_PROVIDER switch).
+    | valid Laravel\Ai\Enums\Lab case or a named provider like "orcarouter").
+    | Any Flash-tier model suits this constrained task. See the README "AI
+    | Provider" section for the shared options (e.g. local Ollama, the
+    | AI_PROVIDER switch, or the OrcaRouter gateway).
     |
     */
 
     'provider' => env('AI_SUGGESTIONS_PROVIDER', env('AI_PROVIDER', 'gemini')),
 
-    'model' => env('AI_SUGGESTIONS_MODEL', 'gemini-flash-latest'),
+    'model' => env('AI_SUGGESTIONS_MODEL', env('AI_SUGGESTIONS_PROVIDER', env('AI_PROVIDER', 'gemini')) === 'orcarouter'
+        ? env('ORCAROUTER_MODEL', 'orcarouter/auto')
+        : 'gemini-flash-latest'),
 
     /*
     |--------------------------------------------------------------------------

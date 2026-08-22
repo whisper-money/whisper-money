@@ -6,7 +6,6 @@ use App\Ai\Agents\ReportSummaryAgent;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Exceptions\FailoverableException;
 use Throwable;
 
@@ -52,7 +51,7 @@ class ReportSummarizer
                     'previous' => $previous['payload'] ?? null,
                     'previous_captured_at' => $previous['captured_at'] ?? null,
                 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                provider: Lab::from((string) config('ai_reports.provider')),
+                provider: AiProviderResolver::resolve((string) config('ai_reports.provider')),
                 model: (string) config('ai_reports.model'),
                 timeout: (int) config('ai_reports.timeout'),
             );

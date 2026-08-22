@@ -168,7 +168,7 @@ The template includes:
 | `STRIPE_KEY`            | -       | Stripe publishable key                             |
 | `STRIPE_SECRET`         | -       | Stripe secret key                                  |
 | `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret                      |
-| `AI_PROVIDER`           | `gemini`| AI provider for every AI feature (`gemini`, `ollama`, `openai`, ...) |
+| `AI_PROVIDER`           | `gemini`| AI provider for every AI feature (`gemini`, `ollama`, `openai`, `orcarouter`, ...) |
 
 ## AI Provider
 
@@ -176,8 +176,9 @@ Whisper Money's AI features (transaction categorization and automation-rule
 suggestions) run on [`laravel/ai`](https://github.com/laravel/ai) and default to
 Google **Gemini**. The provider is configurable independently of the model, so
 you can point the app at **any text provider `laravel/ai` supports** — `gemini`,
-`openai`, `anthropic`, `azure`, `groq`, `xai`, `deepseek`, `mistral`, or a
-self-hosted **[Ollama](https://ollama.com)** server. Ollama is the headline case
+`openai`, `anthropic`, `azure`, `groq`, `xai`, `deepseek`, `mistral`, a
+self-hosted **[Ollama](https://ollama.com)** server, or the
+**[OrcaRouter](https://www.orcarouter.ai)** gateway. Ollama is the headline case
 because it keeps AI processing fully local and private — data never leaves your
 infrastructure — but the switch is generic.
 
@@ -198,6 +199,9 @@ unknown or non-text provider fails fast when the AI feature runs.
 | `GEMINI_API_KEY`             | -                    | Required when the provider is `gemini`.                               |
 | `OLLAMA_URL`                 | `http://localhost:11434` | Ollama server URL (used when the provider is `ollama`).           |
 | `OLLAMA_API_KEY`             | -                    | Optional; only needed behind an authenticating proxy.                 |
+| `ORCAROUTER_API_KEY`         | -                    | Required when the provider is `orcarouter`.                           |
+| `ORCAROUTER_URL`             | `https://api.orcarouter.ai/v1` | OrcaRouter API base URL.                                     |
+| `ORCAROUTER_MODEL`           | `orcarouter/auto`    | OrcaRouter model (defaults to the gateway's auto-routed model).       |
 
 ### Example: fully local AI with Ollama
 
@@ -209,6 +213,20 @@ AI_CATEGORIZATION_MODEL=gemma3:12b
 ```
 
 Make sure the model is pulled on the Ollama server first (`ollama pull gemma3:12b`).
+
+### Example: AI through the OrcaRouter gateway
+
+```dotenv
+AI_PROVIDER=orcarouter
+ORCAROUTER_API_KEY=your-orcarouter-key
+```
+
+[OrcaRouter](https://www.orcarouter.ai) is an OpenAI-compatible gateway that
+routes the AI features to frontier models over a single endpoint. It also runs
+gateway-level, zero-trust security for AI agents on the same endpoint —
+screening every prompt/response and governing every tool call on a default-deny
+basis, with no application code changes.
+
 Any other provider follows the same pattern: set `AI_PROVIDER`, that provider's
 credentials, and the `*_MODEL` vars to one of its models. Gemini remains the
 default, so existing deployments are unaffected.

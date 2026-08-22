@@ -75,10 +75,13 @@ it('fails fast with a clear error when the configured provider is unknown', func
 
     RuleSuggestionAgent::fake([['suggestions' => []]]);
 
+    // The provider string is passed through laravel/ai's manager, which throws
+    // InvalidArgumentException for an unknown driver (instead of the old
+    // Lab::from ValueError), so the misconfiguration still fails fast.
     expect(fn () => (new LaravelAiRuleSuggestionGenerator)->generate(
         groups: [benchGroup('alpha')],
         categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
-    ))->toThrow(ValueError::class);
+    ))->toThrow(InvalidArgumentException::class);
 });
 
 function genSuggestion(string $key): array

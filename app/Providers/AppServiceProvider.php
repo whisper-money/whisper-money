@@ -11,8 +11,12 @@ use App\Services\Ai\UncategorizedTransactionMatcher;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Discord\DiscordWebhook;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Ai\Ai;
+use Laravel\Ai\Providers\OpenAiCompatibleProvider;
 use Laravel\Cashier\Cashier;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Passport\Passport;
@@ -60,5 +64,22 @@ class AppServiceProvider extends ServiceProvider
         // Render the OAuth consent screen (Claude Desktop / ChatGPT connecting
         // to the MCP server) with our own on-brand Blade view.
         Passport::authorizationView(fn (array $parameters) => response()->view('mcp.authorize', $parameters));
+
+        // Register the named OrcaRouter provider as an openai-compatible instance.
+        // Referencing it is as easy as AI_PROVIDER=orcarouter — laravel/ai routes
+        // the three AI features through this gateway. See config/orcarouter.php.
+        // Runs here (not register()) so laravel/ai's AiManager binding exists.
+        Ai::extend('orcarouter', function (Application $app, array $config): OpenAiCompatibleProvider {
+            return new OpenAiCompatibleProvider(
+                array_merge($config, [
+                    'url' => config('orcarouter.url'),
+                    'key' => config('orcarouter.key'),
+                    'models' => [
+                        'text' => ['default' => config('orcarouter.model')],
+                    ],
+                ]),
+                $app->make(Dispatcher::class),
+            );
+        });
     }
 }

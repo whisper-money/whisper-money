@@ -9,15 +9,18 @@ return [
     |
     | Provider and model for transaction categorization, both env-overridable.
     | The provider defaults to Gemini but accepts any laravel/ai provider (a
-    | valid Laravel\Ai\Enums\Lab case — an unknown value fails fast). Cost is
-    | negligible at any tier, so the model is chosen for accuracy. See the
-    | README "AI Provider" section for the shared options (e.g. local Ollama).
+    | valid Laravel\Ai\Enums\Lab case or a named provider like "orcarouter").
+    | Cost is negligible at any tier, so the model is chosen for accuracy. See
+    | the README "AI Provider" section for the shared options (e.g. local Ollama
+    | or the OrcaRouter gateway).
     |
     */
 
     'provider' => env('AI_CATEGORIZATION_PROVIDER', env('AI_PROVIDER', 'gemini')),
 
-    'model' => env('AI_CATEGORIZATION_MODEL', 'gemini-flash-latest'),
+    'model' => env('AI_CATEGORIZATION_MODEL', env('AI_CATEGORIZATION_PROVIDER', env('AI_PROVIDER', 'gemini')) === 'orcarouter'
+        ? env('ORCAROUTER_MODEL', 'orcarouter/auto')
+        : 'gemini-flash-latest'),
 
     /*
     |--------------------------------------------------------------------------
