@@ -125,7 +125,7 @@ class TransactionSyncService
             $this->saveDailyBalances($account, $dailyBalances);
         }
 
-        $this->recordPaginationFrontier($account, $continuationKey !== null, $oldestSeen, $dateTo);
+        $this->recordPaginationFrontier($account, $continuationKey !== null, $oldestSeen, $dateTo, $created);
 
         Log::info('Synced transactions', [
             'account_id' => $account->id,
@@ -168,15 +168,21 @@ class TransactionSyncService
      * ask for the same recent days again and the older history would never be
      * reached.
      *
-     * Cleared by a run that paginated to the end, and by one that was cut short
-     * without reaching anything older than it was already asked for: there is
-     * nothing further back to walk to, and keeping the marker would re-request
-     * the same window every cycle.
+     * Cleared by a run that paginated to the end, by one that was cut short
+     * without reaching anything older than it was already asked for, and by one
+     * whose next frontier would be spent on history the account already holds:
+     * there is nothing further back to walk to, and keeping the marker would
+     * re-request the same window every cycle while shutting out everything
+     * recent.
      */
-    private function recordPaginationFrontier(Account $account, bool $truncated, ?string $oldestSeen, string $dateTo): void
+    private function recordPaginationFrontier(Account $account, bool $truncated, ?string $oldestSeen, string $dateTo, int $created): void
     {
-        $frontier = $this->nextFrontier($truncated, $oldestSeen, $dateTo);
         $current = $account->transactions_paginate_before?->toDateString();
+        $frontier = $this->nextFrontier($truncated, $oldestSeen, $dateTo);
+
+        if ($frontier !== null && $this->backfillIsSpent($account, $frontier, $current !== null, $created)) {
+            $frontier = null;
+        }
 
         if ($truncated) {
             Log::warning('Transaction page budget stopped the sync early', [
@@ -184,6 +190,10 @@ class TransactionSyncService
                 'date_to' => $dateTo,
                 'oldest_reached' => $oldestSeen,
                 'resume_before' => $frontier,
+                // The marker this run arrived with and is not handing on, so a
+                // backfill that gave up is greppable rather than inferred from
+                // a resume_before that silently turned null.
+                'dropped_marker' => $frontier === null ? $current : null,
                 // The run spent its whole budget without getting past the date
                 // it was already asked for, so the day it stopped on is stepped
                 // over rather than re-read. Worth seeing in the logs.
@@ -196,6 +206,29 @@ class TransactionSyncService
         }
 
         $account->update(['transactions_paginate_before' => $frontier]);
+    }
+
+    /**
+     * Whether walking further back has stopped being worth a run, so the marker
+     * is dropped and the account goes back to the routine window that ends
+     * today. Two ways to know, both measured on Trade Republic on 2026-08-22:
+     *
+     *  - The span behind the frontier is already synced. The provider was being
+     *    asked for months it had already served, at 10 requests a cycle, for
+     *    dedup to throw all of it away.
+     *  - A run that resumed a marker imported nothing at all. 111 transaction
+     *    requests bought 2 transactions across one cycle, because the pages come
+     *    back nearly empty; a budget spent on that while the window's end keeps
+     *    every recent transaction out is a run better not repeated.
+     *
+     * The cost is a history the bank does hold but pages too thinly to reach:
+     * that account keeps whatever it has and stops walking. Recent transactions
+     * are worth more than a backfill that moves a day per cycle, and a --full
+     * resync still asks for everything.
+     */
+    private function backfillIsSpent(Account $account, string $frontier, bool $resumed, int $created): bool
+    {
+        return ($resumed && $created === 0) || $account->hasSyncedTransactionsBefore($frontier);
     }
 
     /**

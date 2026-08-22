@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AccountType;
+use App\Enums\TransactionSource;
 use App\Models\Concerns\BelongsToSpace;
 use App\Services\BudgetTransactionService;
 use Carbon\Carbon;
@@ -192,6 +193,27 @@ class Account extends Model
     public function loanDetail(): HasOne
     {
         return $this->hasOne(LoanDetail::class);
+    }
+
+    /**
+     * Whether the bank sync already holds transactions dated before $date for
+     * this account, which is what makes a pagination resume marker there pure
+     * cost: the span behind it has been walked, and re-requesting it only feeds
+     * dedup while the window's end - and every recent transaction with it -
+     * stays in the past.
+     *
+     * Only bank-sourced rows count, the same way the sync window's watermark
+     * only counts them: a manual row or a CSV import dated years back says
+     * nothing about how far the provider has actually been paginated. Trashed
+     * rows do count, because dedup sees them too.
+     */
+    public function hasSyncedTransactionsBefore(string $date): bool
+    {
+        return $this->transactions()
+            ->withTrashed()
+            ->where('source', TransactionSource::EnableBanking)
+            ->where('transaction_date', '<', $date)
+            ->exists();
     }
 
     public function isConnected(): bool
