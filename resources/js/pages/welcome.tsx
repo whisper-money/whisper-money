@@ -2010,6 +2010,12 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Joel Molina',
+            text: __(
+                "I really like Whisper Money and I think it's a very interesting app. I'm delighted to hear the Kuwaiti dinar is now available in production. That's great news!",
+            ),
+        },
+        {
             name: 'Jorge Navarrete',
             gravatar: 'd20d4e05a100d5b20b45c84f3c566a25',
             text: __(
@@ -2021,6 +2027,12 @@ export default function Welcome({
             gravatar: '3c4342baddf0beb8b0bd9fe89168e282',
             text: __(
                 'Thank you for developing Whisper Money. The focus on privacy and centralizing finances is an excellent proposition.',
+            ),
+        },
+        {
+            name: 'Mark',
+            text: __(
+                "I've tried a load of apps that never quite fitted. Apps also scare me a little, because years ago I spent months entering data into one that was working nicely — I was on the paid version — and six months later it disappeared and I lost all the information, and above all the time. Yours looks very good.",
             ),
         },
         {
@@ -2038,9 +2050,21 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Itziar Del Hierro',
+            text: __(
+                "First of all, congratulations on making the app, and on the work you've put into it.",
+            ),
+        },
+        {
             name: 'Will Harris',
             gravatar: 'c6fbc4911d6143fe723a42f46230275e',
             text: __('Great project!'),
+        },
+        {
+            name: 'Fernando',
+            text: __(
+                "I found the app on my Instagram and I think it's a very good idea, and I like how it's designed. Good work on the app.",
+            ),
         },
         {
             name: 'Haru',
@@ -2058,6 +2082,12 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Verónica Betancourt',
+            text: __(
+                "I love the concept of the app. It's exactly the tool I had spent a long time looking for, precisely to manage my finances in one place and have a view of everything.",
+            ),
+        },
+        {
             name: 'Elena',
             gravatar: '9867fc6636afc02ae519820e657e4485',
             text: __(
@@ -2072,6 +2102,12 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Geraldine Herraz',
+            text: __(
+                'Overall I really liked the experience, and I think Whisper Money has enormous potential. Every success with Whisper Money.',
+            ),
+        },
+        {
             name: 'Priya Nair',
             gravatar: '299c92b453769c8805a14f3044157f22',
             text: __(
@@ -2083,6 +2119,12 @@ export default function Welcome({
             gravatar: '51bd48ebe85a4f936b1f2ac38ee39238',
             text: __(
                 "My accounts sync on their own and everything lands already sorted, so checking my budget takes two minutes instead of an hour. I didn't think I'd keep up with it, but I have.",
+            ),
+        },
+        {
+            name: 'Mauricio Rojas',
+            text: __(
+                "First of all, congratulations on the app. I'm a software engineer too, and I know how complicated designing an application can be.",
             ),
         },
         {
@@ -2104,6 +2146,12 @@ export default function Welcome({
             gravatar: '226dbaa3b8d04f4641b99ab90884bb9d',
             text: __(
                 "I had three apps and a spreadsheet before this. Getting every account in one place is the first time I've actually understood where my money goes.",
+            ),
+        },
+        {
+            name: 'Abel Morilla',
+            text: __(
+                "I appreciate your effort, your time and your dedication to getting this tool out there to make personal finance easier for people. You're doing a good job!",
             ),
         },
         {

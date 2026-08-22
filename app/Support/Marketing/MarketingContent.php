@@ -809,11 +809,10 @@ final class MarketingContent
                     ],
                 ],
                 [
-                    'name' => 'Kenji Saito',
-                    'gravatar' => '13440a401468cb05cf2c123d48202c1e',
+                    'name' => 'Verónica Betancourt',
                     'text' => [
-                        'en' => "Fast, clean, and a dark mode that doesn't fry my eyes at night. And it isn't trying to sell my data. That's everything I wanted.",
-                        'es' => 'Rápida, limpia y con un modo oscuro que no me destroza los ojos de noche. Y no intenta vender mis datos. Es justo todo lo que quería.',
+                        'en' => "I love the concept of the app. It's exactly the tool I had spent a long time looking for, precisely to manage my finances in one place and have a view of everything.",
+                        'es' => 'Me encanta el concepto de la app. Justo es una herramienta que venía buscando hace mucho, precisamente para manejar mis finanzas en un solo lugar y tener una vista de todo.',
                     ],
                 ],
             ],
@@ -980,11 +979,10 @@ final class MarketingContent
                     ],
                 ],
                 [
-                    'name' => 'Albert G.',
-                    'gravatar' => 'bb92a036f4feb9d12d0a70dd2d9a5c5f',
+                    'name' => 'Mark',
                     'text' => [
-                        'en' => 'The app is intuitive, functional, and a real help for managing my finances day to day. What stands out most is how much the free version offers — it really shows your commitment to your users. I’ll keep recommending it!',
-                        'es' => 'La aplicación es intuitiva, funcional y de gran ayuda para gestionar mis finanzas en el día a día. Lo que más destaca es la cantidad de opciones de la versión gratuita: demuestra vuestro compromiso con los usuarios. ¡Seguiré recomendándola!',
+                        'en' => "I've tried a load of apps that never quite fitted. Apps also scare me a little, because years ago I spent months entering data into one that was working nicely — I was on the paid version — and six months later it disappeared and I lost all the information, and above all the time. Yours looks very good.",
+                        'es' => 'He probado un montón de aplicaciones que no terminaban de cuadrar. Las aplicaciones también me dan un poco de miedo porque hace años estuve meses metiendo datos en una que iba guay, yo tenía versión de pago, pero a los 6 meses desapareció y perdí toda la información y sobre todo el tiempo. La vuestra pinta muy bien.',
                     ],
                 ],
             ],
