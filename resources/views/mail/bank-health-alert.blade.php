@@ -1,10 +1,11 @@
 <x-mail::message>
 # {{ count($banks) }} bank(s) broken for everyone
 
-Every connection to the bank(s) below is failing, so nobody using them is getting
-data. Each one has a command that tells its users, ready to paste — it runs as a
-dry run, so it only lists who would be emailed. Drop `--dry-run` from the end to
-actually send it, and it will ask for confirmation first.
+Nothing is getting through to the bank(s) below, so nobody using them is getting
+data — the line under each one says how we know. Each has a command that tells its
+users, ready to paste; it runs as a dry run, so it only lists who would be
+emailed. Drop `--dry-run` from the end to actually send it, and it will ask for
+confirmation first.
 
 @if ($looksLikeProviderOutage)
 **Check Enable Banking first.** This is most of the banks we have a live

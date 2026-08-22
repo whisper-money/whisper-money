@@ -83,11 +83,18 @@ trait QueriesBankFailures
      * This is what keeps a claim about the bank honest. An expired, revoked or
      * retry-capped connection is stuck for its own reason and its owner does have
      * to reconnect, which is the opposite of a bank-side outage.
+     *
+     * `whereHas('user')` is the half this mirror was missing, and it was the
+     * whole report: every failing connection in it - 43 of them, at ten banks -
+     * belonged to a soft-deleted account. Nothing syncs those, so their clocks
+     * are frozen at whenever their owner left and they read as permanently down.
+     * With them out, not one bank was degraded.
      */
     protected function matchesOutage(Closure $matchesBank): Closure
     {
         return fn (Builder $query) => $query
             ->tap($matchesBank)
+            ->whereHas('user')
             ->where(fn (Builder $query) => $query
                 ->where('status', BankingConnectionStatus::Active)
                 ->orWhere(fn (Builder $query) => $query
