@@ -4,11 +4,12 @@ use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingProvider;
 use App\Models\BankingConnection;
 use App\Models\User;
+use Mockery\MockInterface;
 
 /**
  * @param  array<string, bool>  $flagsByCountry  Country to [bank name => beta].
  */
-function fakeCatalogue(array $flagsByCountry): Mockery\MockInterface
+function fakeCatalogue(array $flagsByCountry): MockInterface
 {
     $provider = Mockery::mock(BankingProviderInterface::class);
 
