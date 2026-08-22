@@ -3,6 +3,7 @@
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingSyncLogStatus;
 use App\Enums\BankingSyncTrigger;
+use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
@@ -28,6 +29,9 @@ function telemetryConnection(int $accounts = 1): BankingConnection
         'aspsp_name' => 'Trade Republic',
         'aspsp_country' => 'DE',
         'last_synced_at' => now()->subDay(),
+        // The column's own default, spelled out because the factory leaves the
+        // attribute unset in memory and the failure paths increment it.
+        'consecutive_sync_failures' => 0,
     ]);
 
     for ($i = 1; $i <= $accounts; $i++) {
@@ -227,6 +231,47 @@ test('a rate limit on transactions says so in the log the backoff writes', funct
         ->and($context['response_body'])->toContain('Too many requests')
         // Nothing told us how long to wait, so the hour is ours, not the bank's.
         ->and($context['rate_limit_headers'])->toBe([]);
+});
+
+test('a failed sync records the window it asked the bank for', function () {
+    // The Renta 4 shape: an account with no transactions asks for a year and the
+    // bank connector answers "Unknown error". Without the window on the record,
+    // that is indistinguishable from a flaky bank - which is how it hid for 75
+    // days. Both windows the run tries end up in the log.
+    $connection = telemetryConnection();
+
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-1/transactions*' => Http::response([
+            'code' => 400,
+            'message' => 'Error interacting with ASPSP',
+            'detail' => 'Unknown error',
+            'error' => 'ASPSP_ERROR',
+        ], 400),
+        'api.enablebanking.com/accounts/ext-1/balances*' => Http::response(['balances' => []]),
+    ]);
+
+    try {
+        runSync(telemetryJob($connection));
+    } catch (TransientBankingProviderException) {
+        // Rethrown so the queue can retry. The record it wrote is the point.
+    }
+
+    $log = BankingSyncLog::query()
+        ->where('banking_connection_id', $connection->id)
+        ->latest('created_at')
+        ->firstOrFail();
+
+    expect($log->status)->toBe(BankingSyncLogStatus::Failed)
+        ->and($log->metadata['status_code'])->toBe(400)
+        ->and($log->metadata['provider_code'])->toBe('ASPSP_ERROR')
+        ->and($log->metadata['operation'])->toBe('transactions')
+        // The narrowed retry is the last call made, so its window is the one
+        // recorded: 90 days, with the 'longest' strategy dropped.
+        // MySQL normalises the key order of a JSON column, hence toMatchArray.
+        ->and($log->metadata['request_window'])->toMatchArray([
+            'date_from' => now()->subDays(90)->toDateString(),
+            'date_to' => now()->toDateString(),
+        ]);
 });
 
 test('a run killed by the rate limit reports what it had already imported', function () {
