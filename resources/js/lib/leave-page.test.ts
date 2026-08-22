@@ -90,6 +90,26 @@ describe('leave-page', () => {
         expect(isLeavingPage()).toBe(true);
     });
 
+    it('stops leaving when the departure it started never happened', async () => {
+        vi.useFakeTimers();
+
+        try {
+            const { leavePage, isLeavingPage } = await freshModule();
+
+            // An empty redirect url, a blocked top-level load, a bank that never
+            // answers: the document stays put and visible, so neither the restore
+            // nor the visibility listener can ever clear this.
+            leavePage('https://bank.example/authorize');
+            expect(isLeavingPage()).toBe(true);
+
+            vi.advanceTimersByTime(10_000);
+
+            expect(isLeavingPage()).toBe(false);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('stops leaving when the page becomes visible again, as an iOS PWA does', async () => {
         const { leavePage, isLeavingPage } = await freshModule();
 

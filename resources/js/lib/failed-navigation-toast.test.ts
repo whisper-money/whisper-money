@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const toastError = vi.fn();
 
@@ -20,13 +20,16 @@ async function freshModules() {
     vi.doMock('sonner', () => ({ toast: { error: toastError } }));
 
     const tracker = await import('./prefetch-tracker');
+    // The departure flag lives at module scope and is one-way, so the pair has to
+    // be imported fresh alongside the listener it now guards.
+    const leavePageModule = await import('./leave-page');
     const { installFailedNavigationToast } =
         await import('./failed-navigation-toast');
 
     tracker.trackPrefetchedUrls();
     installFailedNavigationToast();
 
-    return { listeners };
+    return { listeners, leavePage: leavePageModule.leavePage };
 }
 
 function failure(url: string) {
@@ -38,6 +41,24 @@ function prefetching(url: string) {
 }
 
 describe('installFailedNavigationToast', () => {
+    const realLocation = window.location;
+
+    beforeEach(() => {
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            writable: true,
+            value: { href: 'https://whisper.money/onboarding' },
+        });
+    });
+
+    afterEach(() => {
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            writable: true,
+            value: realLocation,
+        });
+    });
+
     it('tells the user when a navigation they asked for died on the network', async () => {
         const { listeners } = await freshModules();
 
@@ -76,6 +97,32 @@ describe('installFailedNavigationToast', () => {
         const { listeners } = await freshModules();
 
         listeners.networkError?.({ detail: { error: {} } });
+
+        expect(toastError).toHaveBeenCalledOnce();
+    });
+
+    it('says nothing about a request our own departure aborted', async () => {
+        const { listeners, leavePage } = await freshModules();
+
+        // What tapping a bank on the onboarding create-account step does, while
+        // that step's 4s poll is in flight.
+        leavePage('https://bank.example/authorize');
+        listeners.networkError?.(
+            failure('https://whisper.money/onboarding?step=create-account'),
+        );
+
+        expect(toastError).not.toHaveBeenCalled();
+    });
+
+    it('speaks up again once it is clear we stayed', async () => {
+        const { listeners, leavePage } = await freshModules();
+
+        leavePage('https://bank.example/authorize');
+        // An iOS PWA hands the redirect to Safari and keeps its own page alive.
+        document.dispatchEvent(new Event('visibilitychange'));
+        listeners.networkError?.(
+            failure('https://whisper.money/onboarding?step=create-account'),
+        );
 
         expect(toastError).toHaveBeenCalledOnce();
     });

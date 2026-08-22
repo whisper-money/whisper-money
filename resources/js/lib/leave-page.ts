@@ -14,14 +14,39 @@
  */
 let leaving = false;
 
+/**
+ * How long a departure is allowed to be in progress.
+ *
+ * The recovery listeners below can only clear the flag once the page has actually
+ * gone away and come back. A navigation that never happens at all - an empty
+ * redirect url, a top-level load an extension blocks, a bank endpoint that never
+ * answers - leaves the document exactly where it was, so neither of them fires and
+ * the flag stays set for the rest of the session. That used to cost one missing
+ * Sentry report; now that the failed-navigation toast reads the same flag, it would
+ * cost the user every "we could not reach the server" they had coming.
+ *
+ * An abort caused by leaving is reported within milliseconds, so anything this far
+ * past the attempt belongs to a page that stayed. A departure that does take unloads
+ * the document and takes the timer with it.
+ */
+const DEPARTURE_TIMEOUT_MS = 10_000;
+
 export function leavePage(url: string): void {
     leaving = true;
     window.location.href = url;
+    forgetDepartureIfWeStayed();
 }
 
 export function reloadPage(): void {
     leaving = true;
     window.location.reload();
+    forgetDepartureIfWeStayed();
+}
+
+function forgetDepartureIfWeStayed(): void {
+    window.setTimeout(() => {
+        leaving = false;
+    }, DEPARTURE_TIMEOUT_MS);
 }
 
 export function isLeavingPage(): boolean {
