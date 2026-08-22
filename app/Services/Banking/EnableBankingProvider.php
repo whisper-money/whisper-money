@@ -25,6 +25,11 @@ class EnableBankingProvider implements BankingProviderInterface
      * The widest transactions window a bank is assumed to serve unattended, and
      * the first rung of `TransactionSyncService`'s narrowing ladder. Anything
      * wider is what a bank connector's opaque refusal is read as being about.
+     *
+     * It has to stay equal to that first rung, or the retry lands on a window
+     * still counted as wide and the ladder walks all three steps at a bank's
+     * expense. TransactionSyncServiceTest pins the two together by counting the
+     * requests one opaque refusal costs, so drifting them apart fails there.
      */
     private const int WIDE_WINDOW_DAYS = 90;
 

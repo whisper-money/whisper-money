@@ -2,6 +2,7 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
+use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Models\Account;
 use App\Models\Bank;
@@ -833,6 +834,39 @@ test('sync recovers the year-wide window a bank connector refuses with an opaque
     Http::assertSentCount(2);
     Http::assertSent(fn (Request $request) => str_contains($request->url(), 'date_from=2026-04-08')
         && ! str_contains($request->url(), 'strategy'));
+});
+
+test('sync stops after one narrowed retry when the connector keeps failing opaquely', function () {
+    // The bound on the rule above, pinned end to end: an opaque 400 that has
+    // nothing to do with the window buys the bank one extra request against its
+    // metered allowance, not the ladder's three. It holds because the retry is
+    // 90 days wide and 90 is not wider than 90 - so if that ever drifts apart
+    // from the ladder's first rung, this count is what says so.
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 400,
+            'message' => 'Error interacting with ASPSP',
+            'detail' => 'Unknown error',
+            'error' => 'ASPSP_ERROR',
+        ], 400),
+    ]);
+
+    $service = new TransactionSyncService(enableBankingProviderForTest(), new TransactionDescriptionFormatter);
+
+    // Transient, not a period refusal: the syncer keeps the account rather than
+    // skipping it as one the bank refuses to serve any window for.
+    expect(fn () => $service->sync($account, '2025-07-07', '2026-07-07', 'longest', saveDailyBalances: false))
+        ->toThrow(TransientBankingProviderException::class);
+
+    Http::assertSentCount(2);
 });
 
 test('sync does not retry when the rejected window is already narrow', function () {
