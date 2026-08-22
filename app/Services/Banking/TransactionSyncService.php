@@ -180,7 +180,7 @@ class TransactionSyncService
         $current = $account->transactions_paginate_before?->toDateString();
         $frontier = $this->nextFrontier($truncated, $oldestSeen, $dateTo);
 
-        if ($frontier !== null && $this->backfillIsSpent($account, $frontier, $current !== null, $created)) {
+        if ($frontier !== null && $this->backfillIsSpent($account, $frontier, resumed: $current !== null, created: $created)) {
             $frontier = null;
         }
 
