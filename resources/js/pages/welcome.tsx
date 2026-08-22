@@ -38,12 +38,21 @@ import {
     HeartPulseIcon,
     LockIcon,
     type LucideIcon,
+    PencilIcon,
+    SearchIcon,
     ShoppingBasketIcon,
+    SparklesIcon,
     WineIcon,
     WrenchIcon,
     XIcon,
 } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import {
+    type CSSProperties,
+    type ReactNode,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
 
 const LANDING_IMAGES = [
     {
@@ -912,6 +921,278 @@ function CashflowChartPreview() {
 
             <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-50 to-transparent dark:from-zinc-900" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+/**
+ * Tools the MCP server exposes, split by what they do. A test keeps these in
+ * step with App\Mcp\Servers\WhisperMoneyServer, so the landing cannot claim a
+ * number the server stopped serving.
+ */
+const MCP_READ_TOOL_COUNT = 9;
+const MCP_WRITE_TOOL_COUNT = 18;
+
+/**
+ * The figures the assistant reports on in the preview conversation. The budgets
+ * deliberately mirror BUDGETS_PREVIEW_ROWS below, so the two previews on the
+ * page cannot disagree about the same category, and every figure the transcript
+ * derives from them is computed rather than written out.
+ */
+const AI_CONNECTOR_CONVERSATION = {
+    budgets: [
+        { name: 'Groceries', spentInCents: 23800, budgetInCents: 35000 },
+        { name: 'Entertainment', spentInCents: 7200, budgetInCents: 8000 },
+        { name: 'Dining Out', spentInCents: 11000, budgetInCents: 20000 },
+    ],
+    /** Charges the assistant offers to file, and the budget they land in. */
+    unfiled: {
+        merchant: 'Reel Cinema',
+        count: 3,
+        amountInCents: 4780,
+        budgetIndex: 1,
+    },
+} as const;
+
+/** Span of scroll progress each message fades in over. */
+const AI_CONNECTOR_MESSAGE_SPAN = 0.12;
+
+/** Scroll progress at which message `index` starts appearing. */
+function aiConnectorMessageStart(index: number): number {
+    return 0.06 + index * 0.12;
+}
+
+function AiConnectorQuestion({
+    children,
+    style,
+}: {
+    children: ReactNode;
+    style: CSSProperties;
+}) {
+    return (
+        <div className="flex justify-end will-change-transform" style={style}>
+            <p className="max-w-[85%] rounded-xl border border-[#e3e3e0] bg-[#FDFDFC] px-3.5 py-2.5 text-sm leading-relaxed font-medium dark:border-[#3E3E3A] dark:bg-[#1C1C1A]">
+                {children}
+            </p>
+        </div>
+    );
+}
+
+function AiConnectorAnswer({
+    children,
+    style,
+}: {
+    children: ReactNode;
+    style: CSSProperties;
+}) {
+    return (
+        <div className="flex gap-3 will-change-transform" style={style}>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#1C1C1A]">
+                <SparklesIcon className="size-3.5" />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-3">{children}</div>
+        </div>
+    );
+}
+
+/**
+ * One MCP tool the assistant called. Tool names are identifiers on the wire,
+ * so they are never translated.
+ */
+function AiConnectorToolChip({
+    name,
+    writes = false,
+}: {
+    name: string;
+    writes?: boolean;
+}) {
+    const Icon = writes ? PencilIcon : SearchIcon;
+
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 font-mono text-[0.6875rem]',
+                writes
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400'
+                    : 'border-[#e3e3e0] bg-[#FDFDFC] text-[#706f6c] dark:border-[#3E3E3A] dark:bg-[#1C1C1A] dark:text-[#A1A09A]',
+            )}
+        >
+            <Icon className="size-3 shrink-0" />
+            {name}
+        </span>
+    );
+}
+
+function AiConnectorPreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
+
+    const { budgets, unfiled } = AI_CONNECTOR_CONVERSATION;
+    const target = budgets[unfiled.budgetIndex];
+    const filedSpentInCents = target.spentInCents + unfiled.amountInCents;
+    const amount = (valueInCents: number) =>
+        formatCurrency(valueInCents, currency, locale);
+
+    const revealStyle = (index: number): CSSProperties => {
+        const revealed = Math.min(
+            1,
+            Math.max(
+                0,
+                (scrollProgress - aiConnectorMessageStart(index)) /
+                    AI_CONNECTOR_MESSAGE_SPAN,
+            ),
+        );
+
+        return {
+            opacity: revealed,
+            transform: `translateY(${(1 - revealed) * 10}px)`,
+        };
+    };
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__(
+                'A sample conversation where an assistant reports on your budgets and files uncategorised transactions',
+            )}
+            className="overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <div className="flex flex-wrap items-center gap-2 border-b border-[#e3e3e0]/85 px-4 py-3 dark:border-[#3E3E3A]/80">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-[#e3e3e0] bg-[#FDFDFC] px-2 py-0.5 text-[0.7rem] font-medium text-[#706f6c] dark:border-[#3E3E3A] dark:bg-[#1C1C1A] dark:text-[#A1A09A]">
+                    <SparklesIcon className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    {__('Whisper Money connected')}
+                </span>
+                <span className="text-[0.7rem] text-[#A1A09A] dark:text-[#706f6c]">
+                    {__('Sample conversation')}
+                </span>
+            </div>
+
+            <div className="flex flex-col gap-5 p-4 sm:p-5">
+                <AiConnectorQuestion style={revealStyle(0)}>
+                    {__('What am I about to go over on this month?')}
+                </AiConnectorQuestion>
+
+                <AiConnectorAnswer style={revealStyle(1)}>
+                    <div className="flex flex-wrap gap-1.5">
+                        <AiConnectorToolChip name="list_budgets" />
+                        <AiConnectorToolChip name="spending_by_category" />
+                    </div>
+
+                    <p className="text-sm leading-relaxed">
+                        {__(
+                            ':category is the one to watch: :spent of :budget, with :remaining left.',
+                            {
+                                category: __(target.name),
+                                spent: amount(target.spentInCents),
+                                budget: amount(target.budgetInCents),
+                                remaining: amount(
+                                    target.budgetInCents - target.spentInCents,
+                                ),
+                            },
+                        )}
+                    </p>
+
+                    <div className="overflow-hidden rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75">
+                        {budgets.map((budget, index) => (
+                            <div
+                                key={budget.name}
+                                className={cn(
+                                    'flex items-center justify-between gap-3 px-3 py-2',
+                                    index < budgets.length - 1 &&
+                                        'border-b border-[#e3e3e0]/70 dark:border-[#3E3E3A]/60',
+                                )}
+                            >
+                                <span className="truncate text-[0.8125rem] font-medium">
+                                    {__(budget.name)}
+                                </span>
+                                <span className="shrink-0 text-[0.8125rem] tabular-nums">
+                                    <span
+                                        className={cn(
+                                            'font-semibold',
+                                            budget === target &&
+                                                'text-rose-500 dark:text-rose-400',
+                                        )}
+                                    >
+                                        {amount(budget.spentInCents)}
+                                    </span>
+                                    <span className="text-[#706f6c] dark:text-[#A1A09A]">
+                                        {' / '}
+                                        {amount(budget.budgetInCents)}
+                                    </span>
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <p className="text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                        {__(
+                            'And :count charges from :merchant are uncategorised, :amount in total, so no budget counts them yet.',
+                            {
+                                count: unfiled.count,
+                                merchant: unfiled.merchant,
+                                amount: amount(unfiled.amountInCents),
+                            },
+                        )}
+                    </p>
+                </AiConnectorAnswer>
+
+                <AiConnectorQuestion style={revealStyle(2)}>
+                    {__(
+                        'Put them under :category and make a rule for the next ones.',
+                        {
+                            category: __(target.name),
+                        },
+                    )}
+                </AiConnectorQuestion>
+
+                <AiConnectorAnswer style={revealStyle(3)}>
+                    <div className="flex flex-wrap gap-1.5">
+                        <AiConnectorToolChip
+                            name="categorize_transaction"
+                            writes
+                        />
+                        <AiConnectorToolChip
+                            name="create_automation_rule"
+                            writes
+                        />
+                    </div>
+
+                    <p className="text-sm leading-relaxed">
+                        {__(
+                            'Done. :count transactions moved to :category, and a new rule: anything from :merchant goes there from now on.',
+                            {
+                                count: unfiled.count,
+                                category: __(target.name),
+                                merchant: unfiled.merchant,
+                            },
+                        )}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-800/50 dark:bg-emerald-950/30">
+                        <CheckIcon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[0.8125rem] text-[#706f6c] dark:text-[#A1A09A]">
+                            {__(':category is now :amount', {
+                                category: __(target.name),
+                                amount: amount(filedSpentInCents),
+                            })}
+                        </span>
+                        <span className="text-[0.8125rem] font-medium text-rose-500 tabular-nums dark:text-rose-400">
+                            {__(':amount over budget', {
+                                amount: amount(
+                                    filedSpentInCents - target.budgetInCents,
+                                ),
+                            })}
+                        </span>
+                    </div>
+                </AiConnectorAnswer>
+            </div>
         </div>
     );
 }
@@ -2315,6 +2596,110 @@ export default function Welcome({
                                     </div>
                                 </div>
                             </FeatureCard>
+                        </div>
+                    </section>
+
+                    <section className="px-4 py-12 sm:py-16 md:py-20">
+                        <div className="mx-auto flex max-w-7xl flex-col gap-8 sm:gap-12">
+                            <div className="flex flex-col gap-4 sm:gap-5">
+                                <span className="inline-flex items-center gap-2 self-start rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
+                                    <SparklesIcon className="size-3.5 opacity-75" />
+                                    <span className="text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__('AI Connector')}
+                                    </span>
+                                </span>
+                                <h2 className="max-w-[760px] text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight md:text-5xl md:leading-tight">
+                                    {__(
+                                        'Your finances, inside Claude or ChatGPT',
+                                    )}
+                                </h2>
+                                <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-lg dark:text-[#A1A09A]">
+                                    {__(
+                                        'Connect Whisper Money to your assistant and ask about your money in your own words. It reads your transactions to answer you and, if you ask it to, puts them in order too: recategorising, creating rules, adjusting budgets.',
+                                    )}
+                                </p>
+                                <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                    {__(
+                                        'An MCP server of our own, on the paid plan.',
+                                    )}
+                                </p>
+                            </div>
+
+                            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+                                <AiConnectorPreview
+                                    currency={pricing.currency}
+                                    locale={locale}
+                                />
+
+                                <div className="flex flex-col gap-3">
+                                    <FeatureCard className="p-6 sm:p-8">
+                                        <h3 className="text-xl font-semibold">
+                                            {__('You connect it yourself')}
+                                        </h3>
+                                        <p className="mt-3 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                            {__(
+                                                'Nothing is connected until you connect it yourself, from your settings, under AI Connector. If you never connect it, nothing changes for you.',
+                                            )}
+                                        </p>
+                                    </FeatureCard>
+
+                                    <FeatureCard className="p-6 sm:p-8">
+                                        <h3 className="text-xl font-semibold">
+                                            {__('Ask, and set things straight')}
+                                        </h3>
+                                        <p className="mt-3 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                            {__(
+                                                ':total tools: :read to read your transactions, balances, budgets and net worth, and :write to change them.',
+                                                {
+                                                    total:
+                                                        MCP_READ_TOOL_COUNT +
+                                                        MCP_WRITE_TOOL_COUNT,
+                                                    read: MCP_READ_TOOL_COUNT,
+                                                    write: MCP_WRITE_TOOL_COUNT,
+                                                },
+                                            )}
+                                        </p>
+                                        <ul className="mt-4 space-y-2.5">
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__(
+                                                        'Claude Desktop and ChatGPT',
+                                                    )}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__(
+                                                        'You sign in with your account, no keys to paste',
+                                                    )}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__(
+                                                        'Claude Code too, with a token',
+                                                    )}
+                                                </span>
+                                            </li>
+                                        </ul>
+                                    </FeatureCard>
+
+                                    <FeatureCard className="p-6 sm:p-8">
+                                        <h3 className="flex items-center gap-2.5 text-xl font-semibold">
+                                            <LockIcon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                            {__('What the assistant can see')}
+                                        </h3>
+                                        <p className="mt-3 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                            {__(
+                                                'While it is connected, the assistant reads your data to answer you, and those conversations live in your own account with that assistant, under their rules and not ours. Remove Whisper Money from its connected apps and it stops answering.',
+                                            )}
+                                        </p>
+                                    </FeatureCard>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
