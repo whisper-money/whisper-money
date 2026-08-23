@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleApplier;
@@ -50,8 +51,10 @@ class ApplyAutomationRule extends WriteTool
                 'dry_run' => true,
                 'automation_rule_id' => $rule->id,
                 'total_matches' => $total,
-                'sample' => $this->sample($matchingIds),
-                'next_step' => "Nothing was changed. Call apply_automation_rule again with dry_run false to apply the rule to all {$total} matching transactions.",
+                'sample' => $this->sample($matchingIds, $space),
+                'next_step' => $total === 0
+                    ? 'Nothing matched, so there is nothing to apply. Widen the rule with update_automation_rule, or set only_uncategorized false to include transactions that already have a category.'
+                    : "Nothing was changed. Call apply_automation_rule again with dry_run false to apply the rule to all {$total} matching transactions.",
             ]);
         }
 
@@ -62,7 +65,7 @@ class ApplyAutomationRule extends WriteTool
                 'status' => 'queued',
                 'automation_rule_id' => $rule->id,
                 'total' => $total,
-                'message' => 'Too many transactions to apply inline, so this finishes in the background over the next few minutes. Call apply_automation_rule with dry_run true again to see what is still unmatched.',
+                'message' => 'Too many transactions to apply inline, so this finishes in the background over the next few minutes. There is no progress tool: call apply_automation_rule with dry_run true again to see what the rule still matches.',
             ]);
         }
 
@@ -84,7 +87,7 @@ class ApplyAutomationRule extends WriteTool
      * @param  array<int, string>  $matchingIds
      * @return array<int, array<string, mixed>>
      */
-    private function sample(array $matchingIds): array
+    private function sample(array $matchingIds, Space $space): array
     {
         $ids = array_slice($matchingIds, 0, self::SAMPLE_SIZE);
 
@@ -92,7 +95,10 @@ class ApplyAutomationRule extends WriteTool
             return [];
         }
 
+        // Re-scoped to the space even though the ids already come from a
+        // space-scoped match, so this stays safe to read on its own.
         return Transaction::query()
+            ->forSpace($space)
             ->whereIn('id', $ids)
             ->with(['account:id,name', 'category:id,name', 'labels:id,name'])
             ->orderByDesc('transaction_date')
