@@ -34,6 +34,7 @@ import {
     isLiabilityType,
     netWorthContribution,
 } from '@/lib/chart-calculations';
+import { fetchJson } from '@/lib/fetch-json';
 import { SharedData } from '@/types';
 import { formatDayFromDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -164,10 +165,9 @@ export function NetWorthChart({
             const to = format(now, 'yyyy-MM-dd');
             const from = format(subDays(now, DAILY_DAYS), 'yyyy-MM-dd');
             const params = new URLSearchParams({ from, to });
-            const response = await fetch(
+            const data = await fetchJson<NetWorthEvolutionData>(
                 `/api/dashboard/net-worth-daily-evolution?${params.toString()}`,
             );
-            const data: NetWorthEvolutionData = await response.json();
 
             // Normalize daily data: rename "date" key to "month" so it works
             // uniformly with useChartViews and the rest of the component.

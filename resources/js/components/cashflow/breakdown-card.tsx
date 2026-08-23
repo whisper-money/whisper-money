@@ -15,6 +15,7 @@ import {
 import { BreakdownData, BreakdownItem } from '@/hooks/use-cashflow-data';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
+import { fetchJson } from '@/lib/fetch-json';
 import { cn } from '@/lib/utils';
 import {
     getCategoryColorClasses,
@@ -81,10 +82,10 @@ export function BreakdownCard({
                 type,
                 parent: categoryId,
             });
-            const response = await fetch(
+            const json = await fetchJson<BreakdownData>(
                 `/api/cashflow/breakdown?${params.toString()}`,
             );
-            const json: BreakdownData = await response.json();
+
             return json.data;
         },
         [period, type],

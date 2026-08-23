@@ -48,6 +48,10 @@ describe('BreakdownCard', () => {
 
     it('expands a parent category and loads its children on demand', async () => {
         const fetchMock = vi.fn().mockResolvedValue({
+            // `ok` and not just `json`: without it the double cannot be told apart
+            // from a 500, which is the bug the component now refuses to ignore.
+            ok: true,
+            status: 200,
             json: async () => ({
                 data: [
                     {
