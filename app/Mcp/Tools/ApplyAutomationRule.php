@@ -29,7 +29,7 @@ class ApplyAutomationRule extends WriteTool
         return [
             'automation_rule_id' => $schema->string()->description('Id of the automation rule to apply. Call list_automation_rules to see valid ids.')->required(),
             'dry_run' => $schema->boolean()->description('Default true: report how many transactions the rule matches, with a sample of them, and change nothing. Pass false to actually apply the rule\'s category, labels and note.'),
-            'only_uncategorized' => $schema->boolean()->description('Default true: skip transactions that already have a category (or, for a label-only rule, already carry every label it would add), so an existing categorization is never overwritten.'),
+            'only_uncategorized' => $schema->boolean()->description('Default true: skip transactions that already have a category (or, for a label-only rule, already carry every label it would add). Passing false makes the rule overwrite categories the user or another rule already set, so preview that combination before applying it.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }
