@@ -2,7 +2,7 @@ import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { toast } from 'sonner';
 import { isLeavingPage } from './leave-page';
-import { wasPrefetched } from './prefetch-tracker';
+import { wasUnattended } from './unattended-requests';
 
 /**
  * Tells the user when a navigation or a save died on the network.
@@ -13,15 +13,38 @@ import { wasPrefetched } from './prefetch-tracker';
  * `PATCH /settings/accounts/{uuid}`, which is a change the user believed they had
  * made.
  *
- * Stays quiet for requests nobody asked for. A hover prefetch that fails costs the
- * user nothing, and saying so would be noise about a page they may never open. The
- * same goes for whatever a full page navigation of our own aborts on the way out.
+ * Stays quiet for requests nobody asked for: a hover prefetch that fails costs the
+ * user nothing and saying so would be noise about a page they may never open, and a
+ * background poll that misses one beat is answered by the next one four seconds
+ * later. The same goes for whatever a full page navigation of our own aborts on the
+ * way out.
+ *
+ * Quiet is not the same as mute, though: see {@link LOST_BEATS_BEFORE_SPEAKING}.
  *
  * Deliberately does not call `preventDefault()`: that would skip the cleanup Inertia
  * runs for a failed prefetch, leaving a dead entry that a later click waits on
  * forever.
  */
+/**
+ * How many unattended failures in a row it takes to speak up anyway.
+ *
+ * One lost beat is a blip and the next tick answers it. A run of them is the
+ * user's connection being gone - and on the two pages that poll, the onboarding
+ * create-account step and the connections page, the poll is the only thing
+ * happening, so nothing else would ever mention it. Three ticks is twelve seconds
+ * of silence there, which is about as long as staring at a page that has stopped
+ * updating stays comfortable.
+ */
+const LOST_BEATS_BEFORE_SPEAKING = 3;
+
+let lostBeats = 0;
+
 export function installFailedNavigationToast(): void {
+    // Anything getting through means the connection is not the problem.
+    router.on('success', () => {
+        lostBeats = 0;
+    });
+
     router.on('networkError', (event) => {
         // A request our own departure killed did not fail. `leavePage` aborts
         // whatever is in flight - most visibly the 4s poll the onboarding
@@ -39,8 +62,12 @@ export function installFailedNavigationToast(): void {
 
         const failedUrl = (event.detail.error as { url?: string }).url;
 
-        if (failedUrl !== undefined && wasPrefetched(failedUrl)) {
-            return;
+        if (failedUrl !== undefined && wasUnattended(failedUrl)) {
+            lostBeats++;
+
+            if (lostBeats < LOST_BEATS_BEFORE_SPEAKING) {
+                return;
+            }
         }
 
         toast.error(

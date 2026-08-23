@@ -19,14 +19,14 @@ async function freshModules() {
     }));
     vi.doMock('sonner', () => ({ toast: { error: toastError } }));
 
-    const tracker = await import('./prefetch-tracker');
+    const tracker = await import('./unattended-requests');
     // The departure flag lives at module scope and is one-way, so the pair has to
     // be imported fresh alongside the listener it now guards.
     const leavePageModule = await import('./leave-page');
     const { installFailedNavigationToast } =
         await import('./failed-navigation-toast');
 
-    tracker.trackPrefetchedUrls();
+    tracker.trackUnattendedRequests();
     installFailedNavigationToast();
 
     return { listeners, leavePage: leavePageModule.leavePage };
@@ -34,6 +34,14 @@ async function freshModules() {
 
 function failure(url: string) {
     return { detail: { error: { url } } };
+}
+
+function polling(url: string) {
+    return {
+        detail: {
+            visit: { url: new URL(url), prefetch: false, poll: true },
+        },
+    };
 }
 
 function prefetching(url: string) {
@@ -91,6 +99,112 @@ describe('installFailedNavigationToast', () => {
         listeners.networkError?.(failure('https://whisper.money/cashflow'));
 
         expect(toastError).toHaveBeenCalledOnce();
+    });
+
+    it('says nothing about a poll the user never asked for', async () => {
+        const { listeners } = await freshModules();
+
+        listeners.before?.(polling('https://whisper.money/onboarding'));
+        listeners.networkError?.(failure('https://whisper.money/onboarding'));
+
+        expect(toastError).not.toHaveBeenCalled();
+    });
+
+    it('speaks up when the lost beats keep coming', async () => {
+        const { listeners } = await freshModules();
+
+        // A connection that is actually gone, on a page where the poll is the only
+        // thing happening: nothing else would ever tell the user.
+        for (let beat = 0; beat < 3; beat++) {
+            listeners.before?.(polling('https://whisper.money/onboarding'));
+            listeners.networkError?.(
+                failure('https://whisper.money/onboarding'),
+            );
+        }
+
+        expect(toastError).toHaveBeenCalledOnce();
+    });
+
+    it('forgets the lost beats as soon as something gets through', async () => {
+        const { listeners } = await freshModules();
+
+        for (let beat = 0; beat < 2; beat++) {
+            listeners.before?.(polling('https://whisper.money/onboarding'));
+            listeners.networkError?.(
+                failure('https://whisper.money/onboarding'),
+            );
+        }
+
+        listeners.success?.({ detail: {} });
+
+        for (let beat = 0; beat < 2; beat++) {
+            listeners.before?.(polling('https://whisper.money/onboarding'));
+            listeners.networkError?.(
+                failure('https://whisper.money/onboarding'),
+            );
+        }
+
+        expect(toastError).not.toHaveBeenCalled();
+    });
+
+    it('speaks up once the user asks for the page a poll was refreshing', async () => {
+        const { listeners } = await freshModules();
+
+        listeners.before?.(polling('https://whisper.money/onboarding'));
+        listeners.before?.({
+            detail: {
+                visit: {
+                    url: new URL('https://whisper.money/onboarding'),
+                    prefetch: false,
+                },
+            },
+        });
+        listeners.networkError?.(failure('https://whisper.money/onboarding'));
+
+        expect(toastError).toHaveBeenCalledOnce();
+    });
+
+    it('speaks up for a real reload that a poll tick overlapped', async () => {
+        const { listeners } = await freshModules();
+
+        // Inertia does not cancel an in-flight visit to the page you are already
+        // on, so the poll keeps ticking underneath a reload the user asked for.
+        listeners.before?.({
+            detail: {
+                visit: {
+                    url: new URL('https://whisper.money/settings/connections'),
+                    prefetch: false,
+                },
+            },
+        });
+        listeners.before?.(
+            polling('https://whisper.money/settings/connections'),
+        );
+        listeners.networkError?.(
+            failure('https://whisper.money/settings/connections'),
+        );
+
+        expect(toastError).toHaveBeenCalledOnce();
+    });
+
+    it('stops attributing a poll once its window has passed', async () => {
+        vi.useFakeTimers();
+
+        try {
+            const { listeners } = await freshModules();
+
+            // The poll stopped - the step moved on, the page unmounted - so the
+            // next failure at that url belongs to whoever asked for it next.
+            listeners.before?.(polling('https://whisper.money/onboarding'));
+            vi.setSystemTime(Date.now() + 31_000);
+            listeners.networkError?.(
+                failure('https://whisper.money/onboarding'),
+            );
+
+            expect(toastError).toHaveBeenCalledOnce();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('still speaks up when the error carries no url', async () => {
