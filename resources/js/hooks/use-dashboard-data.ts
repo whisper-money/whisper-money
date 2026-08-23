@@ -1,10 +1,13 @@
 import { useLocale } from '@/hooks/use-locale';
 import { netWorthContribution } from '@/lib/chart-calculations';
+import { fetchJson } from '@/lib/fetch-json';
 import { Account, AccountType, Bank } from '@/types/account';
 import { Category } from '@/types/category';
 import { formatMonthFromYearMonth } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { format, subDays, subMonths } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export interface NetWorthEvolutionAccount {
     id: string;
@@ -142,11 +145,11 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
             const query30Days = `?${params30Days.toString()}`;
 
             const [netWorthEvolution, topCategories] = await Promise.all([
-                fetch(
+                fetchJson<NetWorthEvolutionData>(
                     `/api/dashboard/net-worth-evolution${query12Months}`,
-                ).then((r) => r.json()),
-                fetch(`/api/dashboard/top-categories${query30Days}`).then((r) =>
-                    r.json(),
+                ),
+                fetchJson<DashboardData['topCategories']>(
+                    `/api/dashboard/top-categories${query30Days}`,
                 ),
             ]);
 
@@ -159,6 +162,15 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
             });
         } catch (error) {
             console.error('Failed to fetch dashboard data:', error);
+
+            // Without this the dashboard just shows a flat net worth and no
+            // categories, which reads as a true answer about the user's money.
+            toast.error(
+                __('We could not load these figures. Try again in a moment.'),
+                {
+                    id: 'analytics-load-failed',
+                },
+            );
         } finally {
             setIsLoading(false);
         }

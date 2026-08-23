@@ -4,9 +4,12 @@ import {
     summary as cashflowSummary,
     trend as cashflowTrend,
 } from '@/actions/App/Http/Controllers/Api/CashflowAnalyticsController';
+import { fetchJson } from '@/lib/fetch-json';
 import { Category } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export type CashflowPeriodType = 'month' | 'quarter' | 'year';
 
@@ -123,25 +126,25 @@ export function useCashflowData({
 
             const [summary, sankey, trend, incomeBreakdown, expenseBreakdown] =
                 await Promise.all([
-                    fetch(cashflowSummary.url({ query: periodQuery })).then(
-                        (r) => r.json(),
+                    fetchJson<CashflowData['summary']>(
+                        cashflowSummary.url({ query: periodQuery }),
                     ),
-                    fetch(cashflowSankey.url({ query: periodQuery })).then(
-                        (r) => r.json(),
+                    fetchJson<CashflowData['sankey']>(
+                        cashflowSankey.url({ query: periodQuery }),
                     ),
-                    fetch(cashflowTrend.url({ query: trendQuery })).then((r) =>
-                        r.json(),
+                    fetchJson<{ data: CashflowData['trend'] }>(
+                        cashflowTrend.url({ query: trendQuery }),
                     ),
-                    fetch(
+                    fetchJson<CashflowData['incomeBreakdown']>(
                         cashflowBreakdown.url({
                             query: { ...periodQuery, type: 'income' },
                         }),
-                    ).then((r) => r.json()),
-                    fetch(
+                    ),
+                    fetchJson<CashflowData['expenseBreakdown']>(
                         cashflowBreakdown.url({
                             query: { ...periodQuery, type: 'expense' },
                         }),
-                    ).then((r) => r.json()),
+                    ),
                 ]);
 
             setData({
@@ -153,6 +156,16 @@ export function useCashflowData({
             });
         } catch (error) {
             console.error('Failed to fetch cashflow data:', error);
+
+            // The cards below keep whatever they had, which on a first load is a
+            // row of zeros - so without this the screen states, flatly, that the
+            // period had no money in it.
+            toast.error(
+                __('We could not load these figures. Try again in a moment.'),
+                {
+                    id: 'analytics-load-failed',
+                },
+            );
         } finally {
             setIsLoading(false);
         }
