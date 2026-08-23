@@ -26,6 +26,12 @@ import { router } from '@inertiajs/react';
 const unattendedAt = new Map<string, number>();
 
 /**
+ * URLs a real request is in flight for right now, which a poll to the same URL
+ * must not overwrite.
+ */
+const awaitedUrls = new Set<string>();
+
+/**
  * Backstop for a request nobody ever asked for afterwards. Matched to Inertia's own
  * `cacheFor` default: past that a successful prefetch has been evicted, so a click
  * issues a fresh request and its failure is the user's, not ours to explain away.
@@ -46,24 +52,49 @@ export function trackUnattendedRequests(): void {
     // bounded, rather than relying on the window above.
     //
     // A poll is recognised here rather than on its own event because Inertia has
-    // none for it. It marks the visit it creates for a poll with `poll: true`, on
-    // the internal shape of the visit rather than the `PendingVisit` this event is
-    // typed as - hence the cast. If a future version stops setting it, the polls
-    // simply stop being recognised and their noise comes back, which is the safe
-    // direction to be wrong in.
+    // none for it.
     router.on('before', (event) => {
         const { visit } = event.detail;
+        const key = requestKey(visit.url);
 
-        if ((visit as { poll?: boolean }).poll === true) {
-            unattendedAt.set(requestKey(visit.url), Date.now());
+        if (isPoll(visit)) {
+            // Never claim a URL somebody is already waiting on. Inertia does not
+            // cancel an in-flight visit to the page you are already on, and a poll
+            // reloads exactly that page - so a tick can land between a real reload
+            // and its failure, and re-arm the very entry that decides whether that
+            // failure is worth telling anyone about.
+            if (!awaitedUrls.has(key)) {
+                unattendedAt.set(key, Date.now());
+            }
 
             return;
         }
 
         if (!visit.prefetch) {
-            unattendedAt.delete(requestKey(visit.url));
+            unattendedAt.delete(key);
+            awaitedUrls.add(key);
         }
     });
+
+    // However it ended. The entry above only has to outlive the request it belongs
+    // to, and `finish` is the one event that fires on every outcome.
+    router.on('finish', (event) => {
+        const { visit } = event.detail;
+
+        if (!isPoll(visit) && !visit.prefetch) {
+            awaitedUrls.delete(requestKey(visit.url));
+        }
+    });
+}
+
+/**
+ * Inertia marks the visit its own poller creates with `poll: true`, on the internal
+ * shape of the visit rather than the `PendingVisit` these events are typed as -
+ * hence the cast. If a future version stops setting it, polls simply stop being
+ * recognised and their noise comes back, which is the safe direction to be wrong in.
+ */
+function isPoll(visit: { poll?: boolean }): boolean {
+    return visit.poll === true;
 }
 
 /**

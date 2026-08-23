@@ -127,6 +127,49 @@ describe('installFailedNavigationToast', () => {
         expect(toastError).toHaveBeenCalledOnce();
     });
 
+    it('speaks up for a real reload that a poll tick overlapped', async () => {
+        const { listeners } = await freshModules();
+
+        // Inertia does not cancel an in-flight visit to the page you are already
+        // on, so the poll keeps ticking underneath a reload the user asked for.
+        listeners.before?.({
+            detail: {
+                visit: {
+                    url: new URL('https://whisper.money/settings/connections'),
+                    prefetch: false,
+                },
+            },
+        });
+        listeners.before?.(
+            polling('https://whisper.money/settings/connections'),
+        );
+        listeners.networkError?.(
+            failure('https://whisper.money/settings/connections'),
+        );
+
+        expect(toastError).toHaveBeenCalledOnce();
+    });
+
+    it('stops attributing a poll once its window has passed', async () => {
+        vi.useFakeTimers();
+
+        try {
+            const { listeners } = await freshModules();
+
+            // The poll stopped - the step moved on, the page unmounted - so the
+            // next failure at that url belongs to whoever asked for it next.
+            listeners.before?.(polling('https://whisper.money/onboarding'));
+            vi.setSystemTime(Date.now() + 31_000);
+            listeners.networkError?.(
+                failure('https://whisper.money/onboarding'),
+            );
+
+            expect(toastError).toHaveBeenCalledOnce();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('still speaks up when the error carries no url', async () => {
         const { listeners } = await freshModules();
 
