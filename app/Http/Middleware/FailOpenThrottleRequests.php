@@ -28,10 +28,27 @@ use Symfony\Component\HttpFoundation\Response;
  * through. A chart that fails to draw, on the other hand, is the user's whole
  * reason for being on the page.
  *
- * Narrow on purpose. Only a concurrency error counts, so a genuinely broken
- * cache table still fails loudly; and only before the request has run, so a
- * deadlock raised by the controller's own queries is never swallowed and never
- * replayed.
+ * Narrow on purpose. Only a concurrency error counts - `causedByConcurrencyError`
+ * is the framework's own test for busy rather than broken - so a missing cache
+ * table still fails loudly. And only before the request has run, so a deadlock
+ * raised by the controller's own queries is never swallowed and never replayed.
+ *
+ * "Before the request has run" is exactly that, and not "before the response is
+ * finished": the parent reads the counter once more on the way out, to attach the
+ * remaining-attempts headers. A concurrency error there would still surface. That
+ * read is a plain select rather than the insert-and-lock pair that deadlocks, so it
+ * is a boundary worth knowing rather than a hole worth plumbing.
+ *
+ * Deliberately not applied anywhere else. Login, two-factor, the password update and
+ * the MCP endpoints stay on the framework's `throttle`, where a limiter that cannot
+ * record a hit refuses the request: failing open on a chart is a trade, failing open
+ * on an auth endpoint is a hole.
+ *
+ * Where the signal goes when this fires: `Log::warning` reaches Sentry as a log
+ * entry rather than an issue, so PHP-LARAVEL-J itself will fall quiet while the
+ * contention it reported carries on. Watch
+ * `message:"Rate limiter could not record a hit"` instead - and if that line ever
+ * climbs, the answer is the cache store, not this class.
  *
  * The real fix is a cache store that is not a table. Until then, this.
  */
