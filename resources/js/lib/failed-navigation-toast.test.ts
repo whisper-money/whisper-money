@@ -110,6 +110,43 @@ describe('installFailedNavigationToast', () => {
         expect(toastError).not.toHaveBeenCalled();
     });
 
+    it('speaks up when the lost beats keep coming', async () => {
+        const { listeners } = await freshModules();
+
+        // A connection that is actually gone, on a page where the poll is the only
+        // thing happening: nothing else would ever tell the user.
+        for (let beat = 0; beat < 3; beat++) {
+            listeners.before?.(polling('https://whisper.money/onboarding'));
+            listeners.networkError?.(
+                failure('https://whisper.money/onboarding'),
+            );
+        }
+
+        expect(toastError).toHaveBeenCalledOnce();
+    });
+
+    it('forgets the lost beats as soon as something gets through', async () => {
+        const { listeners } = await freshModules();
+
+        for (let beat = 0; beat < 2; beat++) {
+            listeners.before?.(polling('https://whisper.money/onboarding'));
+            listeners.networkError?.(
+                failure('https://whisper.money/onboarding'),
+            );
+        }
+
+        listeners.success?.({ detail: {} });
+
+        for (let beat = 0; beat < 2; beat++) {
+            listeners.before?.(polling('https://whisper.money/onboarding'));
+            listeners.networkError?.(
+                failure('https://whisper.money/onboarding'),
+            );
+        }
+
+        expect(toastError).not.toHaveBeenCalled();
+    });
+
     it('speaks up once the user asks for the page a poll was refreshing', async () => {
         const { listeners } = await freshModules();
 
