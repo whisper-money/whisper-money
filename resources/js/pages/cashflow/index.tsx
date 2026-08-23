@@ -4,6 +4,8 @@ import { PeriodNavigation } from '@/components/cashflow/period-navigation';
 import { SavedInvestedCard } from '@/components/cashflow/saved-invested-card';
 import { CashflowTrendChart, SankeyChart } from '@/components/charts';
 import HeadingSmall from '@/components/heading-small';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CashflowPeriodType, useCashflowData } from '@/hooks/use-cashflow-data';
 import { usePeriodUrlSync } from '@/hooks/use-period-url-sync';
@@ -21,6 +23,7 @@ import {
     startOfQuarter,
     startOfYear,
 } from 'date-fns';
+import { TriangleAlertIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -123,10 +126,18 @@ export default function CashflowPage() {
         incomeBreakdown,
         expenseBreakdown,
         isLoading,
+        hasError,
+        refetch,
     } = useCashflowData({
         ...period,
         periodType,
     });
+
+    // The figures in state after a failed load are either zeros or the period the
+    // user navigated away from, so every card below stays in its placeholder while
+    // the banner explains why. Showing them would be answering a question about
+    // someone's money with a number we do not have.
+    const showPlaceholders = isLoading || hasError;
 
     usePeriodUrlSync(currentDate, periodType, initialPeriod, initialPeriodType);
 
@@ -151,19 +162,39 @@ export default function CashflowPage() {
                     />
                 </div>
 
+                {hasError && (
+                    <Alert variant="destructive">
+                        <TriangleAlertIcon />
+                        <AlertDescription className="flex flex-wrap items-center gap-3">
+                            <span>
+                                {__(
+                                    'We could not load these figures. Try again in a moment.',
+                                )}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={refetch}
+                            >
+                                {__('Try again')}
+                            </Button>
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 {/* Summary Cards */}
                 <div className="grid gap-6 md:grid-cols-2">
                     <NetCashflowCard
                         current={summary.current}
                         previous={summary.previous}
-                        loading={isLoading}
+                        loading={showPlaceholders}
                         currency={auth.user.currency_code}
                     />
 
                     <SavedInvestedCard
                         current={summary.current}
                         previous={summary.previous}
-                        loading={isLoading}
+                        loading={showPlaceholders}
                         currency={auth.user.currency_code}
                     />
                 </div>
@@ -171,7 +202,7 @@ export default function CashflowPage() {
                 {/* Trend Chart */}
                 <CashflowTrendChart
                     data={trend}
-                    loading={isLoading}
+                    loading={showPlaceholders}
                     currency={auth.user.currency_code}
                     periodType={periodType}
                 />
@@ -184,7 +215,7 @@ export default function CashflowPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {isLoading ? (
+                        {showPlaceholders ? (
                             <div className="h-[400px] animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                         ) : (
                             <SankeyChart
@@ -202,7 +233,7 @@ export default function CashflowPage() {
                     <BreakdownCard
                         type="income"
                         data={incomeBreakdown}
-                        loading={isLoading}
+                        loading={showPlaceholders}
                         currency={auth.user.currency_code}
                         period={period}
                     />
@@ -210,7 +241,7 @@ export default function CashflowPage() {
                     <BreakdownCard
                         type="expense"
                         data={expenseBreakdown}
-                        loading={isLoading}
+                        loading={showPlaceholders}
                         currency={auth.user.currency_code}
                         period={period}
                     />
