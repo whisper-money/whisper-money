@@ -12,6 +12,11 @@ namespace App\Services\Banking;
  * content hash in TransactionFingerprint. They live together here because they
  * answer the same question, and because reading them apart invites the wrong
  * conclusion — that either one made the other redundant.
+ *
+ * `status` is read from the payload here, because this question is the only
+ * reason anything reads it. The card code arrives as a value instead, because
+ * TransactionFingerprint already extracts it alongside every other field it
+ * hashes and only needs the mapping.
  */
 class TransactionSettlement
 {
@@ -70,27 +75,15 @@ class TransactionSettlement
     }
 
     /**
-     * The transaction code as the bank sent it.
-     *
-     * @param  array<string, mixed>  $data
-     * @return list<string>
-     */
-    public static function cardCode(array $data): array
-    {
-        return [$data['bank_transaction_code']['code'] ?? '', $data['bank_transaction_code']['sub_code'] ?? ''];
-    }
-
-    /**
      * The settled form of a card payment code, so the un-posted delivery of the
-     * same purchase hashes identically.
+     * same purchase hashes identically. Any other code is returned untouched,
+     * which keeps it discriminating.
      *
-     * @param  array<string, mixed>  $data
+     * @param  list<string>  $code
      * @return list<string>
      */
-    public static function canonicalCardCode(array $data): array
+    public static function canonicalCardCode(array $code): array
     {
-        $code = self::cardCode($data);
-
         return $code === self::PENDING_CARD_CODE ? self::SETTLED_CARD_CODE : $code;
     }
 }

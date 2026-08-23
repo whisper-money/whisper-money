@@ -76,6 +76,8 @@ class TransactionFingerprint
             return self::hash(['entry_reference', $entryReference]);
         }
 
+        $cardCode = self::cardCode($data);
+
         return self::hash([
             $data['booking_date'] ?? '',
             $data['transaction_amount']['amount'] ?? '',
@@ -87,10 +89,19 @@ class TransactionFingerprint
             $data['debtor_account']['iban'] ?? '',
             $data['debtor_account']['other']['identification'] ?? '',
             $data['creditor_account']['other']['identification'] ?? '',
-            ...($contentOnly ? TransactionSettlement::canonicalCardCode($data) : TransactionSettlement::cardCode($data)),
+            ...($contentOnly ? TransactionSettlement::canonicalCardCode($cardCode) : $cardCode),
             $data['reference_number'] ?? '',
             self::remittance($data['remittance_information'] ?? []),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<string>
+     */
+    private static function cardCode(array $data): array
+    {
+        return [$data['bank_transaction_code']['code'] ?? '', $data['bank_transaction_code']['sub_code'] ?? ''];
     }
 
     private static function isPositionalReference(string $reference): bool
