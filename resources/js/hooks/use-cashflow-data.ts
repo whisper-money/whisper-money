@@ -4,9 +4,10 @@ import {
     summary as cashflowSummary,
     trend as cashflowTrend,
 } from '@/actions/App/Http/Controllers/Api/CashflowAnalyticsController';
+import { fetchJson } from '@/lib/fetch-json';
 import { Category } from '@/types/category';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type CashflowPeriodType = 'month' | 'quarter' | 'year';
 
@@ -67,6 +68,7 @@ export interface CashflowData {
     incomeBreakdown: BreakdownData;
     expenseBreakdown: BreakdownData;
     isLoading: boolean;
+    hasError: boolean;
 }
 
 interface UseCashflowDataOptions {
@@ -95,7 +97,9 @@ export function useCashflowData({
     to,
     periodType,
 }: UseCashflowDataOptions): CashflowData & { refetch: () => void } {
-    const [data, setData] = useState<Omit<CashflowData, 'isLoading'>>({
+    const [data, setData] = useState<
+        Omit<CashflowData, 'isLoading' | 'hasError'>
+    >({
         summary: { current: emptySummary, previous: emptySummary },
         sankey: {
             income_categories: [],
@@ -108,8 +112,16 @@ export function useCashflowData({
         expenseBreakdown: emptyBreakdown,
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+
+    // Which load is the current one. Period navigation refetches on every change,
+    // and without this an older request settling late would either paint the wrong
+    // period's figures or report a failure the user has already navigated past.
+    const latestRequest = useRef(0);
 
     const fetchData = useCallback(async () => {
+        const request = ++latestRequest.current;
+
         setIsLoading(true);
         try {
             const fromStr = format(from, 'yyyy-MM-dd');
@@ -123,26 +135,30 @@ export function useCashflowData({
 
             const [summary, sankey, trend, incomeBreakdown, expenseBreakdown] =
                 await Promise.all([
-                    fetch(cashflowSummary.url({ query: periodQuery })).then(
-                        (r) => r.json(),
+                    fetchJson<CashflowData['summary']>(
+                        cashflowSummary.url({ query: periodQuery }),
                     ),
-                    fetch(cashflowSankey.url({ query: periodQuery })).then(
-                        (r) => r.json(),
+                    fetchJson<CashflowData['sankey']>(
+                        cashflowSankey.url({ query: periodQuery }),
                     ),
-                    fetch(cashflowTrend.url({ query: trendQuery })).then((r) =>
-                        r.json(),
+                    fetchJson<{ data: CashflowData['trend'] }>(
+                        cashflowTrend.url({ query: trendQuery }),
                     ),
-                    fetch(
+                    fetchJson<CashflowData['incomeBreakdown']>(
                         cashflowBreakdown.url({
                             query: { ...periodQuery, type: 'income' },
                         }),
-                    ).then((r) => r.json()),
-                    fetch(
+                    ),
+                    fetchJson<CashflowData['expenseBreakdown']>(
                         cashflowBreakdown.url({
                             query: { ...periodQuery, type: 'expense' },
                         }),
-                    ).then((r) => r.json()),
+                    ),
                 ]);
+
+            if (request !== latestRequest.current) {
+                return;
+            }
 
             setData({
                 summary,
@@ -151,10 +167,22 @@ export function useCashflowData({
                 incomeBreakdown,
                 expenseBreakdown,
             });
+            setHasError(false);
         } catch (error) {
+            if (request !== latestRequest.current) {
+                return;
+            }
+
             console.error('Failed to fetch cashflow data:', error);
+
+            // The figures in state are now either a row of zeros or the period the
+            // user just navigated away from. Neither is an answer about this
+            // period, so the page is told, and shows that instead of them.
+            setHasError(true);
         } finally {
-            setIsLoading(false);
+            if (request === latestRequest.current) {
+                setIsLoading(false);
+            }
         }
     }, [from, periodType, to]);
 
@@ -162,7 +190,7 @@ export function useCashflowData({
         fetchData();
     }, [fetchData]);
 
-    return { ...data, isLoading, refetch: fetchData };
+    return { ...data, isLoading, hasError, refetch: fetchData };
 }
 
 export function getDefaultPeriod(): { from: Date; to: Date } {

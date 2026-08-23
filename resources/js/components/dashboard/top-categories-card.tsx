@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
+import { fetchJson } from '@/lib/fetch-json';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import {
@@ -68,10 +69,9 @@ export function TopCategoriesCard({
                 to: dateTo,
                 parent: categoryId,
             });
-            const response = await fetch(
+            return fetchJson<CategoryData[]>(
                 `/api/dashboard/top-categories?${params.toString()}`,
             );
-            return response.json();
         },
         [dateFrom, dateTo],
     );

@@ -1,10 +1,6 @@
-import { useLocale } from '@/hooks/use-locale';
 import { netWorthContribution } from '@/lib/chart-calculations';
 import { Account, AccountType, Bank } from '@/types/account';
-import { Category } from '@/types/category';
 import { formatMonthFromYearMonth } from '@/utils/date';
-import { format, subDays, subMonths } from 'date-fns';
-import { useCallback, useEffect, useState } from 'react';
 
 export interface NetWorthEvolutionAccount {
     id: string;
@@ -44,21 +40,6 @@ export interface AccountWithMetrics extends Account {
     investedAmount: number | null;
     hidden_on_dashboard: boolean;
     archived_at: string | null;
-}
-
-export interface DashboardData {
-    netWorthEvolution: NetWorthEvolutionData;
-    accounts: AccountWithMetrics[];
-    topCategories: Array<{
-        category: Category | null;
-        category_id?: string | null;
-        amount: number;
-        previous_amount: number;
-        total_amount: number;
-        has_children?: boolean;
-        is_direct?: boolean;
-    }>;
-    isLoading: boolean;
 }
 
 export function deriveAccountMetrics(
@@ -110,63 +91,4 @@ export function deriveAccountMetrics(
             archived_at: account.archived_at ?? null,
         } as AccountWithMetrics;
     });
-}
-
-export function useDashboardData(): DashboardData & { refetch: () => void } {
-    const locale = useLocale();
-    const [data, setData] = useState<Omit<DashboardData, 'isLoading'>>({
-        netWorthEvolution: { data: [], accounts: {}, currency_code: 'USD' },
-        accounts: [],
-        topCategories: [],
-    });
-    const [isLoading, setIsLoading] = useState(true);
-
-    const fetchData = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const now = new Date();
-            const to = format(now, 'yyyy-MM-dd');
-
-            const from12Months = format(subMonths(now, 12), 'yyyy-MM-dd');
-            const params12Months = new URLSearchParams({
-                from: from12Months,
-                to,
-            });
-            const query12Months = `?${params12Months.toString()}`;
-
-            const from30Days = format(subDays(now, 30), 'yyyy-MM-dd');
-            const params30Days = new URLSearchParams({
-                from: from30Days,
-                to,
-            });
-            const query30Days = `?${params30Days.toString()}`;
-
-            const [netWorthEvolution, topCategories] = await Promise.all([
-                fetch(
-                    `/api/dashboard/net-worth-evolution${query12Months}`,
-                ).then((r) => r.json()),
-                fetch(`/api/dashboard/top-categories${query30Days}`).then((r) =>
-                    r.json(),
-                ),
-            ]);
-
-            const netWorthData = netWorthEvolution as NetWorthEvolutionData;
-
-            setData({
-                netWorthEvolution: netWorthData,
-                accounts: deriveAccountMetrics(netWorthData, locale),
-                topCategories,
-            });
-        } catch (error) {
-            console.error('Failed to fetch dashboard data:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [locale]);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    return { ...data, isLoading, refetch: fetchData };
 }

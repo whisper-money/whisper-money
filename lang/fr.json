@@ -2215,5 +2215,6 @@
     ":bank cannot be connected right now, and it was not your fault": ":bank ne peut pas être connectée pour le moment, et ce n’était pas de votre faute",
     "Add the account manually": "Ajouter le compte manuellement",
     "Sorry for the wasted time, and thank you for the patience.": "Désolés pour le temps perdu, et merci pour votre patience.",
-    "Compare": "Comparatifs"
+    "Compare": "Comparatifs",
+    "We could not load these figures. Try again in a moment.": "Nous n'avons pas pu charger ces chiffres. Réessayez dans un instant."
 }

@@ -145,6 +145,8 @@ const period = {
 describe('SankeyChart', () => {
     beforeEach(() => {
         global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
             json: async () => foodChildren,
         }) as unknown as typeof fetch;
     });
@@ -243,6 +245,8 @@ describe('SankeyChart', () => {
 
     it('expands an income category into its subcategories on click', async () => {
         global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
             json: async () => salaryChildren,
         }) as unknown as typeof fetch;
 

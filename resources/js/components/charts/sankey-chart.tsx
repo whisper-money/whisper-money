@@ -3,6 +3,7 @@ import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
+import { fetchJson } from '@/lib/fetch-json';
 import { groupSmallCategories } from '@/lib/sankey-utils';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/currency';
@@ -154,9 +155,10 @@ export function SankeyChart({
         const to = format(period.to, 'yyyy-MM-dd');
         let cancelled = false;
 
-        fetch(`/api/cashflow/sankey?from=${from}&to=${to}&parent=${expandedId}`)
-            .then((response) => response.json())
-            .then((json: SankeyData) => {
+        fetchJson<SankeyData>(
+            `/api/cashflow/sankey?from=${from}&to=${to}&parent=${expandedId}`,
+        )
+            .then((json) => {
                 if (!cancelled) {
                     setChildrenById((previous) => ({
                         ...previous,
