@@ -55,6 +55,48 @@ class TransactionFingerprint
     /** @var list<string> */
     private const array SETTLED_CARD_CODE = ['CCRD', 'POSD'];
 
+    /**
+     * Enable Banking statuses describing a delivery that has not settled:
+     * PDNG pending, HOLD card authorisation hold, SCHD scheduled, CNCL
+     * cancelled, RJCT rejected. A bank hands a purchase over as one of these
+     * first and re-sends it later as BOOK with different content, so storing
+     * the un-settled form guarantees a duplicate once the settled form lands.
+     *
+     * This is the second signal of the same phenomenon, kept next to the
+     * card-code pair above because the two read different fields and do not
+     * overlap. Banks that populate `status` leave the card code alone —
+     * Revolut, Santander and Sabadell hold 5.6k of the 7.6k PDNG rows in
+     * production. N26 is the mirror image: `status` is BOOK on both copies of
+     * every row since July, and only `bank_transaction_code` moves. Whichever
+     * field a bank uses, one of the two filters catches it; neither covers the
+     * other's banks, so both have to stay.
+     *
+     * HOLD and SCHD have no production rows yet and come from the Berlin Group
+     * status set rather than an observed payload. CNCL and RJCT are terminal
+     * rather than waiting to settle: there is no BOOK copy coming, and no money
+     * moved, so the ledger is right to omit them too.
+     *
+     * Filtered here rather than through the API's own `transaction_status`
+     * query parameter because not every ASPSP populates `status`; filtering
+     * server-side risks empty responses from the banks that never send it.
+     * Anything absent from this list — BOOK, OTHR, or no field at all —
+     * imports as before.
+     *
+     * @var list<string>
+     */
+    private const array UNSETTLED_STATUSES = ['PDNG', 'HOLD', 'SCHD', 'CNCL', 'RJCT'];
+
+    /**
+     * Whether the bank is handing over a delivery that has not settled, so the
+     * caller can wait for the BOOK copy instead of storing both.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function isUnsettled(array $data): bool
+    {
+        return in_array($data['status'] ?? null, self::UNSETTLED_STATUSES, true);
+    }
+
     private static function hasUnstableIds(?string $bankName): bool
     {
         return $bankName !== null && in_array(mb_strtolower($bankName), self::UNSTABLE_ID_BANKS, true);
