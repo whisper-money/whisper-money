@@ -6,7 +6,7 @@ use Laravel\Ai\Enums\Lab;
 it('resolves known lab provider names to their enum case', function () {
     expect(AiProviderResolver::resolve('gemini'))->toBe(Lab::Gemini);
     expect(AiProviderResolver::resolve('openai'))->toBe(Lab::OpenAI);
-    expect(AiProviderResolver::resolve('openai-compatible'))->toBe(Lab::OpenAiCompatible);
+    expect(AiProviderResolver::resolve('openai-compatible'))->toBe(Lab::OpenAICompatible);
     expect(AiProviderResolver::resolve('ollama'))->toBe(Lab::Ollama);
 });
 
