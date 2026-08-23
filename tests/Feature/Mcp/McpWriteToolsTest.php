@@ -1,7 +1,11 @@
 <?php
 
+use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
+use App\Enums\CategoryType;
+use App\Jobs\ApplySingleAutomationRuleJob;
 use App\Mcp\Servers\WhisperMoneyServer;
+use App\Mcp\Tools\ApplyAutomationRule;
 use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateAutomationRule;
 use App\Mcp\Tools\CreateBalance;
@@ -15,6 +19,7 @@ use App\Mcp\Tools\DeleteCategory;
 use App\Mcp\Tools\DeleteLabel;
 use App\Mcp\Tools\DeleteTransaction;
 use App\Mcp\Tools\LabelTransaction;
+use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\UpdateAutomationRule;
 use App\Mcp\Tools\UpdateBudget;
 use App\Mcp\Tools\UpdateCategory;
@@ -27,6 +32,8 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\AutomationRuleApplier;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Mcp\Server\Testing\TestResponse;
 
 /**
@@ -612,7 +619,6 @@ it('never lets a write tool touch another user\'s data', function () {
 it('tells the agent which id was missing and where to find valid ones', function () {
     $user = User::factory()->create();
 
-    // Records that have a listing tool point the agent at it.
     callWriteTool($user, UpdateTransaction::class, [
         'transaction_id' => 'no-such-transaction',
         'description' => 'Nope',
@@ -620,10 +626,165 @@ it('tells the agent which id was missing and where to find valid ones', function
         'No transaction with id no-such-transaction in space '.$user->personalSpace->id.'. Call search_transactions to find ids.',
     ]);
 
-    // Those without one end at the sentence, with no dangling hint.
     callWriteTool($user, DeleteAutomationRule::class, [
         'automation_rule_id' => 'no-such-rule',
     ])->assertHasErrors([
-        'No automation rule with id no-such-rule in space '.$user->personalSpace->id.'.',
+        'No automation rule with id no-such-rule in space '.$user->personalSpace->id.'. Call list_automation_rules to see valid ids.',
     ]);
+});
+
+/**
+ * A rule that catches history it never ran on: the matching transactions are
+ * created first on purpose, because the TransactionCreated listener only
+ * applies rules that already exist — which is exactly the gap
+ * apply_automation_rule fills.
+ *
+ * @return array{0: AutomationRule, 1: Category, 2: Label}
+ */
+function groceryRuleOverHistory(User $user, int $matchingCount = 2): array
+{
+    $account = Account::factory()->create(['user_id' => $user->id, 'encrypted' => false]);
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+    $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Essentials']);
+
+    // plaintext(), because rule evaluation reads the description and skips
+    // every row the legacy encryption columns still mark as encrypted.
+    Transaction::factory()->plaintext()->count($matchingCount)->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'description' => 'Grocery Store',
+        'amount' => -1_000,
+    ]);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'description' => 'Coffee Shop',
+        'amount' => -500,
+    ]);
+
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
+        'action_category_id' => $category->id,
+    ]);
+    $rule->labels()->attach($label->id);
+
+    return [$rule, $category, $label];
+}
+
+it('previews an automation rule against existing transactions and changes nothing', function () {
+    $user = User::factory()->create();
+    [$rule] = groceryRuleOverHistory($user);
+
+    callWriteTool($user, ApplyAutomationRule::class, [
+        'automation_rule_id' => $rule->id,
+    ])->assertOk()
+        ->assertSee(['"dry_run":true', '"total_matches":2', 'Grocery Store'])
+        ->assertDontSee('Coffee Shop');
+
+    expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0)
+        ->and(Transaction::query()->where('user_id', $user->id)->has('labels')->count())->toBe(0);
+});
+
+it('applies an automation rule to existing transactions once the dry run is turned off', function () {
+    $user = User::factory()->create();
+    [$rule, $category, $label] = groceryRuleOverHistory($user);
+
+    callWriteTool($user, ApplyAutomationRule::class, [
+        'automation_rule_id' => $rule->id,
+        'dry_run' => false,
+    ])->assertOk()->assertSee(['"status":"done"', '"applied":2', '"updated":2']);
+
+    $matched = Transaction::query()->where('description', 'Grocery Store')->with('labels')->get();
+
+    expect($matched)->toHaveCount(2)
+        ->and($matched->pluck('category_id')->unique()->all())->toBe([$category->id])
+        ->and($matched->filter(fn (Transaction $t): bool => $t->labels->contains($label)))->toHaveCount(2);
+
+    // The transaction the rule does not match is left exactly as it was.
+    expect(Transaction::query()->where('description', 'Coffee Shop')->value('category_id'))->toBeNull();
+});
+
+it('hands a large apply to the queue instead of running it inline', function () {
+    Queue::fake();
+
+    $user = User::factory()->create();
+    [$rule] = groceryRuleOverHistory($user, AutomationRuleApplier::SYNC_THRESHOLD + 1);
+
+    callWriteTool($user, ApplyAutomationRule::class, [
+        'automation_rule_id' => $rule->id,
+        'dry_run' => false,
+    ])->assertOk()->assertSee(['"status":"queued"', '"total":101']);
+
+    Queue::assertPushed(ApplySingleAutomationRuleJob::class);
+
+    expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0);
+});
+
+it('lets a read-only token list automation rules but never apply one', function () {
+    $user = User::factory()->create();
+    [$rule] = groceryRuleOverHistory($user);
+
+    callWriteTool($user, ApplyAutomationRule::class, [
+        'automation_rule_id' => $rule->id,
+        'dry_run' => false,
+    ], ['mcp:read'])->assertHasErrors(['read-only']);
+
+    // The same read-only token still reaches the listing tool.
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListAutomationRules::class)
+        ->assertOk()
+        ->assertSee($rule->title);
+
+    expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0);
+});
+
+it('still enforces the Pro-plan gate on apply_automation_rule', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+    [$rule] = groceryRuleOverHistory($user);
+
+    callWriteTool($user, ApplyAutomationRule::class, [
+        'automation_rule_id' => $rule->id,
+        'dry_run' => false,
+    ])->assertHasErrors(['Pro']);
+
+    expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0);
+});
+
+it('moves a subcategory under a different parent and cascades the type down its subtree', function () {
+    $user = User::factory()->create();
+
+    $expenses = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Home',
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $savings = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Savings',
+        'type' => CategoryType::Savings,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+
+    $child = Category::factory()->childOf($expenses)->create(['user_id' => $user->id, 'name' => 'Rainy day']);
+    $grandchild = Category::factory()->childOf($child)->create(['user_id' => $user->id, 'name' => 'Emergency fund']);
+
+    callWriteTool($user, UpdateCategory::class, [
+        'category_id' => $child->id,
+        'parent_id' => $savings->id,
+    ])->assertOk()->assertSee('"type":"savings"');
+
+    expect($child->fresh()->parent_id)->toBe($savings->id)
+        ->and($child->fresh()->type)->toBe(CategoryType::Savings)
+        ->and($child->fresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Outflow)
+        // The whole subtree follows the new parent, not just the moved category.
+        ->and($grandchild->fresh()->type)->toBe(CategoryType::Savings)
+        ->and($grandchild->fresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Outflow);
 });
