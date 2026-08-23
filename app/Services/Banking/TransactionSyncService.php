@@ -269,7 +269,7 @@ class TransactionSyncService
      */
     private function importTransaction(Account $account, array $data, ?string $bankName, array &$knownFingerprints, array &$knownExternalIds): bool
     {
-        if (TransactionFingerprint::isUnsettled($data)) {
+        if (TransactionSettlement::isUnsettled($data)) {
             return false;
         }
 
