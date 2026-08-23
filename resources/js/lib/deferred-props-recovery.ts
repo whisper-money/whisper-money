@@ -23,6 +23,20 @@ import { router } from '@inertiajs/react';
  * - The retry is a plain `router.reload`, which Inertia does not mark as a
  *   deferred-props request. So a retry that fails arms nothing, and one is the
  *   most this can ever do - no counter needed to say so.
+ *
+ * Assumes one deferred group in flight at a time, which is what the two pages
+ * using `<Deferred>` do today - the dashboard defers all three of its props under
+ * a single group, so `loadDeferredProps` makes one request. A second group would
+ * share this slot and only the later one would be retried, leaving the earlier
+ * skeleton exactly as stuck as it is today. Key this by group if that ever
+ * happens.
+ *
+ * What it does not do is give the user a way out once the retry has failed too.
+ * The skeleton is stuck again, and all they have is the failed-navigation toast
+ * telling them the server could not be reached. That is the ceiling on purpose:
+ * the blip is the common case and this fixes it, while a real error state inside
+ * `<Deferred>`'s fallback is a per-page change on top of a framework component
+ * that has no error path at all.
  */
 const RETRY_DELAY_MS = 2_000;
 
