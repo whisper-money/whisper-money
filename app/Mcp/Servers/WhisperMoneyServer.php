@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\ApplyAutomationRule;
 use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateAutomationRule;
 use App\Mcp\Tools\CreateBalance;
@@ -18,6 +19,7 @@ use App\Mcp\Tools\GetCashflow;
 use App\Mcp\Tools\GetNetWorth;
 use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListLabels;
@@ -55,14 +57,21 @@ data.
   so treat `spent_amount` as provisional while `processing_historical` is true.
   A budget's period length, start day, rollover and tracked categories are fixed
   once created: to change those, delete the budget and create it again.
+- An automation rule categorizes and labels transactions automatically. It only
+  runs on transactions created after it, so applying one to the history already
+  in the account is a separate, preview-first step: `list_automation_rules` for
+  the ids, then `apply_automation_rule`, which reports the matches and changes
+  nothing until it is called again with `dry_run: false`. Amounts inside a
+  rule's `rules_json` are in MAJOR units, unlike every other amount here.
 - To find recurring charges (subscriptions), use `search_transactions` and group
   the results by merchant and cadence yourself.
 
 Write tools (create_transaction, update_transaction, delete_transaction,
-categorize_transaction, label_transaction, create_balance and full CRUD for
-budgets, categories, labels and automation rules) require a read & write token;
-a read-only token can analyse data but never change it. Manual transactions can be
-created on any account, bank-connected ones included — a sync never removes them.
+categorize_transaction, label_transaction, create_balance, apply_automation_rule
+and full CRUD for budgets, categories, labels and automation rules) require a
+read & write token; a read-only token can analyse data but never change it.
+Manual transactions can be created on any account, bank-connected ones included
+— a sync never removes them.
 Bank/imported transactions themselves are protected: only manually-created ones
 can be edited or deleted, though you can categorize and label any transaction.
 Balances can only be recorded on non-connected accounts, since a connected
@@ -81,6 +90,7 @@ class WhisperMoneyServer extends Server
         ListCategories::class,
         ListLabels::class,
         ListBudgets::class,
+        ListAutomationRules::class,
         ListSpaces::class,
 
         // Write
@@ -99,6 +109,7 @@ class WhisperMoneyServer extends Server
         CreateAutomationRule::class,
         UpdateAutomationRule::class,
         DeleteAutomationRule::class,
+        ApplyAutomationRule::class,
         CreateBudget::class,
         UpdateBudget::class,
         DeleteBudget::class,
