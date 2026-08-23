@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Enums\RuleOrigin;
 use App\Mcp\Tools\Concerns\DecodesRulesJson;
+use App\Mcp\Tools\Concerns\PresentsAutomationRules;
 use App\Models\AutomationRule;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -15,7 +16,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 #[Description('Create an automation rule that auto-applies a category and/or labels to matching transactions. At least one action (action_category_id or action_label_ids) is required; see rules_json for its format.')]
 class CreateAutomationRule extends WriteTool
 {
-    use DecodesRulesJson;
+    use DecodesRulesJson, PresentsAutomationRules;
 
     /**
      * @return array<string, mixed>
