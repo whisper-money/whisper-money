@@ -40,21 +40,6 @@ class TransactionFingerprint
      */
     private const array UNSTABLE_ID_BANKS = ['n26'];
 
-    /**
-     * The un-posted form of a card payment, and the settled form of the same
-     * purchase. N26 delivers both, flipping this one content field in between;
-     * it is the only field that ever varies inside a duplicate group (verified
-     * across all 59 production groups whose code moves). Canonicalizing the
-     * pair keeps every other transaction code discriminating, where dropping
-     * the field would not.
-     *
-     * @var list<string>
-     */
-    private const array PENDING_CARD_CODE = ['MCRD', 'UPCT'];
-
-    /** @var list<string> */
-    private const array SETTLED_CARD_CODE = ['CCRD', 'POSD'];
-
     private static function hasUnstableIds(?string $bankName): bool
     {
         return $bankName !== null && in_array(mb_strtolower($bankName), self::UNSTABLE_ID_BANKS, true);
@@ -91,6 +76,8 @@ class TransactionFingerprint
             return self::hash(['entry_reference', $entryReference]);
         }
 
+        $cardCode = self::cardCode($data);
+
         return self::hash([
             $data['booking_date'] ?? '',
             $data['transaction_amount']['amount'] ?? '',
@@ -102,7 +89,7 @@ class TransactionFingerprint
             $data['debtor_account']['iban'] ?? '',
             $data['debtor_account']['other']['identification'] ?? '',
             $data['creditor_account']['other']['identification'] ?? '',
-            ...($contentOnly ? self::canonicalTransactionCode($data) : self::transactionCode($data)),
+            ...($contentOnly ? TransactionSettlement::canonicalCardCode($cardCode) : $cardCode),
             $data['reference_number'] ?? '',
             self::remittance($data['remittance_information'] ?? []),
         ]);
@@ -112,23 +99,9 @@ class TransactionFingerprint
      * @param  array<string, mixed>  $data
      * @return list<string>
      */
-    private static function transactionCode(array $data): array
+    private static function cardCode(array $data): array
     {
         return [$data['bank_transaction_code']['code'] ?? '', $data['bank_transaction_code']['sub_code'] ?? ''];
-    }
-
-    /**
-     * The settled form of a card payment code, so the un-posted delivery of the
-     * same purchase hashes identically.
-     *
-     * @param  array<string, mixed>  $data
-     * @return list<string>
-     */
-    private static function canonicalTransactionCode(array $data): array
-    {
-        $code = self::transactionCode($data);
-
-        return $code === self::PENDING_CARD_CODE ? self::SETTLED_CARD_CODE : $code;
     }
 
     private static function isPositionalReference(string $reference): bool

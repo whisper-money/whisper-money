@@ -302,6 +302,10 @@ class TransactionSyncService
      */
     private function importTransaction(Account $account, array $data, ?string $bankName, array &$knownFingerprints, array &$knownExternalIds): bool
     {
+        if (TransactionSettlement::isUnsettled($data)) {
+            return false;
+        }
+
         $externalId = $data['transaction_id'] ?? $data['entry_reference'] ?? null;
         $fingerprint = TransactionFingerprint::for($data, $bankName);
 
