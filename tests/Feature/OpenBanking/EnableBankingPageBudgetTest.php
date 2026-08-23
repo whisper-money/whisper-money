@@ -380,3 +380,79 @@ test('a full resync re-pulls the whole history instead of resuming a leftover ma
     // budget cut short must not quietly narrow it back down.
     expect($window)->toBe(['2025-08-21', '2026-08-21']);
 });
+
+test('a marker over history the account already holds is dropped and the recent window comes back', function () {
+    Carbon::setTestNow('2026-08-21 09:00:00');
+    config(['banking.transaction_page_budget' => ['default' => null, 'Metered Bank' => 2]]);
+
+    $connection = enableBankingConnectionWithAccounts(1);
+    $connection->update(['aspsp_name' => 'Metered Bank']);
+    $account = $connection->accounts[0];
+
+    // The shape production stalled in: a marker in May over an account whose
+    // own synced history already reaches further back than it. Resuming there
+    // re-requests months of rows dedup throws away, and the window's end keeps
+    // every recent transaction out while it does.
+    $account->update(['transactions_paginate_before' => '2026-05-31']);
+    $account->transactions()->create([
+        'user_id' => $connection->user_id,
+        'description' => 'Already synced, older than the marker',
+        'transaction_date' => '2026-05-01',
+        'amount' => -100,
+        'currency_code' => 'EUR',
+        'source' => TransactionSource::EnableBanking,
+    ]);
+
+    $requests = [];
+    $provider = pagingProvider($requests, '2026-08-21');
+    $provider->shouldReceive('getBalances')->andReturn(['balances' => []]);
+    app()->instance(BankingProviderInterface::class, $provider);
+
+    runSync(new SyncBankingConnectionJob($connection->refresh()));
+
+    // The routine window, ending today, so today's transactions arrive.
+    expect($requests[0]['date_to'])->toBe('2026-08-21')
+        ->and($account->transactions()->whereDate('transaction_date', '>=', '2026-08-20')->count())->toBe(2);
+
+    // And the run cut short over ground it already covers does not hand the
+    // marker on, so the next cycle asks for the recent window too.
+    expect($account->refresh()->transactions_paginate_before)->toBeNull();
+});
+
+test('a run that resumes a marker and imports nothing gives up on it', function () {
+    $account = budgetedAccount();
+    $account->update(['transactions_paginate_before' => '2026-06-03']);
+
+    // Held already, so every page this run walks is a dedup miss - while the
+    // account holds nothing older than the marker, which is what keeps the
+    // frontier looking like progress worth another run.
+    $account->transactions()->create([
+        'user_id' => $account->user_id,
+        'description' => 'Known',
+        'transaction_date' => '2026-06-03',
+        'amount' => -1000,
+        'currency_code' => 'EUR',
+        'source' => TransactionSource::EnableBanking,
+        'external_transaction_id' => 'known',
+    ]);
+
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('getTransactions')->andReturn([
+        'transactions' => [[
+            'transaction_id' => 'known',
+            'transaction_amount' => ['amount' => '10.00', 'currency' => 'EUR'],
+            'credit_debit_indicator' => 'DBIT',
+            'booking_date' => '2026-06-02',
+            'remittance_information' => ['Known'],
+        ]],
+        'continuation_key' => 'more',
+    ]);
+
+    $service = new TransactionSyncService($provider, new TransactionDescriptionFormatter);
+
+    expect($service->sync($account, '2025-08-21', '2026-06-03', pageBudget: 2))->toBe(0);
+
+    // 111 requests bought 2 transactions across one production cycle. A budget
+    // spent on nothing is not worth blocking the recent window for another one.
+    expect($account->refresh()->transactions_paginate_before)->toBeNull();
+});

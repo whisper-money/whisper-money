@@ -187,12 +187,12 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         // asking for the full history again, because the watermark the routine
         // window is built on has already moved past it.
         //
-        // Until it drains, the account's window ends in the past, so its newest
-        // transactions wait for the backfill to finish. That is the accepted
-        // cost: the balance, which is what reads as zero today, is fetched on
-        // every one of those runs regardless. A --full resync is an explicit
-        // request to re-pull everything, so it starts over rather than resuming.
-        $resumeBefore = $isFirstSync ? null : $account->transactions_paginate_before?->toDateString();
+        // While it drains, the account's window ends in the past, so its newest
+        // transactions wait for the backfill to finish - which is why a marker
+        // that cannot contribute anything is dropped rather than resumed.
+        // A --full resync is an explicit request to re-pull everything, so it
+        // starts over rather than resuming.
+        $resumeBefore = $this->resumePoint($account, $isFirstSync);
 
         if ($resumeBefore !== null) {
             $dateFrom = $this->resolveDateFrom($account, $resumeBefore, forceFullWindow: true);
@@ -216,6 +216,35 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $dateFrom = $this->resolveDateFrom($account, $dateTo, $forceFullWindow);
 
         return [$dateFrom, $dateTo, $this->strategyFor($dateFrom)];
+    }
+
+    /**
+     * Where a run the page budget cut short left this account's history, or
+     * null when picking it up is not worth a run.
+     *
+     * A marker whose span the account already holds is pure cost: the run
+     * spends its whole budget on history dedup will throw away, and pays for it
+     * with the recent transactions the resume window's end shuts out. Measured
+     * over the 2026-08-22 cycles, this was every Trade Republic account that
+     * had one - one of them re-requesting 282 days it held in full, at 10
+     * requests a cycle, four cycles a day, moving the marker a single day each
+     * time. Falling through to the routine window imports the recent
+     * transactions again; the run that follows clears the marker itself, either
+     * by finishing or by being cut short over ground it already covers.
+     */
+    private function resumePoint(Account $account, bool $isFirstSync): ?string
+    {
+        if ($isFirstSync) {
+            return null;
+        }
+
+        $marker = $account->transactions_paginate_before?->toDateString();
+
+        if ($marker === null || $account->hasSyncedTransactionsBefore($marker)) {
+            return null;
+        }
+
+        return $marker;
     }
 
     /**
