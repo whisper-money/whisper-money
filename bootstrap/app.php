@@ -4,6 +4,7 @@ use App\Http\Middleware\AssignPriceExperimentArm;
 use App\Http\Middleware\BlockDemoAccountActions;
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureUserIsSubscribed;
+use App\Http\Middleware\FailOpenThrottleRequests;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetLocale;
@@ -58,6 +59,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            // The internal API's own throttle. Same behaviour as the framework's,
+            // except a deadlock in the limiter's own cache write lets the request
+            // through instead of 500ing it - see the class for why.
+            'throttle.fail-open' => FailOpenThrottleRequests::class,
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => EnsureOnboardingComplete::class,
             'block-demo' => BlockDemoAccountActions::class,
