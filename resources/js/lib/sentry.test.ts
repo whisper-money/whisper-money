@@ -400,7 +400,7 @@ describe('isBrowserExtensionNoise', () => {
     });
 });
 
-describe('isFailedPrefetchNoise', () => {
+describe('isUnattendedRequestNoise', () => {
     async function freshModulesWithFakedRouter() {
         vi.resetModules();
         const listeners: Record<string, (e: unknown) => void> = {};
@@ -414,9 +414,9 @@ describe('isFailedPrefetchNoise', () => {
             },
         }));
 
-        const tracker = await import('./prefetch-tracker');
+        const tracker = await import('./unattended-requests');
         const sentry = await import('./sentry');
-        tracker.trackPrefetchedUrls();
+        tracker.trackUnattendedRequests();
 
         return { ...tracker, ...sentry, listeners };
     }
@@ -440,7 +440,7 @@ describe('isFailedPrefetchNoise', () => {
     }
 
     it('drops the failure of a page we only guessed at', async () => {
-        const { isFailedPrefetchNoise, listeners } =
+        const { isUnattendedRequestNoise, listeners } =
             await freshModulesWithFakedRouter();
 
         // Hovering the sidebar prefetches Cashflow from whatever page you are on.
@@ -451,26 +451,50 @@ describe('isFailedPrefetchNoise', () => {
         });
 
         expect(
-            isFailedPrefetchNoise(
+            isUnattendedRequestNoise(
                 networkError('https://whisper.money/cashflow'),
             ),
         ).toBe(true);
     });
 
+    it('drops the failure of a poll running in the background', async () => {
+        const { isUnattendedRequestNoise, listeners } =
+            await freshModulesWithFakedRouter();
+
+        // The onboarding create-account step reloads every 4s to notice a bank
+        // that finished connecting somewhere else.
+        listeners.before?.({
+            detail: {
+                visit: {
+                    url: new URL('https://whisper.money/onboarding'),
+                    prefetch: false,
+                    poll: true,
+                },
+            },
+        });
+
+        expect(
+            isUnattendedRequestNoise(
+                networkError('https://whisper.money/onboarding'),
+            ),
+        ).toBe(true);
+    });
+
     it('keeps the failure of a navigation someone was waiting for', async () => {
-        const { isFailedPrefetchNoise } = await freshModulesWithFakedRouter();
+        const { isUnattendedRequestNoise } =
+            await freshModulesWithFakedRouter();
 
         // Never prefetched, so this is a click that went nowhere - the case the
         // suppression must not swallow.
         expect(
-            isFailedPrefetchNoise(
+            isUnattendedRequestNoise(
                 networkError('https://whisper.money/budgets'),
             ),
         ).toBe(false);
     });
 
     it('stops attributing a prefetch once its window has passed', async () => {
-        const { isFailedPrefetchNoise, listeners } =
+        const { isUnattendedRequestNoise, listeners } =
             await freshModulesWithFakedRouter();
 
         listeners.prefetching?.({
@@ -482,17 +506,18 @@ describe('isFailedPrefetchNoise', () => {
         vi.setSystemTime(Date.now() + 61_000);
 
         expect(
-            isFailedPrefetchNoise(
+            isUnattendedRequestNoise(
                 networkError('https://whisper.money/cashflow'),
             ),
         ).toBe(false);
     });
 
     it('keeps a network error that is not Inertia-shaped', async () => {
-        const { isFailedPrefetchNoise } = await freshModulesWithFakedRouter();
+        const { isUnattendedRequestNoise } =
+            await freshModulesWithFakedRouter();
 
         expect(
-            isFailedPrefetchNoise({
+            isUnattendedRequestNoise({
                 exception: {
                     values: [{ type: 'AxiosError', value: 'Network Error' }],
                 },
@@ -501,7 +526,7 @@ describe('isFailedPrefetchNoise', () => {
     });
 
     it('keeps the failure of a click that landed on our in-flight prefetch', async () => {
-        const { isFailedPrefetchNoise, listeners } =
+        const { isUnattendedRequestNoise, listeners } =
             await freshModulesWithFakedRouter();
 
         listeners.prefetching?.({
@@ -522,14 +547,14 @@ describe('isFailedPrefetchNoise', () => {
         });
 
         expect(
-            isFailedPrefetchNoise(
+            isUnattendedRequestNoise(
                 networkError('https://whisper.money/cashflow'),
             ),
         ).toBe(false);
     });
 
     it('still ignores a prefetch that starts while another page is loading', async () => {
-        const { isFailedPrefetchNoise, listeners } =
+        const { isUnattendedRequestNoise, listeners } =
             await freshModulesWithFakedRouter();
 
         listeners.before?.({
@@ -547,7 +572,7 @@ describe('isFailedPrefetchNoise', () => {
         });
 
         expect(
-            isFailedPrefetchNoise(
+            isUnattendedRequestNoise(
                 networkError('https://whisper.money/cashflow'),
             ),
         ).toBe(true);

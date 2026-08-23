@@ -1,7 +1,7 @@
 import type { Event } from '@sentry/react';
 import { isChunkLoadError } from './chunk-load-recovery';
 import { isLeavingPage } from './leave-page';
-import { wasPrefetched } from './prefetch-tracker';
+import { wasUnattended } from './unattended-requests';
 
 const CLONE_ERROR_MESSAGE_PATTERN =
     /object (can not|could not|couldn't|can't) be cloned/i;
@@ -120,22 +120,27 @@ export function isPageLeaveAbortNoise(event: Event): boolean {
 }
 
 /**
- * A speculative request that failed.
+ * A request nobody asked for that failed.
  *
  * Every sidebar item is a `<Link prefetch>`, so hovering the nav fetches a page the
  * user has not committed to. When one fails there is nothing to fix and nothing the
  * user notices - the next real click just makes a real request, and Inertia has
  * already dropped the dead entry so the click is not wedged. Reporting it buries the
  * navigations that genuinely failed on someone who was waiting for one.
+ *
+ * A background poll is the same story on a timer: the onboarding create-account step
+ * asks every 4s whether a bank finished connecting elsewhere, so a single beat lost
+ * to a flaky connection says nothing an issue could act on. The poll four seconds
+ * later is the retry.
  */
-export function isFailedPrefetchNoise(event: Event): boolean {
+export function isUnattendedRequestNoise(event: Event): boolean {
     return (
         event.exception?.values?.some((exception) => {
             const failedUrl = INERTIA_NETWORK_ERROR_PATTERN.exec(
                 exception.value ?? '',
             )?.[1];
 
-            return failedUrl !== undefined && wasPrefetched(failedUrl);
+            return failedUrl !== undefined && wasUnattended(failedUrl);
         }) ?? false
     );
 }

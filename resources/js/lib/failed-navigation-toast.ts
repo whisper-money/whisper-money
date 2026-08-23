@@ -2,7 +2,7 @@ import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { toast } from 'sonner';
 import { isLeavingPage } from './leave-page';
-import { wasPrefetched } from './prefetch-tracker';
+import { wasUnattended } from './unattended-requests';
 
 /**
  * Tells the user when a navigation or a save died on the network.
@@ -13,9 +13,11 @@ import { wasPrefetched } from './prefetch-tracker';
  * `PATCH /settings/accounts/{uuid}`, which is a change the user believed they had
  * made.
  *
- * Stays quiet for requests nobody asked for. A hover prefetch that fails costs the
- * user nothing, and saying so would be noise about a page they may never open. The
- * same goes for whatever a full page navigation of our own aborts on the way out.
+ * Stays quiet for requests nobody asked for: a hover prefetch that fails costs the
+ * user nothing and saying so would be noise about a page they may never open, and a
+ * background poll that misses one beat is answered by the next one four seconds
+ * later. The same goes for whatever a full page navigation of our own aborts on the
+ * way out.
  *
  * Deliberately does not call `preventDefault()`: that would skip the cleanup Inertia
  * runs for a failed prefetch, leaving a dead entry that a later click waits on
@@ -39,7 +41,7 @@ export function installFailedNavigationToast(): void {
 
         const failedUrl = (event.detail.error as { url?: string }).url;
 
-        if (failedUrl !== undefined && wasPrefetched(failedUrl)) {
+        if (failedUrl !== undefined && wasUnattended(failedUrl)) {
             return;
         }
 
