@@ -39,6 +39,8 @@ function deferredVisit(only: string[]) {
     };
 }
 
+const networkError = { detail: { error: {} } };
+
 describe('installDeferredPropsRecovery', () => {
     afterEach(() => {
         vi.useRealTimers();
@@ -49,54 +51,80 @@ describe('installDeferredPropsRecovery', () => {
         vi.useFakeTimers();
         const { listeners } = await freshModule();
 
-        listeners.before?.(deferredVisit(['netWorthEvolution']));
-        listeners.networkError?.({ detail: { error: {} } });
+        // The real order, which is what the first version of this got wrong:
+        // Inertia fires `before` for the deferred request and `navigate` for its
+        // page in the same tick, and only then can the request fail.
+        listeners.before?.(deferredVisit(['dashboard']));
+        listeners.navigate?.({});
+        listeners.networkError?.(networkError);
 
         // Not immediately: the connection that just dropped is given a moment.
         expect(reload).not.toHaveBeenCalled();
 
         vi.advanceTimersByTime(2_000);
 
-        expect(reload).toHaveBeenCalledWith({ only: ['netWorthEvolution'] });
+        expect(reload).toHaveBeenCalledWith({ only: ['dashboard'] });
     });
 
-    it('retries once and then leaves the page alone', async () => {
+    it('leaves a load that got through alone', async () => {
         vi.useFakeTimers();
         const { listeners } = await freshModule();
 
-        listeners.before?.(deferredVisit(['netWorthEvolution']));
-        listeners.networkError?.({ detail: { error: {} } });
+        listeners.before?.(deferredVisit(['dashboard']));
+        listeners.navigate?.({});
+        listeners.finish?.(deferredVisit(['dashboard']));
+
+        // A save blipping later on the same page is not the deferred load's
+        // problem, and must not pull those queries again.
+        listeners.networkError?.(networkError);
         vi.advanceTimersByTime(2_000);
 
-        listeners.before?.(deferredVisit(['netWorthEvolution']));
-        listeners.networkError?.({ detail: { error: {} } });
+        expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('retries once, whatever the retry does', async () => {
+        vi.useFakeTimers();
+        const { listeners } = await freshModule();
+
+        listeners.before?.(deferredVisit(['dashboard']));
+        listeners.networkError?.(networkError);
+        vi.advanceTimersByTime(2_000);
+
+        // The retry is a plain reload, so Inertia does not mark it deferred and
+        // nothing here is armed again by its own failure.
+        listeners.before?.({
+            detail: {
+                visit: {
+                    url: new URL('https://whisper.money/dashboard'),
+                    only: ['dashboard'],
+                },
+            },
+        });
+        listeners.networkError?.(networkError);
         vi.advanceTimersByTime(2_000);
 
         expect(reload).toHaveBeenCalledOnce();
     });
 
-    it('starts over on the next page', async () => {
+    it('does not ask a page the user has left for its props', async () => {
         vi.useFakeTimers();
         const { listeners } = await freshModule();
 
-        listeners.before?.(deferredVisit(['netWorthEvolution']));
-        listeners.networkError?.({ detail: { error: {} } });
-        vi.advanceTimersByTime(2_000);
+        listeners.before?.(deferredVisit(['dashboard']));
+        listeners.networkError?.(networkError);
 
+        // Off to another page inside the two seconds: the reload would target
+        // wherever they are now, asking for props that page does not have.
         listeners.navigate?.({});
-        listeners.before?.(deferredVisit(['transactions']));
-        listeners.networkError?.({ detail: { error: {} } });
         vi.advanceTimersByTime(2_000);
 
-        expect(reload).toHaveBeenCalledTimes(2);
-        expect(reload).toHaveBeenLastCalledWith({ only: ['transactions'] });
+        expect(reload).not.toHaveBeenCalled();
     });
 
     it('stays out of the way of a request nobody deferred', async () => {
         vi.useFakeTimers();
         const { listeners } = await freshModule();
 
-        // A save, a navigation, a poll: not our business.
         listeners.before?.({
             detail: {
                 visit: {
@@ -105,7 +133,7 @@ describe('installDeferredPropsRecovery', () => {
                 },
             },
         });
-        listeners.networkError?.({ detail: { error: {} } });
+        listeners.networkError?.(networkError);
         vi.advanceTimersByTime(2_000);
 
         expect(reload).not.toHaveBeenCalled();
