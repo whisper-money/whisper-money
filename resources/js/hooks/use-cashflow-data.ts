@@ -6,10 +6,8 @@ import {
 } from '@/actions/App/Http/Controllers/Api/CashflowAnalyticsController';
 import { fetchJson } from '@/lib/fetch-json';
 import { Category } from '@/types/category';
-import { __ } from '@/utils/i18n';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
-import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type CashflowPeriodType = 'month' | 'quarter' | 'year';
 
@@ -70,6 +68,7 @@ export interface CashflowData {
     incomeBreakdown: BreakdownData;
     expenseBreakdown: BreakdownData;
     isLoading: boolean;
+    hasError: boolean;
 }
 
 interface UseCashflowDataOptions {
@@ -98,7 +97,9 @@ export function useCashflowData({
     to,
     periodType,
 }: UseCashflowDataOptions): CashflowData & { refetch: () => void } {
-    const [data, setData] = useState<Omit<CashflowData, 'isLoading'>>({
+    const [data, setData] = useState<
+        Omit<CashflowData, 'isLoading' | 'hasError'>
+    >({
         summary: { current: emptySummary, previous: emptySummary },
         sankey: {
             income_categories: [],
@@ -111,8 +112,16 @@ export function useCashflowData({
         expenseBreakdown: emptyBreakdown,
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+
+    // Which load is the current one. Period navigation refetches on every change,
+    // and without this an older request settling late would either paint the wrong
+    // period's figures or report a failure the user has already navigated past.
+    const latestRequest = useRef(0);
 
     const fetchData = useCallback(async () => {
+        const request = ++latestRequest.current;
+
         setIsLoading(true);
         try {
             const fromStr = format(from, 'yyyy-MM-dd');
@@ -147,6 +156,10 @@ export function useCashflowData({
                     ),
                 ]);
 
+            if (request !== latestRequest.current) {
+                return;
+            }
+
             setData({
                 summary,
                 sankey,
@@ -154,20 +167,22 @@ export function useCashflowData({
                 incomeBreakdown,
                 expenseBreakdown,
             });
+            setHasError(false);
         } catch (error) {
+            if (request !== latestRequest.current) {
+                return;
+            }
+
             console.error('Failed to fetch cashflow data:', error);
 
-            // The cards below keep whatever they had, which on a first load is a
-            // row of zeros - so without this the screen states, flatly, that the
-            // period had no money in it.
-            toast.error(
-                __('We could not load these figures. Try again in a moment.'),
-                {
-                    id: 'analytics-load-failed',
-                },
-            );
+            // The figures in state are now either a row of zeros or the period the
+            // user just navigated away from. Neither is an answer about this
+            // period, so the page is told, and shows that instead of them.
+            setHasError(true);
         } finally {
-            setIsLoading(false);
+            if (request === latestRequest.current) {
+                setIsLoading(false);
+            }
         }
     }, [from, periodType, to]);
 
@@ -175,7 +190,7 @@ export function useCashflowData({
         fetchData();
     }, [fetchData]);
 
-    return { ...data, isLoading, refetch: fetchData };
+    return { ...data, isLoading, hasError, refetch: fetchData };
 }
 
 export function getDefaultPeriod(): { from: Date; to: Date } {

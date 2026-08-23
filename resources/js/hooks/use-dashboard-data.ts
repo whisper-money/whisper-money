@@ -4,10 +4,8 @@ import { fetchJson } from '@/lib/fetch-json';
 import { Account, AccountType, Bank } from '@/types/account';
 import { Category } from '@/types/category';
 import { formatMonthFromYearMonth } from '@/utils/date';
-import { __ } from '@/utils/i18n';
 import { format, subDays, subMonths } from 'date-fns';
-import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface NetWorthEvolutionAccount {
     id: string;
@@ -62,6 +60,7 @@ export interface DashboardData {
         is_direct?: boolean;
     }>;
     isLoading: boolean;
+    hasError: boolean;
 }
 
 export function deriveAccountMetrics(
@@ -117,14 +116,21 @@ export function deriveAccountMetrics(
 
 export function useDashboardData(): DashboardData & { refetch: () => void } {
     const locale = useLocale();
-    const [data, setData] = useState<Omit<DashboardData, 'isLoading'>>({
+    const [data, setData] = useState<Omit<DashboardData, 'isLoading' | 'hasError'>>({
         netWorthEvolution: { data: [], accounts: {}, currency_code: 'USD' },
         accounts: [],
         topCategories: [],
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+
+    // See the same guard in use-cashflow-data: whichever load is current owns the
+    // state, so a slow one settling late cannot overwrite it.
+    const latestRequest = useRef(0);
 
     const fetchData = useCallback(async () => {
+        const request = ++latestRequest.current;
+
         setIsLoading(true);
         try {
             const now = new Date();
@@ -155,24 +161,30 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
 
             const netWorthData = netWorthEvolution as NetWorthEvolutionData;
 
+            if (request !== latestRequest.current) {
+                return;
+            }
+
             setData({
                 netWorthEvolution: netWorthData,
                 accounts: deriveAccountMetrics(netWorthData, locale),
                 topCategories,
             });
+            setHasError(false);
         } catch (error) {
+            if (request !== latestRequest.current) {
+                return;
+            }
+
             console.error('Failed to fetch dashboard data:', error);
 
-            // Without this the dashboard just shows a flat net worth and no
-            // categories, which reads as a true answer about the user's money.
-            toast.error(
-                __('We could not load these figures. Try again in a moment.'),
-                {
-                    id: 'analytics-load-failed',
-                },
-            );
+            // A flat net worth and an empty category list read as a true answer
+            // about the user's money. The page shows the failure instead.
+            setHasError(true);
         } finally {
-            setIsLoading(false);
+            if (request === latestRequest.current) {
+                setIsLoading(false);
+            }
         }
     }, [locale]);
 
@@ -180,5 +192,5 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
         fetchData();
     }, [fetchData]);
 
-    return { ...data, isLoading, refetch: fetchData };
+    return { ...data, isLoading, hasError, refetch: fetchData };
 }
