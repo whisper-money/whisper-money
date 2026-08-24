@@ -19,15 +19,22 @@ type Props = {
 
 /**
  * Accents are how the Spanish pages are written but not how they are typed, so
- * "categorias" has to find "Categorías". The unaccented spelling rides along as
- * a keyword rather than replacing the title, which keeps the accented spelling
- * matching too.
+ * "categorias" has to find "Categorías".
  */
 function fold(value: string): string {
     return value
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * What the reader typed has to actually appear in the result. cmdk scores
+ * subsequences by default, which in a page of headings means "saldos" matching
+ * "Rutina semanal recomendada".
+ */
+function score(value: string, search: string): number {
+    return fold(value).includes(fold(search)) ? 1 : 0;
 }
 
 /**
@@ -89,6 +96,7 @@ export default function DocSearch({ index }: Props) {
                 onOpenChange={setOpen}
                 title={__('Search the documentation')}
                 description={__('Search pages and sections.')}
+                filter={score}
             >
                 <CommandInput
                     placeholder={__('Search the documentation')}
@@ -102,7 +110,6 @@ export default function DocSearch({ index }: Props) {
                             <CommandItem
                                 key={page.slug}
                                 value={page.title}
-                                keywords={[fold(page.title)]}
                                 onSelect={() => visit(page.url)}
                                 className="cursor-pointer gap-3"
                             >
@@ -121,10 +128,6 @@ export default function DocSearch({ index }: Props) {
                                 <CommandItem
                                     key={`${page.slug}-${heading.id}`}
                                     value={`${heading.title} ${page.title}`}
-                                    keywords={[
-                                        fold(heading.title),
-                                        fold(page.title),
-                                    ]}
                                     onSelect={() =>
                                         visit(`${page.url}#${heading.id}`)
                                     }
