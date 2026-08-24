@@ -1,7 +1,7 @@
 {
     "$schema": "https://json.schemastore.org/package.json",
     "name": "whisper-money",
-    "version": "0.2.8",
+    "version": "0.2.9",
     "private": true,
     "type": "module",
     "scripts": {
