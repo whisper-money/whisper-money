@@ -4,7 +4,7 @@
   "app_info": {
     "display_name": "Whisper Money",
     "subtitle": "Chat with your own finances",
-    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, cashflow and net worth and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, record balances for manual accounts, and manage budgets, categories, labels and automation rules.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
+    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, cashflow and net worth and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, record balances for manual accounts, and manage budgets, categories, labels and automation rules — including running an automation rule over the transactions you already have, after previewing what it would match.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
     "category": "FINANCE"
   },
   "tools": {
@@ -61,6 +61,14 @@
       "justifications": {
         "read_only_justification": "Lists the user's own labels so later calls can reference label ids. It writes nothing.",
         "open_world_justification": "Lists only labels inside the authenticated user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "list_automation_rules": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Lists the user's own automation rules with their conditions and the category, labels and note each one applies. It writes nothing.",
+        "open_world_justification": "Lists only automation rules inside the authenticated user's own Whisper Money workspace, a closed system.",
         "destructive_justification": "Read-only, so nothing can be changed or lost."
       }
     },
@@ -198,6 +206,14 @@
         "read_only_justification": "Writes: it removes an automation rule from the user's own workspace.",
         "open_world_justification": "Deletes a rule inside the user's own Whisper Money workspace, a closed system.",
         "destructive_justification": "Irreversible: the rule definition is deleted and cannot be restored, so the model must confirm with the user first. Transactions it already categorized are left untouched."
+      }
+    },
+    "apply_automation_rule": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it runs an existing automation rule over the transactions already in the user's own account, categorizing and labelling the ones it matches. It only reads while dry_run is left at its default.",
+        "open_world_justification": "Reads and updates rows inside the user's own Whisper Money workspace, a closed system.",
+        "destructive_justification": "Reversible: it assigns a category, labels and a note, all of which can be reassigned or removed afterwards, and no transaction is deleted. It also previews the matches unless dry_run is explicitly set to false."
       }
     },
     "create_budget": {

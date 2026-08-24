@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Mcp\Tools\Concerns\DecodesRulesJson;
+use App\Mcp\Tools\Concerns\PresentsAutomationRules;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\ValidationException;
@@ -13,7 +14,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 #[Description('Edit an automation rule. Only the fields you pass are changed. The rule must always keep at least one action (a category or labels). See create_automation_rule for the rules_json format.')]
 class UpdateAutomationRule extends WriteTool
 {
-    use DecodesRulesJson;
+    use DecodesRulesJson, PresentsAutomationRules;
 
     /**
      * @return array<string, mixed>

@@ -2,11 +2,13 @@
 
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\SearchTransactions;
 use App\Models\Account;
+use App\Models\AutomationRule;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
@@ -218,4 +220,36 @@ it('never exposes another user\'s budgets', function () {
         ->tool(ListBudgets::class)
         ->assertOk()
         ->assertDontSee('Secret Budget');
+});
+
+it('lists the user\'s automation rules with their actions', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+    $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Essentials']);
+
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $user->id,
+        'title' => 'Supermarket rule',
+        'priority' => 3,
+        'action_category_id' => $category->id,
+    ]);
+    $rule->labels()->attach($label->id);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListAutomationRules::class)
+        ->assertOk()
+        ->assertSee(['Supermarket rule', '"priority":3', $category->id, 'Essentials']);
+});
+
+it('never exposes another user\'s automation rules', function () {
+    $user = User::factory()->create();
+    AutomationRule::factory()->create([
+        'user_id' => User::factory()->create()->id,
+        'title' => 'Secret Rule',
+    ]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListAutomationRules::class)
+        ->assertOk()
+        ->assertDontSee('Secret Rule');
 });

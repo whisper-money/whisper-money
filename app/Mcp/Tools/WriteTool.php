@@ -144,7 +144,7 @@ abstract class WriteTool extends McpTool
 
     protected function ruleInSpace(Request $request, Space $space, string $key = 'automation_rule_id'): AutomationRule
     {
-        return $this->modelInSpace($request, $space, AutomationRule::query()->forSpace($space), $key, 'automation rule');
+        return $this->modelInSpace($request, $space, AutomationRule::query()->forSpace($space), $key, 'automation rule', 'Call list_automation_rules to see valid ids.');
     }
 
     /**
@@ -222,28 +222,6 @@ abstract class WriteTool extends McpTool
             'id' => $label->id,
             'name' => $label->name,
             'color' => $label->color,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function presentAutomationRule(AutomationRule $rule): array
-    {
-        $rule->loadMissing('labels:id,name');
-
-        return [
-            'id' => $rule->id,
-            'title' => $rule->title,
-            'priority' => $rule->priority,
-            'rules_json' => $rule->rules_json,
-            'action_category_id' => $rule->action_category_id,
-            'action_note' => $rule->action_note,
-            'origin' => $rule->origin->value,
-            'labels' => $rule->labels
-                ->map(fn (Label $label): array => ['id' => $label->id, 'name' => $label->name])
-                ->values()
-                ->all(),
         ];
     }
 }
