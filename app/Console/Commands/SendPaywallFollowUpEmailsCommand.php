@@ -22,6 +22,7 @@ class SendPaywallFollowUpEmailsCommand extends Command
         }
 
         $query = User::query()
+            ->excludingSharedAccounts()
             ->whereDate('onboarded_at', today()->subDay())
             ->whereHas('bankingConnections')
             ->whereDoesntHave('mailLogs', function ($query): void {

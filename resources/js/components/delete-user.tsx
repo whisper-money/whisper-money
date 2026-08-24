@@ -27,10 +27,10 @@ export default function DeleteUser({
     hasActiveSubscriptionOrTrial: boolean;
 }) {
     const { auth } = usePage<SharedData>().props;
-    const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isSharedAccount = auth?.isSharedAccount ?? false;
     const passwordInput = useRef<HTMLInputElement>(null);
 
-    if (isDemoAccount) {
+    if (isSharedAccount) {
         return (
             <div className="space-y-6">
                 <HeadingSmall
@@ -43,7 +43,7 @@ export default function DeleteUser({
                 <Alert>
                     <InfoIcon className="h-4 w-4" />
                     <AlertDescription>
-                        {__('The demo account cannot be deleted.')}
+                        {__('This shared account cannot be deleted.')}
                     </AlertDescription>
                 </Alert>
             </div>

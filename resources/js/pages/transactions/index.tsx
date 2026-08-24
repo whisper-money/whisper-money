@@ -461,8 +461,12 @@ export default function Transactions({
     const { auth, features } = usePage<SharedData>().props;
     const [aiConsentResolved, setAiConsentResolved] = useState(false);
     const [aiConsentSaving, setAiConsentSaving] = useState(false);
+    // Never on a shared account: consent means nothing when everybody holds the
+    // credentials, and the route behind the banner is blocked, so offering it
+    // would only hand a journalist a broken button mid-demo.
     const showAiConsentBanner =
         auth.hasProPlan &&
+        !auth.isSharedAccount &&
         !hasAiConsent &&
         !aiConsentPromptDismissed &&
         !aiConsentResolved;

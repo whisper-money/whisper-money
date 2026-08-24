@@ -25,7 +25,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function Password() {
     const { auth } = usePage<SharedData>().props;
-    const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isSharedAccount = auth?.isSharedAccount ?? false;
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
@@ -42,12 +42,12 @@ export default function Password() {
                         )}
                     />
 
-                    {isDemoAccount && (
+                    {isSharedAccount && (
                         <Alert>
                             <InfoIcon className="h-4 w-4" />
                             <AlertDescription>
                                 {__(
-                                    'Password changes are disabled on the demo\n                                account.',
+                                    'Password changes are disabled on this shared account.',
                                 )}
                             </AlertDescription>
                         </Alert>
@@ -133,7 +133,7 @@ export default function Password() {
 
                                 <div className="flex items-center gap-4">
                                     <Button
-                                        disabled={processing || isDemoAccount}
+                                        disabled={processing || isSharedAccount}
                                         data-test="update-password-button"
                                     >
                                         {__('Save password')}

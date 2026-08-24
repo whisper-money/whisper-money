@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Middleware\AssignPriceExperimentArm;
-use App\Http\Middleware\BlockDemoAccountActions;
+use App\Http\Middleware\BlockSharedAccountActions;
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
@@ -54,13 +54,14 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             TrackLastActiveAt::class,
-            BlockDemoAccountActions::class.':auto',
+            BlockSharedAccountActions::class.':auto',
         ]);
 
         $middleware->alias([
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => EnsureOnboardingComplete::class,
-            'block-demo' => BlockDemoAccountActions::class,
+            'block-demo' => BlockSharedAccountActions::class.':demo',
+            'block-shared' => BlockSharedAccountActions::class,
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,
         ]);

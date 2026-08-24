@@ -55,7 +55,7 @@ interface Props {
 
 export default function ConnectionsPage({ connections }: Props) {
     const { auth, flash, subscriptionsEnabled } = usePage<SharedData>().props;
-    const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isSharedAccount = auth?.isSharedAccount ?? false;
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
@@ -203,7 +203,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                     ? setUpgradeDialogOpen(true)
                                     : setConnectDialogOpen(true)
                             }
-                            disabled={isDemoAccount}
+                            disabled={isSharedAccount}
                         >
                             {__('Connect Bank')}
                         </CreateButton>

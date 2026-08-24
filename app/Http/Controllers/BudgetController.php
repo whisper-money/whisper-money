@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Features\SavingsGoals;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
 use App\Models\Account;
@@ -9,6 +10,7 @@ use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
+use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Services\BudgetPeriodService;
 use App\Services\BudgetService;
@@ -17,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class BudgetController extends Controller
 {
@@ -44,8 +47,12 @@ class BudgetController extends Controller
             }])
             ->get();
 
+        $savingsGoalsEnabled = Feature::active(SavingsGoals::class);
+
         return Inertia::render('budgets/index', [
             'budgets' => $budgets,
+            'savingsGoals' => $savingsGoalsEnabled ? SavingsGoal::withStatsForUser($user) : [],
+            'savingsGoalsEnabled' => $savingsGoalsEnabled,
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }

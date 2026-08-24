@@ -18,7 +18,7 @@ class SendUpdateEmailCommand extends Command
                             {view : The view name (e.g., "jan-2026-updates")}
                             {identifier? : The tracking identifier (defaults to view name)}
                             {--subject= : Custom email subject (default: "Update from Whisper Money")}
-                            {--exclude-demo : Exclude the demo account}
+                            {--exclude-demo : Exclude the shared demo and press accounts}
                             {--force : Skip confirmation prompt}';
 
     /**
@@ -53,7 +53,7 @@ class SendUpdateEmailCommand extends Command
         $users = User::query()->get();
 
         if ($this->option('exclude-demo')) {
-            $users = $users->filter(fn (User $user) => ! $user->isDemoAccount());
+            $users = $users->reject(fn (User $user) => in_array($user->email, User::sharedAccountEmails(), true));
         }
 
         if ($users->isEmpty()) {

@@ -154,12 +154,12 @@ function UpgradeSection({
 }
 
 function SubscribedSection({
-    isDemoAccount,
+    isSharedAccount,
     defaultPlan,
     currency,
     locale,
 }: {
-    isDemoAccount: boolean;
+    isSharedAccount: boolean;
     defaultPlan: Plan | undefined;
     currency: string;
     locale: string;
@@ -173,12 +173,12 @@ function SubscribedSection({
                 )}
             />
 
-            {isDemoAccount && (
+            {isSharedAccount && (
                 <Alert>
                     <InfoIcon className="h-4 w-4" />
                     <AlertDescription>
                         {__(
-                            'Billing management is not available on the demo account.',
+                            'Billing management is not available on this shared account.',
                         )}
                     </AlertDescription>
                 </Alert>
@@ -201,7 +201,7 @@ function SubscribedSection({
                         'Manage your subscription, update payment methods, or view invoices through the Stripe billing portal.',
                     )}
                 </p>
-                {!isDemoAccount && (
+                {!isSharedAccount && (
                     <a href={portal.url()}>
                         <Button className="mt-4">
                             <CreditCardIcon className="size-4" />
@@ -347,7 +347,7 @@ export default function Billing() {
     const { auth, pricing, locale, hasAiConsent } = usePage<
         SharedData & { hasAiConsent: boolean }
     >().props;
-    const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isSharedAccount = auth?.isSharedAccount ?? false;
     const hasProPlan = auth?.hasProPlan ?? false;
     const defaultPlan = pricing.plans[pricing.defaultPlan];
     const [showAiUpgrade, setShowAiUpgrade] = useState(false);
@@ -358,15 +358,19 @@ export default function Billing() {
 
             <SettingsLayout>
                 <div className="space-y-8">
-                    <AiConsentSection
-                        initialConsent={hasAiConsent}
-                        hasProPlan={hasProPlan}
-                        onUpgradeNeeded={() => setShowAiUpgrade(true)}
-                    />
+                    {/* Hidden on a shared account: the consent routes are
+                        blocked, so the toggle could only fail. */}
+                    {!isSharedAccount && (
+                        <AiConsentSection
+                            initialConsent={hasAiConsent}
+                            hasProPlan={hasProPlan}
+                            onUpgradeNeeded={() => setShowAiUpgrade(true)}
+                        />
+                    )}
 
                     {hasProPlan ? (
                         <SubscribedSection
-                            isDemoAccount={isDemoAccount}
+                            isSharedAccount={isSharedAccount}
                             defaultPlan={defaultPlan}
                             currency={pricing.currency}
                             locale={locale}

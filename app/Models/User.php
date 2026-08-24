@@ -23,6 +23,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Subscription;
@@ -354,6 +355,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(Budget::class);
     }
 
+    /** @return HasMany<SavingsGoal, $this> */
+    public function savingsGoals(): HasMany
+    {
+        return $this->hasMany(SavingsGoal::class);
+    }
+
     /** @return HasMany<BankingConnection, $this> */
     public function bankingConnections(): HasMany
     {
@@ -375,15 +382,27 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * Demo and end-to-end fixture accounts are seeded with a made-up Stripe
-     * subscription, so every path that would hand that id back to Stripe has to
-     * bail out first or the call 404s.
+     * Demo, press and end-to-end fixture accounts are seeded with a made-up
+     * Stripe subscription, so every path that would hand that id back to Stripe
+     * has to bail out first or the call 404s.
      */
     public function hasSeededSubscription(): bool
     {
         $stripeId = (string) $this->subscription('default')?->stripe_id;
 
-        return str_starts_with($stripeId, 'sub_demo_') || str_starts_with($stripeId, 'sub_e2e_');
+        return Str::startsWith($stripeId, ['sub_demo_', 'sub_press_', 'sub_e2e_']);
+    }
+
+    /**
+     * Whether the account must never be handed to Stripe. A seeded subscription
+     * carries a made-up `stripe_id`, and the shared accounts are checked by
+     * e-mail as well so the gap before their first seed is covered too — without
+     * it, a billing-portal visit would create a real Stripe customer for an
+     * account whose credentials are public.
+     */
+    public function cannotUseStripe(): bool
+    {
+        return $this->hasSeededSubscription() || $this->isDemoAccount() || $this->isPressAccount();
     }
 
     /**
@@ -493,12 +512,57 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
+     * The press account: a second shared login, handed to journalists so they
+     * can drive the AI Connector on seeded Spanish data. Unlike the demo it is
+     * allowed to use the MCP, which is the whole point of it.
+     */
+    public function isPressAccount(): bool
+    {
+        return $this->email === config('app.press.email');
+    }
+
+    /**
      * Whether the demo account's restrictions apply. Local is exempt so the
-     * account stays usable in development, matching BlockDemoAccountActions.
+     * account stays usable in development, matching BlockSharedAccountActions.
      */
     public function isRestrictedDemoAccount(): bool
     {
         return $this->isDemoAccount() && ! app()->environment('local');
+    }
+
+    /**
+     * Whether the user is one of the accounts whose credentials are public and
+     * whose data everyone holding them shares. Nothing destructive and nothing
+     * that could hijack the login is allowed on those, and no real bank may be
+     * connected to one. Local is exempt so both stay usable in development.
+     */
+    public function isRestrictedSharedAccount(): bool
+    {
+        return ($this->isDemoAccount() || $this->isPressAccount()) && ! app()->environment('local');
+    }
+
+    /**
+     * The e-mail addresses of the shared accounts, whatever the environment.
+     * Their traffic is demo traffic, so metrics and automated emails leave them
+     * out (see `excludingSharedAccounts`).
+     *
+     * @return list<string>
+     */
+    public static function sharedAccountEmails(): array
+    {
+        return array_values(array_filter([
+            (string) config('app.demo.email'),
+            (string) config('app.press.email'),
+        ]));
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeExcludingSharedAccounts(Builder $query): Builder
+    {
+        return $query->whereNotIn($query->qualifyColumn('email'), self::sharedAccountEmails());
     }
 
     public function isAdmin(): bool

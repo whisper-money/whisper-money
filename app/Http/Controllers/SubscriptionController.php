@@ -56,6 +56,10 @@ class SubscriptionController extends Controller
 
     public function checkout(Request $request): Checkout
     {
+        // A seeded plan has no Stripe customer behind it, so starting a checkout
+        // from one of those accounts would only reach Stripe and fail there.
+        abort_if($request->user()->cannotUseStripe(), 403, 'Checkout is not available on this account.');
+
         $planKey = $request->query('plan', config('subscriptions.default_plan'));
         $plan = config("subscriptions.plans.{$planKey}");
 
@@ -176,9 +180,9 @@ class SubscriptionController extends Controller
 
     public function billingPortal(Request $request): RedirectResponse
     {
-        if ($request->user()->isDemoAccount() || $request->user()->hasSeededSubscription()) {
+        if ($request->user()->cannotUseStripe()) {
             return redirect()->route('settings.billing')
-                ->withErrors(['demo' => 'Billing management is not available on the demo account.']);
+                ->withErrors(['demo' => 'Billing management is not available on this account.']);
         }
 
         $user = $request->user();
