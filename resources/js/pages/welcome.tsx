@@ -14,6 +14,7 @@ import { leavePage } from '@/lib/leave-page';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
 import { dashboard, roadmap } from '@/routes';
+import documentation from '@/routes/documentation';
 import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
 import { LANGUAGE_OPTIONS } from '@/types/language';
@@ -1957,12 +1958,14 @@ const FOOTER_LINK_CLASSES = 'hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]';
 function FooterColumn({
     title,
     children,
+    className,
 }: {
     title: string;
     children: ReactNode;
+    className?: string;
 }) {
     return (
-        <div className="flex flex-col gap-3">
+        <div className={cn('flex flex-col gap-3', className)}>
             <h2 className="font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
                 {title}
             </h2>
@@ -3146,7 +3149,47 @@ export default function Welcome({
                             </FooterColumn>
                         )}
 
-                        <FooterColumn title={__('Language')}>
+                        <FooterColumn title={__('Resources')}>
+                            <li>
+                                <Link
+                                    href={documentation.index()}
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Documentation')}
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href={integrationsLink.path}
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Compatible banks and apps')}
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href={roadmap()}
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Roadmap')}
+                                </Link>
+                            </li>
+                            <li>
+                                <a
+                                    href="https://discord.gg/m8hUhx6D9D"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Community')}
+                                </a>
+                            </li>
+                        </FooterColumn>
+
+                        <FooterColumn
+                            title={__('Language')}
+                            className="sm:text-right"
+                        >
                             {LANGUAGE_OPTIONS.map((option) => (
                                 <li key={option.code}>
                                     {option.code === locale ? (
@@ -3167,48 +3210,24 @@ export default function Welcome({
                                 </li>
                             ))}
                         </FooterColumn>
-
-                        <FooterColumn title={__('Other')}>
-                            <li>
-                                <Link
-                                    href={integrationsLink.path}
-                                    className={FOOTER_LINK_CLASSES}
-                                >
-                                    {integrationsLink.heading}
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    href={roadmap()}
-                                    className={FOOTER_LINK_CLASSES}
-                                >
-                                    {__('Roadmap')}
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    href="/privacy"
-                                    className={FOOTER_LINK_CLASSES}
-                                >
-                                    {__('Privacy Policy')}
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    href="/terms"
-                                    className={FOOTER_LINK_CLASSES}
-                                >
-                                    {__('Terms of Service')}
-                                </Link>
-                            </li>
-                        </FooterColumn>
                     </div>
 
-                    <div className="mx-auto mt-10 max-w-5xl px-6 text-sm text-[#706f6c] lg:px-8 dark:text-[#A1A09A]">
+                    <div className="mx-auto mt-10 flex max-w-5xl flex-col gap-3 px-6 text-sm text-[#706f6c] sm:flex-row sm:items-center sm:justify-between lg:px-8 dark:text-[#A1A09A]">
                         <p>
                             © {new Date().getFullYear()}{' '}
                             {__('Whisper Money. All rights reserved.')}
                         </p>
+                        <div className="flex items-center gap-6">
+                            <Link
+                                href="/privacy"
+                                className={FOOTER_LINK_CLASSES}
+                            >
+                                {__('Privacy Policy')}
+                            </Link>
+                            <Link href="/terms" className={FOOTER_LINK_CLASSES}>
+                                {__('Terms of Service')}
+                            </Link>
+                        </div>
                     </div>
                 </footer>
             </div>
