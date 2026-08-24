@@ -3,7 +3,6 @@
 use App\Enums\AccountType;
 use App\Enums\PlanFeature;
 use App\Models\User;
-use App\Services\Demo\PressDataset;
 
 beforeEach(function () {
     config(['app.press' => [
@@ -36,7 +35,7 @@ test('demo:reset --press seeds a Spanish account that survives a re-run', functi
     $user = User::where('email', 'prensa@whisper.money')->first();
 
     expect($user)->not->toBeNull()
-        ->and($user->name)->toBe(PressDataset::NAME)
+        ->and($user->name)->toBe('Marta Ruiz Ferrer')
         ->and($user->locale)->toBe('es')
         ->and($user->currency_code)->toBe('EUR')
         ->and($user->email_verified_at)->not->toBeNull()

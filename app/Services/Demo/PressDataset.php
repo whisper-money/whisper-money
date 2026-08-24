@@ -19,11 +19,11 @@ use App\Enums\AccountType;
  */
 class PressDataset
 {
-    public const NAME = 'Marta Ruiz Ferrer';
+    private const NAME = 'Marta Ruiz Ferrer';
 
-    public const LOCALE = 'es';
+    private const LOCALE = 'es';
 
-    public const CURRENCY = 'EUR';
+    private const CURRENCY = 'EUR';
 
     /**
      * @return array<string, mixed>
