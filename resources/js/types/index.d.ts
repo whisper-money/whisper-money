@@ -42,6 +42,8 @@ export interface NavDivider {
 export interface Features {
     cashflow: boolean;
     calculateBalancesOnImport: boolean;
+    /** Gates creating a split. Merging one back is always available. */
+    splitTransactions: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {

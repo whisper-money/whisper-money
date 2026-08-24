@@ -284,6 +284,7 @@ interface TransactionRowProps {
     onDelete: (transaction: DecryptedTransaction) => void;
     onSplit: (transaction: DecryptedTransaction) => void;
     onUnsplit: (transaction: DecryptedTransaction) => void;
+    splitsEnabled: boolean;
 }
 
 function TransactionRowComponent({
@@ -296,6 +297,7 @@ function TransactionRowComponent({
     onDelete,
     onSplit,
     onUnsplit,
+    splitsEnabled,
 }: TransactionRowProps) {
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -375,6 +377,7 @@ function TransactionRowComponent({
                 <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                 {getTransactionRowActions({
                     transaction,
+                    splitsEnabled,
                     onEdit,
                     onReEvaluateRules,
                     onDelete,
@@ -455,7 +458,7 @@ export default function Transactions({
     lastVisitAt,
 }: Props) {
     const locale = useLocale();
-    const { auth } = usePage<SharedData>().props;
+    const { auth, features } = usePage<SharedData>().props;
     const [aiConsentResolved, setAiConsentResolved] = useState(false);
     const [aiConsentSaving, setAiConsentSaving] = useState(false);
     const showAiConsentBanner =
@@ -1074,6 +1077,7 @@ export default function Transactions({
                 onReEvaluateRules: handleReEvaluateRules,
                 onSplit: setSplitTransaction,
                 onUnsplit: setUnsplitTransaction,
+                splitsEnabled: features.splitTransactions,
                 isDateHidden: columnVisibility.transaction_date === false,
                 categorizingIds,
             }),
@@ -1081,6 +1085,7 @@ export default function Transactions({
             accounts,
             banks,
             categories,
+            features.splitTransactions,
             labels,
             locale,
             updateTransaction,
@@ -1402,10 +1407,11 @@ export default function Transactions({
                     onDelete={setDeleteTransaction}
                     onSplit={setSplitTransaction}
                     onUnsplit={setUnsplitTransaction}
+                    splitsEnabled={features.splitTransactions}
                 />
             );
         },
-        [handleReEvaluateRules, lastVisitAtMount],
+        [handleReEvaluateRules, lastVisitAtMount, features.splitTransactions],
     );
 
     return (
@@ -1588,7 +1594,9 @@ export default function Transactions({
                 onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
                 onDelete={setDeleteTransaction}
-                onSplit={setSplitTransaction}
+                onSplit={
+                    features.splitTransactions ? setSplitTransaction : undefined
+                }
                 mode="edit"
             />
 

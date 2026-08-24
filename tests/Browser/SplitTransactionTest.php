@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\TransactionSource;
+use App\Features\SplitTransactions;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -27,6 +29,8 @@ it('splits a transaction into two parts and merges it back', function () {
         'currency_code' => 'USD',
         'source' => TransactionSource::EnableBanking,
     ]);
+
+    Feature::for($user)->activate(SplitTransactions::class);
 
     actingAs($user);
 
@@ -69,6 +73,8 @@ it('splits from the row menu, the entry point people actually use', function () 
         'currency_code' => 'USD',
         'source' => TransactionSource::EnableBanking,
     ]);
+
+    Feature::for($user)->activate(SplitTransactions::class);
 
     actingAs($user);
 

@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Features\SplitTransactions;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Space;
@@ -15,10 +16,23 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Pennant\Feature;
 
 #[Description('Split one transaction into 2-20 parts, each with its own category and labels. Works on bank transactions too. The parts must add up to the original and all move money the same way.')]
 class SplitTransaction extends WriteTool
 {
+    /**
+     * Not served while the feature is off for this user. Merging a split back
+     * stays available either way, so nobody is left holding parts they cannot
+     * undo.
+     */
+    public function shouldRegister(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user !== null && Feature::for($user)->active(SplitTransactions::class);
+    }
+
     /**
      * @return array<string, mixed>
      */

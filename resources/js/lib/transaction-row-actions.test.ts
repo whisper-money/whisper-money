@@ -29,6 +29,7 @@ function transaction(
 }
 
 const handlers = {
+    splitsEnabled: true,
     onEdit: () => {},
     onReEvaluateRules: () => {},
     onDelete: () => {},
@@ -64,5 +65,28 @@ describe('getTransactionRowActions', () => {
         }).map((action) => action.id);
 
         expect(ids).not.toContain('split');
+    });
+});
+
+describe('getTransactionRowActions while splitting is switched off', () => {
+    it('does not offer splitting', () => {
+        const ids = getTransactionRowActions({
+            transaction: transaction(),
+            ...handlers,
+            splitsEnabled: false,
+        }).map((action) => action.id);
+
+        expect(ids).toEqual(['edit', 're-evaluate-rules', 'delete']);
+    });
+
+    it('still offers merging back, so a part is never a dead end', () => {
+        const ids = getTransactionRowActions({
+            transaction: transaction({ split_parent_id: 'txn-0' }),
+            ...handlers,
+            splitsEnabled: false,
+        }).map((action) => action.id);
+
+        expect(ids).toContain('unsplit');
+        expect(ids).not.toContain('delete');
     });
 });

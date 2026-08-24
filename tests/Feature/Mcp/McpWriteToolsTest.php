@@ -3,6 +3,7 @@
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
+use App\Features\SplitTransactions;
 use App\Jobs\ApplySingleAutomationRuleJob;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\ApplyAutomationRule;
@@ -37,6 +38,7 @@ use App\Models\User;
 use App\Services\AutomationRuleApplier;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Mcp\Server\Testing\TestResponse;
+use Laravel\Pennant\Feature;
 
 /**
  * Call a write tool as $user, giving them a real personal access token with the
@@ -51,6 +53,19 @@ function callWriteTool(User $user, string $tool, array $arguments = [], array $a
     $user->withAccessToken($user->createToken('mcp', $abilities)->accessToken);
 
     return WhisperMoneyServer::actingAs($user)->tool($tool, $arguments);
+}
+
+/**
+ * Splitting ships behind a feature flag, so a user has to have it switched on
+ * before split_transaction is served to them at all.
+ */
+function userWithSplits(): User
+{
+    $user = User::factory()->create();
+
+    Feature::for($user)->activate(SplitTransactions::class);
+
+    return $user;
 }
 
 it('creates a manual transaction and defaults the currency to the account', function () {
@@ -178,7 +193,7 @@ it('refuses to delete an imported transaction', function () {
 });
 
 it('splits a transaction into parts and keeps the original out of every list', function () {
-    $user = User::factory()->create();
+    $user = userWithSplits();
     $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
     $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
     $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Shared']);
@@ -210,7 +225,7 @@ it('splits a transaction into parts and keeps the original out of every list', f
 });
 
 it('refuses parts that do not add up to the original', function () {
-    $user = User::factory()->create();
+    $user = userWithSplits();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $original = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -228,7 +243,7 @@ it('refuses parts that do not add up to the original', function () {
 });
 
 it('refuses a part that moves money the other way', function () {
-    $user = User::factory()->create();
+    $user = userWithSplits();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $original = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -243,7 +258,7 @@ it('refuses a part that moves money the other way', function () {
 });
 
 it('refuses a category from outside the space', function () {
-    $user = User::factory()->create();
+    $user = userWithSplits();
     $stranger = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $foreignCategory = Category::factory()->create(['user_id' => $stranger->id]);
@@ -265,7 +280,7 @@ it('refuses a category from outside the space', function () {
 });
 
 it('merges a split back from any of its parts', function () {
-    $user = User::factory()->create();
+    $user = userWithSplits();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $original = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -303,7 +318,7 @@ it('refuses to merge a transaction that was never split', function () {
 });
 
 it('refuses to split one part of a split again', function () {
-    $user = User::factory()->create();
+    $user = userWithSplits();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $original = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -325,7 +340,7 @@ it('refuses to split one part of a split again', function () {
 });
 
 it('refuses to split for a read-only token', function () {
-    $user = User::factory()->create();
+    $user = userWithSplits();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $original = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -337,6 +352,23 @@ it('refuses to split for a read-only token', function () {
         'transaction_id' => $original->id,
         'splits' => [['amount' => -3000], ['amount' => -2000]],
     ], ['mcp:read'])->assertHasErrors(['read-only']);
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+});
+
+it('does not serve split_transaction while the feature is off', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [['amount' => -3000], ['amount' => -2000]],
+    ])->assertHasErrors();
 
     expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
 });

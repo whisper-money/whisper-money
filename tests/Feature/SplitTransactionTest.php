@@ -2,6 +2,7 @@
 
 use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
+use App\Features\SplitTransactions;
 use App\Models\Account;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
@@ -11,6 +12,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
+use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     $this->user = User::factory()->create([
@@ -19,6 +21,8 @@ beforeEach(function () {
     ]);
     $this->account = Account::factory()->create(['user_id' => $this->user->id]);
     $this->category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    Feature::for($this->user)->activate(SplitTransactions::class);
 });
 
 function splittableTransaction(int $amount = -5340): Transaction
@@ -156,6 +160,8 @@ it('refuses splitting a part again', function () {
 
 it('refuses to split someone else another user owns', function () {
     $stranger = User::factory()->create(['email_verified_at' => now(), 'onboarded_at' => now()]);
+    Feature::for($stranger)->activate(SplitTransactions::class);
+
     $original = splittableTransaction();
 
     $this->actingAs($stranger)->postJson("/transactions/{$original->id}/split", [
@@ -285,4 +291,35 @@ it('moves the budget from the original to the parts, and back again on merge', f
 
     expect(BudgetTransaction::query()->whereIn('transaction_id', $partIds)->count())->toBe(0)
         ->and(BudgetTransaction::query()->where('transaction_id', $original->id)->exists())->toBeTrue();
+});
+
+it('refuses to split at all while the feature is off', function () {
+    Feature::for($this->user)->deactivate(SplitTransactions::class);
+
+    $original = splittableTransaction();
+
+    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
+        'splits' => [['amount' => -3490], ['amount' => -1850]],
+    ])->assertStatus(400);
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+});
+
+it('still merges a split back after the feature is switched off', function () {
+    $original = splittableTransaction();
+
+    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
+        'splits' => [['amount' => -3490], ['amount' => -1850]],
+    ])->assertCreated();
+
+    // Nobody should be left holding parts they cannot undo.
+    Feature::for($this->user)->deactivate(SplitTransactions::class);
+
+    $part = Transaction::query()->where('split_parent_id', $original->id)->first();
+
+    $this->actingAs($this->user)
+        ->deleteJson("/transactions/{$part->id}/split")
+        ->assertSuccessful();
+
+    expect(Transaction::query()->find($original->id))->not->toBeNull();
 });
