@@ -176,6 +176,16 @@ it('lists the documentation in llms.txt', function () {
         ->and($body)->toContain(route('documentation.markdown', ['slug' => 'accounts', 'lang' => 'en']));
 });
 
+it('lists every documentation page in the sitemap, with its other languages', function () {
+    $body = $this->get('/sitemap.xml')->assertOk()->getContent();
+
+    foreach (publishedSlugs() as $slug) {
+        expect($body)->toContain('<loc>'.route('documentation.show', ['slug' => $slug, 'lang' => 'en']).'</loc>');
+    }
+
+    expect($body)->toContain('hreflang="es" href="'.route('documentation.show', ['slug' => 'accounts', 'lang' => 'es']).'"');
+});
+
 it('returns not found for unknown pages, in html and in markdown', function () {
     $this->get('/documentation/unknown')->assertNotFound();
     $this->get('/documentation/unknown.md')->assertNotFound();
