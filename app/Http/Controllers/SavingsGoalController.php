@@ -145,7 +145,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
         $label = $savingsGoal->label;
 
         if ($label === null) {
-            return back();
+            return redirect()->route('savings-goals.show', $savingsGoal);
         }
 
         // Ids the user does not own are dropped by the scope rather than trusted.
@@ -166,7 +166,9 @@ class SavingsGoalController extends Controller implements HasMiddleware
             ReassignTransactionsToBudgets::dispatch($touched, notify: false);
         }
 
-        return back();
+        // Named route, not back(): the dialog only exists on this page, and the
+        // previous-url redirect resolves to the app's internal host behind a proxy.
+        return redirect()->route('savings-goals.show', $savingsGoal);
     }
 
     public function update(UpdateSavingsGoalRequest $request, SavingsGoal $savingsGoal): RedirectResponse
