@@ -3,6 +3,7 @@
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
+use App\Features\SplitTransactions;
 use App\Jobs\ApplySingleAutomationRuleJob;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\ApplyAutomationRule;
@@ -20,6 +21,8 @@ use App\Mcp\Tools\DeleteLabel;
 use App\Mcp\Tools\DeleteTransaction;
 use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAutomationRules;
+use App\Mcp\Tools\MergeTransactionSplits;
+use App\Mcp\Tools\SplitTransaction;
 use App\Mcp\Tools\UpdateAutomationRule;
 use App\Mcp\Tools\UpdateBudget;
 use App\Mcp\Tools\UpdateCategory;
@@ -35,6 +38,7 @@ use App\Models\User;
 use App\Services\AutomationRuleApplier;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Mcp\Server\Testing\TestResponse;
+use Laravel\Pennant\Feature;
 
 /**
  * Call a write tool as $user, giving them a real personal access token with the
@@ -49,6 +53,19 @@ function callWriteTool(User $user, string $tool, array $arguments = [], array $a
     $user->withAccessToken($user->createToken('mcp', $abilities)->accessToken);
 
     return WhisperMoneyServer::actingAs($user)->tool($tool, $arguments);
+}
+
+/**
+ * Splitting ships behind a feature flag, so a user has to have it switched on
+ * before split_transaction is served to them at all.
+ */
+function userWithSplits(): User
+{
+    $user = User::factory()->create();
+
+    Feature::for($user)->activate(SplitTransactions::class);
+
+    return $user;
 }
 
 it('creates a manual transaction and defaults the currency to the account', function () {
@@ -173,6 +190,232 @@ it('refuses to delete an imported transaction', function () {
     ])->assertHasErrors(['manually-created']);
 
     expect(Transaction::query()->find($transaction->id))->not->toBeNull();
+});
+
+it('splits a transaction into parts and keeps the original out of every list', function () {
+    $user = userWithSplits();
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+    $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Shared']);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [
+            ['amount' => -3000, 'category_id' => $category->id, 'label_ids' => [$label->id]],
+            ['amount' => -2000],
+        ],
+    ])->assertOk()->assertSee('Groceries');
+
+    $parts = Transaction::query()->where('split_parent_id', $original->id)->orderBy('amount')->get();
+
+    expect($parts)->toHaveCount(2)
+        ->and($parts->sum('amount'))->toBe(-5000)
+        ->and($parts->first()->amount)->toBe(-3000)
+        ->and($parts->first()->category_id)->toBe($category->id)
+        ->and($parts->first()->labels->pluck('id')->all())->toBe([$label->id])
+        ->and($parts->last()->category_id)->toBeNull()
+        ->and(Transaction::query()->find($original->id))->toBeNull()
+        ->and(Transaction::withTrashed()->find($original->id)->trashed())->toBeTrue();
+});
+
+it('refuses parts that do not add up to the original', function () {
+    $user = userWithSplits();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [['amount' => -3000], ['amount' => -1000]],
+    ])->assertHasErrors();
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0)
+        ->and(Transaction::query()->find($original->id))->not->toBeNull();
+});
+
+it('refuses a part that moves money the other way', function () {
+    $user = userWithSplits();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [['amount' => -6000], ['amount' => 1000]],
+    ])->assertHasErrors();
+});
+
+it('refuses a category from outside the space', function () {
+    $user = userWithSplits();
+    $stranger = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $foreignCategory = Category::factory()->create(['user_id' => $stranger->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [
+            ['amount' => -3000, 'category_id' => $foreignCategory->id],
+            ['amount' => -2000],
+        ],
+    ])->assertHasErrors();
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+});
+
+it('merges a split back from any of its parts', function () {
+    $user = userWithSplits();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [['amount' => -3000], ['amount' => -2000]],
+    ])->assertOk();
+
+    $part = Transaction::query()->where('split_parent_id', $original->id)->first();
+
+    callWriteTool($user, MergeTransactionSplits::class, [
+        'transaction_id' => $part->id,
+    ])->assertOk();
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0)
+        ->and(Transaction::query()->find($original->id))->not->toBeNull()
+        ->and(Transaction::query()->find($original->id)->amount)->toBe(-5000);
+});
+
+it('refuses to merge a transaction that was never split', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+    ]);
+
+    callWriteTool($user, MergeTransactionSplits::class, [
+        'transaction_id' => $transaction->id,
+    ])->assertHasErrors();
+});
+
+it('refuses to split one part of a split again', function () {
+    $user = userWithSplits();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [['amount' => -3000], ['amount' => -2000]],
+    ])->assertOk();
+
+    $part = Transaction::query()->where('split_parent_id', $original->id)->first();
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $part->id,
+        'splits' => [['amount' => -1500], ['amount' => -1500]],
+    ])->assertHasErrors();
+});
+
+it('refuses to split for a read-only token', function () {
+    $user = userWithSplits();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [['amount' => -3000], ['amount' => -2000]],
+    ], ['mcp:read'])->assertHasErrors(['read-only']);
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+});
+
+it('does not serve split_transaction while the feature is off', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+
+    callWriteTool($user, SplitTransaction::class, [
+        'transaction_id' => $original->id,
+        'splits' => [['amount' => -3000], ['amount' => -2000]],
+    ])->assertHasErrors();
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+});
+
+it('refuses to delete one part of a split', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+    $part = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'split_parent_id' => $original->id,
+        'amount' => -3000,
+    ]);
+
+    callWriteTool($user, DeleteTransaction::class, [
+        'transaction_id' => $part->id,
+    ])->assertHasErrors(['split']);
+
+    expect(Transaction::query()->find($part->id))->not->toBeNull();
+});
+
+it('refuses to edit one part of a split', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+    $part = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'split_parent_id' => $original->id,
+        'amount' => -3000,
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $part->id,
+        'amount' => -1,
+    ])->assertHasErrors(['split']);
+
+    expect($part->fresh()->amount)->toBe(-3000);
 });
 
 it('categorizes an imported transaction', function () {

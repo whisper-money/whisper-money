@@ -1,5 +1,6 @@
 <?php
 
+use App\Features\SplitTransactions;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AgentDocsController;
 use App\Http\Controllers\Ai\AiConsentController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\SavingsGoalController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\TransactionSplitController;
 use App\Models\Bank;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\IntegrationsPage;
@@ -41,6 +43,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 
 Route::get('/', function () {
     $popularBanks = Cache::remember('popular-banks', now()->addDay(), function () {
@@ -213,6 +216,12 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('transactions/re-evaluate-rules/status/{jobId}', [ReEvaluateTransactionRulesController::class, 'status'])->name('transactions.re-evaluate-rules.status');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     Route::post('transactions/{transaction}/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'single'])->name('transactions.re-evaluate-rules.single');
+    // Only creating a split is gated: merging one back stays open, so turning
+    // the flag off never leaves anyone holding parts they cannot undo.
+    Route::post('transactions/{transaction}/split', [TransactionSplitController::class, 'store'])
+        ->middleware(EnsureFeaturesAreActive::using(SplitTransactions::class))
+        ->name('transactions.split.store');
+    Route::delete('transactions/{transaction}/split', [TransactionSplitController::class, 'destroy'])->name('transactions.split.destroy');
 });
 
 // The bank authorization callback is intentionally unauthenticated: iOS PWAs hand the

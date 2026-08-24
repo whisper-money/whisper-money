@@ -78,3 +78,42 @@ describe('AmountInput sign toggle', () => {
         expect(input).toHaveValue('-');
     });
 });
+
+describe('AmountInput commitOnChange', () => {
+    it('waits for blur by default, so nothing reacts mid-typing', () => {
+        const onChange = vi.fn();
+        render(
+            <AmountInput value={0} onChange={onChange} currencyCode="EUR" />,
+        );
+
+        const input = screen.getByRole('textbox');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: '30' } });
+
+        expect(onChange).not.toHaveBeenCalled();
+
+        fireEvent.blur(input);
+
+        expect(onChange).toHaveBeenCalledWith(3000, false);
+    });
+
+    it('reports every keystroke when asked, for a running total that has to keep up', () => {
+        const onChange = vi.fn();
+        render(
+            <AmountInput
+                value={0}
+                onChange={onChange}
+                currencyCode="EUR"
+                commitOnChange
+            />,
+        );
+
+        const input = screen.getByRole('textbox');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: '3' } });
+        fireEvent.change(input, { target: { value: '30' } });
+
+        expect(onChange).toHaveBeenNthCalledWith(1, 300, false);
+        expect(onChange).toHaveBeenNthCalledWith(2, 3000, false);
+    });
+});

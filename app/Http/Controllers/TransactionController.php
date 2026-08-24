@@ -82,6 +82,8 @@ class TransactionController extends Controller
                 ->append('ai_categorized');
         });
 
+        Transaction::loadSplitSiblings($transactions->getCollection());
+
         $newestServed = $transactions->getCollection()->max('created_at');
         if ($newestServed && (! $lastVisitAt || $newestServed->gt($lastVisitAt))) {
             $user->forceFill(['transactions_last_visited_at' => $newestServed])->save();
@@ -292,6 +294,14 @@ class TransactionController extends Controller
     public function destroy(Request $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
     {
         $this->authorize('delete', $transaction);
+
+        // Removing one part on its own would leave the rest no longer adding up
+        // to what the account actually moved.
+        if ($transaction->isSplitPart()) {
+            return response()->json([
+                'message' => 'This transaction is part of a split. Merge the split back before deleting it.',
+            ], 422);
+        }
 
         if ($request->boolean('update_balance')) {
             $balanceAdjuster->reverseDeletedTransaction($transaction);

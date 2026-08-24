@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Delete a manually-created transaction. Only manual transactions can be deleted; bank/imported ones cannot.')]
+#[Description('Delete a manually-created transaction. Only manual transactions can be deleted; bank/imported ones cannot, and neither can one part of a split.')]
 class DeleteTransaction extends WriteTool
 {
     /**
@@ -34,6 +34,10 @@ class DeleteTransaction extends WriteTool
 
         if ($transaction->source !== TransactionSource::ManuallyCreated) {
             return Response::error('Only manually-created transactions can be deleted. This one came from a bank or import.');
+        }
+
+        if ($transaction->isSplitPart()) {
+            return Response::error('This transaction is one part of a split, so deleting it on its own would leave the rest no longer adding up. Merge the split back first.');
         }
 
         $balanceUpdated = $request->boolean('update_balance')

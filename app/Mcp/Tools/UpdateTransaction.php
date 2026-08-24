@@ -45,6 +45,10 @@ class UpdateTransaction extends WriteTool
             return Response::error('Only manually-created transactions can be edited. This one came from a bank or import, so its core fields are locked. Use categorize_transaction or label_transaction instead.');
         }
 
+        if ($transaction->isSplitPart()) {
+            return Response::error('This transaction is one part of a split, so its amount, date and account are locked. Use categorize_transaction or label_transaction instead.');
+        }
+
         $request->validate([
             'description' => ['sometimes', 'string'],
             'amount' => ['sometimes', 'integer'],

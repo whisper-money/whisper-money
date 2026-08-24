@@ -4,7 +4,7 @@
   "app_info": {
     "display_name": "Whisper Money",
     "subtitle": "Chat with your own finances",
-    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, cashflow and net worth and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, record balances for manual accounts, and manage budgets, categories, labels and automation rules — including running an automation rule over the transactions you already have, after previewing what it would match.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
+    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, cashflow and net worth and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, split a transaction that covered several things into parts with their own categories, record balances for manual accounts, and manage budgets, categories, labels and automation rules — including running an automation rule over the transactions you already have, after previewing what it would match.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
     "category": "FINANCE"
   },
   "tools": {
@@ -110,6 +110,22 @@
         "read_only_justification": "Writes: it removes a manual transaction from the user's own account.",
         "open_world_justification": "Deletes a bookkeeping row inside the user's own Whisper Money account, a closed system. No external system is affected.",
         "destructive_justification": "Irreversible data loss: the transaction is deleted and cannot be restored, so the model must confirm with the user first. Only manual transactions can be deleted; bank-imported ones are rejected."
+      }
+    },
+    "split_transaction": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it replaces one transaction in the user's own account with the parts they asked for.",
+        "open_world_justification": "Rewrites bookkeeping rows inside the user's own Whisper Money account, a closed system. No external system is affected.",
+        "destructive_justification": "Reversible: the original transaction is kept and merge_transaction_splits puts it back at any time. The parts must add up to the original amount, so no money is created or lost."
+      }
+    },
+    "merge_transaction_splits": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes: it removes the parts of a split from the user's own account and restores the transaction they came from.",
+        "open_world_justification": "Rewrites bookkeeping rows inside the user's own Whisper Money account, a closed system. No external system is affected.",
+        "destructive_justification": "Irreversible data loss: the parts are deleted along with the category, labels and notes set on each of them, so the model must confirm with the user first. The original transaction itself comes back untouched."
       }
     },
     "categorize_transaction": {

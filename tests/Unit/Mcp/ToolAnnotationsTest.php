@@ -26,6 +26,9 @@ $destructive = [
     'delete_label',
     'delete_automation_rule',
     'delete_budget',
+    // Merging a split back deletes its parts, and the category, labels and
+    // notes set on each of them, for good.
+    'merge_transaction_splits',
 ];
 
 /**
@@ -49,7 +52,7 @@ it('declares all three MCP hints on every tool', function () use ($readOnly, $de
     /** @var array<int, class-string<Tool>> $tools */
     $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
 
-    expect($tools)->toHaveCount(count($readOnly) + 19);
+    expect($tools)->toHaveCount(count($readOnly) + 21);
 
     foreach ($tools as $class) {
         $tool = new $class;

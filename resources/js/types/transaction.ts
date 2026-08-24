@@ -12,10 +12,26 @@ export type TransactionSource =
 
 export type CategorySource = 'manual' | 'rule' | 'ai' | 'bank';
 
+/**
+ * One part of a split, as it arrives on every part of the same split (itself
+ * included). Enough to explain the split without reading the original, which is
+ * soft-deleted server-side.
+ */
+export interface TransactionSplitSibling {
+    id: UUID;
+    split_parent_id: UUID;
+    category_id: UUID | null;
+    amount: number;
+}
+
 export interface Transaction {
     id: UUID;
     user_id: UUID;
     account_id: UUID;
+    /** Set when this transaction is one part of a split. Absent on payloads the app sends. */
+    split_parent_id?: UUID | null;
+    /** Every part of the same split, this one included. Loaded where the table needs it. */
+    split_siblings?: TransactionSplitSibling[];
     category_id: UUID | null;
     description: string;
     description_iv: string | null;

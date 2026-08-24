@@ -24,8 +24,10 @@ use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListSpaces;
+use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SpendingByCategory;
+use App\Mcp\Tools\SplitTransaction;
 use App\Mcp\Tools\UpdateAutomationRule;
 use App\Mcp\Tools\UpdateBudget;
 use App\Mcp\Tools\UpdateCategory;
@@ -63,17 +65,29 @@ data.
   the ids, then `apply_automation_rule`, which reports the matches and changes
   nothing until it is called again with `dry_run: false`. Amounts inside a
   rule's `rules_json` are in MAJOR units, unlike every other amount here.
+- A transaction that covered several things can be split into parts, each with
+  its own category and labels: `split_transaction` replaces it with 2-20 parts
+  whose amounts must add up to the original and all move money the same way.
+  From then on the parts are what exists — the original is out of every list and
+  every total, and only the parts are returned. Each part carries a
+  `split_parent_id` shared with its siblings; pass any one of them to
+  `merge_transaction_splits` to put the original back, which deletes the parts
+  and everything set on them. A part cannot be split again, deleted on its own,
+  or have its amount, date or account changed; categorizing and labelling it
+  works as usual.
 - To find recurring charges (subscriptions), use `search_transactions` and group
   the results by merchant and cadence yourself.
 
 Write tools (create_transaction, update_transaction, delete_transaction,
-categorize_transaction, label_transaction, create_balance, apply_automation_rule
-and full CRUD for budgets, categories, labels and automation rules) require a
-read & write token; a read-only token can analyse data but never change it.
+split_transaction, merge_transaction_splits, categorize_transaction,
+label_transaction, create_balance, apply_automation_rule and full CRUD for
+budgets, categories, labels and automation rules) require a read & write token;
+a read-only token can analyse data but never change it.
 Manual transactions can be created on any account, bank-connected ones included
 — a sync never removes them.
 Bank/imported transactions themselves are protected: only manually-created ones
-can be edited or deleted, though you can categorize and label any transaction.
+can be edited or deleted, though you can categorize, label and split any
+transaction.
 Balances can only be recorded on non-connected accounts, since a connected
 account's balances come from the bank and would be overwritten.
 MARKDOWN)]
@@ -97,6 +111,8 @@ class WhisperMoneyServer extends Server
         CreateTransaction::class,
         UpdateTransaction::class,
         DeleteTransaction::class,
+        SplitTransaction::class,
+        MergeTransactionSplits::class,
         CategorizeTransaction::class,
         LabelTransaction::class,
         CreateBalance::class,

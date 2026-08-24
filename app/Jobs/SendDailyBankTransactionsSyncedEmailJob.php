@@ -67,6 +67,10 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
         $pendingTransactions = Transaction::query()
             ->where('user_id', $this->user->id)
             ->where('source', TransactionSource::EnableBanking)
+            // A split part inherits the bank source and gets a fresh created_at,
+            // so without this the digest would announce the user's own split as
+            // transactions the bank had just sent.
+            ->whereNull('split_parent_id')
             ->when($lastSentMailLog?->sent_at, fn ($query, $lastSentAt) => $query->where('created_at', '>', $lastSentAt))
             ->whereHas('account.bankingConnection', function ($query) {
                 $query->where(function ($query) {

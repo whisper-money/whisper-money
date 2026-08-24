@@ -3,11 +3,13 @@ import { __ } from '@/utils/i18n';
 import { ColumnDef } from '@tanstack/react-table';
 import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { Fragment } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
+import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
 import {
     ENCRYPTED_PLACEHOLDER,
     TransactionDescription,
@@ -20,8 +22,11 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { getTransactionRowActions } from '@/lib/transaction-row-actions';
+import { isSplitPart } from '@/lib/transaction-splits';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
@@ -42,6 +47,10 @@ interface CreateColumnsOptions {
         source: 'transaction_table',
     ) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
+    onSplit: (transaction: DecryptedTransaction) => void;
+    onUnsplit: (transaction: DecryptedTransaction) => void;
+    /** Whether splitting is offered. Merging back is offered either way. */
+    splitsEnabled?: boolean;
     isDateHidden?: boolean;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
@@ -58,6 +67,9 @@ export function createTransactionColumns({
     onUpdate,
     onCategorized,
     onReEvaluateRules,
+    onSplit,
+    onUnsplit,
+    splitsEnabled = false,
     isDateHidden = false,
     categorizingIds,
 }: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
@@ -217,32 +229,44 @@ export function createTransactionColumns({
                 const hasNotes = !!transaction.notes;
 
                 return (
-                    <div className="flex flex-col gap-0.5">
-                        <div className="flex flex-row justify-between gap-1">
-                            <div className="flex-grow truncate">
-                                <TransactionDescription
-                                    text={transaction.description}
-                                    encrypted={!!transaction.description_iv}
-                                />
+                    // The split mark sits in its own gutter, so everything
+                    // beside it — description, labels, notes — lines up exactly
+                    // as it does on a row that was never split.
+                    <div className="flex gap-1.5">
+                        {isSplitPart(transaction) && (
+                            <SplitOriginPopover
+                                transaction={transaction}
+                                categories={categories}
+                                onUnsplit={onUnsplit}
+                            />
+                        )}
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <div className="flex flex-row justify-between gap-1">
+                                <div className="flex-grow truncate">
+                                    <TransactionDescription
+                                        text={transaction.description}
+                                        encrypted={!!transaction.description_iv}
+                                    />
+                                </div>
+                                {showLabels && hasLabels && (
+                                    <LabelBadges
+                                        labels={transactionLabels}
+                                        max={3}
+                                    />
+                                )}
                             </div>
-                            {showLabels && hasLabels && (
-                                <LabelBadges
-                                    labels={transactionLabels}
-                                    max={3}
-                                />
+                            {showNotes && hasNotes && (
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                                    <div className="truncate text-muted-foreground/80">
+                                        <span>
+                                            {transaction.notes_iv
+                                                ? ENCRYPTED_PLACEHOLDER
+                                                : transaction.notes}
+                                        </span>
+                                    </div>
+                                </div>
                             )}
                         </div>
-                        {showNotes && hasNotes && (
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                                <div className="truncate text-muted-foreground/80">
-                                    <span>
-                                        {transaction.notes_iv
-                                            ? ENCRYPTED_PLACEHOLDER
-                                            : transaction.notes}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 );
             },
@@ -374,24 +398,27 @@ export function createTransactionColumns({
                                 <DropdownMenuLabel>
                                     {__('Actions')}
                                 </DropdownMenuLabel>
-                                <DropdownMenuItem
-                                    onClick={() => onEdit(transaction)}
-                                >
-                                    {__('Edit')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() =>
-                                        onReEvaluateRules(transaction)
-                                    }
-                                >
-                                    {__('Re-evaluate rules')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() => onDelete(transaction)}
-                                >
-                                    {__('Delete')}
-                                </DropdownMenuItem>
+                                {getTransactionRowActions({
+                                    transaction,
+                                    splitsEnabled,
+                                    onEdit,
+                                    onReEvaluateRules,
+                                    onDelete,
+                                    onSplit,
+                                    onUnsplit,
+                                }).map((action) => (
+                                    <Fragment key={action.id}>
+                                        {action.separated && (
+                                            <DropdownMenuSeparator />
+                                        )}
+                                        <DropdownMenuItem
+                                            variant={action.variant}
+                                            onClick={action.onSelect}
+                                        >
+                                            {action.label}
+                                        </DropdownMenuItem>
+                                    </Fragment>
+                                ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
