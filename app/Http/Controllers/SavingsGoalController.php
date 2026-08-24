@@ -6,12 +6,15 @@ use App\Enums\LabelColor;
 use App\Enums\LabelSource;
 use App\Features\SavingsGoals;
 use App\Http\Requests\StoreSavingsGoalRequest;
+use App\Http\Requests\SyncSavingsGoalTransactionsRequest;
 use App\Http\Requests\UpdateSavingsGoalRequest;
+use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
+use App\Models\Transaction;
 use Closure;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +28,18 @@ use Laravel\Pennant\Feature;
 class SavingsGoalController extends Controller implements HasMiddleware
 {
     use AuthorizesRequests;
+
+    // ponytail: a flat window, no search. If people can't find older contributions
+    // in it, the dialog needs a search box hitting the transactions query instead.
+    private const RECENT_TRANSACTIONS_LIMIT = 50;
+
+    /**
+     * What a transaction row needs to render, both in the page's list and in the
+     * link dialog. Keep the two in step: the dialog merges both sets.
+     *
+     * @var list<string>
+     */
+    private const TRANSACTION_RELATIONS = ['account.bank', 'category', 'labels'];
 
     /**
      * Hide the whole savings-goals surface behind the rollout feature flag.
@@ -71,7 +86,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
 
         $transactions = $savingsGoal->label
             ? $savingsGoal->label->transactions()
-                ->with(['account.bank', 'category', 'labels'])
+                ->with(self::TRANSACTION_RELATIONS)
                 ->orderBy('transaction_date')
                 ->get()
             : collect();
@@ -106,7 +121,54 @@ class SavingsGoalController extends Controller implements HasMiddleware
                 ->orderBy('name')
                 ->get(),
             'currencyCode' => $user->currency_code ?? 'USD',
+            // Only fetched when the link-transactions dialog asks for it.
+            'recentTransactions' => Inertia::optional(fn () => Transaction::query()
+                ->where('user_id', $user->id)
+                ->with(self::TRANSACTION_RELATIONS)
+                ->orderByDesc('transaction_date')
+                ->orderByDesc('created_at')
+                ->limit(self::RECENT_TRANSACTIONS_LIMIT)
+                ->get()),
         ]);
+    }
+
+    /**
+     * Replace the set of transactions carrying this goal's label. The dialog always
+     * shows every already-tagged transaction alongside the recent ones, so the ids it
+     * sends back are the complete intended set.
+     */
+    public function syncTransactions(SyncSavingsGoalTransactionsRequest $request, SavingsGoal $savingsGoal): RedirectResponse
+    {
+        $this->authorize('update', $savingsGoal);
+
+        // A goal whose label was soft-deleted has nothing to tag with.
+        $label = $savingsGoal->label;
+
+        if ($label === null) {
+            return redirect()->route('savings-goals.show', $savingsGoal);
+        }
+
+        // Ids the user does not own are dropped by the scope rather than trusted.
+        $ids = Transaction::query()
+            ->where('user_id', $request->user()->id)
+            ->whereIn('id', $request->array('transaction_ids'))
+            ->pluck('id')
+            ->all();
+
+        $changes = $label->transactions()->sync($ids);
+
+        $touched = array_merge($changes['attached'], $changes['detached']);
+
+        if ($touched !== []) {
+            // Pivot writes fire no model event, so nothing would re-derive which
+            // budgets track these transactions by label. Silently: relabelling an
+            // existing transaction is not new spending.
+            ReassignTransactionsToBudgets::dispatch($touched, notify: false);
+        }
+
+        // Named route, not back(): the dialog only exists on this page, and the
+        // previous-url redirect resolves to the app's internal host behind a proxy.
+        return redirect()->route('savings-goals.show', $savingsGoal);
     }
 
     public function update(UpdateSavingsGoalRequest $request, SavingsGoal $savingsGoal): RedirectResponse

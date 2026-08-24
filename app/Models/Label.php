@@ -55,7 +55,6 @@ class Label extends Model
     protected $hidden = [
         'pivot',
         'space_id',
-        'source',
     ];
 
     /** @return BelongsTo<User, $this> */

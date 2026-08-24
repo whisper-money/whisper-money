@@ -211,3 +211,104 @@ test('effective start keeps creation date when no earlier contribution exists', 
     expect(SavingsGoal::effectiveStart($created, null)->toDateString())->toBe('2026-07-20')
         ->and(SavingsGoal::effectiveStart($created, '2026-08-01')->toDateString())->toBe('2026-07-20');
 });
+
+test('syncing transactions attaches the ticked ones and detaches the rest', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $alreadyTagged = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -50000,
+    ]);
+    $newlyTicked = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -20000,
+    ]);
+    $alreadyTagged->labels()->attach($goal->label_id);
+
+    $response = $this->actingAs($user)->put("/savings-goals/{$goal->id}/transactions", [
+        'transaction_ids' => [$newlyTicked->id],
+    ]);
+
+    $response->assertRedirect();
+
+    expect($goal->fresh()->savedAmountInCents())->toBe(20000);
+    $this->assertDatabaseMissing('label_transaction', [
+        'label_id' => $goal->label_id,
+        'transaction_id' => $alreadyTagged->id,
+    ]);
+});
+
+test('syncing transactions ignores ids belonging to someone else', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $stranger = User::factory()->create();
+    $theirTransaction = Transaction::factory()->create([
+        'user_id' => $stranger->id,
+        'account_id' => Account::factory()->create(['user_id' => $stranger->id])->id,
+        'amount' => -50000,
+    ]);
+
+    $this->actingAs($user)->put("/savings-goals/{$goal->id}/transactions", [
+        'transaction_ids' => [$theirTransaction->id],
+    ])->assertRedirect();
+
+    $this->assertDatabaseMissing('label_transaction', [
+        'label_id' => $goal->label_id,
+        'transaction_id' => $theirTransaction->id,
+    ]);
+});
+
+test('another user cannot sync transactions on a goal that is not theirs', function () {
+    $owner = onboardedSavingsUser();
+    $intruder = onboardedSavingsUser();
+    Feature::for($intruder)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($intruder)
+        ->put("/savings-goals/{$goal->id}/transactions", ['transaction_ids' => []])
+        ->assertForbidden();
+});
+
+test('the goal page only loads recent transactions when asked for them', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -10000,
+    ]);
+
+    $this->actingAs($user)->get("/savings-goals/{$goal->id}")
+        ->assertInertia(fn ($page) => $page->missing('recentTransactions'));
+
+    $this->actingAs($user)->withoutVite()
+        ->get("/savings-goals/{$goal->id}", [
+            'X-Inertia' => 'true',
+            'X-Inertia-Partial-Component' => 'savings-goals/show',
+            'X-Inertia-Partial-Data' => 'recentTransactions',
+        ])
+        ->assertOk()
+        ->assertJsonCount(1, 'props.recentTransactions');
+});
+
+test('the goal label carries its source so the UI can mark it as a savings goal', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)->get("/savings-goals/{$goal->id}")
+        ->assertInertia(fn ($page) => $page->where('savingsGoal.label.source', LabelSource::SavingsGoal->value));
+});

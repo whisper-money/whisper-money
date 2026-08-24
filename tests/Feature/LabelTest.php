@@ -209,5 +209,5 @@ test('labels index returns the standard label field set', function () {
     $props = $response->viewData('page')['props'];
 
     expect(array_keys($props['labels'][0]))
-        ->toEqualCanonicalizing(['id', 'user_id', 'name', 'color', 'created_at', 'updated_at', 'deleted_at']);
+        ->toEqualCanonicalizing(['id', 'user_id', 'name', 'color', 'source', 'created_at', 'updated_at', 'deleted_at']);
 });

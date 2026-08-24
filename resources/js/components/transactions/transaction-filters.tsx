@@ -1,11 +1,12 @@
 import { __ } from '@/utils/i18n';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
-import { ChevronsUpDown, Tag, X } from 'lucide-react';
+import { ChevronsUpDown, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
+import { LabelIcon } from '@/components/shared/label-icon';
 import { SavedFilters } from '@/components/transactions/saved-filters';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import { Badge } from '@/components/ui/badge';
@@ -613,7 +614,10 @@ export function TransactionFilters({
                                                                                 colorClasses.bg,
                                                                             )}
                                                                         >
-                                                                            <Tag
+                                                                            <LabelIcon
+                                                                                label={
+                                                                                    label
+                                                                                }
                                                                                 className={cn(
                                                                                     'h-3 w-3',
                                                                                     colorClasses.text,

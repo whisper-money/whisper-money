@@ -1,4 +1,5 @@
 import { store } from '@/actions/App/Http/Controllers/BudgetController';
+import { LabelIcon } from '@/components/shared/label-icon';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -38,7 +39,7 @@ import { getLabelColorClasses, Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
-import { Plus, Tag } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 
@@ -343,7 +344,10 @@ export function CreateBudgetDialog({
                                                     value: label.id,
                                                     label: label.name,
                                                     icon: (
-                                                        <Tag className="h-3 w-3 opacity-80" />
+                                                        <LabelIcon
+                                                            label={label}
+                                                            className="h-3 w-3 opacity-80"
+                                                        />
                                                     ),
                                                     badgeClassName: cn(
                                                         colorClasses.bg,
