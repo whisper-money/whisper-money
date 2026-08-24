@@ -174,6 +174,31 @@ it('leaves the press account able to log out and edit its own data', function ()
         ->assertSessionHasNoErrors();
 });
 
+/**
+ * One request per test: the auth guard resolved by the first request stays
+ * cached on the application instance, so a second request in the same test
+ * would be throttled as the first user.
+ */
+it('applies the wider MCP rate limit to the press account over HTTP', function () {
+    $plain = pressAccount()->createToken('mcp', ['mcp:read'])->plainTextToken;
+
+    // The limit is keyed off the authenticated user, so this also proves the
+    // guard is resolved by the time the throttle middleware runs.
+    $this->withHeaders(['Authorization' => "Bearer {$plain}"])
+        ->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'])
+        ->assertOk()
+        ->assertHeader('X-RateLimit-Limit', 600);
+});
+
+it('leaves the MCP rate limit alone for everybody else', function () {
+    $plain = User::factory()->create()->createToken('mcp', ['mcp:read'])->plainTextToken;
+
+    $this->withHeaders(['Authorization' => "Bearer {$plain}"])
+        ->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'])
+        ->assertOk()
+        ->assertHeader('X-RateLimit-Limit', 60);
+});
+
 it('gives the shared accounts a wider MCP rate limit', function () {
     $limiter = RateLimiter::limiter('mcp');
 

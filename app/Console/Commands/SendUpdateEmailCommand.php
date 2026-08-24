@@ -18,7 +18,7 @@ class SendUpdateEmailCommand extends Command
                             {view : The view name (e.g., "jan-2026-updates")}
                             {identifier? : The tracking identifier (defaults to view name)}
                             {--subject= : Custom email subject (default: "Update from Whisper Money")}
-                            {--exclude-demo : Exclude the demo account}
+                            {--exclude-demo : Exclude the shared demo and press accounts}
                             {--force : Skip confirmation prompt}';
 
     /**
