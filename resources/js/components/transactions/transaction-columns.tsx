@@ -226,41 +226,44 @@ export function createTransactionColumns({
                 const hasNotes = !!transaction.notes;
 
                 return (
-                    <div className="flex flex-col gap-0.5">
-                        <div className="flex flex-row justify-between gap-1">
-                            <div className="flex min-w-0 flex-grow items-center gap-1.5">
-                                {isSplitPart(transaction) && (
-                                    <SplitOriginPopover
-                                        transaction={transaction}
-                                        categories={categories}
-                                        onUnsplit={onUnsplit}
-                                    />
-                                )}
-                                <div className="truncate">
+                    // The split mark sits in its own gutter, so everything
+                    // beside it — description, labels, notes — lines up exactly
+                    // as it does on a row that was never split.
+                    <div className="flex gap-1.5">
+                        {isSplitPart(transaction) && (
+                            <SplitOriginPopover
+                                transaction={transaction}
+                                categories={categories}
+                                onUnsplit={onUnsplit}
+                            />
+                        )}
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <div className="flex flex-row justify-between gap-1">
+                                <div className="flex-grow truncate">
                                     <TransactionDescription
                                         text={transaction.description}
                                         encrypted={!!transaction.description_iv}
                                     />
                                 </div>
+                                {showLabels && hasLabels && (
+                                    <LabelBadges
+                                        labels={transactionLabels}
+                                        max={3}
+                                    />
+                                )}
                             </div>
-                            {showLabels && hasLabels && (
-                                <LabelBadges
-                                    labels={transactionLabels}
-                                    max={3}
-                                />
+                            {showNotes && hasNotes && (
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                                    <div className="truncate text-muted-foreground/80">
+                                        <span>
+                                            {transaction.notes_iv
+                                                ? ENCRYPTED_PLACEHOLDER
+                                                : transaction.notes}
+                                        </span>
+                                    </div>
+                                </div>
                             )}
                         </div>
-                        {showNotes && hasNotes && (
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                                <div className="truncate text-muted-foreground/80">
-                                    <span>
-                                        {transaction.notes_iv
-                                            ? ENCRYPTED_PLACEHOLDER
-                                            : transaction.notes}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 );
             },

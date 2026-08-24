@@ -5,12 +5,12 @@ import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     Cell,
-    Row,
-    SortingState,
-    VisibilityState,
     flexRender,
     getCoreRowModel,
+    Row,
+    SortingState,
     useReactTable,
+    VisibilityState,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
@@ -18,6 +18,7 @@ import { format, getYear, parseISO } from 'date-fns';
 import { ChevronRight, X } from 'lucide-react';
 import {
     createElement,
+    Fragment,
     useCallback,
     useEffect,
     useMemo,
@@ -40,9 +41,11 @@ import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
+import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
+import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import {
     AlertDialog,
@@ -61,6 +64,7 @@ import {
     ContextMenuContent,
     ContextMenuItem,
     ContextMenuLabel,
+    ContextMenuSeparator,
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { DataTable } from '@/components/ui/data-table';
@@ -84,10 +88,13 @@ import {
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
+import { reloadPage } from '@/lib/leave-page';
 import { isNewSince } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
+import { getTransactionRowActions } from '@/lib/transaction-row-actions';
+import { isSplitPart } from '@/lib/transaction-splits';
 import { cn } from '@/lib/utils';
 import { status as categorizationStatus } from '@/routes/ai/categorization';
 import {
@@ -275,6 +282,8 @@ interface TransactionRowProps {
     onEdit: (transaction: DecryptedTransaction) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
+    onSplit: (transaction: DecryptedTransaction) => void;
+    onUnsplit: (transaction: DecryptedTransaction) => void;
 }
 
 function TransactionRowComponent({
@@ -285,6 +294,8 @@ function TransactionRowComponent({
     onEdit,
     onReEvaluateRules,
     onDelete,
+    onSplit,
+    onUnsplit,
 }: TransactionRowProps) {
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -362,18 +373,24 @@ function TransactionRowComponent({
             </ContextMenuTrigger>
             <ContextMenuContent>
                 <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
-                <ContextMenuItem onClick={() => onEdit(transaction)}>
-                    {__('Edit')}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => onReEvaluateRules(transaction)}>
-                    {__('Re-evaluate rules')}
-                </ContextMenuItem>
-                <ContextMenuItem
-                    onClick={() => onDelete(transaction)}
-                    variant="destructive"
-                >
-                    {__('Delete')}
-                </ContextMenuItem>
+                {getTransactionRowActions({
+                    transaction,
+                    onEdit,
+                    onReEvaluateRules,
+                    onDelete,
+                    onSplit,
+                    onUnsplit,
+                }).map((action) => (
+                    <Fragment key={action.id}>
+                        {action.separated && <ContextMenuSeparator />}
+                        <ContextMenuItem
+                            onClick={action.onSelect}
+                            variant={action.variant}
+                        >
+                            {action.label}
+                        </ContextMenuItem>
+                    </Fragment>
+                ))}
             </ContextMenuContent>
         </ContextMenu>
     );
@@ -517,6 +534,10 @@ export default function Transactions({
     const [editTransaction, setEditTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [splitTransaction, setSplitTransaction] =
+        useState<DecryptedTransaction | null>(null);
+    const [unsplitTransaction, setUnsplitTransaction] =
+        useState<DecryptedTransaction | null>(null);
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
@@ -1051,6 +1072,8 @@ export default function Transactions({
                 onUpdate: updateTransaction,
                 onCategorized: showAutomatizeToast,
                 onReEvaluateRules: handleReEvaluateRules,
+                onSplit: setSplitTransaction,
+                onUnsplit: setUnsplitTransaction,
                 isDateHidden: columnVisibility.transaction_date === false,
                 categorizingIds,
             }),
@@ -1217,6 +1240,25 @@ export default function Transactions({
             return;
         }
 
+        // One part of a split cannot go on its own, and refusing the whole
+        // batch up front beats failing halfway through it.
+        const selectedSplitParts = allTransactions.filter(
+            (transaction) =>
+                selectedIds.includes(transaction.id.toString()) &&
+                isSplitPart(transaction),
+        );
+
+        if (selectedSplitParts.length > 0) {
+            toast.error(
+                __(
+                    ':count of the selected transactions are splits. Merge them back before deleting them.',
+                    { count: selectedSplitParts.length },
+                ),
+            );
+
+            return;
+        }
+
         const firstSelectedTransaction = allTransactions.find(
             (t) => t.id.toString() === selectedIds[0],
         );
@@ -1358,6 +1400,8 @@ export default function Transactions({
                     onEdit={setEditTransaction}
                     onReEvaluateRules={handleReEvaluateRules}
                     onDelete={setDeleteTransaction}
+                    onSplit={setSplitTransaction}
+                    onUnsplit={setUnsplitTransaction}
                 />
             );
         },
@@ -1544,7 +1588,25 @@ export default function Transactions({
                 onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
                 onDelete={setDeleteTransaction}
+                onSplit={setSplitTransaction}
                 mode="edit"
+            />
+
+            <SplitTransactionDialog
+                transaction={splitTransaction}
+                categories={categories}
+                labels={labels}
+                open={!!splitTransaction}
+                onOpenChange={(open) => !open && setSplitTransaction(null)}
+                onSuccess={reloadPage}
+                onLabelCreated={handleLabelCreated}
+            />
+
+            <UnsplitTransactionDialog
+                transaction={unsplitTransaction}
+                categories={categories}
+                onOpenChange={(open) => !open && setUnsplitTransaction(null)}
+                onSuccess={reloadPage}
             />
 
             <EditTransactionDialog
