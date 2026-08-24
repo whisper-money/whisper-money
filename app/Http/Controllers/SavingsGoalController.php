@@ -34,6 +34,14 @@ class SavingsGoalController extends Controller implements HasMiddleware
     private const RECENT_TRANSACTIONS_LIMIT = 50;
 
     /**
+     * What a transaction row needs to render, both in the page's list and in the
+     * link dialog. Keep the two in step: the dialog merges both sets.
+     *
+     * @var list<string>
+     */
+    private const TRANSACTION_RELATIONS = ['account.bank', 'category', 'labels'];
+
+    /**
      * Hide the whole savings-goals surface behind the rollout feature flag.
      *
      * @return array<int, Closure>
@@ -78,7 +86,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
 
         $transactions = $savingsGoal->label
             ? $savingsGoal->label->transactions()
-                ->with(['account.bank', 'category', 'labels'])
+                ->with(self::TRANSACTION_RELATIONS)
                 ->orderBy('transaction_date')
                 ->get()
             : collect();
@@ -116,7 +124,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
             // Only fetched when the link-transactions dialog asks for it.
             'recentTransactions' => Inertia::optional(fn () => Transaction::query()
                 ->where('user_id', $user->id)
-                ->with(['account.bank', 'category', 'labels'])
+                ->with(self::TRANSACTION_RELATIONS)
                 ->orderByDesc('transaction_date')
                 ->orderByDesc('created_at')
                 ->limit(self::RECENT_TRANSACTIONS_LIMIT)
@@ -133,6 +141,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
     {
         $this->authorize('update', $savingsGoal);
 
+        // A goal whose label was soft-deleted has nothing to tag with.
         $label = $savingsGoal->label;
 
         if ($label === null) {

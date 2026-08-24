@@ -31,7 +31,7 @@ import {
     SavingsGoal,
     SavingsGoalStats,
 } from '@/types/savings-goal';
-import { Transaction } from '@/types/transaction';
+import { ServerTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
@@ -40,14 +40,14 @@ import { useState } from 'react';
 
 interface Props {
     savingsGoal: SavingsGoal;
-    transactions: Transaction[];
+    transactions: ServerTransaction[];
     stats: SavingsGoalStats;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
     currencyCode: string;
-    recentTransactions?: Transaction[];
+    recentTransactions?: ServerTransaction[];
 }
 
 export default function SavingsGoalShow({

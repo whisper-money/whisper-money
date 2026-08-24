@@ -1,4 +1,5 @@
 import { syncTransactions } from '@/actions/App/Http/Controllers/SavingsGoalController';
+import { LabelBadge } from '@/components/shared/label-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,18 +15,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { SavingsGoal } from '@/types/savings-goal';
-import { Transaction } from '@/types/transaction';
+import { ServerTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 interface Props {
     savingsGoal: SavingsGoal;
     /** Everything already carrying the goal's label, straight from the page. */
-    transactions: Transaction[];
+    transactions: ServerTransaction[];
     /** The user's latest transactions, loaded on demand when the dialog opens. */
-    recentTransactions?: Transaction[];
+    recentTransactions?: ServerTransaction[];
     currencyCode: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -46,7 +48,7 @@ export function LinkTransactionsDialog({
     // The already-tagged ones come first so nothing you can untick is ever off
     // the list — that is what makes sending the whole set back safe.
     const candidates = useMemo(() => {
-        const byId = new Map<string, Transaction>();
+        const byId = new Map<string, ServerTransaction>();
 
         for (const transaction of [
             ...transactions,
@@ -74,6 +76,15 @@ export function LinkTransactionsDialog({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
+    // A transaction can back more than one goal, and then it counts toward both.
+    // Surfacing the other goals' labels is what makes that visible before ticking.
+    const otherGoalLabels = (transaction: ServerTransaction) =>
+        (transaction.labels ?? []).filter(
+            (label) =>
+                label.source === 'saving_goal' &&
+                label.id !== savingsGoal.label_id,
+        );
+
     const toggle = (id: string) => {
         setSelected((previous) => {
             const next = new Set(previous);
@@ -97,6 +108,10 @@ export function LinkTransactionsDialog({
             {
                 preserveScroll: true,
                 onSuccess: () => onOpenChange(false),
+                onError: () =>
+                    toast.error(
+                        __('Failed to update transactions with labels'),
+                    ),
                 onFinish: () => setIsSubmitting(false),
             },
         );
@@ -115,14 +130,6 @@ export function LinkTransactionsDialog({
                 </DialogHeader>
 
                 <div className="-mx-2 max-h-[50vh] overflow-y-auto px-2">
-                    {recentTransactions === undefined && (
-                        <div className="space-y-2 py-2">
-                            {Array.from({ length: 5 }).map((_, index) => (
-                                <Skeleton key={index} className="h-10 w-full" />
-                            ))}
-                        </div>
-                    )}
-
                     {recentTransactions !== undefined &&
                         candidates.length === 0 && (
                             <p className="py-6 text-center text-sm text-muted-foreground">
@@ -141,7 +148,6 @@ export function LinkTransactionsDialog({
                                     onCheckedChange={() =>
                                         toggle(transaction.id)
                                     }
-                                    aria-label={transaction.description}
                                 />
                                 <span className="w-16 shrink-0 text-muted-foreground">
                                     {formatDate(
@@ -153,6 +159,9 @@ export function LinkTransactionsDialog({
                                 <span className="min-w-0 flex-1 truncate">
                                     {transaction.description}
                                 </span>
+                                {otherGoalLabels(transaction).map((label) => (
+                                    <LabelBadge key={label.id} label={label} />
+                                ))}
                                 <AmountDisplay
                                     amountInCents={transaction.amount}
                                     currencyCode={currencyCode}
@@ -165,6 +174,14 @@ export function LinkTransactionsDialog({
                             </label>
                         ))}
                     </div>
+
+                    {recentTransactions === undefined && (
+                        <div className="space-y-2 py-2">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                                <Skeleton key={index} className="h-10 w-full" />
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter className="sm:items-center sm:justify-between">
