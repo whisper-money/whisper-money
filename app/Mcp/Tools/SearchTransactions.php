@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Tools\Concerns\PresentsTransactions;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -14,6 +15,8 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[Description('Search and filter the user\'s transactions by text, category, account, label, date range and amount. Use it to analyse spending, or to find recurring charges by grouping results by merchant.')]
 class SearchTransactions extends McpTool
 {
+    use PresentsTransactions;
+
     /**
      * @return array<string, mixed>
      */
@@ -66,24 +69,7 @@ class SearchTransactions extends McpTool
             ->orderByDesc('transaction_date')
             ->limit($request->integer('limit', 50))
             ->get()
-            ->map(fn (Transaction $transaction): array => [
-                'id' => $transaction->id,
-                'date' => $transaction->transaction_date->toDateString(),
-                'description' => $transaction->description,
-                'amount' => $transaction->amount,
-                'currency' => $transaction->currency_code,
-                'category' => $transaction->category?->name,
-                'category_id' => $transaction->category_id,
-                'account' => $transaction->account?->name,
-                'account_id' => $transaction->account_id,
-                'source' => $transaction->source->value,
-                'creditor_name' => $transaction->creditor_name,
-                'debtor_name' => $transaction->debtor_name,
-                'labels' => $transaction->labels
-                    ->map(fn ($label): array => ['id' => $label->id, 'name' => $label->name])
-                    ->values()
-                    ->all(),
-            ]);
+            ->map(fn (Transaction $transaction): array => $this->presentTransaction($transaction));
 
         return $this->json([
             'space_id' => $space->id,

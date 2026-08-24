@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Tools\Concerns\PresentsTransactions;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Budget;
@@ -31,6 +32,8 @@ use Laravel\Mcp\Response;
  */
 abstract class WriteTool extends McpTool
 {
+    use PresentsTransactions;
+
     protected function respond(Request $request, User $user): Response
     {
         // Write access is granted to OAuth connections (Claude Desktop /
@@ -164,37 +167,6 @@ abstract class WriteTool extends McpTool
         }
 
         return $budget;
-    }
-
-    /**
-     * The transaction shape returned by every transaction write tool, matching
-     * the fields search_transactions exposes so the agent sees a familiar row.
-     *
-     * @return array<string, mixed>
-     */
-    protected function presentTransaction(Transaction $transaction): array
-    {
-        $transaction->loadMissing(['account:id,name', 'category:id,name', 'labels:id,name']);
-
-        return [
-            'id' => $transaction->id,
-            'date' => $transaction->transaction_date->toDateString(),
-            'description' => $transaction->description,
-            'amount' => $transaction->amount,
-            'currency' => $transaction->currency_code,
-            'category_id' => $transaction->category_id,
-            'category' => $transaction->category?->name,
-            'category_source' => $transaction->category_source?->value,
-            'account_id' => $transaction->account_id,
-            'account' => $transaction->account?->name,
-            'source' => $transaction->source->value,
-            'creditor_name' => $transaction->creditor_name,
-            'debtor_name' => $transaction->debtor_name,
-            'labels' => $transaction->labels
-                ->map(fn (Label $label): array => ['id' => $label->id, 'name' => $label->name])
-                ->values()
-                ->all(),
-        ];
     }
 
     /**
