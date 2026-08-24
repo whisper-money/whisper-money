@@ -10,7 +10,7 @@ class DemoTransactionsProvider
     /**
      * @var array<int, array{description: string, amount_min: int, amount_max: int, category_name: string, frequency: string}>
      */
-    private const TRANSACTION_TEMPLATES = [
+    public const TRANSACTION_TEMPLATES = [
         ['description' => 'Whole Foods Market', 'amount_min' => -15000, 'amount_max' => -8000, 'category_name' => 'Groceries', 'frequency' => 'weekly'],
         ['description' => 'Trader Joe\'s', 'amount_min' => -8500, 'amount_max' => -4500, 'category_name' => 'Groceries', 'frequency' => 'weekly'],
         ['description' => 'Costco Wholesale', 'amount_min' => -25000, 'amount_max' => -12000, 'category_name' => 'Groceries', 'frequency' => 'monthly'],
@@ -156,17 +156,22 @@ class DemoTransactionsProvider
     ];
 
     /**
-     * Generate 12 months of realistic transactions.
+     * Generate 12 months of realistic transactions, ending today: a reset rolls
+     * every date forward, which is how the seeded accounts stay current.
      *
-     * @return array<int, array{description: string, transaction_date: string, amount: int, currency_code: string, notes: string|null, notes_iv: string|null, source: TransactionSource, category_name: string}>
+     * @param  array<int, array{description: string, amount_min: int, amount_max: int, category_name: string, frequency: string, account?: string}>|null  $templates  the merchant set to draw from, defaulting to the demo account's
+     * @return array<int, array{description: string, transaction_date: string, amount: int, currency_code: string, notes: string|null, notes_iv: string|null, source: TransactionSource, category_name: string, account_name: string|null}>
      */
-    public function getTransactions(): array
+    public function getTransactions(?array $templates = null, string $currency = 'USD'): array
     {
         $transactions = [];
         $endDate = Carbon::now();
-        $startDate = Carbon::now()->subMonths(12);
+        // Derived from $endDate, not a second now(): the microseconds between
+        // two now() calls put start+12 months past the end and cost every
+        // monthly template its occurrence in the month in progress.
+        $startDate = $endDate->copy()->subMonthsNoOverflow(12);
 
-        foreach (self::TRANSACTION_TEMPLATES as $template) {
+        foreach ($templates ?? self::TRANSACTION_TEMPLATES as $template) {
             $dates = $this->generateDatesForFrequency($template['frequency'], $startDate, $endDate);
 
             foreach ($dates as $date) {
@@ -178,11 +183,16 @@ class DemoTransactionsProvider
                     'description' => $template['description'],
                     'transaction_date' => $date->format('Y-m-d'),
                     'amount' => $amount,
-                    'currency_code' => 'USD',
+                    'currency_code' => $currency,
                     'notes' => null,
                     'notes_iv' => null,
                     'source' => TransactionSource::ManuallyCreated,
                     'category_name' => $template['category_name'],
+                    // The account this merchant is actually charged to, when the
+                    // set says so. Without it the seeder spreads transactions at
+                    // random, which is fine for the demo but would put a
+                    // mortgage payment on a savings account.
+                    'account_name' => $template['account'] ?? null,
                 ];
             }
         }
@@ -225,10 +235,18 @@ class DemoTransactionsProvider
                 break;
 
             case 'monthly':
+                // A recurring charge keeps the same day of the month, so rent,
+                // a salary and a subscription read as recurring instead of
+                // wandering. Capped at today's day of the month: the month in
+                // progress then already shows every recurring line, which is
+                // what makes "what did I spend this month?" answerable.
+                $dayOfMonth = rand(1, max(1, min(28, $endDate->day)));
+
                 while ($current->lte($endDate)) {
-                    $dayOfMonth = min($current->daysInMonth, rand(1, 28));
-                    $dates[] = $current->copy()->day($dayOfMonth)->addHours(rand(8, 20));
-                    $current->addMonth();
+                    $dates[] = $current->copy()
+                        ->day(min($current->daysInMonth, $dayOfMonth))
+                        ->addHours(rand(8, 20));
+                    $current->addMonthNoOverflow();
                 }
                 break;
 
@@ -236,6 +254,13 @@ class DemoTransactionsProvider
                 while ($current->lte($endDate)) {
                     $dates[] = $current->copy()->addDays(rand(0, 14))->addHours(rand(8, 20));
                     $current->addMonths(3);
+                }
+                break;
+
+            case 'biannual':
+                while ($current->lte($endDate)) {
+                    $dates[] = $current->copy()->addDays(rand(0, 20))->addHours(rand(8, 20));
+                    $current->addMonths(6);
                 }
                 break;
 
