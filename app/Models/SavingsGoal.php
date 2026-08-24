@@ -124,6 +124,22 @@ class SavingsGoal extends Model
     }
 
     /**
+     * Where the goal stands against its ideal pace, within a 2% tolerance band
+     * so a few cents either way doesn't read as ahead or behind.
+     */
+    private static function status(int $saved, int $target, int $expectedToday): string
+    {
+        $tolerance = $target * 0.02;
+
+        return match (true) {
+            $saved >= $target => 'completed',
+            $saved < $expectedToday - $tolerance => 'behind',
+            $saved > $expectedToday + $tolerance => 'ahead',
+            default => 'on_track',
+        };
+    }
+
+    /**
      * Linear progress + projection, computed from primitives so it stays a pure,
      * testable function. Dates are day-granular. `rate_per_day` is cents/day and
      * feeds the chart's dotted projection line client-side.
@@ -167,16 +183,7 @@ class SavingsGoal extends Model
             $totalDays = max(1, $start->diffInDays($targetDate));
             $expectedToday = (int) round($target * min($daysElapsed, $totalDays) / $totalDays);
 
-            $tolerance = $target * 0.02;
-            if ($saved >= $target) {
-                $status = 'completed';
-            } elseif ($saved < $expectedToday - $tolerance) {
-                $status = 'behind';
-            } elseif ($saved > $expectedToday + $tolerance) {
-                $status = 'ahead';
-            } else {
-                $status = 'on_track';
-            }
+            $status = self::status($saved, $target, $expectedToday);
 
             $daysLeft = $today->diffInDays($targetDate, false);
             if ($remaining > 0 && $daysLeft > 0) {
