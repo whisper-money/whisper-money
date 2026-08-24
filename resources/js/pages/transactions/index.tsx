@@ -1496,7 +1496,7 @@ export default function Transactions({
                                                     onClick={handleEnableAi}
                                                     disabled={aiConsentSaving}
                                                     variant="secondary"
-                                                    className="max-w-[calc(var(--spacing)_*_86)] bg-white px-6!"
+                                                    className="max-w-[calc(var(--spacing)_*_86)] bg-white px-6! dark:bg-white/10"
                                                 >
                                                     {__('Enable AI')}
                                                     <ChevronRight />
