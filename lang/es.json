@@ -2551,5 +2551,7 @@
     "Track your spending and save toward your goals": "Controla tus gastos y ahorra para tus objetivos",
     "When you’d like to reach 100% of your goal.": "Cuándo te gustaría alcanzar el 100 % de tu objetivo.",
     "e.g., New car": "p. ej., Coche nuevo",
-    "You already have a label or goal with this name.": "Ya tienes una etiqueta u objetivo con este nombre."
+    "You already have a label or goal with this name.": "Ya tienes una etiqueta u objetivo con este nombre.",
+    "Link transactions": "Vincular transacciones",
+    "Tick the transactions that count toward this goal. Unticking one removes it from the goal.": "Marca las transacciones que cuentan para este objetivo. Al desmarcarlas se quitan del objetivo."
 }
