@@ -267,8 +267,8 @@ class PressDataset
     {
         return [
             // Income.
-            ['description' => 'Nómina Indra Sistemas SA', 'amount_min' => 268000, 'amount_max' => 268000, 'category_name' => 'Salary', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
-            ['description' => 'Paga extra Indra Sistemas SA', 'amount_min' => 240000, 'amount_max' => 260000, 'category_name' => 'Salary', 'frequency' => 'biannual', 'account' => 'Cuenta Nómina'],
+            ['description' => 'Nómina Indra Sistemas SA', 'amount_min' => 352000, 'amount_max' => 352000, 'category_name' => 'Salary', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
+            ['description' => 'Paga extra Indra Sistemas SA', 'amount_min' => 300000, 'amount_max' => 320000, 'category_name' => 'Salary', 'frequency' => 'biannual', 'account' => 'Cuenta Nómina'],
             ['description' => 'Devolución IRPF Agencia Tributaria', 'amount_min' => 42000, 'amount_max' => 78000, 'category_name' => 'Tax return', 'frequency' => 'yearly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Bizum de Javi (cena)', 'amount_min' => 1200, 'amount_max' => 3500, 'category_name' => 'Other personal transfers', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Bizum de Laura (regalo Rocío)', 'amount_min' => 1500, 'amount_max' => 2500, 'category_name' => 'Other personal transfers', 'frequency' => 'quarterly', 'account' => 'Cuenta Nómina'],
@@ -289,11 +289,11 @@ class PressDataset
             ['description' => 'IBI Ayuntamiento de Madrid', 'amount_min' => -32000, 'amount_max' => -32000, 'category_name' => 'Taxes and government fees', 'frequency' => 'yearly', 'account' => 'Cuenta Nómina'],
 
             // Groceries.
-            ['description' => 'Mercadona', 'amount_min' => -9500, 'amount_max' => -4800, 'category_name' => 'Groceries', 'frequency' => 'weekly', 'account' => 'Cuenta Compartida'],
-            ['description' => 'Mercadona Antonio López', 'amount_min' => -4200, 'amount_max' => -1800, 'category_name' => 'Groceries', 'frequency' => 'frequent', 'account' => 'Cuenta Compartida'],
+            ['description' => 'Mercadona', 'amount_min' => -7800, 'amount_max' => -4200, 'category_name' => 'Groceries', 'frequency' => 'weekly', 'account' => 'Cuenta Compartida'],
+            ['description' => 'Mercadona Antonio López', 'amount_min' => -3000, 'amount_max' => -1400, 'category_name' => 'Groceries', 'frequency' => 'frequent', 'account' => 'Cuenta Compartida'],
             ['description' => 'Carrefour Market', 'amount_min' => -6800, 'amount_max' => -2900, 'category_name' => 'Groceries', 'frequency' => 'biweekly', 'account' => 'Cuenta Compartida'],
             ['description' => 'Lidl', 'amount_min' => -4500, 'amount_max' => -2200, 'category_name' => 'Groceries', 'frequency' => 'biweekly', 'account' => 'Cuenta Compartida'],
-            ['description' => 'Alcampo', 'amount_min' => -11500, 'amount_max' => -6500, 'category_name' => 'Groceries', 'frequency' => 'monthly', 'account' => 'Cuenta Compartida'],
+            ['description' => 'Alcampo', 'amount_min' => -11500, 'amount_max' => -6500, 'category_name' => 'Groceries', 'frequency' => 'quarterly', 'account' => 'Cuenta Compartida'],
             ['description' => 'Frutería La Huerta', 'amount_min' => -1800, 'amount_max' => -900, 'category_name' => 'Groceries', 'frequency' => 'weekly', 'account' => 'Cuenta Compartida'],
             ['description' => 'Panadería Viena La Baguette', 'amount_min' => -650, 'amount_max' => -280, 'category_name' => 'Groceries', 'frequency' => 'frequent', 'account' => 'Cuenta Compartida'],
             ['description' => 'Carnicería Hermanos Gómez', 'amount_min' => -2400, 'amount_max' => -1200, 'category_name' => 'Groceries', 'frequency' => 'biweekly', 'account' => 'Cuenta Compartida'],
@@ -305,7 +305,7 @@ class PressDataset
             ['description' => 'Restaurante Casa Paco', 'amount_min' => -6800, 'amount_max' => -3200, 'category_name' => 'Cafes, restaurants, bars', 'frequency' => 'monthly', 'account' => 'Cuenta Compartida'],
             ['description' => 'Telepizza', 'amount_min' => -2100, 'amount_max' => -1400, 'category_name' => 'Cafes, restaurants, bars', 'frequency' => 'biweekly', 'account' => 'Cuenta Compartida'],
             ['description' => 'Taberna El Sur', 'amount_min' => -4500, 'amount_max' => -2200, 'category_name' => 'Cafes, restaurants, bars', 'frequency' => 'monthly', 'account' => 'Cuenta Compartida'],
-            ['description' => 'Glovo', 'amount_min' => -2800, 'amount_max' => -1500, 'category_name' => 'Food delivery', 'frequency' => 'weekly', 'account' => 'Cuenta Compartida'],
+            ['description' => 'Glovo', 'amount_min' => -2800, 'amount_max' => -1500, 'category_name' => 'Food delivery', 'frequency' => 'biweekly', 'account' => 'Cuenta Compartida'],
             ['description' => 'Just Eat', 'amount_min' => -2500, 'amount_max' => -1300, 'category_name' => 'Food delivery', 'frequency' => 'biweekly', 'account' => 'Cuenta Compartida'],
             ['description' => 'Uber Eats', 'amount_min' => -2600, 'amount_max' => -1400, 'category_name' => 'Food delivery', 'frequency' => 'biweekly', 'account' => 'Cuenta Compartida'],
 
@@ -315,7 +315,7 @@ class PressDataset
             ['description' => 'Galp Energía', 'amount_min' => -5900, 'amount_max' => -3600, 'category_name' => 'Fuel', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Abono transporte Metro de Madrid', 'amount_min' => -5460, 'amount_max' => -5460, 'category_name' => 'Transportation expenses', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Renfe Cercanías', 'amount_min' => -1800, 'amount_max' => -560, 'category_name' => 'Transportation expenses', 'frequency' => 'biweekly', 'account' => 'Cuenta Nómina'],
-            ['description' => 'Cabify', 'amount_min' => -1900, 'amount_max' => -780, 'category_name' => 'Transportation expenses', 'frequency' => 'weekly', 'account' => 'Cuenta Nómina'],
+            ['description' => 'Cabify', 'amount_min' => -1900, 'amount_max' => -780, 'category_name' => 'Transportation expenses', 'frequency' => 'biweekly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Uber', 'amount_min' => -1700, 'amount_max' => -700, 'category_name' => 'Transportation expenses', 'frequency' => 'biweekly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Parking Plaza Mayor', 'amount_min' => -1200, 'amount_max' => -400, 'category_name' => 'Parking', 'frequency' => 'biweekly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Autopista AP-6 peaje', 'amount_min' => -980, 'amount_max' => -560, 'category_name' => 'Transportation expenses', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
@@ -332,12 +332,12 @@ class PressDataset
             ['description' => 'El País suscripción digital', 'amount_min' => -999, 'amount_max' => -999, 'category_name' => 'Books, newspapers, magazines', 'frequency' => 'monthly', 'account' => 'Tarjeta Visa BBVA'],
 
             // Shopping.
-            ['description' => 'Amazon.es', 'amount_min' => -8900, 'amount_max' => -1200, 'category_name' => 'Online transactions', 'frequency' => 'weekly', 'account' => 'Tarjeta Visa BBVA'],
-            ['description' => 'El Corte Inglés', 'amount_min' => -12500, 'amount_max' => -3500, 'category_name' => 'Clothing and shoes', 'frequency' => 'monthly', 'account' => 'Tarjeta Visa BBVA'],
+            ['description' => 'Amazon.es', 'amount_min' => -5900, 'amount_max' => -1200, 'category_name' => 'Online transactions', 'frequency' => 'weekly', 'account' => 'Tarjeta Visa BBVA'],
+            ['description' => 'El Corte Inglés', 'amount_min' => -12500, 'amount_max' => -3500, 'category_name' => 'Clothing and shoes', 'frequency' => 'quarterly', 'account' => 'Tarjeta Visa BBVA'],
             ['description' => 'Zara', 'amount_min' => -7900, 'amount_max' => -2990, 'category_name' => 'Clothing and shoes', 'frequency' => 'monthly', 'account' => 'Tarjeta Visa BBVA'],
             ['description' => 'Decathlon', 'amount_min' => -6500, 'amount_max' => -1900, 'category_name' => 'Sport and sports goods', 'frequency' => 'monthly', 'account' => 'Tarjeta Visa BBVA'],
             ['description' => 'IKEA Alcorcón', 'amount_min' => -15900, 'amount_max' => -3500, 'category_name' => 'Household goods', 'frequency' => 'quarterly', 'account' => 'Tarjeta Visa BBVA'],
-            ['description' => 'Leroy Merlin', 'amount_min' => -9800, 'amount_max' => -2200, 'category_name' => 'Household goods', 'frequency' => 'monthly', 'account' => 'Tarjeta Visa BBVA'],
+            ['description' => 'Leroy Merlin', 'amount_min' => -9800, 'amount_max' => -2200, 'category_name' => 'Household goods', 'frequency' => 'quarterly', 'account' => 'Tarjeta Visa BBVA'],
             ['description' => 'Primor cosmética', 'amount_min' => -3200, 'amount_max' => -1200, 'category_name' => 'Beauty, cosmetics', 'frequency' => 'monthly', 'account' => 'Tarjeta Visa BBVA'],
             ['description' => 'Casa del Libro', 'amount_min' => -3500, 'amount_max' => -1500, 'category_name' => 'Books, newspapers, magazines', 'frequency' => 'monthly', 'account' => 'Tarjeta Visa BBVA'],
 
@@ -353,7 +353,7 @@ class PressDataset
             ['description' => 'Bizum a Javi (cena)', 'amount_min' => -3500, 'amount_max' => -1500, 'category_name' => 'Other personal transfers', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Bizum a Laura (regalo)', 'amount_min' => -3000, 'amount_max' => -2000, 'category_name' => 'Other personal transfers', 'frequency' => 'quarterly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Cuota Cruz Roja', 'amount_min' => -1000, 'amount_max' => -1000, 'category_name' => 'Other personal transfers', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
-            ['description' => 'Retirada efectivo cajero BBVA', 'amount_min' => -15000, 'amount_max' => -5000, 'category_name' => 'Cash withdrawal', 'frequency' => 'biweekly', 'account' => 'Cuenta Nómina'],
+            ['description' => 'Retirada efectivo cajero BBVA', 'amount_min' => -12000, 'amount_max' => -6000, 'category_name' => 'Cash withdrawal', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Aportación Indexa Capital', 'amount_min' => -30000, 'amount_max' => -30000, 'category_name' => 'Savings', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Traspaso a Ahorro Colchón', 'amount_min' => -25000, 'amount_max' => -15000, 'category_name' => 'Own account', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Multa DGT exceso velocidad', 'amount_min' => -10000, 'amount_max' => -10000, 'category_name' => 'Fines', 'frequency' => 'yearly', 'account' => 'Cuenta Nómina'],

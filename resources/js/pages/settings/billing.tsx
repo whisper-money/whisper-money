@@ -358,11 +358,15 @@ export default function Billing() {
 
             <SettingsLayout>
                 <div className="space-y-8">
-                    <AiConsentSection
-                        initialConsent={hasAiConsent}
-                        hasProPlan={hasProPlan}
-                        onUpgradeNeeded={() => setShowAiUpgrade(true)}
-                    />
+                    {/* Hidden on a shared account: the consent routes are
+                        blocked, so the toggle could only fail. */}
+                    {!isSharedAccount && (
+                        <AiConsentSection
+                            initialConsent={hasAiConsent}
+                            hasProPlan={hasProPlan}
+                            onUpgradeNeeded={() => setShowAiUpgrade(true)}
+                        />
+                    )}
 
                     {hasProPlan ? (
                         <SubscribedSection

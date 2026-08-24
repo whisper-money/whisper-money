@@ -7,7 +7,7 @@ import Billing from './billing';
 const mocks = vi.hoisted(() => ({
     axiosPost: vi.fn(() => Promise.resolve({ data: {} })),
     axiosDelete: vi.fn(() => Promise.resolve({ data: {} })),
-    state: { hasProPlan: false, hasAiConsent: false },
+    state: { hasProPlan: false, hasAiConsent: false, isSharedAccount: false },
 }));
 
 vi.mock('axios', () => ({
@@ -26,7 +26,7 @@ vi.mock('@inertiajs/react', () => ({
         props: {
             auth: {
                 isDemoAccount: false,
-                isSharedAccount: false,
+                isSharedAccount: mocks.state.isSharedAccount,
                 hasProPlan: mocks.state.hasProPlan,
             },
             pricing,
@@ -57,6 +57,7 @@ describe('Billing – AI categorization toggle', () => {
         vi.clearAllMocks();
         mocks.state.hasProPlan = false;
         mocks.state.hasAiConsent = false;
+        mocks.state.isSharedAccount = false;
     });
 
     it('prompts a free user to subscribe instead of recording consent', async () => {
@@ -85,6 +86,21 @@ describe('Billing – AI categorization toggle', () => {
         await waitFor(() => expect(mocks.axiosPost).toHaveBeenCalledTimes(1));
         expect(
             screen.queryByText('AI categorization is a paid feature'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('offers no consent toggle on a shared account', () => {
+        // Its credentials are public, so consent means nothing and the route
+        // behind the toggle is blocked — showing it would only hand a
+        // journalist a button that fails.
+        mocks.state.isSharedAccount = true;
+        mocks.state.hasProPlan = true;
+        render(<Billing />);
+
+        expect(
+            screen.queryByRole('checkbox', {
+                name: /Allow AI categorization/i,
+            }),
         ).not.toBeInTheDocument();
     });
 
