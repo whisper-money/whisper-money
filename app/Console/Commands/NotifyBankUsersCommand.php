@@ -27,8 +27,12 @@ use Illuminate\Support\Str;
  * with an `# H1`, which is used as the subject, and may use `:name` where the
  * recipient's name belongs.
  *
- * Unlike the outage notice, a bank present in several countries is notified in
- * all of them by default: an operator-written notice is usually about the bank
+ * Everyone with a live connection to the bank is notified, whatever state that
+ * connection is in. Unlike the outage notice, this one makes no claim about the
+ * bank answering or not, so there is nothing to narrow the recipients to.
+ *
+ * Also unlike the outage notice, a bank present in several countries is notified
+ * in all of them by default: an operator-written notice is usually about the bank
  * rather than about one country's connector, and `--country` is there when it
  * is not. Nothing double-sends either way, because the ledger is per user.
  */
