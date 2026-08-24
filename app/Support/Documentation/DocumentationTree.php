@@ -106,11 +106,11 @@ final class DocumentationTree
         $nodes = [];
 
         foreach ($this->pageGroups($directory) as $slug => $group) {
-            $file = $group['files'][$this->locale] ?? $group['files'][$this->fallbackLocale] ?? null;
-
-            if ($file === null) {
+            if (! isset($group['files'][$this->fallbackLocale])) {
                 continue;
             }
+
+            $file = $group['files'][$this->locale] ?? $group['files'][$this->fallbackLocale];
 
             $children = $directories[$slug]['path'] ?? null;
             unset($directories[$slug]);
