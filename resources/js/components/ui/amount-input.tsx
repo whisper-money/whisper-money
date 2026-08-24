@@ -19,6 +19,12 @@ interface AmountInputProps {
     id?: string;
     className?: string;
     allowNegative?: boolean;
+    /**
+     * Report every keystroke instead of waiting for blur. For inputs whose
+     * surroundings react as you type — a running total, a submit button that
+     * unlocks when the numbers add up — where waiting for blur reads as broken.
+     */
+    commitOnChange?: boolean;
 }
 
 const getCurrencyInfo = (
@@ -174,6 +180,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             id,
             className = '',
             allowNegative = false,
+            commitOnChange = false,
         },
         ref,
     ) => {
@@ -213,6 +220,10 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             setDisplayValue(e.target.value);
+
+            if (commitOnChange) {
+                commit(e.target.value);
+            }
         };
 
         const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

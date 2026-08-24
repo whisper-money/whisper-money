@@ -16,6 +16,7 @@ use Database\Factories\TransactionFactory;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -169,16 +171,26 @@ class Transaction extends Model
     public const SPLIT_SIBLING_COLUMNS = 'id,split_parent_id,category_id,amount';
 
     /**
-     * Eager-load what a split part needs to explain itself in the table: the
-     * other parts of the same split. One extra query for the whole page, and
-     * nothing at all for rows that are not part of a split.
+     * Load the other parts of a split onto whichever of these rows are parts.
      *
-     * @param  Builder<Transaction>  $query
-     * @return Builder<Transaction>
+     * Deliberately not an eager load on the query: `with()` runs its statement
+     * even when every `split_parent_id` is null, which is every page of every
+     * user who has never split anything. This way the extra query happens only
+     * when there is something to explain.
+     *
+     * @param  Collection<int, Transaction>|EloquentCollection<int, Transaction>  $transactions
      */
-    public function scopeWithSplitSiblings(Builder $query): Builder
+    public static function loadSplitSiblings($transactions): void
     {
-        return $query->with('splitSiblings:'.self::SPLIT_SIBLING_COLUMNS);
+        $parts = EloquentCollection::make(
+            $transactions->filter(fn (Transaction $transaction): bool => $transaction->isSplitPart())->all()
+        );
+
+        if ($parts->isEmpty()) {
+            return;
+        }
+
+        $parts->load('splitSiblings:'.self::SPLIT_SIBLING_COLUMNS);
     }
 
     /**

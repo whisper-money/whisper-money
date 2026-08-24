@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateAccountVisibilityRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\LoanDetail;
+use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\LoanAmortizationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -145,12 +146,14 @@ class AccountController extends Controller
             // server-side only if one account's history gets big enough that the
             // transfer itself hurts.
             'transactions' => $account->type->hasTransactionLedger()
-                ? Inertia::defer(fn () => $account->transactions()
-                    ->with(['category', 'labels'])
-                    ->withSplitSiblings()
-                    ->orderBy('transaction_date', 'desc')
-                    ->orderBy('id', 'desc')
-                    ->get())
+                ? Inertia::defer(fn () => tap(
+                    $account->transactions()
+                        ->with(['category', 'labels'])
+                        ->orderBy('transaction_date', 'desc')
+                        ->orderBy('id', 'desc')
+                        ->get(),
+                    fn ($transactions) => Transaction::loadSplitSiblings($transactions)
+                ))
                 : [],
         ]);
     }

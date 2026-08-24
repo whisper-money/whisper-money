@@ -86,8 +86,9 @@ class BudgetController extends Controller
             'budgetTransactions.transaction.account.bank',
             'budgetTransactions.transaction.category',
             'budgetTransactions.transaction.labels',
-            'budgetTransactions.transaction.splitSiblings:'.Transaction::SPLIT_SIBLING_COLUMNS,
         ]);
+
+        Transaction::loadSplitSiblings($viewedPeriod->budgetTransactions->pluck('transaction')->filter());
 
         $previousPeriod = $budget->periods()
             ->where('end_date', '<', $viewedPeriod->start_date)

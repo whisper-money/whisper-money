@@ -59,7 +59,6 @@ class TransactionController extends Controller
         $query = Transaction::query()
             ->where('user_id', $user->id)
             ->with(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin'])
-            ->withSplitSiblings()
             ->applyFilters($filters);
 
         $nullableSortColumns = ['creditor_name', 'debtor_name'];
@@ -82,6 +81,8 @@ class TransactionController extends Controller
             $transaction->makeHidden(['creditor_name_sort', 'debtor_name_sort'])
                 ->append('ai_categorized');
         });
+
+        Transaction::loadSplitSiblings($transactions->getCollection());
 
         $newestServed = $transactions->getCollection()->max('created_at');
         if ($newestServed && (! $lastVisitAt || $newestServed->gt($lastVisitAt))) {
