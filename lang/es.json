@@ -2528,7 +2528,6 @@
     "Splitting...": "Dividiendo...",
     "Split into :count transactions.": "Dividida en :count transacciones.",
     "The transaction could not be split.": "No se ha podido dividir la transacción.",
-    "Split...": "Dividir...",
     "Split": "Dividir",
     "Merge the split back": "Unificar la división",
     "This transaction is part of a split": "Esta transacción es parte de una división",

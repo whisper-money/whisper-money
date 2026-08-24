@@ -43,7 +43,7 @@ export function getTransactionRowActions({
     if (canSplit(transaction)) {
         actions.push({
             id: 'split',
-            label: __('Split...'),
+            label: __('Split'),
             onSelect: () => onSplit(transaction),
         });
     }
