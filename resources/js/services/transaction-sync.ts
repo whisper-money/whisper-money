@@ -6,6 +6,10 @@ import {
     store as storeRoute,
     update as updateRoute,
 } from '@/actions/App/Http/Controllers/TransactionController';
+import {
+    store as splitRoute,
+    destroy as unsplitRoute,
+} from '@/actions/App/Http/Controllers/TransactionSplitController';
 import { db, withDb } from '@/lib/dexie-db';
 import { TransactionSyncManager } from '@/lib/sync-manager';
 import type { LearnedRuleNotice } from '@/types/automation-rule';
@@ -20,6 +24,29 @@ export type UpdatedTransaction = Transaction & {
 
 interface TransactionUpdateData extends Partial<Transaction> {
     label_ids?: string[];
+}
+
+/** One split row as the API takes it: signed amount, category and labels. */
+export interface SplitInput {
+    amount: number;
+    category_id: string | null;
+    label_ids: string[];
+}
+
+/**
+ * A transaction as it comes off the server, in the shape the app stores: the
+ * labels relation flattened to ids and the date without its time.
+ */
+function toStoredTransaction(serverData: Record<string, unknown>): Transaction {
+    const labels = serverData.labels as { id: string }[] | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { labels: _labels, ...rest } = serverData;
+
+    return {
+        ...rest,
+        transaction_date: String(serverData.transaction_date).slice(0, 10),
+        label_ids: labels?.map((label) => label.id) ?? [],
+    } as Transaction;
 }
 
 interface TransactionFilters {
@@ -41,19 +68,7 @@ class TransactionSyncService {
     constructor() {
         this.syncManager = new TransactionSyncManager({
             endpoint: syncTransactions.url(),
-            transformFromServer: (data) => {
-                const label_ids = data.labels?.map((l: { id: string }) => l.id);
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { labels, ...rest } = data;
-                return {
-                    ...rest,
-                    transaction_date: String(data.transaction_date).slice(
-                        0,
-                        10,
-                    ),
-                    label_ids: label_ids || [],
-                };
-            },
+            transformFromServer: (data) => toStoredTransaction(data),
         });
     }
 
@@ -81,17 +96,7 @@ class TransactionSyncService {
             ...data,
             ...(options?.updateBalance ? { update_balance: true } : {}),
         });
-        const serverData = response.data.data || response.data;
-
-        const label_ids = serverData.labels?.map((l: { id: string }) => l.id);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { labels, ...rest } = serverData;
-
-        return {
-            ...rest,
-            transaction_date: String(serverData.transaction_date).slice(0, 10),
-            label_ids: label_ids || [],
-        } as Transaction;
+        return toStoredTransaction(response.data.data || response.data);
     }
 
     async createMany(
@@ -120,20 +125,10 @@ class TransactionSyncService {
             ...(options?.updateBalance ? { update_balance: true } : {}),
         });
 
-        const serverData = response.data.data || response.data;
-
-        const serverLabelIds = serverData.labels?.map(
-            (l: { id: string }) => l.id,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { labels: _labels, ...restServerData } = serverData;
-
         return {
-            ...restServerData,
-            transaction_date: String(serverData.transaction_date).slice(0, 10),
-            label_ids: serverLabelIds || [],
+            ...toStoredTransaction(response.data.data || response.data),
             learned_rule: response.data.learned_rule ?? null,
-        } as UpdatedTransaction;
+        };
     }
 
     async updateMany(
@@ -207,6 +202,32 @@ class TransactionSyncService {
         await withDb<void>(async () => {
             await db.transactions.delete(id);
         }, undefined);
+    }
+
+    /**
+     * Replace a transaction with the parts it was split into. The original stays
+     * on the server, out of every list; drop it from the offline cache here too
+     * so a search can no longer match a row nobody can see (best-effort, like
+     * delete()).
+     */
+    async split(id: string, splits: SplitInput[]): Promise<Transaction[]> {
+        const response = await axios.post(splitRoute.url(id), { splits });
+
+        await withDb<void>(async () => {
+            await db.transactions.delete(id);
+        }, undefined);
+
+        return (response.data.data ?? []).map(toStoredTransaction);
+    }
+
+    /**
+     * Merge a split back: every part goes away and the original comes back.
+     * Takes any of the parts.
+     */
+    async unsplit(id: string): Promise<Transaction> {
+        const response = await axios.delete(unsplitRoute.url(id));
+
+        return toStoredTransaction(response.data.data);
     }
 
     async updateManyIndividual(

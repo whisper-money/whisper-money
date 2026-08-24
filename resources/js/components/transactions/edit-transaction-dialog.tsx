@@ -28,6 +28,7 @@ import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
+import { canSplit } from '@/lib/transaction-splits';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
@@ -43,7 +44,7 @@ import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Split, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -64,6 +65,7 @@ interface EditTransactionDialogProps {
     ) => void;
     onLabelCreated?: (label: Label) => void;
     onDelete?: (transaction: DecryptedTransaction) => void;
+    onSplit?: (transaction: DecryptedTransaction) => void;
     mode: 'create' | 'edit';
     initialAccountId?: string | null;
 }
@@ -81,6 +83,7 @@ export function EditTransactionDialog({
     onCategorized,
     onLabelCreated,
     onDelete,
+    onSplit,
     mode,
     initialAccountId = null,
 }: EditTransactionDialogProps) {
@@ -111,8 +114,17 @@ export function EditTransactionDialog({
 
     // Manually created transactions can edit every field (account, date, amount,
     // description) both on creation and afterwards. Imported ones keep those locked.
+    // A part of a split keeps them locked whatever its source: changing one
+    // part's amount, date or account would leave the split no longer adding up.
+    const isSplitPartTransaction = !!transaction?.split_parent_id;
     const canEditAllFields =
-        mode === 'create' || transaction?.source === 'manually_created';
+        (mode === 'create' || transaction?.source === 'manually_created') &&
+        !isSplitPartTransaction;
+
+    // A part is our row rather than something the bank sent, so its description
+    // can be renamed to say which part it is even when the original is a bank
+    // transaction.
+    const canEditDescription = canEditAllFields || isSplitPartTransaction;
 
     useEffect(() => {
         if (mode === 'edit' && transaction) {
@@ -695,14 +707,14 @@ export function EditTransactionDialog({
                             <FormLabel
                                 htmlFor="description"
                                 className={
-                                    canEditAllFields
+                                    canEditDescription
                                         ? ''
                                         : 'text-sm text-muted-foreground'
                                 }
                             >
                                 {__('Description')}
                             </FormLabel>
-                            {canEditAllFields ? (
+                            {canEditDescription ? (
                                 <Textarea
                                     id="description"
                                     value={description}
@@ -898,6 +910,23 @@ export function EditTransactionDialog({
                                 {__('Delete')}
                             </Button>
                         )}
+                        {mode === 'edit' &&
+                            onSplit &&
+                            transaction &&
+                            canSplit(transaction) && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        onSplit(transaction);
+                                    }}
+                                    disabled={isSubmitting}
+                                >
+                                    <Split />
+                                    {__('Split')}
+                                </Button>
+                            )}
                         <Button
                             type="button"
                             variant="outline"

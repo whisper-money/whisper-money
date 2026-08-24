@@ -23,6 +23,8 @@ function buildColumns(isDateHidden: boolean) {
         onDelete: () => {},
         onUpdate: () => {},
         onReEvaluateRules: () => {},
+        onSplit: () => {},
+        onUnsplit: () => {},
         isDateHidden,
     });
 }
