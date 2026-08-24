@@ -221,6 +221,7 @@ export function SplitTransactionDialog({
                                             </span>
                                         )}
                                         <AmountInput
+                                            id={`split-amount-${index}`}
                                             value={draft.amount}
                                             onChange={(valueInCents) =>
                                                 patchDraft(draft.key, {
