@@ -176,9 +176,10 @@ Whisper Money's AI features (transaction categorization and automation-rule
 suggestions) run on [`laravel/ai`](https://github.com/laravel/ai) and default to
 Google **Gemini**. The provider is configurable independently of the model, so
 you can point the app at **any text provider `laravel/ai` supports** — `gemini`,
-`openai`, `anthropic`, `azure`, `groq`, `xai`, `deepseek`, `mistral`, or a
-self-hosted **[Ollama](https://ollama.com)** server. Ollama is the headline case
-because it keeps AI processing fully local and private — data never leaves your
+`openai`, `anthropic`, `azure`, `groq`, `xai`, `deepseek`, `mistral`, a
+self-hosted **[Ollama](https://ollama.com)** server, or `openai-compatible` for
+any endpoint speaking the OpenAI API. Ollama is the headline case because it
+keeps AI processing fully local and private — data never leaves your
 infrastructure — but the switch is generic.
 
 Each provider needs its own credentials configured for `laravel/ai` (e.g.
@@ -198,6 +199,8 @@ unknown or non-text provider fails fast when the AI feature runs.
 | `GEMINI_API_KEY`             | -                    | Required when the provider is `gemini`.                               |
 | `OLLAMA_URL`                 | `http://localhost:11434` | Ollama server URL (used when the provider is `ollama`).           |
 | `OLLAMA_API_KEY`             | -                    | Optional; only needed behind an authenticating proxy.                 |
+| `OPENAI_COMPATIBLE_URL`      | -                    | Base URL of an OpenAI-compatible endpoint (required when the provider is `openai-compatible`). |
+| `OPENAI_COMPATIBLE_API_KEY`  | -                    | Optional; sent as a bearer token when set.                            |
 
 ### Example: fully local AI with Ollama
 
@@ -212,6 +215,41 @@ Make sure the model is pulled on the Ollama server first (`ollama pull gemma3:12
 Any other provider follows the same pattern: set `AI_PROVIDER`, that provider's
 credentials, and the `*_MODEL` vars to one of its models. Gemini remains the
 default, so existing deployments are unaffected.
+
+### Any OpenAI-compatible endpoint
+
+Plenty of services and local servers speak the OpenAI Chat Completions API
+without being OpenAI: router/gateway services such as
+[OrcaRouter](https://www.orcarouter.ai/), local runtimes like LM Studio or
+vLLM, hosted inference like Together or Fireworks, a LiteLLM instance, or your
+own corporate proxy. Set `AI_PROVIDER=openai-compatible` and point the app at
+one of them.
+
+- `OPENAI_COMPATIBLE_URL` is **required** — it is the base URL the app appends
+  `chat/completions` to, so give it the versioned root (e.g. `.../v1`). Leaving
+  it empty fails when the AI feature runs.
+- `OPENAI_COMPATIBLE_API_KEY` is **optional** — when set it is sent as
+  `Authorization: Bearer <key>`. Leave it empty for a local server that does not
+  authenticate.
+- The `*_MODEL` vars must name a model **that endpoint serves**. There is no
+  default, and the Gemini defaults are meaningless to it.
+- There is a **single** `openai-compatible` slot, so only one such endpoint can
+  be configured at a time. To reach two of them, put a router in front.
+
+Example with OrcaRouter:
+
+```dotenv
+AI_PROVIDER=openai-compatible
+OPENAI_COMPATIBLE_URL=https://api.orcarouter.ai/v1
+OPENAI_COMPATIBLE_API_KEY=sk-orca-...
+AI_SUGGESTIONS_MODEL=orcarouter/auto
+AI_CATEGORIZATION_MODEL=orcarouter/auto
+AI_REPORTS_MODEL=orcarouter/auto
+```
+
+`orcarouter/auto` lets OrcaRouter pick the model; naming one directly
+(`provider/model-name`) works too. Any other OpenAI-compatible endpoint follows
+the same shape — only the URL and the model names change.
 
 ## License
 
