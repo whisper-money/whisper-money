@@ -31,7 +31,7 @@ export default function TwoFactor({
     twoFactorEnabled = false,
 }: TwoFactorProps) {
     const { auth } = usePage<SharedData>().props;
-    const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isSharedAccount = auth?.isSharedAccount ?? false;
     const {
         qrCodeSvg,
         hasSetupData,
@@ -56,12 +56,12 @@ export default function TwoFactor({
                         )}
                     />
 
-                    {isDemoAccount && (
+                    {isSharedAccount && (
                         <Alert>
                             <InfoIcon className="h-4 w-4" />
                             <AlertDescription>
                                 {__(
-                                    'Two-factor authentication settings cannot be\n                                changed on the demo account.',
+                                    'Two-factor authentication cannot be changed on this shared account.',
                                 )}
                             </AlertDescription>
                         </Alert>
@@ -82,7 +82,7 @@ export default function TwoFactor({
                                 errors={errors}
                             />
 
-                            {!isDemoAccount && (
+                            {!isSharedAccount && (
                                 <div className="relative inline">
                                     <Form {...disable.form()}>
                                         {({ processing }) => (
@@ -110,7 +110,7 @@ export default function TwoFactor({
                                 )}
                             </p>
 
-                            {!isDemoAccount && (
+                            {!isSharedAccount && (
                                 <div>
                                     {hasSetupData ? (
                                         <Button
