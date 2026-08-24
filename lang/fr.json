@@ -2216,5 +2216,9 @@
     "Add the account manually": "Ajouter le compte manuellement",
     "Sorry for the wasted time, and thank you for the patience.": "Désolés pour le temps perdu, et merci pour votre patience.",
     "Compare": "Comparatifs",
-    "We could not load these figures. Try again in a moment.": "Nous n'avons pas pu charger ces chiffres. Réessayez dans un instant."
+    "We could not load these figures. Try again in a moment.": "Nous n'avons pas pu charger ces chiffres. Réessayez dans un instant.",
+    "This shared account cannot be deleted.": "Ce compte partagé ne peut pas être supprimé.",
+    "Two-factor authentication cannot be changed on this shared account.": "L'authentification à deux facteurs ne peut pas être modifiée sur ce compte partagé.",
+    "Password changes are disabled on this shared account.": "Le changement de mot de passe est désactivé sur ce compte partagé.",
+    "Billing management is not available on this shared account.": "La gestion de la facturation n'est pas disponible sur ce compte partagé."
 }

@@ -18,19 +18,53 @@ use App\Services\BudgetTransactionService;
 use App\Services\Demo\DemoAutomationRulesProvider;
 use App\Services\Demo\DemoLabelsProvider;
 use App\Services\Demo\DemoTransactionsProvider;
+use App\Services\Demo\PressDataset;
+use App\Services\LoanBalanceGeneratorService;
+use App\Services\RealEstateBalanceGeneratorService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 
 class ResetDemoAccountCommand extends Command
 {
     protected $signature = 'demo:reset
+        {--press : Create or reset the shared press account (config app.press.*) on Spanish data}
         {--email= : Create or reset this account instead of the configured demo user}
         {--password= : Password for --email}
         {--imported : Mark one account\'s transactions as bank-imported, so the read-only protections can be demonstrated}';
 
-    protected $description = 'Reset the demo account with fresh data';
+    protected $description = 'Reset the demo or press account with fresh data';
 
     private const MIN_BALANCE_GROWTH_PERCENTAGE = 0.05;
+
+    /**
+     * The demo account's own seed data, in the shape every seeded account is
+     * described in (PressDataset::get() is the other one).
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    private const DEMO_ACCOUNTS = [
+        ['name' => 'Primary Checking', 'type' => 'checking', 'bank' => 'BBVA', 'balance_min' => 2000000, 'balance_max' => 3500000, 'monthly_variance' => 150000],
+        ['name' => 'Joint Checking', 'type' => 'checking', 'bank' => 'BBVA', 'balance_min' => 500000, 'balance_max' => 1200000, 'monthly_variance' => 80000],
+        ['name' => 'Emergency Fund', 'type' => 'savings', 'bank' => 'ING Direct', 'balance_min' => 1200000, 'balance_max' => 1800000, 'monthly_variance' => 25000],
+        ['name' => '401(k) Retirement', 'type' => 'retirement', 'bank' => 'Indexa Capital', 'balance_min' => 8500000, 'balance_max' => 12500000, 'monthly_variance' => 350000],
+        ['name' => 'Brokerage Account', 'type' => 'investment', 'bank' => 'Indexa Capital', 'balance_min' => 1500000, 'balance_max' => 3500000, 'monthly_variance' => 200000],
+        ['name' => 'Cryptos', 'type' => 'investment', 'bank' => 'Binance', 'balance_min' => 1500000, 'balance_max' => 4500000, 'monthly_variance' => 100000],
+    ];
+
+    /**
+     * @var array<int, array<string, mixed>>
+     */
+    private const DEMO_BUDGETS = [
+        ['name' => 'Monthly Groceries', 'category_name' => 'Groceries', 'period_type' => 'monthly', 'period_start_day' => 1, 'rollover_type' => 'carry_over', 'allocated_amount' => 320000],
+        ['name' => 'Weekly Dining Out', 'category_name' => 'Cafes, restaurants, bars', 'period_type' => 'weekly', 'period_start_day' => 0, 'rollover_type' => 'reset', 'allocated_amount' => 20000],
+    ];
+
+    /**
+     * The resolved seed data for this run.
+     *
+     * @var array<string, mixed>
+     */
+    private array $dataset = [];
 
     public function __construct(
         private DemoTransactionsProvider $transactionsProvider,
@@ -38,39 +72,37 @@ class ResetDemoAccountCommand extends Command
         private DemoAutomationRulesProvider $rulesProvider,
         private BudgetPeriodService $budgetPeriodService,
         private BudgetTransactionService $budgetTransactionService,
+        private LoanBalanceGeneratorService $loanBalances,
+        private RealEstateBalanceGeneratorService $realEstateBalances,
     ) {
         parent::__construct();
     }
 
     public function handle(): int
     {
-        /** An explicit --email is a named account (e.g. an app-store reviewer), not the public demo. */
-        $explicitEmail = (string) $this->option('email');
-
-        if ($explicitEmail === '' && ! config('app.demo.enabled')) {
+        if ($this->seedsPublicDemo() && ! config('app.demo.enabled')) {
             $this->info('Demo account is not enabled');
 
             return self::SUCCESS;
         }
 
-        $demoEmail = $explicitEmail !== '' ? $explicitEmail : config('app.demo.email');
-        $demoPassword = $explicitEmail !== ''
-            ? (string) $this->option('password')
-            : config('app.demo.password');
+        $credentials = $this->credentials();
 
-        if (! $demoEmail || ! $demoPassword) {
-            $this->error($explicitEmail !== ''
-                ? 'Pass --password together with --email.'
-                : 'Demo configuration not set. Please set DEMO_EMAIL and DEMO_PASSWORD in .env');
-
-            return self::FAILURE;
+        if ($credentials === null) {
+            return $this->reportMissingCredentials();
         }
 
-        $this->info("Resetting demo account: {$demoEmail}");
+        [$email, $password] = $credentials;
 
-        $user = $this->findOrCreateDemoUser($demoEmail, $demoPassword);
+        $this->dataset = $this->option('press') ? PressDataset::get() : $this->demoDataset();
+
+        $this->info("Resetting seeded account: {$email}");
+
+        $user = $this->findOrCreateDemoUser($email, $password);
 
         $this->deleteExistingData($user);
+
+        $this->silenceNotifications($user);
 
         $this->createCategories($user);
 
@@ -90,33 +122,123 @@ class ResetDemoAccountCommand extends Command
             $this->markTransactionsAsImported($user);
         }
 
-        $this->info('✓ Demo account reset successfully!');
+        $this->info('✓ Account reset successfully!');
 
         return self::SUCCESS;
     }
 
-    private function findOrCreateDemoUser(string $email, string $password): User
+    /**
+     * Whether this run targets the public demo account, as opposed to the press
+     * account or a named one (e.g. an app-store reviewer). Only the public demo
+     * answers to `DEMO_ENABLED`.
+     */
+    private function seedsPublicDemo(): bool
     {
-        $user = User::where('email', $email)->first();
+        return ! $this->option('press') && (string) $this->option('email') === '';
+    }
 
-        if ($user) {
-            $user->email_verified_at ??= now();
-            $user->save();
+    /**
+     * The account to seed: the press account, an explicitly named one (e.g. an
+     * app-store reviewer) or the public demo. Null when it cannot be resolved.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private function credentials(): ?array
+    {
+        if ($this->option('press')) {
+            $email = (string) config('app.press.email');
+            $password = (string) config('app.press.password');
 
-            return $user;
+            return $email !== '' && $password !== '' ? [$email, $password] : null;
         }
 
-        $user = new User([
-            'email' => $email,
+        $explicitEmail = (string) $this->option('email');
+
+        if ($explicitEmail !== '') {
+            $password = (string) $this->option('password');
+
+            return $password !== '' ? [$explicitEmail, $password] : null;
+        }
+
+        $email = (string) config('app.demo.email');
+        $password = (string) config('app.demo.password');
+
+        return $email !== '' && $password !== '' ? [$email, $password] : null;
+    }
+
+    private function reportMissingCredentials(): int
+    {
+        if ($this->option('press')) {
+            $this->error('Press configuration not set. Please set PRESS_EMAIL and PRESS_PASSWORD in .env');
+        } elseif ((string) $this->option('email') !== '') {
+            $this->error('Pass --password together with --email.');
+        } else {
+            $this->error('Demo configuration not set. Please set DEMO_EMAIL and DEMO_PASSWORD in .env');
+        }
+
+        return self::FAILURE;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function demoDataset(): array
+    {
+        return [
             'name' => 'Demo User',
+            'locale' => null,
+            'currency' => 'USD',
+            'subscription_prefix' => 'sub_demo_',
+            'accounts' => self::DEMO_ACCOUNTS,
+            'labels' => $this->labelsProvider->getLabels(),
+            'rules' => $this->rulesProvider->getRules(),
+            'budgets' => self::DEMO_BUDGETS,
+            'transaction_templates' => null,
+        ];
+    }
+
+    /**
+     * Find or create the account, then re-apply the profile the dataset asks
+     * for. The row itself is never deleted: an OAuth connection (a journalist's
+     * Claude Desktop) hangs off the user id, and recreating it would break every
+     * live connection in silence.
+     */
+    private function findOrCreateDemoUser(string $email, string $password): User
+    {
+        $user = User::where('email', $email)->first() ?? new User(['email' => $email]);
+
+        $user->fill([
+            'name' => $this->dataset['name'],
             'password' => $password,
-            'onboarded_at' => now(),
-            'currency_code' => 'USD',
+            'onboarded_at' => $user->onboarded_at ?? now(),
+            'currency_code' => $this->dataset['currency'],
         ]);
-        $user->email_verified_at = now();
+
+        if ($this->dataset['locale'] !== null) {
+            $user->locale = $this->dataset['locale'];
+        }
+
+        $user->email_verified_at ??= now();
         $user->save();
 
         return $user;
+    }
+
+    /**
+     * A seeded account is a fixture nobody reads mail for, so every e-mail
+     * notification it could trigger is switched off.
+     */
+    private function silenceNotifications(User $user): void
+    {
+        $user->setting()->updateOrCreate([], [
+            'notify_on_bank_transactions_synced' => false,
+            'notify_on_inactive_no_bank' => false,
+            'budget_notify_on_new_transaction' => false,
+            'budget_notify_on_close_to_limit' => false,
+            'budget_notify_on_over_limit' => false,
+        ]);
+
+        $this->info('  Silenced e-mail notifications');
     }
 
     private function deleteExistingData(User $user): void
@@ -143,7 +265,7 @@ class ResetDemoAccountCommand extends Command
      */
     private function createLabels(User $user): array
     {
-        $labelsConfig = $this->labelsProvider->getLabels();
+        $labelsConfig = $this->dataset['labels'];
         $labels = [];
 
         foreach ($labelsConfig as $labelConfig) {
@@ -167,85 +289,111 @@ class ResetDemoAccountCommand extends Command
      */
     private function createAccountsWithTransactions(User $user, array $labels): void
     {
-        $bbvaBank = Bank::query()->whereNull('user_id')->where('name', 'BBVA')->first()
-            ?? Bank::factory()->create(['user_id' => null]);
-        $ingBank = Bank::query()->whereNull('user_id')->where('name', 'ING Direct')->first()
-            ?? Bank::factory()->create(['user_id' => null]);
-        $indexaCapitalBank = Bank::query()->whereNull('user_id')->where('name', 'Indexa Capital')->first()
-            ?? Bank::factory()->create(['user_id' => null]);
-        $binanceBank = Bank::query()->whereNull('user_id')->where('name', 'Binance')->first()
-            ?? Bank::factory()->create(['user_id' => null]);
         $categories = $user->categories()->get()->keyBy('name');
-
-        $accounts = [
-            [
-                'name' => 'Primary Checking',
-                'type' => AccountType::Checking,
-                'current_balance' => $this->generateRealisticBalance(2000000, 3500000),
-                'monthly_variance' => 150000,
-                'bank_account_id' => $bbvaBank->id,
-            ],
-            [
-                'name' => 'Joint Checking',
-                'type' => AccountType::Checking,
-                'current_balance' => $this->generateRealisticBalance(500000, 1200000),
-                'monthly_variance' => 80000,
-                'bank_account_id' => $bbvaBank->id,
-            ],
-            [
-                'name' => 'Emergency Fund',
-                'type' => AccountType::Savings,
-                'current_balance' => $this->generateRealisticBalance(1200000, 1800000),
-                'monthly_variance' => 25000,
-                'bank_account_id' => $ingBank->id,
-            ],
-            [
-                'name' => '401(k) Retirement',
-                'type' => AccountType::Retirement,
-                'current_balance' => $this->generateRealisticBalance(8500000, 12500000),
-                'monthly_variance' => 350000,
-                'bank_account_id' => $indexaCapitalBank->id,
-            ],
-            [
-                'name' => 'Brokerage Account',
-                'type' => AccountType::Investment,
-                'current_balance' => $this->generateRealisticBalance(1500000, 3500000),
-                'monthly_variance' => 200000,
-                'bank_account_id' => $indexaCapitalBank->id,
-            ],
-            [
-                'name' => 'Cryptos',
-                'type' => AccountType::Investment,
-                'current_balance' => $this->generateRealisticBalance(1500000, 4500000),
-                'monthly_variance' => 100000,
-                'bank_account_id' => $binanceBank->id,
-            ],
-        ];
-
-        $createdAccounts = [];
+        $created = [];
         $transactionAccounts = [];
 
-        foreach ($accounts as $accountData) {
+        foreach ($this->dataset['accounts'] as $accountData) {
+            $type = $accountData['type'] instanceof AccountType
+                ? $accountData['type']
+                : AccountType::from($accountData['type']);
+
             $account = $user->accounts()->create([
                 'name' => $accountData['name'],
                 'name_iv' => null,
-                'bank_id' => $accountData['bank_account_id'],
-                'currency_code' => 'USD',
-                'type' => $accountData['type'],
+                'bank_id' => $this->bankId($accountData['bank'] ?? null),
+                'currency_code' => $this->dataset['currency'],
+                'type' => $type,
             ]);
 
-            $this->createBalanceHistory($account, $accountData['current_balance'], $accountData['monthly_variance'], $accountData['type']);
+            $this->createAccountBalances($account, $accountData, $type);
 
-            $createdAccounts[] = $account;
+            $created[] = $account;
 
-            if ($this->accountTypeHasTransactions($accountData['type'])) {
-                $transactionAccounts[] = $account;
+            if ($type->hasTransactionLedger()) {
+                $transactionAccounts[$account->name] = $account;
             }
         }
 
         $totalTransactions = $this->createMixedTransactions($transactionAccounts, $categories, $labels);
 
-        $this->info('  Created '.count($createdAccounts)." accounts with {$totalTransactions} transactions and 12 months of balances");
+        $this->info('  Created '.count($created)." accounts with {$totalTransactions} transactions and 12 months of balances");
+    }
+
+    /**
+     * The shared bank record a seeded account hangs off, or null for the types
+     * that have no bank (a flat). Falls back to a factory-made bank so seeding
+     * still works on a database whose institution catalogue was never synced.
+     */
+    private function bankId(?string $name): ?string
+    {
+        if ($name === null) {
+            return null;
+        }
+
+        $bank = Bank::query()->whereNull('user_id')->where('name', $name)->first()
+            ?? Bank::factory()->create(['user_id' => null, 'name' => $name]);
+
+        return $bank->id;
+    }
+
+    /**
+     * Balance history for one account. Loans and property have their own curves
+     * — amortization and revaluation — so they go through the services that own
+     * that maths instead of the generic random walk.
+     *
+     * @param  array<string, mixed>  $accountData
+     */
+    private function createAccountBalances(Account $account, array $accountData, AccountType $type): void
+    {
+        $currentBalance = $this->generateRealisticBalance($accountData['balance_min'], $accountData['balance_max']);
+
+        if (isset($accountData['loan'])) {
+            $loan = $accountData['loan'];
+            $startDate = now()->subYears($loan['start_years_ago'])->startOfMonth();
+
+            $account->loanDetail()->create([
+                'original_amount' => $loan['original_amount'],
+                'annual_interest_rate' => $loan['annual_interest_rate'],
+                'loan_term_months' => $loan['loan_term_months'],
+                'start_date' => $startDate,
+            ]);
+
+            $this->loanBalances->generateHistoricalBalances(
+                $account,
+                $loan['original_amount'],
+                $startDate,
+                $currentBalance,
+            );
+
+            return;
+        }
+
+        if (isset($accountData['real_estate'])) {
+            $property = $accountData['real_estate'];
+            $purchaseDate = now()->subYears($property['purchase_years_ago'])->startOfMonth();
+
+            $account->realEstateDetail()->create([
+                'property_type' => $property['property_type'],
+                'address' => $property['address'],
+                'purchase_price' => $property['purchase_price'],
+                'purchase_date' => $purchaseDate,
+                'area_value' => $property['area_value'],
+                'area_unit' => $property['area_unit'],
+                'revaluation_percentage' => $property['revaluation_percentage'],
+            ]);
+
+            $this->realEstateBalances->generateHistoricalBalances(
+                $account,
+                $property['purchase_price'],
+                $purchaseDate,
+                $currentBalance,
+            );
+
+            return;
+        }
+
+        $this->createBalanceHistory($account, $currentBalance, $accountData['monthly_variance'], $type);
     }
 
     private function generateRealisticBalance(int $min, int $max): int
@@ -312,22 +460,28 @@ class ResetDemoAccountCommand extends Command
     }
 
     /**
-     * @param  array<int, Account>  $accounts
+     * @param  array<string, Account>  $accounts  keyed by account name
      * @param  Collection<string, Category>  $categories
      * @param  array<int, array{label: Label, assignment_percentage: int}>  $labels
      */
     private function createMixedTransactions(array $accounts, Collection $categories, array $labels): int
     {
-        if (empty($accounts)) {
+        if ($accounts === []) {
             return 0;
         }
 
-        $allTransactions = $this->transactionsProvider->getTransactions();
+        $allTransactions = $this->transactionsProvider->getTransactions(
+            $this->dataset['transaction_templates'],
+            $this->dataset['currency'],
+        );
+
+        $accountNames = array_keys($accounts);
         $count = 0;
 
         foreach ($allTransactions as $transactionData) {
-            $categoryName = $transactionData['category_name'];
-            unset($transactionData['category_name']);
+            $categoryName = $this->categoryName($transactionData['category_name']);
+            $accountName = $transactionData['account_name'];
+            unset($transactionData['category_name'], $transactionData['account_name']);
 
             $category = $categories->get($categoryName);
 
@@ -335,7 +489,7 @@ class ResetDemoAccountCommand extends Command
                 continue;
             }
 
-            $account = $accounts[array_rand($accounts)];
+            $account = $accounts[$accountName] ?? $accounts[$accountNames[array_rand($accountNames)]];
 
             $transactionData['description_iv'] = null;
 
@@ -358,16 +512,28 @@ class ResetDemoAccountCommand extends Command
     }
 
     /**
+     * The name a canonical (English) category was seeded under for this account's
+     * locale. Datasets reference categories in English so the same set works for
+     * both accounts.
+     */
+    private function categoryName(string $canonical): string
+    {
+        return CreateDefaultCategories::localizedCategoryName($canonical, $this->dataset['locale'] ?? 'en');
+    }
+
+    /**
      * @param  array<int, array{label: Label, assignment_percentage: int}>  $labels
      */
     private function createAutomationRules(User $user, array $labels): void
     {
-        $rules = $this->rulesProvider->getRules();
+        $rules = $this->dataset['rules'];
 
         foreach ($rules as $ruleData) {
             $category = null;
             if ($ruleData['category_name']) {
-                $category = $user->categories()->where('name', $ruleData['category_name'])->first();
+                $category = $user->categories()
+                    ->where('name', $this->categoryName($ruleData['category_name']))
+                    ->first();
             }
 
             $rule = $user->automationRules()->create([
@@ -388,54 +554,47 @@ class ResetDemoAccountCommand extends Command
         $this->info('  Created '.count($rules).' automation rules');
     }
 
-    private function accountTypeHasTransactions(AccountType $type): bool
-    {
-        return $type !== AccountType::Investment && $type !== AccountType::Retirement;
-    }
-
     private function createBudgets(User $user): void
     {
         $categories = $user->categories()->get()->keyBy('name');
 
-        $groceriesCategory = $categories->get('Groceries');
-        $diningCategory = $categories->get('Cafes, restaurants, bars');
+        foreach ($this->dataset['budgets'] as $budgetData) {
+            $category = $categories->get($this->categoryName($budgetData['category_name']));
 
-        if (! $groceriesCategory || ! $diningCategory) {
-            $this->warn('  Skipping budget creation - required categories not found');
+            if (! $category) {
+                $this->warn("  Skipping budget '{$budgetData['name']}' - category not found");
 
-            return;
+                continue;
+            }
+
+            $budget = Budget::create([
+                'user_id' => $user->id,
+                'name' => $budgetData['name'],
+                'period_type' => BudgetPeriodType::from($budgetData['period_type']),
+                'period_start_day' => $budgetData['period_start_day'],
+                'rollover_type' => RolloverType::from($budgetData['rollover_type']),
+                // A budget copies the user's notification defaults at creation;
+                // a seeded account must not e-mail anyone when a reseed pushes a
+                // period over its limit.
+                'notify_on_new_transaction' => false,
+                'notify_on_close_to_limit' => false,
+                'notify_on_over_limit' => false,
+            ]);
+
+            // What a budget tracks lives in the pivot, not on a column: without
+            // this sync nothing is ever assigned to the budget and every period
+            // reads as untouched.
+            $budget->categories()->sync([$category->id]);
+
+            $this->generateHistoricalPeriods($budget, $budgetData['allocated_amount']);
+
+            $periods = $budget->periods()->count();
+            $current = $budget->getCurrentPeriod() ? ' (has current period)' : ' (no current period)';
+
+            $this->info("    - {$budgetData['name']}: {$periods} periods{$current}");
         }
 
-        $budget1 = Budget::create([
-            'user_id' => $user->id,
-            'name' => 'Monthly Groceries',
-            'period_type' => BudgetPeriodType::Monthly,
-            'period_start_day' => 1,
-            'category_id' => $groceriesCategory->id,
-            'rollover_type' => RolloverType::CarryOver,
-        ]);
-
-        $this->generateHistoricalPeriods($budget1, 320000);
-
-        $budget2 = Budget::create([
-            'user_id' => $user->id,
-            'name' => 'Weekly Dining Out',
-            'period_type' => BudgetPeriodType::Weekly,
-            'period_start_day' => 0,
-            'category_id' => $diningCategory->id,
-            'rollover_type' => RolloverType::Reset,
-        ]);
-
-        $this->generateHistoricalPeriods($budget2, 20000);
-
-        $groceriesPeriodCount = $budget1->periods()->count();
-        $diningPeriodCount = $budget2->periods()->count();
-        $groceriesCurrentPeriod = $budget1->getCurrentPeriod();
-        $diningCurrentPeriod = $budget2->getCurrentPeriod();
-
-        $this->info('  Created 2 budgets with historical periods');
-        $this->info("    - Monthly Groceries: {$groceriesPeriodCount} periods".($groceriesCurrentPeriod ? ' (has current period)' : ' (no current period)'));
-        $this->info("    - Weekly Dining Out: {$diningPeriodCount} periods".($diningCurrentPeriod ? ' (has current period)' : ' (no current period)'));
+        $this->info('  Created '.count($this->dataset['budgets']).' budgets with historical periods');
     }
 
     private function generateHistoricalPeriods(Budget $budget, int $allocatedAmount): void
@@ -543,18 +702,23 @@ class ResetDemoAccountCommand extends Command
      * `subscriptions.stripe_id` is unique, so the fake id has to be derived from
      * the user: --email lets several demo accounts coexist, and a shared literal
      * would collide with whichever account was seeded first.
+     *
+     * The prefix is what keeps these out of the subscription metrics, so the
+     * press account gets its own (`sub_press_`) rather than passing for a demo.
      */
     private function createSubscription(User $user): void
     {
+        $prefix = $this->dataset['subscription_prefix'];
+
         $user->subscriptions()->delete();
 
         $user->subscriptions()->create([
             'type' => 'default',
-            'stripe_id' => "sub_demo_{$user->id}",
+            'stripe_id' => "{$prefix}{$user->id}",
             'stripe_status' => 'active',
             'stripe_price' => 'price_demo_free',
         ]);
 
-        $this->info('  Created demo subscription');
+        $this->info('  Created seeded subscription');
     }
 }

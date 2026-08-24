@@ -81,7 +81,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 'hasProPlan' => $user?->hasProPlan() ?? false,
-                'isDemoAccount' => $this->isDemoAccount($user),
+                'isDemoAccount' => $user?->isRestrictedDemoAccount() ?? false,
+                'isSharedAccount' => $user?->isRestrictedSharedAccount() ?? false,
             ],
             'subscriptionPaymentIssue' => $user?->hasPastDueSubscription() ? [
                 'status' => 'past_due',
@@ -188,15 +189,6 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * The demo account is only treated as one outside local, where a developer
-     * signed in as it should get the normal app.
-     */
-    private function isDemoAccount(?User $user): bool
-    {
-        return ($user?->isDemoAccount() ?? false) && ! app()->environment('local');
-    }
-
-    /**
      * The demo login is prefilled for whoever asked for it (?demo=1) and for the
      * demo account itself, so it can sign back in after logging out.
      *
@@ -204,7 +196,7 @@ class HandleInertiaRequests extends Middleware
      */
     private function demoCredentials(Request $request, ?User $user): ?array
     {
-        $wantsDemo = $request->query('demo') === '1' || $this->isDemoAccount($user);
+        $wantsDemo = $request->query('demo') === '1' || ($user?->isRestrictedDemoAccount() ?? false);
 
         if (! config('app.demo.enabled') || ! $wantsDemo) {
             return null;

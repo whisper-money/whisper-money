@@ -3,6 +3,11 @@
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('budgets:generate-periods')->daily();
+// The press account keeps itself alive: every reset re-derives its 12 months of
+// transactions and balances from today, so a journalist who logs in months after
+// the press round still lands on current data. It also provisions the account on
+// its first run, so no manual step is needed after a deploy.
+Schedule::command('demo:reset --press')->dailyAt('04:00')->timezone('Europe/Madrid');
 Schedule::command('banking:sync')->everySixHours();
 Schedule::command('banks:check-logos')->weekly();
 // Connectors move in and out of beta at the provider, so the flag stored on

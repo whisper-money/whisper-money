@@ -28,12 +28,16 @@ use Laravel\Mcp\Facades\Mcp;
 | tool under either guard, so a lapsed subscription stops working without
 | revoking access.
 |
+| `throttle:mcp` is a named limiter (see AppServiceProvider): 60 requests a
+| minute per user, raised for the shared demo/press accounts, which several
+| people drive at the same time.
+|
 */
 
 Mcp::oauthRoutes();
 
 Mcp::web('/mcp', WhisperMoneyServer::class)
-    ->middleware(['auth:sanctum', 'abilities:mcp:read', 'throttle:60,1']);
+    ->middleware(['auth:sanctum', 'abilities:mcp:read', 'throttle:mcp']);
 
 Mcp::web('/mcp/oauth', WhisperMoneyServer::class)
-    ->middleware(['auth:api', 'throttle:60,1']);
+    ->middleware(['auth:api', 'throttle:mcp']);

@@ -11,6 +11,7 @@ use App\Services\Ai\UncategorizedTransactionMatcher;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Discord\DiscordWebhook;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
@@ -55,6 +56,21 @@ class AppServiceProvider extends ServiceProvider
         // twice per event.
         RateLimiter::for('emails', function (object $job): Limit {
             return Limit::perSecond(30);
+        });
+
+        // MCP requests are throttled per authenticated user. The shared accounts
+        // are driven by several people at once (a press round is the point of
+        // the press account), so one bucket of 60 would have them throttling
+        // each other mid-conversation.
+        RateLimiter::for('mcp', function (Request $request): Limit {
+            $user = $request->user();
+
+            if ($user === null) {
+                return Limit::perMinute(60)->by($request->ip());
+            }
+
+            return Limit::perMinute($user->isRestrictedSharedAccount() ? 600 : 60)
+                ->by((string) $user->getAuthIdentifier());
         });
 
         // Render the OAuth consent screen (Claude Desktop / ChatGPT connecting

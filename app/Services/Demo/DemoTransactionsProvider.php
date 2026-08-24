@@ -156,17 +156,22 @@ class DemoTransactionsProvider
     ];
 
     /**
-     * Generate 12 months of realistic transactions.
+     * Generate 12 months of realistic transactions, ending today: a reset rolls
+     * every date forward, which is how the seeded accounts stay current.
      *
-     * @return array<int, array{description: string, transaction_date: string, amount: int, currency_code: string, notes: string|null, notes_iv: string|null, source: TransactionSource, category_name: string}>
+     * @param  array<int, array{description: string, amount_min: int, amount_max: int, category_name: string, frequency: string, account?: string}>|null  $templates  the merchant set to draw from, defaulting to the demo account's
+     * @return array<int, array{description: string, transaction_date: string, amount: int, currency_code: string, notes: string|null, notes_iv: string|null, source: TransactionSource, category_name: string, account_name: string|null}>
      */
-    public function getTransactions(): array
+    public function getTransactions(?array $templates = null, string $currency = 'USD'): array
     {
         $transactions = [];
         $endDate = Carbon::now();
-        $startDate = Carbon::now()->subMonths(12);
+        // Derived from $endDate, not a second now(): the microseconds between
+        // two now() calls put start+12 months past the end and cost every
+        // monthly template its occurrence in the month in progress.
+        $startDate = $endDate->copy()->subMonthsNoOverflow(12);
 
-        foreach (self::TRANSACTION_TEMPLATES as $template) {
+        foreach ($templates ?? self::TRANSACTION_TEMPLATES as $template) {
             $dates = $this->generateDatesForFrequency($template['frequency'], $startDate, $endDate);
 
             foreach ($dates as $date) {
@@ -178,11 +183,16 @@ class DemoTransactionsProvider
                     'description' => $template['description'],
                     'transaction_date' => $date->format('Y-m-d'),
                     'amount' => $amount,
-                    'currency_code' => 'USD',
+                    'currency_code' => $currency,
                     'notes' => null,
                     'notes_iv' => null,
                     'source' => TransactionSource::ManuallyCreated,
                     'category_name' => $template['category_name'],
+                    // The account this merchant is actually charged to, when the
+                    // set says so. Without it the seeder spreads transactions at
+                    // random, which is fine for the demo but would put a
+                    // mortgage payment on a savings account.
+                    'account_name' => $template['account'] ?? null,
                 ];
             }
         }
@@ -193,57 +203,101 @@ class DemoTransactionsProvider
     }
 
     /**
+     * How many months apart each recurring cadence falls, and how many days the
+     * date is allowed to wander around it. Weekly and biweekly step in weeks, so
+     * they are expressed in weeks instead.
+     *
+     * @var array<string, array{weeks?: int, months?: int, jitter: int}>
+     */
+    private const CADENCES = [
+        'weekly' => ['weeks' => 1, 'jitter' => 2],
+        'biweekly' => ['weeks' => 2, 'jitter' => 3],
+        'quarterly' => ['months' => 3, 'jitter' => 14],
+        'biannual' => ['months' => 6, 'jitter' => 20],
+    ];
+
+    /**
      * @return array<int, Carbon>
      */
     private function generateDatesForFrequency(string $frequency, Carbon $startDate, Carbon $endDate): array
     {
+        $dates = match (true) {
+            isset(self::CADENCES[$frequency]) => $this->recurringDates($frequency, $startDate, $endDate),
+            $frequency === 'frequent' => $this->frequentDates($startDate, $endDate),
+            $frequency === 'monthly' => $this->monthlyDates($startDate, $endDate),
+            $frequency === 'yearly' => [$startDate->copy()->addMonths(rand(0, 11))->addDays(rand(0, 28))],
+            default => [],
+        };
+
+        return array_filter($dates, fn (Carbon $date): bool => $date->lte($endDate) && $date->gte($startDate));
+    }
+
+    /**
+     * One date per cadence step, jittered so a weekly shop does not always land
+     * on the same weekday.
+     *
+     * @return array<int, Carbon>
+     */
+    private function recurringDates(string $frequency, Carbon $startDate, Carbon $endDate): array
+    {
+        $cadence = self::CADENCES[$frequency];
         $dates = [];
         $current = $startDate->copy();
 
-        switch ($frequency) {
-            case 'frequent':
-                while ($current->lte($endDate)) {
-                    if (rand(1, 100) <= 40) {
-                        $dates[] = $current->copy()->addHours(rand(8, 20));
-                    }
-                    $current->addDays(rand(2, 4));
-                }
-                break;
+        while ($current->lte($endDate)) {
+            $dates[] = $current->copy()->addDays(rand(0, $cadence['jitter']))->addHours(rand(8, 20));
 
-            case 'weekly':
-                while ($current->lte($endDate)) {
-                    $dates[] = $current->copy()->addDays(rand(0, 2))->addHours(rand(8, 20));
-                    $current->addWeek();
-                }
-                break;
-
-            case 'biweekly':
-                while ($current->lte($endDate)) {
-                    $dates[] = $current->copy()->addDays(rand(0, 3))->addHours(rand(8, 20));
-                    $current->addWeeks(2);
-                }
-                break;
-
-            case 'monthly':
-                while ($current->lte($endDate)) {
-                    $dayOfMonth = min($current->daysInMonth, rand(1, 28));
-                    $dates[] = $current->copy()->day($dayOfMonth)->addHours(rand(8, 20));
-                    $current->addMonth();
-                }
-                break;
-
-            case 'quarterly':
-                while ($current->lte($endDate)) {
-                    $dates[] = $current->copy()->addDays(rand(0, 14))->addHours(rand(8, 20));
-                    $current->addMonths(3);
-                }
-                break;
-
-            case 'yearly':
-                $dates[] = $startDate->copy()->addMonths(rand(0, 11))->addDays(rand(0, 28));
-                break;
+            isset($cadence['weeks'])
+                ? $current->addWeeks($cadence['weeks'])
+                : $current->addMonthsNoOverflow($cadence['months']);
         }
 
-        return array_filter($dates, fn ($date) => $date->lte($endDate) && $date->gte($startDate));
+        return $dates;
+    }
+
+    /**
+     * Small everyday spending: a coffee or a bakery run every few days, and not
+     * every time.
+     *
+     * @return array<int, Carbon>
+     */
+    private function frequentDates(Carbon $startDate, Carbon $endDate): array
+    {
+        $dates = [];
+        $current = $startDate->copy();
+
+        while ($current->lte($endDate)) {
+            if (rand(1, 100) <= 40) {
+                $dates[] = $current->copy()->addHours(rand(8, 20));
+            }
+
+            $current->addDays(rand(2, 4));
+        }
+
+        return $dates;
+    }
+
+    /**
+     * A recurring charge keeps the same day of the month, so rent, a salary and a
+     * subscription read as recurring instead of wandering. The day is capped at
+     * today's, so the month in progress already shows every recurring line —
+     * which is what makes "what did I spend this month?" answerable.
+     *
+     * @return array<int, Carbon>
+     */
+    private function monthlyDates(Carbon $startDate, Carbon $endDate): array
+    {
+        $dayOfMonth = rand(1, max(1, min(28, $endDate->day)));
+        $dates = [];
+        $current = $startDate->copy();
+
+        while ($current->lte($endDate)) {
+            $dates[] = $current->copy()
+                ->day(min($current->daysInMonth, $dayOfMonth))
+                ->addHours(rand(8, 20));
+            $current->addMonthNoOverflow();
+        }
+
+        return $dates;
     }
 }

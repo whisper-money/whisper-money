@@ -2511,5 +2511,9 @@
     "This bank is still in beta": "Este banco todavía está en beta",
     "Our banking provider marks this connection as beta, so syncing can fail or pause more often than with other banks. It usually works, and you can reconnect or disconnect whenever you want.": "Nuestro proveedor bancario marca esta conexión como beta, así que la sincronización puede fallar o pausarse más a menudo que con otros bancos. Normalmente funciona, y puedes reconectar o desconectar cuando quieras.",
     "This bank is still in beta at our banking provider, so it fails more often than others. Retrying usually helps.": "Este banco todavía está en beta en nuestro proveedor bancario, así que falla más a menudo que otros. Reintentar suele ayudar.",
-    "We could not load these figures. Try again in a moment.": "No hemos podido cargar estas cifras. Vuelve a intentarlo en un momento."
+    "We could not load these figures. Try again in a moment.": "No hemos podido cargar estas cifras. Vuelve a intentarlo en un momento.",
+    "This shared account cannot be deleted.": "Esta cuenta compartida no se puede eliminar.",
+    "Two-factor authentication cannot be changed on this shared account.": "La verificación en dos pasos no se puede cambiar en esta cuenta compartida.",
+    "Password changes are disabled on this shared account.": "No se puede cambiar la contraseña en esta cuenta compartida.",
+    "Billing management is not available on this shared account.": "La gestión de facturación no está disponible en esta cuenta compartida."
 }

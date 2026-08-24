@@ -25,17 +25,21 @@ Route::middleware('auth')->group(function () {
     Route::redirect('settings', '/settings/accounts');
 
     Route::get('settings/account', [ProfileController::class, 'account'])->name('account.edit');
-    Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+    // Blocked on shared accounts: this is where the e-mail address (and so the
+    // login) and the seeded locale would be changed.
+    Route::patch('settings/profile', [ProfileController::class, 'update'])
+        ->middleware('block-shared')
+        ->name('profile.update');
     Route::patch('settings/timezone', [TimezoneController::class, 'update'])->name('timezone.update');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])
-        ->middleware('block-demo')
+        ->middleware('block-shared')
         ->name('profile.destroy');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('user-password.edit');
 
     Route::put('settings/password', [PasswordController::class, 'update'])
-        ->middleware(['throttle:6,1', 'block-demo'])
+        ->middleware(['throttle:6,1', 'block-shared'])
         ->name('user-password.update');
 
     Route::get('settings/accounts', [AccountController::class, 'index'])->name('accounts.index');
@@ -63,6 +67,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('settings/labels/{label}', [LabelController::class, 'update'])->name('labels.update');
     Route::delete('settings/labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
 
+    // Only `block-demo` here: the press account is meant to hand out MCP
+    // tokens, and the demo account is refused by the tools themselves anyway.
     Route::get('settings/mcp', [McpTokenController::class, 'index'])->name('mcp.index');
     Route::post('settings/mcp/tokens', [McpTokenController::class, 'store'])
         ->middleware('block-demo')

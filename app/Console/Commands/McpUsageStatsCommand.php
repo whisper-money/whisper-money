@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\McpToolCall;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
@@ -45,10 +46,19 @@ class McpUsageStatsCommand extends Command
     /**
      * Every call in the window, as a plain query builder: the report only ever
      * reads aggregates, so it has no use for hydrated models.
+     *
+     * The shared demo/press accounts are left out: journalists driving the press
+     * account are demo traffic, and counting them would overstate real usage.
      */
     private function callsSince(Carbon $since): Builder
     {
-        return McpToolCall::query()->toBase()->where('mcp_tool_calls.created_at', '>=', $since);
+        return McpToolCall::query()
+            ->toBase()
+            ->where('mcp_tool_calls.created_at', '>=', $since)
+            ->whereNotIn('user_id', fn (Builder $query) => $query
+                ->select('id')
+                ->from('users')
+                ->whereIn('email', User::sharedAccountEmails()));
     }
 
     private function renderTools(Carbon $since, int $total): void

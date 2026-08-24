@@ -21,6 +21,7 @@ vi.mock('@inertiajs/react', () => ({
         props: {
             auth: {
                 isDemoAccount: false,
+                isSharedAccount: false,
                 hasProPlan: true,
             },
             flash: {},

@@ -36,6 +36,7 @@ import { type PropsWithChildren } from 'react';
 const getNavItems = (
     subscriptionsEnabled: boolean,
     isDemoAccount: boolean,
+    isSharedAccount: boolean,
 ): (NavItem | NavSectionHeader | NavDivider)[] => [
     {
         type: 'nav-item' as const,
@@ -67,6 +68,8 @@ const getNavItems = (
         href: labelsIndex(),
         icon: null,
     },
+    // Demo-only: the press account is shared too, but connecting an assistant
+    // to it is the whole reason it exists.
     ...(!isDemoAccount
         ? [
               {
@@ -82,7 +85,7 @@ const getNavItems = (
         type: 'section-header',
         title: 'Profile Settings',
     },
-    ...(!isDemoAccount
+    ...(!isSharedAccount
         ? [
               {
                   type: 'nav-item' as const,
@@ -98,7 +101,7 @@ const getNavItems = (
               },
           ]
         : []),
-    ...(subscriptionsEnabled && !isDemoAccount
+    ...(subscriptionsEnabled && !isSharedAccount
         ? [
               {
                   type: 'nav-item' as const,
@@ -114,7 +117,7 @@ const getNavItems = (
         href: editAppearance(),
         icon: null,
     },
-    ...(!isDemoAccount
+    ...(!isSharedAccount
         ? [
               { type: 'divider' as const },
               {
@@ -192,6 +195,7 @@ function renderMobileNavGroups(
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { subscriptionsEnabled, auth } = usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isSharedAccount = auth?.isSharedAccount ?? false;
 
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
@@ -199,7 +203,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     }
 
     const currentPath = window.location.pathname;
-    const sidebarNavItems = getNavItems(subscriptionsEnabled, isDemoAccount);
+    const sidebarNavItems = getNavItems(
+        subscriptionsEnabled,
+        isDemoAccount,
+        isSharedAccount,
+    );
 
     const activeNavItem = sidebarNavItems.find(
         (item): item is NavItem =>

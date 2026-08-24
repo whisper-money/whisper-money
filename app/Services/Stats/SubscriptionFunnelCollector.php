@@ -117,6 +117,7 @@ class SubscriptionFunnelCollector
         $subWindow = self::SUBSCRIBE_WINDOW_DAYS;
 
         $rows = User::query()
+            ->excludingSharedAccounts()
             ->when($excluded !== [], fn ($query) => $query->whereNotIn('email', $excluded))
             ->where('users.created_at', '>=', $windowStart)
             ->selectRaw('YEARWEEK(users.created_at, 3) as yearweek')

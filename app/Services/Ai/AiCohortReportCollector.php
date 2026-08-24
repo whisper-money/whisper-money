@@ -123,6 +123,7 @@ class AiCohortReportCollector
         $excluded = (array) config('ai_suggestions.report.excluded_emails', []);
 
         $rows = User::query()
+            ->excludingSharedAccounts()
             ->when($excluded !== [], fn ($query) => $query->whereNotIn('email', $excluded))
             ->where('users.created_at', '>=', $windowStart)
             ->whereHas('transactions', function ($query): void {

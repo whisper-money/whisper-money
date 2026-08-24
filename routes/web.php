@@ -155,15 +155,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
 
     // AI rule suggestions — accessible during onboarding (auto-apply) and after.
-    Route::post('ai/consent', [AiConsentController::class, 'store'])->name('ai.consent.store');
-    Route::post('ai/consent/dismiss', [AiConsentController::class, 'dismiss'])->name('ai.consent.dismiss');
-    Route::delete('ai/consent', [AiConsentController::class, 'destroy'])->name('ai.consent.destroy');
-    Route::get('ai/categorization/{jobId}/status', [CategorizationController::class, 'status'])->name('ai.categorization.status');
-    Route::prefix('ai/rule-suggestions')->name('ai.rule-suggestions.')->group(function () {
-        Route::get('/', [RuleSuggestionController::class, 'show'])->name('show');
-        Route::post('generate', [RuleSuggestionController::class, 'generate'])->name('generate');
-        Route::post('preview', [RuleSuggestionController::class, 'preview'])->name('preview');
-        Route::post('accept', [RuleSuggestionController::class, 'accept'])->name('accept');
+    // `block-shared` only bites on the mutating routes: consent means nothing
+    // when everybody holds the credentials, and every generation is a paid model
+    // call.
+    Route::middleware('block-shared')->group(function () {
+        Route::post('ai/consent', [AiConsentController::class, 'store'])->name('ai.consent.store');
+        Route::post('ai/consent/dismiss', [AiConsentController::class, 'dismiss'])->name('ai.consent.dismiss');
+        Route::delete('ai/consent', [AiConsentController::class, 'destroy'])->name('ai.consent.destroy');
+        Route::get('ai/categorization/{jobId}/status', [CategorizationController::class, 'status'])->name('ai.categorization.status');
+        Route::prefix('ai/rule-suggestions')->name('ai.rule-suggestions.')->group(function () {
+            Route::get('/', [RuleSuggestionController::class, 'show'])->name('show');
+            Route::post('generate', [RuleSuggestionController::class, 'generate'])->name('generate');
+            Route::post('preview', [RuleSuggestionController::class, 'preview'])->name('preview');
+            Route::post('accept', [RuleSuggestionController::class, 'accept'])->name('accept');
+        });
     });
 
     // Integration requests — community board to propose and vote on bank integrations.
@@ -204,7 +209,11 @@ Route::get('open-banking/callback', [AuthorizationController::class, 'callback']
 
 // Open-banking routes are accessible without the onboarded/subscribed middleware
 // so that users can connect their bank during the onboarding flow.
-Route::middleware(['auth', 'verified'])->prefix('open-banking')->group(function () {
+//
+// `block-shared` keeps a real bank off an account whose credentials are public:
+// whoever authorised it would leave their own movements on display to everybody
+// else holding them, and it burns paid EnableBanking quota.
+Route::middleware(['auth', 'verified', 'block-shared'])->prefix('open-banking')->group(function () {
     Route::get('institutions', [InstitutionController::class, 'index'])->name('open-banking.institutions');
     Route::post('authorize', [AuthorizationController::class, 'store'])->name('open-banking.authorize');
     Route::post('connections/{connection}/reauthorize', [AuthorizationController::class, 'reauthorize'])->name('open-banking.reauthorize');

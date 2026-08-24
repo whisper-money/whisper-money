@@ -8,7 +8,10 @@ import { UUID } from './uuid';
 export interface Auth {
     user: User;
     hasProPlan: boolean;
+    /** The public demo account, which is not allowed to use the AI Connector. */
     isDemoAccount: boolean;
+    /** The demo or the press account: public credentials, shared data. */
+    isSharedAccount: boolean;
 }
 
 export interface BreadcrumbItem {

@@ -94,6 +94,19 @@ class CreateDefaultCategories
     }
 
     /**
+     * The name a default category is seeded under for the given locale. Seeders
+     * hold their category references in canonical English and resolve them
+     * through here, so the same dataset works for an English and a Spanish
+     * account.
+     */
+    public static function localizedCategoryName(string $name, string $locale): string
+    {
+        return $locale === 'es'
+            ? (self::getSpanishTranslations()[$name] ?? $name)
+            : $name;
+    }
+
+    /**
      * Get the base (English) categories configuration. A `parent` entry nests
      * the category under the default category with that (English) name.
      *
