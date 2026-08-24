@@ -28,6 +28,7 @@ use App\Http\Controllers\RealEstateDetailController;
 use App\Http\Controllers\ReEvaluateTransactionRulesController;
 use App\Http\Controllers\RoadmapController;
 use App\Http\Controllers\RobotsController;
+use App\Http\Controllers\SavingsGoalController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
@@ -240,6 +241,11 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('budgets/{budget}', [BudgetController::class, 'show'])->name('budgets.show');
     Route::patch('budgets/{budget}', [BudgetController::class, 'update'])->name('budgets.update');
     Route::delete('budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
+
+    Route::post('savings-goals', [SavingsGoalController::class, 'store'])->name('savings-goals.store');
+    Route::get('savings-goals/{savingsGoal}', [SavingsGoalController::class, 'show'])->name('savings-goals.show');
+    Route::patch('savings-goals/{savingsGoal}', [SavingsGoalController::class, 'update'])->name('savings-goals.update');
+    Route::delete('savings-goals/{savingsGoal}', [SavingsGoalController::class, 'destroy'])->name('savings-goals.destroy');
 });
 
 require __DIR__.'/settings.php';
