@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * @property Carbon $transaction_date
+ * @property ?string $split_parent_id
  * @property int|float $total_amount
  * @property TransactionSource $source
  * @property ?CategorySource $category_source
@@ -52,6 +53,7 @@ class Transaction extends Model
         'user_id',
         'space_id',
         'account_id',
+        'split_parent_id',
         'category_id',
         'category_source',
         'ai_confidence',
@@ -115,6 +117,62 @@ class Transaction extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
+    }
+
+    /**
+     * The original this row was split off from. It is soft-deleted, so every
+     * read of it needs `withTrashed()`.
+     *
+     * @return BelongsTo<Transaction, $this>
+     */
+    public function splitParent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'split_parent_id');
+    }
+
+    /**
+     * The parts this transaction was split into. Empty unless this row is a
+     * split original.
+     *
+     * @return HasMany<Transaction, $this>
+     */
+    public function splits(): HasMany
+    {
+        return $this->hasMany(self::class, 'split_parent_id');
+    }
+
+    /**
+     * Whether this row is one part of a split rather than a transaction the
+     * account produced on its own.
+     */
+    public function isSplitPart(): bool
+    {
+        return $this->split_parent_id !== null;
+    }
+
+    /**
+     * Every part of the same split, this one included. Keyed on the shared
+     * parent id, so explaining a part to the user costs no read of the
+     * soft-deleted original: the parts add up to it by construction.
+     *
+     * @return HasMany<Transaction, $this>
+     */
+    public function splitSiblings(): HasMany
+    {
+        return $this->hasMany(self::class, 'split_parent_id', 'split_parent_id');
+    }
+
+    /**
+     * Eager-load what a split part needs to explain itself in the table: the
+     * other parts of the same split. One extra query for the whole page, and
+     * nothing at all for rows that are not part of a split.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeWithSplitSiblings(Builder $query): Builder
+    {
+        return $query->with('splitSiblings:id,split_parent_id,category_id,amount');
     }
 
     /**

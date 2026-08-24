@@ -59,6 +59,7 @@ class TransactionController extends Controller
         $query = Transaction::query()
             ->where('user_id', $user->id)
             ->with(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin'])
+            ->withSplitSiblings()
             ->applyFilters($filters);
 
         $nullableSortColumns = ['creditor_name', 'debtor_name'];
@@ -292,6 +293,14 @@ class TransactionController extends Controller
     public function destroy(Request $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
     {
         $this->authorize('delete', $transaction);
+
+        // Removing one part on its own would leave the rest no longer adding up
+        // to what the account actually moved.
+        if ($transaction->isSplitPart()) {
+            return response()->json([
+                'message' => 'This transaction is part of a split. Merge the split back before deleting it.',
+            ], 422);
+        }
 
         if ($request->boolean('update_balance')) {
             $balanceAdjuster->reverseDeletedTransaction($transaction);

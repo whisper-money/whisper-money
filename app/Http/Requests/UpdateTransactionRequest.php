@@ -33,9 +33,13 @@ class UpdateTransactionRequest extends FormRequest
         // Manually created transactions can edit every field after creation.
         // Imported ones keep amount, date, account and currency locked to the
         // source data, so those keys are only validated (and thus persisted)
-        // for manual transactions.
+        // for manual transactions. A part of a split keeps them locked too
+        // whatever its source: changing one part's amount, date or account
+        // would leave the split no longer adding up to the original.
         $transaction = $this->route('transaction');
-        if ($transaction instanceof Transaction && $transaction->source === TransactionSource::ManuallyCreated) {
+        if ($transaction instanceof Transaction
+            && $transaction->source === TransactionSource::ManuallyCreated
+            && ! $transaction->isSplitPart()) {
             $rules['account_id'] = ['sometimes', $this->userOwned('accounts')];
             $rules['transaction_date'] = ['sometimes', 'date'];
             $rules['amount'] = ['sometimes', 'integer'];

@@ -31,6 +31,7 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\TransactionSplitController;
 use App\Models\Bank;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\IntegrationsPage;
@@ -193,6 +194,8 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('transactions/re-evaluate-rules/status/{jobId}', [ReEvaluateTransactionRulesController::class, 'status'])->name('transactions.re-evaluate-rules.status');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     Route::post('transactions/{transaction}/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'single'])->name('transactions.re-evaluate-rules.single');
+    Route::post('transactions/{transaction}/split', [TransactionSplitController::class, 'store'])->name('transactions.split.store');
+    Route::delete('transactions/{transaction}/split', [TransactionSplitController::class, 'destroy'])->name('transactions.split.destroy');
 });
 
 // The bank authorization callback is intentionally unauthenticated: iOS PWAs hand the
