@@ -34,6 +34,7 @@ class SendInactiveNoBankEmailsCommand extends Command
         $queued = 0;
 
         User::query()
+            ->excludingSharedAccounts()
             ->whereNotNull('onboarded_at')
             ->whereDate('last_active_at', $dormantOn)
             ->whereDoesntHave('bankingConnections')

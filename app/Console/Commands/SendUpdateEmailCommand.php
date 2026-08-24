@@ -53,7 +53,7 @@ class SendUpdateEmailCommand extends Command
         $users = User::query()->get();
 
         if ($this->option('exclude-demo')) {
-            $users = $users->filter(fn (User $user) => ! $user->isDemoAccount());
+            $users = $users->reject(fn (User $user) => in_array($user->email, User::sharedAccountEmails(), true));
         }
 
         if ($users->isEmpty()) {
