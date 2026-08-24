@@ -1,5 +1,12 @@
 import type { Transaction } from '@/types/transaction';
 
+/** One part of a split as the API takes it: signed amount, category, labels. */
+export interface SplitInput {
+    amount: number;
+    category_id: string | null;
+    label_ids: string[];
+}
+
 /** One row of the split dialog while the user is still filling it in. */
 export interface SplitDraft {
     key: string;
@@ -57,11 +64,7 @@ export function isSplitBalanced(
 export function toSplitPayload(
     totalCents: number,
     drafts: SplitDraft[],
-): Array<{
-    amount: number;
-    category_id: string | null;
-    label_ids: string[];
-}> {
+): SplitInput[] {
     const sign = totalCents < 0 ? -1 : 1;
 
     return drafts.map((draft) => ({

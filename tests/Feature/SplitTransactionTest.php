@@ -3,10 +3,14 @@
 use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
 use App\Models\Account;
+use App\Models\Budget;
+use App\Models\BudgetPeriod;
+use App\Models\BudgetTransaction;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\BudgetTransactionService;
 
 beforeEach(function () {
     $this->user = User::factory()->create([
@@ -237,4 +241,46 @@ it('lists the parts and not the original, with the other parts loaded', function
                 ->and($rows->first()['split_parent_id'])->toBe($original->id)
                 ->and($rows->first()['split_siblings'])->toHaveCount(2);
         });
+});
+
+it('moves the budget from the original to the parts, and back again on merge', function () {
+    $original = Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $this->category->id,
+        'amount' => -5000,
+        'transaction_date' => now()->toDateString(),
+    ]);
+
+    $budget = Budget::factory()->forCategories($this->category)->create(['user_id' => $this->user->id]);
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(15),
+        'end_date' => now()->addDays(15),
+    ]);
+
+    app(BudgetTransactionService::class)->assignHistoricalTransactionsToPeriod($period);
+
+    expect(BudgetTransaction::query()->where('transaction_id', $original->id)->exists())->toBeTrue();
+
+    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
+        'splits' => [
+            ['amount' => -3000, 'category_id' => $this->category->id],
+            ['amount' => -2000, 'category_id' => $this->category->id],
+        ],
+    ])->assertCreated();
+
+    $partIds = Transaction::query()->where('split_parent_id', $original->id)->pluck('id');
+
+    // The original leaves the budget the moment it is split, and the parts take
+    // its place — same money, now counted twice over as two rows.
+    expect(BudgetTransaction::query()->where('transaction_id', $original->id)->exists())->toBeFalse()
+        ->and(BudgetTransaction::query()->whereIn('transaction_id', $partIds)->count())->toBe(2);
+
+    $this->actingAs($this->user)
+        ->deleteJson("/transactions/{$partIds->first()}/split")
+        ->assertSuccessful();
+
+    expect(BudgetTransaction::query()->whereIn('transaction_id', $partIds)->count())->toBe(0)
+        ->and(BudgetTransaction::query()->where('transaction_id', $original->id)->exists())->toBeTrue();
 });

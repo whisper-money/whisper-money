@@ -175,6 +175,51 @@ it('refuses to delete an imported transaction', function () {
     expect(Transaction::query()->find($transaction->id))->not->toBeNull();
 });
 
+it('refuses to delete one part of a split', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+    $part = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'split_parent_id' => $original->id,
+        'amount' => -3000,
+    ]);
+
+    callWriteTool($user, DeleteTransaction::class, [
+        'transaction_id' => $part->id,
+    ])->assertHasErrors(['split']);
+
+    expect(Transaction::query()->find($part->id))->not->toBeNull();
+});
+
+it('refuses to edit one part of a split', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+    $part = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'split_parent_id' => $original->id,
+        'amount' => -3000,
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $part->id,
+        'amount' => -1,
+    ])->assertHasErrors(['split']);
+
+    expect($part->fresh()->amount)->toBe(-3000);
+});
+
 it('categorizes an imported transaction', function () {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);

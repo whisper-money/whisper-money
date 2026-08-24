@@ -24,6 +24,7 @@ import { type DecryptedTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import axios from 'axios';
 import { parseISO } from 'date-fns';
 import { Check, Plus, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -93,7 +94,10 @@ export function SplitTransactionDialog({
     };
 
     const addDraft = () => {
-        setDrafts((previous) => [...previous, emptyDraft([])]);
+        setDrafts((previous) => [
+            ...previous,
+            emptyDraft(transaction.label_ids ?? []),
+        ]);
     };
 
     const removeDraft = (key: string) => {
@@ -140,7 +144,16 @@ export function SplitTransactionDialog({
             onSuccess();
         } catch (error) {
             console.error('Failed to split transaction:', error);
-            toast.error(__('The transaction could not be split.'));
+
+            // The dialog blocks the button until the parts add up, so a refusal
+            // here means the server saw something the dialog could not: show
+            // what it said rather than a generic failure.
+            const reason = axios.isAxiosError(error)
+                ? (error.response?.data as { message?: string } | undefined)
+                      ?.message
+                : undefined;
+
+            toast.error(reason ?? __('The transaction could not be split.'));
         } finally {
             setIsSubmitting(false);
         }
@@ -179,7 +192,7 @@ export function SplitTransactionDialog({
                                 locale,
                             )}
                             {' · '}
-                            {__('kept as the original')}
+                            {__('this row is replaced by the splits')}
                         </p>
                     </div>
 

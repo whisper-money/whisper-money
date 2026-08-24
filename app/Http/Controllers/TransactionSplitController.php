@@ -33,8 +33,14 @@ class TransactionSplitController extends Controller
         }
 
         $splits = DB::transaction(
-            fn (): Collection => $this->replaceWithSplits($transaction, $request->validated()['splits'])
+            fn (): ?Collection => $this->splitOnce($transaction, $request->validated()['splits'])
         );
+
+        if ($splits === null) {
+            return response()->json([
+                'message' => 'This transaction has already been split.',
+            ], 422);
+        }
 
         return response()->json(['data' => $splits->values()], 201);
     }
@@ -65,11 +71,26 @@ class TransactionSplitController extends Controller
     }
 
     /**
+     * Replace the original with its parts, or null when someone got there first.
+     *
+     * Two clicks on the same transaction must not each produce a full set of
+     * parts off the same money, so the row is locked for the length of the
+     * split: the loser finds it either gone (soft-deleted) or already split.
+     *
      * @param  list<array<string, mixed>>  $splits
-     * @return Collection<int, Transaction>
+     * @return Collection<int, Transaction>|null
      */
-    private function replaceWithSplits(Transaction $original, array $splits): Collection
+    private function splitOnce(Transaction $transaction, array $splits): ?Collection
     {
+        $original = Transaction::query()
+            ->whereKey($transaction->getKey())
+            ->lockForUpdate()
+            ->first();
+
+        if ($original === null || $original->splits()->exists()) {
+            return null;
+        }
+
         $parts = collect($splits)->map(
             fn (array $split): Transaction => $this->createSplit($original, $split)
         );

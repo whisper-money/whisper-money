@@ -53,7 +53,10 @@ export function UnsplitTransactionDialog({
         setIsMerging(true);
 
         try {
-            await transactionSyncService.unsplit(transaction.id);
+            await transactionSyncService.unsplit(
+                transaction.id,
+                siblings.map((sibling) => sibling.id),
+            );
 
             toast.success(__('The split was merged back.'));
             onOpenChange(false);

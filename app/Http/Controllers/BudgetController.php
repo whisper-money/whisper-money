@@ -9,6 +9,7 @@ use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
+use App\Models\Transaction;
 use App\Services\BudgetPeriodService;
 use App\Services\BudgetService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -78,7 +79,7 @@ class BudgetController extends Controller
             'budgetTransactions.transaction.account.bank',
             'budgetTransactions.transaction.category',
             'budgetTransactions.transaction.labels',
-            'budgetTransactions.transaction.splitSiblings:id,split_parent_id,category_id,amount',
+            'budgetTransactions.transaction.splitSiblings:'.Transaction::SPLIT_SIBLING_COLUMNS,
         ]);
 
         $previousPeriod = $budget->periods()

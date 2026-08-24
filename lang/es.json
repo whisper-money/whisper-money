@@ -2514,7 +2514,7 @@
     "We could not load these figures. Try again in a moment.": "No hemos podido cargar estas cifras. Vuelve a intentarlo en un momento.",
     "Split transaction": "Dividir transacción",
     "Share the amount out between several transactions, so each part gets its own category and labels.": "Reparte el importe entre varias transacciones para que cada parte tenga su categoría y sus etiquetas.",
-    "kept as the original": "se guarda como la original",
+    "this row is replaced by the splits": "esta fila se sustituye por las divisiones",
     "Add split": "Añadir división",
     "Remove split": "Quitar división",
     "Every split is money out, just like the original.": "Todas las divisiones son gastos, igual que la original.",

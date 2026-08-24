@@ -163,6 +163,12 @@ class Transaction extends Model
     }
 
     /**
+     * What the table needs off each sibling. Scopes do not compose into a dotted
+     * `with()` path, so nested eager loads spell the relation out and reuse this.
+     */
+    public const SPLIT_SIBLING_COLUMNS = 'id,split_parent_id,category_id,amount';
+
+    /**
      * Eager-load what a split part needs to explain itself in the table: the
      * other parts of the same split. One extra query for the whole page, and
      * nothing at all for rows that are not part of a split.
@@ -172,7 +178,7 @@ class Transaction extends Model
      */
     public function scopeWithSplitSiblings(Builder $query): Builder
     {
-        return $query->with('splitSiblings:id,split_parent_id,category_id,amount');
+        return $query->with('splitSiblings:'.self::SPLIT_SIBLING_COLUMNS);
     }
 
     /**

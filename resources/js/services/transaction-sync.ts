@@ -12,6 +12,7 @@ import {
 } from '@/actions/App/Http/Controllers/TransactionSplitController';
 import { db, withDb } from '@/lib/dexie-db';
 import { TransactionSyncManager } from '@/lib/sync-manager';
+import type { SplitInput } from '@/lib/transaction-splits';
 import type { LearnedRuleNotice } from '@/types/automation-rule';
 import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
@@ -24,13 +25,6 @@ export type UpdatedTransaction = Transaction & {
 
 interface TransactionUpdateData extends Partial<Transaction> {
     label_ids?: string[];
-}
-
-/** One split row as the API takes it: signed amount, category and labels. */
-export interface SplitInput {
-    amount: number;
-    category_id: string | null;
-    label_ids: string[];
 }
 
 /**
@@ -222,10 +216,15 @@ class TransactionSyncService {
 
     /**
      * Merge a split back: every part goes away and the original comes back.
-     * Takes any of the parts.
+     * Takes any of the parts, and evicts all of them from the offline cache the
+     * way split() evicts the original (best-effort, like delete()).
      */
-    async unsplit(id: string): Promise<Transaction> {
+    async unsplit(id: string, partIds: string[] = []): Promise<Transaction> {
         const response = await axios.delete(unsplitRoute.url(id));
+
+        await withDb<void>(async () => {
+            await db.transactions.bulkDelete([...new Set([id, ...partIds])]);
+        }, undefined);
 
         return toStoredTransaction(response.data.data);
     }
