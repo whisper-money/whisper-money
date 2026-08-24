@@ -104,8 +104,19 @@ Route::get('terms', function () {
     return Inertia::render('terms');
 })->name('terms');
 
-Route::get('documentation', DocumentationController::class)->name('documentation.index');
-Route::get('documentation/{slug}', DocumentationController::class)->name('documentation.show');
+/**
+ * The documentation, and a Markdown twin of every page for agents. The `.md`
+ * routes come first so a page slug never swallows the suffix.
+ */
+Route::get('documentation.md', [DocumentationController::class, 'markdown'])->name('documentation.index.markdown');
+Route::get('documentation/{slug}.md', [DocumentationController::class, 'markdown'])
+    ->where('slug', '[A-Za-z0-9_-]+')
+    ->name('documentation.markdown');
+Route::get('documentation', [DocumentationController::class, 'show'])->name('documentation.index');
+Route::get('documentation/{slug}', [DocumentationController::class, 'show'])
+    ->where('slug', '[A-Za-z0-9_-]+')
+    ->name('documentation.show');
+
 Route::get('roadmap', [RoadmapController::class, 'index'])->name('roadmap');
 
 Route::get('llms.txt', [AgentDocsController::class, 'llms'])->name('llms');

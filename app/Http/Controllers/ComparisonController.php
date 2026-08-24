@@ -68,8 +68,10 @@ class ComparisonController extends Controller
      * the integrations page, which needs exactly the same header.
      *
      * @param  array<string, string>  $alternates
+     * @param  string|null  $markdownUrl  where the Markdown twin lives, when it
+     *                                    is not the canonical plus `.md`
      */
-    public static function seoLinks(string $canonical, array $alternates): string
+    public static function seoLinks(string $canonical, array $alternates, ?string $markdownUrl = null): string
     {
         $links = ['<'.$canonical.'>; rel="canonical"'];
 
@@ -78,7 +80,7 @@ class ComparisonController extends Controller
         }
 
         $links[] = '<'.$alternates['en'].'>; rel="alternate"; hreflang="x-default"';
-        $links[] = '<'.$canonical.'.md>; rel="alternate"; type="text/markdown"';
+        $links[] = '<'.($markdownUrl ?? $canonical.'.md').'>; rel="alternate"; type="text/markdown"';
 
         return implode(', ', $links);
     }

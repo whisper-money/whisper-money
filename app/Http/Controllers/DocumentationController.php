@@ -2,55 +2,94 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Documentation\DocumentationMarkdown;
+use App\Support\Documentation\DocumentationTree;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
+/**
+ * The public product documentation.
+ *
+ * The pages, their order and their nesting all come from the file layout under
+ * resources/docs/documentation rather than from configuration, so writing a page
+ * is adding a Markdown file. Each page is served as HTML for people and, at the
+ * same URL with a `.md` suffix, as Markdown for agents.
+ */
 class DocumentationController extends Controller
 {
-    public function __invoke(?string $slug = null): Response
+    public function show(Request $request, ?string $slug = null): Response
     {
-        $slug ??= $this->defaultSlug();
         $locale = $this->locale();
-        $page = $this->page($slug, $locale);
-        $markdown = File::get($page['file']);
+        $tree = DocumentationTree::for($locale);
+        $page = $this->page($tree, $slug);
+        $levels = $this->tocLevels();
+        $rendered = DocumentationMarkdown::render(File::get($page['file']), $levels);
+        $languages = $this->languageLinks($page['slug'], $locale);
 
-        return Inertia::render('documentation/show', [
+        $response = Inertia::render('documentation/show', [
             'document' => [
-                'slug' => $slug,
+                'slug' => $page['slug'],
                 'locale' => $locale,
                 'title' => $page['title'],
                 'description' => $page['description'],
-                'html' => $this->html($markdown, $locale),
+                'html' => $rendered['html'],
+                'headings' => $rendered['headings'],
+                'markdownUrl' => $this->markdownUrl($page['slug'], $locale),
             ],
-            'navigation' => $this->navigation($slug, $locale),
-            'languages' => $this->languageLinks($slug, $locale),
-        ]);
+            'navigation' => $this->navigation($tree->nodes(), $page['slug'], $locale),
+            'searchIndex' => $this->searchIndex($tree, $locale, $levels),
+            'neighbours' => $this->neighbours($tree, $page['slug'], $locale),
+            'languages' => $languages,
+        ])->toResponse($request);
+
+        $response->headers->set('Link', ComparisonController::seoLinks(
+            $this->pageUrl($page['slug'], $locale),
+            $this->alternates($page['slug']),
+            $this->pageUrl($page['slug'], $locale, markdown: true),
+        ), false);
+
+        return $response;
     }
 
-    private function defaultSlug(): string
+    /**
+     * The same page as Markdown, for agents and for anything that would rather
+     * read the source than parse the rendered page.
+     */
+    public function markdown(?string $slug = null): HttpResponse
     {
-        $slug = config('documentation.default');
+        $locale = $this->locale();
+        $page = $this->page(DocumentationTree::for($locale), $slug);
 
-        if (! is_string($slug) || $slug === '') {
+        return ComparisonController::respondWithMarkdown(
+            DocumentationMarkdown::forAgents(File::get($page['file'])),
+            $this->pageUrl($page['slug'], $locale),
+        );
+    }
+
+    /**
+     * @return array{type: 'page', slug: string, order: int, title: string, description: string, file: string, children: list<mixed>}
+     */
+    private function page(DocumentationTree $tree, ?string $slug): array
+    {
+        $page = $tree->find($slug ?? (string) config('documentation.default'));
+
+        if ($page === null) {
             throw new NotFoundHttpException;
         }
 
-        return $slug;
+        return $page;
     }
 
     private function locale(): string
     {
         $locale = App::currentLocale();
 
-        if (array_key_exists($locale, $this->supportedLocales())) {
-            return $locale;
-        }
-
-        return $this->fallbackLocale();
+        return array_key_exists($locale, $this->supportedLocales()) ? $locale : $this->fallbackLocale();
     }
 
     private function fallbackLocale(): string
@@ -77,193 +116,7 @@ class DocumentationController extends Controller
     }
 
     /**
-     * @return array{title: string, description: string, file: string}
-     */
-    private function page(string $slug, string $locale): array
-    {
-        $page = config("documentation.pages.{$slug}");
-
-        if (! is_array($page) || ! isset($page['title'], $page['description'], $page['file'])) {
-            throw new NotFoundHttpException;
-        }
-
-        $file = $this->localizedValue($page['file'], $locale);
-
-        if (! File::exists($file)) {
-            throw new NotFoundHttpException;
-        }
-
-        return [
-            'title' => $this->localizedValue($page['title'], $locale),
-            'description' => $this->localizedValue($page['description'], $locale),
-            'file' => $file,
-        ];
-    }
-
-    private function localizedValue(mixed $value, string $locale): string
-    {
-        if (is_array($value)) {
-            $fallbackLocale = $this->fallbackLocale();
-            $localized = $value[$locale] ?? $value[$fallbackLocale] ?? null;
-
-            if (is_string($localized)) {
-                return $localized;
-            }
-
-            throw new NotFoundHttpException;
-        }
-
-        if (! is_string($value)) {
-            throw new NotFoundHttpException;
-        }
-
-        return $value;
-    }
-
-    private function html(string $markdown, string $locale): string
-    {
-        $cardBlocks = $this->extractCardBlocks($markdown);
-        $headings = $this->headings($markdown);
-        $html = (string) Str::of($cardBlocks['markdown'])->markdown([
-            'html_input' => 'strip',
-            'allow_unsafe_links' => false,
-        ]);
-
-        $html = $this->replaceTocPlaceholder($html, $headings, $locale);
-        $html = $this->replaceCardPlaceholders($html, $cardBlocks['html']);
-
-        return $this->addHeadingIds($html, $headings);
-    }
-
-    /**
-     * @return array{markdown: string, html: array<string, string>}
-     */
-    private function extractCardBlocks(string $markdown): array
-    {
-        $cardBlocks = [];
-        $output = [];
-        $lines = preg_split('/\R/', $markdown) ?: [];
-        $index = 0;
-        $insideWrapper = false;
-        $insideCard = false;
-        $wrapperCards = [];
-        $cardLines = [];
-
-        foreach ($lines as $line) {
-            if (! $insideWrapper && trim($line) === '<div class="cards-wrapper">') {
-                $insideWrapper = true;
-                $wrapperCards = [];
-
-                continue;
-            }
-
-            if (! $insideWrapper) {
-                $output[] = $line;
-
-                continue;
-            }
-
-            if (! $insideCard && trim($line) === '<div class="card">') {
-                $insideCard = true;
-                $cardLines = [];
-
-                continue;
-            }
-
-            if (trim($line) === '</div>') {
-                if ($insideCard) {
-                    $insideCard = false;
-                    $wrapperCards[] = trim(implode("\n", $cardLines));
-                    $cardLines = [];
-
-                    continue;
-                }
-
-                $placeholder = "DOCUMENTATION_CARDS_{$index}";
-                $cardBlocks[$placeholder] = $this->cardsHtml($wrapperCards);
-                $output[] = $placeholder;
-                $insideWrapper = false;
-                $wrapperCards = [];
-                $index++;
-
-                continue;
-            }
-
-            if ($insideCard) {
-                $cardLines[] = $line;
-            }
-        }
-
-        return [
-            'markdown' => implode("\n", $output),
-            'html' => $cardBlocks,
-        ];
-    }
-
-    /**
-     * @param  array<int, string>  $cards
-     */
-    private function cardsHtml(array $cards): string
-    {
-        $items = collect($cards)
-            ->filter()
-            ->map(fn (string $card): string => '<section class="card">'.(string) Str::of($card)->markdown([
-                'html_input' => 'strip',
-                'allow_unsafe_links' => false,
-            ]).'</section>')
-            ->implode('');
-
-        if ($items === '') {
-            return '';
-        }
-
-        return '<div class="cards-wrapper">'.$items.'</div>';
-    }
-
-    /**
-     * @param  array<string, string>  $cardBlocks
-     */
-    private function replaceCardPlaceholders(string $html, array $cardBlocks): string
-    {
-        foreach ($cardBlocks as $placeholder => $cardHtml) {
-            $html = str_replace(["<p>{$placeholder}</p>", $placeholder], $cardHtml, $html);
-        }
-
-        return $html;
-    }
-
-    /**
-     * @return array<int, array{level: int, title: string, id: string}>
-     */
-    private function headings(string $markdown): array
-    {
-        preg_match_all('/^(#{1,6})\s+(.+?)\s*#*\s*$/m', $markdown, $matches, PREG_SET_ORDER);
-
-        $headings = [];
-        $usedSlugs = [];
-        $levels = $this->tocLevels();
-
-        foreach ($matches as $match) {
-            $level = strlen($match[1]);
-
-            if (! in_array($level, $levels, true)) {
-                continue;
-            }
-
-            $title = $this->plainHeadingText($match[2]);
-
-            $headings[] = [
-                'level' => $level,
-                'title' => $title,
-                'id' => $this->uniqueHeadingId($title, $usedSlugs),
-            ];
-        }
-
-        return $headings;
-    }
-
-    /**
-     * @return array<int, int>
+     * @return list<int>
      */
     private function tocLevels(): array
     {
@@ -282,176 +135,107 @@ class DocumentationController extends Controller
             ->all();
     }
 
-    private function plainHeadingText(string $heading): string
+    /**
+     * The tree the sidebar renders: sections, their pages, and the pages nested
+     * under a page. A branch is marked expanded when the page being read is
+     * somewhere inside it, so the sidebar opens on what you are looking at.
+     *
+     * @param  list<array<string, mixed>>  $nodes
+     * @return list<array<string, mixed>>
+     */
+    private function navigation(array $nodes, string $activeSlug, string $locale): array
     {
-        $html = (string) Str::of($heading)->inlineMarkdown([
-            'html_input' => 'strip',
-            'allow_unsafe_links' => false,
-        ]);
+        $navigation = [];
 
-        return trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        foreach ($nodes as $node) {
+            /** @var list<array<string, mixed>> $nodeChildren */
+            $nodeChildren = $node['children'];
+            $children = $this->navigation($nodeChildren, $activeSlug, $locale);
+            $hasActiveChild = collect($children)->contains(fn (array $child): bool => $child['active'] === true || $child['expanded'] === true);
+
+            if ($node['type'] === 'section') {
+                $navigation[] = [
+                    'type' => 'section',
+                    'key' => 'section-'.$node['id'],
+                    'title' => $node['title'],
+                    'active' => false,
+                    'expanded' => $hasActiveChild,
+                    'children' => $children,
+                ];
+
+                continue;
+            }
+
+            $active = $node['slug'] === $activeSlug;
+
+            $navigation[] = [
+                'type' => 'page',
+                'key' => 'page-'.$node['slug'],
+                'slug' => $node['slug'],
+                'title' => $node['title'],
+                'url' => $this->pagePath($node['slug'], $locale),
+                'active' => $active,
+                'expanded' => $active || $hasActiveChild,
+                'children' => $children,
+            ];
+        }
+
+        return $navigation;
     }
 
     /**
-     * @param  array<string, int>  $usedSlugs
+     * Every page and every section heading in one list, so the search box can
+     * answer without a round trip. The documentation is a handful of files, and
+     * this is the whole of it.
+     *
+     * @param  list<int>  $levels
+     * @return list<array{slug: string, title: string, url: string, headings: list<array{title: string, id: string}>}>
      */
-    private function uniqueHeadingId(string $title, array &$usedSlugs): string
+    private function searchIndex(DocumentationTree $tree, string $locale, array $levels): array
     {
-        $base = Str::slug($title);
-
-        if ($base === '') {
-            $base = 'section';
-        }
-
-        $usedSlugs[$base] = ($usedSlugs[$base] ?? 0) + 1;
-
-        if ($usedSlugs[$base] === 1) {
-            return $base;
-        }
-
-        return "{$base}-{$usedSlugs[$base]}";
-    }
-
-    /**
-     * @param  array<int, array{level: int, title: string, id: string}>  $headings
-     */
-    private function replaceTocPlaceholder(string $html, array $headings, string $locale): string
-    {
-        $placeholder = config('documentation.toc.placeholder', '{{TOC}}');
-
-        if (! is_string($placeholder) || $placeholder === '') {
-            return $html;
-        }
-
-        return str_replace(
-            ["<p>{$placeholder}</p>", $placeholder],
-            $this->tocHtml($headings, $locale),
-            $html,
-        );
-    }
-
-    /**
-     * @param  array<int, array{level: int, title: string, id: string}>  $headings
-     */
-    private function tocHtml(array $headings, string $locale): string
-    {
-        if ($headings === []) {
-            return '';
-        }
-
-        $items = collect($this->numberedHeadings($headings))
-            ->map(fn (array $heading): string => sprintf(
-                '<li class="toc-level-%d"><a href="#%s"><span class="toc-number">%s</span> %s</a></li>',
-                $heading['level'],
-                e($heading['id']),
-                e($heading['number']),
-                e($heading['title']),
-            ))
-            ->implode('');
-
-        return '<nav class="documentation-toc" aria-label="Table of contents"><p>'.$this->tocTitle($locale).'</p><ol>'.$items.'</ol></nav>';
-    }
-
-    private function tocTitle(string $locale): string
-    {
-        return e($this->localizedValue(config('documentation.toc.title', 'On this page'), $locale));
-    }
-
-    /**
-     * @param  array<int, array{level: int, title: string, id: string}>  $headings
-     * @return array<int, array{level: int, title: string, id: string, number: string}>
-     */
-    private function numberedHeadings(array $headings): array
-    {
-        $levels = $this->tocLevels();
-        $counts = [];
-
-        return collect($headings)
-            ->map(function (array $heading) use ($levels, &$counts): array {
-                foreach ($levels as $level) {
-                    if ($level > $heading['level']) {
-                        unset($counts[$level]);
-                    }
-                }
-
-                foreach ($levels as $level) {
-                    if ($level < $heading['level'] && ! isset($counts[$level])) {
-                        $counts[$level] = 1;
-                    }
-                }
-
-                $counts[$heading['level']] = ($counts[$heading['level']] ?? 0) + 1;
-
-                $number = collect($levels)
-                    ->filter(fn (int $level): bool => $level <= $heading['level'] && isset($counts[$level]))
-                    ->map(fn (int $level): int => $counts[$level])
-                    ->implode('.');
-
-                return [...$heading, 'number' => $number];
-            })
-            ->all();
-    }
-
-    /**
-     * @param  array<int, array{level: int, title: string, id: string}>  $headings
-     */
-    private function addHeadingIds(string $html, array $headings): string
-    {
-        $levels = $this->tocLevels();
-
-        if ($headings === [] || $levels === []) {
-            return $html;
-        }
-
-        $levelPattern = implode('', $levels);
-        $headingIndex = 0;
-
-        return (string) preg_replace_callback(
-            "/<h([{$levelPattern}])>(.*?)<\/h\\1>/s",
-            function (array $match) use ($headings, &$headingIndex): string {
-                $heading = $headings[$headingIndex] ?? null;
-                $headingIndex++;
-
-                if ($heading === null) {
-                    return $match[0];
-                }
-
-                return sprintf(
-                    '<h%d id="%s">%s</h%d>',
-                    (int) $match[1],
-                    e($heading['id']),
-                    $match[2],
-                    (int) $match[1],
-                );
-            },
-            $html,
-        );
-    }
-
-    /**
-     * @return array<int, array{slug: string, title: string, url: string, active: bool}>
-     */
-    private function navigation(string $activeSlug, string $locale): array
-    {
-        $pages = config('documentation.pages', []);
-
-        if (! is_array($pages)) {
-            return [];
-        }
-
-        return collect($pages)
-            ->map(fn (array $page, string $slug): array => [
-                'slug' => $slug,
-                'title' => $this->localizedValue($page['title'] ?? '', $locale),
-                'url' => route('documentation.show', ['slug' => $slug, 'lang' => $locale], false),
-                'active' => $slug === $activeSlug,
+        return collect($tree->pages())
+            ->map(fn (array $page): array => [
+                'slug' => $page['slug'],
+                'title' => $page['title'],
+                'url' => $this->pagePath($page['slug'], $locale),
+                'headings' => collect(DocumentationMarkdown::headings(File::get($page['file']), $levels))
+                    ->map(fn (array $heading): array => ['title' => $heading['title'], 'id' => $heading['id']])
+                    ->values()
+                    ->all(),
             ])
             ->values()
             ->all();
     }
 
     /**
-     * @return array<int, array{locale: string, label: string, url: string, active: bool}>
+     * @return array{previous: array{title: string, url: string}|null, next: array{title: string, url: string}|null}
+     */
+    private function neighbours(DocumentationTree $tree, string $activeSlug, string $locale): array
+    {
+        $pages = $tree->pages();
+        $position = collect($pages)->search(fn (array $page): bool => $page['slug'] === $activeSlug);
+
+        return [
+            'previous' => $this->neighbour($pages[$position - 1] ?? null, $locale),
+            'next' => $this->neighbour($pages[$position + 1] ?? null, $locale),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $page
+     * @return array{title: string, url: string}|null
+     */
+    private function neighbour(?array $page, string $locale): ?array
+    {
+        if ($page === null) {
+            return null;
+        }
+
+        return ['title' => $page['title'], 'url' => $this->pagePath($page['slug'], $locale)];
+    }
+
+    /**
+     * @return list<array{locale: string, label: string, url: string, active: bool}>
      */
     private function languageLinks(string $slug, string $activeLocale): array
     {
@@ -459,10 +243,35 @@ class DocumentationController extends Controller
             ->map(fn (string $label, string $locale): array => [
                 'locale' => $locale,
                 'label' => $label,
-                'url' => route('documentation.show', ['slug' => $slug, 'lang' => $locale], false),
+                'url' => $this->pagePath($slug, $locale),
                 'active' => $locale === $activeLocale,
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function alternates(string $slug): array
+    {
+        return collect($this->supportedLocales())
+            ->map(fn (string $label, string $locale): string => $this->pageUrl($slug, $locale))
+            ->all();
+    }
+
+    private function pagePath(string $slug, string $locale): string
+    {
+        return route('documentation.show', ['slug' => $slug, 'lang' => $locale], false);
+    }
+
+    private function markdownUrl(string $slug, string $locale): string
+    {
+        return route('documentation.markdown', ['slug' => $slug, 'lang' => $locale], false);
+    }
+
+    private function pageUrl(string $slug, string $locale, bool $markdown = false): string
+    {
+        return route($markdown ? 'documentation.markdown' : 'documentation.show', ['slug' => $slug, 'lang' => $locale]);
     }
 }
