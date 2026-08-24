@@ -1,0 +1,2 @@
+- en: Analysis
+- es: Análisis

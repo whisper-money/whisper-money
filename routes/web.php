@@ -10,6 +10,7 @@ use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\ComparisonController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\IntegrationsController;
 use App\Http\Controllers\LoanDetailController;
@@ -102,6 +103,19 @@ Route::get('privacy', function () {
 Route::get('terms', function () {
     return Inertia::render('terms');
 })->name('terms');
+
+/**
+ * The documentation, and a Markdown twin of every page for agents. The `.md`
+ * routes come first so a page slug never swallows the suffix.
+ */
+Route::get('documentation.md', [DocumentationController::class, 'markdown'])->name('documentation.index.markdown');
+Route::get('documentation/{slug}.md', [DocumentationController::class, 'markdown'])
+    ->where('slug', '[A-Za-z0-9_-]+')
+    ->name('documentation.markdown');
+Route::get('documentation', [DocumentationController::class, 'show'])->name('documentation.index');
+Route::get('documentation/{slug}', [DocumentationController::class, 'show'])
+    ->where('slug', '[A-Za-z0-9_-]+')
+    ->name('documentation.show');
 
 Route::get('roadmap', [RoadmapController::class, 'index'])->name('roadmap');
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Documentation\DocumentationTree;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\IntegrationsPage;
 use App\Support\Marketing\MarketingContent;
@@ -21,6 +22,7 @@ class SitemapController extends Controller
             ['loc' => "{$baseUrl}/llms.txt", 'changefreq' => 'weekly', 'priority' => '0.3'],
             ...$this->integrationUrls(),
             ...$this->comparisonUrls(),
+            ...$this->documentationUrls(),
         ];
 
         return response($this->render($urls), 200)
@@ -63,6 +65,36 @@ class SitemapController extends Controller
                     'changefreq' => 'monthly',
                     'priority' => '0.8',
                     'alternates' => ComparisonPages::alternates($page['key']),
+                ];
+            }
+        }
+
+        return $urls;
+    }
+
+    /**
+     * Every documentation page in every language it is published in. The tree
+     * comes from the files, so a page added to the documentation is crawled
+     * without anyone remembering to list it here.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function documentationUrls(): array
+    {
+        $locales = array_keys((array) config('documentation.locales', []));
+        $urls = [];
+
+        foreach ($locales as $locale) {
+            foreach (DocumentationTree::for((string) $locale)->pages() as $page) {
+                $urls[] = [
+                    'loc' => route('documentation.show', ['slug' => $page['slug'], 'lang' => $locale]),
+                    'changefreq' => 'monthly',
+                    'priority' => '0.6',
+                    'alternates' => collect($locales)
+                        ->mapWithKeys(fn (mixed $alternate): array => [
+                            (string) $alternate => route('documentation.show', ['slug' => $page['slug'], 'lang' => $alternate]),
+                        ])
+                        ->all(),
                 ];
             }
         }

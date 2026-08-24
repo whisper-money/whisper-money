@@ -2,6 +2,8 @@
 
 namespace App\Support\Marketing;
 
+use App\Support\Documentation\DocumentationTree;
+
 /**
  * Markdown representations of the marketing pages, for agents and for any tool
  * that would rather read prose than parse a rendered React page.
@@ -77,6 +79,39 @@ final class AgentMarkdown
             $page['closing_body'],
             '',
         ]);
+    }
+
+    /**
+     * The documentation, page by page, in every language it is written in. The
+     * tree comes from the files, so a page added to the docs shows up here
+     * without anyone remembering to list it.
+     *
+     * @return list<string>
+     */
+    private static function documentationIndex(): array
+    {
+        $lines = [];
+
+        foreach (array_keys((array) config('documentation.locales', [])) as $locale) {
+            $pages = DocumentationTree::for((string) $locale)->pages();
+
+            if ($pages === []) {
+                continue;
+            }
+
+            $lines = [...$lines, '## '.($locale === 'es' ? 'Documentación (español)' : 'Documentation (English)'), ''];
+
+            foreach ($pages as $page) {
+                $url = route('documentation.show', ['slug' => $page['slug'], 'lang' => $locale]);
+                $markdown = route('documentation.markdown', ['slug' => $page['slug'], 'lang' => $locale]);
+
+                $lines[] = '- ['.$page['title'].']('.$markdown.'): '.$page['description'].' Also at '.$url;
+            }
+
+            $lines[] = '';
+        }
+
+        return $lines;
     }
 
     /**
@@ -211,6 +246,7 @@ final class AgentMarkdown
 
         return implode("\n", [
             ...$lines,
+            ...self::documentationIndex(),
             '## Notes',
             '',
             '- Every page is available as Markdown by appending `.md` to its URL.',
