@@ -1,343 +1,322 @@
+import DocArticle from '@/components/documentation/doc-article';
+import DocNav from '@/components/documentation/doc-nav';
+import DocSearch from '@/components/documentation/doc-search';
+import DocToc from '@/components/documentation/doc-toc';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
+import { dashboard, login } from '@/routes';
 import { type SharedData } from '@/types';
+import {
+    type DocumentationDocument,
+    type DocumentationLanguage,
+    type DocumentationNavItem,
+    type DocumentationNeighbour,
+    type DocumentationSearchEntry,
+} from '@/types/documentation';
 import { __ } from '@/utils/i18n';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowUpIcon, MenuIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+    ArrowLeftIcon,
+    ArrowRightIcon,
+    BirdIcon,
+    ChevronDownIcon,
+    Github,
+    MenuIcon,
+} from 'lucide-react';
+import { useState } from 'react';
 
-type DocumentationDocument = {
-    slug: string;
-    locale: string;
-    title: string;
-    description: string;
-    html: string;
-};
-
-type NavigationItem = {
-    slug: string;
-    title: string;
-    url: string;
-    active: boolean;
-};
-
-type LanguageLink = {
-    locale: string;
-    label: string;
-    url: string;
-    active: boolean;
-};
-
-type DocumentationShowProps = {
+type Props = {
     document: DocumentationDocument;
-    navigation: NavigationItem[];
-    languages: LanguageLink[];
-};
-
-type MermaidModule = {
-    default: {
-        initialize: (options: { startOnLoad: boolean; theme: string }) => void;
-        render: (id: string, definition: string) => Promise<{ svg: string }>;
+    navigation: DocumentationNavItem[];
+    searchIndex: DocumentationSearchEntry[];
+    neighbours: {
+        previous: DocumentationNeighbour | null;
+        next: DocumentationNeighbour | null;
     };
+    languages: DocumentationLanguage[];
 };
 
-function MermaidDocumentationArticle({ html }: { html: string }) {
-    const articleRef = useRef<HTMLElement>(null);
+const MUTED = 'text-[#706f6c] dark:text-[#A1A09A]';
+const BORDER = 'border-[#e3e3e0] dark:border-[#3E3E3A]';
 
-    useEffect(() => {
-        const article = articleRef.current;
-
-        if (!article) {
-            return;
-        }
-
-        const handleClick = (event: MouseEvent) => {
-            const link = (event.target as HTMLElement | null)?.closest(
-                'a[href^="#"]',
-            );
-            const hash = link?.getAttribute('href');
-
-            if (!hash || hash === '#') {
-                return;
-            }
-
-            const target = document.getElementById(hash.slice(1));
-
-            if (!target) {
-                return;
-            }
-
-            event.preventDefault();
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            history.pushState(null, '', hash);
-        };
-
-        article.addEventListener('click', handleClick);
-
-        return () => article.removeEventListener('click', handleClick);
-    }, [html]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        async function renderMermaidDiagrams() {
-            const article = articleRef.current;
-
-            if (!article) {
-                return;
-            }
-
-            const blocks = Array.from(
-                article.querySelectorAll<HTMLElement>('code.language-mermaid'),
-            );
-
-            if (blocks.length === 0) {
-                return;
-            }
-
-            const { default: mermaid } = (await import(
-                /* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs'
-            )) as MermaidModule;
-
-            if (cancelled) {
-                return;
-            }
-
-            mermaid.initialize({
-                startOnLoad: false,
-                theme: document.documentElement.classList.contains('dark')
-                    ? 'dark'
-                    : 'default',
-            });
-
-            await Promise.all(
-                blocks.map(async (block, index) => {
-                    const container = document.createElement('div');
-                    const source = block.textContent ?? '';
-                    const { svg } = await mermaid.render(
-                        `documentation-mermaid-${index}-${crypto.randomUUID()}`,
-                        source,
-                    );
-
-                    container.className = 'documentation-mermaid';
-                    container.innerHTML = svg;
-                    block.closest('pre')?.replaceWith(container);
-                }),
-            );
-        }
-
-        void renderMermaidDiagrams();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [html]);
+function PageLink({
+    page,
+    direction,
+}: {
+    page: DocumentationNeighbour;
+    direction: 'previous' | 'next';
+}) {
+    const isNext = direction === 'next';
 
     return (
-        <article
-            ref={articleRef}
-            className="max-w-3xl [&_.card]:rounded-xl [&_.card]:border [&_.card]:border-black/10 [&_.card]:bg-black/[0.02] [&_.card]:p-5 dark:[&_.card]:border-white/10 dark:[&_.card]:bg-white/[0.03] [&_.card_h3]:mt-0 [&_.card_h3]:mb-3 [&_.card_p]:mb-4 [&_.card_ul]:mb-0 [&_.cards-wrapper]:my-8 [&_.cards-wrapper]:grid [&_.cards-wrapper]:grid-cols-1 [&_.cards-wrapper]:gap-4 md:[&_.cards-wrapper]:grid-cols-2 [&_.documentation-mermaid]:my-6 [&_.documentation-mermaid]:overflow-x-auto [&_.documentation-mermaid]:p-5 [&_.documentation-toc]:my-8 [&_.documentation-toc]:rounded-xl [&_.documentation-toc]:border [&_.documentation-toc]:border-black/10 [&_.documentation-toc]:bg-black/[0.02] [&_.documentation-toc]:p-5 dark:[&_.documentation-toc]:border-white/10 dark:[&_.documentation-toc]:bg-white/[0.03] [&_.documentation-toc_.toc-level-3]:pl-4 [&_.documentation-toc_.toc-number]:text-[#706f6c] dark:[&_.documentation-toc_.toc-number]:text-[#A1A09A] [&_.documentation-toc_a]:no-underline [&_.documentation-toc_ol]:m-0 [&_.documentation-toc_ol]:list-none [&_.documentation-toc_ol]:space-y-2 [&_.documentation-toc_ol]:p-0 [&_.documentation-toc_p]:mb-3 [&_.documentation-toc_p]:text-sm [&_.documentation-toc_p]:font-semibold [&_a]:font-medium [&_a]:text-[#1b1b18] [&_a]:underline dark:[&_a]:text-[#EDEDEC] [&_blockquote]:my-6 [&_blockquote]:rounded-xl [&_blockquote]:bg-black/[0.03] [&_blockquote]:px-5 [&_blockquote]:py-4 dark:[&_blockquote]:border-[#EDEDEC] dark:[&_blockquote]:bg-white/[0.04] [&_blockquote_p]:mb-0 [&_code]:rounded [&_code]:bg-black/5 [&_code]:px-1.5 [&_code]:py-0.5 dark:[&_code]:bg-white/10 [&_h1]:mb-5 [&_h1]:text-4xl [&_h1]:leading-tight [&_h1]:font-semibold [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:scroll-mt-8 [&_h2]:border-t [&_h2]:border-black/10 [&_h2]:pt-8 [&_h2]:text-2xl [&_h2]:font-semibold dark:[&_h2]:border-white/10 [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:scroll-mt-8 [&_h3]:text-xl [&_h3]:font-semibold [&_li]:pl-1 [&_ol]:mb-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_p]:mb-5 [&_p]:leading-7 [&_p]:text-[#706f6c] dark:[&_p]:text-[#A1A09A] [&_pre]:my-6 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-black/10 [&_pre]:bg-black/[0.03] [&_pre]:p-5 [&_pre]:text-sm dark:[&_pre]:border-white/10 dark:[&_pre]:bg-white/[0.04] [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:mb-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
-            dangerouslySetInnerHTML={{ __html: html }}
-        />
+        <Link
+            href={page.url}
+            className={cn(
+                'flex flex-1 items-center gap-3 rounded-xl border p-4 no-underline transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.03]',
+                BORDER,
+                isNext && 'flex-row-reverse text-right',
+            )}
+        >
+            {isNext ? (
+                <ArrowRightIcon
+                    className={cn('size-4 shrink-0', MUTED)}
+                    aria-hidden="true"
+                />
+            ) : (
+                <ArrowLeftIcon
+                    className={cn('size-4 shrink-0', MUTED)}
+                    aria-hidden="true"
+                />
+            )}
+            <span className="flex min-w-0 flex-col gap-0.5">
+                <span className={cn('text-xs', MUTED)}>
+                    {isNext ? __('Next') : __('Previous')}
+                </span>
+                <span className="truncate text-sm font-medium">
+                    {page.title}
+                </span>
+            </span>
+        </Link>
+    );
+}
+
+function LanguagePills({
+    languages,
+    onNavigate,
+}: {
+    languages: DocumentationLanguage[];
+    onNavigate?: () => void;
+}) {
+    return (
+        <div className="flex flex-wrap items-center gap-1.5">
+            {languages.map((language) => (
+                <Link
+                    key={language.locale}
+                    href={language.url}
+                    onClick={onNavigate}
+                    aria-current={language.active ? 'true' : undefined}
+                    className={cn(
+                        'rounded-full px-3 py-1 text-xs font-medium no-underline transition-colors',
+                        language.active
+                            ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                            : cn(
+                                  'border',
+                                  BORDER,
+                                  MUTED,
+                                  'hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]',
+                              ),
+                    )}
+                >
+                    {language.label}
+                </Link>
+            ))}
+        </div>
     );
 }
 
 export default function DocumentationShow({
-    document,
+    document: doc,
     navigation,
+    searchIndex,
+    neighbours,
     languages,
-}: DocumentationShowProps) {
-    const { appUrl } = usePage<SharedData>().props;
-    const [showScrollTop, setShowScrollTop] = useState(false);
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-    useEffect(() => {
-        const updateScrollTopVisibility = () => {
-            setShowScrollTop(window.scrollY > 480);
-        };
-
-        updateScrollTopVisibility();
-        window.addEventListener('scroll', updateScrollTopVisibility, {
-            passive: true,
-        });
-
-        return () =>
-            window.removeEventListener('scroll', updateScrollTopVisibility);
-    }, []);
-
-    const scrollToTop = () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+}: Props) {
+    const { appUrl, auth } = usePage<SharedData>().props;
+    const [menuOpen, setMenuOpen] = useState(false);
+    const canonical = `${appUrl}/documentation/${doc.slug}?lang=${doc.locale}`;
 
     return (
         <>
-            <Head title={__(document.title)}>
-                <meta name="description" content={__(document.description)} />
+            <Head title={doc.title}>
+                <meta name="description" content={doc.description} />
+                <link rel="canonical" href={canonical} />
                 <link
-                    rel="canonical"
-                    href={`${appUrl}/documentation/${document.slug}?lang=${document.locale}`}
+                    rel="alternate"
+                    type="text/markdown"
+                    href={`${appUrl}${doc.markdownUrl}`}
                 />
                 <meta name="robots" content="index, follow" />
-                <meta property="og:title" content={__(document.title)} />
-                <meta
-                    property="og:description"
-                    content={__(document.description)}
-                />
+                <meta property="og:title" content={doc.title} />
+                <meta property="og:description" content={doc.description} />
                 <meta property="og:type" content="article" />
-                <meta
-                    property="og:url"
-                    content={`${appUrl}/documentation/${document.slug}?lang=${document.locale}`}
-                />
+                <meta property="og:url" content={canonical} />
             </Head>
 
             <div className="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
-                <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 lg:flex-row lg:px-8 lg:py-16">
-                    <aside className="hidden lg:block lg:w-64 lg:shrink-0">
+                <header
+                    className={cn(
+                        'sticky top-0 z-40 border-b bg-[#FDFDFC]/85 backdrop-blur-md dark:bg-[#0a0a0a]/85',
+                        BORDER,
+                    )}
+                >
+                    <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:px-6">
+                        <button
+                            type="button"
+                            onClick={() => setMenuOpen(true)}
+                            aria-label={__('Open documentation menu')}
+                            className="-ml-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-black/5 lg:hidden dark:hover:bg-white/10"
+                        >
+                            <MenuIcon className="size-5" aria-hidden="true" />
+                        </button>
+
                         <Link
                             href="/"
-                            className="mb-8 inline-block text-sm text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
+                            className="flex shrink-0 items-center gap-2.5 font-mono no-underline lg:w-60"
                         >
-                            {__('\u2190 Back to home')}
+                            <BirdIcon
+                                className="size-5 shrink-0"
+                                aria-hidden="true"
+                            />
+                            <span className="text-sm font-medium whitespace-nowrap">
+                                Whisper Money
+                            </span>
+                            <span
+                                className={cn(
+                                    'hidden text-sm whitespace-nowrap sm:inline',
+                                    MUTED,
+                                )}
+                            >
+                                / {__('Documentation')}
+                            </span>
                         </Link>
 
-                        <div className="mb-8 flex flex-wrap gap-2">
-                            {languages.map((language) => (
-                                <Link
-                                    key={language.locale}
-                                    href={language.url}
-                                    className={
-                                        language.active
-                                            ? 'rounded-full bg-[#1b1b18] px-3 py-1 text-xs font-medium text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                            : 'rounded-full border border-black/10 px-3 py-1 text-xs font-medium text-[#706f6c] hover:text-[#1b1b18] dark:border-white/10 dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]'
-                                    }
-                                    aria-current={
-                                        language.active ? 'true' : undefined
-                                    }
-                                >
-                                    {language.label}
-                                </Link>
-                            ))}
+                        <div className="flex flex-1 justify-end sm:justify-center">
+                            <DocSearch index={searchIndex} />
                         </div>
 
+                        <div className="hidden shrink-0 items-center gap-3 md:flex">
+                            <LanguagePills languages={languages} />
+                            <a
+                                href="https://github.com/whisper-money/whisper-money"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={__('Github')}
+                                className={cn(
+                                    'flex size-9 items-center justify-center rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10',
+                                    MUTED,
+                                )}
+                            >
+                                <Github className="size-5" aria-hidden="true" />
+                            </a>
+                            <Link
+                                href={auth.user ? dashboard() : login()}
+                                className="flex h-9 items-center rounded-lg bg-[#1b1b18] px-4 text-sm font-medium text-white no-underline transition-opacity hover:opacity-90 dark:bg-[#EDEDEC] dark:text-[#1b1b18]"
+                            >
+                                {auth.user ? __('Dashboard') : __('Log in')}
+                            </Link>
+                        </div>
+                    </div>
+                </header>
+
+                <div className="mx-auto flex max-w-[1440px] gap-8 px-4 sm:px-6">
+                    <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-60 shrink-0 overflow-y-auto py-8 lg:block">
                         <nav aria-label={__('Documentation')}>
-                            <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-[#706f6c] uppercase dark:text-[#A1A09A]">
-                                {__('Documentation')}
-                            </p>
-                            <div className="flex flex-col gap-1">
-                                {navigation.map((item) => (
-                                    <Link
-                                        key={item.slug}
-                                        href={item.url}
-                                        className={
-                                            item.active
-                                                ? 'rounded-lg bg-[#1b1b18] px-3 py-2 text-sm font-medium text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                : 'rounded-lg px-3 py-2 text-sm text-[#706f6c] hover:bg-black/5 hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:bg-white/10 dark:hover:text-[#EDEDEC]'
-                                        }
-                                    >
-                                        {__(item.title)}
-                                    </Link>
-                                ))}
-                            </div>
+                            <DocNav items={navigation} />
                         </nav>
                     </aside>
 
-                    <main className="min-w-0 flex-1">
-                        <MermaidDocumentationArticle html={document.html} />
+                    <main className="min-w-0 flex-1 py-8 lg:py-10">
+                        <Collapsible
+                            className={cn(
+                                'mb-8 rounded-xl border xl:hidden',
+                                BORDER,
+                            )}
+                        >
+                            <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium">
+                                <ChevronDownIcon
+                                    className="size-4 shrink-0"
+                                    aria-hidden="true"
+                                />
+                                <span className="flex-1 text-left">
+                                    {__('On this page')}
+                                </span>
+                                <span className={cn('text-xs', MUTED)}>
+                                    {doc.headings.length}
+                                </span>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-4 pb-4">
+                                <DocToc headings={doc.headings} />
+                            </CollapsibleContent>
+                        </Collapsible>
+
+                        <DocArticle html={doc.html} />
+
+                        {(neighbours.previous || neighbours.next) && (
+                            <nav
+                                className={cn(
+                                    'mt-12 flex max-w-3xl flex-col gap-4 border-t pt-8 sm:flex-row',
+                                    BORDER,
+                                )}
+                                aria-label={__('Documentation')}
+                            >
+                                {neighbours.previous && (
+                                    <PageLink
+                                        page={neighbours.previous}
+                                        direction="previous"
+                                    />
+                                )}
+                                {neighbours.next && (
+                                    <PageLink
+                                        page={neighbours.next}
+                                        direction="next"
+                                    />
+                                )}
+                            </nav>
+                        )}
                     </main>
+
+                    <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-10 xl:block">
+                        <p
+                            className={cn(
+                                'mb-3 text-xs font-semibold tracking-[0.12em] uppercase',
+                                MUTED,
+                            )}
+                        >
+                            {__('On this page')}
+                        </p>
+                        <DocToc headings={doc.headings} />
+                    </aside>
                 </div>
 
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                    <button
-                        type="button"
-                        onClick={() => setMobileMenuOpen(true)}
-                        className="fixed bottom-6 left-6 z-50 flex size-12 items-center justify-center rounded-full border border-black/10 bg-white/60 text-[#1b1b18] shadow-lg shadow-black/10 backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/80 lg:hidden dark:border-white/10 dark:bg-black/40 dark:text-[#EDEDEC] dark:shadow-black/30 dark:hover:bg-black/60"
-                        aria-label={__('Open documentation menu')}
-                    >
-                        <MenuIcon className="size-5" aria-hidden="true" />
-                    </button>
-
-                    <SheetContent side="left" className="w-80 p-0">
-                        <SheetHeader className="border-b border-black/10 px-6 py-5 text-left dark:border-white/10">
+                <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+                    <SheetContent side="left" className="w-80 gap-0 p-0">
+                        <SheetHeader
+                            className={cn(
+                                'border-b px-6 py-5 text-left',
+                                BORDER,
+                            )}
+                        >
                             <SheetTitle>{__('Documentation')}</SheetTitle>
-                            <SheetDescription>
-                                {__('Choose a page or language.')}
-                            </SheetDescription>
                         </SheetHeader>
 
-                        <div className="flex flex-col gap-8 px-6 py-6">
-                            <Link
-                                href="/"
-                                onClick={() => setMobileMenuOpen(false)}
-                                className="text-sm text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
-                            >
-                                {__('\u2190 Back to home')}
-                            </Link>
+                        <nav
+                            className="flex-1 overflow-y-auto px-4 py-4"
+                            aria-label={__('Documentation')}
+                        >
+                            <DocNav
+                                items={navigation}
+                                onNavigate={() => setMenuOpen(false)}
+                            />
+                        </nav>
 
-                            <div className="flex flex-wrap gap-2">
-                                {languages.map((language) => (
-                                    <Link
-                                        key={language.locale}
-                                        href={language.url}
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className={
-                                            language.active
-                                                ? 'rounded-full bg-[#1b1b18] px-3 py-1 text-xs font-medium text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                : 'rounded-full border border-black/10 px-3 py-1 text-xs font-medium text-[#706f6c] hover:text-[#1b1b18] dark:border-white/10 dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]'
-                                        }
-                                        aria-current={
-                                            language.active ? 'true' : undefined
-                                        }
-                                    >
-                                        {language.label}
-                                    </Link>
-                                ))}
-                            </div>
-
-                            <nav aria-label={__('Documentation')}>
-                                <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-[#706f6c] uppercase dark:text-[#A1A09A]">
-                                    {__('Documentation')}
-                                </p>
-                                <div className="flex flex-col gap-1">
-                                    {navigation.map((item) => (
-                                        <Link
-                                            key={item.slug}
-                                            href={item.url}
-                                            onClick={() =>
-                                                setMobileMenuOpen(false)
-                                            }
-                                            className={
-                                                item.active
-                                                    ? 'rounded-lg bg-[#1b1b18] px-3 py-2 text-sm font-medium text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                    : 'rounded-lg px-3 py-2 text-sm text-[#706f6c] hover:bg-black/5 hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:bg-white/10 dark:hover:text-[#EDEDEC]'
-                                            }
-                                        >
-                                            {__(item.title)}
-                                        </Link>
-                                    ))}
-                                </div>
-                            </nav>
+                        <div className={cn('border-t px-6 py-4', BORDER)}>
+                            <LanguagePills
+                                languages={languages}
+                                onNavigate={() => setMenuOpen(false)}
+                            />
                         </div>
                     </SheetContent>
                 </Sheet>
-
-                <button
-                    type="button"
-                    onClick={scrollToTop}
-                    className={
-                        showScrollTop
-                            ? 'fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-full border border-black/10 bg-white/60 px-4 py-3 text-sm font-medium text-[#1b1b18] shadow-lg shadow-black/10 backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/80 dark:border-white/10 dark:bg-black/40 dark:text-[#EDEDEC] dark:shadow-black/30 dark:hover:bg-black/60'
-                            : 'pointer-events-none fixed right-6 bottom-6 z-50 flex translate-y-3 items-center gap-2 rounded-full border border-black/10 bg-white/60 px-4 py-3 text-sm font-medium text-[#1b1b18] opacity-0 shadow-lg shadow-black/10 backdrop-blur-md transition-all duration-200 dark:border-white/10 dark:bg-black/40 dark:text-[#EDEDEC] dark:shadow-black/30'
-                    }
-                    aria-label={__('Scroll to top')}
-                >
-                    <ArrowUpIcon className="size-4" aria-hidden="true" />
-                    <span>{__('Top')}</span>
-                </button>
             </div>
         </>
     );
