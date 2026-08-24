@@ -130,12 +130,14 @@ it('refuses fewer than two parts', function () {
     ])->assertJsonValidationErrors('splits');
 });
 
-it('refuses a zero-amount part', function () {
+it('refuses a part with no amount, even when the rest add up', function () {
     $original = splittableTransaction(-5340);
 
     $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
         'splits' => [['amount' => -5340], ['amount' => 0]],
-    ])->assertJsonValidationErrors('splits.1.amount');
+    ])->assertJsonValidationErrors('splits');
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
 });
 
 it('refuses splitting a part again', function () {
