@@ -58,7 +58,9 @@ Usa este tipo para dinero que mantienes apartado.
 
 Usa este tipo para tarjetas de crédito.
 
-Los saldos de tarjeta reducen el patrimonio neto porque son dinero que debes.
+Las tarjetas de crédito quedan fuera del patrimonio neto por completo. Son cuentas
+de gasto, no patrimonio, así que el saldo se sigue en la propia cuenta y no se
+suma ni se resta a tu total.
 
 </div>
 
@@ -91,7 +93,8 @@ Ejemplos:
 - Préstamo personal
 - Préstamo estudiantil
 
-Los préstamos reducen el patrimonio neto.
+Los préstamos son el único tipo de cuenta que reduce el patrimonio neto: el
+importe debido se resta de tus activos.
 
 </div>
 
@@ -157,11 +160,51 @@ Las cuentas conectadas son útiles cuando:
 - Quieres menos trabajo manual.
 - La conexión bancaria está disponible y funciona bien.
 
+Solo las cuentas corrientes, de ahorro, de tarjeta de crédito y de tipo «otros»
+pueden recibir transacciones sincronizadas. Las de inversión, jubilación,
+inmueble y préstamo se siguen por valor, así que una conexión actualiza su saldo
+en lugar de rellenar un historial de movimientos.
+
+Conectar un banco forma parte del plan de pago. Las cuentas manuales, las
+importaciones y todo lo que se construye sobre ellas funcionan sin él.
+
+La [página de integraciones](/integraciones) lista todos los bancos y aplicaciones
+que se pueden conectar hoy.
+
+## Archivar una cuenta
+
+Archiva una cuenta que ya no uses en lugar de borrarla.
+
+Una cuenta archivada:
+
+- Desaparece de la página de cuentas y de los selectores para datos nuevos.
+- Conserva sus transacciones y su historial de saldos, así que los meses
+  anteriores mantienen las cifras que ya tenían.
+- Se puede recuperar en cualquier momento desde la configuración de Cuentas bancarias.
+
+Archivar no es lo mismo que ocultar una cuenta del panel. Ocultarla solo la quita
+de esa vista; la cuenta sigue siendo seleccionable en todo lo demás.
+
+## Cuentas compartidas
+
+Una cuenta puede registrar qué parte de ella es tuya. Una cuenta conjunta al
+50/50 aporta la mitad de cada importe a tus propias cifras, mientras la cuenta
+sigue mostrando el saldo real.
+
+Úsalo para cuentas que de verdad compartes, como una cuenta doméstica común o un
+inmueble en copropiedad.
+
 ## Preguntas frecuentes
 
 ### ¿Por qué mi préstamo reduce el patrimonio neto?
 
 Un préstamo es dinero que debes. Whisper Money lo resta de tus activos al calcular el patrimonio neto.
+
+### ¿Por qué mi tarjeta de crédito no reduce el patrimonio neto?
+
+Una tarjeta de crédito es una cuenta de gasto, no patrimonio. Whisper Money sigue
+lo que debes en la propia tarjeta y lo deja fuera del total de patrimonio neto,
+así que pagar la tarjeta no mueve esa cifra.
 
 ### ¿Por qué los inmuebles usan valor de mercado?
 

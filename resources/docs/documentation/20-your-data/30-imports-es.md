@@ -65,17 +65,17 @@ Opcional.
 </div>
 </div>
 
-## Cálculo de saldos
+## Saldos e importaciones
 
-Algunos archivos no incluyen una columna de saldo.
+Algunos archivos incluyen una columna de saldo y otros no.
 
-Cuando es posible, Whisper Money puede calcular saldos desde transacciones usando un saldo de referencia.
+Cuando el archivo la tiene, mapéala y el historial de saldos acompaña a la
+importación. Cuando no la tiene, la importación trae solo las transacciones, y la
+cuenta conserva los saldos que hayas introducido tú.
 
-Esto es útil cuando:
-
-- Tu banco exporta transacciones pero no saldos.
-- Conoces el saldo más reciente.
-- Quieres gráficos de saldo histórico.
+Calcular el historial de saldos a partir de las transacciones y un saldo conocido
+todavía no está disponible. Hasta que lo esté, añade un saldo a mano en la cuenta
+cuando quieras que el gráfico de patrimonio neto sea correcto.
 
 ## Vista previa antes de importar
 
@@ -83,6 +83,8 @@ Revisa siempre la vista previa.
 
 Busca:
 
+- Filas marcadas como duplicadas que en realidad son dos pagos reales del mismo
+  importe el mismo día.
 - Fechas incorrectas.
 - Importes con el signo equivocado.
 - Transacciones duplicadas.
@@ -107,4 +109,8 @@ Algunos bancos exportan gastos como números positivos. Revisa la vista previa a
 
 ### ¿Puedo importar el mismo archivo dos veces?
 
-Whisper Money intenta ayudar a detectar duplicados, pero revisa la vista previa para evitar importar la misma transacción dos veces.
+Sí. Antes de la vista previa, Whisper Money compara cada fila con las
+transacciones que ya tiene la cuenta y marca las que coinciden en el mismo día,
+importe y descripción. Las filas marcadas se desmarcan por ti, así que volver a
+importar el archivo trae solo lo nuevo. El número se muestra encima de la vista
+previa, y puedes volver a marcar una fila si de verdad es un pago repetido.

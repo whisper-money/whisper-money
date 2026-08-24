@@ -75,6 +75,17 @@ Una transacción puede tener más de una etiqueta.
 </div>
 
 <div class="card">
+### Nombre del acreedor y del deudor
+
+Quién recibió el dinero y quién lo envió.
+
+En las cuentas conectadas, los bancos envían estos datos aparte de la
+descripción. Suelen ser más limpios que la descripción, así que van bien tanto
+para filtros como para reglas de automatización.
+
+</div>
+
+<div class="card">
 ### Notas
 
 Contexto privado para ti.
@@ -95,9 +106,21 @@ Puedes filtrar por:
 - Categoría
 - Cuenta
 - Etiqueta
+- Nombre del acreedor o del deudor
+- Quién asignó la categoría: tú, una regla, Whisper Money o tu banco
 - Texto de búsqueda
 
-Una buena búsqueda suele empezar con el nombre del comercio o una palabra de la descripción bancaria.
+Una buena búsqueda suele empezar con el nombre del comercio o una palabra de la
+descripción bancaria.
+
+### Filtros guardados
+
+Una combinación de filtros a la que vuelves a menudo se puede guardar con un
+nombre. Queda junto a la lista de transacciones, a un clic, en lugar de tener que
+rehacerla cada vez.
+
+Los filtros guardados sirven para las revisiones que repites: transacciones sin
+categoría, el mes de una cuenta, un comercio que estás vigilando.
 
 ## Acciones masivas
 

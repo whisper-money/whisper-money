@@ -68,14 +68,27 @@ Good when one account needs special handling.
 </div>
 
 <div class="card">
-### Category
+### Creditor name
 
-Match whether a category is empty, present, or equal to a value.
+Match who was paid, when the bank supplies it separately from the description.
 
-Good for cleaning uncategorized transactions.
+This field can also be matched on being empty or not empty.
+
+</div>
+
+<div class="card">
+### Debtor name
+
+Match who paid, when the bank supplies it separately from the description.
+
+Good for incoming transfers from the same person or company.
 
 </div>
 </div>
+
+Each condition compares a field with a value. Text fields can _contain_ or
+_equal_ a value, amounts can _equal_, be _greater than_ or _less than_ one, and
+creditor and debtor name can also be _empty_ or _not empty_.
 
 ## Actions
 
@@ -104,7 +117,7 @@ Put specific rules before broad rules.
 
 ## Applying rules to existing transactions
 
-Rules run when new plain transactions are created. Older transactions may need a manual apply step.
+Rules run as new transactions arrive. Transactions that already existed need a manual apply step.
 
 Use apply or re-evaluate when:
 
@@ -113,17 +126,40 @@ Use apply or re-evaluate when:
 - You imported old transactions.
 - You want to clean a backlog.
 
-## Important limitations
+## Suggested rules
 
-Automation needs readable transaction data.
+Instead of writing every rule yourself, Whisper Money can read the merchants that
+repeat in your transactions and suggest rules for them. You review each
+suggestion and decide whether to keep it, and nothing is created until you
+accept it.
 
-Rules do not match encrypted descriptions because the server cannot read them. This protects your private data.
+Suggestions come from two places:
+
+- **Your history**, when there is enough of it to spot a pattern.
+- **Your corrections**, when you change a category that was set automatically.
+  The next transaction from that merchant is then handled by a rule.
+
+Suggested rules are part of the paid plan. Rules you write yourself are not.
+
+## What rules do not do
+
+Rules run on transactions, not on your accounts or budgets. A rule can only set
+a category, add labels, and add a note.
+
+Two things worth knowing:
+
+- A rule never runs twice over the same transaction on its own. Changing a rule
+  does not re-run it over your history until you apply it.
+- Only the first matching rule applies. A transaction is never touched by two
+  rules in the same pass.
 
 ## FAQ
 
 ### Why did a rule not run?
 
-Check the description, amount, account, and priority. Also check whether the transaction is encrypted.
+Check the description, amount, account, and priority. If another rule with a
+higher priority also matched, that one applied instead. And if the transaction
+already existed when you wrote the rule, it needs the apply step.
 
 ### Should I create broad or specific rules?
 

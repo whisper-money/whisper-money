@@ -65,17 +65,17 @@ Use this when the file includes running account balances.
 </div>
 </div>
 
-## Balance calculation
+## Balances and imports
 
-Some files do not include a balance column.
+Some files include a running balance column and some do not.
 
-When available, Whisper Money can calculate balances from transactions using a reference balance.
+When the file has one, map it and the balance history follows the import. When it
+does not, the import brings in the transactions only, and the account keeps
+whatever balances you have entered yourself.
 
-This is useful when:
-
-- Your bank exports transactions but not balances.
-- You know the latest balance.
-- You want historical balance charts.
+Working out the balance history from the transactions and one known balance is
+not available yet. Until it is, add a balance manually on the account when you
+want the net worth chart to be right.
 
 ## Preview before importing
 
@@ -83,6 +83,8 @@ Always review the preview.
 
 Look for:
 
+- Rows flagged as duplicates that are actually two real payments of the same
+  amount on the same day.
 - Wrong dates.
 - Amounts with the wrong sign.
 - Duplicate transactions.
@@ -107,4 +109,8 @@ Some banks export expenses as positive numbers. Check the preview before importi
 
 ### Can I import the same file twice?
 
-Whisper Money tries to help identify duplicates, but review the preview to avoid importing the same transaction twice.
+Yes. Before the preview, Whisper Money checks each row against the transactions
+the account already has and flags the ones that match on the same day, amount,
+and description. Flagged rows are unticked for you, so importing the file again
+brings in only what is new. The count is shown above the preview, and you can
+still tick a row back on if it is a genuine repeat payment.

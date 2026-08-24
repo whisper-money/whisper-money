@@ -34,18 +34,23 @@ Flujo neto = Ingresos - Gastos
 <div class="card">
 ### Flujo neto
 
-Muestra lo que queda después de gastos.
+Muestra lo que queda después de gastos, junto a los totales de ingresos y gastos
+de los que sale, y comparado con el periodo anterior.
 
-Positivo suele ser bueno. Negativo significa que los gastos fueron mayores que los ingresos.
+Positivo suele ser bueno. Negativo significa que los gastos fueron mayores que
+los ingresos. La tasa de ahorro — la parte de los ingresos que sobra — también
+se muestra aquí.
 
 </div>
 
 <div class="card">
-### Tasa de ahorro
+### Ahorrado e invertido
 
-Muestra el porcentaje de ingresos que queda después de gastos.
+Muestra qué parte del flujo neto del periodo has apartado, separando lo ahorrado
+de lo invertido.
 
-Una tasa más alta significa que conservaste más ingresos.
+Se construye con tus categorías de ahorro e inversión, así que solo se rellena
+cuando las transacciones empiezan a usarlas.
 
 </div>
 
@@ -61,9 +66,20 @@ Muestra ingresos, gastos y flujo neto en los últimos meses.
 <div class="card">
 ### Movimiento de dinero
 
-Muestra de dónde vino el dinero y a dónde fue.
+Muestra de dónde vino el dinero y a dónde fue, en un único diagrama que va de los
+ingresos hasta cada categoría.
 
 Úsalo para entender los flujos principales rápidamente.
+
+</div>
+
+<div class="card">
+### Desgloses de ingresos y gastos
+
+Dos listas: de dónde vino tu dinero y a dónde fue.
+
+Las transacciones sin categoría aparecen aquí como una fila propia, que suele ser
+lo primero que hay que arreglar cuando un total parece raro.
 
 </div>
 </div>
@@ -96,6 +112,16 @@ Opciones:
 - No mostrar.
 - Mostrar como entrada de efectivo.
 - Mostrar como salida de efectivo.
+
+## El dinero que apartas
+
+Las categorías de ahorro e inversión cuentan como dinero que sale de tus finanzas
+del día a día, igual que un gasto, pero se mantienen separadas del gasto: son lo
+que rellena la tarjeta «Ahorrado e invertido».
+
+Úsalas para un traspaso al fondo de emergencia o una aportación al bróker, y usa
+una categoría de transferencia normal para el movimiento que no sea ninguna de
+las dos cosas.
 
 ## Cuando el flujo de efectivo parece incorrecto
 

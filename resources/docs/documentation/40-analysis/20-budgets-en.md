@@ -86,9 +86,41 @@ If progress is low, the budget may be generous or the period may not be finished
 
 ## Budget periods
 
-Budgets are tracked by period. Most people think about budgets monthly.
+A budget repeats over a period you choose: **monthly**, **weekly**, **every two
+weeks**, or **yearly**. Monthly suits most spending; weekly works well for
+groceries; yearly fits things like insurance or taxes that arrive once.
 
 When reviewing a budget, make sure you are looking at the right period.
+
+### What happens at the end of a period
+
+Each budget decides what to do with what is left over:
+
+- **Reset**: the next period starts fresh at the budget amount. This is the usual
+  choice for regular spending.
+- **Carry over**: what you did not spend is added to the next period, and going
+  over eats into it. Better for a budget you are saving up within, like a yearly
+  travel budget.
+
+## A budget for everything else
+
+One budget can be marked as the catch-all. Instead of tracking a category or a
+label, it absorbs every expense that no other budget is already tracking.
+
+It answers the question a set of budgets normally cannot: how much am I spending
+outside of what I planned for.
+
+## Alerts
+
+A budget can tell you when it needs attention:
+
+- When a new transaction lands in it.
+- When it gets close to its limit.
+- When it goes over.
+
+They arrive by email, and they are set per budget under Settings →
+Notifications, where you can also set what new budgets start with. So you can
+watch the two that matter and leave the rest quiet.
 
 ## Common mistakes
 

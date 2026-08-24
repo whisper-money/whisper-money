@@ -34,18 +34,22 @@ Net cashflow = Income - Expenses
 <div class="card">
 ### Net cashflow
 
-Shows what is left after expenses.
+Shows what is left after expenses, next to the income and expense totals it came
+from, and against the previous period.
 
-Positive is usually good. Negative means expenses were higher than income.
+Positive is usually good. Negative means expenses were higher than income. The
+savings rate — the share of income left over — is shown here too.
 
 </div>
 
 <div class="card">
-### Savings rate
+### Saved & Invested
 
-Shows the percentage of income left after expenses.
+Shows how much of the period's net cashflow you set aside, split between saved
+and invested.
 
-A higher rate means more income was kept.
+It is built from your savings and investment categories, so it only fills in
+once transactions are using them.
 
 </div>
 
@@ -61,9 +65,20 @@ Use it to spot patterns.
 <div class="card">
 ### Money flow
 
-Shows where money came from and where it went.
+Shows where money came from and where it went, as one diagram from income
+through to each category.
 
 Use it to understand the biggest flows quickly.
+
+</div>
+
+<div class="card">
+### Income and expense breakdowns
+
+Two lists: where your money came from, and where it went.
+
+Uncategorized transactions appear here as their own row, which is usually the
+first thing to fix when a total looks wrong.
 
 </div>
 </div>
@@ -96,6 +111,15 @@ Options:
 - Do not show.
 - Show as cash inflow.
 - Show as cash outflow.
+
+## Money you set aside
+
+Savings and investment categories are counted as money going out of your
+day-to-day finances, the same as an expense, but they are kept separate from
+spending: they are what fills the Saved & Invested card.
+
+Use them for a transfer to an emergency fund or a deposit at a broker, and use a
+plain transfer category for movement that is not either of those.
 
 ## When cashflow looks wrong
 

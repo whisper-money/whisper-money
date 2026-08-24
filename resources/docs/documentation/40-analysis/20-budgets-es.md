@@ -86,9 +86,42 @@ Si el progreso es bajo, puede que el presupuesto sea generoso o que el periodo n
 
 ## Periodos de presupuesto
 
-Los presupuestos se siguen por periodo. La mayoría de personas piensa en presupuestos mensuales.
+Un presupuesto se repite en el periodo que elijas: **mensual**, **semanal**,
+**cada dos semanas** o **anual**. El mensual encaja con la mayoría del gasto; el
+semanal va bien para la compra; el anual sirve para cosas como seguros o
+impuestos que llegan una vez.
 
 Al revisar un presupuesto, asegúrate de mirar el periodo correcto.
+
+### Qué pasa al final de un periodo
+
+Cada presupuesto decide qué hacer con lo que sobra:
+
+- **Reiniciar**: el periodo siguiente empieza de nuevo con el importe del
+  presupuesto. Es la opción habitual para el gasto corriente.
+- **Arrastrar**: lo que no has gastado se suma al periodo siguiente, y pasarte se
+  lo come. Mejor para un presupuesto en el que vas acumulando, como un
+  presupuesto anual de viajes.
+
+## Un presupuesto para todo lo demás
+
+Un presupuesto se puede marcar como general. En lugar de seguir una categoría o
+una etiqueta, absorbe todo el gasto que ningún otro presupuesto esté siguiendo ya.
+
+Responde a la pregunta que un conjunto de presupuestos normalmente no puede:
+cuánto estoy gastando fuera de lo que había planificado.
+
+## Avisos
+
+Un presupuesto puede avisarte cuando necesita atención:
+
+- Cuando entra una transacción nueva.
+- Cuando se acerca a su límite.
+- Cuando se pasa.
+
+Llegan por correo y se configuran por presupuesto en Ajustes → Notificaciones,
+donde también puedes decidir con qué empiezan los presupuestos nuevos. Así puedes
+vigilar los dos que importan y dejar el resto en silencio.
 
 ## Errores comunes
 

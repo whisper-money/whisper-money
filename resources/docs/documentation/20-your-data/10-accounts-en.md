@@ -58,7 +58,9 @@ Good for:
 
 Use this for credit cards.
 
-Credit card balances reduce net worth because they are money owed.
+Credit cards are left out of net worth entirely. They are spending accounts, not
+wealth, so the balance is tracked on the account itself and neither added to nor
+subtracted from your total.
 
 </div>
 
@@ -91,7 +93,8 @@ Examples:
 - Personal loan
 - Student loan
 
-Loan balances reduce net worth.
+Loans are the only account type that reduces net worth: the amount owed is
+subtracted from your assets.
 
 </div>
 
@@ -157,11 +160,50 @@ Connected accounts are good when:
 - You want less manual work.
 - Your bank connection is available and healthy.
 
+Only checking, savings, credit card, and other accounts can receive synced
+transactions. Investment, retirement, real estate, and loan accounts are tracked
+by value, so a connection updates their balance rather than filling a ledger.
+
+Connecting a bank is part of the paid plan. Manual accounts, imports, and
+everything built on top of them work without one.
+
+The [integrations page](/integrations) lists every bank and app that can be
+connected today.
+
+## Archiving an account
+
+Archive an account you no longer use instead of deleting it.
+
+An archived account:
+
+- Disappears from the accounts page and from every picker for new data.
+- Keeps its transactions and its balance history, so past months keep the
+  figures they already had.
+- Can be brought back at any time from the Bank accounts settings.
+
+Archiving is not the same as hiding an account from the dashboard. Hiding only
+removes it from that one view; the account stays selectable everywhere else.
+
+## Shared accounts
+
+An account can record the share of it that is yours. A joint account held 50/50
+contributes half of every amount to your own figures, while the account still
+shows the real balance.
+
+Use it for accounts you genuinely co-own, such as a shared household account or
+a property owned with someone else.
+
 ## FAQ
 
 ### Why is my loan reducing net worth?
 
 A loan is money owed. Whisper Money subtracts it from assets when calculating net worth.
+
+### Why is my credit card not reducing net worth?
+
+A credit card is a spending account, not wealth. Whisper Money tracks what you
+owe on the card itself and leaves it out of the net worth total, so paying the
+card off does not move that number.
 
 ### Why does real estate use market value?
 

@@ -75,6 +75,17 @@ A transaction can have more than one label.
 </div>
 
 <div class="card">
+### Creditor and debtor name
+
+Who received the money, and who sent it.
+
+Banks supply these separately from the description on connected accounts. They
+are often cleaner than the description, which makes them good for both filters
+and automation rules.
+
+</div>
+
+<div class="card">
 ### Notes
 
 Private context for yourself.
@@ -95,9 +106,21 @@ You can filter by:
 - Category
 - Account
 - Label
+- Creditor or debtor name
+- How the category was set: by you, by a rule, by Whisper Money, or by your bank
 - Search text
 
-A good search often starts with the merchant name or a word from the bank description.
+A good search often starts with the merchant name or a word from the bank
+description.
+
+### Saved filters
+
+A filter combination you keep coming back to can be saved and given a name. It
+then sits alongside the transaction list, one click away, instead of being
+rebuilt every time.
+
+Saved filters are useful for the reviews you repeat: uncategorized transactions,
+one account's month, a merchant you are keeping an eye on.
 
 ## Bulk actions
 

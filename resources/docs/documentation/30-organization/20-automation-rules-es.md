@@ -68,14 +68,29 @@ Coincide con una cuenta específica.
 </div>
 
 <div class="card">
-### Categoría
+### Nombre del acreedor
 
-Coincide si una categoría está vacía, existe o es igual a un valor.
+Coincide con quién recibió el pago, cuando el banco lo envía aparte de la
+descripción.
 
-Útil para limpiar transacciones sin categoría.
+Este campo también admite comprobar si está vacío o no.
+
+</div>
+
+<div class="card">
+### Nombre del deudor
+
+Coincide con quién pagó, cuando el banco lo envía aparte de la descripción.
+
+Útil para transferencias entrantes de la misma persona o empresa.
 
 </div>
 </div>
+
+Cada condición compara un campo con un valor. Los campos de texto pueden
+_contener_ o ser _igual a_ un valor, los importes pueden ser _igual a_, _mayor
+que_ o _menor que_ uno, y el nombre del acreedor y del deudor admiten además
+_está vacío_ y _no está vacío_.
 
 ## Acciones
 
@@ -104,7 +119,7 @@ Pon reglas específicas antes que reglas amplias.
 
 ## Aplicar reglas a transacciones existentes
 
-Las reglas se ejecutan cuando se crean nuevas transacciones legibles. Las antiguas pueden necesitar un paso manual.
+Las reglas se ejecutan a medida que llegan transacciones nuevas. Las que ya existían necesitan un paso manual de aplicación.
 
 Usa aplicar o reevaluar cuando:
 
@@ -113,17 +128,41 @@ Usa aplicar o reevaluar cuando:
 - Importaste transacciones antiguas.
 - Quieres limpiar una acumulación de transacciones.
 
-## Limitaciones importantes
+## Reglas sugeridas
 
-La automatización necesita datos de transacción legibles.
+En lugar de escribir todas las reglas a mano, Whisper Money puede leer los
+comercios que se repiten en tus transacciones y sugerir reglas para ellos. Tú
+revisas cada sugerencia y decides si la quieres, y no se crea nada hasta que la
+aceptas.
 
-Las reglas no coinciden con descripciones cifradas porque el servidor no puede leerlas. Esto protege tus datos privados.
+Las sugerencias vienen de dos sitios:
+
+- **Tu historial**, cuando hay suficiente para detectar un patrón.
+- **Tus correcciones**, cuando cambias una categoría que se asignó
+  automáticamente. La siguiente transacción de ese comercio la resuelve ya una
+  regla.
+
+Las reglas sugeridas forman parte del plan de pago. Las que escribes tú, no.
+
+## Lo que las reglas no hacen
+
+Las reglas actúan sobre transacciones, no sobre tus cuentas ni tus presupuestos.
+Una regla solo puede asignar una categoría, añadir etiquetas y añadir una nota.
+
+Dos cosas que conviene saber:
+
+- Una regla nunca se ejecuta dos veces sobre la misma transacción por su cuenta.
+  Cambiar una regla no la vuelve a pasar por tu historial hasta que la aplicas.
+- Solo se aplica la primera regla que coincide. Una transacción nunca la tocan
+  dos reglas en la misma pasada.
 
 ## Preguntas frecuentes
 
 ### ¿Por qué no se ejecutó una regla?
 
-Revisa la descripción, el importe, la cuenta y la prioridad. Comprueba también si la transacción está cifrada.
+Revisa la descripción, el importe, la cuenta y la prioridad. Si otra regla con
+más prioridad también coincidía, se aplicó esa. Y si la transacción ya existía
+cuando escribiste la regla, necesita el paso de aplicar.
 
 ### ¿Debería crear reglas amplias o específicas?
 

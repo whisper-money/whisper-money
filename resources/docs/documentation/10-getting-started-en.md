@@ -9,7 +9,7 @@ Whisper Money helps you understand where your money is, where it went, and what 
 Follow this order if you are setting things up for the first time.
 
 1. Create your accounts.
-2. Add or import transactions.
+2. Add transactions, import them from a bank file, or connect your bank.
 3. Review uncategorized transactions.
 4. Create automation rules for repeated transactions.
 5. Check Cashflow to see income, expenses, and net movement.
@@ -92,7 +92,7 @@ Example:
 A simple routine is enough for most people.
 
 1. Import or sync new transactions.
-2. Categorize anything uncategorized.
+2. Categorize anything uncategorized, and check what was categorized for you.
 3. Fix transfers between your own accounts.
 4. Check Cashflow for the month.
 5. Review budgets if you use them.
@@ -120,3 +120,9 @@ Yes, if you want accurate reports. Automation rules make this much faster.
 ### What should I set up first?
 
 Start with accounts. Then add transactions. Categories and reports depend on those two things.
+
+### Do I have to connect my bank?
+
+No. Connecting a bank is one way to get transactions in, and it needs a paid
+plan. Adding them by hand or importing a file from your bank works the same way
+for everything downstream.
