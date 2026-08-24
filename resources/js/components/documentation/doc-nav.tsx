@@ -62,8 +62,8 @@ function PageItem({
                     className={cn(
                         'min-h-11 flex-1 rounded-lg px-3 py-2 text-sm transition-colors lg:min-h-0',
                         item.active
-                            ? 'bg-[#1b1b18] font-medium text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                            : 'text-[#706f6c] hover:bg-black/5 hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:bg-white/10 dark:hover:text-[#EDEDEC]',
+                            ? 'bg-black/[0.04] font-medium text-[#1b1b18] dark:bg-white/[0.06] dark:text-[#EDEDEC]'
+                            : 'text-[#706f6c] hover:bg-black/[0.03] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:bg-white/[0.04] dark:hover:text-[#EDEDEC]',
                     )}
                 >
                     {item.title}

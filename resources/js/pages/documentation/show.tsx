@@ -1,4 +1,5 @@
 import DocArticle from '@/components/documentation/doc-article';
+import DocLanguageMenu from '@/components/documentation/doc-language-menu';
 import DocNav from '@/components/documentation/doc-nav';
 import DocSearch from '@/components/documentation/doc-search';
 import DocToc from '@/components/documentation/doc-toc';
@@ -90,40 +91,6 @@ function PageLink({
     );
 }
 
-function LanguagePills({
-    languages,
-    onNavigate,
-}: {
-    languages: DocumentationLanguage[];
-    onNavigate?: () => void;
-}) {
-    return (
-        <div className="flex flex-wrap items-center gap-1.5">
-            {languages.map((language) => (
-                <Link
-                    key={language.locale}
-                    href={language.url}
-                    onClick={onNavigate}
-                    aria-current={language.active ? 'true' : undefined}
-                    className={cn(
-                        'rounded-full px-3 py-1 text-xs font-medium no-underline transition-colors',
-                        language.active
-                            ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                            : cn(
-                                  'border',
-                                  BORDER,
-                                  MUTED,
-                                  'hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]',
-                              ),
-                    )}
-                >
-                    {language.label}
-                </Link>
-            ))}
-        </div>
-    );
-}
-
 export default function DocumentationShow({
     document: doc,
     navigation,
@@ -195,7 +162,6 @@ export default function DocumentationShow({
                         </div>
 
                         <div className="hidden shrink-0 items-center gap-3 md:flex">
-                            <LanguagePills languages={languages} />
                             <a
                                 href="https://github.com/whisper-money/whisper-money"
                                 target="_blank"
@@ -219,10 +185,16 @@ export default function DocumentationShow({
                 </header>
 
                 <div className="mx-auto flex max-w-[1440px] gap-8 px-4 sm:px-6">
-                    <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-60 shrink-0 overflow-y-auto py-8 lg:block">
-                        <nav aria-label={__('Documentation')}>
+                    <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-60 shrink-0 flex-col overflow-hidden lg:flex">
+                        <nav
+                            className="min-h-0 flex-1 overflow-y-auto py-8"
+                            aria-label={__('Documentation')}
+                        >
                             <DocNav items={navigation} />
                         </nav>
+                        <div className={cn('shrink-0 border-t py-3', BORDER)}>
+                            <DocLanguageMenu languages={languages} />
+                        </div>
                     </aside>
 
                     <main className="min-w-0 flex-1 py-8 lg:py-10">
@@ -309,8 +281,8 @@ export default function DocumentationShow({
                             />
                         </nav>
 
-                        <div className={cn('border-t px-6 py-4', BORDER)}>
-                            <LanguagePills
+                        <div className={cn('border-t px-4 py-3', BORDER)}>
+                            <DocLanguageMenu
                                 languages={languages}
                                 onNavigate={() => setMenuOpen(false)}
                             />
