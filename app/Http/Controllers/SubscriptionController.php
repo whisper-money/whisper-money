@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AccountBalance;
+use App\Enums\UpsellSource;
 use App\Models\User;
 use App\Models\UserLead;
+use App\Services\Subscriptions\PriceExperiment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -25,7 +26,7 @@ class SubscriptionController extends Controller
         }
 
         $hasBankConnections = $user->bankingConnections()->exists();
-        $canUseFreePlan = ! $hasBankConnections;
+        $canUseFreePlan = ! $hasBankConnections && ! $user->hasActiveAiConsent();
 
         // Mark the paywall as seen so the middleware stops redirecting here.
         if ($canUseFreePlan && ! $user->hasSeenPaywall()) {
@@ -42,37 +43,23 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int, automationRulesCount: int, balancesByCurrency: array<string, int>}
+     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int}
      */
     private function getUserStats(User $user): array
     {
-        $accounts = $user->accounts()->get();
-
-        $balancesByCurrency = [];
-        foreach ($accounts as $account) {
-            $latestBalance = AccountBalance::query()
-                ->where('account_id', $account->id)
-                ->orderBy('balance_date', 'desc')
-                ->value('balance') ?? 0;
-
-            $currency = $account->currency_code;
-            if (! isset($balancesByCurrency[$currency])) {
-                $balancesByCurrency[$currency] = 0;
-            }
-            $balancesByCurrency[$currency] += $latestBalance;
-        }
-
         return [
-            'accountsCount' => $accounts->count(),
+            'accountsCount' => $user->accounts()->count(),
             'transactionsCount' => $user->transactions()->count(),
             'categoriesCount' => $user->categories()->count(),
-            'automationRulesCount' => $user->automationRules()->count(),
-            'balancesByCurrency' => $balancesByCurrency,
         ];
     }
 
     public function checkout(Request $request): Checkout
     {
+        // A seeded plan has no Stripe customer behind it, so starting a checkout
+        // from one of those accounts would only reach Stripe and fail there.
+        abort_if($request->user()->cannotUseStripe(), 403, 'Checkout is not available on this account.');
+
         $planKey = $request->query('plan', config('subscriptions.default_plan'));
         $plan = config("subscriptions.plans.{$planKey}");
 
@@ -80,7 +67,9 @@ class SubscriptionController extends Controller
             abort(400, 'Invalid plan selected');
         }
 
-        $priceId = $this->resolvePriceIdByLookupKey($plan['stripe_lookup_key']);
+        $priceId = $this->resolvePriceIdByLookupKey(
+            PriceExperiment::lookupKeyFor($request->user(), $planKey),
+        );
 
         $subscriptionBuilder = $request->user()
             ->newSubscription('default', $priceId);
@@ -94,6 +83,14 @@ class SubscriptionController extends Controller
         $trialDays = (int) ($plan['trial_days'] ?? 0);
         if ($trialDays > 0) {
             $subscriptionBuilder->trialDays($trialDays);
+        }
+
+        // Attribute revenue to the upsell point the checkout started from. The
+        // value rides along as Stripe subscription metadata and is persisted
+        // locally when the subscription webhook lands (see
+        // PersistUpsellSourceFromStripe).
+        if ($source = UpsellSource::tryFrom((string) $request->query('source', ''))) {
+            $subscriptionBuilder->withMetadata(['upsell_source' => $source->value]);
         }
 
         return $subscriptionBuilder->checkout([
@@ -176,14 +173,16 @@ class SubscriptionController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return Inertia::render('settings/billing');
+        return Inertia::render('settings/billing', [
+            'hasAiConsent' => $request->user()->hasActiveAiConsent(),
+        ]);
     }
 
     public function billingPortal(Request $request): RedirectResponse
     {
-        if ($request->user()->isDemoAccount()) {
+        if ($request->user()->cannotUseStripe()) {
             return redirect()->route('settings.billing')
-                ->withErrors(['demo' => 'Billing management is not available on the demo account.']);
+                ->withErrors(['demo' => 'Billing management is not available on this account.']);
         }
 
         $user = $request->user();

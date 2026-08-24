@@ -72,6 +72,58 @@ test('syncs bitpanda balance with crypto and fiat wallets', function () {
     expect($balance->balance_date->toDateString())->toBe(now()->toDateString());
 });
 
+test('prices a wallet Bitpanda does not quote in the user currency via USD', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'DKK']);
+    $connection = BankingConnection::factory()->bitpanda()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'bitpanda-portfolio',
+        'currency_code' => 'DKK',
+    ]);
+
+    Http::fake([
+        // Bitpanda's ticker only quotes EUR/USD/CHF/GBP/TRY.
+        'api.bitpanda.com/v1/ticker' => Http::response([
+            'BTC' => ['EUR' => '50000.00', 'USD' => '55000.00'],
+        ]),
+        'api.bitpanda.com/v1/wallets' => Http::response([
+            'data' => [
+                [
+                    'type' => 'wallet',
+                    'attributes' => [
+                        'cryptocoin_id' => '1',
+                        'cryptocoin_symbol' => 'BTC',
+                        'balance' => '1.00000000',
+                        'is_default' => true,
+                        'name' => 'BTC wallet',
+                        'deleted' => false,
+                    ],
+                    'id' => 'wallet-uuid-1',
+                ],
+            ],
+        ]),
+        'api.bitpanda.com/v1/fiatwallets/transactions*' => Http::response([
+            'data' => [],
+            'meta' => ['next_cursor' => null],
+            'links' => [],
+        ]),
+        'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
+        'cdn.jsdelivr.net/*' => Http::response(['dkk' => ['usd' => 0.5]]),
+        'currency-api.pages.dev/*' => Http::response(['dkk' => ['usd' => 0.5]]),
+    ]);
+
+    $client = new BitpandaClient('test-key');
+    $service = app(BitpandaBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    // 1 BTC * 55000 USD, at dkk.usd = 0.5 → 110000 DKK. Without the USD hop the
+    // wallet is dropped and the balance reads zero.
+    expect($account->balances()->first()->balance)->toBe(11_000_000);
+});
+
 test('syncs bitpanda balance with crypto only', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->bitpanda()->create([

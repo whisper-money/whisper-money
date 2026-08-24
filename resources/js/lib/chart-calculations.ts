@@ -1,9 +1,13 @@
 import { AccountType } from '@/types/account';
 
 /**
- * Account types that reduce net worth (liabilities)
+ * Account types that reduce net worth (liabilities).
+ *
+ * A credit card is deliberately NOT a liability: its balance is spendable
+ * credit the user treats as an asset, so it adds to net worth like a regular
+ * account. Only loans (debt that must be repaid) subtract.
  */
-export const LIABILITY_TYPES: AccountType[] = ['credit_card', 'loan'];
+export const LIABILITY_TYPES: AccountType[] = ['loan'];
 
 /**
  * Check if an account type is a liability
@@ -18,6 +22,64 @@ export function isLiabilityType(type: AccountType): boolean {
  */
 export function getAccountSign(type: AccountType): 1 | -1 {
     return isLiabilityType(type) ? -1 : 1;
+}
+
+/**
+ * Signed contribution of a raw account balance to net worth.
+ *
+ * Liabilities are stored as positive magnitudes, so they always subtract.
+ * Assets keep their real sign, so a genuinely negative asset balance (e.g. an
+ * overdrawn checking account) correctly reduces net worth instead of being
+ * flipped positive and added.
+ */
+export function netWorthContribution(
+    type: AccountType,
+    balance: number,
+): number {
+    return isLiabilityType(type) ? -Math.abs(balance) : balance;
+}
+
+export interface NetWorthBarScaling {
+    /**
+     * Factor applied to each asset segment so the stacked (upward) bar height
+     * equals net worth. `0` when net worth is negative — assets are hidden and
+     * the deficit is drawn instead.
+     */
+    scaleFactor: number;
+    /**
+     * Signed net worth to draw as a single downward bar when it is negative,
+     * or `null` when net worth is zero/positive (assets carry the height).
+     */
+    deficit: number | null;
+}
+
+/**
+ * Decide how a period renders in the net worth bar chart.
+ *
+ * Positive net worth stacks assets upward, scaled so the total height equals
+ * net worth. Negative net worth can't be shown as a stack of positive
+ * segments, so assets are hidden (scaleFactor 0) and the deficit is drawn as a
+ * single downward bar from the zero baseline.
+ */
+export function computeNetWorthBarScaling(
+    totalAssets: number,
+    totalLiabilities: number,
+    hasLiabilities: boolean,
+): NetWorthBarScaling {
+    if (!hasLiabilities) {
+        return { scaleFactor: 1, deficit: null };
+    }
+
+    const netWorth = totalAssets - totalLiabilities;
+
+    if (netWorth < 0) {
+        return { scaleFactor: 0, deficit: netWorth };
+    }
+
+    return {
+        scaleFactor: totalAssets > 0 ? netWorth / totalAssets : 1,
+        deficit: null,
+    };
 }
 
 /**

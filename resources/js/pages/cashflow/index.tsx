@@ -1,18 +1,30 @@
 import { BreakdownCard } from '@/components/cashflow/breakdown-card';
 import { NetCashflowCard } from '@/components/cashflow/net-cashflow-card';
 import { PeriodNavigation } from '@/components/cashflow/period-navigation';
-import { SavingsRateCard } from '@/components/cashflow/savings-rate-card';
+import { SavedInvestedCard } from '@/components/cashflow/saved-invested-card';
 import { CashflowTrendChart, SankeyChart } from '@/components/charts';
 import HeadingSmall from '@/components/heading-small';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useCashflowData } from '@/hooks/use-cashflow-data';
+import { CashflowPeriodType, useCashflowData } from '@/hooks/use-cashflow-data';
+import { usePeriodUrlSync } from '@/hooks/use-period-url-sync';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Head, router, usePage } from '@inertiajs/react';
-import { endOfMonth, format, parse, startOfMonth } from 'date-fns';
-import { useEffect, useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
+import {
+    endOfMonth,
+    endOfQuarter,
+    endOfYear,
+    parse,
+    startOfMonth,
+    startOfQuarter,
+    startOfYear,
+} from 'date-fns';
+import { TriangleAlertIcon } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -21,34 +33,91 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function CashflowPage() {
-    const { auth, period: initialPeriod } = usePage<{
-        auth: { user: { currency_code: string } };
-        period: string | null;
-    }>().props;
+function parsePeriodParam(
+    period: string | null,
+    periodType: CashflowPeriodType,
+): Date {
+    if (!period) {
+        return new Date();
+    }
 
-    // Initialize currentDate from server-provided period prop or default to current month
-    const [currentDate, setCurrentDate] = useState<Date>(() => {
-        if (initialPeriod) {
-            try {
-                // Parse YYYY-MM format
-                const parsedDate = parse(initialPeriod, 'yyyy-MM', new Date());
-                // Validate it's a valid date
-                if (!isNaN(parsedDate.getTime())) {
-                    return parsedDate;
-                }
-            } catch {
-                // Fall through to default
+    try {
+        if (periodType === 'quarter') {
+            const match = /^(\d{4})-Q([1-4])$/.exec(period);
+
+            if (match) {
+                return new Date(Number(match[1]), (Number(match[2]) - 1) * 3);
             }
         }
 
-        return new Date();
-    });
+        if (periodType === 'year') {
+            const match = /^(\d{4})$/.exec(period);
 
-    const period = {
+            if (match) {
+                return new Date(Number(match[1]), 0);
+            }
+        }
+
+        const parsedDate = parse(period, 'yyyy-MM', new Date());
+
+        if (!isNaN(parsedDate.getTime())) {
+            return parsedDate;
+        }
+    } catch {
+        return new Date();
+    }
+
+    return new Date();
+}
+
+function getPeriodRange(
+    currentDate: Date,
+    periodType: CashflowPeriodType,
+): { from: Date; to: Date } {
+    if (periodType === 'quarter') {
+        return {
+            from: startOfQuarter(currentDate),
+            to: endOfQuarter(currentDate),
+        };
+    }
+
+    if (periodType === 'year') {
+        return {
+            from: startOfYear(currentDate),
+            to: endOfYear(currentDate),
+        };
+    }
+
+    return {
         from: startOfMonth(currentDate),
         to: endOfMonth(currentDate),
     };
+}
+
+export default function CashflowPage() {
+    const {
+        auth,
+        period: initialPeriod,
+        periodType: initialPeriodType,
+    } = usePage<{
+        auth: { user: { currency_code: string } };
+        period: string | null;
+        periodType: CashflowPeriodType;
+    }>().props;
+
+    const [periodType, setPeriodType] =
+        useState<CashflowPeriodType>(initialPeriodType);
+
+    const [currentDate, setCurrentDate] = useState<Date>(() =>
+        parsePeriodParam(initialPeriod, initialPeriodType),
+    );
+
+    // Memoized so children (e.g. the Sankey drill-down fetch) don't see a new
+    // object identity on every render.
+    const period = useMemo(
+        () => getPeriodRange(currentDate, periodType),
+        [currentDate, periodType],
+    );
 
     const {
         summary,
@@ -57,28 +126,27 @@ export default function CashflowPage() {
         incomeBreakdown,
         expenseBreakdown,
         isLoading,
-    } = useCashflowData(period);
+        hasError,
+        refetch,
+    } = useCashflowData({
+        ...period,
+        periodType,
+    });
 
-    // Update URL when currentDate changes
-    useEffect(() => {
-        const periodParam = format(currentDate, 'yyyy-MM');
+    // The figures in state after a failed load are either zeros or the period the
+    // user navigated away from, so every card below stays in its placeholder while
+    // the banner explains why. Showing them would be answering a question about
+    // someone's money with a number we do not have.
+    const showPlaceholders = isLoading || hasError;
 
-        // Only update if the period has changed
-        if (initialPeriod !== periodParam) {
-            router.visit(cashflow({ query: { period: periodParam } }).url, {
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-            });
-        }
-    }, [currentDate, initialPeriod]);
+    usePeriodUrlSync(currentDate, periodType, initialPeriod, initialPeriodType);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Cashflow')} />
 
             <div className="space-y-6 p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <HeadingSmall
                         title={__('Cashflow')}
                         description={__(
@@ -88,31 +156,55 @@ export default function CashflowPage() {
 
                     <PeriodNavigation
                         currentDate={currentDate}
+                        periodType={periodType}
                         onDateChange={setCurrentDate}
+                        onPeriodTypeChange={setPeriodType}
                     />
                 </div>
+
+                {hasError && (
+                    <Alert variant="destructive">
+                        <TriangleAlertIcon />
+                        <AlertDescription className="flex flex-wrap items-center gap-3">
+                            <span>
+                                {__(
+                                    'We could not load these figures. Try again in a moment.',
+                                )}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={refetch}
+                            >
+                                {__('Try again')}
+                            </Button>
+                        </AlertDescription>
+                    </Alert>
+                )}
 
                 {/* Summary Cards */}
                 <div className="grid gap-6 md:grid-cols-2">
                     <NetCashflowCard
                         current={summary.current}
                         previous={summary.previous}
-                        loading={isLoading}
+                        loading={showPlaceholders}
                         currency={auth.user.currency_code}
                     />
 
-                    <SavingsRateCard
+                    <SavedInvestedCard
                         current={summary.current}
                         previous={summary.previous}
-                        loading={isLoading}
+                        loading={showPlaceholders}
+                        currency={auth.user.currency_code}
                     />
                 </div>
 
                 {/* Trend Chart */}
                 <CashflowTrendChart
                     data={trend}
-                    loading={isLoading}
+                    loading={showPlaceholders}
                     currency={auth.user.currency_code}
+                    periodType={periodType}
                 />
 
                 {/* Sankey Diagram */}
@@ -123,7 +215,7 @@ export default function CashflowPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {isLoading ? (
+                        {showPlaceholders ? (
                             <div className="h-[400px] animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                         ) : (
                             <SankeyChart
@@ -141,7 +233,7 @@ export default function CashflowPage() {
                     <BreakdownCard
                         type="income"
                         data={incomeBreakdown}
-                        loading={isLoading}
+                        loading={showPlaceholders}
                         currency={auth.user.currency_code}
                         period={period}
                     />
@@ -149,7 +241,7 @@ export default function CashflowPage() {
                     <BreakdownCard
                         type="expense"
                         data={expenseBreakdown}
-                        loading={isLoading}
+                        loading={showPlaceholders}
                         currency={auth.user.currency_code}
                         period={period}
                     />

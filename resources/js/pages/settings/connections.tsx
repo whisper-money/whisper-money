@@ -1,8 +1,10 @@
+import { BetaConnectorBadge } from '@/components/open-banking/beta-connector';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
 import { ConnectionStatusBadge } from '@/components/open-banking/connection-status-badge';
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
 import { UpdateCredentialsDialog } from '@/components/open-banking/update-credentials-dialog';
-import { UpgradeConnectionDialog } from '@/components/open-banking/upgrade-connection-dialog';
+import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -21,6 +23,14 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import {
+    canSyncManually,
+    isFirstSyncRunning,
+    isWaitingForBank,
+} from '@/lib/banking-connections';
+import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
+import { getCsrfToken } from '@/lib/csrf';
+import { leavePage } from '@/lib/leave-page';
 import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
@@ -28,19 +38,16 @@ import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import {
     AlertCircle,
     ArrowRight,
+    Clock,
     KeyRound,
     MoreHorizontal,
     RefreshCw,
     RotateCcw,
     Unplug,
+    Wallet,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-
-function getCsrfToken(): string {
-    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : '';
-}
 
 interface Props {
     connections: BankingConnection[];
@@ -48,7 +55,7 @@ interface Props {
 
 export default function ConnectionsPage({ connections }: Props) {
     const { auth, flash, subscriptionsEnabled } = usePage<SharedData>().props;
-    const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isSharedAccount = auth?.isSharedAccount ?? false;
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
@@ -58,9 +65,7 @@ export default function ConnectionsPage({ connections }: Props) {
         useState<BankingConnection | null>(null);
     const [reconnectingId, setReconnectingId] = useState<string | null>(null);
 
-    const hasSyncing = connections.some(
-        (c) => c.status === 'active' && !c.last_synced_at,
-    );
+    const hasSyncing = connections.some(isFirstSyncRunning);
 
     const { start, stop } = usePoll(5000, {}, { autoStart: false });
 
@@ -104,7 +109,7 @@ export default function ConnectionsPage({ connections }: Props) {
                 const data = await response.json().catch(() => ({}));
 
                 if (typeof data.redirect === 'string') {
-                    window.location.href = data.redirect;
+                    leavePage(data.redirect);
                     return;
                 }
 
@@ -114,7 +119,7 @@ export default function ConnectionsPage({ connections }: Props) {
             }
 
             const data = await response.json();
-            window.location.href = data.redirect_url;
+            leavePage(data.redirect_url);
         } catch (e) {
             toast.error(
                 e instanceof Error
@@ -126,8 +131,8 @@ export default function ConnectionsPage({ connections }: Props) {
     }
 
     function isApiKeyProvider(connection: BankingConnection): boolean {
-        return ['indexacapital', 'binance', 'bitpanda', 'coinbase'].includes(
-            connection.provider,
+        return CONNECT_PROVIDERS.some(
+            (provider) => provider.providerKey === connection.provider,
         );
     }
 
@@ -154,6 +159,13 @@ export default function ConnectionsPage({ connections }: Props) {
             connection.provider === 'enablebanking' &&
             (connection.status === 'expired' ||
                 isEnableBankingAuthError(connection))
+        );
+    }
+
+    function canManageAccounts(connection: BankingConnection): boolean {
+        return (
+            connection.provider === 'enablebanking' &&
+            ['active', 'expired', 'error'].includes(connection.status)
         );
     }
 
@@ -191,7 +203,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                     ? setUpgradeDialogOpen(true)
                                     : setConnectDialogOpen(true)
                             }
-                            disabled={isDemoAccount}
+                            disabled={isSharedAccount}
                         >
                             {__('Connect Bank')}
                         </CreateButton>
@@ -213,8 +225,11 @@ export default function ConnectionsPage({ connections }: Props) {
                                 <Card key={connection.id}>
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <div className="space-y-1">
-                                            <CardTitle className="text-base">
+                                            <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                                                 {connection.aspsp_name}
+                                                {connection.aspsp_beta && (
+                                                    <BetaConnectorBadge />
+                                                )}
                                             </CardTitle>
                                             <CardDescription>
                                                 {connection.aspsp_country}{' '}
@@ -227,10 +242,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <ConnectionStatusBadge
-                                                status={connection.status}
-                                                lastSyncedAt={
-                                                    connection.last_synced_at
-                                                }
+                                                connection={connection}
                                             />
                                             {connection.status === 'expired' &&
                                                 canReconnect(connection) && (
@@ -278,6 +290,22 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             {__('Map Accounts')}
                                                         </DropdownMenuItem>
                                                     )}
+                                                    {canManageAccounts(
+                                                        connection,
+                                                    ) && (
+                                                        <DropdownMenuItem
+                                                            onClick={() =>
+                                                                router.visit(
+                                                                    `/open-banking/connections/${connection.id}/accounts`,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Wallet className="mr-2 h-4 w-4" />
+                                                            {__(
+                                                                'Manage Accounts',
+                                                            )}
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     {hasAuthError(
                                                         connection,
                                                     ) && (
@@ -312,8 +340,11 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             {__('Reconnect')}
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {(connection.status ===
-                                                        'active' ||
+                                                    {((connection.status ===
+                                                        'active' &&
+                                                        canSyncManually(
+                                                            connection,
+                                                        )) ||
                                                         (connection.status ===
                                                             'error' &&
                                                             !isEnableBankingAuthError(
@@ -359,13 +390,17 @@ export default function ConnectionsPage({ connections }: Props) {
                                                         'Accounts need to be mapped before syncing can begin.',
                                                     )}
                                                 </span>
-                                            ) : connection.status ===
-                                                  'active' &&
-                                              !connection.last_synced_at ? (
+                                            ) : isFirstSyncRunning(
+                                                  connection,
+                                              ) ? (
                                                 <span className="flex items-center gap-1.5">
                                                     <Spinner className="size-3" />
-                                                    {connection.provider ===
-                                                    'indexacapital'
+                                                    {[
+                                                        'indexacapital',
+                                                        'interactivebrokers',
+                                                    ].includes(
+                                                        connection.provider,
+                                                    )
                                                         ? __(
                                                               'Syncing balances…',
                                                           )
@@ -373,7 +408,9 @@ export default function ConnectionsPage({ connections }: Props) {
                                                               'Syncing transactions and balances…',
                                                           )}
                                                 </span>
-                                            ) : (
+                                            ) : isWaitingForBank(
+                                                  connection,
+                                              ) ? null : (
                                                 <span>
                                                     {__('Last synced')}:{' '}
                                                     {formatDate(
@@ -390,6 +427,27 @@ export default function ConnectionsPage({ connections }: Props) {
                                                 </span>
                                             )}
                                         </div>
+                                        {isWaitingForBank(connection) && (
+                                            <Alert className="mt-3 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                                                <Clock />
+                                                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                                                    <p>
+                                                        {__(
+                                                            'Your bank limits how often we can fetch your data. We will retry automatically.',
+                                                        )}
+                                                    </p>
+                                                    {connection.next_sync_attempt_at && (
+                                                        <p>
+                                                            {__('Next attempt')}
+                                                            :{' '}
+                                                            {formatDate(
+                                                                connection.next_sync_attempt_at,
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                </AlertDescription>
+                                            </Alert>
+                                        )}
                                         {connection.status === 'error' && (
                                             <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
                                                 <div className="flex items-start gap-2">
@@ -401,6 +459,13 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                     'An unexpected error occurred during sync.',
                                                                 )}
                                                         </p>
+                                                        {connection.aspsp_beta && (
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {__(
+                                                                    'This bank is still in beta at our banking provider, so it fails more often than others. Retrying usually helps.',
+                                                                )}
+                                                            </p>
+                                                        )}
                                                         <div className="flex flex-wrap items-center gap-3">
                                                             {hasAuthError(
                                                                 connection,
@@ -466,7 +531,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                 </Button>
                                                             )}
                                                             <a
-                                                                href="https://discord.gg/2WZmDW9QZ8"
+                                                                href="https://discord.gg/m8hUhx6D9D"
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
@@ -493,9 +558,14 @@ export default function ConnectionsPage({ connections }: Props) {
                     connections={connections}
                 />
 
-                <UpgradeConnectionDialog
+                <UpgradeDialog
                     open={upgradeDialogOpen}
                     onOpenChange={setUpgradeDialogOpen}
+                    title={__('Bank connections are a paid feature')}
+                    description={__(
+                        'Subscribe to a plan to automatically sync your transactions and balances straight from your bank.',
+                    )}
+                    source="connections"
                 />
 
                 {disconnectConnection && (

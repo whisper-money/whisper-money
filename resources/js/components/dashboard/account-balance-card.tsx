@@ -193,11 +193,8 @@ export function AccountBalanceCard({
                         </span>
                     )}
                 </div>
-                <div className="text-xs font-medium text-muted-foreground">
-                    <AccountTypeIcon
-                        type={account.type}
-                        className="mr-1 inline-block"
-                    />
+                <div className="mr-1 size-5 shrink-0">
+                    <AccountTypeIcon type={account.type} />
                 </div>
             </CardHeader>
             <CardContent>

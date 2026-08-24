@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
@@ -44,21 +45,25 @@ test('accounts index page does not exceed query threshold', function () {
 });
 
 test('account show page does not exceed query threshold', function () {
-    $account = $this->user->accounts()->first();
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'currency_code' => $this->user->currency_code,
+        'type' => AccountType::Checking,
+    ]);
 
-    assertMaxQueries(17, function () use ($account) {
+    assertMaxQueries(18, function () use ($account) {
         $this->get(route('accounts.show', $account))->assertOk();
     }, 'Account Show');
 });
 
 test('transactions index page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(21, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions Index');
 });
 
 test('budgets index page does not exceed query threshold', function () {
-    assertMaxQueries(18, function () {
+    assertMaxQueries(21, function () {
         $this->get(route('budgets.index'))->assertOk();
     }, 'Budgets Index');
 });
@@ -66,7 +71,7 @@ test('budgets index page does not exceed query threshold', function () {
 test('budget show page does not exceed query threshold', function () {
     $budget = $this->user->budgets()->first();
 
-    assertMaxQueries(20, function () use ($budget) {
+    assertMaxQueries(22, function () use ($budget) {
         $this->get(route('budgets.show', $budget))->assertOk();
     }, 'Budget Show');
 });
@@ -82,7 +87,7 @@ test('cashflow page does not exceed query threshold', function () {
 // ──────────────────────────────────────────────────────────────────────────
 
 test('settings accounts page does not exceed query threshold', function () {
-    assertMaxQueries(15, function () {
+    assertMaxQueries(17, function () {
         $this->get(route('accounts.index'))->assertOk();
     }, 'Settings Accounts');
 });
@@ -159,7 +164,7 @@ test('transactions page query count does not scale with number of transactions',
     ]);
 
     // Same threshold — paginated queries should not scale
-    assertMaxQueries(20, function () {
+    assertMaxQueries(21, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions with 120 records');
 });

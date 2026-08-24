@@ -1,5 +1,9 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
-import { PercentageTrendIndicator } from '@/components/dashboard/percentage-trend-indicator';
+import { CategoryAnalysisButton } from '@/components/categories/category-analysis-button';
+import {
+    CategoryBreakdownRow,
+    type CategoryBreakdownAdapter,
+} from '@/components/shared/category-breakdown-list';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
@@ -8,20 +12,21 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { BreakdownData } from '@/hooks/use-cashflow-data';
+import { BreakdownData, BreakdownItem } from '@/hooks/use-cashflow-data';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
+import { useExpandableCategories } from '@/hooks/use-expandable-categories';
+import { fetchJson } from '@/lib/fetch-json';
 import { cn } from '@/lib/utils';
 import {
+    getCategoryColorClasses,
     type CategoryColor,
     type CategoryIcon,
-    getCategoryColorClasses,
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
-import { Link } from '@inertiajs/react';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
+import { useCallback } from 'react';
 
 interface BreakdownCardProps {
     type: 'income' | 'expense';
@@ -37,6 +42,10 @@ const fallbackCategory = {
     color: 'gray' as CategoryColor,
 };
 
+function rowKey(item: BreakdownItem): string {
+    return `${item.category_id ?? 'uncategorized'}:${item.is_direct ? 'direct' : 'node'}`;
+}
+
 export function BreakdownCard({
     type,
     data,
@@ -45,6 +54,7 @@ export function BreakdownCard({
     period,
 }: BreakdownCardProps) {
     const { categoryBarColor } = useChartColors();
+
     const title =
         type === 'income' ? __('Income Sources') : __('Expense Categories');
     const description =
@@ -55,6 +65,91 @@ export function BreakdownCard({
         type === 'income'
             ? __('No income this period')
             : __('No expenses this period');
+
+    const periodKey = period
+        ? `${format(period.from, 'yyyy-MM-dd')}:${format(period.to, 'yyyy-MM-dd')}`
+        : null;
+
+    const fetchChildren = useCallback(
+        async (categoryId: string): Promise<BreakdownItem[]> => {
+            if (!period) {
+                return [];
+            }
+
+            const params = new URLSearchParams({
+                from: format(period.from, 'yyyy-MM-dd'),
+                to: format(period.to, 'yyyy-MM-dd'),
+                type,
+                parent: categoryId,
+            });
+            const json = await fetchJson<BreakdownData>(
+                `/api/cashflow/breakdown?${params.toString()}`,
+            );
+
+            return json.data;
+        },
+        [period, type],
+    );
+
+    const expandable = useExpandableCategories<BreakdownItem>(
+        fetchChildren,
+        periodKey,
+    );
+
+    const adapter: CategoryBreakdownAdapter<BreakdownItem> = {
+        getId: (item) => item.category_id ?? '',
+        getKey: (item) => rowKey(item),
+        getName: (item) => (item.category ?? fallbackCategory).name,
+        getAmount: (item) => item.amount,
+        getPercentage: (item) => item.percentage,
+        getBarColor: (item, index) =>
+            categoryBarColor((item.category ?? fallbackCategory).color, index),
+        renderLeading: (item) => {
+            const category = item.category ?? fallbackCategory;
+            const color = getCategoryColorClasses(category.color);
+            const Icon = (Icons[category.icon as keyof typeof Icons] ||
+                Icons.HelpCircle) as LucideIcon;
+
+            return (
+                <div
+                    className={cn([
+                        'flex size-6 shrink-0 items-center justify-center rounded-full',
+                        `${color.bg} ${color.text}`,
+                    ])}
+                >
+                    <Icon className="size-4" />
+                </div>
+            );
+        },
+        getHref: (item) =>
+            period && item.category_id
+                ? transactionsIndex({
+                      query: {
+                          category_ids: item.category_id,
+                          date_from: format(period.from, 'yyyy-MM-dd'),
+                          date_to: format(period.to, 'yyyy-MM-dd'),
+                      },
+                  }).url
+                : null,
+        getTrend: (item) =>
+            item.previous_amount > 0
+                ? {
+                      change:
+                          ((item.amount - item.previous_amount) /
+                              item.previous_amount) *
+                          100,
+                      previousAmount: item.previous_amount,
+                      currentAmount: item.amount,
+                  }
+                : null,
+        canExpand: (item) =>
+            Boolean(
+                item.has_children &&
+                !item.is_direct &&
+                item.category_id &&
+                period,
+            ),
+    };
 
     if (loading) {
         return (
@@ -83,123 +178,41 @@ export function BreakdownCard({
     return (
         <Card>
             <CardHeader className="gap-1 pb-4">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{title}</CardTitle>
-                    <AmountDisplay
-                        amountInCents={data.total}
-                        currencyCode={currency}
-                        minimumFractionDigits={0}
-                        maximumFractionDigits={0}
-                        weight="semibold"
-                        highlightPositive
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col gap-1">
+                        <CardTitle className="text-base">{title}</CardTitle>
+                        <CardDescription>{description}</CardDescription>
+                        <AmountDisplay
+                            amountInCents={data.total}
+                            currencyCode={currency}
+                            minimumFractionDigits={0}
+                            maximumFractionDigits={0}
+                            weight="semibold"
+                            highlightPositive
+                            className="text-lg"
+                        />
+                    </div>
+                    <CategoryAnalysisButton
+                        widgetKey={`cashflow-${type}`}
+                        firstCategoryId={data.data[0]?.category_id ?? null}
                     />
                 </div>
-                <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    {data.data.map((item, index) => {
-                        const category = item.category ?? fallbackCategory;
-                        const Icon = (Icons[
-                            category.icon as keyof typeof Icons
-                        ] || Icons.HelpCircle) as LucideIcon;
-
-                        const percentageChange =
-                            item.previous_amount > 0
-                                ? ((item.amount - item.previous_amount) /
-                                      item.previous_amount) *
-                                  100
-                                : null;
-
-                        const categoryColor = getCategoryColorClasses(
-                            category.color,
-                        );
-                        const chartColor = categoryBarColor(
-                            category.color,
-                            index,
-                        );
-
-                        const categoryUrl = period
-                            ? transactionsIndex({
-                                  query: {
-                                      category_ids: item.category_id,
-                                      date_from: format(
-                                          period.from,
-                                          'yyyy-MM-dd',
-                                      ),
-                                      date_to: format(period.to, 'yyyy-MM-dd'),
-                                  },
-                              }).url
-                            : null;
-
-                        const rowContent = (
-                            <>
-                                <div className="flex min-w-0 items-center justify-between gap-2 overflow-hidden">
-                                    <div className="flex max-w-[60%] grow gap-2">
-                                        <div
-                                            className={cn([
-                                                'flex size-6 shrink-0 items-center justify-center rounded-full',
-                                                `${categoryColor.bg} ${categoryColor.text}`,
-                                            ])}
-                                        >
-                                            <Icon className="size-3.5" />
-                                        </div>
-                                        <span className="min-w-0 truncate text-sm font-medium">
-                                            {category.name}
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {percentageChange !== null && (
-                                            <PercentageTrendIndicator
-                                                trend={percentageChange}
-                                                label=""
-                                                previousAmount={
-                                                    item.previous_amount
-                                                }
-                                                currentAmount={item.amount}
-                                                currencyCode={currency}
-                                                invertColors={
-                                                    type === 'expense'
-                                                }
-                                                className="shrink-0 text-xs"
-                                            />
-                                        )}
-                                        <div className="flex shrink-0 items-center gap-2">
-                                            <span className="hidden text-xs text-muted-foreground sm:inline">
-                                                {item.percentage.toFixed(0)}%
-                                            </span>
-                                            <AmountDisplay
-                                                amountInCents={item.amount}
-                                                currencyCode={currency}
-                                                variant="compact"
-                                                minimumFractionDigits={0}
-                                                maximumFractionDigits={0}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                                <Progress
-                                    value={item.percentage}
-                                    className="h-1.5"
-                                    indicatorColor={chartColor}
-                                />
-                            </>
-                        );
-
-                        return categoryUrl ? (
-                            <Link
-                                key={item.category_id}
-                                href={categoryUrl}
-                                className="group -mx-1.5 my-1.5 block space-y-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
-                            >
-                                {rowContent}
-                            </Link>
-                        ) : (
-                            <div key={item.category_id} className="space-y-1.5">
-                                {rowContent}
-                            </div>
-                        );
-                    })}
+                <div className="space-y-2.5">
+                    {data.data.map((item, index) => (
+                        <CategoryBreakdownRow
+                            key={rowKey(item)}
+                            item={item}
+                            index={index}
+                            currencyCode={currency}
+                            adapter={adapter}
+                            expandable={expandable}
+                            expandColumn
+                            showPercentage
+                            invertTrendColors={type === 'expense'}
+                        />
+                    ))}
                     {data.data.length === 0 && (
                         <div className="py-6 text-center text-sm text-muted-foreground">
                             {emptyMessage}

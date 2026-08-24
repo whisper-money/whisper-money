@@ -1,24 +1,24 @@
 <?php
 
+use App\Mail\BankConnectFailedEmail;
 use App\Mail\BankingConnectionAuthFailedEmail;
+use App\Mail\BankOutageEmail;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Mail\BrokenBankLogosReportEmail;
+use App\Mail\Drip\AiConsentFollowUpEmail;
 use App\Mail\Drip\FeedbackEmail;
 use App\Mail\Drip\ImportHelpEmail;
 use App\Mail\Drip\OnboardingReminderEmail;
+use App\Mail\Drip\PaywallFollowUpEmail;
 use App\Mail\Drip\PromoCodeEmail;
 use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Mail\Drip\WelcomeEmail;
 use App\Mail\EnableBankingConnectionsCancelledEmail;
 use App\Mail\UpdateEmail;
-use App\Mail\WaitlistOvertaken;
-use App\Mail\WaitlistReferralNotification;
-use App\Mail\WaitlistWelcome;
+use App\Mail\UserEmailsReportEmail;
 use App\Models\BankingConnection;
 use App\Models\User;
-use App\Models\UserLead;
 use App\Notifications\VerifyEmailNotification;
-use App\Notifications\VerifyUserLeadEmailNotification;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailer;
 use Illuminate\Mail\Transport\ArrayTransport;
@@ -84,23 +84,54 @@ test('drip mailables use the drip sender', function (string $mailableClass) {
     $user = User::factory()->create();
 
     $mailable = match ($mailableClass) {
+        AiConsentFollowUpEmail::class => new AiConsentFollowUpEmail($user),
         WelcomeEmail::class => new WelcomeEmail($user),
         FeedbackEmail::class => new FeedbackEmail($user),
         ImportHelpEmail::class => new ImportHelpEmail($user),
         OnboardingReminderEmail::class => new OnboardingReminderEmail($user),
+        PaywallFollowUpEmail::class => new PaywallFollowUpEmail($user),
         PromoCodeEmail::class => new PromoCodeEmail($user),
         SubscriptionCancelledEmail::class => new SubscriptionCancelledEmail($user),
     };
 
     expect($mailable->envelope()->from)->toEqual(new Address('hi@whisper.money', 'Álvaro and Víctor'));
 })->with([
+    AiConsentFollowUpEmail::class,
     WelcomeEmail::class,
     FeedbackEmail::class,
     ImportHelpEmail::class,
     OnboardingReminderEmail::class,
+    PaywallFollowUpEmail::class,
     PromoCodeEmail::class,
     SubscriptionCancelledEmail::class,
 ]);
+
+test('only the paywall follow-up sets a reply-to, back to the drip sender', function () {
+    $user = User::factory()->create();
+
+    expect((new PaywallFollowUpEmail($user))->envelope()->replyTo)
+        ->toEqual([new Address('hi@whisper.money', 'Álvaro and Víctor')]);
+
+    expect((new WelcomeEmail($user))->envelope()->replyTo)->toBe([]);
+});
+
+test('promo code email adds the founder promo code to its view data', function () {
+    $user = User::factory()->create();
+
+    expect((new PromoCodeEmail($user))->content()->with)
+        ->toMatchArray(['userName' => $user->name, 'promoCode' => 'FOUNDER']);
+});
+
+test('drip mailables hand their template UTM parameters for PostHog attribution', function () {
+    $user = User::factory()->create();
+
+    expect((new PromoCodeEmail($user))->content()->with['emailUtm'])
+        ->toBe([
+            'utm_source' => 'drip',
+            'utm_medium' => 'email',
+            'utm_campaign' => 'promo-code',
+        ]);
+});
 
 test('default sender is used for active non-drip mailables', function (string $mailableClass) {
     $user = User::factory()->create();
@@ -109,11 +140,11 @@ test('default sender is used for active non-drip mailables', function (string $m
         UpdateEmail::class => new UpdateEmail($user, 'test-update'),
         BankTransactionsSyncedEmail::class => new BankTransactionsSyncedEmail($user, 3, ['Test Bank' => 3]),
         BankingConnectionAuthFailedEmail::class => new BankingConnectionAuthFailedEmail($user, BankingConnection::factory()->for($user)->create(['aspsp_name' => 'Test Bank'])),
+        BankOutageEmail::class => new BankOutageEmail($user, 'Test Bank'),
+        BankConnectFailedEmail::class => new BankConnectFailedEmail($user, 'Test Bank'),
         EnableBankingConnectionsCancelledEmail::class => new EnableBankingConnectionsCancelledEmail($user, 2),
         BrokenBankLogosReportEmail::class => new BrokenBankLogosReportEmail([['id' => 'bank-1', 'name' => 'Test Bank', 'previous_logo' => 'https://example.com/logo.png']]),
-        WaitlistWelcome::class => new WaitlistWelcome(UserLead::factory()->create()),
-        WaitlistReferralNotification::class => new WaitlistReferralNotification(UserLead::factory()->create()),
-        WaitlistOvertaken::class => new WaitlistOvertaken(UserLead::factory()->create()),
+        UserEmailsReportEmail::class => new UserEmailsReportEmail("email\ntest@example.com\n", 1, 'user-emails-2026-01-01.csv'),
     };
 
     sendWithArrayMailer($mailable);
@@ -126,11 +157,11 @@ test('default sender is used for active non-drip mailables', function (string $m
     UpdateEmail::class,
     BankTransactionsSyncedEmail::class,
     BankingConnectionAuthFailedEmail::class,
+    BankOutageEmail::class,
+    BankConnectFailedEmail::class,
     EnableBankingConnectionsCancelledEmail::class,
     BrokenBankLogosReportEmail::class,
-    WaitlistWelcome::class,
-    WaitlistReferralNotification::class,
-    WaitlistOvertaken::class,
+    UserEmailsReportEmail::class,
 ]);
 
 test('transaction sync email envelope explicitly uses the default sender', function () {
@@ -152,25 +183,9 @@ test('verification notification uses the default sender', function () {
         ->and($from->getName())->toBe('Whisper Money');
 });
 
-test('user lead verification notification uses the default sender', function () {
-    $lead = UserLead::factory()->unverified()->create();
-
-    $lead->notify(new VerifyUserLeadEmailNotification('https://example.com/verify'));
-
-    $from = lastSentMailMessage()->getOriginalMessage()->getFrom()[0];
-
-    expect($from->getAddress())->toBe('no-reply@whisper.money')
-        ->and($from->getName())->toBe('Whisper Money');
-});
-
 test('mail blade signatures use alvaro before victor', function () {
     $mailViews = [
         'mail/verify-email.blade.php',
-        'mail/verify-user-lead-email.blade.php',
-        'mail/waitlist-welcome.blade.php',
-        'mail/waitlist-referral-notification.blade.php',
-        'mail/user-lead-invitation.blade.php',
-        'mail/waitlist-overtaken.blade.php',
         'mail/drip/import-help.blade.php',
         'mail/drip/onboarding-reminder.blade.php',
         'mail/drip/promo-code.blade.php',
@@ -180,6 +195,8 @@ test('mail blade signatures use alvaro before victor', function () {
         'mail/drip/feedback.blade.php',
         'mail/banking-connection-auth-failed.blade.php',
         'mail/enable-banking-connections-cancelled.blade.php',
+        'mail/bank-outage.blade.php',
+        'mail/bank-connect-failed.blade.php',
     ];
 
     foreach ($mailViews as $mailView) {
@@ -189,6 +206,28 @@ test('mail blade signatures use alvaro before victor', function () {
             ->toContain("{{ __('Álvaro & Víctor') }}<br>")
             ->not->toContain("{{ __('Víctor & Álvaro') }}<br>");
     }
+});
+
+test('update email translates its subject and leaves untranslated ones verbatim', function () {
+    $user = User::factory()->create(['locale' => 'es']);
+
+    // The subject doubles as a translation key, resolved in the user's locale.
+    (new UpdateEmail($user, 'first-update-jan-2026', 'Ask ChatGPT how much you spent this month'))
+        ->locale($user->preferredLocale())
+        ->assertHasSubject('Pregúntale a ChatGPT cuánto has gastado este mes');
+
+    // A subject with no translation still goes out exactly as it was typed.
+    (new UpdateEmail($user, 'first-update-jan-2026', 'Update from Whisper Money'))
+        ->locale($user->preferredLocale())
+        ->assertHasSubject('Update from Whisper Money');
+});
+
+test('update email invites replies to a real inbox', function () {
+    $user = User::factory()->create();
+
+    $replyTo = (new UpdateEmail($user, 'first-update-jan-2026'))->envelope()->replyTo;
+
+    expect($replyTo)->toEqual([new Address('hi@whisper.money', 'Álvaro and Víctor')]);
 });
 
 test('enable banking cancellation email includes dashboard access messaging', function () {
@@ -201,4 +240,30 @@ test('enable banking cancellation email includes dashboard access messaging', fu
     $mailable->assertSeeInHtml('free access');
     $mailable->assertSeeInHtml('accounts, transactions, and balances remain in Whisper Money');
     $mailable->assertSeeInHtml(route('dashboard'));
+});
+
+test('bank outage email blames the bank and asks the user for nothing', function () {
+    $user = User::factory()->create(['name' => 'Test User']);
+
+    $mailable = new BankOutageEmail($user, 'Openbank');
+
+    $mailable->assertHasSubject('Openbank is having a temporary problem on their side');
+    $mailable->assertSeeInHtml('The failure is on the bank side, not in Whisper Money');
+    $mailable->assertSeeInHtml('You do not need to do anything.');
+    $mailable->assertSeeInHtml('All your data is safe.');
+    $mailable->assertSeeInHtml('working with our banking provider and with the bank');
+    $mailable->assertDontSeeInHtml(route('settings.connections.index'));
+});
+
+test('bank connect failure email absolves the user and promises a follow-up', function () {
+    $user = User::factory()->create(['name' => 'Test User']);
+
+    $mailable = new BankConnectFailedEmail($user, 'Banco Mediolanum');
+
+    $mailable->assertHasSubject('Banco Mediolanum cannot be connected right now, and it was not your fault');
+    $mailable->assertSeeInHtml('It is failing for everyone who tries it, not just for you');
+    $mailable->assertSeeInHtml('There is no point trying again for now.');
+    $mailable->assertSeeInHtml('we will email you');
+    $mailable->assertSeeInHtml('add it manually, or import a file exported from your bank');
+    $mailable->assertSeeInHtml(route('accounts.list'));
 });

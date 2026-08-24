@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\BankFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,27 @@ class Bank extends Model
         'logo',
         'user_id',
     ];
+
+    /** @var list<string> */
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    /**
+     * Scope to banks visible to the given user: public banks plus their own.
+     *
+     * @param  Builder<Bank>  $query
+     * @return Builder<Bank>
+     */
+    public function scopeAvailableForUser(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $q) use ($user) {
+            $q->whereNull('user_id')
+                ->orWhere('user_id', $user->id);
+        });
+    }
 
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo

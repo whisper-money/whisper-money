@@ -2,11 +2,24 @@ import type { Category } from './category';
 import type { Label } from './label';
 import { UUID } from './uuid';
 
+export type RuleOrigin = 'user' | 'ai' | 'correction';
+
+/**
+ * A rule that was just learned from a category correction, returned by the
+ * transaction update endpoint so the UI can offer an immediate undo.
+ */
+export interface LearnedRuleNotice {
+    id: UUID;
+    title: string;
+    category_id: UUID | null;
+}
+
 export interface AutomationRule {
     id: UUID;
     user_id: UUID;
     title: string;
     priority: number;
+    origin: RuleOrigin;
     rules_json: Record<string, unknown>;
     action_category_id: UUID | null;
     action_note: string | null;

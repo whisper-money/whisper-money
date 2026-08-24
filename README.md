@@ -18,15 +18,15 @@
 
 **The most secure way to understand your finances.**
 
-Whisper Money is a privacy-first personal finance application that helps you track, categorize, and understand your spending—all while keeping your financial data encrypted and secure.
+Whisper Money is a privacy-first personal finance application that helps you track, categorize, and understand your spending. We don't sell your data and we don't profile you for ads. The entire codebase is public, so you can check exactly where your data goes.
 
 > 🎮 **Try the Demo:** Experience Whisper Money with our [demo account](https://whisper.money/login?demo=1) - no registration required!
 
-> 💬 **Join our Community:** Whether you're a user looking for help or a developer wanting to contribute, we'd love to have you in our [Discord server](https://discord.gg/2WZmDW9QZ8)! Share feedback, ask questions, discuss new features, or just hang out with fellow privacy enthusiasts.
+> 💬 **Join our Community:** Whether you're a user looking for help or a developer wanting to contribute, we'd love to have you in our [Discord server](https://discord.gg/m8hUhx6D9D)! Share feedback, ask questions, discuss new features, or just hang out with fellow privacy enthusiasts.
 
 ## Features
 
-- 🔐 **Privacy-first** — Your data is never shared with third parties. You own it
+- 🔐 **Privacy-first** — You own your data and we never sell it. Self-host it and point the AI at a [local model](#ai-provider) to keep it entirely on your own infrastructure
 - 🏦 **Bank account management** — Track multiple accounts in one place
 - 📊 **Transaction categorization** — Automatic and manual categorization
 - 🤖 **Automation rules** — Set up rules to auto-categorize transactions
@@ -35,7 +35,7 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 ## Tech Stack
 
 - **Backend:** Laravel 12, PHP 8.4
-- **Frontend:** React 19, Inertia.js v2, TypeScript
+- **Frontend:** React 19, Inertia.js v3, TypeScript
 - **Styling:** Tailwind CSS v4
 - **Database:** MySQL
 - **Cache/Queue:** Redis
@@ -163,15 +163,93 @@ The template includes:
 | Variable                | Default | Description                                        |
 | ----------------------- | ------- | -------------------------------------------------- |
 | `DRIP_EMAILS_ENABLED`   | `true`  | Enable drip emails (welcome, onboarding, feedback) |
-| `HIDE_AUTH_BUTTONS`     | `false` | Hide login/register buttons on landing page        |
+| `REGISTRATION_ENABLED`  | `true`  | Set to `false` to close public sign-ups (the `/register` routes return a 403 and every registration CTA is hidden) while keeping `/login` open |
 | `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                        |
 | `STRIPE_KEY`            | -       | Stripe publishable key                             |
 | `STRIPE_SECRET`         | -       | Stripe secret key                                  |
 | `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret                      |
+| `AI_PROVIDER`           | `gemini`| AI provider for every AI feature (`gemini`, `ollama`, `openai`, ...) |
 
-## Star History
+## AI Provider
 
-[![Star History Chart](https://api.star-history.com/svg?repos=whisper-money/whisper-money&type=date&legend=top-left)](https://www.star-history.com/#whisper-money/whisper-money&type=date&legend=top-left)
+Whisper Money's AI features (transaction categorization and automation-rule
+suggestions) run on [`laravel/ai`](https://github.com/laravel/ai) and default to
+Google **Gemini**. The provider is configurable independently of the model, so
+you can point the app at **any text provider `laravel/ai` supports** — `gemini`,
+`openai`, `anthropic`, `azure`, `groq`, `xai`, `deepseek`, `mistral`, a
+self-hosted **[Ollama](https://ollama.com)** server, or `openai-compatible` for
+any endpoint speaking the OpenAI API. Ollama is the headline case because it
+keeps AI processing fully local and private — data never leaves your
+infrastructure — but the switch is generic.
+
+Each provider needs its own credentials configured for `laravel/ai` (e.g.
+`GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OLLAMA_URL`). An
+unknown or non-text provider fails fast when the AI feature runs.
+
+| Variable                     | Default              | Description                                                            |
+| ---------------------------- | -------------------- | --------------------------------------------------------------------- |
+| `AI_PROVIDER`                | `gemini`             | Provider for all AI features. Set once to switch everything.          |
+| `AI_SUGGESTIONS_PROVIDER`    | `AI_PROVIDER`        | Override the provider for rule suggestions only.                      |
+| `AI_CATEGORIZATION_PROVIDER` | `AI_PROVIDER`        | Override the provider for transaction categorization only.            |
+| `AI_REPORTS_PROVIDER`        | `AI_PROVIDER`        | Override the provider for the stats-report summaries only.            |
+| `AI_SUGGESTIONS_MODEL`       | `gemini-flash-latest`| Model used for rule suggestions.                                      |
+| `AI_CATEGORIZATION_MODEL`    | `gemini-flash-latest`| Model used for transaction categorization.                            |
+| `AI_REPORTS_MODEL`           | `gemini-flash-latest`| Model used for the stats-report summaries.                            |
+| `AI_REPORTS_TIMEOUT`         | `30`                 | Seconds before a report is posted without its AI summary.             |
+| `GEMINI_API_KEY`             | -                    | Required when the provider is `gemini`.                               |
+| `OLLAMA_URL`                 | `http://localhost:11434` | Ollama server URL (used when the provider is `ollama`).           |
+| `OLLAMA_API_KEY`             | -                    | Optional; only needed behind an authenticating proxy.                 |
+| `OPENAI_COMPATIBLE_URL`      | -                    | Base URL of an OpenAI-compatible endpoint (required when the provider is `openai-compatible`). |
+| `OPENAI_COMPATIBLE_API_KEY`  | -                    | Optional; sent as a bearer token when set.                            |
+
+### Example: fully local AI with Ollama
+
+```dotenv
+AI_PROVIDER=ollama
+OLLAMA_URL=http://ollama.example.local:11434
+AI_SUGGESTIONS_MODEL=gemma3:12b
+AI_CATEGORIZATION_MODEL=gemma3:12b
+```
+
+Make sure the model is pulled on the Ollama server first (`ollama pull gemma3:12b`).
+Any other provider follows the same pattern: set `AI_PROVIDER`, that provider's
+credentials, and the `*_MODEL` vars to one of its models. Gemini remains the
+default, so existing deployments are unaffected.
+
+### Any OpenAI-compatible endpoint
+
+Plenty of services and local servers speak the OpenAI Chat Completions API
+without being OpenAI: router/gateway services such as
+[OrcaRouter](https://www.orcarouter.ai/), local runtimes like LM Studio or
+vLLM, hosted inference like Together or Fireworks, a LiteLLM instance, or your
+own corporate proxy. Set `AI_PROVIDER=openai-compatible` and point the app at
+one of them.
+
+- `OPENAI_COMPATIBLE_URL` is **required** — it is the base URL the app appends
+  `chat/completions` to, so give it the versioned root (e.g. `.../v1`). Leaving
+  it empty fails when the AI feature runs.
+- `OPENAI_COMPATIBLE_API_KEY` is **optional** — when set it is sent as
+  `Authorization: Bearer <key>`. Leave it empty for a local server that does not
+  authenticate.
+- The `*_MODEL` vars must name a model **that endpoint serves**. There is no
+  default, and the Gemini defaults are meaningless to it.
+- There is a **single** `openai-compatible` slot, so only one such endpoint can
+  be configured at a time. To reach two of them, put a router in front.
+
+Example with OrcaRouter:
+
+```dotenv
+AI_PROVIDER=openai-compatible
+OPENAI_COMPATIBLE_URL=https://api.orcarouter.ai/v1
+OPENAI_COMPATIBLE_API_KEY=sk-orca-...
+AI_SUGGESTIONS_MODEL=orcarouter/auto
+AI_CATEGORIZATION_MODEL=orcarouter/auto
+AI_REPORTS_MODEL=orcarouter/auto
+```
+
+`orcarouter/auto` lets OrcaRouter pick the model; naming one directly
+(`provider/model-name`) works too. Any other OpenAI-compatible endpoint follows
+the same shape — only the URL and the model names change.
 
 ## License
 

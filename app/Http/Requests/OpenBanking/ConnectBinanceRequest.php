@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OpenBanking;
 
+use App\Enums\BankingProvider;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConnectBinanceRequest extends FormRequest
@@ -17,8 +18,7 @@ class ConnectBinanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'api_key' => ['required', 'string', 'min:10'],
-            'api_secret' => ['required', 'string', 'min:10'],
+            ...BankingProvider::Binance->credentialRules(),
             'country' => ['required', 'string', 'size:2'],
         ];
     }

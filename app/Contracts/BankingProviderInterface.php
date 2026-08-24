@@ -7,16 +7,19 @@ interface BankingProviderInterface
     /**
      * Get available banking institutions for a country.
      *
-     * @return array<int, array{name: string, country: string, logo: string|null, maximum_consent_validity: int|null}>
+     * @return array<int, array{name: string, country: string, logo: string|null, maximum_consent_validity: int|null, beta: bool}>
      */
     public function getInstitutions(string $countryCode): array;
 
     /**
      * Start a user authorization flow.
      *
+     * The $state value is echoed back by the provider on the callback and is used to
+     * correlate the callback to its connection without relying on a logged-in session.
+     *
      * @return array{url: string, authorization_id: string}
      */
-    public function startAuthorization(string $aspspName, string $countryCode, string $redirectUrl): array;
+    public function startAuthorization(string $aspspName, string $countryCode, string $redirectUrl, string $state): array;
 
     /**
      * Exchange a callback code for a session with accounts.
@@ -42,7 +45,7 @@ interface BankingProviderInterface
     /**
      * Get session details and status.
      *
-     * @return array{status: string, access: array, accounts: array}
+     * @return array{status: string, access: array, accounts: array, accounts_data?: array}
      */
     public function getSession(string $sessionId): array;
 

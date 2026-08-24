@@ -1,11 +1,19 @@
+import {
+    reorder,
+    updateVisibility,
+} from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
+import { AccountsManagerDialog } from '@/components/dashboard/accounts-manager-dialog';
 import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-card';
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
 import HeadingSmall from '@/components/heading-small';
+import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
+import { Button } from '@/components/ui/button';
 import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
+    type AccountWithMetrics,
     type NetWorthEvolutionData,
     deriveAccountMetrics,
 } from '@/hooks/use-dashboard-data';
@@ -16,6 +24,7 @@ import { BreadcrumbItem, SharedData } from '@/types';
 import { Category } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
+import { Pencil } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface CashflowSummary {
@@ -29,15 +38,19 @@ interface DashboardProps extends SharedData {
     showEncryptionPrompt: boolean;
     netWorthEvolution?: NetWorthEvolutionData;
     topCategories?: Array<{
-        category: Category;
+        category: Category | null;
+        category_id?: string | null;
         amount: number;
         previous_amount: number;
         total_amount: number;
+        has_children?: boolean;
+        is_direct?: boolean;
     }>;
     cashflowSummary?: {
         current: CashflowSummary;
         previous: CashflowSummary;
     };
+    openIntegrationRequests?: boolean;
 }
 
 export default function Dashboard() {
@@ -46,6 +59,9 @@ export default function Dashboard() {
     const { isKeySet, encryptedMessageData, fetchEncryptedMessage } =
         useEncryptionKey();
     const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+    const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(
+        !!props.openIntegrationRequests,
+    );
 
     const netWorthEvolution = useMemo(
         () =>
@@ -73,9 +89,78 @@ export default function Dashboard() {
         return ids;
     }, [accountMetrics]);
 
-    const visibleAccounts = useMemo(
-        () => accountMetrics.filter((a) => !linkedLoanAccountIds.has(a.id)),
+    // Archived accounts stay in the payload so the chart keeps their history,
+    // but they are off the dashboard itself: no card, no row in the manager.
+    const manageableAccounts = useMemo(
+        () =>
+            accountMetrics.filter(
+                (a) => !linkedLoanAccountIds.has(a.id) && !a.archived_at,
+            ),
         [accountMetrics, linkedLoanAccountIds],
+    );
+
+    const [editOpen, setEditOpen] = useState(false);
+
+    // Optimistic ordering layered on top of the server order. Null means "use
+    // the server order"; a drag sets the new id order and persists it.
+    const [order, setOrder] = useState<string[] | null>(null);
+    const orderedAccounts = useMemo(() => {
+        if (!order) {
+            return manageableAccounts;
+        }
+        const byId = new Map(manageableAccounts.map((a) => [a.id, a]));
+        const ordered = order
+            .map((id) => byId.get(id))
+            .filter((a) => a !== undefined);
+        const rest = manageableAccounts.filter((a) => !order.includes(a.id));
+        return [...ordered, ...rest];
+    }, [manageableAccounts, order]);
+
+    // Optimistic visibility overrides keyed by account id; falls back to the
+    // server flag until the next full reload.
+    const [hiddenOverrides, setHiddenOverrides] = useState<
+        Record<string, boolean>
+    >({});
+    const isHidden = useCallback(
+        (account: AccountWithMetrics) =>
+            hiddenOverrides[account.id] ?? account.hidden_on_dashboard,
+        [hiddenOverrides],
+    );
+
+    const gridAccounts = useMemo(
+        () => orderedAccounts.filter((a) => !isHidden(a)),
+        [orderedAccounts, isHidden],
+    );
+
+    const handleReorder = useCallback((ids: string[]) => {
+        setOrder(ids);
+        // Persist only; keep the deferred netWorthEvolution prop in place by
+        // requesting an unrelated cheap prop so it isn't refetched (skeleton).
+        router.patch(
+            reorder.url(),
+            { ids },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['showEncryptionPrompt'],
+            },
+        );
+    }, []);
+
+    const handleToggleVisibility = useCallback(
+        (id: string, hidden: boolean) => {
+            setHiddenOverrides((prev) => ({ ...prev, [id]: hidden }));
+            router.patch(
+                updateVisibility.url(id),
+                { hidden },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    only: ['showEncryptionPrompt'],
+                },
+            );
+        },
+        [],
     );
 
     // Build linked loan metrics map keyed by real estate account ID
@@ -161,6 +246,16 @@ export default function Dashboard() {
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Dashboard')} />
 
+            <IntegrationRequestsDrawer
+                open={integrationDrawerOpen}
+                onOpenChange={(open) => {
+                    setIntegrationDrawerOpen(open);
+                    if (!open) {
+                        router.visit(dashboard().url, { preserveScroll: true });
+                    }
+                }}
+            />
+
             {encryptedMessageData && (
                 <UnlockMessageDialog
                     open={showUnlockDialog}
@@ -205,8 +300,24 @@ export default function Dashboard() {
                 >
                     <NetWorthChartComponent data={netWorthEvolution} />
 
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">
+                            {__('Accounts')}
+                        </h2>
+                        {orderedAccounts.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => setEditOpen(true)}
+                                aria-label={__('Edit accounts')}
+                            >
+                                <Pencil className="size-4" />
+                            </Button>
+                        )}
+                    </div>
+
                     <div className="grid gap-4 md:grid-cols-2">
-                        {visibleAccounts.map((account) => (
+                        {gridAccounts.map((account) => (
                             <AccountBalanceCard
                                 key={account.id}
                                 account={account}
@@ -220,6 +331,15 @@ export default function Dashboard() {
                             />
                         ))}
                     </div>
+
+                    <AccountsManagerDialog
+                        open={editOpen}
+                        onOpenChange={setEditOpen}
+                        accounts={orderedAccounts}
+                        isHidden={isHidden}
+                        onReorder={handleReorder}
+                        onToggleVisibility={handleToggleVisibility}
+                    />
                 </Deferred>
 
                 <div className="flex flex-col gap-6">

@@ -23,7 +23,17 @@ enum AccountType: string
 
     public function reducesNetWorth(): bool
     {
-        return in_array($this, [self::CreditCard, self::Loan], true);
+        return $this === self::Loan;
+    }
+
+    /**
+     * Whether this account type is part of the net worth total at all. Credit
+     * cards are spending accounts, not wealth, so they are excluded entirely
+     * (neither added nor subtracted) while still being tracked on their own.
+     */
+    public function countsInNetWorth(): bool
+    {
+        return $this !== self::CreditCard;
     }
 
     /**
@@ -32,5 +42,28 @@ enum AccountType: string
     public function isNonTransactional(): bool
     {
         return in_array($this, [self::Investment, self::Retirement, self::RealEstate], true);
+    }
+
+    /**
+     * Whether this account type surfaces a transaction ledger in the UI. The
+     * account detail page renders a transaction list only for these types.
+     *
+     * Mirrors the frontend `isTransactionalAccount`. This is intentionally
+     * distinct from isNonTransactional(): that is the narrower balance-only
+     * concept used for net-worth charts and treats loan accounts as
+     * balance-tracking-with-amortization, whereas a loan has no editable ledger.
+     */
+    public function hasTransactionLedger(): bool
+    {
+        return ! in_array($this, [self::Investment, self::Loan, self::Retirement, self::RealEstate], true);
+    }
+
+    /**
+     * Whether a bank connection can sync transactions into this account type.
+     * Excludes balance/value-tracking types (loan, investment, retirement, real estate).
+     */
+    public function canSyncBankTransactions(): bool
+    {
+        return in_array($this, [self::Checking, self::CreditCard, self::Savings, self::Others], true);
     }
 }

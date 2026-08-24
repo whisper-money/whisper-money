@@ -5,7 +5,10 @@ import { DeleteBudgetDialog } from '@/components/budgets/delete-budget-dialog';
 import { EditBudgetDialog } from '@/components/budgets/edit-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { MobileBackButton } from '@/components/mobile-back-button';
+import { CategoryBadge } from '@/components/shared/category-combobox';
+import { LabelBadge } from '@/components/shared/label-combobox';
 import { TransactionList } from '@/components/transactions/transaction-list';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -19,6 +22,7 @@ import { BreadcrumbItem } from '@/types';
 import { Account, Bank } from '@/types/account';
 import { Budget, BudgetPeriod } from '@/types/budget';
 import { Category } from '@/types/category';
+import { Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import { ChevronDown, Loader2 } from 'lucide-react';
@@ -32,6 +36,7 @@ interface Props {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    labels: Label[];
     currencyCode: string;
 }
 
@@ -43,6 +48,7 @@ export default function BudgetShow({
     categories,
     accounts,
     banks,
+    labels,
     currencyCode,
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
@@ -74,11 +80,8 @@ export default function BudgetShow({
         },
     ];
 
-    const trackingLabel = useMemo((): string | null => {
-        if (budget.category) return budget.category.name;
-        if (budget.label) return budget.label.name;
-        return null;
-    }, [budget]);
+    const trackingCount =
+        (budget.categories?.length ?? 0) + (budget.labels?.length ?? 0);
 
     const periodTransactions = useMemo(() => {
         return (
@@ -87,6 +90,17 @@ export default function BudgetShow({
                 .filter((t) => t !== undefined && t !== null) || []
         );
     }, [currentPeriod]);
+
+    // The rows below show what the bank charged while the totals above count
+    // only the user's share, so say so when the two can differ.
+    const hasSharedAccountTransactions = useMemo(
+        () =>
+            periodTransactions.some(
+                (transaction) =>
+                    (transaction.account?.ownership_percentage ?? 100) < 100,
+            ),
+        [periodTransactions],
+    );
 
     return (
         <AppSidebarLayout
@@ -101,21 +115,36 @@ export default function BudgetShow({
                         <HeadingSmall
                             title={budget.name}
                             description={
-                                <div className="flex flex-row items-center gap-1 text-sm">
-                                    <div className="inline">
-                                        {trackingLabel !== null ? (
-                                            <>
-                                                <span className="opacity-50">
-                                                    {__('Tracking')}{' '}
-                                                </span>
-                                                <span>{trackingLabel}</span>
-                                            </>
-                                        ) : (
+                                <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
+                                    {budget.is_catch_all ? (
+                                        <Badge variant="secondary">
+                                            {__('All untracked expenses')}
+                                        </Badge>
+                                    ) : trackingCount > 0 ? (
+                                        <>
                                             <span className="opacity-50">
-                                                {__('No tracking')}
+                                                {__('Tracking')}{' '}
                                             </span>
-                                        )}
-                                    </div>
+                                            {budget.categories?.map(
+                                                (category) => (
+                                                    <CategoryBadge
+                                                        key={category.id}
+                                                        category={category}
+                                                    />
+                                                ),
+                                            )}
+                                            {budget.labels?.map((label) => (
+                                                <LabelBadge
+                                                    key={label.id}
+                                                    label={label}
+                                                />
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <span className="opacity-50">
+                                            {__('No tracking')}
+                                        </span>
+                                    )}
                                 </div>
                             }
                         />
@@ -186,15 +215,25 @@ export default function BudgetShow({
                         </div>
                     </div>
                 ) : (
-                    <TransactionList
-                        categories={categories}
-                        accounts={accounts}
-                        banks={banks}
-                        transactions={periodTransactions}
-                        pageSize={10}
-                        showActionsMenu={false}
-                        maxHeight={600}
-                    />
+                    <>
+                        {hasSharedAccountTransactions && (
+                            <p className="text-xs text-muted-foreground">
+                                {__(
+                                    'Each row shows the full amount charged by the bank. The totals above only count your share of the accounts you share with someone else.',
+                                )}
+                            </p>
+                        )}
+                        <TransactionList
+                            categories={categories}
+                            accounts={accounts}
+                            banks={banks}
+                            labels={labels}
+                            transactions={periodTransactions}
+                            pageSize={10}
+                            showActionsMenu={false}
+                            maxHeight={600}
+                        />
+                    </>
                 )}
             </div>
 

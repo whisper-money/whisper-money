@@ -10,7 +10,7 @@
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
         <script>
             (function() {
-                const appearance = '{{ $appearance ?? "system" }}';
+                const appearance = @json($appearance ?? 'system');
 
                 if (appearance === 'system') {
                     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -20,7 +20,7 @@
                     }
                 }
 
-                var chartScheme = '{{ $chartColorScheme ?? "colorful" }}';
+                var chartScheme = @json($chartColorScheme ?? 'colorful');
 
                 try {
                     chartScheme = localStorage.getItem('chart-color-scheme') || chartScheme;
@@ -43,7 +43,7 @@
             }
         </style>
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <title data-inertia>{{ config('app.name', 'Laravel') }}</title>
 
         <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
         <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />

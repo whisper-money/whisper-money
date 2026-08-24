@@ -1,22 +1,31 @@
 import { BankLogo } from '@/components/bank-logo';
-import InputError from '@/components/input-error';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { tailwindColorClasses } from '@/components/user-info';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
+import {
+    useScrollProgress,
+    useScrollTranslate,
+} from '@/hooks/use-scroll-progress';
+import { leavePage } from '@/lib/leave-page';
+import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
-import { store as storeUserLead } from '@/routes/user-leads';
+import { dashboard, roadmap } from '@/routes';
 import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
+import { LANGUAGE_OPTIONS } from '@/types/language';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Facehash } from 'facehash';
 import {
     ArrowDownLeftIcon,
     ArrowLeftRightIcon,
+    ArrowRightIcon,
     ArrowUpRightIcon,
     BoltIcon,
     BriefcaseIcon,
@@ -29,11 +38,21 @@ import {
     HeartPulseIcon,
     LockIcon,
     type LucideIcon,
+    PencilIcon,
+    SearchIcon,
     ShoppingBasketIcon,
+    SparklesIcon,
     WineIcon,
     WrenchIcon,
+    XIcon,
 } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    type CSSProperties,
+    type ReactNode,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
 
 const LANDING_IMAGES = [
     {
@@ -62,6 +81,16 @@ const LANDING_IMAGES = [
 type PopularBank = {
     name: string;
     logo: string | null;
+};
+
+/**
+ * A comparison landing, in whichever language it is published in for this
+ * visitor. The server picks the language, since each one is its own URL.
+ */
+type ComparisonLink = {
+    slug: string;
+    heading: string;
+    path: string;
 };
 
 type TransactionPreviewRow = {
@@ -276,65 +305,15 @@ function BankConnectionsPreview({
     prependFromBottomCount?: number;
     className?: string;
 }) {
-    const [translateY, setTranslateY] = useState(0);
-    const [maxTranslate, setMaxTranslate] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const listRef = useRef<HTMLUListElement | null>(null);
-    const scrollSpeed = 0.15;
+    const { containerRef, listRef, translateY } = useScrollTranslate<
+        HTMLDivElement,
+        HTMLUListElement
+    >({ speed: 0.15, padding: 24 });
     const prependedBanksCount = Math.min(prependFromBottomCount, banks.length);
     const previewBanks = useMemo(
         () => [...banks.slice(-prependedBanksCount), ...banks],
         [banks, prependedBanksCount],
     );
-
-    useEffect(() => {
-        const updateMaxTranslate = () => {
-            const container = containerRef.current;
-            const list = listRef.current;
-            if (!container || !list) {
-                return;
-            }
-
-            const travelDistance = Math.max(
-                0,
-                list.scrollHeight - container.clientHeight + 24,
-            );
-            setMaxTranslate(travelDistance);
-        };
-
-        updateMaxTranslate();
-        window.addEventListener('resize', updateMaxTranslate);
-
-        return () => {
-            window.removeEventListener('resize', updateMaxTranslate);
-        };
-    }, []);
-
-    useEffect(() => {
-        const updateTranslate = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            const clampedProgress = Math.min(1, Math.max(0, progress));
-
-            setTranslateY(clampedProgress * maxTranslate * scrollSpeed);
-        };
-
-        updateTranslate();
-        window.addEventListener('scroll', updateTranslate, { passive: true });
-        window.addEventListener('resize', updateTranslate);
-
-        return () => {
-            window.removeEventListener('scroll', updateTranslate);
-            window.removeEventListener('resize', updateTranslate);
-        };
-    }, [maxTranslate, scrollSpeed]);
 
     return (
         <div
@@ -393,13 +372,16 @@ function TransactionRowsPreview({
     currency: string;
     locale: string;
 }) {
-    const [translateY, setTranslateY] = useState(0);
-    const [maxTranslate, setMaxTranslate] = useState(0);
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const listRef = useRef<HTMLUListElement | null>(null);
+    const {
+        containerRef,
+        listRef,
+        translateY,
+        progress: scrollProgress,
+    } = useScrollTranslate<HTMLDivElement, HTMLUListElement>({
+        speed: 0.28,
+        padding: 56,
+    });
     const prependedRowsCount = Math.min(10, TRANSACTION_PREVIEW_ROWS.length);
-    const scrollSpeed = 0.28;
     const previewRows = useMemo(
         () => [
             ...TRANSACTION_PREVIEW_ROWS.slice(-prependedRowsCount),
@@ -407,56 +389,6 @@ function TransactionRowsPreview({
         ],
         [prependedRowsCount],
     );
-
-    useEffect(() => {
-        const updateMaxTranslate = () => {
-            const container = containerRef.current;
-            const list = listRef.current;
-            if (!container || !list) {
-                return;
-            }
-
-            const travelDistance = Math.max(
-                0,
-                list.scrollHeight - container.clientHeight + 56,
-            );
-            setMaxTranslate(travelDistance);
-        };
-
-        updateMaxTranslate();
-        window.addEventListener('resize', updateMaxTranslate);
-
-        return () => {
-            window.removeEventListener('resize', updateMaxTranslate);
-        };
-    }, []);
-
-    useEffect(() => {
-        const updateTranslate = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            const clampedProgress = Math.min(1, Math.max(0, progress));
-
-            setScrollProgress(clampedProgress);
-            setTranslateY(clampedProgress * maxTranslate * scrollSpeed);
-        };
-
-        updateTranslate();
-        window.addEventListener('scroll', updateTranslate, { passive: true });
-        window.addEventListener('resize', updateTranslate);
-
-        return () => {
-            window.removeEventListener('scroll', updateTranslate);
-            window.removeEventListener('resize', updateTranslate);
-        };
-    }, [maxTranslate, scrollSpeed]);
 
     return (
         <div
@@ -565,35 +497,11 @@ function AccountsBalancePreview({
     currency: string;
     locale: string;
 }) {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
     const cardCount = ACCOUNT_PREVIEW_ROWS.length;
     const staggerDelay = 0.12;
     const staggerRange = 1 - (cardCount - 1) * staggerDelay;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     return (
         <div
@@ -703,8 +611,8 @@ function ImportPreview({
     currency: string;
     locale: string;
 }) {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     // How many transaction rows to show below the file card
     const previewRows = TRANSACTION_PREVIEW_ROWS.slice(0, 5);
@@ -715,30 +623,6 @@ function ImportPreview({
     const ROW_SPAN = 0.12;
     // Row i starts appearing at this scroll progress
     const rowStart = (i: number) => 0.3 + i * 0.1;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     // File card animation: drops from above, scales and fades in
     const fileProgress = Math.min(1, scrollProgress / FILE_DROP_END);
@@ -857,37 +741,13 @@ function PrivacyRedactedPreview() {
         { label: 'Statement', value: 'Q4 2024 · ' + __('Quartely') },
     ] as const;
 
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     // Each bar slides in over this span of scroll progress
     const BAR_SPAN = 0.15;
     // Row i's bar starts sliding at this scroll progress
     const barStart = (i: number) => 0.1 + i * 0.12;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     return (
         <div
@@ -958,32 +818,8 @@ const CASHFLOW_PREVIEW_DATA = [
 ] as const;
 
 function CashflowChartPreview() {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     const maxValue = Math.max(
         ...CASHFLOW_PREVIEW_DATA.map((d) =>
@@ -1089,6 +925,278 @@ function CashflowChartPreview() {
     );
 }
 
+/**
+ * Tools the MCP server exposes, split by what they do. A test keeps these in
+ * step with App\Mcp\Servers\WhisperMoneyServer, so the landing cannot claim a
+ * number the server stopped serving.
+ */
+const MCP_READ_TOOL_COUNT = 10;
+const MCP_WRITE_TOOL_COUNT = 19;
+
+/**
+ * The figures the assistant reports on in the preview conversation. The budgets
+ * deliberately mirror BUDGETS_PREVIEW_ROWS below, so the two previews on the
+ * page cannot disagree about the same category, and every figure the transcript
+ * derives from them is computed rather than written out.
+ */
+const AI_CONNECTOR_CONVERSATION = {
+    budgets: [
+        { name: 'Groceries', spentInCents: 23800, budgetInCents: 35000 },
+        { name: 'Entertainment', spentInCents: 7200, budgetInCents: 8000 },
+        { name: 'Dining Out', spentInCents: 11000, budgetInCents: 20000 },
+    ],
+    /** Charges the assistant offers to file, and the budget they land in. */
+    unfiled: {
+        merchant: 'Reel Cinema',
+        count: 3,
+        amountInCents: 4780,
+        budgetIndex: 1,
+    },
+} as const;
+
+/** Span of scroll progress each message fades in over. */
+const AI_CONNECTOR_MESSAGE_SPAN = 0.12;
+
+/** Scroll progress at which message `index` starts appearing. */
+function aiConnectorMessageStart(index: number): number {
+    return 0.06 + index * 0.12;
+}
+
+function AiConnectorQuestion({
+    children,
+    style,
+}: {
+    children: ReactNode;
+    style: CSSProperties;
+}) {
+    return (
+        <div className="flex justify-end will-change-transform" style={style}>
+            <p className="max-w-[85%] rounded-xl border border-[#e3e3e0] bg-[#FDFDFC] px-3.5 py-2.5 text-sm leading-relaxed font-medium dark:border-[#3E3E3A] dark:bg-[#1C1C1A]">
+                {children}
+            </p>
+        </div>
+    );
+}
+
+function AiConnectorAnswer({
+    children,
+    style,
+}: {
+    children: ReactNode;
+    style: CSSProperties;
+}) {
+    return (
+        <div className="flex gap-3 will-change-transform" style={style}>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#1C1C1A]">
+                <SparklesIcon className="size-3.5" />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-3">{children}</div>
+        </div>
+    );
+}
+
+/**
+ * One MCP tool the assistant called. Tool names are identifiers on the wire,
+ * so they are never translated.
+ */
+function AiConnectorToolChip({
+    name,
+    writes = false,
+}: {
+    name: string;
+    writes?: boolean;
+}) {
+    const Icon = writes ? PencilIcon : SearchIcon;
+
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 font-mono text-[0.6875rem]',
+                writes
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400'
+                    : 'border-[#e3e3e0] bg-[#FDFDFC] text-[#706f6c] dark:border-[#3E3E3A] dark:bg-[#1C1C1A] dark:text-[#A1A09A]',
+            )}
+        >
+            <Icon className="size-3 shrink-0" />
+            {name}
+        </span>
+    );
+}
+
+function AiConnectorPreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
+
+    const { budgets, unfiled } = AI_CONNECTOR_CONVERSATION;
+    const target = budgets[unfiled.budgetIndex];
+    const filedSpentInCents = target.spentInCents + unfiled.amountInCents;
+    const amount = (valueInCents: number) =>
+        formatCurrency(valueInCents, currency, locale);
+
+    const revealStyle = (index: number): CSSProperties => {
+        const revealed = Math.min(
+            1,
+            Math.max(
+                0,
+                (scrollProgress - aiConnectorMessageStart(index)) /
+                    AI_CONNECTOR_MESSAGE_SPAN,
+            ),
+        );
+
+        return {
+            opacity: revealed,
+            transform: `translateY(${(1 - revealed) * 10}px)`,
+        };
+    };
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__(
+                'A sample conversation where an assistant reports on your budgets and files uncategorised transactions',
+            )}
+            className="overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <div className="flex flex-wrap items-center gap-2 border-b border-[#e3e3e0]/85 px-4 py-3 dark:border-[#3E3E3A]/80">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-[#e3e3e0] bg-[#FDFDFC] px-2 py-0.5 text-[0.7rem] font-medium text-[#706f6c] dark:border-[#3E3E3A] dark:bg-[#1C1C1A] dark:text-[#A1A09A]">
+                    <SparklesIcon className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    {__('Whisper Money connected')}
+                </span>
+                <span className="text-[0.7rem] text-[#A1A09A] dark:text-[#706f6c]">
+                    {__('Sample conversation')}
+                </span>
+            </div>
+
+            <div className="flex flex-col gap-5 p-4 sm:p-5">
+                <AiConnectorQuestion style={revealStyle(0)}>
+                    {__('What am I about to go over on this month?')}
+                </AiConnectorQuestion>
+
+                <AiConnectorAnswer style={revealStyle(1)}>
+                    <div className="flex flex-wrap gap-1.5">
+                        <AiConnectorToolChip name="list_budgets" />
+                        <AiConnectorToolChip name="spending_by_category" />
+                    </div>
+
+                    <p className="text-sm leading-relaxed">
+                        {__(
+                            ':category is the one to watch: :spent of :budget, with :remaining left.',
+                            {
+                                category: __(target.name),
+                                spent: amount(target.spentInCents),
+                                budget: amount(target.budgetInCents),
+                                remaining: amount(
+                                    target.budgetInCents - target.spentInCents,
+                                ),
+                            },
+                        )}
+                    </p>
+
+                    <div className="overflow-hidden rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75">
+                        {budgets.map((budget, index) => (
+                            <div
+                                key={budget.name}
+                                className={cn(
+                                    'flex items-center justify-between gap-3 px-3 py-2',
+                                    index < budgets.length - 1 &&
+                                        'border-b border-[#e3e3e0]/70 dark:border-[#3E3E3A]/60',
+                                )}
+                            >
+                                <span className="truncate text-[0.8125rem] font-medium">
+                                    {__(budget.name)}
+                                </span>
+                                <span className="shrink-0 text-[0.8125rem] tabular-nums">
+                                    <span
+                                        className={cn(
+                                            'font-semibold',
+                                            budget === target &&
+                                                'text-rose-500 dark:text-rose-400',
+                                        )}
+                                    >
+                                        {amount(budget.spentInCents)}
+                                    </span>
+                                    <span className="text-[#706f6c] dark:text-[#A1A09A]">
+                                        {' / '}
+                                        {amount(budget.budgetInCents)}
+                                    </span>
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <p className="text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                        {__(
+                            'And :count charges from :merchant are uncategorised, :amount in total, so no budget counts them yet.',
+                            {
+                                count: unfiled.count,
+                                merchant: unfiled.merchant,
+                                amount: amount(unfiled.amountInCents),
+                            },
+                        )}
+                    </p>
+                </AiConnectorAnswer>
+
+                <AiConnectorQuestion style={revealStyle(2)}>
+                    {__(
+                        'Put them under :category and make a rule for the next ones.',
+                        {
+                            category: __(target.name),
+                        },
+                    )}
+                </AiConnectorQuestion>
+
+                <AiConnectorAnswer style={revealStyle(3)}>
+                    <div className="flex flex-wrap gap-1.5">
+                        <AiConnectorToolChip
+                            name="categorize_transaction"
+                            writes
+                        />
+                        <AiConnectorToolChip
+                            name="create_automation_rule"
+                            writes
+                        />
+                    </div>
+
+                    <p className="text-sm leading-relaxed">
+                        {__(
+                            'Done. :count transactions moved to :category, and a new rule: anything from :merchant goes there from now on.',
+                            {
+                                count: unfiled.count,
+                                category: __(target.name),
+                                merchant: unfiled.merchant,
+                            },
+                        )}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-800/50 dark:bg-emerald-950/30">
+                        <CheckIcon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[0.8125rem] text-[#706f6c] dark:text-[#A1A09A]">
+                            {__(':category is now :amount', {
+                                category: __(target.name),
+                                amount: amount(filedSpentInCents),
+                            })}
+                        </span>
+                        <span className="text-[0.8125rem] font-medium text-rose-500 tabular-nums dark:text-rose-400">
+                            {__(':amount over budget', {
+                                amount: amount(
+                                    filedSpentInCents - target.budgetInCents,
+                                ),
+                            })}
+                        </span>
+                    </div>
+                </AiConnectorAnswer>
+            </div>
+        </div>
+    );
+}
+
 const BUDGETS_PREVIEW_ROWS = [
     {
         name: 'Groceries',
@@ -1127,37 +1235,13 @@ function BudgetsListPreview({
     currency: string;
     locale: string;
 }) {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     const ROW_SLIDE_SPAN = 0.15;
     const BAR_FILL_SPAN = 0.2;
     const rowSlideStart = (i: number) => 0.05 + i * 0.1;
     const barFillStart = (i: number) => rowSlideStart(i) + 0.12;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     return (
         <div
@@ -1268,8 +1352,8 @@ function BudgetDetailPreview({
     currency: string;
     locale: string;
 }) {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     // Grocery budget detail — 68% spent
     const budget = BUDGETS_PREVIEW_ROWS[0];
@@ -1282,30 +1366,6 @@ function BudgetDetailPreview({
     const ROWS_START = 0.25;
     const ROW_STEP = 0.1;
     const ROW_SPAN = 0.18;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     const barFill =
         Math.min(1, Math.max(0, scrollProgress / BAR_SPAN)) * spentPct * 100;
@@ -1444,8 +1504,8 @@ function BudgetDetailPreview({
 }
 
 function BudgetEditPreview() {
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
 
     // "Dining Out" budget — 90% spent (high alert)
     const budget = BUDGETS_PREVIEW_ROWS[2]; // Entertainment, 90%
@@ -1457,30 +1517,6 @@ function BudgetEditPreview() {
     const ALERT_SPAN = 0.22;
     const ACTION_START = 0.35;
     const ACTION_SPAN = 0.18;
-
-    useEffect(() => {
-        const updateProgress = () => {
-            const container = containerRef.current;
-            if (!container) {
-                return;
-            }
-
-            const rect = container.getBoundingClientRect();
-            const viewportHeight = window.innerHeight || 1;
-            const progress =
-                (viewportHeight - rect.top) / (viewportHeight + rect.height);
-            setScrollProgress(Math.min(1, Math.max(0, progress)));
-        };
-
-        updateProgress();
-        window.addEventListener('scroll', updateProgress, { passive: true });
-        window.addEventListener('resize', updateProgress);
-
-        return () => {
-            window.removeEventListener('scroll', updateProgress);
-            window.removeEventListener('resize', updateProgress);
-        };
-    }, []);
 
     const rowProgress = Math.min(1, Math.max(0, scrollProgress / ROW_SPAN));
     const alertProgress = Math.min(
@@ -1649,7 +1685,53 @@ function BudgetEditPreview() {
     );
 }
 
-function FreePlanCard({ planFeatures }: { planFeatures: string[] }) {
+/**
+ * Features reserved for paid plans. On the free plan card these are shown
+ * dimmed with an X to set expectations before sign-up.
+ */
+const PRO_ONLY_FEATURES = [
+    'Connect bank accounts',
+    'AI Suggestions',
+    'Priority support',
+];
+
+/**
+ * The landing page is browsable while signed in, and every "get started" route
+ * is behind guest middleware - so for an authenticated visitor those CTAs would
+ * bounce to the dashboard with copy that does not match where they end up.
+ */
+function useLandingCta(
+    canRegister?: boolean,
+    plan?: 'free' | 'paid',
+): {
+    href: string;
+    isSignedIn: boolean;
+} {
+    const { auth } = usePage<SharedData>().props;
+
+    return {
+        href: auth.user
+            ? dashboard().url
+            : canRegister
+              ? // Only the pricing cards pass a plan: onboarding adapts to the
+                // card that was clicked, and every other CTA stays a bare
+                // /register with the untouched flow behind it.
+                `/register${plan ? `?plan=${plan}` : ''}`
+              : '/login',
+        isSignedIn: Boolean(auth.user),
+    };
+}
+
+function FreePlanCard({
+    features,
+    canRegister = false,
+}: {
+    features: string[];
+    canRegister?: boolean;
+}) {
+    const excluded = new Set(PRO_ONLY_FEATURES);
+    const cta = useLandingCta(canRegister, 'free');
+
     return (
         <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#161615]">
             <div className="flex flex-1 flex-col p-6 pt-2 sm:pt-12">
@@ -1672,21 +1754,43 @@ function FreePlanCard({ planFeatures }: { planFeatures: string[] }) {
 
                 <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
 
+                <p className="mt-1 text-xs text-[#706f6c] opacity-0 dark:text-[#A1A09A]">
+                    {__('Create the account now, update at any moment')}
+                </p>
+
                 <ul className="flex-1 space-y-2.5">
-                    {planFeatures.map((feature) => (
-                        <li key={feature} className="flex items-center gap-2.5">
-                            <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
-                            <span className="text-sm">{__(feature)}</span>
-                        </li>
-                    ))}
+                    {features.map((feature) => {
+                        const isExcluded = excluded.has(feature);
+
+                        return (
+                            <li
+                                key={feature}
+                                className={cn(
+                                    'flex items-center gap-2.5',
+                                    isExcluded && 'opacity-40',
+                                )}
+                            >
+                                {isExcluded ? (
+                                    <XIcon className="size-4 shrink-0 text-[#706f6c] dark:text-[#A1A09A]" />
+                                ) : (
+                                    <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                                )}
+                                <span className="text-sm">{__(feature)}</span>
+                            </li>
+                        );
+                    })}
                 </ul>
 
-                <Link href="/register" className="mt-8">
+                <Link href={cta.href} className="mt-8">
                     <Button
                         className="w-full cursor-pointer border-[#e3e3e0] bg-transparent py-5 text-base text-[#1b1b18] shadow-sm transition-all hover:bg-[#f5f5f4] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:bg-[#1f1f1e]"
                         variant="outline"
                     >
-                        {__('Get Started Free')}
+                        {cta.isSignedIn
+                            ? __('Go to Dashboard')
+                            : canRegister
+                              ? __('Get Started Free')
+                              : __('Log in')}
                     </Button>
                 </Link>
             </div>
@@ -1700,6 +1804,7 @@ function LandingPlanCard({
     isBestValue,
     currency,
     locale,
+    canRegister = false,
 }: {
     plan: Plan;
     isDefault: boolean;
@@ -1708,9 +1813,11 @@ function LandingPlanCard({
     promoBadge: string;
     currency: string;
     locale: string;
+    canRegister?: boolean;
 }) {
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
+    const cta = useLandingCta(canRegister, 'paid');
 
     return (
         <div
@@ -1781,20 +1888,15 @@ function LandingPlanCard({
                 <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
 
                 <ul className="flex-1 space-y-2.5">
-                    {[__('Connect bank accounts'), ...plan.features].map(
-                        (feature) => (
-                            <li
-                                key={feature}
-                                className="flex items-center gap-2.5"
-                            >
-                                <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
-                                <span className="text-sm">{__(feature)}</span>
-                            </li>
-                        ),
-                    )}
+                    {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2.5">
+                            <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                            <span className="text-sm">{__(feature)}</span>
+                        </li>
+                    ))}
                 </ul>
 
-                <Link href="/register" className="mt-8">
+                <Link href={cta.href} className="mt-8">
                     <Button
                         className={cn(
                             'w-full cursor-pointer py-5 text-base shadow-sm transition-all',
@@ -1804,7 +1906,11 @@ function LandingPlanCard({
                         )}
                         variant={isDefault ? 'default' : 'outline'}
                     >
-                        {__('Get Started')}
+                        {cta.isSignedIn
+                            ? __('Go to Dashboard')
+                            : canRegister
+                              ? __('Get Started')
+                              : __('Log in')}
                     </Button>
                 </Link>
             </div>
@@ -1846,71 +1952,261 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
     );
 }
 
-function WaitlistForm() {
-    const [referrerCode, setReferrerCode] = useState('');
-    const { locale } = usePage<SharedData>().props;
+const FOOTER_LINK_CLASSES = 'hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]';
 
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const ref = params.get('ref');
-        if (ref) {
-            setReferrerCode(ref);
-        }
-    }, []);
-
+function FooterColumn({
+    title,
+    children,
+}: {
+    title: string;
+    children: ReactNode;
+}) {
     return (
-        <Form
-            {...storeUserLead.form()}
-            className="flex w-full flex-col gap-3"
-            disableWhileProcessing
-        >
-            {({ processing, errors }) => (
-                <>
-                    <input
-                        type="hidden"
-                        name="referrer_code"
-                        value={referrerCode}
-                    />
-                    <input type="hidden" name="locale" value={locale} />
-                    <div className="flex w-full flex-col gap-1.5">
-                        <div className="flex w-full flex-row gap-2">
-                            <Input
-                                type="email"
-                                name="email"
-                                required
-                                autoComplete="email"
-                                placeholder={__('Your email address')}
-                                className="h-14 flex-1 text-base"
-                            />
-                            <Button
-                                type="submit"
-                                className="text-shadow h-14 shrink-0 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-6 text-base text-white shadow-sm transition-all duration-200 hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:from-zinc-50"
-                            >
-                                {processing && <Spinner />}
-                                {__('Join Waitlist')}
-                            </Button>
-                        </div>
-                        <InputError message={errors.email} />
-                    </div>
-                </>
-            )}
-        </Form>
+        <div className="flex flex-col gap-3">
+            <h2 className="font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
+                {title}
+            </h2>
+            <ul className="flex flex-col gap-2">{children}</ul>
+        </div>
     );
 }
 
 export default function Welcome({
     canRegister,
-    hideAuthButtons,
     popularBanks,
+    comparisonLinks,
+    integrationsLink,
 }: {
     canRegister?: boolean;
-    hideAuthButtons?: boolean;
     popularBanks: PopularBank[];
+    comparisonLinks: ComparisonLink[];
+    integrationsLink: { heading: string; path: string };
 }) {
-    const { appUrl, subscriptionsEnabled, pricing, locale } =
+    const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
         usePage<SharedData>().props;
+    const cta = useLandingCta(canRegister);
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
+
+    const testimonials: {
+        name: string;
+        text: string;
+        // ponytail: both optional — with neither, Facehash draws an avatar from the name
+        gravatar?: string;
+        avatar?: string;
+    }[] = [
+        {
+            name: 'Brian Bansuela',
+            gravatar: '9314f776a17ae977871076ac71f2ff60',
+            text: __(
+                'I just started syncing my accounts and it already feels like a great app. The interface is lovely and it looks like a really solid tool. Great work!',
+            ),
+        },
+        {
+            name: 'David Carrión',
+            gravatar: '2a0a1e872f2f883da214b65e1c2e2156',
+            text: __(
+                "I have a lot of faith in this project — it's really well built and your MVP is fantastic. Thanks for everything!",
+            ),
+        },
+        {
+            name: 'Joel Molina',
+            text: __(
+                "I really like Whisper Money and I think it's a very interesting app. I'm delighted to hear the Kuwaiti dinar is now available in production. That's great news!",
+            ),
+        },
+        {
+            name: 'Jorge Navarrete',
+            gravatar: 'd20d4e05a100d5b20b45c84f3c566a25',
+            text: __(
+                "I'm exploring the web app and the design and UX are excellent. Thanks, team!",
+            ),
+        },
+        {
+            name: 'Marcus Oliveira',
+            gravatar: '3c4342baddf0beb8b0bd9fe89168e282',
+            text: __(
+                'Thank you for developing Whisper Money. The focus on privacy and centralizing finances is an excellent proposition.',
+            ),
+        },
+        {
+            name: 'Mark',
+            text: __(
+                "I've tried a load of apps that never quite fitted. Apps also scare me a little, because years ago I spent months entering data into one that was working nicely — I was on the paid version — and six months later it disappeared and I lost all the information, and above all the time. Yours looks very good.",
+            ),
+        },
+        {
+            name: 'Carla Álvarez',
+            gravatar: '9901ee5e849cf9a0caea00e897cb8123',
+            text: __(
+                'I found Whisper Money and instantly knew I needed it. I was stuck doing everything in a spreadsheet — a chore I kept putting off. This makes it effortless.',
+            ),
+        },
+        {
+            name: 'Yaritza Rey',
+            gravatar: 'a519f143865c358b013f3f6dcdbc387a',
+            text: __(
+                'Thank you so much for creating such a clean, simple app.',
+            ),
+        },
+        {
+            name: 'Itziar Del Hierro',
+            text: __(
+                "First of all, congratulations on making the app, and on the work you've put into it.",
+            ),
+        },
+        {
+            name: 'Will Harris',
+            gravatar: 'c6fbc4911d6143fe723a42f46230275e',
+            text: __('Great project!'),
+        },
+        {
+            name: 'Fernando',
+            text: __(
+                "I found the app on my Instagram and I think it's a very good idea, and I like how it's designed. Good work on the app.",
+            ),
+        },
+        {
+            name: 'Haru',
+            gravatar: '3e52d6b2cbefb0fa2a572a588b3f7953',
+            avatar: 'https://cdn.discordapp.com/avatars/313325435687534594/4c5f74503bfc5942732c5c9d415ed255.webp?size=128',
+            text: __(
+                'I used to keep everything in a spreadsheet and it took forever — now I have my bank under control and add cash payments manually. Great work!',
+            ),
+        },
+        {
+            name: 'Tom',
+            gravatar: 'd721bb1875ac11132d4d33295867cbd9',
+            text: __(
+                "I'm genuinely happy using an open-source project with a real commitment to privacy — that's exactly what I want from a finance app.",
+            ),
+        },
+        {
+            name: 'Verónica Betancourt',
+            text: __(
+                "I love the concept of the app. It's exactly the tool I had spent a long time looking for, precisely to manage my finances in one place and have a view of everything.",
+            ),
+        },
+        {
+            name: 'Elena',
+            gravatar: '9867fc6636afc02ae519820e657e4485',
+            text: __(
+                "I can't wait to discover everything the app can do. Thank you — it must have taken a tremendous effort. Congratulations!",
+            ),
+        },
+        {
+            name: 'Albert G.',
+            gravatar: 'bb92a036f4feb9d12d0a70dd2d9a5c5f',
+            text: __(
+                'The app is intuitive, functional, and a real help for managing my finances day to day. What stands out most is how much the free version offers — it really shows your commitment to your users. I’ll keep recommending it!',
+            ),
+        },
+        {
+            name: 'Geraldine Herraz',
+            text: __(
+                'Overall I really liked the experience, and I think Whisper Money has enormous potential. Every success with Whisper Money.',
+            ),
+        },
+        {
+            name: 'Priya Nair',
+            gravatar: '299c92b453769c8805a14f3044157f22',
+            text: __(
+                'Categorizing transactions used to eat my whole Sunday. Now the AI does it and gets most of them right, and the few it misses it remembers after I fix them once. I barely touch it anymore.',
+            ),
+        },
+        {
+            name: 'Sofía Romero',
+            gravatar: '51bd48ebe85a4f936b1f2ac38ee39238',
+            text: __(
+                "My accounts sync on their own and everything lands already sorted, so checking my budget takes two minutes instead of an hour. I didn't think I'd keep up with it, but I have.",
+            ),
+        },
+        {
+            name: 'Mauricio Rojas',
+            text: __(
+                "First of all, congratulations on the app. I'm a software engineer too, and I know how complicated designing an application can be.",
+            ),
+        },
+        {
+            name: 'Daniel Okafor',
+            gravatar: '292ce946081970493a65fae7cf406427',
+            text: __(
+                "I was wary of letting any app run AI on my bank data. What changed my mind was that it only works for me and isn't fed into some model. Turns out it's accurate too.",
+            ),
+        },
+        {
+            name: 'Lena Hoffmann',
+            gravatar: '708c64d04836b9a1e25a9caddc13f97b',
+            text: __(
+                'I drop in my bank’s CSV and it works out the columns and categories on its own. The part of doing my finances I used to dread is just gone.',
+            ),
+        },
+        {
+            name: 'Marc Dubois',
+            gravatar: '226dbaa3b8d04f4641b99ab90884bb9d',
+            text: __(
+                "I had three apps and a spreadsheet before this. Getting every account in one place is the first time I've actually understood where my money goes.",
+            ),
+        },
+        {
+            name: 'Abel Morilla',
+            text: __(
+                "I appreciate your effort, your time and your dedication to getting this tool out there to make personal finance easier for people. You're doing a good job!",
+            ),
+        },
+        {
+            name: 'Kenji Saito',
+            gravatar: '13440a401468cb05cf2c123d48202c1e',
+            text: __(
+                "Fast, clean, and a dark mode that doesn't fry my eyes at night. And it isn't trying to sell my data. That's everything I wanted.",
+            ),
+        },
+        {
+            name: 'Francisco Montes',
+            gravatar: 'c81f10150ae734978a346a7d617712ad',
+            text: __(
+                "The design is simple and clean, and it's genuinely easy to use. In a few clicks I set up an account, imported my transactions, created a couple of automation rules, and tried the AI. Two days in, and it's the best I've found.",
+            ),
+        },
+        {
+            name: 'Miguel Ángel SB',
+            gravatar: 'e5da1753042eee6b08a3db0df0b5f807',
+            text: __(
+                'I love the style, the intuitive interface, how easy it is to use. If it keeps growing like this, Whisper Money will be my finance app of choice. You can tell it is built with passion — and things made with passion can only end up a success.',
+            ),
+        },
+        {
+            name: 'Marta Bordiu',
+            gravatar: '8329bd04eb4272db2e94f7c849ca7776',
+            text: __(
+                "I'd been holding back on finance apps because I worried about my data — this is the first one I trusted enough to go premium. I love that I can put everything in one place, investments included.",
+            ),
+        },
+        {
+            name: 'Ryan Haste',
+            text: __(
+                'Great job on this project, love this! Keep up the good work.',
+            ),
+        },
+        {
+            name: 'Ricardo Rovira',
+            text: __(
+                "I really like the app — it's exactly what I was looking for. It's a great project, and I think you've nailed what a personal finance app should be, at least the way I want to manage mine.",
+            ),
+        },
+        {
+            name: 'Víctor Falcón (co-owner)',
+            gravatar: '50901af884c50a8f12804b0cf3aeb98a',
+            text: __(
+                'I built the app I needed to make better decisions. Understanding how I spend and where my income comes from has brought me real financial peace of mind.',
+            ),
+        },
+    ];
+    const half = Math.ceil(testimonials.length / 2);
+    const testimonialRows = [
+        testimonials.slice(0, half),
+        testimonials.slice(half),
+    ];
 
     const hasMonthlyAndYearly =
         planEntries.some(([, p]) => p.billing_period === 'month') &&
@@ -1949,24 +2245,28 @@ export default function Welcome({
         const urlParams = new URLSearchParams(window.location.search);
         const langParam = urlParams.get('lang');
 
-        if (langParam && ['en', 'es'].includes(langParam)) {
+        const supportedLocales: readonly string[] = LANGUAGE_OPTIONS.map(
+            (option) => option.code,
+        );
+
+        if (langParam && supportedLocales.includes(langParam)) {
             // Store the preference in localStorage
-            localStorage.setItem('whisper_landing_locale', langParam);
+            writeStoredValue('whisper_landing_locale', langParam);
         } else {
             // No query param - check if we have a stored preference
-            const storedLocale = localStorage.getItem('whisper_landing_locale');
+            const storedLocale = readStoredValue('whisper_landing_locale');
 
             if (
                 storedLocale &&
                 storedLocale !== locale &&
-                ['en', 'es'].includes(storedLocale)
+                supportedLocales.includes(storedLocale)
             ) {
                 // Redirect to stored preference
-                window.location.href = `/?lang=${storedLocale}`;
+                leavePage(`/?lang=${storedLocale}`);
                 return;
             } else if (!storedLocale && locale) {
                 // First visit - store the detected locale from session/header
-                localStorage.setItem('whisper_landing_locale', locale);
+                writeStoredValue('whisper_landing_locale', locale);
             }
         }
     }, [locale]);
@@ -2097,10 +2397,7 @@ export default function Welcome({
                 </script>
             </Head>
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
-                <Header
-                    canRegister={canRegister}
-                    hideAuthButtons={hideAuthButtons}
-                />
+                <Header canRegister={canRegister} />
 
                 <main className="flex flex-1 flex-col">
                     <section className="relative w-full overflow-hidden px-6 py-28 sm:py-32 md:py-40">
@@ -2123,39 +2420,37 @@ export default function Welcome({
                                     )}
                                 </p>
                                 <div className="flex w-full max-w-lg flex-col gap-4">
-                                    {hideAuthButtons ? (
-                                        <WaitlistForm />
-                                    ) : isMobile ? (
+                                    {isMobile ? (
                                         <InstallAppButton />
                                     ) : (
                                         <div className="flex w-full flex-row gap-4">
                                             <Link
-                                                href="/register"
+                                                href={cta.href}
                                                 className="w-full"
                                             >
                                                 <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
-                                                    {__('Get Started')}
+                                                    {cta.isSignedIn
+                                                        ? __('Go to Dashboard')
+                                                        : canRegister
+                                                          ? __('Get Started')
+                                                          : __('Log in')}
                                                 </Button>
                                             </Link>
-                                            <Link href="/login?demo=1">
-                                                <Button
-                                                    variant={'secondary'}
-                                                    size={'lg'}
-                                                    className="h-14"
-                                                >
-                                                    {__('Check Demo')}
-                                                </Button>
-                                            </Link>
+                                            {demoEnabled && !cta.isSignedIn && (
+                                                <Link href="/login?demo=1">
+                                                    <Button
+                                                        variant={'secondary'}
+                                                        size={'lg'}
+                                                        className="h-14"
+                                                    >
+                                                        {__('Check Demo')}
+                                                    </Button>
+                                                </Link>
+                                            )}
                                         </div>
                                     )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                        {hideAuthButtons
-                                            ? __(
-                                                  "Join the waiting list. We'll let you know when you're in.",
-                                              )
-                                            : __(
-                                                  'Your data stays private. Always.',
-                                              )}
+                                        {__('Your data stays private. Always.')}
                                     </p>
                                 </div>
                             </div>
@@ -2238,6 +2533,15 @@ export default function Welcome({
                                                 </span>
                                             </li>
                                         </ul>
+                                        <div className="mt-6">
+                                            <Link
+                                                href={integrationsLink.path}
+                                                className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 hover:text-[#706f6c] dark:hover:text-[#A1A09A]"
+                                            >
+                                                {__('See all supported banks')}
+                                                <ArrowRightIcon className="size-4" />
+                                            </Link>
+                                        </div>
                                     </div>
                                     <div className="relative min-h-[320px]">
                                         <BankConnectionsPreview
@@ -2300,7 +2604,7 @@ export default function Welcome({
                                     </h3>
                                     <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'Search, filter, and categorize with ease. Understand exactly where your money goes.',
+                                            'Search, filter, and let AI categorize automatically. Understand exactly where your money goes.',
                                         )}
                                     </p>
                                 </div>
@@ -2316,7 +2620,7 @@ export default function Welcome({
                                     </h3>
                                     <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
+                                            'Our own AI categorizes for you, never training on your data or sharing it with third parties. Your finances belong to you and only you.',
                                         )}
                                     </p>
                                 </div>
@@ -2340,6 +2644,110 @@ export default function Welcome({
                                     </div>
                                 </div>
                             </FeatureCard>
+                        </div>
+                    </section>
+
+                    <section className="px-4 py-12 sm:py-16 md:py-20">
+                        <div className="mx-auto flex max-w-7xl flex-col gap-8 sm:gap-12">
+                            <div className="flex flex-col gap-4 sm:gap-5">
+                                <span className="inline-flex items-center gap-2 self-start rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
+                                    <SparklesIcon className="size-3.5 opacity-75" />
+                                    <span className="text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__('AI Connector')}
+                                    </span>
+                                </span>
+                                <h2 className="max-w-[760px] text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight md:text-5xl md:leading-tight">
+                                    {__(
+                                        'Your finances, inside Claude or ChatGPT',
+                                    )}
+                                </h2>
+                                <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-lg dark:text-[#A1A09A]">
+                                    {__(
+                                        'Connect Whisper Money to your assistant and ask about your money in your own words. It reads your transactions to answer you and, if you ask it to, puts them in order too: recategorising, creating rules, adjusting budgets.',
+                                    )}
+                                </p>
+                                <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                    {__(
+                                        'An MCP server of our own, on the paid plan.',
+                                    )}
+                                </p>
+                            </div>
+
+                            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+                                <AiConnectorPreview
+                                    currency={pricing.currency}
+                                    locale={locale}
+                                />
+
+                                <div className="flex flex-col gap-3">
+                                    <FeatureCard className="p-6 sm:p-8">
+                                        <h3 className="text-xl font-semibold">
+                                            {__('You connect it yourself')}
+                                        </h3>
+                                        <p className="mt-3 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                            {__(
+                                                'Nothing is connected until you connect it yourself, from your settings, under AI Connector. If you never connect it, nothing changes for you.',
+                                            )}
+                                        </p>
+                                    </FeatureCard>
+
+                                    <FeatureCard className="p-6 sm:p-8">
+                                        <h3 className="text-xl font-semibold">
+                                            {__('Ask, and set things straight')}
+                                        </h3>
+                                        <p className="mt-3 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                            {__(
+                                                ':total tools: :read to read your transactions, balances, budgets and net worth, and :write to change them.',
+                                                {
+                                                    total:
+                                                        MCP_READ_TOOL_COUNT +
+                                                        MCP_WRITE_TOOL_COUNT,
+                                                    read: MCP_READ_TOOL_COUNT,
+                                                    write: MCP_WRITE_TOOL_COUNT,
+                                                },
+                                            )}
+                                        </p>
+                                        <ul className="mt-4 space-y-2.5">
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__(
+                                                        'Claude Desktop and ChatGPT',
+                                                    )}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__(
+                                                        'You sign in with your account, no keys to paste',
+                                                    )}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__(
+                                                        'Claude Code too, with a token',
+                                                    )}
+                                                </span>
+                                            </li>
+                                        </ul>
+                                    </FeatureCard>
+
+                                    <FeatureCard className="p-6 sm:p-8">
+                                        <h3 className="flex items-center gap-2.5 text-xl font-semibold">
+                                            <LockIcon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                            {__('What the assistant can see')}
+                                        </h3>
+                                        <p className="mt-3 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                            {__(
+                                                'While it is connected, the assistant reads your data to answer you, and those conversations live in your own account with that assistant, under their rules and not ours. Remove Whisper Money from its connected apps and it stops answering.',
+                                            )}
+                                        </p>
+                                    </FeatureCard>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
@@ -2429,88 +2837,81 @@ export default function Welcome({
                                 </p>
                             </div>
 
-                            <div className="relative w-full">
-                                <div className="group flex flex-row [gap:var(--gap)] overflow-hidden p-2 [--duration:25s] [--gap:1rem]">
-                                    {[0, 1].map((copy) => (
-                                        <div
-                                            key={copy}
-                                            className="animate-marquee flex shrink-0 flex-row justify-around [gap:var(--gap)] group-hover:[animation-play-state:paused]"
-                                        >
-                                            {[
-                                                {
-                                                    name: __('Sarah M.'),
-                                                    handle: '@sarahm_finance',
-                                                    text: __(
-                                                        "Finally, a finance app that respects my privacy. Knowing my data isn't being shared gives me peace of mind.",
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('Michael R.'),
-                                                    handle: '@mike_tech',
-                                                    text: __(
-                                                        "The budgeting features are intuitive and the dark mode is gorgeous. Best finance app I've used.",
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('Emma L.'),
-                                                    handle: '@emmalou',
-                                                    text: __(
-                                                        'Love that my financial data stays private. No more worrying about who has access to my spending habits!',
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('David K.'),
-                                                    handle: '@davidk_dev',
-                                                    text: __(
-                                                        'As a developer, I appreciate the security architecture. This is how finance apps should be built.',
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('Jessica P.'),
-                                                    handle: '@jessicap',
-                                                    text: __(
-                                                        'The automation rules save me so much time. And knowing my data is private? Priceless.',
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('Alex T.'),
-                                                    handle: '@alext_money',
-                                                    text: __(
-                                                        'Clean interface, powerful features, and zero compromise on privacy. What more could you want?',
-                                                    ),
-                                                },
-                                            ].map((testimonial) => (
-                                                <div
-                                                    key={`${copy}-${testimonial.handle}`}
-                                                    className="flex w-[300px] shrink-0 flex-col rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-start shadow-sm sm:w-[360px] dark:border-[#3E3E3A] dark:bg-[#161615]"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex size-10 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                                            {testimonial.name.charAt(
-                                                                0,
-                                                            )}
+                            <div className="relative flex w-full flex-col gap-4">
+                                {testimonialRows.map((row, rowIndex) => (
+                                    <div
+                                        key={rowIndex}
+                                        className={cn(
+                                            'group flex flex-row [gap:var(--gap)] overflow-hidden p-2 [--gap:1rem]',
+                                            rowIndex === 0
+                                                ? '[--duration:34s]'
+                                                : '[--duration:27s]',
+                                        )}
+                                    >
+                                        {[0, 1].map((copy) => (
+                                            <div
+                                                key={copy}
+                                                aria-hidden={copy === 1}
+                                                className={cn(
+                                                    'animate-marquee flex shrink-0 flex-row [gap:var(--gap)] group-hover:[animation-play-state:paused]',
+                                                    rowIndex === 1 &&
+                                                        '[animation-delay:-13s]',
+                                                )}
+                                            >
+                                                {row.map((testimonial) => (
+                                                    <div
+                                                        key={`${rowIndex}-${copy}-${testimonial.name}`}
+                                                        className="flex w-[300px] shrink-0 flex-col rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-start shadow-sm sm:w-[360px] dark:border-[#3E3E3A] dark:bg-[#161615]"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar className="size-10">
+                                                                <AvatarImage
+                                                                    src={
+                                                                        testimonial.avatar ??
+                                                                        (testimonial.gravatar
+                                                                            ? `https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`
+                                                                            : undefined)
+                                                                    }
+                                                                    alt={
+                                                                        testimonial.name
+                                                                    }
+                                                                    loading="lazy"
+                                                                    className="object-cover"
+                                                                />
+                                                                <AvatarFallback>
+                                                                    <Facehash
+                                                                        name={
+                                                                            testimonial.name
+                                                                        }
+                                                                        size={
+                                                                            40
+                                                                        }
+                                                                        colorClasses={
+                                                                            tailwindColorClasses
+                                                                        }
+                                                                        intensity3d="dramatic"
+                                                                        className="rounded-full"
+                                                                        enableBlink
+                                                                    />
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex flex-col items-start">
+                                                                <h3 className="text-sm leading-none font-semibold">
+                                                                    {
+                                                                        testimonial.name
+                                                                    }
+                                                                </h3>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex flex-col items-start">
-                                                            <h3 className="text-sm leading-none font-semibold">
-                                                                {
-                                                                    testimonial.name
-                                                                }
-                                                            </h3>
-                                                            <p className="mt-1 text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                                                {
-                                                                    testimonial.handle
-                                                                }
-                                                            </p>
-                                                        </div>
+                                                        <p className="mt-4 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                                            {testimonial.text}
+                                                        </p>
                                                     </div>
-                                                    <p className="mt-4 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                                                        {testimonial.text}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))}
-                                </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
 
                                 <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-1/6 bg-linear-to-r from-[#FDFDFC] sm:block dark:from-[#0a0a0a]"></div>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/6 bg-linear-to-l from-[#FDFDFC] sm:block dark:from-[#0a0a0a]"></div>
@@ -2518,128 +2919,114 @@ export default function Welcome({
                         </div>
                     </section>
 
-                    {subscriptionsEnabled &&
-                        !hideAuthButtons &&
-                        planEntries.length > 0 && (
-                            <section
-                                id="pricing"
-                                className="px-4 py-12 sm:py-16 md:py-20"
-                            >
-                                <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 sm:gap-12">
-                                    <div className="flex flex-col items-center gap-4 text-center">
-                                        <h2 className="text-3xl leading-tight font-semibold sm:text-5xl sm:leading-tight">
-                                            {__('Simple, transparent pricing')}
-                                        </h2>
-                                        <p className="text-md max-w-[600px] font-medium text-[#706f6c] sm:text-lg dark:text-[#A1A09A]">
-                                            {__(
-                                                'Choose the plan that works for you. No hidden fees.',
-                                            )}
-                                        </p>
+                    {subscriptionsEnabled && planEntries.length > 0 && (
+                        <section
+                            id="pricing"
+                            className="px-4 py-12 sm:py-16 md:py-20"
+                        >
+                            <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 sm:gap-12">
+                                <div className="flex flex-col items-center gap-4 text-center">
+                                    <h2 className="text-3xl leading-tight font-semibold sm:text-5xl sm:leading-tight">
+                                        {__('Simple, transparent pricing')}
+                                    </h2>
+                                    <p className="text-md max-w-[600px] font-medium text-[#706f6c] sm:text-lg dark:text-[#A1A09A]">
+                                        {__(
+                                            'Choose the plan that works for you. No hidden fees.',
+                                        )}
+                                    </p>
 
-                                        {hasMonthlyAndYearly && (
-                                            <div className="mt-2 flex items-center rounded-full border border-[#e3e3e0] p-1 dark:border-[#3E3E3A]">
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setBillingPeriod(
-                                                            'month',
-                                                        )
-                                                    }
-                                                    className={cn(
-                                                        'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-                                                        billingPeriod ===
-                                                            'month'
-                                                            ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                            : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
-                                                    )}
-                                                >
-                                                    {__('Monthly')}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setBillingPeriod('year')
-                                                    }
-                                                    className={cn(
-                                                        'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-                                                        billingPeriod === 'year'
-                                                            ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                            : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
-                                                    )}
-                                                >
-                                                    {__('Yearly')}
-                                                    {yearlyDiscount !==
-                                                        null && (
-                                                        <span
-                                                            className={cn(
-                                                                'rounded-full px-2 py-0.5 text-xs font-semibold',
-                                                                billingPeriod ===
-                                                                    'year'
-                                                                    ? 'bg-emerald-500/20 text-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
-                                                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-                                                            )}
-                                                        >
-                                                            {__(
-                                                                'Save :percent%',
-                                                            ).replace(
-                                                                ':percent',
-                                                                String(
-                                                                    yearlyDiscount,
-                                                                ),
-                                                            )}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div
-                                        className={cn(
-                                            'grid w-full gap-6',
-                                            displayedPlanEntries.length + 1 ===
-                                                1 && 'mx-auto max-w-md',
-                                            displayedPlanEntries.length + 1 ===
-                                                2 &&
-                                                'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
-                                            displayedPlanEntries.length + 1 >=
-                                                3 &&
-                                                'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-                                        )}
-                                    >
-                                        <FreePlanCard
-                                            planFeatures={planEntries[0][1].features.filter(
-                                                (f) => f !== 'Priority support',
-                                            )}
-                                        />
-                                        {displayedPlanEntries.map(
-                                            ([key, plan]) => (
-                                                <LandingPlanCard
-                                                    key={key}
-                                                    plan={plan}
-                                                    isDefault={
-                                                        key ===
-                                                        pricing.defaultPlan
-                                                    }
-                                                    isBestValue={
-                                                        key ===
-                                                        pricing.bestValuePlan
-                                                    }
-                                                    promoEnabled={
-                                                        pricing.promo.enabled
-                                                    }
-                                                    promoBadge={
-                                                        pricing.promo.badge
-                                                    }
-                                                    currency={pricing.currency}
-                                                    locale={locale}
-                                                />
-                                            ),
-                                        )}
-                                    </div>
+                                    {hasMonthlyAndYearly && (
+                                        <div className="mt-2 flex items-center rounded-full border border-[#e3e3e0] p-1 dark:border-[#3E3E3A]">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setBillingPeriod('month')
+                                                }
+                                                className={cn(
+                                                    'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                                                    billingPeriod === 'month'
+                                                        ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                                                        : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
+                                                )}
+                                            >
+                                                {__('Monthly')}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setBillingPeriod('year')
+                                                }
+                                                className={cn(
+                                                    'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                                                    billingPeriod === 'year'
+                                                        ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                                                        : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
+                                                )}
+                                            >
+                                                {__('Yearly')}
+                                                {yearlyDiscount !== null && (
+                                                    <span
+                                                        className={cn(
+                                                            'rounded-full px-2 py-0.5 text-xs font-semibold',
+                                                            billingPeriod ===
+                                                                'year'
+                                                                ? 'bg-emerald-500/20 text-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+                                                        )}
+                                                    >
+                                                        {__(
+                                                            'Save :percent%',
+                                                        ).replace(
+                                                            ':percent',
+                                                            String(
+                                                                yearlyDiscount,
+                                                            ),
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                            </section>
-                        )}
+
+                                <div
+                                    className={cn(
+                                        'grid w-full gap-6',
+                                        displayedPlanEntries.length + 1 === 1 &&
+                                            'mx-auto max-w-md',
+                                        displayedPlanEntries.length + 1 === 2 &&
+                                            'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
+                                        displayedPlanEntries.length + 1 >= 3 &&
+                                            'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+                                    )}
+                                >
+                                    <FreePlanCard
+                                        features={[
+                                            ...planEntries[0][1].features,
+                                        ]}
+                                        canRegister={canRegister}
+                                    />
+                                    {displayedPlanEntries.map(([key, plan]) => (
+                                        <LandingPlanCard
+                                            key={key}
+                                            plan={plan}
+                                            isDefault={
+                                                key === pricing.defaultPlan
+                                            }
+                                            isBestValue={
+                                                key === pricing.bestValuePlan
+                                            }
+                                            promoEnabled={pricing.promo.enabled}
+                                            promoBadge={pricing.promo.badge}
+                                            currency={pricing.currency}
+                                            locale={locale}
+                                            canRegister={canRegister}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
+                    )}
 
                     <section className="px-4 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto max-w-3xl">
@@ -2661,6 +3048,14 @@ export default function Welcome({
                                     )}
                                     answer={__(
                                         "Your data is stored securely and never shared with third parties. We don't use your financial data for AI training, advertising, or any purpose other than providing you the service.",
+                                    )}
+                                />
+                                <FaqItem
+                                    question={__(
+                                        'Do you use AI, and is my data safe?',
+                                    )}
+                                    answer={__(
+                                        'Yes. Whisper Money uses AI to automatically categorize transactions and suggest budgets, so you spend less time on data entry. It works only to serve you: your data is never used to train models, sold, or shared with third parties.',
                                     )}
                                 />
                                 <FaqItem
@@ -2713,14 +3108,18 @@ export default function Welcome({
                                     )}
                                 </p>
                                 <div className="flex flex-col gap-3 sm:flex-row">
-                                    {hideAuthButtons ? (
-                                        <WaitlistForm />
-                                    ) : isMobile ? (
+                                    {isMobile ? (
                                         <InstallAppButton />
                                     ) : (
-                                        <Link href="/register">
+                                        <Link href={cta.href}>
                                             <Button className="h-12 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-8 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50">
-                                                {__('Get Started for Free')}
+                                                {cta.isSignedIn
+                                                    ? __('Go to Dashboard')
+                                                    : canRegister
+                                                      ? __(
+                                                            'Get Started for Free',
+                                                        )
+                                                      : __('Log in')}
                                             </Button>
                                         </Link>
                                     )}
@@ -2731,33 +3130,85 @@ export default function Welcome({
                 </main>
 
                 <footer className="py-8 lg:mt-12 dark:border-[#3E3E3A]">
-                    <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#706f6c] sm:flex-row lg:px-8 dark:text-[#A1A09A]">
+                    <div className="mx-auto grid max-w-5xl gap-8 px-6 text-sm text-[#706f6c] sm:grid-cols-[1.5fr_1fr_1fr] lg:px-8 dark:text-[#A1A09A]">
+                        {comparisonLinks.length > 0 && (
+                            <FooterColumn title={__('Compare')}>
+                                {comparisonLinks.map((link) => (
+                                    <li key={link.slug}>
+                                        <Link
+                                            href={link.path}
+                                            className={FOOTER_LINK_CLASSES}
+                                        >
+                                            {link.heading}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </FooterColumn>
+                        )}
+
+                        <FooterColumn title={__('Language')}>
+                            {LANGUAGE_OPTIONS.map((option) => (
+                                <li key={option.code}>
+                                    {option.code === locale ? (
+                                        <span className="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                            {option.label}
+                                        </span>
+                                    ) : (
+                                        <a
+                                            href={`/?lang=${option.code}`}
+                                            className={cn(
+                                                'cursor-pointer',
+                                                FOOTER_LINK_CLASSES,
+                                            )}
+                                        >
+                                            {option.label}
+                                        </a>
+                                    )}
+                                </li>
+                            ))}
+                        </FooterColumn>
+
+                        <FooterColumn title={__('Other')}>
+                            <li>
+                                <Link
+                                    href={integrationsLink.path}
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {integrationsLink.heading}
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href={roadmap()}
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Roadmap')}
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href="/privacy"
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Privacy Policy')}
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    href="/terms"
+                                    className={FOOTER_LINK_CLASSES}
+                                >
+                                    {__('Terms of Service')}
+                                </Link>
+                            </li>
+                        </FooterColumn>
+                    </div>
+
+                    <div className="mx-auto mt-10 max-w-5xl px-6 text-sm text-[#706f6c] lg:px-8 dark:text-[#A1A09A]">
                         <p>
-                            © {new Date().getFullYear()}
-                            {__(
-                                'Whisper Money. All\n                            rights reserved.',
-                            )}
+                            © {new Date().getFullYear()}{' '}
+                            {__('Whisper Money. All rights reserved.')}
                         </p>
-                        <div className="flex gap-6">
-                            <Link
-                                href="/privacy"
-                                className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                            >
-                                {__('Privacy Policy')}
-                            </Link>
-                            <Link
-                                href="/terms"
-                                className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                            >
-                                {__('Terms of Service')}
-                            </Link>
-                            <a
-                                href={`/?lang=${locale === 'es' ? 'en' : 'es'}`}
-                                className="cursor-pointer hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                            >
-                                {locale === 'es' ? 'English' : 'Español'}
-                            </a>
-                        </div>
                     </div>
                 </footer>
             </div>

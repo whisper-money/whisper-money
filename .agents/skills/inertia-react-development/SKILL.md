@@ -1,6 +1,6 @@
 ---
 name: inertia-react-development
-description: "Develops Inertia.js v2 React client-side applications. Activates when creating React pages, forms, or navigation; using <Link>, <Form>, useForm, or router; working with deferred props, prefetching, or polling; or when user mentions React with Inertia, React pages, React forms, or React navigation."
+description: "Develops Inertia.js v3 React client-side applications. Activates when creating React pages, forms, or navigation; using <Link>, <Form>, useForm, useHttp, setLayoutProps, or router; working with deferred props, prefetching, optimistic updates, instant visits, or polling; or when user mentions React with Inertia, React pages, React forms, or React navigation."
 license: MIT
 metadata:
   author: laravel
@@ -13,14 +13,14 @@ metadata:
 Activate this skill when:
 
 - Creating or modifying React page components for Inertia
-- Working with forms in React (using `<Form>` or `useForm`)
+- Working with forms in React (using `<Form>`, `useForm`, or `useHttp`)
 - Implementing client-side navigation with `<Link>` or `router`
-- Using v2 features: deferred props, prefetching, or polling
+- Using v3 features: deferred props, prefetching, optimistic updates, instant visits, layout props, HTTP requests, WhenVisible, InfiniteScroll, once props, flash data, or polling
 - Building React-specific features with the Inertia protocol
 
 ## Documentation
 
-Use `search-docs` for detailed Inertia v2 React patterns and documentation.
+Use `search-docs` for detailed Inertia v3 React patterns and documentation.
 
 ## Basic Usage
 
@@ -263,7 +263,124 @@ export default function CreateUser() {
 }
 ```
 
-## Inertia v2 Features
+## Inertia v3 Features
+
+### HTTP Requests
+
+Use the `useHttp` hook for standalone HTTP requests that do not trigger Inertia page visits. It provides the same developer experience as `useForm`, but for plain JSON endpoints.
+
+<!-- useHttp Example -->
+```react
+import { useHttp } from '@inertiajs/react'
+
+export default function Search() {
+    const { data, setData, get, processing } = useHttp({
+        query: '',
+    })
+
+    function search(e) {
+        setData('query', e.target.value)
+        get('/api/search', {
+            onSuccess: (response) => {
+                console.log(response)
+            },
+        })
+    }
+
+    return (
+        <>
+            <input value={data.query} onChange={search} />
+            {processing && <div>Searching...</div>}
+        </>
+    )
+}
+```
+
+### Optimistic Updates
+
+Apply data changes instantly before the server responds, with automatic rollback on failure:
+
+<!-- Optimistic Update with Router -->
+```react
+import { router } from '@inertiajs/react'
+
+function like(post) {
+    router.optimistic((props) => ({
+        post: {
+            ...props.post,
+            likes: props.post.likes + 1,
+        },
+    })).post(`/posts/${post.id}/like`)
+}
+```
+
+Optimistic updates also work with `useForm` and the `<Form>` component:
+
+<!-- Optimistic Update with Form Component -->
+```react
+import { Form } from '@inertiajs/react'
+
+<Form
+    action="/todos"
+    method="post"
+    optimistic={(props, data) => ({
+        todos: [...props.todos, { id: Date.now(), name: data.name, done: false }],
+    })}
+>
+    <input type="text" name="name" />
+    <button type="submit">Add Todo</button>
+</Form>
+```
+
+### Instant Visits
+
+Navigate to a new page immediately without waiting for the server response. The target component renders right away with shared props, while page-specific props load in the background.
+
+<!-- Instant Visit with Link -->
+```react
+import { Link } from '@inertiajs/react'
+
+<Link href="/dashboard" component="Dashboard">Dashboard</Link>
+
+<Link
+    href="/posts/1"
+    component="Posts/Show"
+    pageProps={{ post: { id: 1, title: 'My Post' } }}
+>
+    View Post
+</Link>
+```
+
+### Layout Props
+
+Share dynamic data between pages and persistent layouts:
+
+<!-- Layout Props in Layout -->
+```react
+export default function Layout({ title = 'My App', showSidebar = true, children }) {
+    return (
+        <>
+            <header>{title}</header>
+            {showSidebar && <aside>Sidebar</aside>}
+            <main>{children}</main>
+        </>
+    )
+}
+```
+
+<!-- Setting Layout Props from Page -->
+```react
+import { setLayoutProps } from '@inertiajs/react'
+
+export default function Dashboard() {
+    setLayoutProps({
+        title: 'Dashboard',
+        showSidebar: false,
+    })
+
+    return <h1>Dashboard</h1>
+}
+```
 
 ### Deferred Props
 
@@ -272,7 +389,6 @@ Use deferred props to load data after initial page render:
 <!-- Deferred Props with Empty State -->
 ```react
 export default function UsersIndex({ users }) {
-    // users will be undefined initially, then populated
     return (
         <div>
             <h1>Users</h1>
@@ -342,35 +458,60 @@ export default function Dashboard({ stats }) {
 }
 ```
 
-- `autoStart` (default `true`) — set to `false` to start polling manually via the returned `start()` function
-- `keepAlive` (default `false`) — set to `true` to prevent throttling when the browser tab is inactive
+- `autoStart` (default `true`) - set to `false` to start polling manually via the returned `start()` function
+- `keepAlive` (default `false`) - set to `true` to prevent throttling when the browser tab is inactive
 
-### WhenVisible (Infinite Scroll)
+### WhenVisible
 
-Load more data when user scrolls to a specific element:
+Lazy-load a prop when an element scrolls into view. Useful for deferring expensive data that sits below the fold:
 
-<!-- Infinite Scroll with WhenVisible -->
+<!-- WhenVisible Example -->
 ```react
 import { WhenVisible } from '@inertiajs/react'
 
-export default function UsersList({ users }) {
+export default function Dashboard({ stats }) {
     return (
         <div>
-            {users.data.map(user => (
-                <div key={user.id}>{user.name}</div>
-            ))}
+            <h1>Dashboard</h1>
 
-            {users.next_page_url && (
-                <WhenVisible
-                    data="users"
-                    params={{ page: users.current_page + 1 }}
-                    fallback={<div>Loading more...</div>}
-                />
-            )}
+            <WhenVisible data="stats" buffer={200} fallback={<div className="animate-pulse">Loading stats...</div>}>
+                {({ fetching }) => (
+                    <div>
+                        <p>Total Users: {stats.total_users}</p>
+                        <p>Revenue: {stats.revenue}</p>
+                        {fetching && <span>Refreshing...</span>}
+                    </div>
+                )}
+            </WhenVisible>
         </div>
     )
 }
 ```
+
+### InfiniteScroll
+
+Automatically load additional pages of paginated data as users scroll:
+
+<!-- InfiniteScroll Example -->
+```react
+import { InfiniteScroll } from '@inertiajs/react'
+
+export default function Users({ users }) {
+    return (
+        <InfiniteScroll data="users">
+            {users.data.map(user => (
+                <div key={user.id}>{user.name}</div>
+            ))}
+        </InfiniteScroll>
+    )
+}
+```
+
+The server must use `Inertia::scroll()` to configure the paginated data. Use the `search-docs` tool with a query of `infinite scroll` for detailed guidance on buffers, manual loading, reverse mode, and custom trigger elements.
+
+## Server-Side Patterns
+
+Server-side patterns (Inertia::render, props, middleware) are covered in inertia-laravel guidelines.
 
 ## Common Pitfalls
 
@@ -379,3 +520,5 @@ export default function UsersList({ users }) {
 - Not handling the `undefined` state of deferred props before data loads
 - Using `<form>` without preventing default submission (use `<Form>` component or `e.preventDefault()`)
 - Forgetting to check if `<Form>` component is available in your Inertia version
+- Using `router.cancel()` instead of `router.cancelAll()` (v3 breaking change)
+- Using `router.on('invalid', ...)` or `router.on('exception', ...)` instead of the renamed `httpException` and `networkError` events

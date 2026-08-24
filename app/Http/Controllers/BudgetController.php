@@ -2,41 +2,56 @@
 
 namespace App\Http\Controllers;
 
+use App\Features\SavingsGoals;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
-use App\Jobs\AssignHistoricalTransactionsToBudget;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
+use App\Models\Label;
+use App\Models\SavingsGoal;
 use App\Services\BudgetPeriodService;
+use App\Services\BudgetService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class BudgetController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(protected BudgetPeriodService $budgetPeriodService) {}
+    public function __construct(
+        protected BudgetPeriodService $budgetPeriodService,
+        protected BudgetService $budgetService,
+    ) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
         $budgets = $user
             ->budgets()
-            ->with(['category', 'label', 'periods' => function ($query) {
+            ->with(['categories', 'labels', 'periods' => function ($query) {
+                // Same ordering as Budget::getCurrentPeriod, for the same
+                // reason: the card reads `periods[0]`, and where two periods
+                // cover today the earliest-starting one is the one the user
+                // never configured.
                 $query->where('start_date', '<=', today())
                     ->where('end_date', '>=', today())
+                    ->orderByDesc('start_date')
                     ->with(['budgetTransactions']);
             }])
             ->get();
 
+        $savingsGoalsEnabled = Feature::active(SavingsGoals::class);
+
         return Inertia::render('budgets/index', [
             'budgets' => $budgets,
+            'savingsGoals' => $savingsGoalsEnabled ? SavingsGoal::withStatsForUser($user) : [],
+            'savingsGoalsEnabled' => $savingsGoalsEnabled,
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }
@@ -58,7 +73,11 @@ class BudgetController extends Controller
             $viewedPeriod = $budget->getCurrentPeriod();
 
             if (! $viewedPeriod) {
-                $viewedPeriod = $this->budgetPeriodService->generatePeriod($budget);
+                // Same anchoring as the scheduled command: without an explicit
+                // start date this picks up where the chain ends, which can be in
+                // the past - showing a stale period as the current one and
+                // appending another row on every visit.
+                $viewedPeriod = $this->budgetPeriodService->generatePeriod($budget, null, today());
             }
         }
 
@@ -80,26 +99,28 @@ class BudgetController extends Controller
             ->orderBy('start_date', 'asc')
             ->first();
 
-        $budget->load(['category', 'label']);
+        $budget->load(['categories', 'labels']);
 
         $categories = Category::query()
             ->where('user_id', $user->id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'icon', 'color']);
+            ->forDisplay()
+            ->get();
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
-            ->with('bank:id,name,logo')
+            ->with('bank')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+            ->get();
 
         $banks = Bank::query()
-            ->where(function ($q) use ($user) {
-                $q->whereNull('user_id')
-                    ->orWhere('user_id', $user->id);
-            })
+            ->availableForUser($user)
             ->orderBy('name')
-            ->get(['id', 'name', 'logo']);
+            ->get();
+
+        $labels = Label::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get();
 
         return Inertia::render('budgets/show', [
             'budget' => $budget,
@@ -109,54 +130,39 @@ class BudgetController extends Controller
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
+            'labels' => $labels,
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }
 
     public function store(StoreBudgetRequest $request): RedirectResponse
     {
-        $result = DB::transaction(function () use ($request) {
-            $budget = $request->user()->budgets()->create([
+        $budget = $this->budgetService->create(
+            $request->user(),
+            [
                 'name' => $request->name,
                 'period_type' => $request->period_type,
                 'period_start_day' => $request->period_start_day,
-                'category_id' => $request->category_id,
-                'label_id' => $request->label_id,
                 'rollover_type' => $request->rollover_type,
-            ]);
+                'is_catch_all' => $request->boolean('is_catch_all'),
+            ],
+            (int) $request->allocated_amount,
+            $request->category_ids ?? [],
+            $request->label_ids ?? [],
+        );
 
-            $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount, null, true);
-
-            return ['budget' => $budget, 'period' => $period];
-        });
-
-        // Dispatch job to assign historical transactions
-        AssignHistoricalTransactionsToBudget::dispatch($result['budget'], $result['period']);
-
-        return redirect()->route('budgets.show', $result['budget']);
+        return redirect()->route('budgets.show', $budget);
     }
 
     public function update(UpdateBudgetRequest $request, Budget $budget): RedirectResponse
     {
         $this->authorize('update', $budget);
 
-        DB::transaction(function () use ($request, $budget) {
-            $budget->update($request->only([
-                'name',
-                'period_type',
-                'period_start_day',
-                'category_id',
-                'label_id',
-                'rollover_type',
-            ]));
-
-            // If allocated_amount is provided, update current and future periods
-            if ($request->has('allocated_amount')) {
-                $budget->periods()
-                    ->where('start_date', '>=', now()->startOfDay())
-                    ->update(['allocated_amount' => $request->allocated_amount]);
-            }
-        });
+        $this->budgetService->update(
+            $budget,
+            $request->only(['name', 'period_type', 'period_start_day', 'rollover_type']),
+            $request->has('allocated_amount') ? (int) $request->allocated_amount : null,
+        );
 
         return redirect()->route('budgets.show', $budget);
     }

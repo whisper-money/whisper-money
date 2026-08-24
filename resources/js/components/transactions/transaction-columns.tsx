@@ -6,10 +6,12 @@ import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
-import { EncryptedText } from '@/components/encrypted-text';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
-import { EncryptedTransactionDescription } from '@/components/transactions/encrypted-transaction-description';
+import {
+    ENCRYPTED_PLACEHOLDER,
+    TransactionDescription,
+} from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -40,6 +42,9 @@ interface CreateColumnsOptions {
         source: 'transaction_table',
     ) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
+    isDateHidden?: boolean;
+    /** Ids of transactions AI is categorizing in the background right now. */
+    categorizingIds?: Set<string>;
 }
 
 export function createTransactionColumns({
@@ -53,6 +58,8 @@ export function createTransactionColumns({
     onUpdate,
     onCategorized,
     onReEvaluateRules,
+    isDateHidden = false,
+    categorizingIds,
 }: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
     return [
         {
@@ -92,12 +99,13 @@ export function createTransactionColumns({
             accessorKey: 'transaction_date',
             meta: {
                 label: __('Date'),
-                cellClassName: 'max-w-[95px] whitespace-normal',
+                cellClassName: 'whitespace-normal',
             },
             header: ({ column }) => {
                 return (
                     <Button
                         variant="ghost"
+                        className="px-0"
                         onClick={() =>
                             column.toggleSorting(column.getIsSorted() === 'asc')
                         }
@@ -135,8 +143,7 @@ export function createTransactionColumns({
             accessorKey: 'category_id',
             meta: {
                 label: __('Category'),
-                cellClassName:
-                    'max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
+                cellClassName: `${isDateHidden ? 'pl-2' : 'pl-0'} max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal`,
             },
             header: () => __('Category'),
             cell: ({ row }) => {
@@ -150,6 +157,7 @@ export function createTransactionColumns({
                         onCategorized={onCategorized}
                         className="relative -top-0.5 max-w-[150px] md:max-w-[180px]"
                         withoutChevronIcon
+                        isCategorizing={categorizingIds?.has(row.original.id)}
                     />
                 );
             },
@@ -206,18 +214,15 @@ export function createTransactionColumns({
                     .filter(Boolean) as Label[];
 
                 const hasLabels = transactionLabels.length > 0;
-                const hasNotes =
-                    transaction.decryptedNotes ||
-                    (transaction.notes && transaction.notes_iv);
+                const hasNotes = !!transaction.notes;
 
                 return (
                     <div className="flex flex-col gap-0.5">
                         <div className="flex flex-row justify-between gap-1">
                             <div className="flex-grow truncate">
-                                <EncryptedTransactionDescription
-                                    encryptedText={transaction.description}
-                                    iv={transaction.description_iv}
-                                    length={{ min: 20, max: 80 }}
+                                <TransactionDescription
+                                    text={transaction.description}
+                                    encrypted={!!transaction.description_iv}
                                 />
                             </div>
                             {showLabels && hasLabels && (
@@ -230,19 +235,11 @@ export function createTransactionColumns({
                         {showNotes && hasNotes && (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                                 <div className="truncate text-muted-foreground/80">
-                                    {transaction.decryptedNotes ? (
-                                        <span>
-                                            {transaction.decryptedNotes}
-                                        </span>
-                                    ) : (
-                                        <EncryptedText
-                                            encryptedText={
-                                                transaction.notes || ''
-                                            }
-                                            iv={transaction.notes_iv || ''}
-                                            length={{ min: 10, max: 30 }}
-                                        />
-                                    )}
+                                    <span>
+                                        {transaction.notes_iv
+                                            ? ENCRYPTED_PLACEHOLDER
+                                            : transaction.notes}
+                                    </span>
                                 </div>
                             </div>
                         )}
@@ -250,6 +247,78 @@ export function createTransactionColumns({
                 );
             },
             enableHiding: false,
+        },
+        {
+            accessorKey: 'creditor_name',
+            meta: {
+                label: __('Creditor'),
+                cellClassName: 'max-w-[180px] whitespace-normal',
+            },
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === 'asc')
+                        }
+                    >
+                        {__('Creditor')}
+                        {column.getIsSorted() === 'desc' ? (
+                            <ArrowDown className="h-3 w-3" />
+                        ) : column.getIsSorted() === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                        ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-25" />
+                        )}
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const creditorName = row.original.creditor_name;
+
+                return creditorName ? (
+                    <div className="truncate">{creditorName}</div>
+                ) : (
+                    <div className="text-muted-foreground">—</div>
+                );
+            },
+            enableHiding: true,
+        },
+        {
+            accessorKey: 'debtor_name',
+            meta: {
+                label: __('Debtor'),
+                cellClassName: 'max-w-[180px] whitespace-normal',
+            },
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === 'asc')
+                        }
+                    >
+                        {__('Debtor')}
+                        {column.getIsSorted() === 'desc' ? (
+                            <ArrowDown className="h-3 w-3" />
+                        ) : column.getIsSorted() === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                        ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-25" />
+                        )}
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const debtorName = row.original.debtor_name;
+
+                return debtorName ? (
+                    <div className="truncate">{debtorName}</div>
+                ) : (
+                    <div className="text-muted-foreground">—</div>
+                );
+            },
+            enableHiding: true,
         },
         {
             accessorKey: 'amount',

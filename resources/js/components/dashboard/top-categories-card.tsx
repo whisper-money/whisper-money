@@ -1,5 +1,9 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
-import { AmountDisplay } from '@/components/ui/amount-display';
+import { CategoryAnalysisButton } from '@/components/categories/category-analysis-button';
+import {
+    CategoryBreakdownRow,
+    type CategoryBreakdownAdapter,
+} from '@/components/shared/category-breakdown-list';
 import {
     Card,
     CardContent,
@@ -7,21 +11,22 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
+import { useExpandableCategories } from '@/hooks/use-expandable-categories';
+import { fetchJson } from '@/lib/fetch-json';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import {
     Category,
-    type CategoryColor,
     getCategoryColorClasses,
+    type CategoryColor,
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
-import { Link, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { format, subDays } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
-import { PercentageTrendIndicator } from './percentage-trend-indicator';
+import { useCallback, useMemo } from 'react';
 
 interface CategoryData {
     category: Category | null;
@@ -29,11 +34,17 @@ interface CategoryData {
     amount: number;
     previous_amount: number;
     total_amount: number;
+    has_children?: boolean;
+    is_direct?: boolean;
 }
 
 interface TopCategoriesCardProps {
     categories: CategoryData[];
     loading?: boolean;
+}
+
+function rowKey(item: CategoryData): string {
+    return `${item.category?.id ?? item.category_id ?? 'uncategorized'}:${item.is_direct ? 'direct' : 'node'}`;
 }
 
 export function TopCategoriesCard({
@@ -42,6 +53,91 @@ export function TopCategoriesCard({
 }: TopCategoriesCardProps) {
     const { auth } = usePage<SharedData>().props;
     const { categoryBarColor } = useChartColors();
+
+    const { dateFrom, dateTo } = useMemo(() => {
+        const now = new Date();
+        return {
+            dateFrom: format(subDays(now, 30), 'yyyy-MM-dd'),
+            dateTo: format(now, 'yyyy-MM-dd'),
+        };
+    }, []);
+
+    const fetchChildren = useCallback(
+        async (categoryId: string): Promise<CategoryData[]> => {
+            const params = new URLSearchParams({
+                from: dateFrom,
+                to: dateTo,
+                parent: categoryId,
+            });
+            return fetchJson<CategoryData[]>(
+                `/api/dashboard/top-categories?${params.toString()}`,
+            );
+        },
+        [dateFrom, dateTo],
+    );
+
+    const expandable = useExpandableCategories<CategoryData>(
+        fetchChildren,
+        dateFrom,
+    );
+
+    const adapter: CategoryBreakdownAdapter<CategoryData> = {
+        getId: (item) =>
+            item.category?.id ?? item.category_id ?? 'uncategorized',
+        getKey: (item) => rowKey(item),
+        getName: (item) => item.category?.name ?? __('Uncategorized'),
+        getAmount: (item) => item.amount,
+        getPercentage: (item) =>
+            item.total_amount > 0 ? (item.amount / item.total_amount) * 100 : 0,
+        getBarColor: (item, index) =>
+            categoryBarColor(
+                (item.category?.color ?? 'gray') as CategoryColor,
+                index,
+            ),
+        renderLeading: (item) => {
+            const color = getCategoryColorClasses(
+                (item.category?.color ?? 'gray') as CategoryColor,
+            );
+            const Icon = (Icons[
+                (item.category?.icon ?? 'HelpCircle') as keyof typeof Icons
+            ] || Icons.HelpCircle) as LucideIcon;
+
+            return (
+                <div
+                    className={cn([
+                        'flex size-6 shrink-0 items-center justify-center rounded-full',
+                        `${color.bg} ${color.text}`,
+                    ])}
+                >
+                    <Icon className="size-4" />
+                </div>
+            );
+        },
+        getHref: (item) =>
+            transactionsIndex({
+                query: {
+                    category_ids:
+                        item.category?.id ??
+                        item.category_id ??
+                        'uncategorized',
+                    date_from: dateFrom,
+                    date_to: dateTo,
+                },
+            }).url,
+        getTrend: (item) =>
+            item.previous_amount > 0
+                ? {
+                      change:
+                          ((item.amount - item.previous_amount) /
+                              item.previous_amount) *
+                          100,
+                      previousAmount: item.previous_amount,
+                      currentAmount: item.amount,
+                  }
+                : null,
+        canExpand: (item) =>
+            Boolean(item.has_children && !item.is_direct && item.category),
+    };
 
     if (loading || !auth?.user) {
         return (
@@ -67,106 +163,35 @@ export function TopCategoriesCard({
         );
     }
 
-    const now = new Date();
-    const dateFrom = format(subDays(now, 30), 'yyyy-MM-dd');
-    const dateTo = format(now, 'yyyy-MM-dd');
-
     return (
         <Card className="w-full">
             <CardHeader className="gap-2">
-                <CardTitle>{__('Top spending categories')}</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                    <CardTitle>{__('Top spending categories')}</CardTitle>
+                    <CategoryAnalysisButton
+                        widgetKey="dashboard-top-categories"
+                        firstCategoryId={
+                            categories[0]?.category?.id ??
+                            categories[0]?.category_id ??
+                            null
+                        }
+                    />
+                </div>
                 <CardDescription>{__('on the last 30 days')}</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    {categories.map((item, index) => {
-                        const category = item.category;
-                        const categoryId =
-                            category?.id ?? item.category_id ?? 'uncategorized';
-                        const categoryName =
-                            category?.name ?? __('Uncategorized');
-                        const categoryIcon = category?.icon ?? 'HelpCircle';
-                        const categoryColorName =
-                            category?.color ?? ('gray' as CategoryColor);
-                        const Icon = (Icons[
-                            categoryIcon as keyof typeof Icons
-                        ] || Icons.HelpCircle) as LucideIcon;
-
-                        const percentageChange =
-                            item.previous_amount > 0
-                                ? ((item.amount - item.previous_amount) /
-                                      item.previous_amount) *
-                                  100
-                                : null;
-                        const percentage =
-                            item.total_amount > 0
-                                ? (item.amount / item.total_amount) * 100
-                                : 0;
-                        const categoryColor =
-                            getCategoryColorClasses(categoryColorName);
-                        const chartColor = categoryBarColor(
-                            categoryColorName,
-                            index,
-                        );
-
-                        const categoryUrl = transactionsIndex({
-                            query: {
-                                category_ids: categoryId,
-                                date_from: dateFrom,
-                                date_to: dateTo,
-                            },
-                        }).url;
-
-                        return (
-                            <Link
-                                key={categoryId}
-                                href={categoryUrl}
-                                className="group -mx-1.5 my-1.5 block space-y-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
-                            >
-                                <div className="flex min-w-0 items-center gap-2">
-                                    <div
-                                        className={cn([
-                                            'flex size-6 shrink-0 items-center justify-center rounded-full',
-                                            `${categoryColor.bg} ${categoryColor.text}`,
-                                        ])}
-                                    >
-                                        <Icon className="size-4" />
-                                    </div>
-                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                                        {categoryName}
-                                    </span>
-                                    {percentageChange !== null && (
-                                        <PercentageTrendIndicator
-                                            trend={percentageChange}
-                                            label=""
-                                            previousAmount={
-                                                item.previous_amount
-                                            }
-                                            currentAmount={item.amount}
-                                            currencyCode={
-                                                auth.user.currency_code
-                                            }
-                                            invertColors
-                                            className="shrink-0 text-xs"
-                                        />
-                                    )}
-                                    <AmountDisplay
-                                        amountInCents={item.amount}
-                                        currencyCode={auth.user.currency_code}
-                                        variant="compact"
-                                        minimumFractionDigits={0}
-                                        maximumFractionDigits={0}
-                                        className="shrink-0"
-                                    />
-                                </div>
-                                <Progress
-                                    value={percentage}
-                                    className="h-2"
-                                    indicatorColor={chartColor}
-                                />
-                            </Link>
-                        );
-                    })}
+                <div className="space-y-3">
+                    {categories.map((item, index) => (
+                        <CategoryBreakdownRow
+                            key={rowKey(item)}
+                            item={item}
+                            index={index}
+                            currencyCode={auth.user.currency_code}
+                            adapter={adapter}
+                            expandable={expandable}
+                            expandColumn
+                        />
+                    ))}
                     {categories.length === 0 && (
                         <div className="py-8 text-center text-muted-foreground">
                             {__('No spending data this month')}

@@ -62,12 +62,18 @@ export async function parseFile(file: File): Promise<{
                     return;
                 }
 
-                const workbook = XLSX.read(data, { type: 'binary' });
+                // raw: true keeps text-based cells (CSV) as their original
+                // strings instead of letting the parser guess and coerce
+                // date-like values into Excel serial numbers. parseDate then
+                // applies the user-selected format. Native spreadsheet dates
+                // (.xls/.xlsx) still arrive as numbers and use the serial path.
+                const workbook = XLSX.read(data, { type: 'binary', raw: true });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
 
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, {
                     header: 1,
+                    raw: true,
                 }) as unknown[][];
 
                 if (jsonData.length === 0) {
@@ -211,11 +217,16 @@ export function getLocaleDateFormat(locale?: string): DateFormat | null {
     return DateFormat.DayMonthYear;
 }
 
-export function autoDetectDateFormat(
+export interface DateFormatDetection {
+    format: DateFormat;
+    ambiguous: boolean;
+}
+
+export function detectDateFormat(
     data: ParsedRow[],
     dateColumnName: string,
     locale?: string,
-): DateFormat | null {
+): DateFormatDetection | null {
     if (!data || data.length === 0 || !dateColumnName) {
         return null;
     }
@@ -224,12 +235,14 @@ export function autoDetectDateFormat(
         DateFormat.YearMonthDay,
         DateFormat.DayMonthYear,
         DateFormat.MonthDayYear,
+        DateFormat.YearMonthDayCompact,
     ];
     const sampleSize = Math.min(10, data.length);
     const scores: Record<DateFormat, number> = {
         [DateFormat.YearMonthDay]: 0,
         [DateFormat.DayMonthYear]: 0,
         [DateFormat.MonthDayYear]: 0,
+        [DateFormat.YearMonthDayCompact]: 0,
     };
 
     for (let i = 0; i < sampleSize; i++) {
@@ -246,29 +259,33 @@ export function autoDetectDateFormat(
 
     const maxScore = Math.max(...Object.values(scores));
 
-    if (maxScore === 0) {
+    if (maxScore === 0 || maxScore < sampleSize * 0.8) {
         return null;
     }
 
-    if (maxScore >= sampleSize * 0.8) {
-        const tiedFormats = formats.filter(
-            (format) => scores[format] === maxScore,
-        );
+    const tiedFormats = formats.filter((format) => scores[format] === maxScore);
 
-        if (tiedFormats.length === 1) {
-            return tiedFormats[0];
-        }
-
-        // Use the user's locale to break ties between ambiguous formats
-        const localePreferred = getLocaleDateFormat(locale);
-        if (localePreferred && tiedFormats.includes(localePreferred)) {
-            return localePreferred;
-        }
-
-        return tiedFormats[0];
+    if (tiedFormats.length === 1) {
+        return { format: tiedFormats[0], ambiguous: false };
     }
 
-    return null;
+    // Multiple formats parse the sample equally well (e.g. 02/06/2026 is valid
+    // as both DD/MM and MM/DD). Pick the locale-preferred format as the default
+    // but flag it as ambiguous so the caller can let the user confirm.
+    const localePreferred = getLocaleDateFormat(locale);
+    if (localePreferred && tiedFormats.includes(localePreferred)) {
+        return { format: localePreferred, ambiguous: true };
+    }
+
+    return { format: tiedFormats[0], ambiguous: true };
+}
+
+export function autoDetectDateFormat(
+    data: ParsedRow[],
+    dateColumnName: string,
+    locale?: string,
+): DateFormat | null {
+    return detectDateFormat(data, dateColumnName, locale)?.format ?? null;
 }
 
 export function autoDetectColumns(headers: string[]): ColumnMapping {
@@ -277,6 +294,8 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         description: null,
         amount: null,
         balance: null,
+        creditor_name: null,
+        debtor_name: null,
     };
 
     if (!headers || headers.length === 0) {
@@ -328,6 +347,26 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         'saldo actual',
         'saldo disponible',
     ];
+    const creditorPatterns = [
+        'creditor',
+        'creditor name',
+        'beneficiary',
+        'beneficiary name',
+        'payee',
+        'recipient',
+        'contraparte acreedora',
+        'acreedor',
+    ];
+    const debtorPatterns = [
+        'debtor',
+        'debtor name',
+        'payer',
+        'sender',
+        'originator',
+        'ordering party',
+        'contraparte deudora',
+        'deudor',
+    ];
 
     for (let i = 0; i < lowerHeaders.length; i++) {
         const header = lowerHeaders[i];
@@ -361,6 +400,20 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         ) {
             mapping.balance = originalHeader;
         }
+
+        if (
+            !mapping.creditor_name &&
+            creditorPatterns.some((p) => header.includes(p))
+        ) {
+            mapping.creditor_name = originalHeader;
+        }
+
+        if (
+            !mapping.debtor_name &&
+            debtorPatterns.some((p) => header.includes(p))
+        ) {
+            mapping.debtor_name = originalHeader;
+        }
     }
 
     return mapping;
@@ -391,7 +444,14 @@ export function parseDate(
         month: number | undefined,
         day: number | undefined;
 
-    if (str.length === 5) {
+    if (format === DateFormat.YearMonthDayCompact) {
+        const compactArray = /^(\d{4})(\d{2})(\d{2})$/.exec(str);
+        if (compactArray) {
+            year = Number(compactArray[1]);
+            month = Number(compactArray[2]);
+            day = Number(compactArray[3]);
+        }
+    } else if (str.length === 5) {
         const dateRegex = /^(\d{1,2})-(\d{1,2})$/;
         const dateArray = dateRegex.exec(str);
         if (dateArray) {
@@ -466,6 +526,8 @@ export function parseAmount(amountStr: string | number): number | null {
 
     let str = String(amountStr).trim();
 
+    const isNegative = /^-/.test(str) || /^\(.*\)$/.test(str);
+
     const dotPos = str.lastIndexOf('.');
     const commaPos = str.lastIndexOf(',');
 
@@ -490,7 +552,7 @@ export function parseAmount(amountStr: string | number): number | null {
         return null;
     }
 
-    return amount;
+    return isNegative ? -Math.abs(amount) : amount;
 }
 
 function getDescriptionFromRow(row: ParsedRow, mapping: ColumnMapping): string {
@@ -506,6 +568,19 @@ function getDescriptionFromRow(row: ParsedRow, mapping: ColumnMapping): string {
         .map((col) => String(row[col] || '').trim())
         .filter((val) => val.length > 0)
         .join('\n');
+}
+
+function getOptionalTextFromRow(
+    row: ParsedRow,
+    column: string | null,
+): string | null {
+    if (!column) {
+        return null;
+    }
+
+    const value = String(row[column] || '').trim();
+
+    return value.length > 0 ? value.slice(0, 255) : null;
 }
 
 export function validateTransaction(
@@ -581,14 +656,23 @@ export function convertRowsToTransactions(
         }
 
         const formattedDate = formatLocalDate(date);
+        const creditorName = getOptionalTextFromRow(row, mapping.creditor_name);
+        const debtorName = getOptionalTextFromRow(row, mapping.debtor_name);
 
         let balance: number | null = null;
-        if (mapping.balance && row[mapping.balance]) {
-            const parsedBalance = parseAmount(
-                row[mapping.balance] as string | number,
-            );
-            if (parsedBalance !== null) {
-                balance = Math.round(parsedBalance * 100);
+        if (mapping.balance) {
+            const rawBalance = row[mapping.balance];
+            if (
+                rawBalance !== null &&
+                rawBalance !== undefined &&
+                String(rawBalance).trim() !== ''
+            ) {
+                const parsedBalance = parseAmount(
+                    rawBalance as string | number,
+                );
+                if (parsedBalance !== null) {
+                    balance = Math.round(parsedBalance * 100);
+                }
             }
         }
 
@@ -597,6 +681,8 @@ export function convertRowsToTransactions(
             description,
             amount: Math.round(amount * 100),
             balance,
+            creditor_name: creditorName,
+            debtor_name: debtorName,
             validationErrors: [],
         });
     }
@@ -680,6 +766,32 @@ export function calculateBalancesFromTransactions(
         const nextNet = dailyNet.get(nextDate) ?? 0;
         const nextBalance = balances.get(nextDate) ?? 0;
         balances.set(dates[i], nextBalance - nextNet);
+    }
+
+    return balances;
+}
+
+/**
+ * Build the map of balances to store per date from imported transactions.
+ *
+ * CSV rows are newest-on-top and imported top-to-bottom, so when several
+ * transactions share a date the first one encountered is the newest and holds
+ * the correct end-of-day balance. A balance of 0 (or negative) is valid and
+ * kept; only null/undefined balances are skipped.
+ */
+export function collectBalancesToImport(
+    transactions: ParsedTransaction[],
+): Map<string, number> {
+    const balances = new Map<string, number>();
+
+    for (const transaction of transactions) {
+        if (
+            transaction.balance !== null &&
+            transaction.balance !== undefined &&
+            !balances.has(transaction.transaction_date)
+        ) {
+            balances.set(transaction.transaction_date, transaction.balance);
+        }
     }
 
     return balances;

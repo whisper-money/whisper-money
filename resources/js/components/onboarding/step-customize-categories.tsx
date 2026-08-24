@@ -1,76 +1,57 @@
 import { StepButton } from '@/components/onboarding/step-button';
-import { StepHeader } from '@/components/onboarding/step-header';
-import { Button } from '@/components/ui/button';
+import { StepList, StepRow } from '@/components/onboarding/step-list';
+import { StepScreen } from '@/components/onboarding/step-screen';
 import { __ } from '@/utils/i18n';
-import { Check, Settings, SkipForward } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 interface StepCustomizeCategoriesProps {
     onContinue: () => void;
-    onSkip: () => void;
 }
+
+const previewCategories = [
+    {
+        nameKey: 'Food & Dining',
+        childrenKey: 'Groceries, Restaurants, Delivery',
+    },
+    { nameKey: 'Housing', childrenKey: 'Rent, Utilities, Maintenance' },
+    { nameKey: 'Transportation', childrenKey: 'Fuel, Public Transit, Parking' },
+    { nameKey: 'Shopping', childrenKey: 'Clothing, Electronics, Gifts' },
+    { nameKey: 'Entertainment', childrenKey: 'Movies, Sports, Hobbies' },
+    { nameKey: 'Health & Wellness', childrenKey: 'Medical, Pharmacy, Fitness' },
+    { nameKey: 'Income', childrenKey: 'Salary, Freelance, Investments' },
+    { nameKey: 'Transfers', childrenKey: 'Between accounts, Savings' },
+];
 
 export function StepCustomizeCategories({
     onContinue,
-    onSkip,
 }: StepCustomizeCategoriesProps) {
     return (
-        <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <StepHeader
-                icon={Settings}
-                iconContainerClassName="bg-gradient-to-br from-pink-400 to-rose-500"
-                title={__('Customize Your Categories')}
-                description={__(
-                    "We've created a comprehensive set of categories for you. You can customize them now or adjust them later in settings.",
-                )}
-            />
-
-            <div className="mb-8 w-full max-w-md rounded-xl border bg-card p-6">
-                <h3 className="mb-4 font-semibold">
-                    {__('Your Categories Include:')}
-                </h3>
-                <div className="space-y-2">
-                    {[
-                        __('Food & Dining (Groceries, Restaurants, Delivery)'),
-                        __('Housing (Rent, Utilities, Maintenance)'),
-                        __('Transportation (Fuel, Public Transit, Parking)'),
-                        __('Shopping (Clothing, Electronics, Gifts)'),
-                        __('Entertainment (Movies, Sports, Hobbies)'),
-                        __('Health & Wellness (Medical, Pharmacy, Fitness)'),
-                        __('Income (Salary, Freelance, Investments)'),
-                        __('Transfers (Between accounts, Savings)'),
-                    ].map((category) => (
-                        <div
-                            key={category}
-                            className="flex items-center gap-2 text-sm"
-                        >
-                            <Check className="h-4 w-4 shrink-0 text-emerald-500" />
-                            <span>{category}</span>
-                        </div>
+        <StepScreen
+            title={__('Customize Your Categories')}
+            description={__(
+                "We've created a complete set for you. Use it as it is and adjust it whenever you want.",
+            )}
+            footer={<StepButton text={__('Continue')} onClick={onContinue} />}
+        >
+            <div className="flex flex-col gap-5">
+                <StepList>
+                    {previewCategories.map((category) => (
+                        <StepRow
+                            key={category.nameKey}
+                            icon={Check}
+                            title={__(category.nameKey)}
+                            description={__(category.childrenKey)}
+                        />
                     ))}
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span className="ml-6">{__('...and 40+ more')}</span>
-                    </div>
-                </div>
-            </div>
+                    <StepRow title={__('...and 40+ more')} />
+                </StepList>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={onSkip}
-                    className="group gap-2"
-                >
-                    <SkipForward className="h-4 w-4" />
-                    {__('Use Defaults')}
-                </Button>
-                <StepButton text={__('Continue')} onClick={onContinue} />
+                <p className="text-[13px] leading-normal text-muted-foreground">
+                    {__(
+                        'You can create, rename and delete categories in Settings at any time.',
+                    )}
+                </p>
             </div>
-
-            <p className="mt-4 text-center text-xs text-muted-foreground">
-                {__(
-                    'You can always customize categories later in Settings \u2192\n                Categories',
-                )}
-            </p>
-        </div>
+        </StepScreen>
     );
 }

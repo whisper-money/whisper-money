@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AutomationRule;
 use App\Models\User;
 use Illuminate\Support\Facades\Notification;
 
@@ -139,8 +140,8 @@ it('can select different field types and operators', function () {
         ->wait(0.5)
         ->click('[role="option"]:has-text("Amount")')
         ->wait(1)
-        // After selecting Amount, the value input changes to number type
-        ->fill('input[type="number"][placeholder="Value"]', '100')
+        // After selecting Amount, the value input becomes the masked AmountInput
+        ->fill('input[placeholder="Value"]', '-5')
         ->click('[data-testid="action-category-select"]')
         ->wait(0.5)
         ->click('Bills')
@@ -152,10 +153,13 @@ it('can select different field types and operators', function () {
     $page->assertSee('Amount Rule')
         ->assertNoJavascriptErrors();
 
-    $this->assertDatabaseHas('automation_rules', [
-        'user_id' => $user->id,
-        'title' => 'Amount Rule',
-    ]);
+    $rule = AutomationRule::where('user_id', $user->id)->sole();
+
+    // AmountInput speaks cents, the rule stores currency units: -5, not -500.
+    // `rules_json` is persisted as a JSON string, and `equals` is the default
+    // operator for Amount since this test only changes the field.
+    expect(json_decode($rule->rules_json, true))
+        ->toBe(['==' => [['var' => 'amount'], -5]]);
 });
 
 it('can edit an existing rule with visual builder', function () {
@@ -285,13 +289,13 @@ it('can use is empty operator for nullable fields', function () {
         ->wait(1)
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
-        ->fill('title', 'Empty Category Rule')
+        ->fill('title', 'Empty Creditor Rule')
         ->click('button:has-text("Description")')
         ->wait(0.5)
-        ->click('[role="option"]:has-text("Category")')
+        ->click('[role="option"]:has-text("Creditor Name")')
         ->wait(1)
-        // Click the operator dropdown - it shows "equals" by default for Category field
-        ->click('button[role="combobox"]:has-text("equals")')
+        // Click the operator dropdown - it shows "contains" by default for Creditor Name
+        ->click('button[role="combobox"]:has-text("contains")')
         ->wait(0.5)
         ->click('[role="option"]:has-text("is empty")')
         ->wait(0.5)
@@ -303,11 +307,11 @@ it('can use is empty operator for nullable fields', function () {
 
     $page->navigate('/settings/automation-rules')->wait(1);
 
-    $page->assertSee('Empty Category Rule')
+    $page->assertSee('Empty Creditor Rule')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
-        'title' => 'Empty Category Rule',
+        'title' => 'Empty Creditor Rule',
     ]);
 });

@@ -16,6 +16,41 @@ describe('createDescriptionCondition', () => {
     });
 });
 
+describe('buildJsonLogic', () => {
+    it('builds conditions for counterparty fields', () => {
+        const structure: RuleStructure = {
+            groupOperator: 'or',
+            groups: [
+                {
+                    id: 'group-1',
+                    operator: 'and',
+                    conditions: [
+                        {
+                            id: 'condition-1',
+                            field: 'creditor_name',
+                            operator: 'contains',
+                            value: 'amazon',
+                        },
+                        {
+                            id: 'condition-2',
+                            field: 'debtor_name',
+                            operator: 'is_not_empty',
+                            value: '',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        expect(buildJsonLogic(structure)).toMatchObject({
+            and: [
+                { in: ['amazon', { var: 'creditor_name' }] },
+                { '!=': [{ var: 'debtor_name' }, null] },
+            ],
+        });
+    });
+});
+
 describe('addDescriptionMatchToRuleStructure', () => {
     it('adds a new description group to a simple rule', () => {
         const structure: RuleStructure = {

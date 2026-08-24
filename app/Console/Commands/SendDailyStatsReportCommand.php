@@ -1,0 +1,133 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Console\Commands\Concerns\RendersReportToConsole;
+use App\Models\User;
+use App\Services\Discord\DiscordWebhook;
+use App\Services\Stripe\SubscriptionStatsCollector;
+use App\Support\Money;
+use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
+use Stripe\Exception\ApiErrorException;
+
+class SendDailyStatsReportCommand extends Command
+{
+    use RendersReportToConsole;
+
+    protected $signature = 'stats:daily-report {--no-discord : Print the report to the console only, without posting to Discord}';
+
+    protected $description = 'Post yesterday\'s user and Stripe subscription stats to the Discord admin channel';
+
+    private const TIMEZONE = 'Europe/Madrid';
+
+    public function __construct(
+        private SubscriptionStatsCollector $collector,
+        private DiscordWebhook $discord,
+    ) {
+        parent::__construct();
+    }
+
+    public function handle(): int
+    {
+        if (! config('subscriptions.enabled')) {
+            $this->info('Subscriptions are disabled; skipping the daily stats report.');
+
+            return self::SUCCESS;
+        }
+
+        try {
+            $stats = $this->collector->collect();
+        } catch (ApiErrorException $exception) {
+            $this->error("Stripe API error: {$exception->getMessage()}");
+
+            return self::FAILURE;
+        }
+
+        $yesterdayStart = Carbon::now(self::TIMEZONE)->subDay()->startOfDay();
+        $todayStart = Carbon::now(self::TIMEZONE)->startOfDay();
+
+        $newUsers = User::query()
+            ->whereBetween('created_at', [$yesterdayStart->copy()->utc(), $todayStart->copy()->utc()])
+            ->count();
+
+        $totalUsers = User::query()
+            ->where('created_at', '<', $todayStart->copy()->utc())
+            ->count();
+
+        $embed = $this->buildEmbed($stats, $newUsers, $totalUsers, $yesterdayStart);
+
+        if ($this->option('no-discord')) {
+            $this->printEmbeds([$embed]);
+            $this->info('Skipped Discord (--no-discord).');
+
+            return self::SUCCESS;
+        }
+
+        $this->discord->send('', [$embed]);
+
+        $this->info('Daily stats report sent to Discord.');
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @param  array{active: array<string, array{count: int, mrr: float}>, trialing: array<string, array{count: int, mrr: float}>}  $stats
+     * @return array<string, mixed>
+     */
+    private function buildEmbed(array $stats, int $newUsers, int $totalUsers, Carbon $day): array
+    {
+        $fields = [
+            [
+                'name' => '👥 Usuarios',
+                'value' => "Nuevos ayer: **{$newUsers}**\nTotal: **{$totalUsers}**",
+                'inline' => false,
+            ],
+        ];
+
+        $currencies = array_unique(array_merge(array_keys($stats['active']), array_keys($stats['trialing'])));
+        sort($currencies);
+
+        foreach ($currencies as $currency) {
+            $active = $stats['active'][$currency] ?? ['count' => 0, 'mrr' => 0.0];
+            $trialing = $stats['trialing'][$currency] ?? ['count' => 0, 'mrr' => 0.0];
+
+            $currentMrr = $active['mrr'];
+            $projectedMrr = $active['mrr'] + $trialing['mrr'];
+
+            $fields[] = [
+                'name' => '💳 '.strtoupper($currency),
+                'value' => implode("\n", [
+                    "Activas: **{$active['count']}** ({$this->money($currentMrr, $currency)} de MRR)",
+                    "En prueba: **{$trialing['count']}** ({$this->money($trialing['mrr'], $currency)} de MRR)",
+                    "MRR/ARR actual: **{$this->money($currentMrr, $currency)}** / **{$this->money($currentMrr * 12, $currency)}**",
+                    "MRR/ARR previsto: **{$this->money($projectedMrr, $currency)}** / **{$this->money($projectedMrr * 12, $currency)}**",
+                ]),
+                'inline' => false,
+            ];
+        }
+
+        if ($currencies === []) {
+            $fields[] = [
+                'name' => '💳 Suscripciones',
+                'value' => 'No hay suscripciones activas ni en prueba.',
+                'inline' => false,
+            ];
+        }
+
+        return [
+            'title' => '📊 Estadísticas diarias — '.$day->copy()->locale('es')->translatedFormat('D, d M Y'),
+            'color' => 0x5865F2,
+            'fields' => $fields,
+        ];
+    }
+
+    /**
+     * MRR figures are held in major units (e.g. euros), so convert to cents for
+     * the shared formatter.
+     */
+    private function money(float $amount, string $currency): string
+    {
+        return Money::format((int) round($amount * 100), $currency);
+    }
+}

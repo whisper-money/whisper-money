@@ -21,8 +21,7 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
-test('net worth calculates assets minus liabilities', function () {
-    // Assets
+test('net worth excludes credit card balances entirely', function () {
     $checking = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
@@ -34,7 +33,8 @@ test('net worth calculates assets minus liabilities', function () {
         'balance' => 500000, // $5,000.00
     ]);
 
-    // Liabilities
+    // A credit card is a spending account, not wealth: it must neither add to
+    // nor subtract from net worth.
     $creditCard = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::CreditCard,
@@ -43,7 +43,7 @@ test('net worth calculates assets minus liabilities', function () {
     AccountBalance::factory()->create([
         'account_id' => $creditCard->id,
         'balance_date' => now(),
-        'balance' => -100000, // -$1,000.00
+        'balance' => 100000, // $1,000.00
     ]);
 
     // Previous period data (30 days ago)
@@ -55,7 +55,7 @@ test('net worth calculates assets minus liabilities', function () {
     AccountBalance::factory()->create([
         'account_id' => $creditCard->id,
         'balance_date' => now()->subDays(30),
-        'balance' => -50000, // -$500.00
+        'balance' => 50000, // $500.00
     ]);
 
     $response = $this->getJson('/api/dashboard/net-worth?'.http_build_query([
@@ -65,10 +65,56 @@ test('net worth calculates assets minus liabilities', function () {
 
     $response->assertOk()
         ->assertJson([
-            'current' => 400000, // 5000 - 1000 = 4000
-            'previous' => 350000, // 4000 - 500 = 3500
+            'current' => 500000, // only the checking account counts
+            'previous' => 400000,
             'currency_code' => 'USD',
         ]);
+});
+
+test('net worth queries account balances a fixed number of times regardless of account count', function () {
+    // Six accounts, each with a current and a prior-period balance. The old
+    // implementation ran one balance query per account per compared period,
+    // so this would scale with the account count; BalanceLookup keeps it flat.
+    for ($i = 0; $i < 6; $i++) {
+        $account = Account::factory()->create([
+            'user_id' => $this->user->id,
+            'type' => AccountType::Checking,
+            'currency_code' => 'USD',
+        ]);
+
+        AccountBalance::factory()->create([
+            'account_id' => $account->id,
+            'balance_date' => now(),
+            'balance' => 100000,
+        ]);
+        AccountBalance::factory()->create([
+            'account_id' => $account->id,
+            'balance_date' => now()->subDays(30),
+            'balance' => 90000,
+        ]);
+    }
+
+    $balanceQueries = 0;
+    DB::listen(function ($query) use (&$balanceQueries): void {
+        if (str_starts_with(strtolower($query->sql), 'select') && str_contains($query->sql, 'account_balances')) {
+            $balanceQueries++;
+        }
+    });
+
+    $response = $this->getJson('/api/dashboard/net-worth?'.http_build_query([
+        'from' => now()->subDays(29)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk()
+        ->assertJson([
+            'current' => 600000, // 6 x 100000
+            'previous' => 540000, // 6 x 90000
+            'currency_code' => 'USD',
+        ]);
+
+    // BalanceLookup issues at most three balance queries for the whole request.
+    expect($balanceQueries)->toBeLessThanOrEqual(3);
 });
 
 test('net worth response includes currency_code', function () {
@@ -247,6 +293,54 @@ test('top categories returns highest spending categories', function () {
     expect($data[1]['amount'])->toBe(3000);
 });
 
+test('dashboard analytics net refunds in expense categories', function () {
+    $foodDelivery = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Food Delivery',
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => -8000,
+        'transaction_date' => '2026-05-05',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => 2000,
+        'transaction_date' => '2026-05-06',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => 2000,
+        'transaction_date' => '2026-05-07',
+    ]);
+
+    $period = [
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+    ];
+
+    $monthlySpending = $this->getJson('/api/dashboard/monthly-spending?'.http_build_query($period));
+    $cashFlow = $this->getJson('/api/dashboard/cash-flow?'.http_build_query($period));
+    $topCategories = $this->getJson('/api/dashboard/top-categories?'.http_build_query($period));
+
+    $monthlySpending->assertOk()
+        ->assertJsonPath('current', 4000);
+
+    $cashFlow->assertOk()
+        ->assertJsonPath('current.income', 0)
+        ->assertJsonPath('current.expense', 4000);
+
+    $topCategories->assertOk()
+        ->assertJsonPath('0.category.name', 'Food Delivery')
+        ->assertJsonPath('0.amount', 4000)
+        ->assertJsonPath('0.total_amount', 4000);
+});
+
 test('top categories excludes soft deleted categories', function () {
     $activeCategory = Category::factory()->create([
         'user_id' => $this->user->id,
@@ -283,6 +377,101 @@ test('top categories excludes soft deleted categories', function () {
 
     expect($response->json())->toHaveCount(1)
         ->and($response->json('0.category.id'))->toBe($activeCategory->id);
+});
+
+test('top categories rolls child spending up into the top-level parent', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
+    $groceries = Category::factory()->childOf($food)->create(['user_id' => $this->user->id, 'name' => 'Groceries']);
+    $restaurants = Category::factory()->childOf($food)->create(['user_id' => $this->user->id, 'name' => 'Restaurants']);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $food->id,
+        'amount' => -1000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $groceries->id,
+        'amount' => -2000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $restaurants->id,
+        'amount' => -3000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/dashboard/top-categories?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data)->toHaveCount(1);
+    expect($data[0]['category']['id'])->toBe($food->id);
+    expect($data[0]['amount'])->toBe(6000);
+    expect($data[0]['total_amount'])->toBe(6000);
+    expect($data[0]['has_children'])->toBeTrue();
+});
+
+test('top categories flags parents without children as not expandable', function () {
+    $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Rent']);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $rent->id,
+        'amount' => -1000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/dashboard/top-categories?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    expect($response->json('0.has_children'))->toBeFalse();
+});
+
+test('drilling into a top category splits it into children plus a direct node', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
+    $groceries = Category::factory()->childOf($food)->create(['user_id' => $this->user->id, 'name' => 'Groceries']);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $food->id,
+        'amount' => -1000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $groceries->id,
+        'amount' => -2000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/dashboard/top-categories?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+        'parent' => $food->id,
+    ]));
+
+    $response->assertOk();
+    $data = collect($response->json());
+
+    expect($data)->toHaveCount(2);
+
+    $childNode = $data->firstWhere('is_direct', false);
+    expect($childNode['category_id'])->toBe($groceries->id)
+        ->and($childNode['amount'])->toBe(2000);
+
+    $directNode = $data->firstWhere('is_direct', true);
+    expect($directNode['category_id'])->toBe($food->id)
+        ->and($directNode['amount'])->toBe(1000);
 });
 
 test('net worth evolution returns monthly data points with per-account balances', function () {

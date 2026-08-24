@@ -26,22 +26,6 @@ class UpdateConnectionCredentialsRequest extends FormRequest
             return [];
         }
 
-        return match ($connection->provider) {
-            'indexacapital' => [
-                'api_token' => ['required', 'string', 'min:10'],
-            ],
-            'binance' => [
-                'api_key' => ['required', 'string', 'min:10'],
-                'api_secret' => ['required', 'string', 'min:10'],
-            ],
-            'bitpanda' => [
-                'api_key' => ['required', 'string', 'min:10'],
-            ],
-            'coinbase' => [
-                'api_key_name' => ['required', 'string', 'regex:/^(organizations\/[a-z0-9-]+\/apiKeys\/[a-z0-9-]+|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i'],
-                'private_key' => ['required', 'string', 'min:40'],
-            ],
-            default => [],
-        };
+        return $connection->provider->credentialRules();
     }
 }

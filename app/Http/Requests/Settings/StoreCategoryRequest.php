@@ -5,33 +5,22 @@ namespace App\Http\Requests\Settings;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryColor;
 use App\Enums\CategoryType;
+use App\Http\Requests\Settings\Concerns\PreparesCategoryAttributes;
+use App\Rules\ValidCategoryParent;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreCategoryRequest extends FormRequest
 {
+    use PreparesCategoryAttributes;
+
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
         return true;
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if ($this->input('type') !== CategoryType::Transfer->value) {
-            $this->merge([
-                'cashflow_direction' => CategoryCashflowDirection::Hidden->value,
-            ]);
-
-            return;
-        }
-
-        $this->merge([
-            'cashflow_direction' => $this->input('cashflow_direction', CategoryCashflowDirection::Hidden->value),
-        ]);
     }
 
     /**
@@ -47,7 +36,14 @@ class StoreCategoryRequest extends FormRequest
                 'string',
                 'max:255',
                 Rule::unique('categories', 'name')
-                    ->where('user_id', auth()->id()),
+                    ->where(fn ($query) => $this->scopeUniqueToSiblings($query))
+                    ->withoutTrashed(),
+            ],
+            'parent_id' => [
+                'nullable',
+                'string',
+                'uuid',
+                new ValidCategoryParent(null),
             ],
             'icon' => ['required', 'string'],
             'color' => [

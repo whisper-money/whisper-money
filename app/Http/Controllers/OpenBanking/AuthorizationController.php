@@ -4,6 +4,8 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
+use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -11,10 +13,15 @@ use App\Http\Requests\OpenBanking\StartAuthorizationRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\User;
+use App\Services\AccountUserCurrencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class AuthorizationController extends Controller
 {
@@ -35,19 +42,32 @@ class AuthorizationController extends Controller
         $validated = $request->validated();
 
         $redirectUrl = config('services.enablebanking.redirect_url');
+        $stateToken = Str::random(40);
 
         $result = $provider->startAuthorization(
             $validated['aspsp_name'],
             $validated['country'],
             $redirectUrl,
+            $stateToken,
         );
 
         $connection = $user->bankingConnections()->create([
-            'provider' => 'enablebanking',
+            'provider' => BankingProvider::EnableBanking,
             'authorization_id' => $result['authorization_id'],
+            'state_token' => $stateToken,
             'aspsp_name' => $validated['aspsp_name'],
             'aspsp_country' => $validated['country'],
             'aspsp_logo' => $validated['logo'] ?? null,
+            // Denormalised from the bank picker, exactly like the logo above it:
+            // the connections screen renders stored connections and never sees
+            // the provider's catalogue again. `banking:backfill-aspsp-beta`
+            // repairs the rows the picker never told us about.
+            //
+            // A picker that says nothing means "not beta", never "unknown": it
+            // has just read the catalogue, so silence is an answer. The backfill
+            // command is the one that leaves a row null, because a bank missing
+            // from the catalogue really is unknown.
+            'aspsp_beta' => $request->boolean('beta'),
             'status' => BankingConnectionStatus::Pending,
         ]);
 
@@ -119,15 +139,18 @@ class AuthorizationController extends Controller
         }
 
         $redirectUrl = config('services.enablebanking.redirect_url');
+        $stateToken = Str::random(40);
 
         $result = $provider->startAuthorization(
             $connection->aspsp_name,
             $connection->aspsp_country,
             $redirectUrl,
+            $stateToken,
         );
 
         $connection->update([
             'authorization_id' => $result['authorization_id'],
+            'state_token' => $stateToken,
             'status' => BankingConnectionStatus::Pending,
             'error_message' => null,
         ]);
@@ -137,101 +160,249 @@ class AuthorizationController extends Controller
 
     /**
      * Handle the callback from bank authorization.
+     *
+     * This route is intentionally unauthenticated. iOS PWAs hand the bank redirect
+     * back to the system browser (Safari), where the app session does not exist, so
+     * the connection is resolved from the signed state token EnableBanking echoes
+     * back rather than from the logged-in session.
      */
-    public function callback(Request $request, BankingProviderInterface $provider): RedirectResponse
+    public function callback(Request $request, BankingProviderInterface $provider, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse|Response
     {
-        $user = auth()->user();
-        $errorRedirectRoute = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
-        $errorRedirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
+        $connection = $this->resolveConnectionFromState($request);
+        $user = $connection ? $connection->user : auth()->user();
+
+        if (! $user) {
+            return redirect()->route('login')
+                ->with('error', __('Please log back in to finish connecting your bank account.'));
+        }
 
         if ($request->has('error')) {
-            $errorDescription = $request->query('error_description');
-            $errorMessage = is_string($errorDescription) && $errorDescription !== ''
-                ? $errorDescription
-                : 'Authorization was denied or cancelled.';
-
-            Log::warning('EnableBanking authorization error', [
-                'error' => $request->query('error'),
-                'description' => $errorDescription,
-            ]);
-
-            $pendingConnection = $user->bankingConnections()
-                ->where('status', BankingConnectionStatus::Pending)
-                ->latest()
-                ->first();
-
-            if ($pendingConnection) {
-                if ($pendingConnection->accounts()->exists()) {
-                    $pendingConnection->update([
-                        'status' => BankingConnectionStatus::Error,
-                        'error_message' => $errorMessage,
-                    ]);
-                } else {
-                    $pendingConnection->delete();
-                }
-            }
-
-            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', $errorMessage);
+            return $this->handleAuthorizationError($request, $user, $connection);
         }
 
         $code = $request->query('code');
 
-        if (! $code) {
-            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', 'No authorization code received.');
+        // query() hands back an array for ?code[]=, which is truthy but not a code.
+        if (! $code || ! is_string($code)) {
+            return $this->finishWithError($user, 'No authorization code received.');
         }
 
-        try {
-            $sessionData = $provider->createSession($code);
-        } catch (\Throwable $e) {
-            Log::error('EnableBanking session creation failed', ['error' => $e->getMessage()]);
+        $sessionData = $this->createProviderSession($provider, $code, $connection);
 
-            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', 'Failed to connect to your bank. Please try again.');
+        if ($sessionData === null) {
+            return $this->finishWithError($user, 'Failed to connect to your bank. Please try again.');
         }
 
-        $connection = $this->findPendingConnectionForSession($user, $sessionData);
+        $connection ??= $this->findPendingConnectionForSession($user, $sessionData);
 
         if (! $connection) {
-            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', 'No pending connection found.');
+            return $this->finishWithError($user, 'No pending connection found.');
         }
 
         $isReconnect = $connection->accounts()->exists();
 
         if ($isReconnect) {
-            $connection->update([
-                'session_id' => $sessionData['session_id'],
-                'status' => BankingConnectionStatus::Active,
-                'valid_until' => $sessionData['access']['valid_until'] ?? null,
-                'error_message' => null,
-            ]);
-
-            $this->refreshAccountIds($connection, $sessionData['accounts']);
-
-            SyncBankingConnectionJob::dispatch($connection);
-
-            return redirect()->route('settings.connections.index')
-                ->with('success', __('Bank account reconnected successfully.'));
+            return $this->completeReconnect($connection, $sessionData);
         }
 
+        return $this->completeFirstConnection($user, $connection, $sessionData, $accountUserCurrencyService);
+    }
+
+    /**
+     * Exchange the authorization code for a provider session, or null when the
+     * exchange fails. A failed exchange burns the state token with it.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function createProviderSession(BankingProviderInterface $provider, string $code, ?BankingConnection $connection): ?array
+    {
+        try {
+            return $provider->createSession($code);
+        } catch (\Throwable $e) {
+            Log::error('EnableBanking session creation failed', ['error' => $e->getMessage()]);
+
+            if ($connection) {
+                $connection->update(['state_token' => null]);
+            }
+
+            return null;
+        }
+    }
+
+    /**
+     * Point a connection that already has accounts at its new session and resync it.
+     *
+     * @param  array<string, mixed>  $sessionData
+     */
+    private function completeReconnect(BankingConnection $connection, array $sessionData): RedirectResponse|Response
+    {
+        $connection->update([
+            'session_id' => $sessionData['session_id'],
+            'status' => BankingConnectionStatus::Active,
+            'valid_until' => $sessionData['access']['valid_until'] ?? null,
+            'error_message' => null,
+            'state_token' => null,
+            // Reconnecting is the way out of a parked connection, so it has
+            // to hand back the full retry budget. Carrying the old count over
+            // meant the first failure after a reconnect could re-park it
+            // immediately, which is the state the user just paid SCA to leave.
+            'consecutive_sync_failures' => 0,
+        ]);
+
+        $this->refreshAccountIds($connection, $sessionData['accounts']);
+
+        SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Reconnect);
+
+        return $this->finishRedirect('settings.connections.index', [], 'success', __('Bank account reconnected successfully.'));
+    }
+
+    /**
+     * Park the fetched accounts on the connection so the user can map them.
+     *
+     * Onboarding skips the mapping screen: every account is created up front so the
+     * user lands back on the onboarding step with data already syncing.
+     *
+     * @param  array<string, mixed>  $sessionData
+     */
+    private function completeFirstConnection(User $user, BankingConnection $connection, array $sessionData, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse|Response
+    {
         $connection->update([
             'session_id' => $sessionData['session_id'],
             'status' => BankingConnectionStatus::AwaitingMapping,
             'valid_until' => $sessionData['access']['valid_until'] ?? null,
             'pending_accounts_data' => $sessionData['accounts'],
+            'state_token' => null,
         ]);
 
         if (! $user->isOnboarded()) {
-            $this->createAccountsFromPending($user, $connection);
-            SyncBankingConnectionJob::dispatch($connection);
+            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
+            SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Connect);
 
-            return redirect()->route('onboarding', ['step' => 'create-account'])
-                ->with('success', 'Bank account connected successfully.');
+            return $this->finishRedirect('onboarding', ['step' => 'create-account'], 'success', 'Bank account connected successfully.');
         }
 
-        return redirect()->route('open-banking.map-accounts', $connection);
+        return $this->finishRedirect('open-banking.map-accounts', ['connection' => $connection]);
+    }
+
+    /**
+     * Clean up after an authorization the bank did not complete.
+     *
+     * A pending connection that already has accounts is a reconnect, so it is kept
+     * and marked as failing. A brand new one has nothing worth keeping.
+     */
+    private function handleAuthorizationError(Request $request, User $user, ?BankingConnection $connection): RedirectResponse|Response
+    {
+        $errorCode = $request->query('error');
+        $errorDescription = $request->query('error_description');
+        $errorMessage = $this->authorizationErrorMessage(
+            is_string($errorCode) ? $errorCode : null,
+            is_string($errorDescription) ? $errorDescription : null,
+        );
+
+        $pendingConnection = $connection ?? $user->bankingConnections()
+            ->where('status', BankingConnectionStatus::Pending)
+            ->latest()
+            ->first();
+
+        // The bank is logged because these failures are bank-specific, and the
+        // connection row is about to be deleted on one of the branches below.
+        Log::warning('EnableBanking authorization error', [
+            'error' => $errorCode,
+            'description' => $errorDescription,
+            'aspsp_name' => $pendingConnection?->aspsp_name,
+            'connection_id' => $pendingConnection?->id,
+        ]);
+
+        if ($pendingConnection) {
+            if ($pendingConnection->accounts()->exists()) {
+                $pendingConnection->update([
+                    'status' => BankingConnectionStatus::Error,
+                    'error_message' => $errorMessage,
+                    'state_token' => null,
+                ]);
+            } else {
+                $pendingConnection->delete();
+            }
+        }
+
+        return $this->finishWithError($user, $errorMessage);
+    }
+
+    /**
+     * The message the user sees when an authorization comes back as an error.
+     *
+     * `access_denied` is the only code the user causes, and the only one whose
+     * description is worth showing ("Cancelled by user"). The rest are ours or the
+     * bank's to fix and arrive either with no description at all or with
+     * untranslated prose addressed to us, so they get our own copy — worded
+     * without pinning it on the bank, since `invalid_client` is our credentials.
+     */
+    private function authorizationErrorMessage(?string $errorCode, ?string $errorDescription): string
+    {
+        if ($errorCode !== 'access_denied') {
+            return __('We could not complete the connection with your bank. Please try again later.');
+        }
+
+        return $errorDescription === null || $errorDescription === ''
+            ? __('Authorization was denied or cancelled.')
+            : $errorDescription;
+    }
+
+    /**
+     * Abandon the callback with a message, sending the user wherever they came from.
+     *
+     * A user still onboarding has no connections screen to land on yet.
+     */
+    private function finishWithError(User $user, string $message): RedirectResponse|Response
+    {
+        return $user->isOnboarded()
+            ? $this->finishRedirect('settings.connections.index', [], 'error', $message)
+            : $this->finishRedirect('onboarding', ['step' => 'create-account'], 'error', $message);
+    }
+
+    /**
+     * Resolve the connection a callback belongs to from the state token EnableBanking
+     * echoes back. This works without a logged-in session.
+     */
+    private function resolveConnectionFromState(Request $request): ?BankingConnection
+    {
+        $stateToken = $request->query('state');
+
+        if (! is_string($stateToken) || $stateToken === '') {
+            return null;
+        }
+
+        return BankingConnection::query()
+            ->where('state_token', $stateToken)
+            ->first();
+    }
+
+    /**
+     * Finish a callback, accounting for the unauthenticated PWA case.
+     *
+     * When the callback runs without a session (Safari), the destination routes are
+     * behind auth middleware and the user is not logged in on this browser. The
+     * connection has already been finalized server-side, so render a standalone page
+     * telling the user to return to the app rather than bouncing them to login.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    private function finishRedirect(string $route, array $params, ?string $flashKey = null, ?string $flashMessage = null): RedirectResponse|Response
+    {
+        if (! Auth::check()) {
+            return Inertia::render('open-banking/connection-complete', [
+                'status' => $flashKey === 'error' ? 'error' : 'success',
+                'message' => $flashMessage ?? __('Your bank account is connected.'),
+            ]);
+        }
+
+        $redirect = redirect()->route($route, $params);
+
+        if ($flashKey !== null && $flashMessage !== null) {
+            $redirect->with($flashKey, $flashMessage);
+        }
+
+        return $redirect;
     }
 
     /**

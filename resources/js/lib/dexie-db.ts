@@ -1,8 +1,8 @@
 import type {
     Budget,
     BudgetCategory,
+    BudgetLabel,
     BudgetPeriod,
-    BudgetPeriodAllocation,
 } from '@/types/budget';
 import type { Transaction } from '@/types/transaction';
 import Dexie, { type EntityTable } from 'dexie';
@@ -16,8 +16,8 @@ type WhisperMoneyDB = Dexie & {
     transactions: EntityTable<Transaction, 'id'>;
     budgets: EntityTable<Budget, 'id'>;
     budget_categories: EntityTable<BudgetCategory, 'id'>;
+    budget_labels: EntityTable<BudgetLabel, 'id'>;
     budget_periods: EntityTable<BudgetPeriod, 'id'>;
-    budget_period_allocations: EntityTable<BudgetPeriodAllocation, 'id'>;
     sync_metadata: EntityTable<SyncMetadata, 'key'>;
 };
 
@@ -80,6 +80,18 @@ function initializeDatabase(): WhisperMoneyDB {
         sync_metadata: 'key',
     });
 
+    // Version 10: Multi-category/label budgets share a single pool, so the
+    // per-category allocations table is dropped and a budget_labels pivot added.
+    database.version(10).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        budgets: 'id, user_id, updated_at',
+        budget_categories: 'id, budget_id, updated_at',
+        budget_labels: 'id, budget_id, updated_at',
+        budget_periods: 'id, budget_id, start_date, updated_at',
+        budget_period_allocations: null,
+        sync_metadata: 'key',
+    });
+
     return database;
 }
 
@@ -91,3 +103,47 @@ export const db = new Proxy({} as WhisperMoneyDB, {
         return dbInstance[prop as keyof WhisperMoneyDB];
     },
 });
+
+/**
+ * Whether IndexedDB is usable in the current context. Some browsers do not
+ * expose the `indexedDB` global at all — Chrome on iOS in certain webviews,
+ * private/locked-down modes — so any Dexie operation throws
+ * "ReferenceError: Can't find variable: indexedDB" (see PHP-LARAVEL-43). Checked
+ * via `globalThis` so referencing the global never throws, and wrapped
+ * defensively against exotic throwing getters.
+ */
+export function isIndexedDbAvailable(): boolean {
+    try {
+        return (
+            typeof globalThis.indexedDB !== 'undefined' &&
+            globalThis.indexedDB !== null
+        );
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Run a Dexie operation, degrading to `fallback` when IndexedDB is unavailable
+ * or the operation fails. IndexedDB is only an offline cache here (the API is
+ * the source of truth), so a missing or broken store must never crash the app —
+ * it just means no local cache. Pass ONLY Dexie work in `operation`; keep API
+ * calls outside so they always run. The closure defers `db` access (which lazily
+ * opens Dexie) until after the availability check passes.
+ */
+export async function withDb<T>(
+    operation: () => Promise<T>,
+    fallback: T,
+): Promise<T> {
+    if (!isIndexedDbAvailable()) {
+        return fallback;
+    }
+
+    try {
+        return await operation();
+    } catch (error) {
+        console.debug('IndexedDB operation failed; using fallback', error);
+
+        return fallback;
+    }
+}

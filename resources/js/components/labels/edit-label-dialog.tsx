@@ -1,4 +1,5 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/LabelController';
+import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,11 +68,7 @@ export function EditLabelDialog({
                                     required
                                 />
 
-                                {errors.name && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.name}
-                                    </p>
-                                )}
+                                <InputError message={errors.name} />
                             </div>
 
                             <div className="space-y-2">
@@ -107,11 +104,7 @@ export function EditLabelDialog({
                                         })}
                                     </SelectContent>
                                 </Select>
-                                {errors.color && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.color}
-                                    </p>
-                                )}
+                                <InputError message={errors.color} />
                             </div>
 
                             <div className="flex justify-end gap-2">

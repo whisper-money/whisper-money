@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests\OpenBanking;
 
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class MapAccountsRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     public function authorize(): bool
     {
         return $this->route('connection')->user_id === $this->user()->id;
@@ -25,8 +27,21 @@ class MapAccountsRequest extends FormRequest
                 'nullable',
                 'uuid',
                 'required_if:mappings.*.action,link',
-                Rule::exists('accounts', 'id')->where('user_id', $this->user()->id),
+                $this->userOwned('accounts'),
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'mappings.required' => 'There are no accounts to map.',
+            'mappings.min' => 'There are no accounts to map.',
+            'mappings.*.bank_account_uid.required' => 'This account cannot be mapped because your bank did not provide an identifier for it.',
+            'mappings.*.existing_account_id.required_if' => 'Choose the account you want to link to.',
         ];
     }
 }

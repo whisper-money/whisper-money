@@ -2,7 +2,6 @@
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Account;
-use App\Models\AccountBalance;
 use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
@@ -17,7 +16,6 @@ use Stripe\StripeClient;
 
 beforeEach(function () {
     config([
-        'landing.hide_auth_buttons' => false,
         'subscriptions.enabled' => true,
     ]);
 });
@@ -50,7 +48,6 @@ test('paywall page includes user stats', function () {
     $user = User::factory()->onboarded()->create();
 
     $account = Account::factory()->for($user)->create(['currency_code' => 'USD']);
-    AccountBalance::factory()->for($account)->create(['balance' => 150000]);
     Transaction::factory()->count(3)->for($user)->for($account)->create();
     Category::factory()->count(2)->for($user)->create();
 
@@ -64,11 +61,8 @@ test('paywall page includes user stats', function () {
             ->has('stats.accountsCount')
             ->has('stats.transactionsCount')
             ->has('stats.categoriesCount')
-            ->has('stats.automationRulesCount')
-            ->has('stats.balancesByCurrency')
             ->where('stats.accountsCount', 1)
             ->where('stats.transactionsCount', 3)
-            ->where('stats.balancesByCurrency.USD', 150000)
         );
 });
 
@@ -333,7 +327,7 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', null)
                 ->has('stripe_lookup_key')
                 ->where('billing_period', 'month')
-                ->where('trial_days', 15)
+                ->where('trial_days', 7)
                 ->has('features')
             )
             ->has('pricing.plans.yearly', fn ($plan) => $plan
@@ -407,6 +401,56 @@ test('paywall shows canUseFreePlan false when user has a bank connection', funct
         );
 });
 
+test('users with active ai consent are forced to the paywall even after seeing it', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+    $user->recordAiConsent();
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertRedirect(route('subscribe'));
+    $this->get(route('accounts.list'))->assertRedirect(route('subscribe'));
+});
+
+test('paywall shows canUseFreePlan false when user has active ai consent', function () {
+    $user = User::factory()->onboarded()->create();
+    $user->recordAiConsent();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('canUseFreePlan', false)
+        );
+});
+
+test('subscribed users with active ai consent can access protected routes', function () {
+    $user = User::factory()->onboarded()->create();
+    $user->recordAiConsent();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_ai_consent_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertOk();
+});
+
+test('revoking ai consent lets users fall back to the free plan', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+    $user->recordAiConsent();
+    $user->revokeAiConsent();
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertOk();
+});
+
 test('taxRates returns configured stripe tax rate ids', function () {
     config(['subscriptions.tax_rates' => ['txr_test_1', 'txr_test_2']]);
 
@@ -451,9 +495,41 @@ test('billing portal skips stripe customer creation when user already has a stri
     $this->get(route('settings.billing.portal'))->assertRedirect();
 });
 
-test('checkout applies configured trial days to the subscription builder', function () {
+test('checkout applies each plan its own trial days', function (string $planKey, int $trialDays) {
     config([
-        'subscriptions.plans.monthly.trial_days' => 15,
+        "subscriptions.plans.{$planKey}.trial_days" => $trialDays,
+        "subscriptions.plans.{$planKey}.stripe_lookup_key" => 'test_lookup',
+    ]);
+    Cache::put('stripe_price_id:test_lookup', 'price_test', now()->addHour());
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
+    $builder->shouldReceive('trialDays')->once()->with($trialDays)->andReturnSelf();
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
+    $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('newSubscription')
+        ->once()
+        ->with('default', 'price_test')
+        ->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('subscribe.checkout', ['plan' => $planKey]))->assertRedirect();
+})->with([
+    'monthly' => ['monthly', 7],
+    'yearly' => ['yearly', 15],
+]);
+
+test('checkout tags the subscription with a valid upsell source', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 0,
         'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
     ]);
     Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
@@ -463,7 +539,7 @@ test('checkout applies configured trial days to the subscription builder', funct
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
-    $builder->shouldReceive('trialDays')->once()->with(15)->andReturnSelf();
+    $builder->shouldReceive('withMetadata')->once()->with(['upsell_source' => 'connections'])->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn($checkout);
 
     $user = Mockery::mock(User::class)->shouldIgnoreMissing();
@@ -477,7 +553,36 @@ test('checkout applies configured trial days to the subscription builder', funct
     $this->withoutMiddleware(HandleInertiaRequests::class);
     $this->actingAs($user);
 
-    $this->get(route('subscribe.checkout', ['plan' => 'monthly']))->assertRedirect();
+    $this->get(route('subscribe.checkout', ['plan' => 'monthly', 'source' => 'connections']))->assertRedirect();
+});
+
+test('checkout ignores an unknown upsell source', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 0,
+        'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
+    ]);
+    Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
+    $builder->shouldNotReceive('withMetadata');
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
+    $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('newSubscription')
+        ->once()
+        ->with('default', 'price_test_monthly')
+        ->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('subscribe.checkout', ['plan' => 'monthly', 'source' => 'bogus']))->assertRedirect();
 });
 
 test('checkout applies lead promotion code without allowing manual promotion codes', function () {

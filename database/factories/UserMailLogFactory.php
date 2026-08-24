@@ -76,4 +76,12 @@ class UserMailLogFactory extends Factory
             'email_identifier' => DripEmailType::SubscriptionCancelled->value,
         ]);
     }
+
+    public function paywallFollowUp(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'email_type' => DripEmailType::PaywallFollowUp,
+            'email_identifier' => DripEmailType::PaywallFollowUp->value,
+        ]);
+    }
 }

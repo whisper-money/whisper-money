@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\OpenBanking\Concerns;
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\User;
+use App\Services\AccountUserCurrencyService;
 
 trait CreatesAccountsFromPending
 {
@@ -17,7 +17,7 @@ trait CreatesAccountsFromPending
      * Indexa Capital, Binance, Bitpanda, and Coinbase; Checking for everything else) and clears the
      * pending data once accounts have been created.
      */
-    private function createAccountsFromPending(User $user, BankingConnection $connection): void
+    private function createAccountsFromPending(User $user, BankingConnection $connection, AccountUserCurrencyService $accountUserCurrencyService): void
     {
         $bank = Bank::firstOrCreate(
             ['name' => $connection->aspsp_name, 'user_id' => null],
@@ -28,23 +28,17 @@ trait CreatesAccountsFromPending
             $bank->update(['logo' => $connection->aspsp_logo]);
         }
 
-        $accountType = ($connection->isIndexaCapital() || $connection->isBinance() || $connection->isBitpanda() || $connection->isCoinbase())
-            ? AccountType::Investment
-            : AccountType::Checking;
+        $accountType = $connection->provider->defaultAccountType();
 
-        foreach ($connection->pending_accounts_data ?? [] as $accountData) {
-            $uid = $accountData['uid'] ?? null;
+        foreach ($connection->mappablePendingAccounts() as $accountData) {
+            $uid = $accountData['uid'];
 
-            if (! $uid) {
-                continue;
-            }
-
-            $currency = $accountData['currency'] ?? 'EUR';
+            $currency = $accountUserCurrencyService->resolveImportedCurrency($accountData['currency'] ?? null, $user);
             $name = $accountData['name']
                 ?? $accountData['account_id']['iban']
                 ?? $connection->aspsp_name.' Account';
 
-            $user->accounts()->create([
+            $account = $user->accounts()->create([
                 'name' => $name,
                 'name_iv' => null,
                 'encrypted' => false,
@@ -55,6 +49,8 @@ trait CreatesAccountsFromPending
                 'external_account_id' => $uid,
                 'iban' => $accountData['account_id']['iban'] ?? null,
             ]);
+
+            $accountUserCurrencyService->syncFromFirstAccount($account);
         }
 
         $connection->update([

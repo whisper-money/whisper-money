@@ -28,9 +28,11 @@ test('user can create a budget with category', function () {
         ->wait(0.5)
         ->click('[role="option"]:has-text("Monthly")')
         ->wait(1)
-        ->click('button:has-text("Select a category")')
+        ->click('button:has-text("Select categories")')
         ->wait(0.5)
         ->click('[role="option"]:has-text("'.$category->name.'")')
+        ->wait(0.5)
+        ->click('#categories') // Close the categories combobox popover
         ->wait(1)
         ->click('button:has-text("Carry Over")')
         ->wait(0.5)
@@ -47,20 +49,17 @@ test('user can create a budget with category', function () {
         ->assertSee('Budget Spending')
         ->assertNoJavascriptErrors();
 
-    $this->assertDatabaseHas('budgets', [
-        'user_id' => $user->id,
-        'name' => 'Monthly Groceries',
-        'category_id' => $category->id,
-    ]);
+    $budget = Budget::where('user_id', $user->id)->where('name', 'Monthly Groceries')->first();
+    expect($budget)->not->toBeNull()
+        ->and($budget->categories->pluck('id')->contains($category->id))->toBeTrue();
 });
 
 test('user can update budget name', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
         'name' => 'Old Name',
     ]);
 
@@ -99,9 +98,8 @@ test('user can delete a budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
         'name' => 'Budget to Delete',
     ]);
 
@@ -150,9 +148,8 @@ test('budget shows current period information', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
     ]);
 
     $page = $this->actingAs($user)->visit("/budgets/{$budget->id}");
@@ -166,9 +163,8 @@ test('user can navigate back to budgets list from budget detail', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
     ]);
 
     $page = $this->actingAs($user)->visit("/budgets/{$budget->id}");

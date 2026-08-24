@@ -3,20 +3,22 @@ import {
     AccountInfo,
     computeDeltaSeries,
     computeMoMPercent,
+    computeNetWorthBarScaling,
     computeNetWorthSeries,
     formatPercentValue,
     getAccountSign,
     isLiabilityType,
     MonthDataPoint,
+    netWorthContribution,
 } from './chart-calculations';
 
 describe('isLiabilityType', () => {
-    it('returns true for credit_card', () => {
-        expect(isLiabilityType('credit_card')).toBe(true);
-    });
-
     it('returns true for loan', () => {
         expect(isLiabilityType('loan')).toBe(true);
+    });
+
+    it('returns false for credit_card', () => {
+        expect(isLiabilityType('credit_card')).toBe(false);
     });
 
     it('returns false for checking', () => {
@@ -40,18 +42,78 @@ describe('isLiabilityType', () => {
     });
 });
 
+describe('computeNetWorthBarScaling', () => {
+    it('leaves assets untouched when there are no liabilities', () => {
+        expect(computeNetWorthBarScaling(100000, 0, false)).toEqual({
+            scaleFactor: 1,
+            deficit: null,
+        });
+    });
+
+    it('scales assets down to net worth when positive', () => {
+        expect(computeNetWorthBarScaling(100000, 40000, true)).toEqual({
+            scaleFactor: 0.6,
+            deficit: null,
+        });
+    });
+
+    it('hides assets and reports the deficit when net worth is negative', () => {
+        expect(computeNetWorthBarScaling(20000, 77604, true)).toEqual({
+            scaleFactor: 0,
+            deficit: -57604,
+        });
+    });
+
+    it('reports the full deficit when there are only liabilities', () => {
+        expect(computeNetWorthBarScaling(0, 50000, true)).toEqual({
+            scaleFactor: 0,
+            deficit: -50000,
+        });
+    });
+
+    it('collapses assets to zero when net worth is exactly zero', () => {
+        expect(computeNetWorthBarScaling(50000, 50000, true)).toEqual({
+            scaleFactor: 0,
+            deficit: null,
+        });
+    });
+
+    it('falls back to a neutral factor when there are no assets to scale', () => {
+        expect(computeNetWorthBarScaling(0, 0, true)).toEqual({
+            scaleFactor: 1,
+            deficit: null,
+        });
+    });
+});
+
 describe('getAccountSign', () => {
     it('returns -1 for liabilities', () => {
-        expect(getAccountSign('credit_card')).toBe(-1);
         expect(getAccountSign('loan')).toBe(-1);
     });
 
     it('returns 1 for assets', () => {
+        expect(getAccountSign('credit_card')).toBe(1);
         expect(getAccountSign('checking')).toBe(1);
         expect(getAccountSign('savings')).toBe(1);
         expect(getAccountSign('investment')).toBe(1);
         expect(getAccountSign('retirement')).toBe(1);
         expect(getAccountSign('others')).toBe(1);
+    });
+});
+
+describe('netWorthContribution', () => {
+    it('subtracts the magnitude of liabilities (stored as positive)', () => {
+        expect(netWorthContribution('loan', 80000)).toBe(-80000);
+    });
+
+    it('keeps the real sign of assets', () => {
+        expect(netWorthContribution('checking', 288399)).toBe(288399);
+        expect(netWorthContribution('savings', 0)).toBe(0);
+    });
+
+    it('lets a negative asset balance reduce net worth', () => {
+        // Regression: an overdrawn checking account must subtract, not add.
+        expect(netWorthContribution('checking', -23528)).toBe(-23528);
     });
 });
 
@@ -86,12 +148,10 @@ describe('computeNetWorthSeries', () => {
     });
 
     it('subtracts liabilities from net worth', () => {
-        const data = [
-            { month: '2025-01', checking: 50000, credit_card: 10000 },
-        ];
+        const data = [{ month: '2025-01', checking: 50000, loan: 10000 }];
         const accounts = createAccounts({
             checking: 'checking',
-            credit_card: 'credit_card',
+            loan: 'loan',
         });
 
         const result = computeNetWorthSeries(data, accounts);
@@ -105,21 +165,19 @@ describe('computeNetWorthSeries', () => {
                 month: '2025-01',
                 savings: 100000,
                 checking: 20000,
-                credit_card: 5000,
                 loan: 30000,
             },
         ];
         const accounts = createAccounts({
             savings: 'savings',
             checking: 'checking',
-            credit_card: 'credit_card',
             loan: 'loan',
         });
 
         const result = computeNetWorthSeries(data, accounts);
 
-        // Net worth = 100000 + 20000 - 5000 - 30000 = 85000
-        expect(result[0].value).toBe(85000);
+        // Net worth = 100000 + 20000 - 30000 = 90000
+        expect(result[0].value).toBe(90000);
     });
 
     it('handles negative net worth (more liabilities than assets)', () => {

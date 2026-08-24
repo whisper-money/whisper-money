@@ -47,12 +47,18 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
         $updated = 0;
 
         $query->with(['account.bank', 'category', 'labels'])->chunkById(100, function ($transactions) use ($service, $total, &$processed, &$updated) {
+            $reassignIds = [];
+
             foreach ($transactions as $transaction) {
                 $categoryBefore = $transaction->category_id;
                 $labelsBefore = $transaction->labels->pluck('id')->sort()->values()->all();
                 $notesBefore = $transaction->notes;
 
-                $service->applyRules($transaction);
+                // The reassignment is batched per chunk below, so this must not
+                // queue a job of its own for every transaction it changes.
+                if ($service->applyRules($transaction, reassignBudgets: false)) {
+                    $reassignIds[] = $transaction->id;
+                }
 
                 $transaction->refresh();
                 $categoryAfter = $transaction->category_id;
@@ -65,6 +71,12 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
 
                 $processed++;
                 $this->updateProgress(status: 'processing', processed: $processed, total: $total, updated: $updated);
+            }
+
+            // Re-evaluating the whole history is an administrative act, not
+            // spending, so it must not raise budget emails.
+            if ($reassignIds !== []) {
+                ReassignTransactionsToBudgets::dispatch($reassignIds, notify: false);
             }
         });
 
@@ -83,14 +95,14 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
         );
     }
 
-    public static function cacheKeyForJobId(string $jobId): string
+    public static function cacheKeyForJobId(string $userId, string $jobId): string
     {
-        return "re_evaluate_rules_job_{$jobId}";
+        return "re_evaluate_rules_job_{$userId}_{$jobId}";
     }
 
     private function cacheKey(): string
     {
-        return self::cacheKeyForJobId($this->jobId);
+        return self::cacheKeyForJobId($this->user->id, $this->jobId);
     }
 
     /**

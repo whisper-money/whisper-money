@@ -4,11 +4,14 @@ namespace App\Http\Requests;
 
 use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreBudgetRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     public function authorize(): bool
     {
         return true;
@@ -16,29 +19,43 @@ class StoreBudgetRequest extends FormRequest
 
     public function rules(): array
     {
-        $userId = $this->user()->id;
-
         return [
             'name' => ['required', 'string', 'max:255'],
             'period_type' => ['required', Rule::enum(BudgetPeriodType::class)],
-            'period_start_day' => ['nullable', 'integer', 'min:0', 'max:31'],
-            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', $userId)],
-            'label_id' => ['nullable', Rule::exists('labels', 'id')->where('user_id', $userId)],
+            'period_start_day' => ['nullable', 'integer', ...$this->periodType()->startDayRules()],
+            'category_ids' => ['nullable', 'array'],
+            'category_ids.*' => [$this->userOwned('categories')],
+            'label_ids' => ['nullable', 'array'],
+            'label_ids.*' => [$this->userOwned('labels')],
             'rollover_type' => ['required', Rule::enum(RolloverType::class)],
             'allocated_amount' => ['required', 'integer', 'min:0'],
+            'is_catch_all' => ['sometimes', 'boolean'],
         ];
+    }
+
+    private function periodType(): BudgetPeriodType
+    {
+        return BudgetPeriodType::tryFrom((string) $this->input('period_type')) ?? BudgetPeriodType::Monthly;
     }
 
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            $hasCategoryId = ! empty($this->category_id);
-            $hasLabelId = ! empty($this->label_id);
+            $isCatchAll = $this->boolean('is_catch_all');
+            $hasCategories = ! empty($this->category_ids);
+            $hasLabels = ! empty($this->label_ids);
 
-            if (! $hasCategoryId && ! $hasLabelId) {
+            if (! $isCatchAll && ! $hasCategories && ! $hasLabels) {
                 $validator->errors()->add(
                     'selection',
-                    'You must select either a category or a label.'
+                    'You must select at least one category or label.'
+                );
+            }
+
+            if ($isCatchAll && $this->user()->budgets()->where('is_catch_all', true)->exists()) {
+                $validator->errors()->add(
+                    'is_catch_all',
+                    'You already have a catch-all budget.'
                 );
             }
         });

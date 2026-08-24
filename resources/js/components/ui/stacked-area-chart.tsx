@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Area, AreaChart, XAxis } from 'recharts';
+import { Area, AreaChart, ReferenceLine, XAxis } from 'recharts';
 
 import {
     ChartConfig,
@@ -8,6 +8,7 @@ import {
     ChartLegendContent,
     ChartTooltip,
     ChartTooltipContent,
+    type NetWorthMode,
 } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +37,7 @@ export interface StackedAreaChartProps<T extends Record<string, unknown>> {
     className?: string;
     showLegend?: boolean;
     minBarWidth?: number;
-    netWorthMode?: { liabilityTypeLabel: string; liabilityDotColor?: string };
+    netWorthMode?: NetWorthMode;
 }
 
 export function StackedAreaChart<T extends Record<string, unknown>>({
@@ -119,6 +120,13 @@ export function StackedAreaChart<T extends Record<string, unknown>>({
                         axisLine={false}
                         tickFormatter={xAxisFormatter}
                     />
+                    {netWorthMode?.deficitKey && (
+                        <ReferenceLine
+                            y={0}
+                            stroke="var(--color-border)"
+                            strokeDasharray="3 3"
+                        />
+                    )}
                     <ChartTooltip
                         content={
                             <ChartTooltipContent
@@ -151,6 +159,26 @@ export function StackedAreaChart<T extends Record<string, unknown>>({
                             />
                         );
                     })}
+                    {netWorthMode?.deficitKey && (
+                        <Area
+                            key={netWorthMode.deficitKey}
+                            dataKey={netWorthMode.deficitKey}
+                            stackId="stack"
+                            type="monotone"
+                            fill={
+                                netWorthMode.liabilityDotColor ??
+                                'var(--color-destructive)'
+                            }
+                            stroke={
+                                netWorthMode.liabilityDotColor ??
+                                'var(--color-destructive)'
+                            }
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4 }}
+                            fillOpacity={0.15}
+                        />
+                    )}
                 </AreaChart>
             </ChartContainer>
         </div>

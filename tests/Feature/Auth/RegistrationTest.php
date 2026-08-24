@@ -4,61 +4,11 @@ use App\Models\User;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
-use Inertia\Testing\AssertableInertia as Assert;
-
-beforeEach(function () {
-    config(['landing.hide_auth_buttons' => false]);
-});
 
 test('registration screen can be rendered', function () {
     $response = $this->withoutVite()->get(route('register'));
 
     $response->assertSuccessful();
-});
-
-test('registration screen stays accessible with force query when auth buttons are hidden', function () {
-    config(['landing.hide_auth_buttons' => true]);
-
-    $response = $this->withoutVite()->get(route('register', ['force' => 1]));
-
-    $response
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('auth/register')
-            ->where('forcedRegistration', true)
-            ->where('hideAuthButtons', false)
-        );
-});
-
-test('registration is blocked when auth buttons are hidden without force query', function () {
-    config(['landing.hide_auth_buttons' => true]);
-
-    $response = $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
-
-    $response->assertNotFound();
-});
-
-test('new users can register with force query when auth buttons are hidden', function () {
-    Queue::fake();
-
-    config(['landing.hide_auth_buttons' => true]);
-
-    $response = $this->post(route('register.store', ['force' => 1]), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
-
-    $this->assertAuthenticated();
-    $response
-        ->assertRedirect(route('onboarding', absolute: false))
-        ->assertCookie('whisper_money_returning_user');
 });
 
 test('new users can register', function () {
@@ -91,6 +41,42 @@ test('new users store their detected timezone on registration', function () {
     $user = User::where('email', 'test@example.com')->first();
 
     expect($user->timezone)->toBe('America/New_York');
+});
+
+test('new users can register with a legacy timezone alias', function () {
+    Queue::fake();
+
+    $response = $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => 'Asia/Calcutta',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('onboarding', absolute: false));
+
+    expect(User::where('email', 'test@example.com')->first()->timezone)
+        ->toBe('Asia/Calcutta');
+});
+
+test('new users can register when the browser sends an unrecognized timezone', function () {
+    Queue::fake();
+
+    $response = $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => 'Not/AZone',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('onboarding', absolute: false));
+
+    expect(User::where('email', 'test@example.com')->first()->timezone)
+        ->toBeNull();
 });
 
 test('new users can register without a timezone', function () {

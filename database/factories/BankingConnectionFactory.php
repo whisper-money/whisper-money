@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,7 +22,7 @@ class BankingConnectionFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'provider' => 'enablebanking',
+            'provider' => BankingProvider::EnableBanking,
             'authorization_id' => fake()->uuid(),
             'session_id' => fake()->uuid(),
             'aspsp_name' => fake()->company(),
@@ -76,7 +77,7 @@ class BankingConnectionFactory extends Factory
     public function indexaCapital(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'indexacapital',
+            'provider' => BankingProvider::IndexaCapital,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'test-indexa-token-'.fake()->uuid(),
@@ -90,7 +91,7 @@ class BankingConnectionFactory extends Factory
     public function binance(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'binance',
+            'provider' => BankingProvider::Binance,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'test-binance-api-key-'.fake()->uuid(),
@@ -105,7 +106,7 @@ class BankingConnectionFactory extends Factory
     public function bitpanda(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'bitpanda',
+            'provider' => BankingProvider::Bitpanda,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'test-bitpanda-api-key-'.fake()->uuid(),
@@ -120,7 +121,7 @@ class BankingConnectionFactory extends Factory
     public function coinbase(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'coinbase',
+            'provider' => BankingProvider::Coinbase,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'organizations/org-'.fake()->uuid().'/apiKeys/key-'.fake()->uuid(),
@@ -132,12 +133,56 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function interactiveBrokers(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => BankingProvider::InteractiveBrokers,
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'test-ib-token-'.fake()->uuid(),
+            'api_secret' => (string) fake()->numberBetween(100000, 999999),
+            'aspsp_name' => 'Interactive Brokers',
+            'aspsp_country' => 'US',
+            'aspsp_logo' => '/images/banks/logos/interactive-brokers.png',
+            'valid_until' => null,
+        ]);
+    }
+
+    public function wise(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => BankingProvider::Wise,
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'test-wise-api-token-'.fake()->uuid(),
+            'api_secret' => null,
+            'aspsp_name' => 'Wise',
+            'aspsp_country' => 'BE',
+            'aspsp_logo' => 'https://whisper.money/storage/banks/logos/wise.png',
+            'valid_until' => null,
+        ]);
+    }
+
     public function error(): static
     {
         return $this->state(fn (array $attributes) => [
             'status' => BankingConnectionStatus::Error,
             'error_message' => 'Connection failed: bank returned an error',
             'consecutive_sync_failures' => 1,
+        ]);
+    }
+
+    /**
+     * A connection the provider rate limited: still Active, backing off, and
+     * carrying an error message instead of a sync.
+     */
+    public function rateLimited(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => BankingConnectionStatus::Active,
+            'last_synced_at' => null,
+            'rate_limited_until' => now()->addHour(),
+            'error_message' => 'Rate limit exceeded. Please wait a few minutes and try again.',
         ]);
     }
 }

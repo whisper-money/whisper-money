@@ -1,3 +1,5 @@
+import InputError from '@/components/input-error';
+import { AmountInput } from '@/components/ui/amount-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -19,7 +21,9 @@ import {
     OPERATOR_LABELS,
     type RuleStructure,
 } from '@/lib/rule-builder-utils';
+import type { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { ChevronDown, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -225,9 +229,20 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                 {__('Add Group')}
             </Button>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            <InputError message={error} />
         </div>
     );
+}
+
+/**
+ * `condition.value` is stored as a string in currency units ("-21.99") because
+ * that is what `buildJsonLogic` and the backend expect, while `AmountInput`
+ * speaks cents.
+ */
+function currencyUnitsToCents(value: string): number {
+    const cents = Math.round(parseFloat(value) * 100);
+
+    return Number.isNaN(cents) ? 0 : cents;
 }
 
 interface ConditionRowProps {
@@ -245,6 +260,7 @@ function ConditionRow({
 }: ConditionRowProps) {
     const fieldConfig = FIELD_CONFIG[condition.field];
     const availableOperators = fieldConfig?.operators || [];
+    const currencyCode = usePage<SharedData>().props.auth.user.currency_code;
 
     const handleFieldChange = (field: string) => {
         const newFieldConfig = FIELD_CONFIG[field];
@@ -272,64 +288,98 @@ function ConditionRow({
         condition.operator !== 'is_empty' &&
         condition.operator !== 'is_not_empty';
 
-    const inputType = fieldConfig?.type === 'number' ? 'number' : 'text';
+    const isAmountField = fieldConfig?.type === 'number';
+
+    const showAmountHint = showValueInput && isAmountField;
 
     return (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select value={condition.field} onValueChange={handleFieldChange}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {Object.entries(FIELD_CONFIG).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                            {__(config.label)}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+        <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Select
+                    value={condition.field}
+                    onValueChange={handleFieldChange}
+                >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {Object.entries(FIELD_CONFIG).map(([key, config]) => (
+                            <SelectItem key={key} value={key}>
+                                {__(config.label)}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
 
-            <Select
-                value={condition.operator}
-                onValueChange={handleOperatorChange}
-            >
-                <SelectTrigger className="w-full sm:w-[140px]">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {availableOperators.map((op) => (
-                        <SelectItem key={op} value={op}>
-                            {__(OPERATOR_LABELS[op])}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                <Select
+                    value={condition.operator}
+                    onValueChange={handleOperatorChange}
+                >
+                    <SelectTrigger className="w-full sm:w-[140px]">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {availableOperators.map((op) => (
+                            <SelectItem key={op} value={op}>
+                                {__(OPERATOR_LABELS[op])}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
 
-            {showValueInput && (
-                <Input
-                    type={inputType}
-                    value={condition.value}
-                    onChange={(e) =>
-                        onChange({ ...condition, value: e.target.value })
-                    }
-                    placeholder={__('Value')}
-                    className="w-full sm:flex-1"
-                    step={inputType === 'number' ? 'any' : undefined}
-                />
+                {!showValueInput ? (
+                    <div className="hidden sm:flex sm:flex-1" />
+                ) : isAmountField ? (
+                    <div className="w-full sm:flex-1">
+                        <AmountInput
+                            value={currencyUnitsToCents(condition.value)}
+                            onChange={(valueInCents, isEmpty) =>
+                                onChange({
+                                    ...condition,
+                                    // A cleared field and a typed 0 both resolve
+                                    // to 0 cents; only the cleared one may blank
+                                    // the condition, or `amount < 0` would be
+                                    // impossible to express.
+                                    value: isEmpty
+                                        ? ''
+                                        : String(valueInCents / 100),
+                                })
+                            }
+                            currencyCode={currencyCode}
+                            placeholder={__('Value')}
+                            allowNegative
+                        />
+                    </div>
+                ) : (
+                    <Input
+                        value={condition.value}
+                        onChange={(e) =>
+                            onChange({ ...condition, value: e.target.value })
+                        }
+                        placeholder={__('Value')}
+                        className="w-full sm:flex-1"
+                    />
+                )}
+
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onRemove}
+                    disabled={!canRemove}
+                    className={`self-end sm:self-auto${!canRemove ? 'opacity-30' : ''}`}
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {showAmountHint && (
+                <p className="py-2 pl-2 text-xs text-muted-foreground">
+                    {__(
+                        'Use a negative value for expenses (e.g. -21.99) and a positive value for income.',
+                    )}
+                </p>
             )}
-
-            {!showValueInput && <div className="hidden sm:flex sm:flex-1" />}
-
-            <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onRemove}
-                disabled={!canRemove}
-                className={`self-end sm:self-auto${!canRemove ? 'opacity-30' : ''}`}
-            >
-                <X className="h-4 w-4" />
-            </Button>
         </div>
     );
 }

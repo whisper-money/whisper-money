@@ -2,10 +2,12 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import * as RechartsPrimitive from 'recharts';
 
+import { computeTooltipPosition } from '@/lib/chart-tooltip-position';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/currency';
+import { __ } from '@/utils/i18n';
 
 const THEMES = { light: '', dark: '.dark' } as const;
 
@@ -142,6 +144,11 @@ function ChartTooltipPortal({
         };
     }, []);
 
+    // Only recompute when the cursor coordinate (or offset) changes. Depending
+    // on nothing re-ran this effect after its own setPos, and the equality
+    // guard alone could not stop the render→effect→setPos loop once positions
+    // oscillated by a sub-pixel — React aborted with "Maximum update depth
+    // exceeded". `pos` is deliberately not a dependency.
     React.useLayoutEffect(() => {
         if (!anchorRef.current || !coordinate) {
             return;
@@ -151,37 +158,26 @@ function ChartTooltipPortal({
             return;
         }
         const rect = wrapper.getBoundingClientRect();
-        const cx = (coordinate.x ?? 0) + rect.left;
-        const cy = (coordinate.y ?? 0) + rect.top;
-
         const tipEl = tooltipRef.current;
-        const tipW = tipEl?.offsetWidth ?? 0;
-        const tipH = tipEl?.offsetHeight ?? 0;
 
-        let x = cx + offset;
-        let y = cy + offset;
-
-        // Flip if overflowing viewport
-        if (x + tipW > window.innerWidth - 8) {
-            x = cx - tipW - offset;
-        }
-        if (y + tipH > window.innerHeight - 8) {
-            y = cy - tipH - offset;
-        }
-        if (x < 8) {
-            x = 8;
-        }
-        if (y < 8) {
-            y = 8;
-        }
-
-        setPos((prev) => {
-            if (prev && prev.x === x && prev.y === y) {
-                return prev;
-            }
-            return { x, y };
+        const next = computeTooltipPosition({
+            cx: (coordinate.x ?? 0) + rect.left,
+            cy: (coordinate.y ?? 0) + rect.top,
+            tipW: tipEl?.offsetWidth ?? 0,
+            tipH: tipEl?.offsetHeight ?? 0,
+            offset,
+            viewportW: window.innerWidth,
+            viewportH: window.innerHeight,
         });
-    });
+
+        setPos((prev) =>
+            prev && prev.x === next.x && prev.y === next.y ? prev : next,
+        );
+        // Depend on the primitive x/y, not the `coordinate` object: Recharts
+        // passes a fresh object every render, so depending on it would run this
+        // effect on every render again and reopen the loop.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [coordinate?.x, coordinate?.y, offset]);
 
     return (
         <>
@@ -220,6 +216,22 @@ interface TooltipPayloadItem {
     payload?: Record<string, unknown>;
 }
 
+/**
+ * Net-worth chart mode shared by the stacked bar/area charts and this tooltip.
+ * When set, the tooltip shows liability rows and a net-worth total instead of a
+ * plain sum, and the charts can draw a negative net worth as a downward series.
+ */
+export interface NetWorthMode {
+    liabilityTypeLabel: string;
+    liabilityDotColor?: string;
+    /**
+     * Synthetic data key holding a period's negative net worth. The charts draw
+     * it as a single downward bar/area; the tooltip hides it from the per-account
+     * rows since the negative total already shows in the net-worth row.
+     */
+    deficitKey?: string;
+}
+
 interface ChartTooltipContentProps {
     active?: boolean;
     payload?: TooltipPayloadItem[];
@@ -246,10 +258,7 @@ interface ChartTooltipContentProps {
     accountCurrencies?: Record<string, string>;
     displayCurrency?: string;
     /** When set, tooltip shows liability rows and net-worth total instead of simple sum. */
-    netWorthMode?: {
-        liabilityTypeLabel: string;
-        liabilityDotColor?: string;
-    };
+    netWorthMode?: NetWorthMode;
 }
 
 function formatCurrencyWithCode(
@@ -332,7 +341,9 @@ const ChartTooltipContent = React.forwardRef<
                 return null;
             }
 
-            // In net worth mode, use pre-computed net worth from data point
+            // In net worth mode, use pre-computed net worth from data point.
+            // This returns before the raw-payload sums below, so the synthetic
+            // deficit series never gets double-counted into a currency total.
             if (netWorthMode && displayCurrency) {
                 const netWorth = payload[0]?.payload?.__net_worth as number | undefined;
                 if (netWorth !== undefined) {
@@ -368,7 +379,13 @@ const ChartTooltipContent = React.forwardRef<
             return null;
         }
 
-        const nestLabel = payload.length === 1 && indicator !== 'dot';
+        // The synthetic deficit series is rendering-only; the negative net
+        // worth already shows in the total row, so drop it from the item list.
+        const itemPayload = netWorthMode?.deficitKey
+            ? payload.filter((item) => item.dataKey !== netWorthMode.deficitKey)
+            : payload;
+
+        const nestLabel = itemPayload.length === 1 && indicator !== 'dot';
         const hasMultipleCurrencies =
             currencyTotals && currencyTotals.length > 1;
 
@@ -383,7 +400,7 @@ const ChartTooltipContent = React.forwardRef<
             >
                 {!nestLabel ? tooltipLabel : null}
                 <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
-                    {payload.map(
+                    {itemPayload.map(
                         (item: TooltipPayloadItem, index: number) => {
                             const key = `${nameKey || item.name || item.dataKey || 'value'}`;
                             const itemConfig = getPayloadConfigFromPayload(
@@ -484,11 +501,13 @@ const ChartTooltipContent = React.forwardRef<
                             ? (JSON.parse(liabilitiesJson) as Array<{ name: string; amount: number }>)
                             : [];
                         const hasLiabilities = typeof liabilitiesTotal === 'number' && liabilitiesTotal > 0;
-                        const showTotalSection = payload.length > 1 || hasLiabilities;
+                        const showTotalSection = itemPayload.length > 1 || hasLiabilities;
 
                         if (!showTotalSection) return null;
 
-                        const totalLabel = hasLiabilities ? 'Net Worth' : 'Total';
+                        const totalLabel = hasLiabilities
+                            ? __('Net Worth')
+                            : __('Total');
 
                         return (
                             <div className="border-border/50 flex flex-col gap-1 border-t pt-1.5 min-w-0">
@@ -691,6 +710,7 @@ export {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
+    ChartTooltipPortal,
     ChartLegend,
     ChartLegendContent,
     ChartStyle,

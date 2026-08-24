@@ -3,6 +3,7 @@
 use App\Events\TransactionCreated;
 use App\Events\TransactionUpdated;
 use App\Jobs\ApplySingleAutomationRuleJob;
+use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Bank;
@@ -10,7 +11,10 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\AutomationRuleService;
+use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 
@@ -58,6 +62,37 @@ test('matches endpoint returns transactions matching the rule', function () {
         ->assertJsonCount(1, 'data');
 });
 
+test('matches endpoint returns transactions matching creditor name rule', function () {
+    $this->rule->update([
+        'rules_json' => ['in' => ['amazon', ['var' => 'creditor_name']]],
+    ]);
+
+    Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Card payment',
+        'creditor_name' => 'Amazon EU',
+        'amount' => -1000,
+    ]);
+
+    Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Card payment',
+        'creditor_name' => 'Coffee Shop',
+        'amount' => -500,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('automation-rules.matches', $this->rule));
+
+    $response->assertOk()
+        ->assertJsonPath('total', 1)
+        ->assertJsonCount(1, 'data');
+});
+
 test('matches endpoint skips already categorized when only_uncategorized is true', function () {
     Transaction::factory()->enableBanking()->create([
         'user_id' => $this->user->id,
@@ -84,6 +119,51 @@ test('matches endpoint skips already categorized when only_uncategorized is true
         ->getJson(route('automation-rules.matches', $this->rule).'?only_uncategorized=0');
 
     $allResponse->assertOk()->assertJsonPath('total', 2);
+});
+
+test('matches endpoint avoids repeated relationship queries for description-only rules', function () {
+    Transaction::factory()->enableBanking()->create([
+        'id' => '00000000-0000-0000-0000-000000000001',
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Grocery Store',
+        'transaction_date' => '2024-01-01',
+        'amount' => -1000,
+    ]);
+
+    Transaction::factory()->enableBanking()->count(500)->sequence(
+        fn (Sequence $sequence): array => [
+            'id' => sprintf('ffffffff-ffff-ffff-ffff-%012d', $sequence->index),
+        ],
+    )->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Grocery Store',
+        'transaction_date' => '2024-01-02',
+        'amount' => -1000,
+    ]);
+
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $this->actingAs($this->user)
+        ->getJson(route('automation-rules.matches', $this->rule))
+        ->assertOk()
+        ->assertJsonPath('total', 501);
+
+    $accountEagerLoadQueries = collect($queries)
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "accounts"') || str_contains($query, 'from `accounts`'))
+            && (str_contains($query, '"accounts"."id" in') || str_contains($query, '`accounts`.`id` in')));
+    $bankEagerLoadQueries = collect($queries)
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "banks"') || str_contains($query, 'from `banks`'))
+            && (str_contains($query, '"banks"."id" in') || str_contains($query, '`banks`.`id` in')));
+
+    expect($accountEagerLoadQueries)->toHaveCount(1)
+        ->and($bankEagerLoadQueries)->toHaveCount(1);
 });
 
 test('matches endpoint deduplicates cached matching transaction ids', function () {
@@ -133,13 +213,67 @@ test('apply endpoint runs synchronously when matches are below threshold', funct
         ->assertJsonPath('updated', 3)
         ->assertJsonPath('total', 3);
 
-    Queue::assertNothingPushed();
+    Queue::assertNotPushed(ApplySingleAutomationRuleJob::class);
+    // One reassignment job for the whole batch, not one per transaction, and
+    // silent: applying a rule to history is not new spending.
+    Queue::assertPushed(
+        ReassignTransactionsToBudgets::class,
+        fn (ReassignTransactionsToBudgets $job): bool => $job->notify === false,
+    );
+    Queue::assertPushed(ReassignTransactionsToBudgets::class, 1);
 
     expect(
         Transaction::where('user_id', $this->user->id)
             ->where('category_id', $this->category->id)
             ->count()
     )->toBe(3);
+});
+
+test('apply endpoint batches category and label writes', function () {
+    Queue::fake();
+
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    $this->rule->labels()->attach($label);
+
+    Transaction::factory()->enableBanking()->count(5)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Grocery Store',
+        'amount' => -1000,
+    ]);
+
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $response = $this->actingAs($this->user)
+        ->postJson(route('automation-rules.apply', $this->rule), [
+            'only_uncategorized' => true,
+        ]);
+
+    $transactionUpdateQueries = collect($queries)
+        ->filter(fn (string $query): bool => str_contains($query, 'update "transactions" set')
+            || str_contains($query, 'update `transactions` set'));
+    $perTransactionPivotLookupQueries = collect($queries)
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "label_transaction"')
+            || str_contains($query, 'from `label_transaction`'))
+            && (str_contains($query, '"label_transaction"."transaction_id" =')
+                || str_contains($query, '`label_transaction`.`transaction_id` =')));
+
+    $response->assertOk()
+        ->assertJsonPath('status', 'done')
+        ->assertJsonPath('applied', 5)
+        ->assertJsonPath('updated', 5)
+        ->assertJsonPath('total', 5);
+
+    expect($transactionUpdateQueries)->toHaveCount(1)
+        ->and($perTransactionPivotLookupQueries)->toHaveCount(0);
+
+    Queue::assertNotPushed(ApplySingleAutomationRuleJob::class);
+    Queue::assertPushed(ReassignTransactionsToBudgets::class, 1);
+    $this->assertDatabaseCount('label_transaction', 5);
 });
 
 test('apply endpoint queues a job when matches exceed threshold', function () {
@@ -163,6 +297,56 @@ test('apply endpoint queues a job when matches exceed threshold', function () {
         ->assertJsonStructure(['job_id']);
 
     Queue::assertPushed(ApplySingleAutomationRuleJob::class);
+});
+
+test('apply job applies the rule and records done progress', function () {
+    $t1 = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => null,
+    ]);
+    $t2 = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -3000,
+        'category_id' => null,
+    ]);
+
+    $jobId = 'apply-run-1';
+    (new ApplySingleAutomationRuleJob($this->rule, $jobId, [$t1->id, $t2->id]))
+        ->handle(app(AutomationRuleService::class));
+
+    expect($t1->fresh()->category_id)->toBe($this->category->id)
+        ->and($t2->fresh()->category_id)->toBe($this->category->id);
+
+    $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($this->user->id, $jobId));
+    expect($progress['status'])->toBe('done')
+        ->and($progress['total'])->toBe(2)
+        ->and($progress['processed'])->toBe(2)
+        ->and($progress['applied'])->toBe(2)
+        ->and($progress['updated'])->toBe(2);
+});
+
+test('apply job marks cache as failed and preserves counts', function () {
+    $jobId = 'apply-failed';
+    Cache::put(
+        ApplySingleAutomationRuleJob::cacheKeyForJobId($this->user->id, $jobId),
+        ['status' => 'processing', 'processed' => 3, 'total' => 10, 'applied' => 3, 'updated' => 2],
+        now()->addHour(),
+    );
+
+    (new ApplySingleAutomationRuleJob($this->rule, $jobId, ['x', 'y']))
+        ->failed(new RuntimeException('boom'));
+
+    $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($this->user->id, $jobId));
+    expect($progress['status'])->toBe('failed')
+        ->and($progress['processed'])->toBe(3)
+        ->and($progress['total'])->toBe(10)
+        ->and($progress['applied'])->toBe(3)
+        ->and($progress['updated'])->toBe(2);
 });
 
 test('apply endpoint returns done with zero matches when no transactions match', function () {
@@ -192,6 +376,59 @@ test('cannot apply rule belonging to another user', function () {
     $this->actingAs($otherUser)
         ->getJson(route('automation-rules.matches', $this->rule))
         ->assertForbidden();
+});
+
+test('cannot poll apply job status belonging to another user', function () {
+    $jobId = 'apply-job-1';
+    Cache::put(
+        ApplySingleAutomationRuleJob::cacheKeyForJobId($this->user->id, $jobId),
+        ['status' => 'processing', 'processed' => 1, 'total' => 4],
+        now()->addHour(),
+    );
+
+    $this->actingAs($this->user)
+        ->getJson(route('automation-rules.apply.status', $jobId))
+        ->assertOk()
+        ->assertJsonPath('status', 'processing');
+
+    $otherUser = User::factory()->onboarded()->create();
+
+    $this->actingAs($otherUser)
+        ->getJson(route('automation-rules.apply.status', $jobId))
+        ->assertNotFound();
+});
+
+test('apply re-checks only_uncategorized at apply time and skips newly categorized transactions', function () {
+    $otherCategory = Category::factory()->create(['user_id' => $this->user->id]);
+
+    // Both matched the rule when the snapshot was taken, but this one has since
+    // been categorized (by the user, another rule, or the AI backfill).
+    $nowCategorized = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => $otherCategory->id,
+    ]);
+
+    $stillUncategorized = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -3000,
+        'category_id' => null,
+    ]);
+
+    $transactions = Transaction::query()
+        ->whereIn('id', [$nowCategorized->id, $stillUncategorized->id])
+        ->get();
+
+    $changed = app(AutomationRuleService::class)
+        ->applyRuleActionsToTransactions($transactions, $this->rule, onlyUncategorized: true);
+
+    expect($changed)->toBe(1);
+    expect($nowCategorized->fresh()->category_id)->toBe($otherCategory->id);
+    expect($stillUncategorized->fresh()->category_id)->toBe($this->category->id);
 });
 
 test('label-only rule applies when only_uncategorized is true', function () {

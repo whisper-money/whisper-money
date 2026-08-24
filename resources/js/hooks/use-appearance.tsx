@@ -1,3 +1,8 @@
+import {
+    addMediaQueryListener,
+    removeMediaQueryListener,
+} from '@/lib/media-query';
+import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { useCallback, useEffect, useState } from 'react';
 
 export type Appearance = 'light' | 'dark' | 'system';
@@ -8,6 +13,22 @@ const prefersDark = () => {
     }
 
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
+/**
+ * The preference cookie is the only channel that survives when localStorage is
+ * unavailable, and the server already renders the page from it. Reading it back
+ * keeps a no-storage user on the theme they chose instead of resetting them to
+ * "system" — and to light, on a light-OS device — on every load.
+ */
+const readCookie = (name: string): string | null => {
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+
+    return match ? decodeURIComponent(match[1]) : null;
 };
 
 const setCookie = (name: string, value: string, days = 365) => {
@@ -37,23 +58,26 @@ const mediaQuery = () => {
     return window.matchMedia('(prefers-color-scheme: dark)');
 };
 
+const storedAppearance = (): Appearance | null =>
+    (readStoredValue('appearance') ??
+        readCookie('appearance')) as Appearance | null;
+
 const handleSystemThemeChange = () => {
     if (typeof window === 'undefined') return;
 
-    const currentAppearance = localStorage.getItem('appearance') as Appearance;
-    applyTheme(currentAppearance || 'system');
+    applyTheme(storedAppearance() || 'system');
 };
 
 export function initializeTheme() {
     if (typeof window === 'undefined') return;
 
-    const savedAppearance =
-        (localStorage.getItem('appearance') as Appearance) || 'system';
-
-    applyTheme(savedAppearance);
+    applyTheme(storedAppearance() || 'system');
 
     // Add the event listener for system theme changes...
-    mediaQuery()?.addEventListener('change', handleSystemThemeChange);
+    const mql = mediaQuery();
+    if (mql) {
+        addMediaQueryListener(mql, handleSystemThemeChange);
+    }
 }
 
 export function useAppearance() {
@@ -63,7 +87,7 @@ export function useAppearance() {
         setAppearance(mode);
 
         // Store in localStorage for client-side persistence...
-        localStorage.setItem('appearance', mode);
+        writeStoredValue('appearance', mode);
 
         // Store in cookie for SSR...
         setCookie('appearance', mode);
@@ -72,18 +96,21 @@ export function useAppearance() {
     }, []);
 
     useEffect(() => {
-        const savedAppearance = localStorage.getItem(
-            'appearance',
-        ) as Appearance | null;
+        // Hydrate from what is already persisted — deliberately without writing
+        // it back, so mounting this hook cannot overwrite the cookie of a user
+        // whose localStorage is unavailable.
+        const saved = storedAppearance() || 'system';
 
-        updateAppearance(savedAppearance || 'system');
+        setAppearance(saved);
+        applyTheme(saved);
 
-        return () =>
-            mediaQuery()?.removeEventListener(
-                'change',
-                handleSystemThemeChange,
-            );
-    }, [updateAppearance]);
+        return () => {
+            const mql = mediaQuery();
+            if (mql) {
+                removeMediaQueryListener(mql, handleSystemThemeChange);
+            }
+        };
+    }, []);
 
     return { appearance, updateAppearance } as const;
 }

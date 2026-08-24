@@ -68,6 +68,9 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Width the app pages are capped to, so they don't stretch on wide screens: max-w-page */
+    --container-page: 80rem;
 }
 
 :root {
@@ -100,8 +103,8 @@
     --chart-6: var(--color-zinc-400);
     --chart-7: var(--color-zinc-300);
     --chart-8: var(--color-zinc-200);
-    --chart-9: var(--color-zinc-100);
-    --chart-10: var(--color-zinc-50);
+    --chart-9: var(--color-zinc-700);
+    --chart-10: var(--color-zinc-600);
     --spent: var(--color-zinc-800);
     --allocated: var(--color-zinc-200);
     --spent-prev: var(--color-zinc-400);
@@ -134,7 +137,7 @@
     --destructive: oklch(0.396 0.141 25.723);
     --destructive-foreground: oklch(0.637 0.237 25.331);
     --border: oklch(0.325 0 0);
-    --input: oklch(0.269 0 0);
+    --input: oklch(0.41 0 0);
     --ring: oklch(0.439 0 0);
     --chart-1: var(--color-zinc-200);
     --chart-2: var(--color-zinc-300);
@@ -142,8 +145,8 @@
     --chart-4: var(--color-zinc-500);
     --chart-5: var(--color-zinc-600);
     --chart-6: var(--color-zinc-700);
-    --chart-7: var(--color-zinc-800);
-    --chart-8: var(--color-zinc-900);
+    --chart-7: var(--color-zinc-200);
+    --chart-8: var(--color-zinc-300);
     --chart-9: var(--color-zinc-50);
     --chart-10: var(--color-zinc-100);
     --spent: var(--color-zinc-200);

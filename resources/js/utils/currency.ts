@@ -23,6 +23,12 @@ export function getCurrencySymbol(currencyCode: string): string {
         EUR: '€',
         GBP: '£',
         JPY: '¥',
+        NZD: 'NZ$',
+        DOP: 'RD$',
+        NGN: '₦',
+        SEK: 'kr',
+        THB: '฿',
+        SGD: 'S$',
     };
     return symbols[currencyCode] || currencyCode;
 }

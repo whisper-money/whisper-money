@@ -6,6 +6,8 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
+use App\Services\CashflowSummaryService;
+use App\Services\CategorySpendingService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -15,7 +17,10 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __construct(private AccountMetricsService $accountMetricsService) {}
+    public function __construct(
+        private AccountMetricsService $accountMetricsService,
+        private CategorySpendingService $categorySpendingService,
+    ) {}
 
     public function __invoke(Request $request): Response
     {
@@ -37,6 +42,8 @@ class DashboardController extends Controller
         $accounts = Account::query()
             ->where('user_id', $user->id)
             ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
+            ->orderBy('position')
+            ->orderBy('name')
             ->get();
 
         return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end);
@@ -52,8 +59,8 @@ class DashboardController extends Controller
         $period = new PeriodComparator($from, $to);
         $previousPeriod = $period->previous();
 
-        $currentSpending = $this->getCategorySpending($user->id, $period->from, $period->to);
-        $previousSpending = $this->getCategorySpending($user->id, $previousPeriod->from, $previousPeriod->to);
+        $currentSpending = $this->categorySpendingService->forPeriod($user->id, $period->from, $period->to);
+        $previousSpending = $this->categorySpendingService->forPeriod($user->id, $previousPeriod->from, $previousPeriod->to);
 
         $totalAmount = $currentSpending->sum('amount');
 
@@ -65,9 +72,12 @@ class DashboardController extends Controller
 
                 return [
                     'category' => $item['category'],
+                    'category_id' => $item['category_id'],
                     'amount' => $item['amount'],
                     'previous_amount' => $previousAmount,
                     'total_amount' => $totalAmount,
+                    'has_children' => $item['has_children'],
+                    'is_direct' => $item['is_direct'],
                 ];
             })
             ->values()
@@ -90,50 +100,20 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getCategorySpending(string $userId, Carbon $from, Carbon $to)
-    {
-        return Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense)
-                    ->whereNull('categories.deleted_at');
-            })
-            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
-            ->groupBy('transactions.category_id')
-            ->with('category')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'category_id' => $item->category_id,
-                    'category' => $item->category,
-                    'amount' => abs($item->total_amount),
-                ];
-            });
-    }
-
     private function calculateCashflowSummary(string $userId, Carbon $from, Carbon $to): array
     {
-        $income = $this->getTransactionSum($userId, $from, $to, CategoryType::Income);
-        $expense = abs($this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
+        $income = max(0, $this->getTransactionSum($userId, $from, $to, CategoryType::Income));
+        $expense = max(0, -$this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
 
-        $net = $income - $expense;
-        $savingsRate = $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0;
-
-        return [
-            'income' => $income,
-            'expense' => $expense,
-            'net' => $net,
-            'savings_rate' => $savingsRate,
-        ];
+        return CashflowSummaryService::summarize($income, $expense);
     }
 
     private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
     {
-        return Transaction::query()
+        return (int) Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->joinOwningAccount()
             ->where(function ($q) use ($type) {
                 $q->whereExists(function ($sub) use ($type) {
                     $sub->select(DB::raw(1))
@@ -146,6 +126,6 @@ class DashboardController extends Controller
                             ->where('transactions.amount', $type === CategoryType::Income ? '>' : '<', 0);
                     });
             })
-            ->sum('transactions.amount');
+            ->sum(Transaction::ownedAmount());
     }
 }

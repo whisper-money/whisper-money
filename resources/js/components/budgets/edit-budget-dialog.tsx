@@ -1,5 +1,9 @@
 import { update } from '@/actions/App/Http/Controllers/BudgetController';
+import { CategoryBadge } from '@/components/shared/category-combobox';
+import { LabelBadge } from '@/components/shared/label-combobox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AmountInput } from '@/components/ui/amount-input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -29,6 +33,7 @@ import {
 } from '@/types/budget';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
+import { Info } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Props {
@@ -107,6 +112,15 @@ export function EditBudgetDialog({
                     </DialogHeader>
 
                     <div className="space-y-4 py-4">
+                        <Alert>
+                            <Info className="h-4 w-4 opacity-50" />
+                            <AlertDescription>
+                                {__(
+                                    'Period and carry-over settings cannot be changed after a budget is created because budgets are calculated historically. If you need different settings, delete this budget and create a new one.',
+                                )}
+                            </AlertDescription>
+                        </Alert>
+
                         <div className="space-y-2">
                             <Label htmlFor="name">{__('Budget Name')}</Label>
                             <Input
@@ -117,6 +131,46 @@ export function EditBudgetDialog({
                                 placeholder={__('e.g., Monthly Budget')}
                                 required
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>{__('Tracking')}</Label>
+                            {budget.is_catch_all ? (
+                                <>
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        <Badge variant="secondary">
+                                            {__('All untracked expenses')}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        {__(
+                                            'This catch-all budget tracks every expense that no other budget covers.',
+                                        )}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        {budget.categories?.map((category) => (
+                                            <CategoryBadge
+                                                key={category.id}
+                                                category={category}
+                                            />
+                                        ))}
+                                        {budget.labels?.map((label) => (
+                                            <LabelBadge
+                                                key={label.id}
+                                                label={label}
+                                            />
+                                        ))}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        {__(
+                                            'Tracked categories and labels cannot be changed after creation.',
+                                        )}
+                                    </p>
+                                </>
+                            )}
                         </div>
 
                         <div className="space-y-2">
@@ -160,7 +214,7 @@ export function EditBudgetDialog({
                                     disabled
                                     type="number"
                                     className="mt-1"
-                                    min="0"
+                                    min={periodType === 'monthly' ? '1' : '0'}
                                     max={periodType === 'monthly' ? '31' : '6'}
                                     value={periodStartDay}
                                     onChange={(e) =>

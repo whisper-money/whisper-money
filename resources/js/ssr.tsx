@@ -1,4 +1,4 @@
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, type ResolvedComponent } from '@inertiajs/react';
 import createServer from '@inertiajs/react/server';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import ReactDOMServer from 'react-dom/server';
@@ -17,8 +17,12 @@ createServer((page) =>
         resolve: (name) =>
             resolvePageComponent(
                 `./pages/${name}.tsx`,
-                import.meta.glob('./pages/**/*.tsx'),
-            ),
+                // See app.tsx: keeps the page tests out of the bundle.
+                import.meta.glob<{ default: ResolvedComponent }>([
+                    './pages/**/*.tsx',
+                    '!./pages/**/*.test.tsx',
+                ]),
+            ).then((module) => module.default),
         setup: ({ App, props }) => {
             const initialPageProps = props.initialPage?.props as
                 | Partial<SharedData>

@@ -1,7 +1,8 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
+import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
-import { UpgradeConnectionDialog } from '@/components/open-banking/upgrade-connection-dialog';
+import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Button } from '@/components/ui/button';
 import { CreateButton } from '@/components/ui/create-button';
 import {
@@ -12,8 +13,10 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { getCsrfToken } from '@/lib/csrf';
 import { SharedData } from '@/types';
 import { Account } from '@/types/account';
+import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { Link2, PenLine } from 'lucide-react';
@@ -33,14 +36,22 @@ export function CreateAccountDialog({
         auth,
         subscriptionsEnabled,
         accounts: sharedAccounts,
+        bankingConnections: sharedConnections,
     } = usePage<SharedData>().props;
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const sharedAccountsList = useMemo(
         () => (sharedAccounts as Account[]) || [],
         [sharedAccounts],
     );
+    const connections = useMemo(
+        () => (sharedConnections as BankingConnection[]) || [],
+        [sharedConnections],
+    );
     const availableLoanAccounts = useMemo(
-        () => sharedAccountsList.filter((a) => a.type === 'loan'),
+        () =>
+            sharedAccountsList.filter(
+                (a) => a.type === 'loan' && !a.archived_at,
+            ),
         [sharedAccountsList],
     );
     const isFirstAccount = sharedAccountsList.length === 0;
@@ -50,6 +61,7 @@ export function CreateAccountDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+    const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(false);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: null,
@@ -87,12 +99,7 @@ export function CreateAccountDialog({
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                     Accept: 'application/json',
                 },
             });
@@ -335,11 +342,22 @@ export function CreateAccountDialog({
             <ConnectAccountDialog
                 open={connectDialogOpen}
                 onOpenChange={setConnectDialogOpen}
+                connections={connections}
             />
 
-            <UpgradeConnectionDialog
+            <UpgradeDialog
                 open={upgradeDialogOpen}
                 onOpenChange={setUpgradeDialogOpen}
+                title={__('Connected accounts are a paid feature')}
+                description={__(
+                    'Subscribe to a plan to link a bank account and keep it synced automatically.',
+                )}
+                source="accounts"
+            />
+
+            <IntegrationRequestsDrawer
+                open={integrationDrawerOpen}
+                onOpenChange={setIntegrationDrawerOpen}
             />
         </>
     );

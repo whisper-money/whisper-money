@@ -2,6 +2,7 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { SubscriptionPaymentIssueBanner } from '@/components/subscription/payment-issue-banner';
 import { useDecryptAccountNames } from '@/hooks/use-decrypt-account-names';
 import { useDecryptTransactions } from '@/hooks/use-decrypt-transactions';
 import { type BreadcrumbItem } from '@/types';
@@ -23,13 +24,19 @@ export default function AppSidebarLayout({
             <AppSidebar />
             <AppContent
                 variant="sidebar"
-                className="pt-safe overflow-x-hidden pb-[90px] sm:pb-0"
+                className="pt-safe overflow-x-hidden pb-[90px] md:pb-0"
             >
                 <AppSidebarHeader
                     breadcrumbs={breadcrumbs}
                     mobileLeading={mobileLeading}
                 />
-                {children}
+                <SubscriptionPaymentIssueBanner />
+                <div
+                    className="mx-auto flex w-full max-w-page flex-1 flex-col"
+                    data-testid="page-content"
+                >
+                    {children}
+                </div>
             </AppContent>
         </AppShell>
     );

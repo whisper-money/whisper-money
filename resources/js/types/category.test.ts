@@ -1,6 +1,10 @@
 import { setTranslations } from '@/utils/i18n';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getCategoryTypeLabel } from './category';
+import {
+    type CategoryColor,
+    getCategoryColorClasses,
+    getCategoryTypeLabel,
+} from './category';
 
 describe('getCategoryTypeLabel', () => {
     afterEach(() => {
@@ -23,5 +27,21 @@ describe('getCategoryTypeLabel', () => {
         expect(getCategoryTypeLabel('income')).toBe('Income');
         expect(getCategoryTypeLabel('expense')).toBe('Expense');
         expect(getCategoryTypeLabel('transfer')).toBe('Transfer');
+    });
+});
+
+describe('getCategoryColorClasses', () => {
+    it('returns the classes for a known color', () => {
+        expect(getCategoryColorClasses('blue')).toEqual({
+            bg: 'bg-blue-100 dark:bg-blue-700',
+            text: 'text-blue-700 dark:text-blue-100',
+        });
+    });
+
+    it('falls back to gray for an unknown color instead of returning undefined', () => {
+        const classes = getCategoryColorClasses('chartreuse' as CategoryColor);
+
+        expect(classes).toEqual(getCategoryColorClasses('gray'));
+        expect(classes.bg).toBeDefined();
     });
 });

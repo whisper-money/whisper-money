@@ -4,6 +4,8 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
+use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\DestroyConnectionRequest;
@@ -15,6 +17,12 @@ use App\Services\Banking\BinanceClient;
 use App\Services\Banking\BitpandaClient;
 use App\Services\Banking\CoinbaseClient;
 use App\Services\Banking\IndexaCapitalClient;
+use App\Services\Banking\InteractiveBrokersClient;
+use App\Services\Banking\WiseClient;
+use Carbon\Carbon;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -35,17 +43,42 @@ class ConnectionController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        $nextScheduledSync = $this->nextScheduledSyncAt();
+
         $connections = $user->bankingConnections()
             ->withCount('accounts')
             ->orderByDesc('created_at')
             ->get()
-            ->each(function ($connection) {
+            ->each(function (BankingConnection $connection) use ($nextScheduledSync) {
                 $connection->has_pending_accounts = $connection->hasPendingAccounts();
+                $connection->can_sync_manually = ! $connection->isRateLimited();
+                $connection->next_sync_attempt_at = $nextScheduledSync?->max($connection->rate_limited_until);
             });
 
         return Inertia::render('settings/connections', [
             'connections' => $connections,
         ]);
+    }
+
+    /**
+     * When the scheduler will next reach this connection.
+     *
+     * A rate limit backoff is an hour by default while the sweep runs every six,
+     * so `rate_limited_until` on its own promises an attempt that will not happen
+     * and, once it lapses, promises nothing at all. Whichever comes later is the
+     * only figure that is true.
+     */
+    private function nextScheduledSyncAt(): ?Carbon
+    {
+        // routes/console.php is only read when the console kernel boots, which a
+        // web request never does on its own. Without this the schedule is empty
+        // here and the user is told nothing about when we will try again.
+        app(ConsoleKernel::class)->bootstrap();
+
+        $event = collect(app(Schedule::class)->events())
+            ->first(fn (Event $event): bool => str_contains($event->command ?? '', 'banking:sync'));
+
+        return $event ? Carbon::instance($event->nextRunDate()) : null;
     }
 
     /**
@@ -65,13 +98,27 @@ class ConnectionController extends Controller
             return back()->with('error', 'Connection is not active.');
         }
 
+        // A live backoff is the bank having told us to stop. Spending an access
+        // call anyway buys another refusal and burns the scheduled run, and the
+        // card already tells the user when we will try again. Only the healthy
+        // path is refused: a connection in Error is one the scheduler has given
+        // up on, so a manual retry is its only way back.
+        if ($connection->isActive() && $connection->isRateLimited()) {
+            return back()->with('error', __('Your bank limits how often we can fetch your data. We will retry automatically.'));
+        }
+
         $connection->update([
             'status' => BankingConnectionStatus::Active,
             'error_message' => null,
             'consecutive_sync_failures' => 0,
+            // Only a stranded connection reaches this with a backoff still set,
+            // and there the retry is the way back. Leaving it would make the job
+            // return early while this flashed "sync started" and nothing
+            // happened, for as long as the window had left.
+            'rate_limited_until' => null,
         ]);
 
-        SyncBankingConnectionJob::dispatch($connection);
+        SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Manual);
 
         return back()->with('success', 'Sync started. Transactions will be updated shortly.');
     }
@@ -93,22 +140,14 @@ class ConnectionController extends Controller
             return back()->withErrors(['credentials' => $validationError]);
         }
 
-        $updateData = match ($connection->provider) {
-            'indexacapital' => ['api_token' => $validated['api_token']],
-            'binance' => ['api_token' => $validated['api_key'], 'api_secret' => $validated['api_secret']],
-            'bitpanda' => ['api_token' => $validated['api_key']],
-            'coinbase' => ['api_token' => $validated['api_key_name'], 'api_secret' => $validated['private_key']],
-            default => [],
-        };
-
         $connection->update([
-            ...$updateData,
+            ...$connection->provider->credentialColumns($validated),
             'status' => BankingConnectionStatus::Active,
             'error_message' => null,
             'consecutive_sync_failures' => 0,
         ]);
 
-        SyncBankingConnectionJob::dispatch($connection);
+        SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::CredentialsUpdated);
 
         return back()->with('success', __('Credentials updated. Sync started.'));
     }
@@ -120,10 +159,12 @@ class ConnectionController extends Controller
     {
         try {
             match ($connection->provider) {
-                'indexacapital' => (new IndexaCapitalClient($validated['api_token']))->getUser(),
-                'binance' => (new BinanceClient($validated['api_key'], $validated['api_secret']))->getAccount(),
-                'bitpanda' => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
-                'coinbase' => (new CoinbaseClient($validated['api_key_name'], $validated['private_key']))->getAccounts(limit: 1),
+                BankingProvider::IndexaCapital => (new IndexaCapitalClient($validated['api_token']))->getUser(),
+                BankingProvider::Binance => (new BinanceClient($validated['api_key'], $validated['api_secret']))->getAccount(),
+                BankingProvider::Bitpanda => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
+                BankingProvider::Coinbase => (new CoinbaseClient($validated['api_key_name'], $validated['private_key']))->getAccounts(limit: 1),
+                BankingProvider::InteractiveBrokers => (new InteractiveBrokersClient($validated['token'], $validated['query_id']))->fetchStatement(),
+                BankingProvider::Wise => (new WiseClient($validated['api_token']))->getProfiles(),
                 default => throw new \InvalidArgumentException('Unsupported provider for credential update.'),
             };
         } catch (\InvalidArgumentException $e) {
@@ -131,7 +172,7 @@ class ConnectionController extends Controller
         } catch (\Throwable $e) {
             Log::warning('Credential validation failed during update', [
                 'connection_id' => $connection->id,
-                'provider' => $connection->provider,
+                'provider' => $connection->provider->value,
                 'error' => $e->getMessage(),
             ]);
 

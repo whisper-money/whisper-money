@@ -1,13 +1,18 @@
+import type { ColumnMapping, ParsedTransaction } from '@/types/import';
 import { DateFormat } from '@/types/import';
 import { describe, expect, it } from 'vitest';
 import {
+    autoDetectColumns,
     autoDetectDateFormat,
     calculateBalancesFromTransactions,
+    collectBalancesToImport,
     convertRowsToTransactions,
+    detectDateFormat,
     getLatestTransactionDate,
     getLocaleDateFormat,
+    parseDate,
+    parseFile,
 } from './file-parser';
-import type { ColumnMapping, ParsedTransaction } from '@/types/import';
 
 describe('getLocaleDateFormat', () => {
     it('returns null for undefined locale', () => {
@@ -58,6 +63,8 @@ describe('convertRowsToTransactions', () => {
                     description: 'description',
                     amount: 'amount',
                     balance: null,
+                    creditor_name: null,
+                    debtor_name: null,
                 },
                 DateFormat.DayMonthYear,
             );
@@ -67,6 +74,152 @@ describe('convertRowsToTransactions', () => {
         } finally {
             process.env.TZ = originalTimezone;
         }
+    });
+
+    it('parses YYYYMMDD compact dates', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '20241231',
+                    description: 'New Year Eve',
+                    amount: '10.00',
+                },
+            ],
+            {
+                transaction_date: 'date',
+                description: 'description',
+                amount: 'amount',
+                balance: null,
+                creditor_name: null,
+                debtor_name: null,
+            },
+            DateFormat.YearMonthDayCompact,
+        );
+
+        expect(transactions).toHaveLength(1);
+        expect(transactions[0].transaction_date).toBe('2024-12-31');
+    });
+});
+
+describe('convertRowsToTransactions balance column', () => {
+    const mapping: ColumnMapping = {
+        transaction_date: 'date',
+        description: 'description',
+        amount: 'amount',
+        balance: 'balance',
+        creditor_name: null,
+        debtor_name: null,
+    };
+
+    it('keeps a zero balance instead of dropping it', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Drained account',
+                    amount: '-10.00',
+                    balance: 0,
+                },
+            ],
+            mapping,
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].balance).toBe(0);
+    });
+
+    it('keeps a zero balance provided as a string', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Drained account',
+                    amount: '-10.00',
+                    balance: '0',
+                },
+            ],
+            mapping,
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].balance).toBe(0);
+    });
+
+    it('keeps a negative balance', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Overdrawn',
+                    amount: '-10.00',
+                    balance: '-25.50',
+                },
+            ],
+            mapping,
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].balance).toBe(-2550);
+    });
+
+    it('leaves balance null when the cell is empty', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'No balance',
+                    amount: '-10.00',
+                    balance: '',
+                },
+            ],
+            mapping,
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].balance).toBeNull();
+    });
+});
+
+describe('autoDetectColumns', () => {
+    it('detects creditor and debtor name columns', () => {
+        const mapping = autoDetectColumns([
+            'Transaction Date',
+            'Description',
+            'Amount',
+            'Creditor Name',
+            'Debtor Name',
+        ]);
+
+        expect(mapping.creditor_name).toBe('Creditor Name');
+        expect(mapping.debtor_name).toBe('Debtor Name');
+    });
+});
+
+describe('convertRowsToTransactions counterparty fields', () => {
+    it('maps optional creditor and debtor names', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Transfer',
+                    amount: '10.00',
+                    creditor: 'Landlord LLC',
+                    debtor: 'Victor Falcon',
+                },
+            ],
+            {
+                transaction_date: 'date',
+                description: 'description',
+                amount: 'amount',
+                balance: null,
+                creditor_name: 'creditor',
+                debtor_name: 'debtor',
+            },
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].creditor_name).toBe('Landlord LLC');
+        expect(transactions[0].debtor_name).toBe('Victor Falcon');
     });
 });
 
@@ -153,6 +306,59 @@ describe('autoDetectDateFormat', () => {
             DateFormat.DayMonthYear,
         );
     });
+
+    it('detects YYYYMMDD compact format unambiguously', () => {
+        const data = [
+            { date: '20240115' },
+            { date: '20240220' },
+            { date: '20240325' },
+        ];
+        expect(autoDetectDateFormat(data, 'date')).toBe(
+            DateFormat.YearMonthDayCompact,
+        );
+    });
+});
+
+describe('detectDateFormat', () => {
+    it('returns null for empty data', () => {
+        expect(detectDateFormat([], 'date')).toBeNull();
+    });
+
+    it('flags unambiguous detection as not ambiguous', () => {
+        const data = [
+            { date: '15/01/2024' },
+            { date: '20/02/2024' },
+            { date: '25/03/2024' },
+        ];
+        expect(detectDateFormat(data, 'date')).toEqual({
+            format: DateFormat.DayMonthYear,
+            ambiguous: false,
+        });
+    });
+
+    it('flags locale-resolved ties as ambiguous (en-US)', () => {
+        const data = [
+            { date: '05/03/2024' },
+            { date: '06/04/2024' },
+            { date: '07/05/2024' },
+        ];
+        expect(detectDateFormat(data, 'date', 'en-US')).toEqual({
+            format: DateFormat.MonthDayYear,
+            ambiguous: true,
+        });
+    });
+
+    it('flags locale-resolved ties as ambiguous (es)', () => {
+        const data = [
+            { date: '02/06/2026' },
+            { date: '05/03/2024' },
+            { date: '07/05/2024' },
+        ];
+        expect(detectDateFormat(data, 'date', 'es')).toEqual({
+            format: DateFormat.DayMonthYear,
+            ambiguous: true,
+        });
+    });
 });
 
 describe('getLatestTransactionDate', () => {
@@ -161,6 +367,8 @@ describe('getLatestTransactionDate', () => {
         description: 'desc',
         amount: 'amount',
         balance: null,
+        creditor_name: null,
+        debtor_name: null,
     };
 
     it('returns null when no date column set', () => {
@@ -193,10 +401,7 @@ describe('getLatestTransactionDate', () => {
 });
 
 describe('calculateBalancesFromTransactions', () => {
-    function txn(
-        date: string,
-        amount: number,
-    ): ParsedTransaction {
+    function txn(date: string, amount: number): ParsedTransaction {
         return {
             transaction_date: date,
             description: 'x',
@@ -224,10 +429,7 @@ describe('calculateBalancesFromTransactions', () => {
     });
 
     it('handles reference date with no transactions on it', () => {
-        const txns = [
-            txn('2024-01-01', 1000),
-            txn('2024-01-02', -200),
-        ];
+        const txns = [txn('2024-01-01', 1000), txn('2024-01-02', -200)];
         const balances = calculateBalancesFromTransactions(
             txns,
             '2024-01-05',
@@ -246,5 +448,93 @@ describe('calculateBalancesFromTransactions', () => {
         );
         expect(balances.size).toBe(1);
         expect(balances.get('2024-01-05')).toBe(5000);
+    });
+});
+
+describe('collectBalancesToImport', () => {
+    function txn(date: string, balance?: number | null): ParsedTransaction {
+        return {
+            transaction_date: date,
+            description: 'x',
+            amount: 0,
+            balance,
+        };
+    }
+
+    it('uses the first (newest) balance when a date repeats', () => {
+        // Rows are newest-on-top; the first one holds the correct balance.
+        const transactions = [
+            txn('2024-01-15', 10000),
+            txn('2024-01-15', 8000),
+            txn('2024-01-15', 5000),
+        ];
+
+        const balances = collectBalancesToImport(transactions);
+
+        expect(balances.get('2024-01-15')).toBe(10000);
+    });
+
+    it('keeps the first balance per date across multiple days', () => {
+        const transactions = [
+            txn('2024-01-16', 12000),
+            txn('2024-01-15', 10000),
+            txn('2024-01-15', 8000),
+            txn('2024-01-14', 4000),
+        ];
+
+        const balances = collectBalancesToImport(transactions);
+
+        expect(balances.get('2024-01-16')).toBe(12000);
+        expect(balances.get('2024-01-15')).toBe(10000);
+        expect(balances.get('2024-01-14')).toBe(4000);
+    });
+
+    it('keeps the first valid balance even when it is zero', () => {
+        const transactions = [txn('2024-01-15', 0), txn('2024-01-15', 9000)];
+
+        const balances = collectBalancesToImport(transactions);
+
+        expect(balances.get('2024-01-15')).toBe(0);
+    });
+
+    it('skips transactions without a balance', () => {
+        const transactions = [
+            txn('2024-01-15', null),
+            txn('2024-01-14', undefined),
+        ];
+
+        const balances = collectBalancesToImport(transactions);
+
+        expect(balances.size).toBe(0);
+    });
+});
+
+describe('parseFile', () => {
+    it('keeps CSV date cells as their original strings instead of coercing them to date serials', async () => {
+        const csv = [
+            'Fecha,Concepto,Importe',
+            '02/06/2026,Internet,-104576',
+            '03/06/2026,Groceries,-2500',
+        ].join('\n');
+        const file = new File([csv], 'transactions.csv', { type: 'text/csv' });
+
+        const { data } = await parseFile(file);
+
+        expect(data[0].Fecha).toBe('02/06/2026');
+        expect(typeof data[0].Fecha).toBe('string');
+
+        // Because the raw string is preserved, the chosen format still drives
+        // parsing: DD-MM-YYYY -> June, MM-DD-YYYY -> February.
+        const asDmy = parseDate(
+            data[0].Fecha as string,
+            DateFormat.DayMonthYear,
+        );
+        const asMdy = parseDate(
+            data[0].Fecha as string,
+            DateFormat.MonthDayYear,
+        );
+
+        expect(asDmy?.getMonth()).toBe(5);
+        expect(asMdy?.getMonth()).toBe(1);
     });
 });

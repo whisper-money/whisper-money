@@ -1,8 +1,12 @@
 import { StepAccountTypes } from '@/components/onboarding/step-account-types';
+import { StepAiSuggestions } from '@/components/onboarding/step-ai-suggestions';
 import { StepCategorizeTransactions } from '@/components/onboarding/step-categorize-transactions';
 import { StepCategoryTypes } from '@/components/onboarding/step-category-types';
 import { StepComplete } from '@/components/onboarding/step-complete';
-import { StepCreateAccount } from '@/components/onboarding/step-create-account';
+import {
+    StepCreateAccount,
+    type ExistingAccount,
+} from '@/components/onboarding/step-create-account';
 import { StepCustomizeCategories } from '@/components/onboarding/step-customize-categories';
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
 import { StepImportTransactions } from '@/components/onboarding/step-import-transactions';
@@ -11,6 +15,7 @@ import { StepSyncing } from '@/components/onboarding/step-syncing';
 import { StepWelcome } from '@/components/onboarding/step-welcome';
 import { useSyncContext } from '@/contexts/sync-context';
 import {
+    BACKABLE_STEPS,
     CreatedAccount,
     OnboardingStep,
     useOnboardingState,
@@ -18,32 +23,19 @@ import {
 import OnboardingLayout from '@/layouts/onboarding-layout';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
+import { type SignupPlan } from '@/types/pricing';
 import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { Head } from '@inertiajs/react';
+import { Head, usePoll } from '@inertiajs/react';
 import { useEffect, useMemo, useRef } from 'react';
-
-interface ExistingAccount {
-    id: string;
-    name: string;
-    name_iv: string | null;
-    encrypted: boolean;
-    type: string;
-    currency_code: string;
-    bank_id: string;
-    banking_connection_id: string | null;
-    bank?: {
-        id: string;
-        name: string;
-        logo: string | null;
-    };
-}
 
 interface OnboardingProps {
     banks: Bank[];
     accounts: ExistingAccount[];
     categories: Category[];
     transactions: Transaction[];
+    initialStep?: OnboardingStep | null;
+    signupPlan?: SignupPlan | null;
 }
 
 const VALID_STEPS: OnboardingStep[] = [
@@ -56,6 +48,7 @@ const VALID_STEPS: OnboardingStep[] = [
     'customize-categories',
     'smart-rules',
     'syncing',
+    'ai-suggestions',
     'categorize-transactions',
     'complete',
 ];
@@ -65,19 +58,30 @@ export default function Onboarding({
     accounts,
     categories,
     transactions,
+    initialStep: initialStepProp,
+    signupPlan = null,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
     const hasSyncedRef = useRef(false);
+    const isFreePlan = signupPlan === 'free';
 
-    // Read ?step= from URL to allow deep-linking into a specific step
+    // Prefer the server-validated step; fall back to ?step= from the URL so
+    // client-side deep links keep working.
     const initialStep = useMemo((): OnboardingStep | undefined => {
+        const validSteps = isFreePlan
+            ? VALID_STEPS.filter((step) => step !== 'ai-suggestions')
+            : VALID_STEPS;
+
+        if (initialStepProp && validSteps.includes(initialStepProp)) {
+            return initialStepProp;
+        }
         if (typeof window === 'undefined') {
             return undefined;
         }
         const params = new URLSearchParams(window.location.search);
         const step = params.get('step') as OnboardingStep | null;
-        return step && VALID_STEPS.includes(step) ? step : undefined;
-    }, []);
+        return step && validSteps.includes(step) ? step : undefined;
+    }, [initialStepProp, isFreePlan]);
 
     // Sync banks on mount to ensure IndexedDB has the latest data
     useEffect(() => {
@@ -102,13 +106,32 @@ export default function Onboarding({
         hasSelectedConnectedAccount,
         goToStep,
         goNext,
+        goBack,
         addCreatedAccount,
         markConnectedAccountSelected,
     } = useOnboardingState({
         existingAccountsCount: accounts.length,
         initialStep,
         hasConnectedAccount,
+        skipAiSuggestions: isFreePlan,
     });
+
+    // While on the connections step, poll for connections finalized elsewhere
+    // (e.g. an iOS PWA hands the bank redirect to Safari, which completes the
+    // connection server-side in a different browser without a session here).
+    const { start, stop } = usePoll(
+        4000,
+        { only: ['accounts'] },
+        { autoStart: false },
+    );
+
+    useEffect(() => {
+        if (currentStep === 'create-account' && !isFreePlan) {
+            start();
+        } else {
+            stop();
+        }
+    }, [currentStep, isFreePlan, start, stop]);
 
     const handleAccountCreated = async (account: CreatedAccount) => {
         // Connected accounts already exist server-side (in existingAccounts prop);
@@ -173,6 +196,7 @@ export default function Onboarding({
                         onConnectedAccountSelected={
                             markConnectedAccountSelected
                         }
+                        signupPlan={signupPlan}
                         onContinue={goNext}
                     />
                 );
@@ -181,18 +205,23 @@ export default function Onboarding({
                 return <StepCategoryTypes onContinue={goNext} />;
 
             case 'customize-categories':
-                return (
-                    <StepCustomizeCategories
-                        onContinue={goNext}
-                        onSkip={goNext}
-                    />
-                );
+                return <StepCustomizeCategories onContinue={goNext} />;
 
             case 'smart-rules':
                 return <StepSmartRules onContinue={goNext} />;
 
             case 'syncing':
                 return <StepSyncing onComplete={goNext} />;
+
+            case 'ai-suggestions':
+                return (
+                    <StepAiSuggestions
+                        categories={categories}
+                        hasConnectedAccount={hasConnectedAccount}
+                        signupPlan={signupPlan}
+                        onComplete={goNext}
+                    />
+                );
 
             case 'import-transactions':
                 return (
@@ -238,6 +267,7 @@ export default function Onboarding({
             'customize-categories': __('Customize Categories'),
             'smart-rules': __('Smart Rules'),
             syncing: __('Syncing'),
+            'ai-suggestions': __('AI Suggestions'),
             'import-transactions': __('Import Transactions'),
             'import-balances': __('Set Balance'),
             'categorize-transactions': __('Categorize Transactions'),
@@ -253,6 +283,9 @@ export default function Onboarding({
                 currentStep={stepIndex}
                 totalSteps={totalSteps}
                 stepKey={currentStep}
+                onBack={
+                    BACKABLE_STEPS.includes(currentStep) ? goBack : undefined
+                }
             >
                 {renderStep()}
             </OnboardingLayout>

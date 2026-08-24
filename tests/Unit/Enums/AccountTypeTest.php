@@ -27,7 +27,6 @@ it('does not support invested amount for non-investment account types', function
 it('reduces net worth for liability account types', function (AccountType $type) {
     expect($type->reducesNetWorth())->toBeTrue();
 })->with([
-    'credit card' => AccountType::CreditCard,
     'loan' => AccountType::Loan,
 ]);
 
@@ -35,10 +34,27 @@ it('does not reduce net worth for asset account types', function (AccountType $t
     expect($type->reducesNetWorth())->toBeFalse();
 })->with([
     'checking' => AccountType::Checking,
+    'credit card' => AccountType::CreditCard,
     'savings' => AccountType::Savings,
     'investment' => AccountType::Investment,
     'retirement' => AccountType::Retirement,
     'real estate' => AccountType::RealEstate,
+    'others' => AccountType::Others,
+]);
+
+it('excludes credit cards from the net worth total', function () {
+    expect(AccountType::CreditCard->countsInNetWorth())->toBeFalse();
+});
+
+it('counts non credit card account types in the net worth total', function (AccountType $type) {
+    expect($type->countsInNetWorth())->toBeTrue();
+})->with([
+    'checking' => AccountType::Checking,
+    'savings' => AccountType::Savings,
+    'investment' => AccountType::Investment,
+    'retirement' => AccountType::Retirement,
+    'real estate' => AccountType::RealEstate,
+    'loan' => AccountType::Loan,
     'others' => AccountType::Others,
 ]);
 

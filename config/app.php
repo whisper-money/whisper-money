@@ -124,8 +124,21 @@ return [
     ],
 
     'demo' => [
+        'enabled' => env('DEMO_ENABLED', true),
         'email' => env('DEMO_EMAIL', 'demo@whisper.money'),
         'password' => env('DEMO_PASSWORD', 'demo'),
+    ],
+
+    /*
+     * The press account: one shared login handed out to journalists so they can
+     * try the AI Connector without registering or connecting a real bank. Its
+     * credentials are public by design (they go out in a press email and may be
+     * printed in an article), so the defaults are hardcoded rather than
+     * env-driven: a deploy that never sets these still has a working account.
+     */
+    'press' => [
+        'email' => env('PRESS_EMAIL', 'prensa@whisper.money'),
+        'password' => env('PRESS_PASSWORD', '123456789'),
     ],
 
 ];

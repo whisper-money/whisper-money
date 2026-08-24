@@ -11,10 +11,6 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-beforeEach(function () {
-    config(['landing.hide_auth_buttons' => false]);
-});
-
 test('authenticated users can view their categories', function () {
     $user = User::factory()->create();
     $categories = Category::factory()->count(3)->create(['user_id' => $user->id]);
@@ -129,24 +125,27 @@ test('different users can create categories with the same name', function () {
     ]);
 });
 
-test('category names from deleted categories remain reserved', function () {
+test('users can recreate a category with the same name after deleting it', function () {
     $user = User::factory()->create();
     $category = Category::factory()->create([
         'user_id' => $user->id,
-        'name' => 'Healthcare',
+        'name' => 'Supermercados',
     ]);
 
     $category->delete();
 
     $response = $this->actingAs($user)->post(route('categories.store'), [
-        'name' => 'Healthcare',
-        'icon' => 'Heart',
-        'color' => 'pink',
+        'name' => 'Supermercados',
+        'icon' => 'ShoppingCart',
+        'color' => 'green',
         'type' => 'expense',
         'cashflow_direction' => 'hidden',
     ]);
 
-    $response->assertSessionHasErrors(['name']);
+    $response->assertRedirect(route('categories.index'));
+
+    expect($user->categories()->where('name', 'Supermercados')->count())->toBe(1)
+        ->and($user->categories()->withTrashed()->where('name', 'Supermercados')->count())->toBe(2);
 });
 
 test('category icon is required', function () {
@@ -340,6 +339,132 @@ test('non-transfer categories are forced to hidden cashflow direction', function
     ]);
 });
 
+test('users can create savings and investment categories', function (string $type) {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => ucfirst($type),
+        'icon' => $type === CategoryType::Savings->value ? 'PiggyBank' : 'TrendingUp',
+        'color' => 'lime',
+        'type' => $type,
+        'cashflow_direction' => 'outflow',
+    ]);
+
+    $response->assertRedirect(route('categories.index'));
+
+    $this->assertDatabaseHas('categories', [
+        'user_id' => $user->id,
+        'name' => ucfirst($type),
+        'type' => $type,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
+    ]);
+})->with([
+    CategoryType::Savings->value,
+    CategoryType::Investment->value,
+]);
+
+test('migration updates existing default saving and investment categories', function () {
+    $user = User::factory()->create();
+
+    $investments = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Investments',
+        'icon' => 'LineChart',
+        'color' => 'lime',
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+    $savings = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Savings',
+        'icon' => 'PiggyBank',
+        'color' => 'lime',
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+    $legacyExpenseInvestment = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Other investments',
+        'icon' => 'TrendingUp',
+        'color' => 'lime',
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $legacySpanishSavings = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Ahorros',
+        'icon' => 'PiggyBank',
+        'color' => 'lime',
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $customTransfer = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Investment transfer',
+        'icon' => 'LineChart',
+        'color' => 'lime',
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+
+    $migration = require database_path('migrations/2026_05_25_115100_update_default_saving_and_investment_category_types.php');
+    $migration->up();
+
+    expect($investments->refresh())
+        ->type->toBe(CategoryType::Investment)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($savings->refresh())
+        ->type->toBe(CategoryType::Savings)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($legacyExpenseInvestment->refresh())
+        ->type->toBe(CategoryType::Investment)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($legacySpanishSavings->refresh())
+        ->type->toBe(CategoryType::Savings)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($customTransfer->refresh())
+        ->type->toBe(CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+});
+
+test('migration sets saving and investment categories to cashflow outflow', function () {
+    $user = User::factory()->create();
+
+    $savings = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Savings,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $investment = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Investment,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $transfer = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Inflow,
+    ]);
+    $expense = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+
+    $migration = require database_path('migrations/2026_05_29_085835_update_saving_and_investment_category_cashflow_direction.php');
+    $migration->up();
+
+    expect($savings->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Outflow);
+    expect($investment->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Outflow);
+    expect($transfer->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Inflow);
+    expect($expense->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Hidden);
+
+    $migration->down();
+
+    expect($savings->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Hidden);
+    expect($investment->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Hidden);
+});
+
 test('users cannot update categories they do not own', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
@@ -408,17 +533,45 @@ test('default categories are created when user registers', function () {
     $user->refresh();
 
     expect($user->categories()->firstWhere('name', 'Investments'))
-        ->type->toBe(CategoryType::Transfer)
+        ->type->toBe(CategoryType::Investment)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
     expect($user->categories()->firstWhere('name', 'Savings'))
-        ->type->toBe(CategoryType::Transfer)
+        ->type->toBe(CategoryType::Savings)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
     expect($user->categories()->firstWhere('name', 'Other investments'))
-        ->type->toBe(CategoryType::Transfer)
+        ->type->toBe(CategoryType::Investment)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
     expect($user->categories()->firstWhere('name', 'From account of relatives'))
         ->type->toBe(CategoryType::Transfer)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Inflow);
+});
+
+test('default categories nest children under their configured parent', function () {
+    $user = User::factory()->create();
+
+    (new CreateDefaultCategories)->handle($user);
+
+    $categories = $user->categories()->get()->keyBy('name');
+
+    expect($categories->get('Food')->parent_id)->toBeNull();
+    expect($categories->get('Groceries')->parent_id)->toBe($categories->get('Food')->id);
+    expect($categories->get('Electricity')->parent_id)->toBe($categories->get('Utility services')->id);
+    expect($categories->get('Fuel')->parent_id)->toBe($categories->get('Transportation')->id);
+    expect($categories->get('Other investments')->parent_id)->toBe($categories->get('Investments')->id);
+    expect($categories->get('Salary')->parent_id)->toBeNull();
+});
+
+test('default child categories attach to an already existing parent', function () {
+    $user = User::factory()->create();
+    $food = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Food',
+        'type' => CategoryType::Expense,
+    ]);
+
+    (new CreateDefaultCategories)->handle($user);
+
+    expect($user->categories()->firstWhere('name', 'Groceries')->parent_id)->toBe($food->id);
 });
 
 test('default categories are not created twice for the same user', function () {
@@ -440,7 +593,7 @@ test('default categories are created without repeated category lookups', functio
     $categorySelects = 0;
 
     DB::listen(function ($query) use (&$categorySelects) {
-        if (str_starts_with($query->sql, 'select `name` from `categories`')) {
+        if (str_starts_with($query->sql, 'select `id`, `name` from `categories`')) {
             $categorySelects++;
         }
     });
@@ -505,4 +658,16 @@ test('category names are unique per user', function () {
         'color' => 'blue',
         'type' => 'expense',
     ]);
+});
+
+test('categories index returns the standard category field set without internal columns', function () {
+    $user = User::factory()->create();
+    Category::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->withoutVite()->get(route('categories.index'));
+
+    $props = $response->viewData('page')['props'];
+
+    expect(array_keys($props['categories'][0]))
+        ->toEqualCanonicalizing(['id', 'name', 'icon', 'color', 'type', 'cashflow_direction', 'parent_id']);
 });

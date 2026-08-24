@@ -1,6 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/BudgetController';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label as UILabel } from '@/components/ui/label';
+import { MultiSelect } from '@/components/ui/multi-select';
 import {
     Select,
     SelectContent,
@@ -19,6 +21,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useControllableOpen } from '@/hooks/use-controllable-open';
+import { buildCategoryTree, flattenCategoryTree } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import {
@@ -29,11 +33,12 @@ import {
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
-import { Category } from '@/types/category';
-import { Label } from '@/types/label';
+import { Category, getCategoryColorClasses } from '@/types/category';
+import { getLabelColorClasses, Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { Plus, X } from 'lucide-react';
+import * as Icons from 'lucide-react';
+import { Plus, Tag } from 'lucide-react';
 import React, { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 
@@ -41,23 +46,34 @@ interface Props {
     className?: string;
     currencyCode?: string;
     trigger?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
 
 export function CreateBudgetDialog({
     className = '',
     currencyCode = 'USD',
     trigger,
+    open,
+    onOpenChange,
 }: Props) {
     const page = usePage<SharedData>();
-    const [open, setOpen] = useState(false);
+    const {
+        open: dialogOpen,
+        setOpen,
+        isControlled,
+    } = useControllableOpen({ open, onOpenChange });
     const [name, setName] = useState('');
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
     const [periodStartDay, setPeriodStartDay] = useState<number>(1);
-    const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
-    const [selectedLabelId, setSelectedLabelId] = useState<string>('');
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
+        [],
+    );
+    const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [allocatedAmount, setAllocatedAmount] = useState<number>(0);
     const [rolloverType, setRolloverType] =
         useState<RolloverType>('carry_over');
+    const [isCatchAll, setIsCatchAll] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,9 +86,13 @@ export function CreateBudgetDialog({
 
         const newErrors: Record<string, string> = {};
 
-        if (!selectedCategoryId && !selectedLabelId) {
+        if (
+            !isCatchAll &&
+            selectedCategoryIds.length === 0 &&
+            selectedLabelIds.length === 0
+        ) {
             newErrors.selection = __(
-                'You must select either a category or a label.',
+                'You must select at least one category or label.',
             );
         }
 
@@ -89,10 +109,11 @@ export function CreateBudgetDialog({
                 name,
                 period_type: periodType,
                 period_start_day: periodType === 'yearly' ? 1 : periodStartDay,
-                category_id: selectedCategoryId || null,
-                label_id: selectedLabelId || null,
+                category_ids: isCatchAll ? [] : selectedCategoryIds,
+                label_ids: isCatchAll ? [] : selectedLabelIds,
                 rollover_type: rolloverType,
                 allocated_amount: allocatedAmount,
+                is_catch_all: isCatchAll,
             },
             {
                 onSuccess: () => {
@@ -100,10 +121,11 @@ export function CreateBudgetDialog({
                     setName('');
                     setPeriodType('monthly');
                     setPeriodStartDay(1);
-                    setSelectedCategoryId('');
-                    setSelectedLabelId('');
+                    setSelectedCategoryIds([]);
+                    setSelectedLabelIds([]);
                     setAllocatedAmount(0);
                     setRolloverType('carry_over');
+                    setIsCatchAll(false);
                     setErrors({});
                 },
                 onError: (errors) => {
@@ -115,9 +137,11 @@ export function CreateBudgetDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                {trigger ?? (
+        <Dialog open={dialogOpen} onOpenChange={setOpen}>
+            {trigger !== undefined ? (
+                <DialogTrigger asChild>{trigger}</DialogTrigger>
+            ) : isControlled ? null : (
+                <DialogTrigger asChild>
                     <Card
                         className={cn(
                             'cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100',
@@ -131,15 +155,15 @@ export function CreateBudgetDialog({
                             </div>
                         </CardContent>
                     </Card>
-                )}
-            </DialogTrigger>
+                </DialogTrigger>
+            )}
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>{__('Create Budget')}</DialogTitle>
                         <DialogDescription>
                             {__(
-                                'Set up a spending limit for a category or label.',
+                                'Set up a spending limit across one or more categories or labels.',
                             )}
                         </DialogDescription>
                     </DialogHeader>
@@ -192,7 +216,7 @@ export function CreateBudgetDialog({
                                 <Input
                                     id="period-start-day"
                                     type="number"
-                                    min="0"
+                                    min={periodType === 'monthly' ? '1' : '0'}
                                     max={periodType === 'monthly' ? '31' : '6'}
                                     value={periodStartDay}
                                     onChange={(e) =>
@@ -215,108 +239,134 @@ export function CreateBudgetDialog({
                         )}
 
                         <div className="space-y-4">
-                            {errors.selection && (
+                            <div className="flex items-start gap-3 rounded-md border p-2">
+                                <Checkbox
+                                    id="is-catch-all"
+                                    checked={isCatchAll}
+                                    onCheckedChange={(checked) =>
+                                        setIsCatchAll(checked === true)
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <div className="-mt-1 space-y-1">
+                                    <UILabel
+                                        htmlFor="is-catch-all"
+                                        className="cursor-pointer font-normal"
+                                    >
+                                        {__('Catch-all budget')}
+                                    </UILabel>
+                                    <p className="text-sm text-muted-foreground">
+                                        {__(
+                                            'Automatically track every expense that no other budget covers. You can only have one.',
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {errors.is_catch_all && (
                                 <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                                    {errors.selection}
+                                    {errors.is_catch_all}
                                 </div>
                             )}
 
-                            <div className="space-y-2">
-                                <UILabel htmlFor="category">
-                                    {__('Category (Optional)')}
-                                </UILabel>
-                                <div className="flex gap-2">
-                                    <Select
-                                        value={selectedCategoryId || undefined}
-                                        onValueChange={setSelectedCategoryId}
-                                    >
-                                        <SelectTrigger
-                                            id="category"
-                                            className="flex-1"
-                                        >
-                                            <SelectValue
-                                                placeholder={__(
-                                                    'Select a category',
-                                                )}
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {allCategories.map((category) => (
-                                                <SelectItem
-                                                    key={category.id}
-                                                    value={category.id}
-                                                >
-                                                    {category.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {selectedCategoryId && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() =>
-                                                setSelectedCategoryId('')
-                                            }
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
+                            {!isCatchAll && (
+                                <>
+                                    {errors.selection && (
+                                        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                                            {errors.selection}
+                                        </div>
                                     )}
-                                </div>
-                            </div>
 
-                            <div className="space-y-2">
-                                <UILabel htmlFor="label">
-                                    {__('Label (Optional)')}
-                                </UILabel>
-                                <div className="flex gap-2">
-                                    <Select
-                                        value={selectedLabelId || undefined}
-                                        onValueChange={(value) =>
-                                            setSelectedLabelId(value)
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="label"
-                                            className="flex-1"
-                                        >
-                                            <SelectValue
-                                                placeholder={__(
-                                                    'Select a label',
-                                                )}
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {allLabels.map((label) => (
-                                                <SelectItem
-                                                    key={label.id}
-                                                    value={label.id}
-                                                >
-                                                    {label.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {selectedLabelId && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() =>
-                                                setSelectedLabelId('')
-                                            }
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                    {__(
-                                        'Select at least a category or a label to track.',
-                                    )}
-                                </p>
-                            </div>
+                                    <div className="space-y-2">
+                                        <UILabel htmlFor="categories">
+                                            {__('Categories')}
+                                        </UILabel>
+                                        <MultiSelect
+                                            id="categories"
+                                            options={flattenCategoryTree(
+                                                buildCategoryTree(
+                                                    allCategories,
+                                                ),
+                                            ).map((category) => {
+                                                const colorClasses =
+                                                    getCategoryColorClasses(
+                                                        category.color,
+                                                    );
+                                                const IconComponent = Icons[
+                                                    category.icon as keyof typeof Icons
+                                                ] as
+                                                    | Icons.LucideIcon
+                                                    | undefined;
+
+                                                return {
+                                                    value: category.id,
+                                                    label: category.name,
+                                                    depth: category.depth,
+                                                    parentValue:
+                                                        category.parent_id,
+                                                    icon: IconComponent ? (
+                                                        <IconComponent className="h-3 w-3 opacity-80" />
+                                                    ) : undefined,
+                                                    badgeClassName: cn(
+                                                        colorClasses.bg,
+                                                        colorClasses.text,
+                                                    ),
+                                                };
+                                            })}
+                                            selected={selectedCategoryIds}
+                                            onChange={setSelectedCategoryIds}
+                                            placeholder={__(
+                                                'Select categories',
+                                            )}
+                                            searchPlaceholder={__(
+                                                'Search categories…',
+                                            )}
+                                            emptyText={__(
+                                                'No categories found.',
+                                            )}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <UILabel htmlFor="labels">
+                                            {__('Labels')}
+                                        </UILabel>
+                                        <MultiSelect
+                                            id="labels"
+                                            options={allLabels.map((label) => {
+                                                const colorClasses =
+                                                    getLabelColorClasses(
+                                                        label.color,
+                                                    );
+
+                                                return {
+                                                    value: label.id,
+                                                    label: label.name,
+                                                    icon: (
+                                                        <Tag className="h-3 w-3 opacity-80" />
+                                                    ),
+                                                    badgeClassName: cn(
+                                                        colorClasses.bg,
+                                                        colorClasses.text,
+                                                    ),
+                                                };
+                                            })}
+                                            selected={selectedLabelIds}
+                                            onChange={setSelectedLabelIds}
+                                            placeholder={__('Select labels')}
+                                            searchPlaceholder={__(
+                                                'Search labels…',
+                                            )}
+                                            emptyText={__('No labels found.')}
+                                        />
+                                        <p className="text-sm text-muted-foreground">
+                                            {__(
+                                                'Select at least one category or label to track.',
+                                            )}
+                                        </p>
+                                    </div>
+                                </>
+                            )}
 
                             <div className="space-y-2">
                                 <UILabel htmlFor="allocated-amount">
@@ -385,7 +435,9 @@ export function CreateBudgetDialog({
                             disabled={
                                 isSubmitting ||
                                 !name ||
-                                (!selectedCategoryId && !selectedLabelId) ||
+                                (!isCatchAll &&
+                                    selectedCategoryIds.length === 0 &&
+                                    selectedLabelIds.length === 0) ||
                                 allocatedAmount <= 0
                             }
                         >

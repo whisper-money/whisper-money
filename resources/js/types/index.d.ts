@@ -8,7 +8,10 @@ import { UUID } from './uuid';
 export interface Auth {
     user: User;
     hasProPlan: boolean;
+    /** The public demo account, which is not allowed to use the AI Connector. */
     isDemoAccount: boolean;
+    /** The demo or the press account: public credentials, shared data. */
+    isSharedAccount: boolean;
 }
 
 export interface BreadcrumbItem {
@@ -76,6 +79,8 @@ export interface SharedData {
     includeLoansInNetWorthChart: boolean;
     includeRealEstateInNetWorthChart: boolean;
     subscriptionsEnabled: boolean;
+    demoEnabled: boolean;
+    aiCategorizationUpsellRate: number;
     subscriptionPaymentIssue: SubscriptionPaymentIssueNotification | null;
     pricing: PricingConfig;
     sidebarOpen: boolean;
@@ -103,7 +108,6 @@ export interface User {
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
-    currency_code?: string | null;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

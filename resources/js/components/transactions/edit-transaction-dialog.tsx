@@ -1,7 +1,4 @@
-import {
-    index as indexBalances,
-    store as storeBalance,
-} from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AmountInput } from '@/components/ui/amount-input';
@@ -30,6 +27,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
+import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
@@ -43,7 +41,9 @@ import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { router } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
+import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -63,7 +63,9 @@ interface EditTransactionDialogProps {
         source: 'edit_transaction_modal',
     ) => void;
     onLabelCreated?: (label: Label) => void;
+    onDelete?: (transaction: DecryptedTransaction) => void;
     mode: 'create' | 'edit';
+    initialAccountId?: string | null;
 }
 
 export function EditTransactionDialog({
@@ -78,7 +80,9 @@ export function EditTransactionDialog({
     onSuccess,
     onCategorized,
     onLabelCreated,
+    onDelete,
     mode,
+    initialAccountId = null,
 }: EditTransactionDialogProps) {
     const locale = useLocale();
     const STORAGE_KEY_UPDATE_BALANCE =
@@ -98,11 +102,17 @@ export function EditTransactionDialog({
     >(new Map());
     const [updateAccountBalance, setUpdateAccountBalance] = useState(() => {
         if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem(STORAGE_KEY_UPDATE_BALANCE);
-            return stored === 'true';
+            const stored = readStoredValue(STORAGE_KEY_UPDATE_BALANCE);
+            // Active by default; only an explicit opt-out turns it off.
+            return stored === null ? true : stored === 'true';
         }
-        return false;
+        return true;
     });
+
+    // Manually created transactions can edit every field (account, date, amount,
+    // description) both on creation and afterwards. Imported ones keep those locked.
+    const canEditAllFields =
+        mode === 'create' || transaction?.source === 'manually_created';
 
     useEffect(() => {
         if (mode === 'edit' && transaction) {
@@ -123,17 +133,18 @@ export function EditTransactionDialog({
             setDescription('');
             setAmount(0);
             const availableAccounts = filterTransactionalAccounts(accounts);
-            setAccountId(
-                availableAccounts.length > 0 ? availableAccounts[0].id : '',
+            const initialAccount = availableAccounts.find(
+                (account) => account.id === initialAccountId,
             );
+            setAccountId(initialAccount?.id ?? '');
             setCategoryId('null');
             setSelectedLabelIds([]);
             setNotes('');
         }
-    }, [mode, transaction, open, accounts]);
+    }, [mode, transaction, open, accounts, initialAccountId]);
 
     useEffect(() => {
-        if (!open || mode !== 'create') return;
+        if (!open || !canEditAllFields) return;
 
         async function decryptAccountNames() {
             const keyString = getStoredKey();
@@ -183,7 +194,7 @@ export function EditTransactionDialog({
         }
 
         decryptAccountNames();
-    }, [open, mode, accounts]);
+    }, [open, canEditAllFields, accounts]);
 
     async function checkAndApplyAutomationRules() {
         if (mode !== 'create' || automationRules.length === 0) {
@@ -265,80 +276,13 @@ export function EditTransactionDialog({
 
     function handleUpdateBalanceChange(checked: boolean) {
         setUpdateAccountBalance(checked);
-        localStorage.setItem(STORAGE_KEY_UPDATE_BALANCE, String(checked));
-    }
-
-    async function updateBalanceForTransaction(
-        accountIdToUpdate: string,
-        transactionDateStr: string,
-        transactionAmount: number,
-    ) {
-        const xsrfToken = decodeURIComponent(
-            document.cookie
-                .split('; ')
-                .find((row) => row.startsWith('XSRF-TOKEN='))
-                ?.split('=')[1] || '',
-        );
-
-        try {
-            // Fetch balances from backend
-            const balancesResponse = await fetch(
-                indexBalances.url(accountIdToUpdate),
-                {
-                    headers: {
-                        Accept: 'application/json',
-                    },
-                },
-            );
-
-            if (!balancesResponse.ok) {
-                throw new Error('Failed to fetch balances');
-            }
-
-            const balancesData = await balancesResponse.json();
-            const accountBalances = (balancesData.data || []).sort(
-                (a: { balance_date: string }, b: { balance_date: string }) =>
-                    new Date(b.balance_date).getTime() -
-                    new Date(a.balance_date).getTime(),
-            );
-
-            const latestBalance =
-                accountBalances.length > 0 ? accountBalances[0].balance : 0;
-
-            const newBalance = latestBalance + transactionAmount;
-
-            // Store new balance via backend
-            const storeResponse = await fetch(
-                storeBalance.url(accountIdToUpdate),
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': xsrfToken,
-                        Accept: 'application/json',
-                    },
-                    body: JSON.stringify({
-                        balance_date: transactionDateStr,
-                        balance: newBalance,
-                    }),
-                },
-            );
-
-            if (!storeResponse.ok) {
-                throw new Error('Failed to store balance');
-            }
-        } catch (error) {
-            console.error('Failed to update account balance:', error);
-            toast.error(
-                __('Transaction created, but failed to update balance'),
-            );
-        }
+        writeStoredValue(STORAGE_KEY_UPDATE_BALANCE, String(checked));
     }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
 
-        if (mode === 'create') {
+        if (canEditAllFields) {
             if (!description.trim()) {
                 toast.error(__('Description is required'));
                 return;
@@ -353,14 +297,6 @@ export function EditTransactionDialog({
             }
             if (!transactionDate) {
                 toast.error(__('Date is required'));
-                return;
-            }
-        } else if (
-            mode === 'edit' &&
-            transaction?.source === 'manually_created'
-        ) {
-            if (!description.trim()) {
-                toast.error(__('Description is required'));
                 return;
             }
         }
@@ -401,21 +337,32 @@ export function EditTransactionDialog({
                     throw new Error(__('Selected account not found'));
                 }
 
-                const createdTransaction = await transactionSyncService.create({
-                    user_id: '00000000-0000-0000-0000-000000000000',
-                    account_id: accountId,
-                    category_id: finalCategoryId,
-                    description: finalDescription,
-                    description_iv: finalDescriptionIv,
-                    transaction_date: transactionDate,
-                    amount: amount,
-                    currency_code: selectedAccount.currency_code,
-                    notes: encryptedNotes,
-                    notes_iv: notesIv,
-                    source: 'manually_created' as const,
-                    label_ids:
-                        finalLabelIds.length > 0 ? finalLabelIds : undefined,
-                });
+                const createdTransaction = await transactionSyncService.create(
+                    {
+                        user_id: '00000000-0000-0000-0000-000000000000',
+                        account_id: accountId,
+                        category_id: finalCategoryId,
+                        description: finalDescription,
+                        description_iv: finalDescriptionIv,
+                        transaction_date: transactionDate,
+                        amount: amount,
+                        currency_code: selectedAccount.currency_code,
+                        notes: encryptedNotes,
+                        notes_iv: notesIv,
+                        creditor_name: null,
+                        debtor_name: null,
+                        source: 'manually_created' as const,
+                        label_ids:
+                            finalLabelIds.length > 0
+                                ? finalLabelIds
+                                : undefined,
+                    },
+                    {
+                        updateBalance: selectedAccount.banking_connection_id
+                            ? false
+                            : updateAccountBalance,
+                    },
+                );
 
                 const updatedCategory = finalCategoryId
                     ? categories.find(
@@ -439,14 +386,6 @@ export function EditTransactionDialog({
                     labels: transactionLabels,
                     label_ids: finalLabelIds,
                 };
-
-                if (updateAccountBalance) {
-                    await updateBalanceForTransaction(
-                        accountId,
-                        transactionDate,
-                        amount,
-                    );
-                }
 
                 toast.success(__('Transaction created successfully'));
                 if (ruleResult.ruleName) {
@@ -485,6 +424,10 @@ export function EditTransactionDialog({
                     description?: string;
                     description_iv?: string | null;
                     label_ids?: string[];
+                    amount?: number;
+                    transaction_date?: string;
+                    account_id?: string;
+                    currency_code?: string;
                 } = {
                     category_id: selectedCategoryId,
                     notes: encryptedNotes,
@@ -495,16 +438,35 @@ export function EditTransactionDialog({
                 let finalDecryptedDescription =
                     transaction.decryptedDescription;
 
-                if (
-                    transaction.source === 'manually_created' &&
-                    trimmedDescription
-                ) {
+                const editedAccount = accounts.find(
+                    (acc) => acc.id === accountId,
+                );
+                const editedCurrencyCode =
+                    editedAccount?.currency_code ?? transaction.currency_code;
+
+                if (canEditAllFields) {
                     updateData.description = trimmedDescription;
                     updateData.description_iv = null;
                     finalDecryptedDescription = trimmedDescription;
+                    updateData.amount = amount;
+                    updateData.transaction_date = transactionDate;
+                    updateData.account_id = accountId;
+                    updateData.currency_code = editedCurrencyCode;
                 }
 
-                await transactionSyncService.update(transaction.id, updateData);
+                const result = await transactionSyncService.update(
+                    transaction.id,
+                    updateData,
+                    {
+                        // Gate on the transaction being manual, not on the target
+                        // account: the backend adjuster skips connected accounts
+                        // per-account, so this still reverses the old manual
+                        // account when the edit moves it onto a connected one.
+                        updateBalance: canEditAllFields
+                            ? updateAccountBalance
+                            : false,
+                    },
+                );
 
                 const updatedRecord = await transactionSyncService.getById(
                     transaction.id,
@@ -535,12 +497,51 @@ export function EditTransactionDialog({
                     labels: selectedLabels,
                     updated_at:
                         updatedRecord?.updated_at ?? transaction.updated_at,
+                    ...(canEditAllFields
+                        ? {
+                              amount,
+                              transaction_date: transactionDate,
+                              account_id: accountId,
+                              currency_code: editedCurrencyCode,
+                              account: editedAccount ?? transaction.account,
+                              bank: editedAccount?.bank?.id
+                                  ? banks.find(
+                                        (b) => b.id === editedAccount.bank?.id,
+                                    )
+                                  : transaction.bank,
+                          }
+                        : {}),
                 };
 
                 toast.success(__('Transaction updated successfully'));
                 onSuccess(updatedTransaction);
 
-                if (
+                if (result.learned_rule) {
+                    // The correction already taught the system a forward rule, so
+                    // confirm that and offer an instant undo — and skip the
+                    // "Automatize" prompt, which would only offer to create a rule
+                    // that now exists. Mirrors the transaction-table flow.
+                    const ruleId = result.learned_rule.id;
+
+                    toast.success(
+                        __(
+                            'Learned: similar transactions will be categorized automatically.',
+                        ),
+                        {
+                            closeButton: true,
+                            duration: 10000,
+                            action: {
+                                label: __('Undo'),
+                                onClick: () => {
+                                    router.delete(destroy(ruleId).url, {
+                                        preserveScroll: true,
+                                        preserveState: true,
+                                    });
+                                },
+                            },
+                        },
+                    );
+                } else if (
                     selectedCategoryId &&
                     selectedCategoryId !== transaction.category_id &&
                     updatedCategory
@@ -570,6 +571,14 @@ export function EditTransactionDialog({
 
     const selectedAccount = accounts.find((acc) => acc.id === accountId);
     const transactionalAccounts = filterTransactionalAccounts(accounts);
+    // An archived account stays selectable while editing a transaction that
+    // already sits on it, otherwise the field reads as empty and the user cannot
+    // fill it back in.
+    const accountOptions =
+        selectedAccount?.archived_at &&
+        !transactionalAccounts.some((account) => account.id === accountId)
+            ? [...transactionalAccounts, selectedAccount]
+            : transactionalAccounts;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -583,26 +592,62 @@ export function EditTransactionDialog({
                     <DialogDescription>
                         {mode === 'create'
                             ? __('Create a new transaction.')
-                            : __(
-                                  'Update the category and notes for this transaction.',
-                              )}
+                            : canEditAllFields
+                              ? __('Update this transaction.')
+                              : __(
+                                    'Update the category and notes for this transaction.',
+                                )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4 py-4">
+                        {canEditAllFields && (
+                            <div className="space-y-2">
+                                <FormLabel htmlFor="account">
+                                    {__('Account')}
+                                </FormLabel>
+                                <Select
+                                    value={accountId}
+                                    onValueChange={setAccountId}
+                                    disabled={isSubmitting}
+                                >
+                                    <SelectTrigger
+                                        id="account"
+                                        data-testid="account-select"
+                                    >
+                                        <SelectValue
+                                            placeholder={__('Select account')}
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {accountOptions.map((account) => (
+                                            <SelectItem
+                                                key={account.id}
+                                                value={String(account.id)}
+                                            >
+                                                {decryptedAccountNames.get(
+                                                    account.id,
+                                                ) || __('[Loading...]')}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <FormLabel
                                 htmlFor="date"
                                 className={
-                                    mode === 'edit'
-                                        ? 'text-sm text-muted-foreground'
-                                        : ''
+                                    canEditAllFields
+                                        ? ''
+                                        : 'text-sm text-muted-foreground'
                                 }
                             >
                                 {__('Date')}
                             </FormLabel>
-                            {mode === 'create' ? (
+                            {canEditAllFields ? (
                                 <Input
                                     id="date"
                                     type="date"
@@ -650,17 +695,14 @@ export function EditTransactionDialog({
                             <FormLabel
                                 htmlFor="description"
                                 className={
-                                    mode === 'edit' &&
-                                    transaction?.source === 'imported'
-                                        ? 'text-sm text-muted-foreground'
-                                        : ''
+                                    canEditAllFields
+                                        ? ''
+                                        : 'text-sm text-muted-foreground'
                                 }
                             >
                                 {__('Description')}
                             </FormLabel>
-                            {mode === 'create' ||
-                            (mode === 'edit' &&
-                                transaction?.source === 'manually_created') ? (
+                            {canEditAllFields ? (
                                 <Textarea
                                     id="description"
                                     value={description}
@@ -694,18 +736,54 @@ export function EditTransactionDialog({
                             )}
                         </div>
 
+                        {mode === 'edit' &&
+                            (transaction?.creditor_name ||
+                                transaction?.debtor_name) && (
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    {transaction.creditor_name && (
+                                        <div className="space-y-2">
+                                            <FormLabel className="text-sm text-muted-foreground">
+                                                {__('Creditor')}
+                                            </FormLabel>
+                                            <Input
+                                                value={
+                                                    transaction.creditor_name
+                                                }
+                                                disabled
+                                                readOnly
+                                                className="bg-muted"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {transaction.debtor_name && (
+                                        <div className="space-y-2">
+                                            <FormLabel className="text-sm text-muted-foreground">
+                                                {__('Debtor')}
+                                            </FormLabel>
+                                            <Input
+                                                value={transaction.debtor_name}
+                                                disabled
+                                                readOnly
+                                                className="bg-muted"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         <div className="space-y-2">
                             <FormLabel
                                 htmlFor="amount"
                                 className={
-                                    mode === 'edit'
-                                        ? 'text-sm text-muted-foreground'
-                                        : ''
+                                    canEditAllFields
+                                        ? ''
+                                        : 'text-sm text-muted-foreground'
                                 }
                             >
                                 {__('Amount')}
                             </FormLabel>
-                            {mode === 'create' ? (
+                            {canEditAllFields ? (
                                 <>
                                     <AmountInput
                                         id="amount"
@@ -715,29 +793,39 @@ export function EditTransactionDialog({
                                             selectedAccount?.currency_code ||
                                             'USD'
                                         }
+                                        placeholder="25.00"
                                         disabled={isSubmitting}
                                         required
+                                        allowNegative
                                     />
 
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
-                                            id="update-balance"
-                                            checked={updateAccountBalance}
-                                            onCheckedChange={(checked) =>
-                                                handleUpdateBalanceChange(
-                                                    checked === true,
-                                                )
-                                            }
-                                            disabled={isSubmitting}
-                                        />
+                                    {selectedAccount?.banking_connection_id ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            {__(
+                                                "This account's balance comes from your bank, so it won't change.",
+                                            )}
+                                        </p>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id="update-balance"
+                                                checked={updateAccountBalance}
+                                                onCheckedChange={(checked) =>
+                                                    handleUpdateBalanceChange(
+                                                        checked === true,
+                                                    )
+                                                }
+                                                disabled={isSubmitting}
+                                            />
 
-                                        <FormLabel
-                                            htmlFor="update-balance"
-                                            className="cursor-pointer font-normal"
-                                        >
-                                            {__('Update account balance')}
-                                        </FormLabel>
-                                    </div>
+                                            <FormLabel
+                                                htmlFor="update-balance"
+                                                className="cursor-pointer font-normal"
+                                            >
+                                                {__('Update account balance')}
+                                            </FormLabel>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 <div className="text-sm font-medium">
@@ -751,42 +839,6 @@ export function EditTransactionDialog({
                                 </div>
                             )}
                         </div>
-
-                        {mode === 'create' && (
-                            <div className="space-y-2">
-                                <FormLabel htmlFor="account">
-                                    {__('Account')}
-                                </FormLabel>
-                                <Select
-                                    value={accountId}
-                                    onValueChange={setAccountId}
-                                    disabled={isSubmitting}
-                                >
-                                    <SelectTrigger
-                                        id="account"
-                                        data-testid="account-select"
-                                    >
-                                        <SelectValue
-                                            placeholder={__('Select account')}
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {transactionalAccounts.map(
-                                            (account) => (
-                                                <SelectItem
-                                                    key={account.id}
-                                                    value={String(account.id)}
-                                                >
-                                                    {decryptedAccountNames.get(
-                                                        account.id,
-                                                    ) || __('[Loading...]')}
-                                                </SelectItem>
-                                            ),
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
 
                         <div className="space-y-2">
                             <FormLabel htmlFor="category">
@@ -831,6 +883,21 @@ export function EditTransactionDialog({
                     </div>
 
                     <DialogFooter>
+                        {mode === 'edit' && onDelete && transaction && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => {
+                                    onOpenChange(false);
+                                    onDelete(transaction);
+                                }}
+                                disabled={isSubmitting}
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto dark:hover:bg-destructive/20"
+                            >
+                                <Trash2 />
+                                {__('Delete')}
+                            </Button>
+                        )}
                         <Button
                             type="button"
                             variant="outline"

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OpenBanking;
 
+use App\Enums\BankingProvider;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConnectIndexaCapitalRequest extends FormRequest
@@ -16,8 +17,6 @@ class ConnectIndexaCapitalRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'api_token' => ['required', 'string', 'min:10'],
-        ];
+        return BankingProvider::IndexaCapital->credentialRules();
     }
 }

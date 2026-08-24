@@ -57,6 +57,10 @@ jobs:
 
       - name: Setup PHP & Composer Deps
         uses: ./.github/actions/setup-php-deps
+        with:
+          # pcov, not xdebug: the suite runs with coverage so the `crap` job can
+          # report CRAP alongside complexity, and pcov costs far less.
+          coverage: pcov
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -64,13 +68,20 @@ jobs:
       - name: Generate Application Key
         run: php artisan key:generate
 
+      - name: Generate Passport Keys
+        run: php artisan passport:keys --force
+
       - name: Tests
         # --parallel splits the suite across workers via paratest. Each
         # worker creates its own "testing_test_<N>" database; the mysql
         # service runs as root which has CREATE on *.* so this Just Works
         # without extra grants. Performance suite is excluded because
         # concurrent load skews its timing-based assertions.
-        run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4
+        #
+        # pcov.directory must be set explicitly: left to autodetect it picks
+        # "src", which does not exist here, and every method silently reports
+        # zero coverage.
+        run: php -d pcov.directory=app ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4 --coverage-crap4j=build/crap4j.xml
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql
@@ -79,6 +90,51 @@ jobs:
           DB_DATABASE: testing
           DB_USERNAME: root
           DB_PASSWORD: password
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: crap4j-report
+          path: build/crap4j.xml
+          retention-days: 1
+
+  # Reports methods this PR touched that exceed the complexity threshold.
+  #
+  # Deliberately NOT a required check: it goes red so the number is visible on
+  # the PR, but it never blocks the merge. Keep it out of branch protection --
+  # moving it into the `linter` job (as the duplication check is) would turn it
+  # into a merge gate, which is not what it is for.
+  crap:
+    # No !cancelled() here on purpose: when `tests` fails there is no coverage
+    # artifact to download, and a red `crap` job for a missing file would say
+    # nothing about complexity. Skipping is the honest outcome.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout
+        # Full history: the check diffs against the merge-base with the base branch.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP & Composer Deps
+        uses: ./.github/actions/setup-php-deps
+
+      - name: Copy Environment File
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      - name: Download Coverage Report
+        uses: actions/download-artifact@v4
+        with:
+          name: crap4j-report
+          path: build
+
+      - name: Complexity Check
+        run: php artisan crap --base=origin/${{ github.base_ref }}
 
   browser-tests:
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}
@@ -144,8 +200,11 @@ jobs:
       - name: Generate Application Key
         run: php artisan key:generate
 
+      - name: Generate Passport Keys
+        run: php artisan passport:keys --force
+
       - name: Browser Tests
-        run: ./vendor/bin/pest --testsuite=Browser --ci --shard=${{ matrix.shard }}/6
+        run: ./vendor/bin/pest --testsuite=Browser --ci --shard=${{ matrix.shard }}/5
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql
@@ -235,6 +294,9 @@ jobs:
 
   linter:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
 
@@ -262,8 +324,49 @@ jobs:
       - name: Lint Frontend
         run: bun run lint
 
+      # Advisory for now: the codebase carries a backlog of pre-existing
+      # `tsc --noEmit` errors that predate this step, so it must not gate
+      # merges yet. It still surfaces type regressions in the CI log. Flip
+      # `continue-on-error` to false once the existing backlog is cleared.
+      - name: Type Check Frontend
+        run: bun run types
+        continue-on-error: true
+
       - name: Frontend Tests
         run: bun run test
+
+      # Ratchet: fails when copy-paste duplication climbs above the threshold
+      # in .jscpd.json. Lower the threshold as clones get extracted; never
+      # raise it to make a red build pass.
+      - name: Duplication Check
+        run: bun run dry
+
+      # Gates merges on a Conventional-Commit PR title. Lives in the linter
+      # job (a required check) so a bad title blocks the merge, unlike the old
+      # standalone workflow whose check wasn't required. Skipped on push since
+      # there's no PR title to validate then.
+      - name: Conventional PR title
+        if: github.event_name == 'pull_request'
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            chore
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            revert
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            Subject must not start with uppercase. Use: feat: add checkout, fix(billing): handle retry.
 
   performance-tests:
     runs-on: ubuntu-latest
@@ -396,8 +499,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=
-            type=raw,value=latest
+            type=sha,prefix=,suffix=-development
+            type=raw,value=development
 
       - name: Extract package version
         id: package-version
@@ -409,7 +512,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=,suffix=-production
+            type=sha,prefix=
+            type=raw,value=latest
             type=raw,value=production
             type=raw,value=v${{ steps.package-version.outputs.version }}-production
 
@@ -474,8 +578,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=
-            type=raw,value=latest
+            type=sha,prefix=,suffix=-development
+            type=raw,value=development
 
       - name: Extract production metadata
         id: production-meta
@@ -483,7 +587,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=,suffix=-production
+            type=sha,prefix=
+            type=raw,value=latest
             type=raw,value=production
             type=raw,value=v${{ needs.build-image.outputs.package-version }}-production
 
@@ -549,108 +654,3 @@ jobs:
               "$IMAGE@$AMD64_DIGEST" \
               "$IMAGE@$ARM64_DIGEST"
           done <<< "$TAGS"
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [tests, linter, static-analysis, performance-tests, changes]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.code == 'true'
-    env:
-      SENTRY_RELEASE: whisper-money@${{ github.sha }}
-    concurrency:
-      group: production-deploy-main
-      cancel-in-progress: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Check if this is the latest main commit
-        id: deploy_guard
-        run: |
-          latest_main_sha=$(git ls-remote origin refs/heads/main | cut -f1)
-
-          echo "Current workflow SHA: ${{ github.sha }}"
-          echo "Latest main SHA: $latest_main_sha"
-
-          if [ -z "$latest_main_sha" ]; then
-            echo "Unable to determine the latest main SHA."
-            exit 1
-          fi
-
-          if [ "$latest_main_sha" != "${{ github.sha }}" ]; then
-            echo "This workflow is not for the latest commit on main. Skipping deploy."
-            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "This workflow is for the latest commit on main. Proceeding with deploy."
-          echo "should_deploy=true" >> "$GITHUB_OUTPUT"
-
-      - name: Trigger deployment
-        if: steps.deploy_guard.outputs.should_deploy == 'true'
-        run: |
-          max_attempts=5
-          attempt=1
-
-          while [ $attempt -le $max_attempts ]; do
-            echo "Attempt $attempt of $max_attempts..."
-
-            response=$(curl -s -w "\n%{http_code}" \
-              --connect-timeout 30 \
-              --max-time 120 \
-              -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_TOKEN }}" \
-              "http://147.93.126.54:8000/api/v1/deploy?uuid=ww00sswosco8w80k08c0occ8&force=false") || true
-
-            http_code=$(echo "$response" | tail -n1)
-            body=$(echo "$response" | sed '$d')
-
-            echo "Response: $body"
-            echo "HTTP Status: ${http_code:-timeout}"
-
-            if [ -n "$http_code" ] && [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
-              echo "Deployment triggered successfully!"
-              exit 0
-            fi
-
-            echo "Deployment request failed with status $http_code"
-
-            if [ $attempt -lt $max_attempts ]; then
-              delay=$((30 * (2 ** (attempt - 1))))
-              echo "Retrying in ${delay}s..."
-              sleep $delay
-            fi
-
-            attempt=$((attempt + 1))
-          done
-
-          echo "All $max_attempts attempts failed. Giving up."
-          exit 1
-
-      - name: Install Sentry CLI
-        if: steps.deploy_guard.outputs.should_deploy == 'true'
-        run: curl -sL https://sentry.io/get-cli/ | bash
-
-      - name: Create Sentry release
-        if: steps.deploy_guard.outputs.should_deploy == 'true'
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-        run: |
-          if ! sentry-cli releases info "$SENTRY_RELEASE" >/dev/null 2>&1; then
-            sentry-cli releases new "$SENTRY_RELEASE"
-          fi
-
-          sentry-cli releases set-commits "$SENTRY_RELEASE" --auto --ignore-missing
-          sentry-cli releases finalize "$SENTRY_RELEASE"
-
-      - name: Mark Sentry release deployed
-        if: steps.deploy_guard.outputs.should_deploy == 'true'
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-        run: sentry-cli releases deploys "$SENTRY_RELEASE" new -e production
-
-      - name: Deployment skipped
-        if: steps.deploy_guard.outputs.should_deploy == 'false'
-        run: echo "Skipped deployment because a newer commit is already on main."

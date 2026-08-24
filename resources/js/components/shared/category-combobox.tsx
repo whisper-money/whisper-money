@@ -1,7 +1,7 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Command,
-    CommandEmpty,
     CommandInput,
     CommandItem,
     CommandList,
@@ -11,6 +11,11 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    buildCategoryTree,
+    flattenCategoryTree,
+    getCategoryPath,
+} from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { __ } from '@/utils/i18n';
@@ -21,7 +26,14 @@ import {
     HelpCircle,
     type LucideIcon,
 } from 'lucide-react';
-import { memo, useEffect, useRef, useState } from 'react';
+import {
+    memo,
+    type ReactNode,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 
 const iconCache = new Map<string, LucideIcon>();
 
@@ -48,6 +60,10 @@ interface CategoryComboboxProps {
     triggerClassName?: string;
     showUncategorized?: boolean;
     withoutChevronIcon?: boolean;
+    /** Label for the empty / "no category" option (defaults to Uncategorized). */
+    emptyOptionLabel?: string;
+    /** Optional content rendered at the very top of the open dropdown. */
+    header?: ReactNode;
     'data-testid'?: string;
 }
 
@@ -60,8 +76,11 @@ export function CategoryCombobox({
     triggerClassName,
     showUncategorized = true,
     withoutChevronIcon = false,
+    emptyOptionLabel,
+    header,
     'data-testid': dataTestId,
 }: CategoryComboboxProps) {
+    const noneLabel = emptyOptionLabel ?? __('Uncategorized');
     const [open, setOpen] = useState(false);
     const [filterValue, setFilterValue] = useState('');
     const listRef = useRef<HTMLDivElement>(null);
@@ -71,9 +90,43 @@ export function CategoryCombobox({
             ? categories.find((c) => c.id === value)
             : null;
 
-    const sortedCategories = [...categories].sort((a, b) =>
-        a.name.localeCompare(b.name),
+    const orderedNodes = useMemo(
+        () => flattenCategoryTree(buildCategoryTree(categories)),
+        [categories],
     );
+
+    const query = filterValue.trim().toLowerCase();
+
+    // Tree-aware search: keep every match plus its ancestors, so a matching
+    // child is always shown under its parent for context.
+    const visibleNodes = useMemo(() => {
+        if (!query) {
+            return orderedNodes;
+        }
+
+        const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
+        const include = new Set<string>();
+        for (const category of categories) {
+            if (!category.name.toLowerCase().includes(query)) {
+                continue;
+            }
+            let id: string | null | undefined = category.id;
+            let guard = 0;
+            while (id != null && guard++ < 10) {
+                include.add(id);
+                id = parentOf.get(id);
+            }
+        }
+
+        return orderedNodes.filter((node) => include.has(node.id));
+    }, [orderedNodes, categories, query]);
+
+    const showNone =
+        showUncategorized &&
+        (query === '' ||
+            noneLabel.toLowerCase().includes(query) ||
+            'uncategorized'.includes(query));
+    const hasResults = visibleNodes.length > 0 || showNone;
 
     useEffect(() => {
         if (filterValue && listRef.current) {
@@ -118,7 +171,7 @@ export function CategoryCombobox({
                                 <HelpCircle className="h-3 w-3 text-zinc-500" />
                             </div>
                             <span className="truncate text-zinc-500">
-                                {__('Uncategorized')}
+                                {noneLabel}
                             </span>
                         </div>
                     ) : (
@@ -132,7 +185,8 @@ export function CategoryCombobox({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0" align="start">
-                <Command>
+                {header}
+                <Command shouldFilter={false}>
                     <CommandInput
                         placeholder={__('Search categories...')}
                         value={filterValue}
@@ -140,8 +194,12 @@ export function CategoryCombobox({
                     />
 
                     <CommandList ref={listRef}>
-                        <CommandEmpty>{__('No category found.')}</CommandEmpty>
-                        {showUncategorized && (
+                        {!hasResults && (
+                            <div className="py-6 text-center text-sm text-muted-foreground">
+                                {__('No category found.')}
+                            </div>
+                        )}
+                        {showNone && (
                             <CommandItem
                                 value="uncategorized"
                                 onSelect={() => {
@@ -153,7 +211,7 @@ export function CategoryCombobox({
                                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
                                         <HelpCircle className="h-3 w-3 text-zinc-500" />
                                     </div>
-                                    <span>{__('Uncategorized')}</span>
+                                    <span>{noneLabel}</span>
                                 </div>
                                 <Check
                                     className={cn(
@@ -165,16 +223,21 @@ export function CategoryCombobox({
                                 />
                             </CommandItem>
                         )}
-                        {sortedCategories.map((category) => (
+                        {visibleNodes.map((category) => (
                             <CommandItem
                                 key={category.id}
-                                value={category.name}
+                                value={getCategoryPath(category.id, categories)}
                                 onSelect={() => {
                                     onValueChange(String(category.id));
                                     setOpen(false);
                                 }}
                             >
-                                <div className="flex items-center gap-2">
+                                <div
+                                    className="flex items-center gap-2"
+                                    style={{
+                                        paddingLeft: `${category.depth * 1.25}rem`,
+                                    }}
+                                >
                                     <CategoryIcon category={category} />
                                     <span className="truncate">
                                         {category.name}
@@ -219,6 +282,23 @@ export const CategoryIcon = memo(function CategoryIcon({
         </div>
     );
 });
+
+export function CategoryBadge({ category }: { category: Category }) {
+    const colorClasses = getCategoryColorClasses(category.color);
+
+    return (
+        <Badge
+            className={cn(
+                'gap-1 px-2 py-0.5',
+                colorClasses.bg,
+                colorClasses.text,
+            )}
+        >
+            <DynamicIcon name={category.icon} className="h-3 w-3 opacity-80" />
+            {category.name}
+        </Badge>
+    );
+}
 
 const DynamicIcon = memo(function DynamicIcon({
     name,

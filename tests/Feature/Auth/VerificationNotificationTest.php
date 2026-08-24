@@ -18,6 +18,18 @@ test('sends verification notification', function () {
     Notification::assertSentTo($user, VerifyEmailNotification::class);
 });
 
+test('verification email links to the public signed route', function () {
+    $user = User::factory()->create([
+        'email_verified_at' => null,
+    ]);
+
+    $mail = (new VerifyEmailNotification)->toMail($user);
+
+    expect($mail->viewData['verificationUrl'])
+        ->toContain('/verify-email/'.$user->id.'/'.sha1($user->email))
+        ->toContain('signature=');
+});
+
 test('does not send verification notification if email is verified', function () {
     Notification::fake();
 

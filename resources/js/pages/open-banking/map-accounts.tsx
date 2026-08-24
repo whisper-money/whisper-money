@@ -21,6 +21,17 @@ import type { BankingConnection, PendingBankAccount } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { toast } from 'sonner';
+
+/**
+ * Banks don't always report a usable currency: EnableBanking sends XXX, the ISO 4217
+ * code for "no currency". Treat that as unknown rather than as a real code.
+ */
+function usableCurrency(reported: string | null | undefined): string | null {
+    const currency = (reported ?? '').trim().toUpperCase();
+
+    return currency === '' || currency === 'XXX' ? null : currency;
+}
 
 interface Mapping {
     bank_account_uid: string;
@@ -32,12 +43,14 @@ interface Props {
     connection: BankingConnection;
     bankAccounts: PendingBankAccount[];
     existingAccounts: Account[];
+    unmappableAccountNames: string[];
 }
 
 export default function MapAccountsPage({
     connection,
     bankAccounts,
     existingAccounts,
+    unmappableAccountNames,
 }: Props) {
     const [mappings, setMappings] = useState<Mapping[]>(
         bankAccounts.map((ba) => ({
@@ -56,8 +69,15 @@ export default function MapAccountsPage({
         );
     }
 
-    function getCompatibleAccounts(currency: string) {
-        return existingAccounts.filter((a) => a.currency_code === currency);
+    /** With no currency reported there is nothing to match on, so any live account is linkable. */
+    function getLinkableAccounts(currency: string | null) {
+        const linkable = existingAccounts.filter((a) => !a.archived_at);
+
+        if (!currency) {
+            return linkable;
+        }
+
+        return linkable.filter((a) => a.currency_code === currency);
     }
 
     function handleSubmit(e: React.FormEvent) {
@@ -67,6 +87,11 @@ export default function MapAccountsPage({
             `/open-banking/connections/${connection.id}/map-accounts`,
             { mappings },
             {
+                onError: (errors) => {
+                    toast.error(
+                        Object.values(errors)[0] ?? __('Something went wrong.'),
+                    );
+                },
                 onFinish: () => setProcessing(false),
             },
         );
@@ -94,13 +119,17 @@ export default function MapAccountsPage({
                         const mapping = mappings.find(
                             (m) => m.bank_account_uid === bankAccount.uid,
                         );
-                        const compatibleAccounts = getCompatibleAccounts(
-                            bankAccount.currency,
-                        );
+                        const currency = usableCurrency(bankAccount.currency);
+                        const compatibleAccounts =
+                            getLinkableAccounts(currency);
+                        const iban = bankAccount.account_id?.iban;
                         const displayName =
-                            bankAccount.name ||
-                            bankAccount.account_id?.iban ||
-                            __('Bank Account');
+                            bankAccount.name || iban || __('Bank Account');
+                        const details = [
+                            currency,
+                            // Don't repeat the IBAN when it is already the title.
+                            displayName === iban ? null : iban,
+                        ].filter(Boolean);
 
                         return (
                             <Card key={bankAccount.uid}>
@@ -108,12 +137,11 @@ export default function MapAccountsPage({
                                     <CardTitle className="text-base">
                                         {displayName}
                                     </CardTitle>
-                                    <CardDescription>
-                                        {bankAccount.currency}
-                                        {bankAccount.account_id?.iban &&
-                                            bankAccount.name &&
-                                            ` \u00b7 ${bankAccount.account_id.iban}`}
-                                    </CardDescription>
+                                    {details.length > 0 && (
+                                        <CardDescription>
+                                            {details.join(' \u00b7 ')}
+                                        </CardDescription>
+                                    )}
                                 </CardHeader>
                                 <CardContent>
                                     <RadioGroup
@@ -243,6 +271,15 @@ export default function MapAccountsPage({
                             </Card>
                         );
                     })}
+
+                    {unmappableAccountNames.length > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                            {__(
+                                'Not shown: :accounts. Your bank did not provide an identifier, so syncing is not possible.',
+                                { accounts: unmappableAccountNames.join(', ') },
+                            )}
+                        </p>
+                    )}
 
                     <div className="flex items-center justify-end gap-3">
                         <Link href="/settings/connections">

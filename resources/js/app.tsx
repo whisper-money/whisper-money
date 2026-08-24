@@ -1,6 +1,10 @@
 import '../css/app.css';
 
-import { createInertiaApp, router } from '@inertiajs/react';
+import {
+    createInertiaApp,
+    router,
+    type ResolvedComponent,
+} from '@inertiajs/react';
 import * as Sentry from '@sentry/react';
 import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -11,26 +15,38 @@ import {
     OctagonXIcon,
     TriangleAlertIcon,
 } from 'lucide-react';
-import { StrictMode, useEffect } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast, Toaster } from 'sonner';
+import { update as updateTimezone } from './actions/App/Http/Controllers/Settings/TimezoneController';
+import { AppErrorBoundary } from './components/app-error-boundary';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
 import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
+import { installDeferredPropsRecovery } from './lib/deferred-props-recovery';
+import { installFailedNavigationToast } from './lib/failed-navigation-toast';
+import { leavePage } from './lib/leave-page';
 import { initializePostHog } from './lib/posthog';
 import {
+    isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
+    isPageLeaveAbortNoise,
     isPostMessageDataCloneNoise,
+    isSafariCashbackExtensionNoise,
+    isUnattendedRequestNoise,
 } from './lib/sentry';
-import { showSubscriptionPaymentIssueToast } from './lib/subscription-payment-issue-toast';
+import { trackUnattendedRequests } from './lib/unattended-requests';
 import type { ExpiredBankingConnectionNotification, SharedData } from './types';
 import { __, setTranslations } from './utils/i18n';
 
 installChunkLoadRecovery();
+installDeferredPropsRecovery();
+trackUnattendedRequests();
+installFailedNavigationToast();
 
 Sentry.init({
     dsn: import.meta.env.SENTRY_LARAVEL_DSN,
@@ -41,8 +57,12 @@ Sentry.init({
     beforeSend(event) {
         if (
             isChunkLoadErrorEvent(event) ||
+            isPageLeaveAbortNoise(event) ||
+            isUnattendedRequestNoise(event) ||
+            isBrowserExtensionNoise(event) ||
             isPostMessageDataCloneNoise(event) ||
-            isFacebookInAppBrowserJavaBridgeNoise(event)
+            isFacebookInAppBrowserJavaBridgeNoise(event) ||
+            isSafariCashbackExtensionNoise(event)
         ) {
             return null;
         }
@@ -50,7 +70,8 @@ Sentry.init({
         return event;
     },
     enabled:
-        import.meta.env.PROD && Boolean(import.meta.env.SENTRY_LARAVEL_DSN),
+        import.meta.env.MODE === 'production' &&
+        Boolean(import.meta.env.SENTRY_LARAVEL_DSN),
 });
 
 initializePostHog();
@@ -99,7 +120,7 @@ function showExpiredConnectionsToast(
             action: {
                 label: __('Reconnect'),
                 onClick: () => {
-                    window.location.href = firstConnection.reconnect_url;
+                    leavePage(firstConnection.reconnect_url);
                 },
             },
         },
@@ -129,13 +150,48 @@ const getProgressBarColor = () => {
     return isDark ? '#EEE' : '#4B5563'; // gray-400 for dark mode, gray-600 for light mode
 };
 
+const isOnboardingPath = () =>
+    typeof window !== 'undefined' &&
+    window.location.pathname.startsWith('/onboarding');
+
+// Onboarding has no bottom navigation bar, so toasts sit flush at the bottom
+// center instead of being lifted to clear the (absent) mobile tab bar.
+function AppToaster() {
+    const [isOnboarding, setIsOnboarding] = useState(isOnboardingPath);
+
+    useEffect(() => {
+        return router.on('navigate', () => setIsOnboarding(isOnboardingPath()));
+    }, []);
+
+    return (
+        <Toaster
+            richColors
+            position={isOnboarding ? 'bottom-center' : undefined}
+            mobileOffset={{ bottom: isOnboarding ? '16px' : '110px' }}
+            icons={{
+                success: <CircleCheckIcon className="size-4" />,
+                info: <InfoIcon className="size-4" />,
+                warning: <TriangleAlertIcon className="size-4" />,
+                error: <OctagonXIcon className="size-4" />,
+                loading: <Loader2Icon className="size-4 animate-spin" />,
+            }}
+        />
+    );
+}
+
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     resolve: (name) =>
         resolvePageComponent(
             `./pages/${name}.tsx`,
-            import.meta.glob('./pages/**/*.tsx'),
-        ),
+            // Excluding the tests that live next to their pages: without it Vite
+            // treats each one as a page entry and bundles what it imports, which
+            // pulls vitest into the production build.
+            import.meta.glob<{ default: ResolvedComponent }>([
+                './pages/**/*.tsx',
+                '!./pages/**/*.test.tsx',
+            ]),
+        ).then((module) => module.default),
     setup({ el, App, props }) {
         const root = createRoot(el);
         const initialPageProps = props.initialPage?.props as
@@ -153,8 +209,6 @@ createInertiaApp({
             (initialPageProps?.expiredBankingConnections as
                 | ExpiredBankingConnectionNotification[]
                 | undefined) ?? [];
-        const initialSubscriptionPaymentIssue =
-            initialPageProps?.subscriptionPaymentIssue;
 
         const syncUserTimezone = async (pageProps?: Partial<SharedData>) => {
             const user = pageProps?.auth?.user ?? null;
@@ -173,7 +227,7 @@ createInertiaApp({
             hasAttemptedTimezoneBackfill = true;
 
             try {
-                await axios.patch('/settings/timezone', {
+                await axios.patch(updateTimezone.url(), {
                     timezone: detectedTimezone,
                 });
             } catch {
@@ -193,56 +247,36 @@ createInertiaApp({
                 (pageProps?.translations as Record<string, string>) ?? {},
             );
 
-            showSubscriptionPaymentIssueToast(
-                pageProps.subscriptionPaymentIssue,
-            );
-
             void syncUserTimezone(pageProps);
         });
-
-        showSubscriptionPaymentIssueToast(initialSubscriptionPaymentIssue);
 
         void syncUserTimezone(initialPageProps);
 
         root.render(
             <StrictMode>
-                <EncryptionKeyProvider
-                    hasEncryptionSetup={
-                        hasEncryptionSetup &&
-                        (hasEncryptedAccounts || hasEncryptedTransactions)
-                    }
-                >
-                    <PrivacyModeProvider>
-                        <SyncProvider
-                            initialIsAuthenticated={initialIsAuthenticated}
-                            initialUser={initialUser}
-                        >
-                            <App {...props} />
-                            <ExpiredConnectionsToast
-                                initialExpiredConnections={
-                                    initialExpiredConnections
-                                }
-                            />
-                            <Toaster
-                                richColors
-                                mobileOffset={{ bottom: '110px' }}
-                                icons={{
-                                    success: (
-                                        <CircleCheckIcon className="size-4" />
-                                    ),
-                                    info: <InfoIcon className="size-4" />,
-                                    warning: (
-                                        <TriangleAlertIcon className="size-4" />
-                                    ),
-                                    error: <OctagonXIcon className="size-4" />,
-                                    loading: (
-                                        <Loader2Icon className="size-4 animate-spin" />
-                                    ),
-                                }}
-                            />
-                        </SyncProvider>
-                    </PrivacyModeProvider>
-                </EncryptionKeyProvider>
+                <AppErrorBoundary>
+                    <EncryptionKeyProvider
+                        hasEncryptionSetup={
+                            hasEncryptionSetup &&
+                            (hasEncryptedAccounts || hasEncryptedTransactions)
+                        }
+                    >
+                        <PrivacyModeProvider>
+                            <SyncProvider
+                                initialIsAuthenticated={initialIsAuthenticated}
+                                initialUser={initialUser}
+                            >
+                                <App {...props} />
+                                <ExpiredConnectionsToast
+                                    initialExpiredConnections={
+                                        initialExpiredConnections
+                                    }
+                                />
+                                <AppToaster />
+                            </SyncProvider>
+                        </PrivacyModeProvider>
+                    </EncryptionKeyProvider>
+                </AppErrorBoundary>
             </StrictMode>,
         );
     },

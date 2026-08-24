@@ -83,11 +83,7 @@ export function ImportStepMapping({
         if (!effectiveCalculate) {
             return null;
         }
-        return getLatestTransactionDate(
-            parsedData,
-            columnMapping,
-            dateFormat,
-        );
+        return getLatestTransactionDate(parsedData, columnMapping, dateFormat);
     }, [effectiveCalculate, parsedData, columnMapping, dateFormat]);
 
     useEffect(() => {
@@ -185,8 +181,8 @@ export function ImportStepMapping({
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="space-y-4">
-                <div className="space-y-2">
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
                     <Label htmlFor="date-column">
                         {__('Transaction Date')}{' '}
                         <span className="text-destructive">*</span>
@@ -217,7 +213,7 @@ export function ImportStepMapping({
                     </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                     <Label htmlFor="description-column-0">
                         {__('Description')}
                         <span className="text-destructive">*</span>
@@ -250,7 +246,7 @@ export function ImportStepMapping({
                             </SelectContent>
                         </Select>
                     ) : (
-                        <div className="space-y-3">
+                        <div className="flex flex-col gap-3">
                             {descriptionColumns.map((column, columnIndex) => (
                                 <div
                                     key={columnIndex}
@@ -319,7 +315,7 @@ export function ImportStepMapping({
                     )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                     <Label htmlFor="amount-column">
                         {__('Amount')}
                         <span className="text-destructive">*</span>
@@ -348,7 +344,7 @@ export function ImportStepMapping({
                     </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                     <Label htmlFor="balance-column">
                         {__('Balance (Optional)')}
                     </Label>
@@ -384,7 +380,7 @@ export function ImportStepMapping({
                     </Select>
 
                     {calculateBalancesAvailable && (
-                        <div className="space-y-3 pt-2">
+                        <div className="flex flex-col gap-3 pt-2">
                             <div className="flex items-start gap-2">
                                 <Checkbox
                                     id="calculate-balances"
@@ -401,7 +397,7 @@ export function ImportStepMapping({
                                     }
                                     className="mt-0.5"
                                 />
-                                <div className="space-y-1">
+                                <div className="flex flex-col gap-1">
                                     <Label
                                         htmlFor="calculate-balances"
                                         className={`cursor-pointer font-normal ${checkboxDisabled ? 'opacity-50' : ''}`}
@@ -419,13 +415,10 @@ export function ImportStepMapping({
                             </div>
 
                             {effectiveCalculate && latestDate && (
-                                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                                <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
                                     <Label htmlFor="reference-balance">
                                         {__('Balance on')}{' '}
-                                        {formatRelativeDate(
-                                            latestDate,
-                                            locale,
-                                        )}{' '}
+                                        {formatRelativeDate(latestDate, locale)}{' '}
                                         <span className="text-destructive">
                                             *
                                         </span>
@@ -435,7 +428,6 @@ export function ImportStepMapping({
                                         value={referenceBalance ?? 0}
                                         onChange={onReferenceBalanceChange}
                                         currencyCode={currencyCode}
-                                        required
                                     />
                                     {referenceBalancePrefilled && (
                                         <p className="text-xs text-muted-foreground">
@@ -450,12 +442,151 @@ export function ImportStepMapping({
                     )}
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="creditor-column">
+                            {__('Creditor name (Optional)')}
+                        </Label>
+                        <Select
+                            value={columnMapping.creditor_name || '__none__'}
+                            onValueChange={(value) =>
+                                onMappingChange(
+                                    'creditor_name',
+                                    value === '__none__' ? '' : value,
+                                )
+                            }
+                        >
+                            <SelectTrigger id="creditor-column">
+                                <SelectValue
+                                    placeholder={__(
+                                        'Select creditor column (optional)',
+                                    )}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__none__">
+                                    {__('None')}
+                                </SelectItem>
+                                {columnOptions.map((option, index) => (
+                                    <SelectItem
+                                        key={`creditor-${option.value}-${index}`}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="debtor-column">
+                            {__('Debtor name (Optional)')}
+                        </Label>
+                        <Select
+                            value={columnMapping.debtor_name || '__none__'}
+                            onValueChange={(value) =>
+                                onMappingChange(
+                                    'debtor_name',
+                                    value === '__none__' ? '' : value,
+                                )
+                            }
+                        >
+                            <SelectTrigger id="debtor-column">
+                                <SelectValue
+                                    placeholder={__(
+                                        'Select debtor column (optional)',
+                                    )}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__none__">
+                                    {__('None')}
+                                </SelectItem>
+                                {columnOptions.map((option, index) => (
+                                    <SelectItem
+                                        key={`debtor-${option.value}-${index}`}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                {!dateFormatDetected && (
+                    <div className="flex flex-col gap-3 rounded-lg border p-4">
+                        <Label>{__('Date Format')}</Label>
+                        <RadioGroup
+                            value={dateFormat}
+                            onValueChange={(value) =>
+                                onDateFormatChange(value as DateFormat)
+                            }
+                        >
+                            <div className="flex items-center gap-2">
+                                <RadioGroupItem
+                                    value={DateFormat.YearMonthDay}
+                                    id="format-ymd"
+                                />
+
+                                <Label
+                                    htmlFor="format-ymd"
+                                    className="cursor-pointer font-normal"
+                                >
+                                    {__('YYYY-MM-DD (e.g., 2024-12-31)')}
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <RadioGroupItem
+                                    value={DateFormat.MonthDayYear}
+                                    id="format-mdy"
+                                />
+
+                                <Label
+                                    htmlFor="format-mdy"
+                                    className="cursor-pointer font-normal"
+                                >
+                                    {__('MM-DD-YYYY (e.g., 12-31-2024)')}
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <RadioGroupItem
+                                    value={DateFormat.DayMonthYear}
+                                    id="format-dmy"
+                                />
+
+                                <Label
+                                    htmlFor="format-dmy"
+                                    className="cursor-pointer font-normal"
+                                >
+                                    {__('DD-MM-YYYY (e.g., 31-12-2024)')}
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <RadioGroupItem
+                                    value={DateFormat.YearMonthDayCompact}
+                                    id="format-ymd-compact"
+                                />
+
+                                <Label
+                                    htmlFor="format-ymd-compact"
+                                    className="cursor-pointer font-normal"
+                                >
+                                    {__('YYYYMMDD (e.g., 20241231)')}
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                )}
+
                 {baseMappingValid && previewTransactions.length > 0 && (
-                    <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
+                    <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4">
                         <Label className="pl-2 text-xs font-light tracking-widest uppercase opacity-50">
                             {__('Preview (first 3 rows)')}
                         </Label>
-                        <div className="space-y-2 pt-2">
+                        <div className="flex flex-col gap-2 pt-2">
                             {previewTransactions.map((transaction, index) => (
                                 <div
                                     key={index}
@@ -475,58 +606,6 @@ export function ImportStepMapping({
                                 </div>
                             ))}
                         </div>
-                    </div>
-                )}
-
-                {!dateFormatDetected && (
-                    <div className="space-y-3 rounded-lg border p-4">
-                        <Label>{__('Date Format')}</Label>
-                        <RadioGroup
-                            value={dateFormat}
-                            onValueChange={(value) =>
-                                onDateFormatChange(value as DateFormat)
-                            }
-                        >
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value={DateFormat.YearMonthDay}
-                                    id="format-ymd"
-                                />
-
-                                <Label
-                                    htmlFor="format-ymd"
-                                    className="cursor-pointer font-normal"
-                                >
-                                    {__('YYYY-MM-DD (e.g., 2024-12-31)')}
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value={DateFormat.MonthDayYear}
-                                    id="format-mdy"
-                                />
-
-                                <Label
-                                    htmlFor="format-mdy"
-                                    className="cursor-pointer font-normal"
-                                >
-                                    {__('MM-DD-YYYY (e.g., 12-31-2024)')}
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value={DateFormat.DayMonthYear}
-                                    id="format-dmy"
-                                />
-
-                                <Label
-                                    htmlFor="format-dmy"
-                                    className="cursor-pointer font-normal"
-                                >
-                                    {__('DD-MM-YYYY (e.g., 31-12-2024)')}
-                                </Label>
-                            </div>
-                        </RadioGroup>
                     </div>
                 )}
             </div>

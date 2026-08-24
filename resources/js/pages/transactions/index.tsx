@@ -1,4 +1,6 @@
+import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
 import { useLocale } from '@/hooks/use-locale';
+import { usePollJobStatus } from '@/hooks/use-poll-job-status';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
@@ -13,6 +15,7 @@ import {
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, parseISO } from 'date-fns';
+import { ChevronRight, X } from 'lucide-react';
 import {
     createElement,
     useCallback,
@@ -40,6 +43,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
+import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -51,6 +55,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -79,14 +84,24 @@ import {
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
+import { isNewSince } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
+import { status as categorizationStatus } from '@/routes/ai/categorization';
+import {
+    dismiss as dismissConsent,
+    store as storeConsent,
+} from '@/routes/ai/consent';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
+import {
+    type AiConsentResponse,
+    type CategorizationProgress,
+} from '@/types/categorization';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
@@ -110,6 +125,9 @@ interface AppliedFilters {
     category_ids: string[];
     account_ids: string[];
     label_ids: string[];
+    creditor_name: string;
+    debtor_name: string;
+    category_source: string | null;
     search: string;
     sort: string;
 }
@@ -122,6 +140,9 @@ interface Props {
     banks: Bank[];
     labels: Label[];
     automationRules: AutomationRule[];
+    hasAiConsent: boolean;
+    aiConsentPromptDismissed: boolean;
+    lastVisitAt: string | null;
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
@@ -139,7 +160,10 @@ function serverToClientFilters(applied: AppliedFilters): Filters {
         categoryIds: applied.category_ids,
         accountIds: applied.account_ids,
         labelIds: applied.label_ids,
+        creditorName: applied.creditor_name,
+        debtorName: applied.debtor_name,
         searchText: applied.search,
+        aiCategorizedOnly: applied.category_source === 'ai',
     };
 }
 
@@ -170,8 +194,17 @@ function clientFiltersToQueryParams(
     if (filters.labelIds.length > 0) {
         params.label_ids = filters.labelIds.join(',');
     }
+    if (filters.creditorName) {
+        params.creditor_name = filters.creditorName;
+    }
+    if (filters.debtorName) {
+        params.debtor_name = filters.debtorName;
+    }
     if (filters.searchText) {
         params.search = filters.searchText;
+    }
+    if (filters.aiCategorizedOnly) {
+        params.category_source = 'ai';
     }
     if (sort !== '-transaction_date') {
         params.sort = sort;
@@ -206,8 +239,17 @@ function clientFiltersToBackendFilters(
     if (filters.labelIds.length > 0) {
         result.label_ids = filters.labelIds;
     }
+    if (filters.creditorName) {
+        result.creditor_name = filters.creditorName;
+    }
+    if (filters.debtorName) {
+        result.debtor_name = filters.debtorName;
+    }
     if (filters.searchText) {
         result.search = filters.searchText;
+    }
+    if (filters.aiCategorizedOnly) {
+        result.category_source = 'ai';
     }
 
     return result;
@@ -229,6 +271,7 @@ interface TransactionRowProps {
     row: Row<DecryptedTransaction>;
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
+    isNew: boolean;
     onEdit: (transaction: DecryptedTransaction) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
@@ -238,6 +281,7 @@ function TransactionRowComponent({
     row,
     virtualRow,
     rowVirtualizer,
+    isNew,
     onEdit,
     onReEvaluateRules,
     onDelete,
@@ -265,7 +309,10 @@ function TransactionRowComponent({
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
-                    className="cursor-pointer"
+                    className={cn(
+                        'cursor-pointer',
+                        isNew && 'bg-blue-500/5 dark:bg-blue-500/10',
+                    )}
                     onClick={handleRowClick}
                 >
                     {row
@@ -280,29 +327,37 @@ function TransactionRowComponent({
                                 | undefined;
                             return !meta?.isVirtual;
                         })
-                        .map((cell: Cell<DecryptedTransaction, unknown>) => {
-                            const meta = cell.column.columnDef.meta as
-                                | {
-                                      cellClassName?: string;
-                                      cellStyle?: React.CSSProperties;
-                                  }
-                                | undefined;
-                            return (
-                                <TableCell
-                                    key={cell.id}
-                                    className={cn(
-                                        meta?.cellClassName,
-                                        'pt-2.5 pb-2',
-                                    )}
-                                    style={meta?.cellStyle}
-                                >
-                                    {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext(),
-                                    )}
-                                </TableCell>
-                            );
-                        })}
+                        .map(
+                            (
+                                cell: Cell<DecryptedTransaction, unknown>,
+                                cellIndex: number,
+                            ) => {
+                                const meta = cell.column.columnDef.meta as
+                                    | {
+                                          cellClassName?: string;
+                                          cellStyle?: React.CSSProperties;
+                                      }
+                                    | undefined;
+                                return (
+                                    <TableCell
+                                        key={cell.id}
+                                        className={cn(
+                                            meta?.cellClassName,
+                                            'pt-2.5 pb-2',
+                                            isNew &&
+                                                cellIndex === 0 &&
+                                                'border-l-2 border-l-blue-500',
+                                        )}
+                                        style={meta?.cellStyle}
+                                    >
+                                        {flexRender(
+                                            cell.column.columnDef.cell,
+                                            cell.getContext(),
+                                        )}
+                                    </TableCell>
+                                );
+                            },
+                        )}
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>
@@ -328,6 +383,8 @@ function getInitialColumnVisibility(): VisibilityState {
     const defaultVisibility = {
         transaction_date: true,
         account: true,
+        creditor_name: false,
+        debtor_name: false,
         labels: true,
         notes: false,
     };
@@ -376,8 +433,31 @@ export default function Transactions({
     banks,
     labels: initialLabels,
     automationRules,
+    hasAiConsent,
+    aiConsentPromptDismissed,
+    lastVisitAt,
 }: Props) {
     const locale = useLocale();
+    const { auth } = usePage<SharedData>().props;
+    const [aiConsentResolved, setAiConsentResolved] = useState(false);
+    const [aiConsentSaving, setAiConsentSaving] = useState(false);
+    // Never on a shared account: consent means nothing when everybody holds the
+    // credentials, and the route behind the banner is blocked, so offering it
+    // would only hand a journalist a broken button mid-demo.
+    const showAiConsentBanner =
+        auth.hasProPlan &&
+        !auth.isSharedAccount &&
+        !hasAiConsent &&
+        !aiConsentPromptDismissed &&
+        !aiConsentResolved;
+    const [categorizingIds, setCategorizingIds] = useState<Set<string>>(
+        () => new Set(),
+    );
+    const categorizationToastRef = useRef<string | number | undefined>(
+        undefined,
+    );
+    const { start: startCategorizationPoll } = usePollJobStatus();
+
     const [labels, setLabels] = useState<Label[]>(() => initialLabels);
 
     useEffect(() => {
@@ -416,6 +496,11 @@ export default function Transactions({
         appliedFilters.sort || '-transaction_date',
     );
 
+    // Frozen at mount so per-row "new" marks stay stable for the whole visit.
+    // The marker is server-side (per user), so it's shared across devices; the
+    // controller advances it on load using the newest created_at it served.
+    const [lastVisitAtMount] = useState<string | null>(() => lastVisitAt);
+
     // Sync filter state when appliedFilters prop changes
     useEffect(() => {
         setFilters(serverToClientFilters(appliedFilters));
@@ -439,6 +524,7 @@ export default function Transactions({
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
+    const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
     const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -515,7 +601,9 @@ export default function Transactions({
                 JSON.stringify(newFilters.accountIds) ===
                     JSON.stringify(filters.accountIds) &&
                 JSON.stringify(newFilters.labelIds) ===
-                    JSON.stringify(filters.labelIds);
+                    JSON.stringify(filters.labelIds) &&
+                newFilters.creditorName === filters.creditorName &&
+                newFilters.debtorName === filters.debtorName;
 
             navigateWithFilters(
                 newFilters,
@@ -558,6 +646,148 @@ export default function Transactions({
                 setNextCursor(txns.next_cursor);
             },
         });
+    }, []);
+
+    // Clear the spinner for any row AI has finished categorizing.
+    useEffect(() => {
+        setCategorizingIds((previous) => {
+            if (previous.size === 0) {
+                return previous;
+            }
+
+            let changed = false;
+            const next = new Set(previous);
+            for (const transaction of allTransactions) {
+                if (next.has(transaction.id) && transaction.category_id) {
+                    next.delete(transaction.id);
+                    changed = true;
+                }
+            }
+
+            return changed ? next : previous;
+        });
+    }, [allTransactions]);
+
+    const pollCategorizationStatus = useCallback(
+        (jobId: string, fallbackTotal: number) => {
+            let pendingTicks = 0;
+
+            const dismiss = () => {
+                setCategorizingIds(new Set());
+                toast.dismiss(categorizationToastRef.current);
+                categorizationToastRef.current = undefined;
+            };
+
+            startCategorizationPoll(async () => {
+                let data;
+                try {
+                    ({ data } = await axios.get<CategorizationProgress>(
+                        categorizationStatus(jobId).url,
+                    ));
+                } catch {
+                    dismiss();
+                    return 'stop';
+                }
+
+                // The job never started (e.g. no queue worker running) — give up
+                // instead of polling forever.
+                if (data.status === 'pending' && ++pendingTicks > 15) {
+                    dismiss();
+                    return 'stop';
+                }
+
+                const total = data.total || fallbackTotal;
+                categorizationToastRef.current = toast.loading(
+                    __('Categorizing :processed of :total transactions…', {
+                        processed: data.processed,
+                        total,
+                    }),
+                    { id: categorizationToastRef.current },
+                );
+
+                // Pull whatever AI has applied so far into the visible rows.
+                if (data.status === 'processing' || data.status === 'done') {
+                    refreshTransactions();
+                }
+
+                if (data.status === 'done' || data.status === 'failed') {
+                    setCategorizingIds(new Set());
+                    if (data.status === 'failed') {
+                        toast.error(
+                            __('AI categorization failed. Please try again.'),
+                            { id: categorizationToastRef.current },
+                        );
+                    } else if (data.applied > 0) {
+                        toast.success(
+                            __('AI categorized :count transactions', {
+                                count: data.applied,
+                            }),
+                            { id: categorizationToastRef.current },
+                        );
+                    } else {
+                        toast.dismiss(categorizationToastRef.current);
+                    }
+                    categorizationToastRef.current = undefined;
+                    return 'stop';
+                }
+
+                return 'continue';
+            }, 2000);
+        },
+        [startCategorizationPoll, refreshTransactions],
+    );
+
+    const handleEnableAi = useCallback(async () => {
+        setAiConsentSaving(true);
+        try {
+            const { data } = await axios.post<AiConsentResponse>(
+                storeConsent.url(),
+            );
+            setAiConsentResolved(true);
+            toast.success(
+                __(
+                    'AI enabled. You can change this anytime in Settings > Manage Plan.',
+                ),
+            );
+
+            if (data.categorization) {
+                // Spin every currently-visible uncategorized row while the
+                // backfill runs; the prune effect clears each as it lands.
+                setCategorizingIds(
+                    new Set(
+                        allTransactions
+                            .filter((transaction) => !transaction.category_id)
+                            .map((transaction) => transaction.id),
+                    ),
+                );
+                categorizationToastRef.current = toast.loading(
+                    __('Categorizing :processed of :total transactions…', {
+                        processed: 0,
+                        total: data.categorization.total,
+                    }),
+                );
+                pollCategorizationStatus(
+                    data.categorization.job_id,
+                    data.categorization.total,
+                );
+            }
+        } catch {
+            toast.error(__('Something went wrong.'));
+        } finally {
+            setAiConsentSaving(false);
+        }
+    }, [allTransactions, pollCategorizationStatus]);
+
+    const handleDismissAiConsent = useCallback(() => {
+        setAiConsentResolved(true);
+        axios.post(dismissConsent.url()).catch(() => {
+            // Best-effort: the banner is already hidden for this session.
+        });
+        toast(
+            __(
+                'AI not enabled. You can turn it on anytime in Settings > Manage Plan.',
+            ),
+        );
     }, []);
 
     // Load More with cursor pagination (fetch directly to avoid cursor in URL)
@@ -715,6 +945,7 @@ export default function Transactions({
             const jobId = bulkResponse.data.job_id;
 
             await new Promise<void>((resolve, reject) => {
+                let pendingTicks = 0;
                 const poll = async () => {
                     try {
                         const statusResponse = await axios.get<{
@@ -744,6 +975,13 @@ export default function Transactions({
                             resolve();
                         } else if (status === 'failed') {
                             reject(new Error('Job failed'));
+                        } else if (
+                            status === 'pending' &&
+                            ++pendingTicks > 30
+                        ) {
+                            // The job never started (e.g. no queue worker
+                            // running) — give up instead of polling forever.
+                            reject(new Error('Job did not start'));
                         } else {
                             setTimeout(poll, 1000);
                         }
@@ -817,6 +1055,8 @@ export default function Transactions({
                 onUpdate: updateTransaction,
                 onCategorized: showAutomatizeToast,
                 onReEvaluateRules: handleReEvaluateRules,
+                isDateHidden: columnVisibility.transaction_date === false,
+                categorizingIds,
             }),
         [
             accounts,
@@ -827,6 +1067,8 @@ export default function Transactions({
             updateTransaction,
             showAutomatizeToast,
             handleReEvaluateRules,
+            columnVisibility,
+            categorizingIds,
         ],
     );
 
@@ -854,7 +1096,11 @@ export default function Transactions({
 
         setIsDeleting(true);
         try {
-            await transactionSyncService.delete(deleteTransaction.id);
+            await transactionSyncService.delete(deleteTransaction.id, {
+                updateBalance:
+                    updateBalanceOnDelete &&
+                    manualAccountIds.has(deleteTransaction.account_id),
+            });
             setAllTransactions((previous) =>
                 previous.filter(
                     (transaction) => transaction.id !== deleteTransaction.id,
@@ -880,7 +1126,7 @@ export default function Transactions({
             if (isSelectingAll) {
                 const toastId = toast.loading(__('Updating transactions...'));
                 const response = await axios.patch<{ count: number }>(
-                    '/transactions/bulk',
+                    bulkUpdateTransactions.url(),
                     {
                         filters: clientFiltersToBackendFilters(filters),
                         category_id: categoryId,
@@ -943,6 +1189,28 @@ export default function Transactions({
 
     const selectedCount = useMemo(() => selectedIds.length, [selectedIds]);
 
+    const manualAccountIds = useMemo(
+        () =>
+            new Set(
+                accounts
+                    .filter((account) => account.banking_connection_id === null)
+                    .map((account) => account.id),
+            ),
+        [accounts],
+    );
+
+    const bulkDeleteTouchesManualAccount = useMemo(
+        () =>
+            isSelectingAll
+                ? manualAccountIds.size > 0
+                : allTransactions.some(
+                      (transaction) =>
+                          selectedIds.includes(transaction.id) &&
+                          manualAccountIds.has(transaction.account_id),
+                  ),
+        [isSelectingAll, manualAccountIds, allTransactions, selectedIds],
+    );
+
     const bulkDeleteConfirmationText = useMemo(
         () => getBulkDeleteConfirmationText(selectedCount),
         [selectedCount],
@@ -970,7 +1238,9 @@ export default function Transactions({
 
         setIsBulkDeleting(true);
         try {
-            await transactionSyncService.deleteMany(selectedIds);
+            await transactionSyncService.deleteMany(selectedIds, {
+                updateBalance: updateBalanceOnDelete,
+            });
             setAllTransactions((previous) =>
                 previous.filter(
                     (transaction) => !selectedIds.includes(transaction.id),
@@ -997,7 +1267,7 @@ export default function Transactions({
             if (isSelectingAll) {
                 const toastId = toast.loading(__('Updating transactions...'));
                 const response = await axios.patch<{ count: number }>(
-                    '/transactions/bulk',
+                    bulkUpdateTransactions.url(),
                     {
                         filters: clientFiltersToBackendFilters(filters),
                         label_ids: labelIds,
@@ -1088,13 +1358,14 @@ export default function Transactions({
                     row={row}
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
+                    isNew={isNewSince(row.original, lastVisitAtMount)}
                     onEdit={setEditTransaction}
                     onReEvaluateRules={handleReEvaluateRules}
                     onDelete={setDeleteTransaction}
                 />
             );
         },
-        [handleReEvaluateRules],
+        [handleReEvaluateRules, lastVisitAtMount],
     );
 
     return (
@@ -1114,9 +1385,9 @@ export default function Transactions({
                         categories={categories}
                         labels={labels}
                         accounts={accounts}
-                        isKeySet={true}
+                        enableSavedFilters={true}
                         actions={
-                            <div className="flex w-full flex-wrap justify-between gap-2 sm:justify-end">
+                            <div className="flex w-full items-center justify-between gap-2">
                                 <TransactionActionsMenu
                                     categories={categories}
                                     accounts={accounts}
@@ -1133,6 +1404,7 @@ export default function Transactions({
                                     onImportComplete={() =>
                                         refreshTransactions()
                                     }
+                                    filters={filters}
                                 />
 
                                 <DataTableViewOptions table={table} />
@@ -1187,6 +1459,52 @@ export default function Transactions({
                                 renderDateHeader={(date, colSpan) => (
                                     <DateHeader date={date} colSpan={colSpan} />
                                 )}
+                                topRow={
+                                    showAiConsentBanner ? (
+                                        <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
+                                            <div className="flex gap-3 sm:flex-1">
+                                                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80 shadow-sm dark:bg-white/10">
+                                                    <AiSparkleIcon className="h-5 w-5" />
+                                                </div>
+                                                <div className="max-w-80 sm:max-w-none">
+                                                    <p className="font-medium">
+                                                        {__(
+                                                            'Let AI categorize your transactions',
+                                                        )}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {__(
+                                                            'Give your consent and our AI will suggest categories for your transactions automatically.',
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    onClick={
+                                                        handleDismissAiConsent
+                                                    }
+                                                    disabled={aiConsentSaving}
+                                                    className="opacity-20 transition-all duration-300 hover:opacity-100"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    aria-label={__('Dismiss')}
+                                                >
+                                                    <X />
+                                                </Button>
+                                                <Button
+                                                    onClick={handleEnableAi}
+                                                    disabled={aiConsentSaving}
+                                                    variant="secondary"
+                                                    className="max-w-[calc(var(--spacing)_*_86)] bg-white px-6!"
+                                                >
+                                                    {__('Enable AI')}
+                                                    <ChevronRight />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : null
+                                }
                             />
 
                             <DataTablePagination
@@ -1229,6 +1547,7 @@ export default function Transactions({
                 onSuccess={updateTransaction}
                 onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
+                onDelete={setDeleteTransaction}
                 mode="edit"
             />
 
@@ -1260,6 +1579,7 @@ export default function Transactions({
                 onOpenChange={(open) => {
                     if (!open) {
                         setDeleteTransaction(null);
+                        setUpdateBalanceOnDelete(true);
                     }
                 }}
             >
@@ -1274,6 +1594,25 @@ export default function Transactions({
                             )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    {deleteTransaction !== null &&
+                        manualAccountIds.has(deleteTransaction.account_id) && (
+                            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
+                                <Checkbox
+                                    checked={updateBalanceOnDelete}
+                                    onCheckedChange={(checked) =>
+                                        setUpdateBalanceOnDelete(
+                                            checked === true,
+                                        )
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <span className="text-muted-foreground">
+                                    {__(
+                                        'Update the current balance of the manual account to reflect this change.',
+                                    )}
+                                </span>
+                            </label>
+                        )}
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>
                             {__('Cancel')}
@@ -1296,6 +1635,7 @@ export default function Transactions({
                         setDeleteTransaction(null);
                         setIsBulkDeleteMode(false);
                         setBulkDeleteConfirmation('');
+                        setUpdateBalanceOnDelete(true);
                     }
                 }}
             >
@@ -1320,6 +1660,22 @@ export default function Transactions({
                         disabled={isBulkDeleting}
                         autoFocus
                     />
+                    {bulkDeleteTouchesManualAccount && (
+                        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
+                            <Checkbox
+                                checked={updateBalanceOnDelete}
+                                onCheckedChange={(checked) =>
+                                    setUpdateBalanceOnDelete(checked === true)
+                                }
+                                className="mt-0.5"
+                            />
+                            <span className="text-muted-foreground">
+                                {__(
+                                    'Update the current balance of the affected manual accounts to reflect this change.',
+                                )}
+                            </span>
+                        </label>
+                    )}
                     <DialogFooter>
                         <Button
                             variant="outline"

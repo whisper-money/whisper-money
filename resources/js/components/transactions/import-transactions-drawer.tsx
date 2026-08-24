@@ -2,6 +2,7 @@ import {
     index as indexBalances,
     store as storeBalance,
 } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { categorize } from '@/actions/App/Http/Controllers/TransactionController';
 import AlertError from '@/components/alert-error';
 import {
     Drawer,
@@ -12,9 +13,11 @@ import {
 } from '@/components/ui/drawer';
 import { Progress } from '@/components/ui/progress';
 import { importKey } from '@/lib/crypto';
+import { getCsrfToken } from '@/lib/csrf';
 import {
     autoDetectColumns,
     calculateBalancesFromTransactions,
+    collectBalancesToImport,
     convertRowsToTransactions,
     parseFile,
 } from '@/lib/file-parser';
@@ -99,6 +102,8 @@ export function ImportTransactionsDrawer({
             description: null,
             amount: null,
             balance: null,
+            creditor_name: null,
+            debtor_name: null,
         },
         dateFormat: DateFormat.YearMonthDay,
         dateFormatDetected: false,
@@ -134,6 +139,8 @@ export function ImportTransactionsDrawer({
                     description: null,
                     amount: null,
                     balance: null,
+                    creditor_name: null,
+                    debtor_name: null,
                 },
                 dateFormat: DateFormat.YearMonthDay,
                 dateFormatDetected: false,
@@ -202,25 +209,38 @@ export function ImportTransactionsDrawer({
 
             let detectedFormat = DateFormat.YearMonthDay;
             let formatDetected = false;
+            let formatAmbiguous = false;
             if (autoMapping.transaction_date) {
-                const { autoDetectDateFormat } =
-                    await import('@/lib/file-parser');
-                const detected = autoDetectDateFormat(
+                const { detectDateFormat } = await import('@/lib/file-parser');
+                const detected = detectDateFormat(
                     data,
                     autoMapping.transaction_date,
                     locale,
                 );
                 if (detected) {
-                    detectedFormat = detected;
-                    formatDetected = true;
+                    detectedFormat = detected.format;
+                    formatAmbiguous = detected.ambiguous;
+                    formatDetected = !detected.ambiguous;
                 }
             }
 
-            let finalMapping = autoMapping;
-            let finalDateFormat = detectedFormat;
+            // Show the parsed file immediately with auto-detected columns; the
+            // saved per-account config is fetched off the critical path so a
+            // slow or hanging network never blocks the preview or Next button.
+            setState((prev) => ({
+                ...prev,
+                file,
+                parsedData: data,
+                columnHeaders: headers,
+                columnOptions,
+                columnMapping: autoMapping,
+                dateFormat: detectedFormat,
+                dateFormatDetected: formatDetected,
+            }));
 
-            if (state.selectedAccountId) {
-                const savedConfig = loadImportConfig(state.selectedAccountId);
+            const accountId = state.selectedAccountId;
+            if (accountId) {
+                const savedConfig = await loadImportConfig(accountId);
 
                 if (savedConfig) {
                     const isValidMapping = (
@@ -240,23 +260,24 @@ export function ImportTransactionsDrawer({
                     };
 
                     if (isValidMapping(savedConfig.columnMapping)) {
-                        finalMapping = savedConfig.columnMapping;
-                        finalDateFormat = savedConfig.dateFormat;
-                        formatDetected = true;
+                        // Only apply if this file is still the selected one, so a
+                        // slow load can't clobber a file picked afterwards. Keep
+                        // the saved format as the default, but still show the
+                        // selector when the dates are ambiguous so a
+                        // previously-saved wrong format can be corrected.
+                        setState((prev) =>
+                            prev.file === file
+                                ? {
+                                      ...prev,
+                                      columnMapping: savedConfig.columnMapping,
+                                      dateFormat: savedConfig.dateFormat,
+                                      dateFormatDetected: !formatAmbiguous,
+                                  }
+                                : prev,
+                        );
                     }
                 }
             }
-
-            setState((prev) => ({
-                ...prev,
-                file,
-                parsedData: data,
-                columnHeaders: headers,
-                columnOptions,
-                columnMapping: finalMapping,
-                dateFormat: finalDateFormat,
-                dateFormatDetected: formatDetected,
-            }));
         } catch (err) {
             setError(
                 err instanceof Error ? err.message : 'Failed to parse file',
@@ -306,22 +327,19 @@ export function ImportTransactionsDrawer({
         }));
     };
 
-    const handleLatestDateChange = useCallback(
-        (date: string | null) => {
-            setState((prev) => {
-                if (prev.referenceBalanceDate === date) {
-                    return prev;
-                }
-                return {
-                    ...prev,
-                    referenceBalanceDate: date,
-                    referenceBalance: null,
-                    referenceBalancePrefilled: false,
-                };
-            });
-        },
-        [],
-    );
+    const handleLatestDateChange = useCallback((date: string | null) => {
+        setState((prev) => {
+            if (prev.referenceBalanceDate === date) {
+                return prev;
+            }
+            return {
+                ...prev,
+                referenceBalanceDate: date,
+                referenceBalance: null,
+                referenceBalancePrefilled: false,
+            };
+        });
+    }, []);
 
     // Try to pre-fill the reference balance from an existing balance record
     // on that date. If found, no need to ask the user.
@@ -409,8 +427,6 @@ export function ImportTransactionsDrawer({
                 return;
             }
 
-            await transactionSyncService.sync();
-
             const duplicateFlags = await transactionSyncService.checkDuplicates(
                 account.id,
                 parsedTransactions,
@@ -446,12 +462,14 @@ export function ImportTransactionsDrawer({
                         balance:
                             calculatedBalances.get(
                                 transaction.transaction_date,
-                            ) ?? transaction.balance ?? null,
+                            ) ??
+                            transaction.balance ??
+                            null,
                     }));
             }
 
             if (state.selectedAccountId) {
-                saveImportConfig(state.selectedAccountId, {
+                void saveImportConfig(state.selectedAccountId, {
                     columnMapping: state.columnMapping,
                     dateFormat: state.dateFormat,
                 });
@@ -519,6 +537,8 @@ export function ImportTransactionsDrawer({
                                 amount: transaction.amount / 100,
                                 transaction_date: transaction.transaction_date,
                                 account_id: selectedAccount.id,
+                                creditor_name: transaction.creditor_name,
+                                debtor_name: transaction.debtor_name,
                             },
                             rules,
                             categories,
@@ -552,17 +572,20 @@ export function ImportTransactionsDrawer({
 
                     const transactionData = {
                         user_id:
-                            (selectedAccount as Account & { user_id?: number })
-                                .user_id || 0,
+                            (selectedAccount as Account & { user_id?: string })
+                                .user_id ||
+                            '00000000-0000-0000-0000-000000000000',
                         account_id: selectedAccount.id,
                         category_id: categoryId,
                         description: encrypted,
                         description_iv: iv,
                         transaction_date: transaction.transaction_date,
-                        amount: transaction.amount.toString(),
+                        amount: transaction.amount,
                         currency_code: selectedAccount.currency_code,
                         notes: notes,
                         notes_iv: notesIv,
+                        creditor_name: transaction.creditor_name ?? null,
+                        debtor_name: transaction.debtor_name ?? null,
                         source: 'imported' as const,
                         label_ids: labelIds.length > 0 ? labelIds : undefined,
                     };
@@ -620,27 +643,11 @@ export function ImportTransactionsDrawer({
             setImportProgress(processedCount);
         }
 
-        const balancesToImport = new Map<string, number>();
-        for (const transaction of newTransactions) {
-            if (
-                transaction.balance !== null &&
-                transaction.balance !== undefined
-            ) {
-                balancesToImport.set(
-                    transaction.transaction_date,
-                    transaction.balance,
-                );
-            }
-        }
+        const balancesToImport = collectBalancesToImport(newTransactions);
 
         if (balancesToImport.size > 0) {
             try {
-                const xsrfToken = decodeURIComponent(
-                    document.cookie
-                        .split('; ')
-                        .find((row) => row.startsWith('XSRF-TOKEN='))
-                        ?.split('=')[1] || '',
-                );
+                const xsrfToken = getCsrfToken();
 
                 const balanceRecords = Array.from(balancesToImport.entries());
 
@@ -681,8 +688,7 @@ export function ImportTransactionsDrawer({
                     uncategorizedCount > 0
                         ? {
                               label: 'Categorize',
-                              onClick: () =>
-                                  router.visit('/transactions/categorize'),
+                              onClick: () => router.visit(categorize.url()),
                           }
                         : undefined,
             });
@@ -697,8 +703,7 @@ export function ImportTransactionsDrawer({
                     uncategorizedCount > 0
                         ? {
                               label: 'Categorize',
-                              onClick: () =>
-                                  router.visit('/transactions/categorize'),
+                              onClick: () => router.visit(categorize.url()),
                           }
                         : undefined,
             });
@@ -712,8 +717,7 @@ export function ImportTransactionsDrawer({
                     uncategorizedCount > 0
                         ? {
                               label: 'Categorize',
-                              onClick: () =>
-                                  router.visit('/transactions/categorize'),
+                              onClick: () => router.visit(categorize.url()),
                           }
                         : undefined,
             });
@@ -722,17 +726,7 @@ export function ImportTransactionsDrawer({
             toast.error(__('All transactions failed to import'));
         }
 
-        transactionSyncService
-            .sync()
-            .then(() => {
-                onImportComplete?.();
-            })
-            .catch((syncError) => {
-                console.error(
-                    'Failed to sync transactions with backend:',
-                    syncError,
-                );
-            });
+        onImportComplete?.();
     };
 
     const handleSelectionChange = (index: number, selected: boolean) => {

@@ -1,3 +1,4 @@
+import { index as importDataRoute } from '@/actions/App/Http/Controllers/Api/ImportDataController';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -5,7 +6,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -23,23 +23,15 @@ interface ImportData {
 }
 
 export function ImportTransactionsButton() {
-    const { isKeySet } = useEncryptionKey();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [importData, setImportData] = useState<ImportData | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleOpenDrawer = async () => {
-        if (!isKeySet) {
-            toast.error(
-                __('Please unlock your encryption key to import transactions'),
-            );
-            return;
-        }
-
         // Fetch data on-demand when drawer opens
         setLoading(true);
         try {
-            const response = await fetch('/api/import/data');
+            const response = await fetch(importDataRoute.url());
             if (!response.ok) {
                 throw new Error('Failed to load import data');
             }
@@ -61,7 +53,7 @@ export function ImportTransactionsButton() {
                     <TooltipTrigger asChild>
                         <Button
                             variant="ghost"
-                            className={`h-9 ${!isKeySet || loading ? 'cursor-not-allowed opacity-50' : ''}`}
+                            className={`h-9 ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
                             onClick={handleOpenDrawer}
                             disabled={loading}
                             aria-label={__('Import transactions')}
@@ -73,9 +65,7 @@ export function ImportTransactionsButton() {
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                        {!isKeySet
-                            ? __('Unlock encryption to import transactions')
-                            : __('Import transactions from CSV/Excel')}
+                        {__('Import transactions from CSV/Excel')}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>

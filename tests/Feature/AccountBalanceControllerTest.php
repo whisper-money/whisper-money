@@ -280,6 +280,47 @@ it('can store balance without invested_amount', function () {
     ]);
 });
 
+it('can store a zero balance', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
+        'balance' => 0,
+        'balance_date' => now()->subDays(5)->toDateString(),
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.balance', 0);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 0,
+    ]);
+});
+
+it('can update the current balance to zero', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    AccountBalance::factory()->for($account)->create([
+        'balance_date' => now()->toDateString(),
+        'balance' => 100000,
+    ]);
+
+    $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
+        'balance' => 0,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('data.balance', 0);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 0,
+    ]);
+});
+
 it('validates store balance must be an integer', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();

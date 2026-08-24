@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { clearKey } from '@/lib/key-storage';
@@ -30,10 +31,6 @@ export default function Login({
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const forceRegistration =
-        typeof window !== 'undefined' &&
-        new URLSearchParams(window.location.search).get('force') === '1';
-
     useEffect(() => {
         clearKey();
 
@@ -53,7 +50,6 @@ export default function Login({
 
             <Form
                 {...store.form()}
-                resetOnSuccess={['password']}
                 onSuccess={clearKey}
                 className="flex flex-col gap-6"
             >
@@ -95,9 +91,8 @@ export default function Login({
                                         </TextLink>
                                     )}
                                 </div>
-                                <Input
+                                <PasswordInput
                                     id="password"
-                                    type="password"
                                     name="password"
                                     required
                                     tabIndex={2}
@@ -139,14 +134,7 @@ export default function Login({
                         {canRegister && (
                             <div className="text-center text-sm text-muted-foreground">
                                 {__("Don't have an account?")}{' '}
-                                <TextLink
-                                    href={
-                                        forceRegistration
-                                            ? register({ query: { force: 1 } })
-                                            : register()
-                                    }
-                                    tabIndex={5}
-                                >
+                                <TextLink href={register()} tabIndex={5}>
                                     {__('Sign up')}
                                 </TextLink>
                             </div>

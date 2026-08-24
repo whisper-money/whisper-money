@@ -3,11 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AccountType;
+use App\Http\Requests\ArchiveAccountRequest;
+use App\Http\Requests\ReorderAccountsRequest;
+use App\Http\Requests\UpdateAccountVisibilityRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\LoanDetail;
 use App\Services\AccountMetricsService;
 use App\Services\LoanAmortizationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,140 +32,165 @@ class AccountController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
-            ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
-            ->orderByRaw("FIELD(type, 'checking', 'savings', 'investment', 'retirement', 'real_estate', 'loan', 'credit_card', 'others')")
+            ->notArchived()
+            ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
+            ->orderBy('position')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
+            ->get();
 
-        $accountsData = $accounts->map(function (Account $account) {
-            $data = $account->only(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id', 'bank']);
-
-            if ($account->type === AccountType::RealEstate && $account->realEstateDetail?->linked_loan_account_id) {
-                $data['linked_loan_account_id'] = $account->realEstateDetail->linked_loan_account_id;
-            }
-
-            return $data;
-        });
+        // The real estate detail is loaded only to feed the linked_loan_account_id
+        // accessor; it should not be serialized as a nested relation here.
+        $accounts->makeHidden('realEstateDetail');
 
         return Inertia::render('Accounts/Index', [
-            'accounts' => $accountsData,
+            'accounts' => $accounts,
             'accountMetrics' => Inertia::defer(fn () => $this->accountMetricsService->getAccountMetrics($user->currency_code, $accounts)),
         ]);
+    }
+
+    public function reorder(ReorderAccountsRequest $request): RedirectResponse
+    {
+        // ponytail: one update per account; fine for the handful of accounts a
+        // user has. Switch to a single CASE update if that ever grows large.
+        foreach (array_values($request->validated('ids')) as $position => $id) {
+            Account::query()
+                ->whereKey($id)
+                ->where('user_id', $request->user()->id)
+                ->update(['position' => $position]);
+        }
+
+        return back();
+    }
+
+    public function updateVisibility(UpdateAccountVisibilityRequest $request, Account $account): RedirectResponse
+    {
+        $account->update(['hidden_on_dashboard' => $request->validated('hidden')]);
+
+        return back();
+    }
+
+    /**
+     * Archiving records the day it happened so the account stops counting from
+     * then on without touching the history it already has; unarchiving clears
+     * the date and the account goes back to counting.
+     */
+    public function updateArchived(ArchiveAccountRequest $request, Account $account): RedirectResponse
+    {
+        $account->update([
+            'archived_at' => $request->validated('archived') ? now() : null,
+        ]);
+
+        return back();
     }
 
     public function show(Request $request, Account $account): Response
     {
         $this->authorize('view', $account);
 
-        $account->load('bank:id,name,logo');
+        $account->load('bank');
 
-        $data = $account->only(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id', 'bank']);
+        $data = $account->toArray();
 
         if ($account->type === AccountType::RealEstate) {
-            $account->load('realEstateDetail.linkedLoanAccount.bank:id,name,logo');
+            $account->load('realEstateDetail.linkedLoanAccount.bank');
             $realEstateDetail = $account->realEstateDetail;
 
             if ($realEstateDetail) {
                 $linkedLoan = $realEstateDetail->linkedLoanAccount;
 
                 $data['real_estate_detail'] = [
-                    ...$realEstateDetail->only([
-                        'id', 'property_type', 'address', 'purchase_price',
-                        'area_value', 'area_unit', 'notes',
-                        'revaluation_percentage', 'linked_loan_account_id',
-                    ]),
-                    'purchase_date' => $realEstateDetail->purchase_date?->format('Y-m-d'),
-                    'linked_loan_account' => $linkedLoan
-                        ? $linkedLoan->only(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank'])
-                        : null,
+                    ...$realEstateDetail->toArray(),
+                    'linked_loan_account' => $linkedLoan?->toArray(),
                 ];
 
                 // Include current balances for equity calculation
                 if ($linkedLoan) {
-                    $data['real_estate_detail']['current_loan_balance'] = AccountBalance::query()
-                        ->where('account_id', $linkedLoan->id)
-                        ->where('balance_date', '<=', now()->toDateString())
-                        ->orderByDesc('balance_date')
-                        ->value('balance') ?? 0;
+                    $data['real_estate_detail']['current_loan_balance'] = $this->latestBalance($linkedLoan->id);
 
                     // Include linked loan account at top level for header actions
-                    $data['linked_loan_account'] = $linkedLoan->only(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank', 'banking_connection_id']);
+                    $data['linked_loan_account'] = $linkedLoan->toArray();
 
-                    // Load loan amortization details for the linked loan
                     $linkedLoan->load('loanDetail');
-                    $loanDetail = $linkedLoan->loanDetail;
 
-                    if ($loanDetail) {
-                        $remainingMonths = $this->loanAmortizationService->calculateRemainingMonths($loanDetail, now());
-
-                        $lastLoanBalance = AccountBalance::query()
-                            ->where('account_id', $linkedLoan->id)
-                            ->orderBy('balance_date', 'desc')
-                            ->value('balance');
-
-                        $monthlyPayment = $this->loanAmortizationService->calculateMonthlyPayment(
-                            $lastLoanBalance ?? $loanDetail->original_amount,
-                            (float) $loanDetail->annual_interest_rate,
-                            $lastLoanBalance ? $remainingMonths : $loanDetail->loan_term_months,
-                        );
-
-                        $data['loan_detail'] = [
-                            ...$loanDetail->only([
-                                'id', 'annual_interest_rate', 'loan_term_months',
-                                'start_date', 'original_amount',
-                            ]),
-                            'monthly_payment' => $monthlyPayment,
-                            'remaining_months' => $remainingMonths,
-                        ];
+                    if ($linkedLoan->loanDetail) {
+                        $data['loan_detail'] = $this->loanDetailData($linkedLoan->loanDetail, $linkedLoan);
                     }
                 }
 
-                $data['real_estate_detail']['current_market_value'] = AccountBalance::query()
-                    ->where('account_id', $account->id)
-                    ->where('balance_date', '<=', now()->toDateString())
-                    ->orderByDesc('balance_date')
-                    ->value('balance') ?? 0;
+                $data['real_estate_detail']['current_market_value'] = $this->latestBalance($account->id);
             }
 
             // Provide available loan accounts for linking
             $data['available_loan_accounts'] = $request->user()
                 ->accounts()
+                ->notArchived()
                 ->where('type', AccountType::Loan->value)
-                ->with('bank:id,name,logo')
-                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+                ->with('bank')
+                ->get();
         }
 
         if ($account->type === AccountType::Loan) {
             $account->load('loanDetail');
-            $loanDetail = $account->loanDetail;
 
-            if ($loanDetail) {
-                $remainingMonths = $this->loanAmortizationService->calculateRemainingMonths($loanDetail, now());
-
-                $lastBalance = AccountBalance::query()
-                    ->where('account_id', $account->id)
-                    ->orderBy('balance_date', 'desc')
-                    ->value('balance');
-
-                $monthlyPayment = $this->loanAmortizationService->calculateMonthlyPayment(
-                    $lastBalance ?? $loanDetail->original_amount,
-                    (float) $loanDetail->annual_interest_rate,
-                    $lastBalance ? $remainingMonths : $loanDetail->loan_term_months,
-                );
-
-                $data['loan_detail'] = [
-                    ...$loanDetail->only([
-                        'id', 'annual_interest_rate', 'loan_term_months',
-                        'start_date', 'original_amount',
-                    ]),
-                    'monthly_payment' => $monthlyPayment,
-                    'remaining_months' => $remainingMonths,
-                ];
+            if ($account->loanDetail) {
+                $data['loan_detail'] = $this->loanDetailData($account->loanDetail, $account);
             }
         }
 
         return Inertia::render('Accounts/Show', [
             'account' => $data,
+            // Deferred so the page shell paints without blocking on the ledger
+            // query/serialization. It stays the whole set because search and
+            // filtering run client-side over decrypted rows. ponytail: window it
+            // server-side only if one account's history gets big enough that the
+            // transfer itself hurts.
+            'transactions' => $account->type->hasTransactionLedger()
+                ? Inertia::defer(fn () => $account->transactions()
+                    ->with(['category', 'labels'])
+                    ->orderBy('transaction_date', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->get())
+                : [],
         ]);
+    }
+
+    /**
+     * Build the loan detail payload, augmenting the model with the computed
+     * amortization figures that depend on the account's latest balance.
+     *
+     * @return array<string, mixed>
+     */
+    private function loanDetailData(LoanDetail $loanDetail, Account $account): array
+    {
+        $remainingMonths = $this->loanAmortizationService->calculateRemainingMonths($loanDetail, now());
+
+        $lastBalance = AccountBalance::query()
+            ->where('account_id', $account->id)
+            ->orderBy('balance_date', 'desc')
+            ->value('balance');
+
+        $monthlyPayment = $this->loanAmortizationService->calculateMonthlyPayment(
+            $lastBalance ?? $loanDetail->original_amount,
+            (float) $loanDetail->annual_interest_rate,
+            $lastBalance ? $remainingMonths : $loanDetail->loan_term_months,
+        );
+
+        return [
+            ...$loanDetail->toArray(),
+            'monthly_payment' => $monthlyPayment,
+            'remaining_months' => $remainingMonths,
+        ];
+    }
+
+    /**
+     * The most recent balance for an account on or before today.
+     */
+    private function latestBalance(string $accountId): int
+    {
+        return AccountBalance::query()
+            ->where('account_id', $accountId)
+            ->where('balance_date', '<=', now()->toDateString())
+            ->orderByDesc('balance_date')
+            ->value('balance') ?? 0;
     }
 }

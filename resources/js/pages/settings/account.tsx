@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
     Select,
     SelectContent,
@@ -294,11 +295,10 @@ export default function Account({
                                         {__('Current password')}
                                     </Label>
 
-                                    <Input
+                                    <PasswordInput
                                         id="current_password"
                                         ref={currentPasswordInput}
                                         name="current_password"
-                                        type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="current-password"
                                         placeholder={__('Current password')}
@@ -314,11 +314,10 @@ export default function Account({
                                         {__('New password')}
                                     </Label>
 
-                                    <Input
+                                    <PasswordInput
                                         id="password"
                                         ref={passwordInput}
                                         name="password"
-                                        type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="new-password"
                                         placeholder={__('New password')}
@@ -332,10 +331,9 @@ export default function Account({
                                         {__('Confirm password')}
                                     </Label>
 
-                                    <Input
+                                    <PasswordInput
                                         id="password_confirmation"
                                         name="password_confirmation"
-                                        type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="new-password"
                                         placeholder={__('Confirm password')}

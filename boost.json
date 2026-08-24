@@ -1,23 +1,25 @@
 {
     "agents": [
-        "claude_code",
-        "opencode",
-        "copilot"
+        "claude_code"
     ],
+    "cloud": false,
     "guidelines": true,
     "herd_mcp": false,
     "mcp": true,
     "nightwatch_mcp": false,
-    "packages": [
-        "laravel/fortify"
-    ],
     "sail": false,
     "skills": [
+        "infer-conventions",
+        "ai-sdk-development",
+        "cashier-stripe-development",
+        "fortify-development",
+        "laravel-best-practices",
+        "mcp-development",
+        "passport-development",
         "pennant-development",
         "wayfinder-development",
         "pest-testing",
         "inertia-react-development",
-        "tailwindcss-development",
-        "developing-with-fortify"
+        "tailwindcss-development"
     ]
 }

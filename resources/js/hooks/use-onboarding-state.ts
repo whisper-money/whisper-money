@@ -1,3 +1,4 @@
+import { type AccountType } from '@/types/account';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export type OnboardingStep =
@@ -8,6 +9,7 @@ export type OnboardingStep =
     | 'customize-categories'
     | 'smart-rules'
     | 'syncing'
+    | 'ai-suggestions'
     | 'import-transactions'
     | 'import-balances'
     | 'categorize-transactions'
@@ -22,12 +24,28 @@ const PRIMARY_STEPS: OnboardingStep[] = [
     'category-types',
     'smart-rules',
     'syncing',
+    'ai-suggestions',
     'categorize-transactions',
     'complete',
 ];
 
 // Steps that are sub-steps (shown under the same progress position as 'create-account')
 const SUB_STEPS: OnboardingStep[] = ['import-transactions', 'import-balances'];
+
+/**
+ * Steps the header's back arrow is offered on. Everything else is left out on
+ * purpose: 'welcome' has nowhere to go; 'create-account' carries its own back
+ * buttons inside the bank flow and the manual form; backing out of 'syncing',
+ * 'ai-suggestions' or 'complete' would abandon work already in flight; and
+ * 'customize-categories' is not in PRIMARY_STEPS, so goBack() there is a no-op.
+ */
+export const BACKABLE_STEPS: OnboardingStep[] = [
+    'account-types',
+    'category-types',
+    'smart-rules',
+    'import-transactions',
+    'import-balances',
+];
 
 export interface OnboardingState {
     currentStep: OnboardingStep;
@@ -41,7 +59,7 @@ export interface OnboardingState {
 export interface CreatedAccount {
     id: string;
     name: string;
-    type: string;
+    type: AccountType;
     currencyCode: string;
     bankName?: string;
     bankLogo?: string | null;
@@ -52,6 +70,7 @@ interface UseOnboardingStateOptions {
     existingAccountsCount?: number;
     initialStep?: OnboardingStep;
     hasConnectedAccount?: boolean;
+    skipAiSuggestions?: boolean;
 }
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
@@ -59,9 +78,18 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         existingAccountsCount = 0,
         initialStep,
         hasConnectedAccount = false,
+        skipAiSuggestions = false,
     } = options;
 
-    const primarySteps = PRIMARY_STEPS;
+    // Dropped from the array rather than short-circuited in the component, so
+    // the progress counter and goNext() agree on how many steps there are.
+    const primarySteps = useMemo(
+        () =>
+            skipAiSuggestions
+                ? PRIMARY_STEPS.filter((step) => step !== 'ai-suggestions')
+                : PRIMARY_STEPS,
+        [skipAiSuggestions],
+    );
 
     // Determine initial step based on existing state
     const resolvedInitialStep = useMemo((): OnboardingStep => {
@@ -81,6 +109,21 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
             setHasSelectedConnectedAccount(true);
         }
     }, [hasConnectedAccount]);
+
+    // Keep the ?step= query param in sync with the current step so a manual
+    // refresh returns the user to the step they were on. Use replaceState to
+    // avoid polluting browser history and preserve Inertia's stored page state.
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('step') === currentStep) {
+            return;
+        }
+        url.searchParams.set('step', currentStep);
+        window.history.replaceState(window.history.state, '', url.toString());
+    }, [currentStep]);
 
     // Calculate step index for progress indicator
     // Sub-steps (import-transactions, import-balances) use the same index as 'create-account'

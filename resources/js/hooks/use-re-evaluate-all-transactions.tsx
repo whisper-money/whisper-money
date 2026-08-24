@@ -18,6 +18,7 @@ export function useReEvaluateAllTransactions() {
             const jobId = bulkResponse.data.job_id;
 
             await new Promise<void>((resolve, reject) => {
+                let pendingTicks = 0;
                 const poll = async () => {
                     try {
                         const statusResponse = await axios.get<{
@@ -47,6 +48,13 @@ export function useReEvaluateAllTransactions() {
                             resolve();
                         } else if (status === 'failed') {
                             reject(new Error('Job failed'));
+                        } else if (
+                            status === 'pending' &&
+                            ++pendingTicks > 30
+                        ) {
+                            // The job never started (e.g. no queue worker
+                            // running) — give up instead of polling forever.
+                            reject(new Error('Job did not start'));
                         } else {
                             setTimeout(poll, 1000);
                         }

@@ -1,10 +1,34 @@
+import { bulkUpdate } from '@/actions/App/Http/Controllers/Api/TransactionController';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import { reloadPage } from '@/lib/leave-page';
 import { SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useRef } from 'react';
+
+// on 429 wait out the API throttle and retry the same request,
+// instead of aborting the whole migration. Honours Laravel's Retry-After header.
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    while (true) {
+        try {
+            return await fn();
+        } catch (e) {
+            if (axios.isAxiosError(e) && e.response?.status === 429) {
+                const retryAfter =
+                    Number(e.response.headers['retry-after']) || 1;
+                await new Promise((resolve) =>
+                    setTimeout(resolve, retryAfter * 1000),
+                );
+
+                continue;
+            }
+
+            throw e;
+        }
+    }
+}
 
 interface EncryptedTransaction {
     id: string;
@@ -48,11 +72,22 @@ export function useDecryptTransactions() {
 
                 const key = await importKey(keyString);
 
-                let url: string | null = '/api/transactions?encrypted=true';
+                // Always re-fetch the first page: each bulk update clears the
+                // rows' IVs, removing them from the encrypted set, so an
+                // offset-based cursor (next_page_url) would skip the rows that
+                // shift into the freed slots. Stop when nothing is left, or
+                // when a page yields nothing we can decrypt — otherwise rows
+                // that always fail to decrypt would loop forever.
+                while (true) {
+                    const { data: page } = await withRetry(() =>
+                        axios.get<PaginatedResponse>(
+                            '/api/transactions?encrypted=true',
+                        ),
+                    );
 
-                while (url) {
-                    const { data: page } =
-                        await axios.get<PaginatedResponse>(url);
+                    if (page.data.length === 0) {
+                        break;
+                    }
 
                     const batch: BulkUpdateItem[] = [];
 
@@ -86,20 +121,22 @@ export function useDecryptTransactions() {
                         }
                     }
 
-                    if (batch.length > 0) {
-                        // Send in chunks of 50
-                        for (let i = 0; i < batch.length; i += 50) {
-                            const chunk = batch.slice(i, i + 50);
-                            await axios.patch('/api/transactions/bulk', {
-                                transactions: chunk,
-                            });
-                        }
+                    if (batch.length === 0) {
+                        break;
                     }
 
-                    url = page.next_page_url;
+                    // Send in chunks of 50
+                    for (let i = 0; i < batch.length; i += 50) {
+                        const chunk = batch.slice(i, i + 50);
+                        await withRetry(() =>
+                            axios.patch(bulkUpdate.url(), {
+                                transactions: chunk,
+                            }),
+                        );
+                    }
                 }
 
-                window.location.reload();
+                reloadPage();
             } catch {
                 // Silent failure — migration will retry next session
                 hasRun.current = false;

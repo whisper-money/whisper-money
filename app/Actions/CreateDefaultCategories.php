@@ -3,49 +3,74 @@
 namespace App\Actions;
 
 use App\Enums\CategoryCashflowDirection;
+use App\Enums\CategoryType;
 use App\Models\Category;
+use App\Models\Space;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class CreateDefaultCategories
 {
     /**
-     * Create default categories for a newly registered user.
+     * Create default categories for a newly registered user, nesting child
+     * categories under their configured parent. Categories live in a space, so
+     * seeding targets the given space (defaulting to the user's active one).
      */
-    public function handle(User $user): void
+    public function handle(User $user, ?Space $space = null): void
     {
+        $space ??= $user->activeSpace();
         $locale = $user->locale ?? app()->getLocale();
         $defaultCategories = self::getDefaultCategories($locale);
 
-        $existingCategoryNames = $user->categories()
+        $existingCategories = $space->categories()
             ->whereIn('name', array_column($defaultCategories, 'name'))
-            ->pluck('name')
-            ->all();
+            ->pluck('id', 'name');
 
         $now = now();
-        $categories = collect($defaultCategories)
-            ->reject(fn (array $category): bool => in_array($category['name'], $existingCategoryNames, true))
+        $pending = collect($defaultCategories)
+            ->reject(fn (array $category): bool => $existingCategories->has($category['name']))
             ->map(fn (array $category): array => [
                 ...$category,
                 'cashflow_direction' => $category['cashflow_direction'] ?? CategoryCashflowDirection::Hidden->value,
                 'id' => (string) Str::uuid(),
                 'user_id' => $user->id,
+                'space_id' => $space->id,
                 'created_at' => $now,
                 'updated_at' => $now,
-            ])
-            ->all();
+            ]);
 
-        if ($categories === []) {
+        if ($pending->isEmpty()) {
             return;
         }
 
-        Category::query()->insert($categories);
+        $idsByName = $existingCategories->merge($pending->pluck('id', 'name'));
+
+        [$children, $roots] = $pending->partition(fn (array $category): bool => isset($category['parent']));
+
+        if ($roots->isNotEmpty()) {
+            Category::query()->insert(
+                $roots->map(fn (array $category): array => Arr::except($category, 'parent'))->values()->all()
+            );
+        }
+
+        if ($children->isNotEmpty()) {
+            Category::query()->insert(
+                $children
+                    ->map(fn (array $category): array => [
+                        ...Arr::except($category, 'parent'),
+                        'parent_id' => $idsByName[$category['parent']] ?? null,
+                    ])
+                    ->values()
+                    ->all()
+            );
+        }
     }
 
     /**
      * Get the default categories configuration for a given locale.
      *
-     * @return array<int, array{name: string, icon: string, color: string, type: string, cashflow_direction?: string}>
+     * @return array<int, array{name: string, icon: string, color: string, type: string, cashflow_direction?: string, parent?: string}>
      */
     public static function getDefaultCategories(string $locale = 'en'): array
     {
@@ -57,6 +82,10 @@ class CreateDefaultCategories
             return array_map(function (array $category) use ($translations) {
                 $category['name'] = $translations[$category['name']] ?? $category['name'];
 
+                if (isset($category['parent'])) {
+                    $category['parent'] = $translations[$category['parent']] ?? $category['parent'];
+                }
+
                 return $category;
             }, $categories);
         }
@@ -65,9 +94,23 @@ class CreateDefaultCategories
     }
 
     /**
-     * Get the base (English) categories configuration.
+     * The name a default category is seeded under for the given locale. Seeders
+     * hold their category references in canonical English and resolve them
+     * through here, so the same dataset works for an English and a Spanish
+     * account.
+     */
+    public static function localizedCategoryName(string $name, string $locale): string
+    {
+        return $locale === 'es'
+            ? (self::getSpanishTranslations()[$name] ?? $name)
+            : $name;
+    }
+
+    /**
+     * Get the base (English) categories configuration. A `parent` entry nests
+     * the category under the default category with that (English) name.
      *
-     * @return array<int, array{name: string, icon: string, color: string, type: string, cashflow_direction?: string}>
+     * @return array<int, array{name: string, icon: string, color: string, type: string, cashflow_direction?: string, parent?: string}>
      */
     private static function getBaseCategories(): array
     {
@@ -80,30 +123,35 @@ class CreateDefaultCategories
             ],
             [
                 'name' => 'Cafes, restaurants, bars',
+                'parent' => 'Food',
                 'icon' => 'Wine',
                 'color' => 'red',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Groceries',
+                'parent' => 'Food',
                 'icon' => 'ShoppingBasket',
                 'color' => 'red',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Tobacco and alcohol',
+                'parent' => 'Food',
                 'icon' => 'Cigarette',
                 'color' => 'red',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Other groceries',
+                'parent' => 'Food',
                 'icon' => 'ShoppingBasket',
                 'color' => 'red',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Food delivery',
+                'parent' => 'Food',
                 'icon' => 'Pizza',
                 'color' => 'red',
                 'type' => 'expense',
@@ -116,42 +164,49 @@ class CreateDefaultCategories
             ],
             [
                 'name' => 'Electricity',
+                'parent' => 'Utility services',
                 'icon' => 'Bolt',
                 'color' => 'orange',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Natural gas',
+                'parent' => 'Utility services',
                 'icon' => 'Flame',
                 'color' => 'orange',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Rent and maintanence',
+                'parent' => 'Utility services',
                 'icon' => 'Wrench',
                 'color' => 'orange',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Telephone, internet, TV, computer',
+                'parent' => 'Utility services',
                 'icon' => 'Wifi',
                 'color' => 'orange',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Water',
+                'parent' => 'Utility services',
                 'icon' => 'Droplets',
                 'color' => 'orange',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Other utility expenses',
+                'parent' => 'Utility services',
                 'icon' => 'Receipt',
                 'color' => 'orange',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Household goods',
+                'parent' => 'Utility services',
                 'icon' => 'Home',
                 'color' => 'orange',
                 'type' => 'expense',
@@ -164,24 +219,28 @@ class CreateDefaultCategories
             ],
             [
                 'name' => 'Parking',
+                'parent' => 'Transportation',
                 'icon' => 'ParkingMeter',
                 'color' => 'amber',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Fuel',
+                'parent' => 'Transportation',
                 'icon' => 'Fuel',
                 'color' => 'amber',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Transportation expenses',
+                'parent' => 'Transportation',
                 'icon' => 'Ticket',
                 'color' => 'amber',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Vehicle purchase, maintenance',
+                'parent' => 'Transportation',
                 'icon' => 'Car',
                 'color' => 'amber',
                 'type' => 'expense',
@@ -200,36 +259,42 @@ class CreateDefaultCategories
             ],
             [
                 'name' => 'Gifts',
+                'parent' => 'Leisure activities, traveling',
                 'icon' => 'Gift',
                 'color' => 'violet',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Books, newspapers, magazines',
+                'parent' => 'Leisure activities, traveling',
                 'icon' => 'BookOpen',
                 'color' => 'violet',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Accommodation, travel expenses',
+                'parent' => 'Leisure activities, traveling',
                 'icon' => 'Hotel',
                 'color' => 'violet',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Sport and sports goods',
+                'parent' => 'Leisure activities, traveling',
                 'icon' => 'Dumbbell',
                 'color' => 'violet',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Theatre, music, cinema',
+                'parent' => 'Leisure activities, traveling',
                 'icon' => 'Clapperboard',
                 'color' => 'violet',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Hobbies and other leisure time activites',
+                'parent' => 'Leisure activities, traveling',
                 'icon' => 'Puzzle',
                 'color' => 'violet',
                 'type' => 'expense',
@@ -242,18 +307,21 @@ class CreateDefaultCategories
             ],
             [
                 'name' => 'Education and courses',
+                'parent' => 'Education, health and beauty',
                 'icon' => 'GraduationCap',
                 'color' => 'rose',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Beauty, cosmetics',
+                'parent' => 'Education, health and beauty',
                 'icon' => 'Sparkles',
                 'color' => 'rose',
                 'type' => 'expense',
             ],
             [
                 'name' => 'Health and pharmaceuticals',
+                'parent' => 'Education, health and beauty',
                 'icon' => 'HeartPulse',
                 'color' => 'rose',
                 'type' => 'expense',
@@ -266,6 +334,7 @@ class CreateDefaultCategories
             ],
             [
                 'name' => 'Online services',
+                'parent' => 'Online transactions',
                 'icon' => 'Server',
                 'color' => 'fuchsia',
                 'type' => 'expense',
@@ -280,21 +349,22 @@ class CreateDefaultCategories
                 'name' => 'Investments',
                 'icon' => 'LineChart',
                 'color' => 'lime',
-                'type' => 'transfer',
+                'type' => CategoryType::Investment->value,
                 'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
                 'name' => 'Savings',
                 'icon' => 'PiggyBank',
                 'color' => 'lime',
-                'type' => 'transfer',
+                'type' => CategoryType::Savings->value,
                 'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
                 'name' => 'Other investments',
+                'parent' => 'Investments',
                 'icon' => 'TrendingUp',
                 'color' => 'lime',
-                'type' => 'transfer',
+                'type' => CategoryType::Investment->value,
                 'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
@@ -335,6 +405,7 @@ class CreateDefaultCategories
             ],
             [
                 'name' => 'Lottery',
+                'parent' => 'Gambling',
                 'icon' => 'TicketPercent',
                 'color' => 'purple',
                 'type' => 'expense',
@@ -359,6 +430,7 @@ class CreateDefaultCategories
             ],
             [
                 'name' => 'Other personal transfers',
+                'parent' => 'Personal transfers',
                 'icon' => 'ArrowLeftRight',
                 'color' => 'cyan',
                 'type' => 'transfer',

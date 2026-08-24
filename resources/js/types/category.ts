@@ -105,7 +105,13 @@ export const CATEGORY_COLORS = [
 
 export type CategoryColor = (typeof CATEGORY_COLORS)[number];
 
-export const CATEGORY_TYPES = ['income', 'expense', 'transfer'] as const;
+export const CATEGORY_TYPES = [
+    'income',
+    'expense',
+    'transfer',
+    'savings',
+    'investment',
+] as const;
 
 export type CategoryType = (typeof CATEGORY_TYPES)[number];
 
@@ -113,6 +119,8 @@ const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = {
     income: 'Income',
     expense: 'Expense',
     transfer: 'Transfer',
+    savings: 'Savings',
+    investment: 'Investment',
 };
 
 export function getCategoryTypeLabel(type: CategoryType): string {
@@ -128,6 +136,8 @@ export const CATEGORY_CASHFLOW_DIRECTIONS = [
 export type CategoryCashflowDirection =
     (typeof CATEGORY_CASHFLOW_DIRECTIONS)[number];
 
+export const CATEGORY_MAX_DEPTH = 3;
+
 export interface Category {
     id: UUID;
     name: string;
@@ -135,6 +145,7 @@ export interface Category {
     color: CategoryColor;
     type: CategoryType;
     cashflow_direction: CategoryCashflowDirection;
+    parent_id: UUID | null;
 }
 
 export function getCategoryColorClasses(color: CategoryColor): {
@@ -224,7 +235,7 @@ export function getCategoryColorClasses(color: CategoryColor): {
         },
     };
 
-    return colorMap[color];
+    return colorMap[color] ?? colorMap.gray;
 }
 
 export function getCategoryChartColor(color: CategoryColor): string {

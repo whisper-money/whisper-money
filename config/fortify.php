@@ -143,6 +143,12 @@ return [
     |
     */
 
+    /*
+     | Registration routes are always registered so Wayfinder can generate
+     | their route helpers and the frontend build stays deterministic. Whether
+     | sign-ups are actually accepted is gated at runtime via the
+     | "auth.registration_enabled" config value.
+     */
     'features' => [
         Features::registration(),
         Features::resetPasswords(),

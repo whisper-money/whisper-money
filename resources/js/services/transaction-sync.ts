@@ -1,10 +1,22 @@
-import { importKey } from '@/lib/crypto';
-import { db } from '@/lib/dexie-db';
-import { getStoredKey } from '@/lib/key-storage';
+// Aliased because this service's own methods share these names.
+import { index as syncTransactions } from '@/actions/App/Http/Controllers/Sync/TransactionSyncController';
+import {
+    bulkUpdate as bulkUpdateRoute,
+    destroy as destroyRoute,
+    store as storeRoute,
+    update as updateRoute,
+} from '@/actions/App/Http/Controllers/TransactionController';
+import { db, withDb } from '@/lib/dexie-db';
 import { TransactionSyncManager } from '@/lib/sync-manager';
+import type { LearnedRuleNotice } from '@/types/automation-rule';
 import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
 import axios from 'axios';
+
+/** A transaction update plus any rule the correction just taught the system. */
+export type UpdatedTransaction = Transaction & {
+    learned_rule?: LearnedRuleNotice | null;
+};
 
 interface TransactionUpdateData extends Partial<Transaction> {
     label_ids?: string[];
@@ -18,6 +30,8 @@ interface TransactionFilters {
     categoryIds?: number[];
     accountIds?: string[];
     labelIds?: string[];
+    creditorName?: string;
+    debtorName?: string;
     searchText?: string;
 }
 
@@ -26,7 +40,7 @@ class TransactionSyncService {
 
     constructor() {
         this.syncManager = new TransactionSyncManager({
-            endpoint: '/api/sync/transactions',
+            endpoint: syncTransactions.url(),
             transformFromServer: (data) => {
                 const label_ids = data.labels?.map((l: { id: string }) => l.id);
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -61,8 +75,12 @@ class TransactionSyncService {
 
     async create(
         data: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>,
+        options?: { updateBalance?: boolean },
     ): Promise<Transaction> {
-        const response = await axios.post('/transactions', data);
+        const response = await axios.post(storeRoute.url(), {
+            ...data,
+            ...(options?.updateBalance ? { update_balance: true } : {}),
+        });
         const serverData = response.data.data || response.data;
 
         const label_ids = serverData.labels?.map((l: { id: string }) => l.id);
@@ -92,12 +110,14 @@ class TransactionSyncService {
     async update(
         id: string,
         data: TransactionUpdateData,
-    ): Promise<Transaction> {
+        options?: { updateBalance?: boolean },
+    ): Promise<UpdatedTransaction> {
         const { label_ids, ...transactionData } = data;
 
-        const response = await axios.patch(`/transactions/${id}`, {
+        const response = await axios.patch(updateRoute.url(id), {
             ...transactionData,
             label_ids,
+            ...(options?.updateBalance ? { update_balance: true } : {}),
         });
 
         const serverData = response.data.data || response.data;
@@ -112,7 +132,8 @@ class TransactionSyncService {
             ...restServerData,
             transaction_date: String(serverData.transaction_date).slice(0, 10),
             label_ids: serverLabelIds || [],
-        } as Transaction;
+            learned_rule: response.data.learned_rule ?? null,
+        } as UpdatedTransaction;
     }
 
     async updateMany(
@@ -121,7 +142,7 @@ class TransactionSyncService {
     ): Promise<void> {
         const { label_ids, ...transactionData } = data;
 
-        await axios.patch('/transactions/bulk', {
+        await axios.patch(bulkUpdateRoute.url(), {
             transaction_ids: ids,
             label_ids: label_ids,
             ...transactionData,
@@ -158,8 +179,14 @@ class TransactionSyncService {
         if (filters.labelIds && filters.labelIds.length > 0) {
             requestFilters.label_ids = filters.labelIds;
         }
+        if (filters.creditorName) {
+            requestFilters.creditor_name = filters.creditorName;
+        }
+        if (filters.debtorName) {
+            requestFilters.debtor_name = filters.debtorName;
+        }
 
-        const response = await axios.patch('/transactions/bulk', {
+        const response = await axios.patch(bulkUpdateRoute.url(), {
             filters: requestFilters,
             label_ids: label_ids,
             ...transactionData,
@@ -168,9 +195,18 @@ class TransactionSyncService {
         return response.data.count || 0;
     }
 
-    async delete(id: string): Promise<void> {
-        await axios.delete(`/transactions/${id}`);
-        await db.transactions.delete(id);
+    async delete(
+        id: string,
+        options?: { updateBalance?: boolean },
+    ): Promise<void> {
+        await axios.delete(destroyRoute.url(id), {
+            data: options?.updateBalance ? { update_balance: true } : undefined,
+        });
+        // The API delete above is authoritative; the local cache eviction is
+        // best-effort and skipped when IndexedDB is unavailable (PHP-LARAVEL-43).
+        await withDb<void>(async () => {
+            await db.transactions.delete(id);
+        }, undefined);
     }
 
     async updateManyIndividual(
@@ -181,9 +217,12 @@ class TransactionSyncService {
         }
     }
 
-    async deleteMany(ids: string[]): Promise<void> {
+    async deleteMany(
+        ids: string[],
+        options?: { updateBalance?: boolean },
+    ): Promise<void> {
         for (const id of ids) {
-            await this.delete(id);
+            await this.delete(id, options);
         }
     }
 
@@ -195,76 +234,24 @@ class TransactionSyncService {
             description: string;
         }>,
     ): Promise<boolean[]> {
+        if (transactions.length === 0) {
+            return [];
+        }
+
         try {
-            if (transactions.length === 0) {
-                return [];
-            }
-
-            const dates = transactions.map((t) => t.transaction_date);
-            const minDate = dates.reduce((a, b) => (a < b ? a : b));
-            const maxDate = dates.reduce((a, b) => (a > b ? a : b));
-
-            const normalizeDate = (dateStr: string): string =>
-                dateStr.slice(0, 10);
-
-            const allTransactions = await this.getByAccountId(accountId);
-            const transactionsInRange = allTransactions.filter((t) => {
-                const txDate = normalizeDate(t.transaction_date);
-                return txDate >= minDate && txDate <= maxDate;
-            });
-
-            const keyString = getStoredKey();
-            const key = keyString ? await importKey(keyString) : null;
-
-            const decryptedTransactions = await Promise.all(
-                transactionsInRange.map(async (t) => {
-                    try {
-                        let decryptedDescription: string;
-                        if (t.description_iv && key) {
-                            const { decrypt } = await import('@/lib/crypto');
-                            decryptedDescription = await decrypt(
-                                t.description,
-                                key,
-                                t.description_iv,
-                            );
-                        } else if (t.description_iv && !key) {
-                            return null;
-                        } else {
-                            decryptedDescription = t.description;
-                        }
-                        return {
-                            transaction_date: normalizeDate(t.transaction_date),
-                            amount: parseFloat(t.amount),
-                            description: decryptedDescription
-                                .toLowerCase()
-                                .trim()
-                                .replace(/\s+/g, ' '),
-                        };
-                    } catch {
-                        return null;
-                    }
-                }),
+            const response = await axios.post<{ duplicates: boolean[] }>(
+                '/api/transactions/check-duplicates',
+                {
+                    account_id: accountId,
+                    transactions: transactions.map((t) => ({
+                        transaction_date: t.transaction_date,
+                        amount: t.amount,
+                        description: t.description,
+                    })),
+                },
             );
 
-            const validDecryptedTransactions = decryptedTransactions.filter(
-                (t) => t !== null,
-            );
-
-            return transactions.map((importingTx) => {
-                const normalizedDescription = importingTx.description
-                    .toLowerCase()
-                    .trim()
-                    .replace(/\s+/g, ' ');
-
-                return validDecryptedTransactions.some(
-                    (existing) =>
-                        existing.transaction_date ===
-                            importingTx.transaction_date &&
-                        Math.abs(existing.amount - importingTx.amount) <
-                            0.001 &&
-                        existing.description === normalizedDescription,
-                );
-            });
+            return response.data.duplicates;
         } catch (error) {
             console.warn(
                 'Duplicate check failed, assuming no duplicates:',

@@ -1,3 +1,5 @@
+import { update as updateLoanPreference } from '@/actions/App/Http/Controllers/Settings/NetWorthChartLoanPreferenceController';
+import { update as updateRealEstatePreference } from '@/actions/App/Http/Controllers/Settings/NetWorthChartRealEstatePreferenceController';
 import { AccountName } from '@/components/accounts/account-name';
 import {
     type ChartGranularity,
@@ -28,9 +30,11 @@ import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
     AccountInfo,
-    getAccountSign,
+    computeNetWorthBarScaling,
     isLiabilityType,
+    netWorthContribution,
 } from '@/lib/chart-calculations';
+import { fetchJson } from '@/lib/fetch-json';
 import { SharedData } from '@/types';
 import { formatDayFromDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -46,6 +50,13 @@ interface NetWorthChartProps {
 }
 
 const DAILY_DAYS = 30;
+
+/**
+ * Synthetic data key holding a period's negative net worth so the bar chart
+ * can draw it as a single downward bar (assets can't stack to a negative
+ * total).
+ */
+const NET_WORTH_DEFICIT_KEY = '__net_worth_deficit';
 
 interface TrendData {
     percentage: number;
@@ -96,7 +107,7 @@ function calculateTrend(
 
         const account = accounts[id];
 
-        return sum + getAccountSign(account.type) * Math.abs(value);
+        return sum + netWorthContribution(account.type, value);
     }, 0);
 
     const previousTotal = accountIds.reduce((sum, id) => {
@@ -107,7 +118,7 @@ function calculateTrend(
 
         const account = accounts[id];
 
-        return sum + getAccountSign(account.type) * Math.abs(value);
+        return sum + netWorthContribution(account.type, value);
     }, 0);
 
     if (previousTotal === 0) return null;
@@ -154,10 +165,9 @@ export function NetWorthChart({
             const to = format(now, 'yyyy-MM-dd');
             const from = format(subDays(now, DAILY_DAYS), 'yyyy-MM-dd');
             const params = new URLSearchParams({ from, to });
-            const response = await fetch(
+            const data = await fetchJson<NetWorthEvolutionData>(
                 `/api/dashboard/net-worth-daily-evolution?${params.toString()}`,
             );
-            const data: NetWorthEvolutionData = await response.json();
 
             // Normalize daily data: rename "date" key to "month" so it works
             // uniformly with useChartViews and the rest of the component.
@@ -209,6 +219,10 @@ export function NetWorthChart({
         // All accounts included based on the toggles – used for totals & trends.
         const includedAccounts = Object.fromEntries(
             Object.entries(accounts).filter(([, account]) => {
+                // Credit cards are spending accounts, never part of net worth.
+                if (account.type === 'credit_card') {
+                    return false;
+                }
                 if (!includeLoansInNetWorthChart && account.type === 'loan') {
                     return false;
                 }
@@ -316,7 +330,7 @@ export function NetWorthChart({
             chartAccountIds.forEach((id) => {
                 const value = point[id];
                 if (typeof value === 'number') {
-                    totalAssets += Math.abs(value);
+                    totalAssets += value;
                 }
             });
 
@@ -328,10 +342,17 @@ export function NetWorthChart({
             });
 
             const netWorth = totalAssets - totalLiabilities;
-            const scaleFactor =
-                hasLiabs && totalAssets > 0
-                    ? Math.max(0, netWorth / totalAssets)
-                    : 1;
+            const { scaleFactor, deficit } = computeNetWorthBarScaling(
+                totalAssets,
+                totalLiabilities,
+                hasLiabs,
+            );
+
+            // Negative net worth can't be a stack of positive asset segments,
+            // so draw it as a single downward bar from the zero baseline.
+            if (deficit !== null) {
+                newPoint[NET_WORTH_DEFICIT_KEY] = deficit;
+            }
 
             // Asset values: scaled for rendering, original for tooltip
             chartAccountIds.forEach((id) => {
@@ -380,7 +401,7 @@ export function NetWorthChart({
                 const value = lastDataPoint[id];
                 if (typeof value === 'number') {
                     const account = includedAccounts[id];
-                    total += getAccountSign(account.type) * Math.abs(value);
+                    total += netWorthContribution(account.type, value);
                 }
             });
         }
@@ -420,7 +441,7 @@ export function NetWorthChart({
 
     const handleIncludeLoansChange = useCallback((includeLoans: boolean) => {
         router.patch(
-            '/settings/net-worth-chart-loan-preference',
+            updateLoanPreference.url(),
             {
                 include_loans_in_net_worth_chart: includeLoans,
             },
@@ -435,7 +456,7 @@ export function NetWorthChart({
     const handleIncludeRealEstateChange = useCallback(
         (includeRealEstate: boolean) => {
             router.patch(
-                '/settings/net-worth-chart-real-estate-preference',
+                updateRealEstatePreference.url(),
                 {
                     include_real_estate_in_net_worth_chart: includeRealEstate,
                 },
@@ -498,7 +519,9 @@ export function NetWorthChart({
         );
     }
 
-    if (dataKeys.length === 0) {
+    // Render the chart when there are asset segments to stack, or liabilities
+    // to draw as a downward deficit — a debtor with only a loan still has data.
+    if (dataKeys.length === 0 && !hasLiabilities) {
         return (
             <Card className="col-span-3">
                 <CardHeader>
@@ -612,6 +635,7 @@ export function NetWorthChart({
                                     ? {
                                           liabilityTypeLabel: __('Loan'),
                                           liabilityDotColor,
+                                          deficitKey: NET_WORTH_DEFICIT_KEY,
                                       }
                                     : undefined
                             }
@@ -634,6 +658,7 @@ export function NetWorthChart({
                                     ? {
                                           liabilityTypeLabel: __('Loan'),
                                           liabilityDotColor,
+                                          deficitKey: NET_WORTH_DEFICIT_KEY,
                                       }
                                     : undefined
                             }

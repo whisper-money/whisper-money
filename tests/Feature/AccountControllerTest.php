@@ -8,10 +8,14 @@ use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\RealEstateDetail;
+use App\Models\Transaction;
 use App\Models\User;
 
 beforeEach(function () {
-    config(['landing.hide_auth_buttons' => false]);
+    // The balance-evolution endpoint converts account currency via the external
+    // currency-rate provider; fake it so these tests stay hermetic under the
+    // stray-request guard instead of hitting the CDN.
+    fakeCurrencyApi();
 
     $this->user = User::factory()->onboarded()->create();
     $this->actingAs($this->user);
@@ -58,21 +62,21 @@ test('accounts index returns accounts grouped by type', function () {
         );
 });
 
-test('accounts are ordered by type then name', function () {
-    Account::factory()->create([
+test('accounts are ordered by position then name', function () {
+    $third = Account::factory()->create([
         'user_id' => $this->user->id,
-        'type' => AccountType::Savings,
-        'name' => 'A Savings',
+        'name' => 'Third',
+        'position' => 2,
     ]);
-    Account::factory()->create([
+    $first = Account::factory()->create([
         'user_id' => $this->user->id,
-        'type' => AccountType::Checking,
-        'name' => 'B Checking',
+        'name' => 'First',
+        'position' => 0,
     ]);
-    Account::factory()->create([
+    $second = Account::factory()->create([
         'user_id' => $this->user->id,
-        'type' => AccountType::Checking,
-        'name' => 'A Checking',
+        'name' => 'Second',
+        'position' => 1,
     ]);
 
     $response = $this->get(route('accounts.list'));
@@ -81,12 +85,149 @@ test('accounts are ordered by type then name', function () {
         ->assertInertia(fn ($page) => $page
             ->component('Accounts/Index')
             ->has('accounts', 3)
-            ->where('accounts.0.type', 'checking')
-            ->where('accounts.0.name', 'A Checking')
-            ->where('accounts.1.type', 'checking')
-            ->where('accounts.1.name', 'B Checking')
-            ->where('accounts.2.type', 'savings')
+            ->where('accounts.0.id', $first->id)
+            ->where('accounts.1.id', $second->id)
+            ->where('accounts.2.id', $third->id)
         );
+});
+
+test('users can reorder their accounts', function () {
+    $a = Account::factory()->create(['user_id' => $this->user->id, 'position' => 0]);
+    $b = Account::factory()->create(['user_id' => $this->user->id, 'position' => 1]);
+    $c = Account::factory()->create(['user_id' => $this->user->id, 'position' => 2]);
+
+    $this->patch(route('accounts.reorder'), ['ids' => [$c->id, $a->id, $b->id]])
+        ->assertRedirect();
+
+    expect($c->fresh()->position)->toBe(0);
+    expect($a->fresh()->position)->toBe(1);
+    expect($b->fresh()->position)->toBe(2);
+});
+
+test('users cannot reorder accounts they do not own', function () {
+    $other = Account::factory()->create([
+        'user_id' => User::factory()->create()->id,
+    ]);
+
+    $this->patch(route('accounts.reorder'), ['ids' => [$other->id]])
+        ->assertSessionHasErrors('ids.0');
+
+    expect($other->fresh()->position)->toBe(0);
+});
+
+test('users can toggle dashboard visibility of their accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'hidden_on_dashboard' => false,
+    ]);
+
+    $this->patch(route('accounts.visibility', $account), ['hidden' => true])
+        ->assertRedirect();
+
+    expect($account->fresh()->hidden_on_dashboard)->toBeTrue();
+
+    $this->patch(route('accounts.visibility', $account), ['hidden' => false])
+        ->assertRedirect();
+
+    expect($account->fresh()->hidden_on_dashboard)->toBeFalse();
+});
+
+test('the hidden flag is required when toggling visibility', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patch(route('accounts.visibility', $account), [])
+        ->assertSessionHasErrors('hidden');
+});
+
+test('users cannot toggle visibility of accounts they do not own', function () {
+    $other = Account::factory()->create([
+        'user_id' => User::factory()->create()->id,
+        'hidden_on_dashboard' => false,
+    ]);
+
+    $this->patch(route('accounts.visibility', $other), ['hidden' => true])
+        ->assertForbidden();
+
+    expect($other->fresh()->hidden_on_dashboard)->toBeFalse();
+});
+
+test('archiving an account records the day it happened, and unarchiving clears it', function () {
+    $this->freezeTime();
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patch(route('accounts.archived', $account), ['archived' => true])
+        ->assertRedirect();
+
+    expect($account->fresh()->archived_at->toDateTimeString())->toBe(now()->toDateTimeString());
+
+    $this->patch(route('accounts.archived', $account), ['archived' => false])
+        ->assertRedirect();
+
+    expect($account->fresh()->archived_at)->toBeNull();
+});
+
+test('archiving leaves the dashboard visibility flag alone', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'hidden_on_dashboard' => true,
+    ]);
+
+    $this->patch(route('accounts.archived', $account), ['archived' => true])
+        ->assertRedirect();
+
+    $account->refresh();
+
+    expect($account->archived_at)->not->toBeNull();
+    expect($account->hidden_on_dashboard)->toBeTrue();
+});
+
+test('the archived flag is required when archiving', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patch(route('accounts.archived', $account), [])
+        ->assertSessionHasErrors('archived');
+});
+
+test('users cannot archive accounts they do not own', function () {
+    $other = Account::factory()->create([
+        'user_id' => User::factory()->create()->id,
+    ]);
+
+    $this->patch(route('accounts.archived', $other), ['archived' => true])
+        ->assertForbidden();
+
+    expect($other->fresh()->archived_at)->toBeNull();
+});
+
+test('the accounts page leaves out archived accounts', function () {
+    $visible = Account::factory()->create(['user_id' => $this->user->id]);
+    Account::factory()->create([
+        'user_id' => $this->user->id,
+        'archived_at' => now(),
+    ]);
+
+    $this->get(route('accounts.list'))
+        ->assertInertia(fn ($page) => $page
+            ->has('accounts', 1)
+            ->where('accounts.0.id', $visible->id));
+});
+
+test('the settings list keeps archived accounts so they can be brought back', function () {
+    $live = Account::factory()->create(['user_id' => $this->user->id, 'name' => 'Zzz live']);
+    $archived = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'name' => 'Aaa archived',
+        'archived_at' => now(),
+    ]);
+
+    $this->get(route('accounts.index'))
+        ->assertInertia(fn ($page) => $page
+            ->has('accounts', 2)
+            // Archived accounts sort below the live ones despite the name order.
+            ->where('accounts.0.id', $live->id)
+            ->where('accounts.1.id', $archived->id)
+            ->where('accounts.1.archived_at', fn ($value) => $value !== null));
 });
 
 test('accounts index only shows user accounts', function () {
@@ -151,6 +292,56 @@ test('account show includes categories, accounts, and banks', function () {
             ->has('categories', 3)
             ->has('accounts', 1)
             ->has('banks')
+        );
+});
+
+test('account show includes the account transactions and excludes other accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    $otherAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    Transaction::factory()->count(2)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $otherAccount->id,
+    ]);
+
+    $this->get(route('accounts.show', $account))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Show')
+            ->missing('transactions')
+            ->loadDeferredProps(fn ($reload) => $reload
+                ->has('transactions', 2)
+            )
+        );
+});
+
+test('account show returns no transactions for non-transactional accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Investment,
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+    ]);
+
+    $this->get(route('accounts.show', $account))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions', 0)
         );
 });
 
@@ -532,4 +723,23 @@ test('non-real-estate account balance evolution has no mortgage data', function 
     $data = $response->json();
 
     expect($data['data'][0])->not->toHaveKey('mortgage_balance');
+});
+
+test('accounts index serializes the standard account field set without sensitive columns', function () {
+    Account::factory()->create([
+        'user_id' => $this->user->id,
+        'iban' => 'ES9121000418450200051332',
+    ]);
+
+    $response = $this->get(route('accounts.list'));
+
+    $account = $response->viewData('page')['props']['accounts'][0];
+
+    expect(array_keys($account))->toEqualCanonicalizing([
+        'id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code',
+        'banking_connection_id', 'external_account_id', 'linked_at',
+        'bank', 'linked_loan_account_id', 'archived_at',
+        'ownership_percentage', 'ownership_applies_to_balance',
+    ]);
+    expect($account)->not->toHaveKeys(['user_id', 'bank_id', 'iban', 'created_at', 'updated_at', 'deleted_at']);
 });

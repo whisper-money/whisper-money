@@ -4,6 +4,7 @@ export interface Plan {
     original_price: number | null;
     stripe_lookup_key: string | null;
     billing_period: 'month' | 'year' | null;
+    trial_days: number;
     features: string[];
 }
 
@@ -21,3 +22,12 @@ export interface PricingConfig {
     promo: PromoConfig;
     currency: string;
 }
+
+/**
+ * Which landing pricing card a user registered from. `free` hides the paid
+ * options during onboarding, `paid` drops the "you'll choose a plan later"
+ * warnings, and null — every other entry point — leaves the flow untouched.
+ *
+ * Mirrors App\Enums\SignupPlan.
+ */
+export type SignupPlan = 'free' | 'paid';

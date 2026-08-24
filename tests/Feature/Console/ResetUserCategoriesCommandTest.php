@@ -26,7 +26,7 @@ test('command resets categories for a user by ID', function () {
     $user->refresh();
 
     expect($user->categories()->where('name', 'Investments')->first())
-        ->type->toBe(CategoryType::Transfer)
+        ->type->toBe(CategoryType::Investment)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
     expect($user->categories()->where('name', 'From account of relatives')->first())
         ->type->toBe(CategoryType::Transfer)

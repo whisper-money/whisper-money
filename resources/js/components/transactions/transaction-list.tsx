@@ -1,5 +1,7 @@
 import { useLocale } from '@/hooks/use-locale';
+import { reloadPage } from '@/lib/leave-page';
 import { __ } from '@/utils/i18n';
+import { Link } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -15,6 +17,7 @@ import {
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, isWithinInterval, parseISO } from 'date-fns';
+import { ExternalLink } from 'lucide-react';
 import {
     createElement,
     useCallback,
@@ -26,6 +29,7 @@ import {
 import { toast } from 'sonner';
 
 import { single as reEvaluateSingle } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
+import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import {
     AutomateCategorizationDialog,
     type AutomateCategorizationCandidate,
@@ -47,6 +51,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -60,11 +65,7 @@ import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
-import { db } from '@/lib/dexie-db';
-import { getStoredKey } from '@/lib/key-storage';
 import { captureEvent } from '@/lib/posthog';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -80,6 +81,41 @@ import {
 import { UUID } from '@/types/uuid';
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
+
+export function TransactionListSkeleton() {
+    return (
+        <div className="space-y-4">
+            <div className="overflow-hidden rounded-md border">
+                <div className="grid grid-cols-4 gap-4 border-b p-4">
+                    <Skeleton className="h-5 w-8" />
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-64" />
+                    <Skeleton className="h-5 w-20 justify-self-end" />
+                </div>
+                <div className="divide-y">
+                    <div className="bg-muted/50 px-4 py-2">
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                    {Array.from({ length: 6 }).map((_, index) => (
+                        <div key={index} className="grid grid-cols-4 gap-4 p-4">
+                            <Skeleton className="h-4 w-8" />
+                            <Skeleton className="h-4 w-28" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-3 w-48" />
+                            </div>
+                            <Skeleton className="h-4 w-20 justify-self-end" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-9 w-48" />
+            </div>
+        </div>
+    );
+}
 
 interface TransactionRowProps {
     row: Row<DecryptedTransaction>;
@@ -181,6 +217,8 @@ function getInitialColumnVisibility(): VisibilityState {
     const defaultVisibility = {
         transaction_date: true,
         account: true,
+        creditor_name: false,
+        debtor_name: false,
         labels: true,
         notes: false,
     };
@@ -228,13 +266,14 @@ export interface TransactionListProps {
     labels?: Label[];
     automationRules?: AutomationRule[];
     accountId?: UUID;
-    transactions?: Transaction[]; // Optional: if provided, use these instead of fetching from Dexie
+    transactions?: Transaction[]; // Server-provided transactions to render
     pageSize?: number;
     hideAccountFilter?: boolean;
     showActionsMenu?: boolean;
     headerActions?: ReactNode;
     maxHeight?: number;
     hideColumns?: string[];
+    onBalanceUpdated?: () => void;
 }
 
 export function TransactionList({
@@ -251,8 +290,8 @@ export function TransactionList({
     headerActions,
     maxHeight,
     hideColumns = [],
+    onBalanceUpdated,
 }: TransactionListProps) {
-    const { isKeySet } = useEncryptionKey();
     const locale = useLocale();
     const [labels, setLabels] = useState<Label[]>(() => initialLabels ?? []);
 
@@ -275,8 +314,9 @@ export function TransactionList({
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
     );
-    const [isLoading, setIsLoading] = useState(true);
-    const [refreshKey, setRefreshKey] = useState(0);
+    const [isLoading, setIsLoading] = useState(
+        providedTransactions === undefined,
+    );
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'transaction_date', desc: true },
     ]);
@@ -293,6 +333,8 @@ export function TransactionList({
         categoryIds: [],
         accountIds: accountId ? [accountId] : [],
         labelIds: [],
+        creditorName: '',
+        debtorName: '',
         searchText: '',
     });
     const [editTransaction, setEditTransaction] =
@@ -301,6 +343,7 @@ export function TransactionList({
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
+    const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -342,239 +385,28 @@ export function TransactionList({
     );
 
     useEffect(() => {
-        async function processTransactions() {
-            // If transactions are provided directly, use them as-is (already decrypted from backend)
-            if (providedTransactions) {
-                setIsLoading(true);
-                try {
-                    const keyString = getStoredKey();
-                    let key: CryptoKey | null = null;
+        setIsLoading(true);
+        try {
+            const processed = (providedTransactions ?? []).map(
+                (transaction) =>
+                    ({
+                        ...transaction,
+                        decryptedDescription: transaction.description,
+                        decryptedNotes: transaction.notes || null,
+                        label_ids:
+                            transaction.label_ids ??
+                            transaction.labels?.map((label) => label.id) ??
+                            [],
+                    }) as DecryptedTransaction,
+            );
 
-                    if (keyString && isKeySet) {
-                        try {
-                            key = await importKey(keyString);
-                        } catch (error) {
-                            console.error(
-                                'Failed to import encryption key:',
-                                error,
-                            );
-                        }
-                    }
-
-                    const decrypted = await Promise.all(
-                        providedTransactions.map(async (transaction) => {
-                            try {
-                                let decryptedDescription = '';
-                                let decryptedNotes: string | null = null;
-
-                                if (!transaction.description_iv) {
-                                    decryptedDescription =
-                                        transaction.description;
-                                    decryptedNotes = transaction.notes || null;
-                                } else if (key) {
-                                    try {
-                                        decryptedDescription = await decrypt(
-                                            transaction.description,
-                                            key,
-                                            transaction.description_iv,
-                                        );
-                                        if (
-                                            transaction.notes &&
-                                            transaction.notes_iv
-                                        ) {
-                                            decryptedNotes = await decrypt(
-                                                transaction.notes,
-                                                key,
-                                                transaction.notes_iv,
-                                            );
-                                        }
-                                    } catch (error) {
-                                        console.error(
-                                            'Failed to decrypt transaction:',
-                                            error,
-                                        );
-                                    }
-                                }
-
-                                return {
-                                    ...transaction,
-                                    decryptedDescription,
-                                    decryptedNotes,
-                                } as DecryptedTransaction;
-                            } catch (error) {
-                                console.error(
-                                    'Error processing transaction:',
-                                    error,
-                                );
-                                return null;
-                            }
-                        }),
-                    );
-
-                    const validTransactions = decrypted.filter(
-                        (t): t is DecryptedTransaction => t !== null,
-                    );
-
-                    setTransactions(validTransactions);
-                } catch (error) {
-                    console.error('Error processing transactions:', error);
-                } finally {
-                    setIsLoading(false);
-                }
-                return;
-            }
-
-            setIsLoading(true);
-            try {
-                const response = await axios.get('/api/sync/transactions');
-                const serverData = response.data.data || response.data;
-
-                if (!Array.isArray(serverData)) {
-                    throw new Error('Invalid server response format');
-                }
-
-                let filteredServerData = serverData;
-                if (accountId) {
-                    filteredServerData = serverData.filter(
-                        (t: Transaction) => t.account_id === accountId,
-                    );
-                }
-
-                const accountsMap = new Map(
-                    accounts.map((account) => [account.id, account]),
-                );
-                const categoriesMap = new Map(
-                    categories.map((category) => [category.id, category]),
-                );
-                const banksMap = new Map(banks.map((bank) => [bank.id, bank]));
-
-                const keyString = getStoredKey();
-                let key: CryptoKey | null = null;
-
-                if (keyString && isKeySet) {
-                    try {
-                        key = await importKey(keyString);
-                    } catch (error) {
-                        console.error(
-                            'Failed to import encryption key:',
-                            error,
-                        );
-                    }
-                }
-
-                const transformedTransactions = filteredServerData.map(
-                    (serverRecord: Transaction) => {
-                        const label_ids = serverRecord.labels?.map(
-                            (l: { id: string }) => l.id,
-                        );
-
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        const { labels: _labels, ...rest } = serverRecord;
-
-                        return {
-                            ...rest,
-                            transaction_date: String(
-                                serverRecord.transaction_date,
-                            ).slice(0, 10),
-                            label_ids: label_ids || [],
-                        } as Transaction;
-                    },
-                );
-
-                const decrypted = await Promise.all(
-                    transformedTransactions.map(async (transaction) => {
-                        try {
-                            let decryptedDescription = '';
-                            let decryptedNotes: string | null = null;
-
-                            if (!transaction.description_iv) {
-                                decryptedDescription = transaction.description;
-                                decryptedNotes = transaction.notes || null;
-                            } else if (key) {
-                                try {
-                                    decryptedDescription = await decrypt(
-                                        transaction.description,
-                                        key,
-                                        transaction.description_iv,
-                                    );
-
-                                    if (
-                                        transaction.notes &&
-                                        transaction.notes_iv
-                                    ) {
-                                        decryptedNotes = await decrypt(
-                                            transaction.notes,
-                                            key,
-                                            transaction.notes_iv,
-                                        );
-                                    }
-                                } catch (error) {
-                                    console.error(
-                                        'Failed to decrypt transaction:',
-                                        transaction.id,
-                                        error,
-                                    );
-                                }
-                            }
-
-                            const account = accountsMap.get(
-                                transaction.account_id,
-                            );
-                            const category = transaction.category_id
-                                ? categoriesMap.get(transaction.category_id)
-                                : null;
-                            const bank = account?.bank?.id
-                                ? banksMap.get(account.bank!.id)
-                                : undefined;
-
-                            return {
-                                ...transaction,
-                                decryptedDescription,
-                                decryptedNotes,
-                                account,
-                                category: category || null,
-                                bank,
-                            } as DecryptedTransaction;
-                        } catch (error) {
-                            console.error(
-                                'Failed to process transaction:',
-                                transaction.id,
-                                error,
-                            );
-                            return null;
-                        }
-                    }),
-                );
-
-                const validTransactions = decrypted.filter(
-                    (transaction): transaction is DecryptedTransaction =>
-                        transaction !== null,
-                );
-
-                validTransactions.sort((a, b) => {
-                    const dateA = parseISO(a.transaction_date).getTime();
-                    const dateB = parseISO(b.transaction_date).getTime();
-                    return dateB - dateA;
-                });
-
-                setTransactions(validTransactions);
-            } catch (error) {
-                console.error('Failed to load transactions:', error);
-            } finally {
-                setIsLoading(false);
-            }
+            setTransactions(processed);
+        } catch (error) {
+            console.error('Error processing transactions:', error);
+        } finally {
+            setIsLoading(false);
         }
-
-        processTransactions();
-    }, [
-        refreshKey,
-        accounts,
-        banks,
-        categories,
-        isKeySet,
-        accountId,
-        providedTransactions,
-    ]);
+    }, [providedTransactions]);
 
     useEffect(() => {
         try {
@@ -590,176 +422,62 @@ export function TransactionList({
         }
     }, [columnVisibility]);
 
-    useEffect(() => {
-        async function reDecryptTransactions() {
-            if (transactions.length === 0) {
-                return;
-            }
-
-            const keyString = getStoredKey();
-            let key: CryptoKey | null = null;
-
-            if (keyString && isKeySet) {
-                try {
-                    key = await importKey(keyString);
-                } catch (error) {
-                    console.error('Failed to import encryption key:', error);
-                }
-            }
-
-            const reDecrypted = await Promise.all(
-                transactions.map(async (transaction) => {
-                    try {
-                        let decryptedDescription = '';
-                        let decryptedNotes: string | null = null;
-
-                        if (!transaction.description_iv) {
-                            decryptedDescription = transaction.description;
-                            decryptedNotes = transaction.notes || null;
-                        } else if (key) {
-                            try {
-                                decryptedDescription = await decrypt(
-                                    transaction.description,
-                                    key,
-                                    transaction.description_iv,
-                                );
-
-                                if (transaction.notes && transaction.notes_iv) {
-                                    decryptedNotes = await decrypt(
-                                        transaction.notes,
-                                        key,
-                                        transaction.notes_iv,
-                                    );
-                                }
-                            } catch (error) {
-                                console.error(
-                                    'Failed to decrypt transaction:',
-                                    transaction.id,
-                                    error,
-                                );
-                            }
-                        }
-
-                        return {
-                            ...transaction,
-                            decryptedDescription,
-                            decryptedNotes,
-                        } as DecryptedTransaction;
-                    } catch (error) {
-                        console.error(
-                            'Failed to process transaction:',
-                            transaction.id,
-                            error,
-                        );
-                        return transaction;
-                    }
-                }),
-            );
-
-            setTransactions(reDecrypted);
-        }
-
-        reDecryptTransactions();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isKeySet]);
-
     const [searchMatchedIds, setSearchMatchedIds] = useState<Set<string>>(
         new Set(),
     );
     const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
-        async function searchInIndexedDB() {
-            if (!filters.searchText || !isKeySet) {
-                setSearchMatchedIds(new Set());
-                setIsSearching(false);
-                return;
-            }
+        if (!filters.searchText) {
+            setSearchMatchedIds(new Set());
+            setIsSearching(false);
+            return;
+        }
 
-            setIsSearching(true);
-            try {
-                const keyString = getStoredKey();
-                if (!keyString) {
-                    setSearchMatchedIds(new Set());
-                    return;
-                }
+        setIsSearching(true);
+        const searchLower = filters.searchText.toLowerCase();
+        const matchedIds = new Set<string>();
 
-                const key = await importKey(keyString);
-                const searchLower = filters.searchText.toLowerCase();
+        for (const tx of transactions) {
+            const description = (
+                tx.decryptedDescription ??
+                tx.description ??
+                ''
+            ).toLowerCase();
+            const notes = (tx.decryptedNotes ?? tx.notes ?? '').toLowerCase();
 
-                let allIndexedTransactions = await db.transactions.toArray();
-
-                if (accountId) {
-                    allIndexedTransactions = allIndexedTransactions.filter(
-                        (t) => t.account_id === accountId,
-                    );
-                }
-
-                const matchedIds = new Set<string>();
-
-                for (const tx of allIndexedTransactions) {
-                    try {
-                        let decryptedDescription = '';
-                        let decryptedNotes: string | null = null;
-
-                        try {
-                            if (!tx.description_iv) {
-                                decryptedDescription = tx.description;
-                                decryptedNotes = tx.notes || null;
-                            } else {
-                                decryptedDescription = await decrypt(
-                                    tx.description,
-                                    key,
-                                    tx.description_iv,
-                                );
-
-                                if (tx.notes && tx.notes_iv) {
-                                    decryptedNotes = await decrypt(
-                                        tx.notes,
-                                        key,
-                                        tx.notes_iv,
-                                    );
-                                }
-                            }
-                        } catch {
-                            continue;
-                        }
-
-                        const matchesDescription = decryptedDescription
-                            .toLowerCase()
-                            .includes(searchLower);
-                        const matchesNotes =
-                            decryptedNotes
-                                ?.toLowerCase()
-                                .includes(searchLower) || false;
-
-                        if (matchesDescription || matchesNotes) {
-                            matchedIds.add(tx.id);
-                        }
-                    } catch {
-                        continue;
-                    }
-                }
-
-                setSearchMatchedIds(matchedIds);
-            } catch (error) {
-                console.error('Failed to search in IndexedDB:', error);
-                setSearchMatchedIds(new Set());
-            } finally {
-                setIsSearching(false);
+            if (
+                description.includes(searchLower) ||
+                notes.includes(searchLower)
+            ) {
+                matchedIds.add(tx.id);
             }
         }
 
-        searchInIndexedDB();
-    }, [filters.searchText, isKeySet, accountId]);
+        setSearchMatchedIds(matchedIds);
+        setIsSearching(false);
+    }, [filters.searchText, transactions]);
+
+    const manualAccountIds = useMemo(
+        () =>
+            new Set(
+                accounts
+                    .filter((account) => account.banking_connection_id === null)
+                    .map((account) => account.id),
+            ),
+        [accounts],
+    );
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter((transaction) => {
-            if (filters.searchText && isKeySet) {
-                if (!searchMatchedIds.has(transaction.id)) {
-                    return false;
-                }
-            } else if (filters.searchText && !isKeySet) {
+            // When scoped to a single account, drop rows that were reassigned to
+            // another account (e.g. via inline edit). The list no longer
+            // refetches, so without this they would linger until a full reload.
+            if (accountId && transaction.account_id !== accountId) {
+                return false;
+            }
+
+            if (filters.searchText && !searchMatchedIds.has(transaction.id)) {
                 return false;
             }
 
@@ -811,9 +529,27 @@ export function TransactionList({
                 return false;
             }
 
+            if (
+                filters.creditorName &&
+                !transaction.creditor_name
+                    ?.toLowerCase()
+                    .includes(filters.creditorName.toLowerCase())
+            ) {
+                return false;
+            }
+
+            if (
+                filters.debtorName &&
+                !transaction.debtor_name
+                    ?.toLowerCase()
+                    .includes(filters.debtorName.toLowerCase())
+            ) {
+                return false;
+            }
+
             return true;
         });
-    }, [transactions, filters, isKeySet, accountId, searchMatchedIds]);
+    }, [transactions, filters, accountId, searchMatchedIds]);
 
     const sortedTransactions = useMemo(() => {
         if (sorting.length === 0) {
@@ -844,6 +580,14 @@ export function TransactionList({
                     const categoryA = a.category?.name || '';
                     const categoryB = b.category?.name || '';
                     comparison = categoryA.localeCompare(categoryB);
+                } else if (id === 'creditor_name') {
+                    comparison = (a.creditor_name || '').localeCompare(
+                        b.creditor_name || '',
+                    );
+                } else if (id === 'debtor_name') {
+                    comparison = (a.debtor_name || '').localeCompare(
+                        b.debtor_name || '',
+                    );
                 }
 
                 if (comparison !== 0) {
@@ -1010,6 +754,7 @@ export function TransactionList({
             onUpdate: updateTransaction,
             onCategorized: showAutomatizeToast,
             onReEvaluateRules: handleReEvaluateRules,
+            isDateHidden: columnVisibility.transaction_date === false,
         });
 
         if (hideColumns.length === 0) {
@@ -1031,6 +776,7 @@ export function TransactionList({
         showAutomatizeToast,
         handleReEvaluateRules,
         hideColumns,
+        columnVisibility,
     ]);
 
     const table = useReactTable({
@@ -1077,8 +823,16 @@ export function TransactionList({
         }
 
         setIsDeleting(true);
+        const balanceWasUpdated =
+            updateBalanceOnDelete &&
+            manualAccountIds.has(deleteTransaction.account_id);
         try {
-            await transactionSyncService.delete(deleteTransaction.id);
+            await transactionSyncService.delete(deleteTransaction.id, {
+                updateBalance: balanceWasUpdated,
+            });
+            if (balanceWasUpdated) {
+                onBalanceUpdated?.();
+            }
             setTransactions((previous) =>
                 previous.filter(
                     (transaction) => transaction.id !== deleteTransaction.id,
@@ -1087,7 +841,6 @@ export function TransactionList({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to delete transaction:', error);
         } finally {
@@ -1096,13 +849,6 @@ export function TransactionList({
     }
 
     async function handleBulkCategoryChange(categoryId: number | null) {
-        if (!isKeySet) {
-            toast.error(
-                'Please unlock your encryption key to update transactions',
-            );
-            return;
-        }
-
         const selectedIds = Object.keys(rowSelection);
         if (selectedIds.length === 0) {
             return;
@@ -1135,7 +881,6 @@ export function TransactionList({
             );
 
             setRowSelection({});
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to update transactions:', error);
         } finally {
@@ -1174,7 +919,6 @@ export function TransactionList({
             );
 
             setRowSelection({});
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
         } finally {
@@ -1206,8 +950,20 @@ export function TransactionList({
         }
 
         setIsBulkDeleting(true);
+        const balanceMayHaveUpdated =
+            updateBalanceOnDelete &&
+            transactions.some(
+                (transaction) =>
+                    selectedIds.includes(transaction.id) &&
+                    manualAccountIds.has(transaction.account_id),
+            );
         try {
-            await transactionSyncService.deleteMany(selectedIds);
+            await transactionSyncService.deleteMany(selectedIds, {
+                updateBalance: updateBalanceOnDelete,
+            });
+            if (balanceMayHaveUpdated) {
+                onBalanceUpdated?.();
+            }
             setTransactions((previous) =>
                 previous.filter(
                     (transaction) => !selectedIds.includes(transaction.id),
@@ -1216,7 +972,6 @@ export function TransactionList({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to delete transactions:', error);
         } finally {
@@ -1258,7 +1013,6 @@ export function TransactionList({
                     categories={categories}
                     labels={labels}
                     accounts={accounts}
-                    isKeySet={isKeySet}
                     hideAccountFilter={hideAccountFilter}
                     actions={
                         <div className="flex justify-end gap-2">
@@ -1274,7 +1028,7 @@ export function TransactionList({
                                     onReEvaluateComplete={() => {
                                         setRowSelection({});
                                         setTimeout(() => {
-                                            window.location.reload();
+                                            reloadPage();
                                         }, 500);
                                     }}
                                 />
@@ -1289,39 +1043,7 @@ export function TransactionList({
                 />
 
                 {isLoading || isSearching ? (
-                    <div className="space-y-4">
-                        <div className="overflow-hidden rounded-md border">
-                            <div className="grid grid-cols-4 gap-4 border-b p-4">
-                                <Skeleton className="h-5 w-8" />
-                                <Skeleton className="h-5 w-24" />
-                                <Skeleton className="h-5 w-64" />
-                                <Skeleton className="h-5 w-20 justify-self-end" />
-                            </div>
-                            <div className="divide-y">
-                                <div className="bg-muted/50 px-4 py-2">
-                                    <Skeleton className="h-4 w-32" />
-                                </div>
-                                {Array.from({ length: 6 }).map((_, index) => (
-                                    <div
-                                        key={index}
-                                        className="grid grid-cols-4 gap-4 p-4"
-                                    >
-                                        <Skeleton className="h-4 w-8" />
-                                        <Skeleton className="h-4 w-28" />
-                                        <div className="space-y-2">
-                                            <Skeleton className="h-4 w-full" />
-                                            <Skeleton className="h-3 w-48" />
-                                        </div>
-                                        <Skeleton className="h-4 w-20 justify-self-end" />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <Skeleton className="h-5 w-32" />
-                            <Skeleton className="h-9 w-48" />
-                        </div>
-                    </div>
+                    <TransactionListSkeleton />
                 ) : (
                     <>
                         <DataTable
@@ -1357,6 +1079,22 @@ export function TransactionList({
                                     )}
                                 </Button>
                             )}
+                            {accountId && (
+                                <Button asChild variant="outline">
+                                    <Link
+                                        href={
+                                            transactionsIndex({
+                                                query: {
+                                                    account_ids: accountId,
+                                                },
+                                            }).url
+                                        }
+                                    >
+                                        <ExternalLink />
+                                        {__('View in Transactions')}
+                                    </Link>
+                                </Button>
+                            )}
                         </DataTablePagination>
                     </>
                 )}
@@ -1374,6 +1112,7 @@ export function TransactionList({
                 onSuccess={updateTransaction}
                 onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
+                onDelete={setDeleteTransaction}
                 mode="edit"
             />
 
@@ -1406,6 +1145,7 @@ export function TransactionList({
                     if (!open) {
                         setDeleteTransaction(null);
                         setIsBulkDeleteMode(false);
+                        setUpdateBalanceOnDelete(true);
                     }
                 }}
             >
@@ -1422,6 +1162,33 @@ export function TransactionList({
                                 : 'Are you sure you want to delete this transaction? This action cannot be undone.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    {(isBulkDeleteMode
+                        ? transactions.some(
+                              (transaction) =>
+                                  Object.keys(rowSelection).includes(
+                                      transaction.id,
+                                  ) &&
+                                  manualAccountIds.has(transaction.account_id),
+                          )
+                        : deleteTransaction !== null &&
+                          manualAccountIds.has(
+                              deleteTransaction.account_id,
+                          )) && (
+                        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
+                            <Checkbox
+                                checked={updateBalanceOnDelete}
+                                onCheckedChange={(checked) =>
+                                    setUpdateBalanceOnDelete(checked === true)
+                                }
+                                className="mt-0.5"
+                            />
+                            <span className="text-muted-foreground">
+                                {__(
+                                    'Update the current balance of the manual account to reflect this change.',
+                                )}
+                            </span>
+                        </label>
+                    )}
                     <AlertDialogFooter>
                         <AlertDialogCancel
                             disabled={isDeleting || isBulkDeleting}

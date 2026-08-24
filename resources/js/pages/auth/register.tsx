@@ -1,52 +1,36 @@
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 import { __ } from '@/utils/i18n';
-import { Form, Head, router } from '@inertiajs/react';
-import { useCallback, useEffect } from 'react';
+import { Form, Head } from '@inertiajs/react';
+import { useCallback } from 'react';
 
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { transactionSyncService } from '@/services/transaction-sync';
-
-interface RegisterProps {
-    forcedRegistration?: boolean;
-    hideAuthButtons?: boolean;
-    defaultEmail?: string | null;
-}
+import { type SignupPlan } from '@/types/pricing';
 
 export default function Register({
-    forcedRegistration = false,
-    hideAuthButtons = false,
-    defaultEmail = null,
-}: RegisterProps) {
+    signupPlan,
+}: {
+    signupPlan?: SignupPlan | null;
+}) {
     const detectedTimezone =
         typeof window !== 'undefined'
             ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
             : '';
 
-    const registrationForm = forcedRegistration
-        ? store.form({ query: { force: 1 } })
-        : store.form();
-
-    useEffect(() => {
-        if (hideAuthButtons) {
-            router.visit(login({ query: { force: 1 } }));
-        }
-    }, [hideAuthButtons]);
+    const registrationForm = store.form();
 
     const handleBeforeSubmit = useCallback(async () => {
         await transactionSyncService.clearAll();
         return true;
     }, []);
-
-    if (hideAuthButtons) {
-        return null;
-    }
 
     return (
         <AuthLayout
@@ -68,6 +52,16 @@ export default function Register({
                             name="timezone"
                             value={detectedTimezone}
                         />
+
+                        <InputError message={errors.timezone} />
+
+                        {signupPlan && (
+                            <input
+                                type="hidden"
+                                name="signup_plan"
+                                value={signupPlan}
+                            />
+                        )}
 
                         <div className="grid gap-6">
                             <div className="grid gap-2">
@@ -100,7 +94,6 @@ export default function Register({
                                     tabIndex={2}
                                     autoComplete="email"
                                     name="email"
-                                    defaultValue={defaultEmail ?? undefined}
                                     placeholder={__('email@example.com')}
                                 />
 
@@ -111,9 +104,8 @@ export default function Register({
                                 <Label htmlFor="password">
                                     {__('Password')}
                                 </Label>
-                                <Input
+                                <PasswordInput
                                     id="password"
-                                    type="password"
                                     required
                                     tabIndex={3}
                                     autoComplete="new-password"
@@ -128,9 +120,8 @@ export default function Register({
                                 <Label htmlFor="password_confirmation">
                                     {__('Confirm password')}
                                 </Label>
-                                <Input
+                                <PasswordInput
                                     id="password_confirmation"
-                                    type="password"
                                     required
                                     tabIndex={4}
                                     autoComplete="new-password"
@@ -156,10 +147,7 @@ export default function Register({
 
                         <div className="text-center text-sm text-muted-foreground">
                             {__('Already have an account?')}{' '}
-                            <TextLink
-                                href={login({ query: { force: 1 } })}
-                                tabIndex={6}
-                            >
+                            <TextLink href={login()} tabIndex={6}>
                                 {__('Log in')}
                             </TextLink>
                         </div>

@@ -1,3 +1,4 @@
+import { getMessage } from '@/actions/App/Http/Controllers/EncryptionController';
 import { clearKey, getStoredKey } from '@/lib/key-storage';
 import axios from 'axios';
 import {
@@ -56,7 +57,7 @@ export function EncryptionKeyProvider({
 
         try {
             const response = await axios.get<EncryptedMessageData>(
-                '/api/encryption/message',
+                getMessage.url(),
             );
             setEncryptedMessageData(response.data);
         } catch (err) {

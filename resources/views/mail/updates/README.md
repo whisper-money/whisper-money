@@ -31,6 +31,27 @@ Victor, Founder of Whisper Money
 </x-mail::message>
 ```
 
+### 1.1. Write it bilingual
+
+Users get emails in their own locale (`User` implements `HasLocalePreference`),
+so wrap every line in `__()` and put the Spanish in `lang/es.json`. The pattern
+to copy is `resources/views/mail/bank-outage.blade.php`, or the most recent
+update email in this directory.
+
+The **subject is a translation key too**: `UpdateEmail::envelope()` passes
+`--subject` through `__()`. So the English subject you type on production must
+match a key in `lang/es.json` character for character, or Spanish readers get a
+Spanish body under an English subject. An untranslated subject is not an error,
+it just goes out verbatim.
+
+Two things worth knowing:
+
+- `tests/Feature/LocalizationTest.php` only scans `resources/js`, so it will
+  **not** catch a missing Blade or subject translation. Cover the template with
+  a Pest test that renders it in `en` and `es`.
+- Keep the exact send command in a Blade comment at the top of the template, so
+  the subject string lives next to the copy it belongs to.
+
 ### 2. Available Variables
 
 All templates have access to:

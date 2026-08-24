@@ -163,7 +163,9 @@ img {
 }
 
 .subcopy p {
+    color: #a1a1aa;
     font-size: 14px;
+    text-align: center;
 }
 
 /* Footer */

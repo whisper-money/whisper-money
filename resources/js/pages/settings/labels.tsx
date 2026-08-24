@@ -1,10 +1,8 @@
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
-    Cell,
     ColumnDef,
     ColumnFiltersState,
-    flexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
@@ -13,7 +11,7 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { ArrowUpDown, MoreHorizontal, Tag } from 'lucide-react';
+import { ArrowUpDown, Tag } from 'lucide-react';
 import { useState } from 'react';
 
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
@@ -21,31 +19,15 @@ import HeadingSmall from '@/components/heading-small';
 import { CreateLabelDialog } from '@/components/labels/create-label-dialog';
 import { DeleteLabelDialog } from '@/components/labels/delete-label-dialog';
 import { EditLabelDialog } from '@/components/labels/edit-label-dialog';
+import {
+    type DialogControl,
+    RowActionsDropdown,
+    RowWithActionsContextMenu,
+} from '@/components/shared/row-edit-delete-actions';
+import { SettingsTable } from '@/components/shared/settings-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuLabel,
-    ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
@@ -58,111 +40,32 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function LabelActions({ label }: { label: Label }) {
-    const [editOpen, setEditOpen] = useState(false);
-    const [deleteOpen, setDeleteOpen] = useState(false);
-
-    return (
-        <>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">{__('Open menu')}</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>{__('Actions')}</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                        {__('Edit')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        onClick={() => setDeleteOpen(true)}
-                        variant="destructive"
-                    >
-                        {__('Delete')}
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-
-            <EditLabelDialog
-                label={label}
-                open={editOpen}
-                onOpenChange={setEditOpen}
-                onSuccess={() => {}}
-            />
-
+function labelDialogs(label: Label) {
+    return {
+        renderEditDialog: (control: DialogControl) => (
+            <EditLabelDialog label={label} onSuccess={() => {}} {...control} />
+        ),
+        renderDeleteDialog: (control: DialogControl) => (
             <DeleteLabelDialog
                 label={label}
-                open={deleteOpen}
-                onOpenChange={setDeleteOpen}
                 onSuccess={() => {}}
+                {...control}
             />
-        </>
-    );
+        ),
+    };
+}
+
+function LabelActions({ label }: { label: Label }) {
+    return <RowActionsDropdown {...labelDialogs(label)} />;
 }
 
 function LabelRow({ row }: { row: Row<Label> }) {
-    const label = row.original;
-    const [editOpen, setEditOpen] = useState(false);
-    const [deleteOpen, setDeleteOpen] = useState(false);
-    const [contextMenuOpen, setContextMenuOpen] = useState(false);
-
     return (
-        <>
-            <ContextMenu onOpenChange={setContextMenuOpen}>
-                <ContextMenuTrigger asChild>
-                    <TableRow
-                        data-state={
-                            (row.getIsSelected() || contextMenuOpen) &&
-                            'selected'
-                        }
-                    >
-                        {row
-                            .getVisibleCells()
-                            .map((cell: Cell<Label, unknown>) => (
-                                <TableCell key={cell.id}>
-                                    {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext(),
-                                    )}
-                                </TableCell>
-                            ))}
-                    </TableRow>
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                    <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
-                    <ContextMenuItem onClick={() => setEditOpen(true)}>
-                        {__('Edit')}
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                        onClick={() => setDeleteOpen(true)}
-                        variant="destructive"
-                    >
-                        {__('Delete')}
-                    </ContextMenuItem>
-                </ContextMenuContent>
-            </ContextMenu>
-
-            <EditLabelDialog
-                label={label}
-                open={editOpen}
-                onOpenChange={setEditOpen}
-                onSuccess={() => {}}
-            />
-
-            <DeleteLabelDialog
-                label={label}
-                open={deleteOpen}
-                onOpenChange={setDeleteOpen}
-                onSuccess={() => {}}
-            />
-        </>
+        <RowWithActionsContextMenu row={row} {...labelDialogs(row.original)} />
     );
 }
 
 export default function Labels() {
-    const { labels } = usePage<{ labels: Label[] }>().props;
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'name', desc: false },
     ]);
@@ -170,6 +73,8 @@ export default function Labels() {
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
+
+    const { labels } = usePage<{ labels: Label[] }>().props;
 
     const columns: ColumnDef<Label>[] = [
         {
@@ -271,58 +176,13 @@ export default function Labels() {
                             <CreateLabelDialog onSuccess={() => {}} />
                         </div>
 
-                        <div className="overflow-hidden rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    {table
-                                        .getHeaderGroups()
-                                        .map((headerGroup) => (
-                                            <TableRow key={headerGroup.id}>
-                                                {headerGroup.headers.map(
-                                                    (header) => {
-                                                        return (
-                                                            <TableHead
-                                                                key={header.id}
-                                                            >
-                                                                {header.isPlaceholder
-                                                                    ? null
-                                                                    : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
-                                                            </TableHead>
-                                                        );
-                                                    },
-                                                )}
-                                            </TableRow>
-                                        ))}
-                                </TableHeader>
-                                <TableBody>
-                                    {table.getRowModel().rows?.length ? (
-                                        table
-                                            .getRowModel()
-                                            .rows.map((row) => (
-                                                <LabelRow
-                                                    key={row.id}
-                                                    row={row}
-                                                />
-                                            ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={columns.length}
-                                                className="h-24 text-center"
-                                            >
-                                                {__('No labels found.')}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <SettingsTable
+                            table={table}
+                            emptyMessage={__('No labels found.')}
+                            renderRow={(row) => (
+                                <LabelRow key={row.id} row={row} />
+                            )}
+                        />
 
                         <div className="flex items-center justify-end">
                             <div className="text-sm text-muted-foreground">

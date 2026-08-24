@@ -1,12 +1,16 @@
 import { __ } from '@/utils/i18n';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
-import { Check, ChevronsUpDown, Tag, X } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { ChevronsUpDown, Tag, X } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
+import { BankLogo } from '@/components/bank-logo';
+import { SavedFilters } from '@/components/transactions/saved-filters';
+import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Command,
     CommandEmpty,
@@ -21,11 +25,18 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    buildCategoryTree,
+    categorySelectionState,
+    flattenCategoryTree,
+    toggleCategorySelection,
+} from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Account } from '@/types/account';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { getLabelColorClasses, type Label } from '@/types/label';
 import { type TransactionFilters as FiltersType } from '@/types/transaction';
+import { type UUID } from '@/types/uuid';
 import { CategoryIcon } from '../shared/category-combobox';
 
 interface TransactionFiltersProps {
@@ -34,9 +45,9 @@ interface TransactionFiltersProps {
     categories: Category[];
     labels: Label[];
     accounts: Account[];
-    isKeySet: boolean;
     actions?: ReactNode;
     hideAccountFilter?: boolean;
+    enableSavedFilters?: boolean;
 }
 
 export function TransactionFilters({
@@ -47,47 +58,139 @@ export function TransactionFilters({
     accounts,
     actions,
     hideAccountFilter = false,
+    enableSavedFilters = false,
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+    const [categorySearch, setCategorySearch] = useState('');
     const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+    const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
     const [searchText, setSearchText] = useState(filters.searchText);
+    const [creditorName, setCreditorName] = useState(filters.creditorName);
+    const [debtorName, setDebtorName] = useState(filters.debtorName);
     const isUncategorizedSelected = filters.categoryIds.includes(
         UNCATEGORIZED_CATEGORY_ID,
     );
 
-    // Debounce search text updates
+    // Debounce text filter updates
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (searchText !== filters.searchText) {
+            if (
+                searchText !== filters.searchText ||
+                creditorName !== filters.creditorName ||
+                debtorName !== filters.debtorName
+            ) {
                 onFiltersChange({
                     ...filters,
                     searchText,
+                    creditorName,
+                    debtorName,
                 });
             }
         }, 300);
 
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchText]);
+    }, [searchText, creditorName, debtorName]);
 
     // Sync local state when filters change externally
     useEffect(() => {
         if (filters.searchText !== searchText) {
             setSearchText(filters.searchText);
         }
+        if (filters.creditorName !== creditorName) {
+            setCreditorName(filters.creditorName);
+        }
+        if (filters.debtorName !== debtorName) {
+            setDebtorName(filters.debtorName);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filters.searchText]);
+    }, [filters.searchText, filters.creditorName, filters.debtorName]);
+
+    // Snapshot of which categories were selected when the dropdown opened.
+    // Ordering uses this snapshot, so toggling while open never reshuffles the
+    // list under the cursor; it only re-sorts the next time it is opened.
+    const [categoryOrderSnapshot, setCategoryOrderSnapshot] = useState<
+        Set<string>
+    >(new Set());
+
+    const categoryTree = useMemo(() => {
+        // A branch sorts to the top when it (or a descendant) was selected.
+        const branchSelected = new Set<string>();
+        if (categoryOrderSnapshot.size > 0) {
+            const parentOf = new Map(
+                categories.map((c) => [c.id, c.parent_id]),
+            );
+            for (const id of categoryOrderSnapshot) {
+                let current: string | null | undefined = id;
+                let guard = 0;
+                while (current != null && guard++ < 10) {
+                    branchSelected.add(current);
+                    current = parentOf.get(current);
+                }
+            }
+        }
+
+        const compare = (a: Category, b: Category) => {
+            const aSelected = branchSelected.has(a.id);
+            const bSelected = branchSelected.has(b.id);
+            if (aSelected !== bSelected) {
+                return aSelected ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name);
+        };
+
+        return flattenCategoryTree(buildCategoryTree(categories, compare));
+    }, [categories, categoryOrderSnapshot]);
+
+    const selectedCategorySet = useMemo(
+        () => new Set(filters.categoryIds),
+        [filters.categoryIds],
+    );
+
+    // Tree-aware search: keep each match together with its ancestors so a
+    // matching child still shows its parent chain for context.
+    const visibleCategoryTree = useMemo(() => {
+        const query = categorySearch.trim().toLowerCase();
+        if (!query) {
+            return categoryTree;
+        }
+
+        const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
+        const include = new Set<string>();
+        for (const category of categories) {
+            if (!category.name.toLowerCase().includes(query)) {
+                continue;
+            }
+            let id: string | null | undefined = category.id;
+            let guard = 0;
+            while (id != null && guard++ < 10) {
+                include.add(id);
+                id = parentOf.get(id);
+            }
+        }
+
+        return categoryTree.filter((node) => include.has(node.id));
+    }, [categoryTree, categories, categorySearch]);
+
+    const showUncategorizedRow =
+        categorySearch.trim() === '' ||
+        'uncategorized'.includes(categorySearch.trim().toLowerCase());
+    const hasCategoryResults =
+        visibleCategoryTree.length > 0 || showUncategorizedRow;
 
     function handleCategoryToggle(categoryId: string) {
-        const newCategoryIds = filters.categoryIds.includes(categoryId)
-            ? filters.categoryIds.filter((id) => id !== categoryId)
-            : [...filters.categoryIds, categoryId];
-
-        onFiltersChange({ ...filters, categoryIds: newCategoryIds });
+        onFiltersChange({
+            ...filters,
+            categoryIds: toggleCategorySelection(
+                filters.categoryIds,
+                categoryId,
+                categories,
+            ),
+        });
     }
 
-    function handleAccountToggle(accountId: number) {
+    function handleAccountToggle(accountId: UUID) {
         const newAccountIds = filters.accountIds.includes(accountId)
             ? filters.accountIds.filter((id) => id !== accountId)
             : [...filters.accountIds, accountId];
@@ -105,6 +208,8 @@ export function TransactionFilters({
 
     function clearFilters() {
         setSearchText('');
+        setCreditorName('');
+        setDebtorName('');
         onFiltersChange({
             dateFrom: null,
             dateTo: null,
@@ -113,7 +218,10 @@ export function TransactionFilters({
             categoryIds: [],
             accountIds: [],
             labelIds: [],
+            creditorName: '',
+            debtorName: '',
             searchText: '',
+            aiCategorizedOnly: false,
         });
     }
 
@@ -124,19 +232,15 @@ export function TransactionFilters({
         (filters.amountMax !== null ? 1 : 0) +
         filters.categoryIds.length +
         filters.labelIds.length +
+        (filters.creditorName ? 1 : 0) +
+        (filters.debtorName ? 1 : 0) +
+        (filters.aiCategorizedOnly ? 1 : 0) +
         (hideAccountFilter ? 0 : filters.accountIds.length);
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex flex-col gap-3">
                 <div className="flex w-full flex-row items-center gap-2">
-                    <Input
-                        placeholder={__('Search description or notes...')}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        className="min-w-0 flex-1 md:min-w-[350px]"
-                    />
-
                     <Popover open={isOpen} onOpenChange={setIsOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline">
@@ -161,6 +265,19 @@ export function TransactionFilters({
                                     <h4 className="font-medium">
                                         {__('Filters')}
                                     </h4>
+                                </div>
+
+                                <div className="space-y-2 md:hidden">
+                                    <FormLabel>{__('Search')}</FormLabel>
+                                    <Input
+                                        placeholder={__(
+                                            'Search description or notes...',
+                                        )}
+                                        value={searchText}
+                                        onChange={(e) =>
+                                            setSearchText(e.target.value)
+                                        }
+                                    />
                                 </div>
 
                                 <div className="space-y-2">
@@ -258,9 +375,18 @@ export function TransactionFilters({
                                     <div className="pt-2">
                                         <Popover
                                             open={categoryDropdownOpen}
-                                            onOpenChange={
-                                                setCategoryDropdownOpen
-                                            }
+                                            onOpenChange={(open) => {
+                                                if (open) {
+                                                    setCategoryOrderSnapshot(
+                                                        new Set(
+                                                            filters.categoryIds,
+                                                        ),
+                                                    );
+                                                } else {
+                                                    setCategorySearch('');
+                                                }
+                                                setCategoryDropdownOpen(open);
+                                            }}
                                         >
                                             <PopoverTrigger asChild>
                                                 <Button
@@ -292,49 +418,55 @@ export function TransactionFilters({
                                                 className="w-full p-0"
                                                 align="start"
                                             >
-                                                <Command>
+                                                <Command shouldFilter={false}>
                                                     <CommandInput
                                                         placeholder={__(
                                                             'Search categories...',
                                                         )}
+                                                        value={categorySearch}
+                                                        onValueChange={
+                                                            setCategorySearch
+                                                        }
                                                     />
                                                     <CommandList>
-                                                        <CommandEmpty>
-                                                            {__(
-                                                                'No category found.',
-                                                            )}
-                                                        </CommandEmpty>
-                                                        <CommandItem
-                                                            onSelect={() =>
-                                                                handleCategoryToggle(
-                                                                    UNCATEGORIZED_CATEGORY_ID,
-                                                                )
-                                                            }
-                                                        >
-                                                            <div
-                                                                className={cn(
-                                                                    'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
-                                                                    isUncategorizedSelected
-                                                                        ? 'bg-primary/10 text-primary-foreground'
-                                                                        : 'opacity-50 [&_svg]:invisible',
-                                                                )}
-                                                            >
-                                                                <Check className="size-3" />
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                                                    <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
-                                                                </div>
+                                                        {!hasCategoryResults && (
+                                                            <div className="py-6 text-center text-sm text-muted-foreground">
                                                                 {__(
-                                                                    'Uncategorized',
+                                                                    'No category found.',
                                                                 )}
                                                             </div>
-                                                        </CommandItem>
-                                                        {categories.map(
+                                                        )}
+                                                        {showUncategorizedRow && (
+                                                            <CommandItem
+                                                                onSelect={() =>
+                                                                    handleCategoryToggle(
+                                                                        UNCATEGORIZED_CATEGORY_ID,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Checkbox
+                                                                    checked={
+                                                                        isUncategorizedSelected
+                                                                    }
+                                                                    className="pointer-events-none mr-1"
+                                                                />
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                                                        <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
+                                                                    </div>
+                                                                    {__(
+                                                                        'Uncategorized',
+                                                                    )}
+                                                                </div>
+                                                            </CommandItem>
+                                                        )}
+                                                        {visibleCategoryTree.map(
                                                             (category) => {
-                                                                const isSelected =
-                                                                    filters.categoryIds.includes(
+                                                                const state =
+                                                                    categorySelectionState(
                                                                         category.id,
+                                                                        selectedCategorySet,
+                                                                        categories,
                                                                     );
                                                                 const colorClasses =
                                                                     getCategoryColorClasses(
@@ -345,26 +477,32 @@ export function TransactionFilters({
                                                                         key={
                                                                             category.id
                                                                         }
+                                                                        value={
+                                                                            category.name
+                                                                        }
                                                                         onSelect={() =>
                                                                             handleCategoryToggle(
                                                                                 category.id,
                                                                             )
                                                                         }
+                                                                        style={{
+                                                                            paddingLeft: `${0.5 + category.depth * 1.25}rem`,
+                                                                        }}
                                                                     >
-                                                                        <div
-                                                                            className={cn(
-                                                                                'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
-                                                                                isSelected
-                                                                                    ? 'bg-primary/10 text-primary-foreground'
-                                                                                    : 'opacity-50 [&_svg]:invisible',
-                                                                            )}
-                                                                        >
-                                                                            <Check className="size-3" />
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
+                                                                        <Checkbox
+                                                                            checked={
+                                                                                state ===
+                                                                                'indeterminate'
+                                                                                    ? 'indeterminate'
+                                                                                    : state ===
+                                                                                      'checked'
+                                                                            }
+                                                                            className="pointer-events-none mr-1"
+                                                                        />
+                                                                        <div className="flex min-w-0 items-center gap-2">
                                                                             <div
                                                                                 className={cn(
-                                                                                    'flex h-5 w-5 items-center justify-center rounded-full',
+                                                                                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
                                                                                     colorClasses.bg,
                                                                                 )}
                                                                             >
@@ -377,7 +515,7 @@ export function TransactionFilters({
                                                                                     }
                                                                                 />
                                                                             </div>
-                                                                            <span>
+                                                                            <span className="truncate">
                                                                                 {
                                                                                     category.name
                                                                                 }
@@ -462,16 +600,12 @@ export function TransactionFilters({
                                                                         )
                                                                     }
                                                                 >
-                                                                    <div
-                                                                        className={cn(
-                                                                            'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
+                                                                    <Checkbox
+                                                                        checked={
                                                                             isSelected
-                                                                                ? 'bg-primary/10 text-primary-foreground'
-                                                                                : 'opacity-50 [&_svg]:invisible',
-                                                                        )}
-                                                                    >
-                                                                        <Check className="size-3" />
-                                                                    </div>
+                                                                        }
+                                                                        className="pointer-events-none mr-1"
+                                                                    />
                                                                     <div className="flex items-center gap-2">
                                                                         <div
                                                                             className={cn(
@@ -505,55 +639,191 @@ export function TransactionFilters({
                                 {!hideAccountFilter && (
                                     <div className="space-y-2">
                                         <FormLabel>{__('Accounts')}</FormLabel>
-                                        <div className="flex flex-wrap gap-2 pt-2">
-                                            {accounts.map((account) => {
-                                                const isSelected =
-                                                    filters.accountIds.includes(
-                                                        account.id,
-                                                    );
-                                                return (
-                                                    <Badge
-                                                        key={account.id}
-                                                        variant={
-                                                            isSelected
-                                                                ? 'default'
-                                                                : 'outline'
-                                                        }
-                                                        className="cursor-pointer px-2 py-1"
-                                                        onClick={() =>
-                                                            handleAccountToggle(
-                                                                account.id,
-                                                            )
-                                                        }
+                                        <div className="pt-2">
+                                            <Popover
+                                                open={accountDropdownOpen}
+                                                onOpenChange={
+                                                    setAccountDropdownOpen
+                                                }
+                                            >
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        className="w-full justify-between"
                                                     >
-                                                        <AccountName
-                                                            account={account}
-                                                            length={{
-                                                                min: 6,
-                                                                max: 28,
-                                                            }}
+                                                        {filters.accountIds
+                                                            .length > 0 ? (
+                                                            <span className="truncate">
+                                                                {
+                                                                    filters
+                                                                        .accountIds
+                                                                        .length
+                                                                }{' '}
+                                                                selected
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">
+                                                                {__(
+                                                                    'Select accounts...',
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent
+                                                    className="w-full p-0"
+                                                    align="start"
+                                                >
+                                                    <Command>
+                                                        <CommandInput
+                                                            placeholder={__(
+                                                                'Search accounts...',
+                                                            )}
                                                         />
-                                                    </Badge>
-                                                );
-                                            })}
+                                                        <CommandList>
+                                                            <CommandEmpty>
+                                                                {__(
+                                                                    'No accounts found.',
+                                                                )}
+                                                            </CommandEmpty>
+                                                            {accounts.map(
+                                                                (account) => {
+                                                                    const isSelected =
+                                                                        filters.accountIds.includes(
+                                                                            account.id,
+                                                                        );
+                                                                    return (
+                                                                        <CommandItem
+                                                                            key={
+                                                                                account.id
+                                                                            }
+                                                                            value={`${account.name} ${account.id}`}
+                                                                            onSelect={() =>
+                                                                                handleAccountToggle(
+                                                                                    account.id,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <Checkbox
+                                                                                checked={
+                                                                                    isSelected
+                                                                                }
+                                                                                className="pointer-events-none mr-1"
+                                                                            />
+                                                                            <div className="flex min-w-0 items-center gap-2">
+                                                                                <BankLogo
+                                                                                    src={
+                                                                                        account
+                                                                                            .bank
+                                                                                            ?.logo
+                                                                                    }
+                                                                                    name={
+                                                                                        account
+                                                                                            .bank
+                                                                                            ?.name
+                                                                                    }
+                                                                                    fallback="icon"
+                                                                                    className="h-5 w-5 shrink-0 rounded-full"
+                                                                                />
+                                                                                <AccountName
+                                                                                    account={
+                                                                                        account
+                                                                                    }
+                                                                                    className="truncate"
+                                                                                />
+                                                                            </div>
+                                                                        </CommandItem>
+                                                                    );
+                                                                },
+                                                            )}
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
                                         </div>
                                     </div>
                                 )}
+
+                                <div className="space-y-2">
+                                    <FormLabel>
+                                        {__('Categorized by AI')}
+                                    </FormLabel>
+                                    <div className="flex flex-wrap gap-2 pt-2">
+                                        <Badge
+                                            variant={
+                                                filters.aiCategorizedOnly
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
+                                            className="flex cursor-pointer items-center gap-1 px-2 py-1"
+                                            onClick={() =>
+                                                onFiltersChange({
+                                                    ...filters,
+                                                    aiCategorizedOnly:
+                                                        !filters.aiCategorizedOnly,
+                                                })
+                                            }
+                                        >
+                                            <AiSparkleIcon className="h-3.5 w-3.5" />
+                                            {__('Only show AI guesses')}
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <FormLabel>
+                                        {__('Counterparties')}
+                                    </FormLabel>
+                                    <div className="grid grid-cols-2 gap-2 pt-2">
+                                        <Input
+                                            value={creditorName}
+                                            onChange={(e) =>
+                                                setCreditorName(e.target.value)
+                                            }
+                                            placeholder={__('Creditor name')}
+                                        />
+                                        <Input
+                                            value={debtorName}
+                                            onChange={(e) =>
+                                                setDebtorName(e.target.value)
+                                            }
+                                            placeholder={__('Debtor name')}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </PopoverContent>
                     </Popover>
 
-                    {activeFilterCount > 0 && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearFilters}
-                            className="h-9"
-                        >
-                            <X className="mr-1 h-4 w-4" />
-                            {__('Clear')}
-                        </Button>
-                    )}
+                    <Input
+                        placeholder={__('Search description or notes...')}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        className="hidden min-w-0 flex-1 md:block md:min-w-[350px]"
+                    />
+
+                    <div className="ml-auto flex items-center gap-2">
+                        {enableSavedFilters && (
+                            <SavedFilters
+                                filters={filters}
+                                onLoad={onFiltersChange}
+                            />
+                        )}
+
+                        {activeFilterCount > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={clearFilters}
+                                className="h-9"
+                            >
+                                <X className="mr-1 h-4 w-4" />
+                                {__('Clear')}
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {actions ? <div className="w-full">{actions}</div> : null}

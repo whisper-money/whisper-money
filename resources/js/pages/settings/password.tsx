@@ -11,8 +11,8 @@ import { useRef } from 'react';
 import HeadingSmall from '@/components/heading-small';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { edit } from '@/routes/user-password';
 import { InfoIcon } from 'lucide-react';
 
@@ -25,7 +25,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function Password() {
     const { auth } = usePage<SharedData>().props;
-    const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isSharedAccount = auth?.isSharedAccount ?? false;
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
@@ -42,12 +42,12 @@ export default function Password() {
                         )}
                     />
 
-                    {isDemoAccount && (
+                    {isSharedAccount && (
                         <Alert>
                             <InfoIcon className="h-4 w-4" />
                             <AlertDescription>
                                 {__(
-                                    'Password changes are disabled on the demo\n                                account.',
+                                    'Password changes are disabled on this shared account.',
                                 )}
                             </AlertDescription>
                         </Alert>
@@ -82,11 +82,10 @@ export default function Password() {
                                         {__('Current password')}
                                     </Label>
 
-                                    <Input
+                                    <PasswordInput
                                         id="current_password"
                                         ref={currentPasswordInput}
                                         name="current_password"
-                                        type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="current-password"
                                         placeholder={__('Current password')}
@@ -102,11 +101,10 @@ export default function Password() {
                                         {__('New password')}
                                     </Label>
 
-                                    <Input
+                                    <PasswordInput
                                         id="password"
                                         ref={passwordInput}
                                         name="password"
-                                        type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="new-password"
                                         placeholder={__('New password')}
@@ -120,10 +118,9 @@ export default function Password() {
                                         {__('Confirm password')}
                                     </Label>
 
-                                    <Input
+                                    <PasswordInput
                                         id="password_confirmation"
                                         name="password_confirmation"
-                                        type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="new-password"
                                         placeholder={__('Confirm password')}
@@ -136,7 +133,7 @@ export default function Password() {
 
                                 <div className="flex items-center gap-4">
                                     <Button
-                                        disabled={processing || isDemoAccount}
+                                        disabled={processing || isSharedAccount}
                                         data-test="update-password-button"
                                     >
                                         {__('Save password')}

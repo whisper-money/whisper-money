@@ -8,13 +8,16 @@ use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\ChartColorSchemeController;
 use App\Http\Controllers\Settings\LabelController;
+use App\Http\Controllers\Settings\McpTokenController;
 use App\Http\Controllers\Settings\NetWorthChartLoanPreferenceController;
 use App\Http\Controllers\Settings\NetWorthChartRealEstatePreferenceController;
+use App\Http\Controllers\Settings\NotificationPreferenceController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Controllers\SubscriptionController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -22,23 +25,34 @@ Route::middleware('auth')->group(function () {
     Route::redirect('settings', '/settings/accounts');
 
     Route::get('settings/account', [ProfileController::class, 'account'])->name('account.edit');
-    Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+    // Blocked on shared accounts: this is where the e-mail address (and so the
+    // login) and the seeded locale would be changed.
+    Route::patch('settings/profile', [ProfileController::class, 'update'])
+        ->middleware('block-shared')
+        ->name('profile.update');
     Route::patch('settings/timezone', [TimezoneController::class, 'update'])->name('timezone.update');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])
-        ->middleware('block-demo')
+        ->middleware('block-shared')
         ->name('profile.destroy');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('user-password.edit');
 
     Route::put('settings/password', [PasswordController::class, 'update'])
-        ->middleware(['throttle:6,1', 'block-demo'])
+        ->middleware(['throttle:6,1', 'block-shared'])
         ->name('user-password.update');
 
     Route::get('settings/accounts', [AccountController::class, 'index'])->name('accounts.index');
     Route::post('settings/accounts', [AccountController::class, 'store'])->name('accounts.store');
     Route::patch('settings/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
     Route::delete('settings/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy');
+
+    Route::get('settings/notifications', [NotificationPreferenceController::class, 'index'])
+        ->name('notifications.index');
+    Route::patch('settings/notifications', [NotificationPreferenceController::class, 'update'])
+        ->name('notifications.update');
+    Route::patch('settings/notifications/budgets/{budget}', [NotificationPreferenceController::class, 'updateBudget'])
+        ->name('notifications.budgets.update');
 
     Route::get('settings/banks', [BankController::class, 'index'])->name('banks.index');
     Route::post('settings/banks', [BankController::class, 'store'])->name('banks.store');
@@ -52,6 +66,19 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/labels', [LabelController::class, 'store'])->name('labels.store');
     Route::patch('settings/labels/{label}', [LabelController::class, 'update'])->name('labels.update');
     Route::delete('settings/labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
+
+    // Only `block-demo` here: the press account is meant to hand out MCP
+    // tokens, and the demo account is refused by the tools themselves anyway.
+    Route::get('settings/mcp', [McpTokenController::class, 'index'])->name('mcp.index');
+    Route::post('settings/mcp/tokens', [McpTokenController::class, 'store'])
+        ->middleware('block-demo')
+        ->name('mcp.tokens.store');
+    Route::post('settings/mcp/tokens/{token}/rotate', [McpTokenController::class, 'rotate'])
+        ->middleware('block-demo')
+        ->name('mcp.tokens.rotate');
+    Route::delete('settings/mcp/tokens/{token}', [McpTokenController::class, 'destroy'])
+        ->middleware('block-demo')
+        ->name('mcp.tokens.destroy');
 
     Route::redirect('settings/budgets', '/budgets')->name('budgets.settings');
 
@@ -83,8 +110,10 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/billing', [SubscriptionController::class, 'billing'])->name('settings.billing');
     Route::get('settings/billing/portal', [SubscriptionController::class, 'billingPortal'])->name('settings.billing.portal');
 
-    Route::get('settings/delete-account', function () {
-        return Inertia::render('settings/delete-account');
+    Route::get('settings/delete-account', function (Request $request) {
+        return Inertia::render('settings/delete-account', [
+            'hasActiveSubscriptionOrTrial' => $request->user()->hasActiveSubscriptionOrTrial(),
+        ]);
     })->name('delete-account.edit');
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])

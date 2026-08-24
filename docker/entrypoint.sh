@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Boot-time artisan commands run as root; this keeps any file they create
+# (including laravel.log) group-writable so the www-data fpm/queue workers
+# can append to it afterwards.
+umask 0002
+
 echo "=== Whisper Money Container Startup ==="
 
 # Ensure storage directories exist (volume may be empty on first deploy)
@@ -10,8 +15,12 @@ mkdir -p /app/storage/framework/cache/data
 mkdir -p /app/storage/framework/sessions
 mkdir -p /app/storage/framework/views
 mkdir -p /app/storage/logs
+# Pre-create the log file group-writable so a stale root-owned file from a
+# persisted volume cannot block writes from the www-data workers.
+touch /app/storage/logs/laravel.log
 chown -R www-data:www-data /app/storage
 chmod -R 775 /app/storage
+chmod 664 /app/storage/logs/laravel.log
 
 # Auto-generate APP_KEY if not set or invalid (must start with "base64:")
 if [ -z "$APP_KEY" ] || [[ ! "$APP_KEY" =~ ^base64: ]]; then
@@ -73,6 +82,16 @@ echo "MySQL is ready!"
 echo "Running migrations..."
 php artisan migrate --force
 
+# Ensure Passport signing keys exist (OAuth for MCP connectors). Keys provided
+# via PASSPORT_PRIVATE_KEY/PASSPORT_PUBLIC_KEY env take precedence; otherwise
+# generate them into storage/ (a persisted volume) so issued tokens survive
+# restarts. NOTE: for a multi-instance deployment, provide the keys via env so
+# every instance validates tokens with the same key.
+if [ -z "$PASSPORT_PRIVATE_KEY" ] && [ ! -f /app/storage/oauth-private.key ]; then
+    echo "Generating Passport keys..."
+    php artisan passport:keys --force
+fi
+
 # Cache configuration
 echo "Caching configuration..."
 php artisan config:cache
@@ -88,6 +107,14 @@ php artisan storage:link 2>/dev/null || true
 echo "Re-applying storage ownership..."
 chown -R www-data:www-data /app/storage /app/bootstrap/cache
 chmod -R 775 /app/storage /app/bootstrap/cache
+chmod 664 /app/storage/logs/laravel.log
+
+# Passport signing keys must stay private: the recursive chmod above widens them
+# to 775, but league/oauth2-server rejects any mode other than 600/660 and logs a
+# warning on every /oauth/authorize and /mcp/oauth request. Lock them back down.
+if [ -f /app/storage/oauth-private.key ]; then
+    chmod 600 /app/storage/oauth-private.key /app/storage/oauth-public.key
+fi
 
 echo "=== Startup complete, launching services ==="
 

@@ -28,6 +28,68 @@ it('redirects new registration to email verification', function () {
     ]);
 });
 
+it('syncs user currency from first onboarding account after signup', function () {
+    Bank::factory()->create(['name' => 'Signup Test Bank']);
+
+    $page = visit('/register?force=1');
+
+    $page->assertSee('Create an account')
+        ->fill('name', 'Currency Signup User')
+        ->fill('email', 'currency-signup@example.com')
+        ->fill('password', 'password123456')
+        ->fill('password_confirmation', 'password123456')
+        ->click('@register-user-button')
+        ->wait(3)
+        ->assertPathIs('/email/verify')
+        ->assertNoJavascriptErrors();
+
+    $user = User::where('email', 'currency-signup@example.com')->firstOrFail();
+
+    expect($user->currency_code)->toBe('USD');
+
+    $user->forceFill(['email_verified_at' => now()])->save();
+
+    $this->actingAs($user->refresh());
+
+    $page = visit('/onboarding');
+
+    $page->assertPathIs('/onboarding')
+        ->assertSee('Welcome to Whisper Money')
+        ->click("Let's Get Started")
+        ->wait(1)
+        ->assertSee('Account Types')
+        ->click('Create Your First Account')
+        ->wait(1)
+        ->assertSee('Create an Account')
+        ->click('Manual')
+        ->wait(1)
+        ->fill('#display_name', 'Euro Checking Account')
+        ->click('Select bank...')
+        ->wait(1)
+        ->fill('[placeholder="Search bank..."]', 'Signup')
+        ->wait(1)
+        ->click('Signup Test Bank')
+        ->wait(1)
+        ->click('Select account type')
+        ->wait(1)
+        ->click('[role="option"]:has-text("Checking")')
+        ->wait(1)
+        ->click('Select currency')
+        ->wait(1)
+        ->click('[role="option"]:has-text("EUR")')
+        ->wait(1)
+        ->click('Create Account')
+        ->wait(5)
+        ->assertNoJavascriptErrors();
+
+    $user->refresh();
+    $account = $user->accounts()->first();
+
+    expect($user->currency_code)->toBe('EUR');
+    expect($account)->not->toBeNull();
+    expect($account->currency_code)->toBe('EUR');
+});
+
 it('redirects onboarded user away from onboarding page to dashboard', function () {
     $user = User::factory()->onboarded()->create();
 
@@ -65,8 +127,7 @@ it('shows welcome step as first onboarding step', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
+    $page->assertSee('Welcome to Whisper Money')
         ->assertSee("Let's Get Started")
         ->assertNoJavascriptErrors();
 });
@@ -80,8 +141,7 @@ it('navigates from welcome to account types', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
+    $page->assertSee('Welcome to Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
         ->assertSee('Account Types')
@@ -196,11 +256,62 @@ it('returns to the accounts step when bank authorization fails during onboarding
         ->assertQueryStringHas('step', 'create-account')
         ->assertSee('Your Accounts')
         ->assertSee('Connected Bank')
-        ->assertDontSee('Welcome to')
+        ->assertDontSee('Welcome to Whisper Money')
         ->assertNoJavascriptErrors();
 
     $connection->refresh();
     expect($connection->trashed())->toBeTrue();
+});
+
+it('deep links straight to the connections step via ?step=create-account', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit('/onboarding?step=create-account');
+
+    $page->wait(1)
+        // Lands on the connections step, skipping the welcome step entirely.
+        ->assertSee('Create an Account')
+        ->assertSee('Manual')
+        ->assertDontSee('Welcome to Whisper Money')
+        ->assertNoJavascriptErrors();
+});
+
+it('polls and shows a connection finalized in another browser', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    // User sits on the connections step with no accounts yet.
+    $page = visit('/onboarding?step=create-account');
+    $page->wait(1)
+        ->assertSee('Create an Account')
+        ->assertDontSee('Polled Bank');
+
+    // The bank flow is finalized elsewhere (iOS PWA -> Safari): an account is
+    // created server-side without this browser doing anything.
+    $bank = Bank::factory()->create(['name' => 'Polled Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+    ]);
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'banking_connection_id' => $connection->id,
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+
+    // The 4s poll picks it up and the connection appears without a manual refresh.
+    $page->wait(6)
+        ->assertSee('Your Accounts')
+        ->assertSee('Polled Bank')
+        ->assertNoJavascriptErrors();
 });
 
 // =============================================================================
@@ -271,7 +382,7 @@ it('hides the connected plan warning after connected setup is selected once', fu
 
     $this->actingAs($user);
 
-    $warning = "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.";
+    $warning = "You'll choose a plan at the end of the onboarding.";
 
     $page = visit('/onboarding');
 
@@ -281,7 +392,7 @@ it('hides the connected plan warning after connected setup is selected once', fu
         ->wait(1)
         ->assertSee($warning)
         ->assertSee('/month')
-        ->click('Continue')
+        ->click('Connected')
         ->wait(1)
         ->assertSee('Connect Your Bank')
         ->click('Back')
@@ -307,8 +418,6 @@ it('creates a real estate account during onboarding by default', function () {
         ->wait(1)
         ->assertSee('Create an Account')
         ->click('Manual')
-        ->wait(1)
-        ->click('Continue')
         ->wait(1)
         ->fill('#display_name', 'My Apartment')
         ->click('Select account type')
@@ -362,8 +471,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->assertNoJavascriptErrors();
 
     // Step 1: Welcome
-    $page->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
+    $page->assertSee('Welcome to Whisper Money')
         ->click("Let's Get Started")
         ->wait(1);
 
@@ -376,8 +484,6 @@ it('completes entire onboarding flow with account creation, transaction import, 
     $page->assertSee('Create an Account')
         ->assertSee('Manual')
         ->click('Manual')
-        ->wait(1)
-        ->click('Continue')
         ->wait(1)
         ->fill('#display_name', 'My Checking Account')
         ->click('Select bank...')
@@ -435,6 +541,11 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Continue')
         ->wait(3); // syncing step reloads transactions — allow time for axios + router.reload
 
+    // AI Suggestions - decline the consent prompt to continue without generating
+    $page->assertSee('Let AI organize your money')
+        ->click('No thanks')
+        ->wait(2);
+
     // Categorize Transactions - 5 CSV transactions are loaded after the syncing step reloads
     $page->assertSee('Categorize Your Transactions')
         ->click("Let's start")
@@ -480,6 +591,69 @@ it('completes entire onboarding flow with account creation, transaction import, 
 });
 
 // =============================================================================
+// AI Suggestions Consent Tests
+// =============================================================================
+
+it('activates AI directly without a consent prompt when a bank is connected', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $bank = Bank::factory()->create(['name' => 'Connected AI Bank']);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'banking_connection_id' => $connection->id,
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit('/onboarding?step=ai-suggestions');
+
+    // A linked bank already commits the user to a paid plan, so the consent
+    // prompt is skipped and AI is turned on for them. With no transactions yet
+    // the run stops at the "need more data" screen instead of calling the AI.
+    $page->wait(3)
+        ->assertDontSee('Let AI organize your money')
+        ->assertDontSee('Suggest my rules with AI')
+        ->assertSee('AI suggestions need more data')
+        ->assertNoJavascriptErrors();
+
+    expect($user->refresh()->hasActiveAiConsent())->toBeTrue();
+});
+
+it('asks for consent before activating AI when no bank is connected', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $this->actingAs($user);
+
+    expect($user->hasActiveAiConsent())->toBeFalse();
+
+    $page = visit('/onboarding?step=ai-suggestions');
+
+    // Free users must opt in, and are told AI commits them to picking a plan.
+    $page->wait(2)
+        ->assertSee('Let AI organize your money')
+        ->assertSee("AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.")
+        ->assertSee('Suggest my rules with AI')
+        ->assertNoJavascriptErrors();
+
+    // Nothing is activated until they explicitly accept.
+    expect($user->refresh()->hasActiveAiConsent())->toBeFalse();
+
+    $page->click('Suggest my rules with AI')
+        ->wait(3)
+        ->assertNoJavascriptErrors();
+
+    expect($user->refresh()->hasActiveAiConsent())->toBeTrue();
+});
+
+// =============================================================================
 // Subscribe Page Free Plan Tests
 // =============================================================================
 
@@ -493,6 +667,41 @@ it('shows free plan option on subscribe page when no bank was connected', functi
     $page = visit('/subscribe');
 
     $page->assertPathIs('/subscribe')
-        ->assertSee('Continue for free')
+        ->assertSee('Continue with the free plan')
+        ->assertDontSee('Need help?')
+        ->assertNoJavascriptErrors();
+});
+
+it('forces a plan choice on subscribe when a bank is connected', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user);
+
+    $page = visit('/subscribe');
+
+    $page->assertPathIs('/subscribe')
+        ->assertSee('Choose your plan')
+        ->assertSee('Need help?')
+        ->assertDontSee('Continue with the free plan')
+        ->assertNoJavascriptErrors();
+});
+
+it('forces a plan choice on subscribe when AI consent is active', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    $user->recordAiConsent();
+
+    $this->actingAs($user);
+
+    $page = visit('/subscribe');
+
+    $page->assertPathIs('/subscribe')
+        ->assertSee('Choose your plan')
+        ->assertSee('Need help?')
+        ->assertDontSee('Continue with the free plan')
         ->assertNoJavascriptErrors();
 });

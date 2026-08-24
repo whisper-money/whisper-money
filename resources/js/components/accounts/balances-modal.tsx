@@ -34,6 +34,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
+import { getCsrfToken } from '@/lib/csrf';
 import type { SharedData } from '@/types';
 import type { Account, AccountBalance } from '@/types/account';
 import {
@@ -158,12 +159,7 @@ export function BalancesModal({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
@@ -202,12 +198,7 @@ export function BalancesModal({
                 {
                     method: 'DELETE',
                     headers: {
-                        'X-XSRF-TOKEN': decodeURIComponent(
-                            document.cookie
-                                .split('; ')
-                                .find((row) => row.startsWith('XSRF-TOKEN='))
-                                ?.split('=')[1] || '',
-                        ),
+                        'X-XSRF-TOKEN': getCsrfToken(),
                         Accept: 'application/json',
                     },
                 },
@@ -321,7 +312,10 @@ export function BalancesModal({
                                         </TableRow>
                                     ) : (
                                         balances.map((balance) => (
-                                            <TableRow key={balance.id}>
+                                            <TableRow
+                                                key={balance.id}
+                                                className="[&>td]:align-middle"
+                                            >
                                                 <TableCell>
                                                     {formatDate(
                                                         balance.balance_date,
@@ -450,7 +444,6 @@ export function BalancesModal({
                                 value={editAmount}
                                 onChange={setEditAmount}
                                 currencyCode={account.currency_code}
-                                required
                             />
                         </div>
 

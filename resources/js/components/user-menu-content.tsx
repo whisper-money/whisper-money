@@ -1,3 +1,4 @@
+import DiscordIcon from '@/components/icons/DiscordIcon';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -17,6 +18,8 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     Eye,
     EyeOff,
+    Landmark,
+    LifeBuoy,
     LogOut,
     Map,
     MessageSquare,
@@ -26,9 +29,15 @@ import {
 
 interface UserMenuContentProps {
     user: User;
+    onOpenSupport: () => void;
+    onOpenIntegrationRequests: () => void;
 }
 
-export function UserMenuContent({ user }: UserMenuContentProps) {
+export function UserMenuContent({
+    user,
+    onOpenSupport,
+    onOpenIntegrationRequests,
+}: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const { isPrivacyModeEnabled, togglePrivacyMode } = usePrivacyMode();
     const { version } = usePage<SharedData>().props;
@@ -95,7 +104,19 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 <DropdownMenuItem asChild>
                     <a
                         className="block w-full cursor-pointer"
-                        href="https://whisper-money.canny.io/feature-requests"
+                        href="https://discord.gg/m8hUhx6D9D"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={cleanup}
+                    >
+                        <DiscordIcon className="mr-2 size-4" />
+                        {__('Community')}
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        className="block w-full cursor-pointer"
+                        href="https://whispermoney.userjot.com/"
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={cleanup}
@@ -107,7 +128,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 <DropdownMenuItem asChild>
                     <a
                         className="block w-full cursor-pointer"
-                        href="https://whisper-money.canny.io/"
+                        href="https://whispermoney.userjot.com/roadmap"
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={cleanup}
@@ -115,6 +136,24 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         <Map className="mr-2" />
                         {__('Roadmap')}
                     </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={() => {
+                        onOpenIntegrationRequests();
+                        cleanup();
+                    }}
+                >
+                    <Landmark className="mr-2" />
+                    {__('Request integration')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={() => {
+                        onOpenSupport();
+                        cleanup();
+                    }}
+                >
+                    <LifeBuoy className="mr-2" />
+                    {__('Support')}
                 </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

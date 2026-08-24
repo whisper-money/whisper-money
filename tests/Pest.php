@@ -1,15 +1,29 @@
 <?php
 
+use App\Enums\BankingConnectionStatus;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\BankingConnection;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Banking\BalanceSyncService;
+use App\Services\Banking\EnableBankingProvider;
+use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
+use App\Services\Banking\TransactionSyncService;
+use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Stripe\Collection as StripeCollection;
+use Stripe\Service\SubscriptionService;
+use Stripe\StripeClient;
+use Stripe\Subscription;
 use Tests\TestCase;
 
 /*
@@ -43,6 +57,20 @@ pest()->browser()->timeout(15000);
 pest()->beforeEach(function () {
     $this->withoutVite();
 })->in('Feature', 'Performance');
+
+/*
+|--------------------------------------------------------------------------
+| Block stray HTTP requests in Feature tests
+|--------------------------------------------------------------------------
+|
+| Any Feature test whose code path hits the network without a matching
+| Http::fake() should fail loudly instead of making a real request. Tests
+| that legitimately talk to external services register their own fakes,
+| which take precedence over this guard.
+*/
+pest()->beforeEach(function () {
+    Http::preventStrayRequests();
+})->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
@@ -152,6 +180,68 @@ function assertMaxQueries(int $max, Closure $callback, string $context = ''): vo
     expect($result['count'])->toBeLessThanOrEqual($max);
 }
 
+/**
+ * Build a fake Stripe subscription object for stats tests.
+ */
+function makeStripeSubscription(string $currency, int $unitAmount, string $interval, int $quantity = 1, int $intervalCount = 1): Subscription
+{
+    return Subscription::constructFrom([
+        'object' => 'subscription',
+        'currency' => $currency,
+        'items' => [
+            'object' => 'list',
+            'data' => [
+                [
+                    'object' => 'subscription_item',
+                    'quantity' => $quantity,
+                    'price' => [
+                        'object' => 'price',
+                        'unit_amount' => $unitAmount,
+                        'recurring' => [
+                            'interval' => $interval,
+                            'interval_count' => $intervalCount,
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+}
+
+/**
+ * @param  list<Subscription>  $subscriptions
+ */
+function makeSubscriptionCollection(array $subscriptions): StripeCollection
+{
+    return StripeCollection::constructFrom([
+        'object' => 'list',
+        'has_more' => false,
+        'data' => array_map(fn (Subscription $s) => $s->toArray(), $subscriptions),
+    ]);
+}
+
+/**
+ * Bind a mocked Stripe client that returns subscriptions per status.
+ *
+ * @param  array<string, list<Subscription>>  $byStatus
+ */
+function bindMockStripeClientForStats(array $byStatus): void
+{
+    $subscriptionService = Mockery::mock(SubscriptionService::class);
+
+    $subscriptionService->shouldReceive('all')
+        ->andReturnUsing(function (array $params) use ($byStatus): StripeCollection {
+            $status = $params['status'] ?? 'active';
+
+            return makeSubscriptionCollection($byStatus[$status] ?? []);
+        });
+
+    $stripeClient = Mockery::mock(StripeClient::class);
+    $stripeClient->subscriptions = $subscriptionService;
+
+    app()->bind(StripeClient::class, fn () => $stripeClient);
+}
+
 function createCategoryViaUI($page, string $name, string $color = 'green', string $type = 'Expense'): void
 {
     $page->click('Create Category')
@@ -196,4 +286,121 @@ function createAccountViaUI($page, string $displayName, string $bankName, string
         ->wait(0.3)
         ->click('[data-testid="submit-account"]')
         ->wait(2);
+}
+
+/**
+ * An EnableBankingProvider signing with a throwaway key, for tests that drive
+ * the real provider against a faked HTTP layer.
+ */
+function enableBankingProviderForTest(): EnableBankingProvider
+{
+    // Generated once per process rather than committed: a working RSA key in a
+    // public repo is a bad pattern to keep, and the signature is never verified
+    // by anything but the faked HTTP layer.
+    static $path = null;
+
+    if ($path === null) {
+        openssl_pkey_export(openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]), $privateKey);
+
+        $path = tempnam(sys_get_temp_dir(), 'enablebanking-test-key');
+        file_put_contents($path, $privateKey);
+    }
+
+    return new EnableBankingProvider('test-app-id', $path);
+}
+
+/**
+ * Run the banking sync job through the real syncer factory, binding any
+ * EnableBanking sync-service mocks the test provides so the resolved syncer
+ * uses them instead of the container defaults.
+ */
+function runSync(
+    SyncBankingConnectionJob $job,
+    ?object $transactionSync = null,
+    ?object $balanceSync = null,
+): void {
+    if ($transactionSync !== null) {
+        app()->instance(TransactionSyncService::class, $transactionSync);
+    }
+
+    if ($balanceSync !== null) {
+        app()->instance(BalanceSyncService::class, $balanceSync);
+    }
+
+    $job->handle(app(BankingConnectionSyncerFactory::class));
+}
+
+/**
+ * A connection whose accounts the bank serves unevenly. Production had a CaixaBank
+ * one in this shape for five weeks: account 1 importing transactions while accounts
+ * 2 and 3 sat frozen at the date of the last complete run.
+ */
+function enableBankingConnectionWithAccounts(int $count): BankingConnection
+{
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'last_synced_at' => now()->subDay(),
+        'consecutive_sync_failures' => 0,
+    ]);
+
+    for ($i = 1; $i <= $count; $i++) {
+        Account::factory()->connected()->create([
+            'user_id' => $user->id,
+            'banking_connection_id' => $connection->id,
+            'external_account_id' => "ext-{$i}",
+        ]);
+    }
+
+    return $connection;
+}
+
+function finalAttemptJobFor(BankingConnection $connection): SyncBankingConnectionJob
+{
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    return $job;
+}
+
+/**
+ * Fake the external currency-rate provider (the jsdelivr CDN and its pages.dev
+ * fallback) that CurrencyConversionService and ExchangeRateService fetch from,
+ * returning a deterministic 1:1 rate for every currency. Tests that trigger a
+ * currency conversion (e.g. the balance-evolution endpoint) can call this in
+ * their setup to stay hermetic under the stray-request guard.
+ *
+ * The stub only matches the provider's `/currencies/{code}.min.json` path and
+ * returns null otherwise, so it never shadows another test's own Http::fake()
+ * nor the stray-request guard for unrelated hosts.
+ */
+function fakeCurrencyApi(): void
+{
+    Http::fake(function (Request $request) {
+        if (! preg_match('#/currencies/([a-z0-9]+)\.min\.json#i', $request->url(), $matches)) {
+            return null;
+        }
+
+        $currency = strtolower($matches[1]);
+
+        return Http::response([
+            'date' => '2024-01-01',
+            $currency => [
+                'usd' => 1.0,
+                'eur' => 1.0,
+                'gbp' => 1.0,
+                'jpy' => 1.0,
+                'btc' => 1.0,
+                'eth' => 1.0,
+            ],
+        ]);
+    });
 }

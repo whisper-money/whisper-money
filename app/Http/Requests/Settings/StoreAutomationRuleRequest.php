@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
+use App\Models\AutomationRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreAutomationRuleRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -24,7 +27,7 @@ class StoreAutomationRuleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:'.AutomationRule::MAX_TITLE_LENGTH],
             'priority' => ['required', 'integer', 'min:0'],
             'rules_json' => ['required', 'json', function ($attribute, $value, $fail) {
                 $decoded = json_decode($value, true);
@@ -35,9 +38,7 @@ class StoreAutomationRuleRequest extends FormRequest
             'action_category_id' => [
                 'nullable',
                 'string',
-                Rule::exists('categories', 'id')->where(function ($query) {
-                    $query->where('user_id', auth()->id());
-                }),
+                $this->userOwned('categories'),
             ],
             'action_note' => ['nullable', 'string'],
             'action_note_iv' => ['nullable', 'string', 'required_with:action_note'],
@@ -46,9 +47,7 @@ class StoreAutomationRuleRequest extends FormRequest
                 'required',
                 'string',
                 'uuid',
-                Rule::exists('labels', 'id')->where(function ($query) {
-                    $query->where('user_id', auth()->id());
-                }),
+                $this->userOwned('labels'),
             ],
         ];
     }

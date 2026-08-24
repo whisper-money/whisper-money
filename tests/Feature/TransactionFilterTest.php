@@ -121,6 +121,30 @@ test('filter by category', function () {
     );
 });
 
+test('filtering by a parent category includes transactions from its descendants', function () {
+    $parent = Category::factory()->create(['user_id' => $this->user->id]);
+    $child = Category::factory()->childOf($parent)->create(['user_id' => $this->user->id]);
+    $grandchild = Category::factory()->childOf($child)->create(['user_id' => $this->user->id]);
+    $unrelated = Category::factory()->create(['user_id' => $this->user->id]);
+
+    foreach ([$parent, $child, $grandchild, $unrelated] as $category) {
+        Transaction::factory()->plaintext()->create([
+            'user_id' => $this->user->id,
+            'account_id' => $this->account->id,
+            'category_id' => $category->id,
+        ]);
+    }
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'category_ids' => $parent->id,
+    ]));
+
+    // Parent + child + grandchild, but not the unrelated category.
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 3)
+    );
+});
+
 test('filter by uncategorized', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
@@ -191,6 +215,41 @@ test('filter by label', function () {
     );
 });
 
+test('category and label filters combine with OR', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $txWithCategory = Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $category->id,
+    ]);
+
+    $txWithLabel = Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+    ]);
+    $txWithLabel->labels()->attach($label->id);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'category_ids' => $category->id,
+        'label_ids' => $label->id,
+    ]));
+
+    $ids = collect($response->viewData('page')['props']['transactions']['data'])->pluck('id');
+
+    expect($ids)->toHaveCount(2)
+        ->and($ids)->toContain($txWithCategory->id)
+        ->and($ids)->toContain($txWithLabel->id);
+});
+
 test('search matches description', function () {
     Transaction::factory()->plaintext()->create([
         'user_id' => $this->user->id,
@@ -211,6 +270,79 @@ test('search matches description', function () {
     $response->assertInertia(fn ($page) => $page
         ->has('transactions.data', 1)
         ->where('transactions.data.0.description', 'Grocery Store Purchase')
+    );
+});
+
+test('filter by creditor name', function () {
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => 'Amazon EU',
+    ]);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => 'Coffee Shop',
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'creditor_name' => 'Amazon',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.creditor_name', 'Amazon EU')
+        ->where('appliedFilters.creditor_name', 'Amazon')
+    );
+});
+
+test('filter by debtor name', function () {
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'debtor_name' => 'Payroll GmbH',
+    ]);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'debtor_name' => 'Other Sender',
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'debtor_name' => 'Payroll',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.debtor_name', 'Payroll GmbH')
+        ->where('appliedFilters.debtor_name', 'Payroll')
+    );
+});
+
+test('search matches counterparty names', function () {
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Card payment',
+        'creditor_name' => 'Amazon EU',
+    ]);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Card payment',
+        'creditor_name' => 'Coffee Shop',
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'search' => 'Amazon',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.creditor_name', 'Amazon EU')
     );
 });
 
@@ -480,5 +612,49 @@ test('filter by multiple categories including uncategorized', function () {
 
     $response->assertInertia(fn ($page) => $page
         ->has('transactions.data', 2)
+    );
+});
+
+test('paginates across pages when sorting by a nullable column with null values', function () {
+    Transaction::factory()->plaintext()->count(12)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => null,
+    ]);
+
+    Transaction::factory()->plaintext()->count(5)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => 'ACME',
+    ]);
+
+    $firstPage = actingAs($this->user)->get(route('transactions.index', [
+        'sort' => 'creditor_name',
+        'per_page' => 10,
+    ]));
+
+    $firstPage->assertSuccessful();
+
+    $nextPageUrl = $firstPage->getOriginalContent()->getData()['page']['props']['transactions']['next_page_url'];
+
+    expect($nextPageUrl)->not->toBeNull();
+
+    actingAs($this->user)->get($nextPageUrl)->assertSuccessful();
+});
+
+test('does not expose the sort alias attribute when sorting by a nullable column', function () {
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => null,
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'sort' => 'creditor_name',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->missing('transactions.data.0.creditor_name_sort')
     );
 });

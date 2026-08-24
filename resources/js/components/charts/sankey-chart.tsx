@@ -1,25 +1,25 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
-import { Separator } from '@/components/ui/separator';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
-import {
-    calculatePercentage,
-    GroupedCategory,
-    groupSmallCategories,
-} from '@/lib/sankey-utils';
+import { fetchJson } from '@/lib/fetch-json';
+import { groupSmallCategories } from '@/lib/sankey-utils';
 import { cn } from '@/lib/utils';
-import { Category } from '@/types/category';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { useMemo, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+    type ComponentProps,
+    type KeyboardEvent,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import { Layer, ResponsiveContainer, Sankey } from 'recharts';
 
 interface SankeyChartProps {
     data: SankeyData;
@@ -30,115 +30,48 @@ interface SankeyChartProps {
     period?: { from: Date; to: Date };
 }
 
-interface NodeData {
-    id: string;
-    label: string;
-    value: number;
+type FlowKind = 'income' | 'center' | 'expense';
+type LabelSide = 'left' | 'right' | 'onbar';
+
+// Fields we attach to each node; recharts spreads these onto the payload it
+// hands back to the custom node renderer, alongside its own layout data.
+interface FlowNode {
+    name: string;
+    amount: number;
     color: string;
-    y: number;
-    height: number;
-    column: 0 | 1 | 2;
-    category?: Category;
+    kind: FlowKind;
+    labelSide: LabelSide;
+    categoryId?: string;
+    expandable?: boolean;
+    expanded?: boolean;
 }
 
-interface LinkData {
-    source: string;
-    target: string;
+interface FlowLink {
+    source: number;
+    target: number;
     value: number;
-    sourceY: number;
-    targetY: number;
-    sourceHeight: number;
-    targetHeight: number;
 }
 
-const COLUMN_POSITIONS = [0.25, 0.5, 0.75];
-const NODE_WIDTH = 8;
-const NODE_PADDING = 6;
-const MIN_NODE_HEIGHT = 20;
-
-interface OtherCategoriesBreakdownProps {
-    categories: SankeyCategory[];
-    total: number;
-    currency: string;
-    grandTotal: number;
-    locale: string;
-    isPrivacyModeEnabled: boolean;
-}
-
-function OtherCategoriesBreakdown({
-    categories,
-    total,
-    currency,
-    grandTotal,
-    locale,
-    isPrivacyModeEnabled,
-}: OtherCategoriesBreakdownProps) {
-    const maskIfPrivate = (value: number) => {
-        const formatted = formatCurrency(value, currency, locale, 0, 0);
-        return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
-    };
-
-    return (
-        <div className="w-64">
-            <div className="space-y-3">
-                <div>
-                    <h4 className="text-sm font-medium">
-                        {__('Other Categories (')}
-                        {categories.length})
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                        {__('Categories below 5% of total')}
-                    </p>
-                </div>
-
-                <div className="max-h-60 space-y-1.5 overflow-y-auto">
-                    {categories.map((item) => {
-                        const percentage = calculatePercentage(
-                            item.amount,
-                            grandTotal,
-                        );
-                        return (
-                            <div
-                                key={item.category_id}
-                                className="flex items-center justify-between gap-3 text-xs"
-                            >
-                                <div className="flex items-center gap-2 truncate">
-                                    <div
-                                        className="size-2 shrink-0 rounded-full"
-                                        style={{
-                                            backgroundColor:
-                                                item.category.color ||
-                                                'var(--color-chart-4)',
-                                        }}
-                                    />
-
-                                    <span className="truncate">
-                                        {item.category.name}
-                                    </span>
-                                </div>
-                                <div className="flex shrink-0 items-center gap-2">
-                                    <span className="font-medium">
-                                        {maskIfPrivate(item.amount)}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                        {percentage.toFixed(1)}%
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between text-sm font-medium">
-                    <span>{__('Total')}</span>
-                    <span>{maskIfPrivate(total)}</span>
-                </div>
-            </div>
-        </div>
-    );
-}
+const NODE_WIDTH = 12;
+const LABEL_GAP = 6;
+const LABEL_HEIGHT = 30;
+// recharts stacks same-column nodes with exactly this vertical gap, so tiny
+// bars end up NODE_PADDING apart regardless of the canvas height. Keep it above
+// LABEL_HEIGHT (+ breathing room) so two adjacent labels can never overlap.
+const NODE_PADDING = LABEL_HEIGHT + 6;
+// On-bar labels (the hub, and an expanded parent) are bordered pills with two
+// lines, so they need a little more room than the plain side labels.
+const PILL_LABEL_HEIGHT = 44;
+// A Sankey is inherently horizontal, so on narrow screens we let it scroll
+// sideways (same pattern as the trend chart) rather than crushing the flows.
+const MIN_CHART_WIDTH = 560;
+// A drill-down adds a fourth column, so widen the canvas to keep it readable.
+const EXPANDED_MIN_CHART_WIDTH = 760;
+// Gives each node enough vertical room that its two-line label stays legible
+// even when a category's bar is tiny.
+const ROW_HEIGHT = 46;
+const MUTED_COLOR = 'var(--color-muted)';
+const CENTER_COLOR = 'var(--color-chart-1)';
 
 export function SankeyChart({
     data,
@@ -148,17 +81,108 @@ export function SankeyChart({
     groupingThreshold = 0.03,
     period,
 }: SankeyChartProps) {
-    const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-    const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+    const [containerWidth, setContainerWidth] = useState(600);
+    // A category id can appear on both sides (in- and outflows), so the open
+    // drill-down is keyed by side too, not just id.
+    const [expanded, setExpanded] = useState<{
+        id: string;
+        kind: FlowKind;
+    } | null>(null);
+    const [childrenById, setChildrenById] = useState<
+        Record<string, SankeyData>
+    >({});
+    const containerRef = useRef<HTMLDivElement>(null);
     const locale = useLocale();
     const { isPrivacyModeEnabled } = usePrivacyMode();
+    const { cashflowIncomeColor, cashflowExpenseColor, categoryBarColor } =
+        useChartColors();
 
-    const maskIfPrivate = (value: number) => {
+    const periodKey = period
+        ? `${period.from.getTime()}-${period.to.getTime()}`
+        : '';
+
+    const maskIfPrivate = (value: number): string => {
         const formatted = formatCurrency(value, currency, locale, 0, 0);
         return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
     };
 
-    const { nodes, links, isEmpty, otherGroups } = useMemo(() => {
+    const expandedId = expanded?.id ?? null;
+    const expandedKind = expanded?.kind ?? null;
+
+    const toggleExpand = (categoryId: string, kind: FlowKind) => {
+        setExpanded((previous) =>
+            previous?.id === categoryId && previous.kind === kind
+                ? null
+                : { id: categoryId, kind },
+        );
+    };
+
+    useEffect(() => {
+        const container = containerRef.current;
+
+        if (!container) {
+            return;
+        }
+
+        const updateWidth = () => setContainerWidth(container.clientWidth);
+        updateWidth();
+
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', updateWidth);
+
+            return () => window.removeEventListener('resize', updateWidth);
+        }
+
+        const observer = new ResizeObserver(updateWidth);
+        observer.observe(container);
+
+        return () => observer.disconnect();
+    }, []);
+
+    // A new period (or refreshed data) invalidates any open drill-down.
+    useEffect(() => {
+        setExpanded(null);
+        setChildrenById({});
+    }, [periodKey]);
+
+    // Lazily fetch the subcategories of the expanded parent.
+    useEffect(() => {
+        if (!period || !expandedId || childrenById[expandedId]) {
+            return;
+        }
+
+        const from = format(period.from, 'yyyy-MM-dd');
+        const to = format(period.to, 'yyyy-MM-dd');
+        let cancelled = false;
+
+        fetchJson<SankeyData>(
+            `/api/cashflow/sankey?from=${from}&to=${to}&parent=${expandedId}`,
+        )
+            .then((json) => {
+                if (!cancelled) {
+                    setChildrenById((previous) => ({
+                        ...previous,
+                        [expandedId]: json,
+                    }));
+                }
+            })
+            .catch((error) => {
+                // Collapse back so the node doesn't stay stuck "expanded" with
+                // no subcategories and no way forward.
+                if (!cancelled) {
+                    setExpanded((current) =>
+                        current?.id === expandedId ? null : current,
+                    );
+                }
+                console.error('Failed to fetch subcategories:', error);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [expandedId, childrenById, period, periodKey]);
+
+    const { chartData, isEmpty, nodeRows, subcatRows } = useMemo(() => {
         const {
             income_categories,
             expense_categories,
@@ -166,182 +190,193 @@ export function SankeyChart({
             total_expense,
         } = data;
 
-        if (total_income === 0 && total_expense === 0) {
-            return {
-                nodes: [],
-                links: [],
-                isEmpty: true,
-                otherGroups: {},
-            };
-        }
+        const nodes: FlowNode[] = [];
+        const links: FlowLink[] = [];
 
-        const nodeMap: Record<string, NodeData> = {};
-        const linkList: LinkData[] = [];
-        const otherGroupsMap: Record<string, GroupedCategory> = {};
-
-        // Calculate available height for nodes
-        const availableHeight = height - 40; // padding
-        const maxTotal = Math.max(total_income, total_expense);
-
-        // Group income categories
         const groupedIncome = groupSmallCategories(
             income_categories,
             total_income,
             groupingThreshold,
         );
+        // Both sides build identical node shapes; only the children key and
+        // the collapsed-label side (income to the left of the hub, expense to
+        // the right) differ.
+        const pushCategoryNodes = (
+            items: SankeyCategory[],
+            kind: 'income' | 'expense',
+        ) => {
+            const collapsedSide: LabelSide =
+                kind === 'income' ? 'left' : 'right';
+            const childrenKey =
+                kind === 'income' ? 'income_categories' : 'expense_categories';
 
-        // Create income nodes (left column)
-        let incomeY = 20;
-        const incomeNodes = groupedIncome.main.map((item) => {
-            const nodeHeight = Math.max(
-                MIN_NODE_HEIGHT,
-                (item.amount / maxTotal) * availableHeight * 0.5,
-            );
-            const node: NodeData = {
-                id: `income-${item.category_id}`,
-                label: item.category.name,
-                value: item.amount,
-                color: item.category.color || 'var(--color-chart-2)',
-                y: incomeY,
-                height: nodeHeight,
-                column: 0,
-                category: item.category,
-            };
-            incomeY += nodeHeight + NODE_PADDING;
-            return node;
-        });
+            items.forEach((item, index) => {
+                if (item.amount <= 0) {
+                    return;
+                }
 
-        // Add "Other" income node if needed
-        if (groupedIncome.other) {
-            const nodeHeight = Math.max(
-                MIN_NODE_HEIGHT,
-                (groupedIncome.other.total / maxTotal) * availableHeight * 0.5,
-            );
-            const otherNode: NodeData = {
-                id: 'income-other',
-                label: __('Other'),
-                value: groupedIncome.other.total,
-                color: 'var(--color-muted)',
-                y: incomeY,
-                height: nodeHeight,
-                column: 0,
-            };
-            incomeNodes.push(otherNode);
-            otherGroupsMap['income-other'] = groupedIncome.other;
-            incomeY += nodeHeight + NODE_PADDING;
-        }
+                const isExpanded =
+                    expandedKind === kind && item.category.id === expandedId;
+                // Keep the label beside the bar until the subcategories
+                // actually load, so it doesn't jump onto the bar and back
+                // during the fetch; an expanded parent's label moves onto the
+                // bar to clear room for its subcategory column.
+                const childrenLoaded =
+                    isExpanded &&
+                    (childrenById[item.category.id]?.[childrenKey]?.length ??
+                        0) > 0;
 
-        // Create center node (total cashflow)
-        const centerHeight = Math.max(
-            MIN_NODE_HEIGHT * 1.5,
-            (Math.max(total_income, total_expense) / maxTotal) *
-                availableHeight *
-                0.6,
-        );
-        const centerY = (height - centerHeight) / 2;
-        const centerNode: NodeData = {
-            id: 'center',
-            label: __('Cashflow'),
-            value: total_income - total_expense,
-            color: 'var(--color-chart-1)',
-            y: centerY,
-            height: centerHeight,
-            column: 1,
+                nodes.push({
+                    name: item.category.name,
+                    amount: item.amount,
+                    color: categoryBarColor(item.category.color, index),
+                    kind,
+                    labelSide: childrenLoaded ? 'onbar' : collapsedSide,
+                    categoryId: item.category.id,
+                    expandable: !!item.has_children,
+                    expanded: isExpanded,
+                });
+            });
         };
 
-        // Group expense categories
+        pushCategoryNodes(groupedIncome.main, 'income');
+        if (groupedIncome.other) {
+            nodes.push({
+                name: __('Other'),
+                amount: groupedIncome.other.total,
+                color: MUTED_COLOR,
+                kind: 'income',
+                labelSide: 'left',
+            });
+        }
+
+        const centerIndex = nodes.length;
+        nodes.push({
+            // "Net" rather than "Cashflow": the card title already reads
+            // "Cashflow", so the hub only needs to carry the net amount.
+            name: __('Net'),
+            amount: total_income - total_expense,
+            color: CENTER_COLOR,
+            kind: 'center',
+            labelSide: 'onbar',
+        });
+
         const groupedExpense = groupSmallCategories(
             expense_categories,
             total_expense,
             groupingThreshold,
         );
-
-        // Create expense nodes (right column)
-        let expenseY = 20;
-        const expenseNodes = groupedExpense.main.map((item) => {
-            const nodeHeight = Math.max(
-                MIN_NODE_HEIGHT,
-                (item.amount / maxTotal) * availableHeight * 0.5,
-            );
-            const node: NodeData = {
-                id: `expense-${item.category_id}`,
-                label: item.category.name,
-                value: item.amount,
-                color: item.category.color || 'var(--color-chart-3)',
-                y: expenseY,
-                height: nodeHeight,
-                column: 2,
-                category: item.category,
-            };
-            expenseY += nodeHeight + NODE_PADDING;
-            return node;
-        });
-
-        // Add "Other" expense node if needed
+        pushCategoryNodes(groupedExpense.main, 'expense');
         if (groupedExpense.other) {
-            const nodeHeight = Math.max(
-                MIN_NODE_HEIGHT,
-                (groupedExpense.other.total / maxTotal) * availableHeight * 0.5,
-            );
-            const otherNode: NodeData = {
-                id: 'expense-other',
-                label: __('Other'),
-                value: groupedExpense.other.total,
-                color: 'var(--color-muted)',
-                y: expenseY,
-                height: nodeHeight,
-                column: 2,
-            };
-            expenseNodes.push(otherNode);
-            otherGroupsMap['expense-other'] = groupedExpense.other;
-            expenseY += nodeHeight + NODE_PADDING;
+            nodes.push({
+                name: __('Other'),
+                amount: groupedExpense.other.total,
+                color: MUTED_COLOR,
+                kind: 'expense',
+                labelSide: 'right',
+            });
         }
 
-        // Add all nodes to map
-        incomeNodes.forEach((n) => (nodeMap[n.id] = n));
-        nodeMap[centerNode.id] = centerNode;
-        expenseNodes.forEach((n) => (nodeMap[n.id] = n));
+        nodes.forEach((node, index) => {
+            if (node.amount <= 0) {
+                return;
+            }
 
-        // Create links from income to center
-        let incomeLinkY = centerY;
-        incomeNodes.forEach((incomeNode) => {
-            const linkHeight = (incomeNode.value / total_income) * centerHeight;
-            linkList.push({
-                source: incomeNode.id,
-                target: 'center',
-                value: incomeNode.value,
-                sourceY: incomeNode.y + incomeNode.height / 2,
-                targetY: incomeLinkY + linkHeight / 2,
-                sourceHeight: incomeNode.height,
-                targetHeight: linkHeight,
-            });
-            incomeLinkY += linkHeight;
+            if (node.kind === 'income') {
+                links.push({
+                    source: index,
+                    target: centerIndex,
+                    value: node.amount,
+                });
+            } else if (node.kind === 'expense') {
+                links.push({
+                    source: centerIndex,
+                    target: index,
+                    value: node.amount,
+                });
+            }
         });
 
-        // Create links from center to expenses
-        let expenseLinkY = centerY;
-        expenseNodes.forEach((expenseNode) => {
-            const linkHeight =
-                (expenseNode.value / total_expense) * centerHeight;
-            linkList.push({
-                source: 'center',
-                target: expenseNode.id,
-                value: expenseNode.value,
-                sourceY: expenseLinkY + linkHeight / 2,
-                targetY: expenseNode.y + expenseNode.height / 2,
-                sourceHeight: linkHeight,
-                targetHeight: expenseNode.height,
-            });
-            expenseLinkY += linkHeight;
-        });
+        // Drill-down: split the expanded parent into its subcategory column.
+        // Expenses flow out of the hub (subcategories extend to the right);
+        // income flows into it (subcategories sit to the left), so the link
+        // direction and label side mirror by side.
+        let subcatRows = 0;
+        if (expandedId && expandedKind) {
+            const parentIndex = nodes.findIndex(
+                (node) =>
+                    node.kind === expandedKind &&
+                    node.categoryId === expandedId,
+            );
+            const kids = [
+                ...(expandedKind === 'income'
+                    ? (childrenById[expandedId]?.income_categories ?? [])
+                    : (childrenById[expandedId]?.expense_categories ?? [])),
+            ].sort((a, b) => b.amount - a.amount);
+
+            if (parentIndex >= 0) {
+                kids.forEach((kid, index) => {
+                    if (kid.amount <= 0) {
+                        return;
+                    }
+
+                    const childIndex = nodes.length;
+                    nodes.push({
+                        name: kid.category.name,
+                        amount: kid.amount,
+                        color: categoryBarColor(kid.category.color, index),
+                        kind: expandedKind,
+                        labelSide: expandedKind === 'income' ? 'left' : 'right',
+                        categoryId: kid.category.id,
+                    });
+                    links.push(
+                        expandedKind === 'income'
+                            ? {
+                                  source: childIndex,
+                                  target: parentIndex,
+                                  value: kid.amount,
+                              }
+                            : {
+                                  source: parentIndex,
+                                  target: childIndex,
+                                  value: kid.amount,
+                              },
+                    );
+                    subcatRows += 1;
+                });
+            }
+        }
+
+        const incomeRows =
+            groupedIncome.main.length + (groupedIncome.other ? 1 : 0);
+        const expenseRows =
+            groupedExpense.main.length + (groupedExpense.other ? 1 : 0);
+
+        // An income drill-down links children -> parent, so the subcategories
+        // land in the same leftmost column as the (non-expanded) income
+        // siblings rather than in their own column. That combined column — not
+        // any single side — bounds the height; under-counting it would let
+        // recharts derive a negative row scale and break the whole chart.
+        // Expense subcategories get their own column, so the plain max holds.
+        const leftmostRows =
+            expandedKind === 'income'
+                ? incomeRows - 1 + subcatRows
+                : incomeRows;
 
         return {
-            nodes: Object.values(nodeMap),
-            links: linkList,
-            isEmpty: false,
-            otherGroups: otherGroupsMap,
+            chartData: { nodes, links },
+            isEmpty: links.length === 0,
+            nodeRows: Math.max(leftmostRows, expenseRows, subcatRows),
+            subcatRows,
         };
-    }, [data, height, groupingThreshold]);
+    }, [
+        data,
+        groupingThreshold,
+        categoryBarColor,
+        expandedId,
+        expandedKind,
+        childrenById,
+    ]);
 
     if (isEmpty) {
         return (
@@ -357,260 +392,248 @@ export function SankeyChart({
         );
     }
 
-    const width = 600; // SVG viewBox width
+    const labelWidth = Math.max(
+        64,
+        Math.min(140, Math.round(containerWidth * 0.26)),
+    );
+    const sideMargin = labelWidth + LABEL_GAP;
+    // Grow the canvas so crowded sides (many expense categories) keep their
+    // labels legible instead of overlapping.
+    const chartHeight = Math.max(height, nodeRows * ROW_HEIGHT + 24);
+    const minChartWidth =
+        subcatRows > 0 ? EXPANDED_MIN_CHART_WIDTH : MIN_CHART_WIDTH;
+
+    const goToCategory = (categoryId: string) => {
+        if (!period) {
+            return;
+        }
+
+        router.visit(
+            transactionsIndex({
+                query: {
+                    category_ids: categoryId,
+                    date_from: format(period.from, 'yyyy-MM-dd'),
+                    date_to: format(period.to, 'yyyy-MM-dd'),
+                },
+            }).url,
+        );
+    };
+
+    const renderNode = ({
+        x,
+        y,
+        width,
+        height: nodeHeight,
+        index,
+        payload,
+    }: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        index: number;
+        payload: FlowNode;
+    }) => {
+        const node = payload;
+        const isPill = node.labelSide === 'onbar';
+        const expandable = !!node.expandable && !!node.categoryId && !!period;
+        const navigable = !expandable && !!node.categoryId && !!period;
+        const interactive = expandable || navigable;
+
+        const activate = () => {
+            if (expandable) {
+                toggleExpand(node.categoryId!, node.kind);
+            } else if (navigable) {
+                goToCategory(node.categoryId!);
+            }
+        };
+
+        const labelBoxHeight = isPill ? PILL_LABEL_HEIGHT : LABEL_HEIGHT;
+        const labelY = y + nodeHeight / 2 - labelBoxHeight / 2;
+        let labelX: number;
+        let labelBoxWidth: number;
+        let alignClass: string;
+
+        if (node.labelSide === 'left') {
+            labelX = 2;
+            labelBoxWidth = Math.max(0, x - LABEL_GAP - 2);
+            alignClass = 'items-end text-right';
+        } else if (node.labelSide === 'right') {
+            labelX = x + width + LABEL_GAP;
+            // Cap the width so a non-rightmost parent (one sitting to the left
+            // of an expanded subcategory column) can't stretch its label across
+            // that column.
+            labelBoxWidth = Math.max(
+                0,
+                Math.min(labelWidth, containerWidth - labelX - 2),
+            );
+            alignClass = 'items-start text-left';
+        } else {
+            labelBoxWidth = labelWidth;
+            labelX = x + width / 2 - labelWidth / 2;
+            alignClass = 'items-center text-center';
+        }
+
+        // The chevron points the way the subcategory column will open: income
+        // expands to the left (`<`, then `>` once open), expense to the right
+        // (`>`, then a downward `v` once open).
+        const ChevronIcon =
+            node.kind === 'income'
+                ? node.expanded
+                    ? ChevronRight
+                    : ChevronLeft
+                : node.expanded
+                  ? ChevronDown
+                  : ChevronRight;
+
+        return (
+            <Layer
+                key={`node-${index}`}
+                className={cn(interactive && 'cursor-pointer')}
+                role={expandable ? 'button' : navigable ? 'link' : undefined}
+                tabIndex={interactive ? 0 : undefined}
+                aria-label={
+                    expandable
+                        ? node.expanded
+                            ? `Collapse ${node.name}`
+                            : `Expand ${node.name}`
+                        : navigable
+                          ? `View ${node.name} transactions`
+                          : undefined
+                }
+                onClick={interactive ? activate : undefined}
+                onKeyDown={
+                    interactive
+                        ? (event: KeyboardEvent) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  activate();
+                              }
+                          }
+                        : undefined
+                }
+            >
+                <rect
+                    x={x}
+                    y={y}
+                    width={width}
+                    height={nodeHeight}
+                    rx={2}
+                    fill={node.color}
+                    fillOpacity={0.9}
+                />
+                <foreignObject
+                    x={labelX}
+                    y={labelY}
+                    width={labelBoxWidth}
+                    height={labelBoxHeight}
+                    className="overflow-visible"
+                >
+                    <div
+                        className={cn(
+                            'flex h-full flex-col justify-center gap-0.5 leading-tight',
+                            alignClass,
+                            isPill &&
+                                'rounded-md border border-border bg-background/90 px-1.5 py-0.5 shadow-sm',
+                        )}
+                    >
+                        <div
+                            className={cn(
+                                'flex max-w-full items-center gap-1',
+                                node.labelSide === 'left' && 'flex-row-reverse',
+                            )}
+                        >
+                            <span
+                                title={node.name}
+                                className="min-w-0 truncate text-[11px] font-medium text-foreground"
+                            >
+                                {node.name}
+                            </span>
+                            {expandable && (
+                                <ChevronIcon
+                                    aria-hidden="true"
+                                    className="size-3 shrink-0 text-muted-foreground"
+                                />
+                            )}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                            {maskIfPrivate(node.amount)}
+                        </span>
+                    </div>
+                </foreignObject>
+            </Layer>
+        );
+    };
+
+    const renderLink = ({
+        sourceX,
+        sourceY,
+        sourceControlX,
+        targetX,
+        targetY,
+        targetControlX,
+        linkWidth,
+        index,
+        payload,
+    }: {
+        sourceX: number;
+        sourceY: number;
+        sourceControlX: number;
+        targetX: number;
+        targetY: number;
+        targetControlX: number;
+        linkWidth: number;
+        index: number;
+        payload: { source: FlowNode; target: FlowNode };
+    }) => {
+        const kind =
+            payload.source.kind === 'center'
+                ? payload.target.kind
+                : payload.source.kind;
+        const stroke =
+            kind === 'income' ? cashflowIncomeColor : cashflowExpenseColor;
+
+        return (
+            <path
+                key={`link-${index}`}
+                d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
+                fill="none"
+                stroke={stroke}
+                strokeWidth={Math.max(1, linkWidth)}
+                strokeOpacity={0.4}
+            />
+        );
+    };
 
     return (
         <div className={cn('w-full overflow-x-auto', className)}>
-            <svg
-                viewBox={`0 0 ${width} ${height}`}
-                className="w-full"
-                style={{ minWidth: 400, maxWidth: '100%' }}
-                preserveAspectRatio="xMidYMid meet"
-            >
-                {/* Links */}
-                <g className="links">
-                    {links.map((link) => {
-                        const sourceNode = nodes.find(
-                            (n) => n.id === link.source,
-                        );
-                        const targetNode = nodes.find(
-                            (n) => n.id === link.target,
-                        );
-                        if (!sourceNode || !targetNode) return null;
-
-                        const sourceX =
-                            COLUMN_POSITIONS[sourceNode.column] * width +
-                            NODE_WIDTH / 2;
-                        const targetX =
-                            COLUMN_POSITIONS[targetNode.column] * width -
-                            NODE_WIDTH / 2;
-
-                        const linkId = `${link.source}-${link.target}`;
-                        const isHovered =
-                            hoveredLink === linkId ||
-                            hoveredNode === link.source ||
-                            hoveredNode === link.target;
-
-                        // Create a curved path
-                        const path = `
-                            M ${sourceX} ${link.sourceY - link.sourceHeight / 2}
-                            C ${(sourceX + targetX) / 2} ${link.sourceY - link.sourceHeight / 2},
-                              ${(sourceX + targetX) / 2} ${link.targetY - link.targetHeight / 2},
-                              ${targetX} ${link.targetY - link.targetHeight / 2}
-                            L ${targetX} ${link.targetY + link.targetHeight / 2}
-                            C ${(sourceX + targetX) / 2} ${link.targetY + link.targetHeight / 2},
-                              ${(sourceX + targetX) / 2} ${link.sourceY + link.sourceHeight / 2},
-                              ${sourceX} ${link.sourceY + link.sourceHeight / 2}
-                            Z
-                        `;
-
-                        return (
-                            <path
-                                key={linkId}
-                                d={path}
-                                fill={
-                                    sourceNode.column === 0
-                                        ? 'var(--color-chart-2)'
-                                        : 'var(--color-chart-3)'
-                                }
-                                fillOpacity={isHovered ? 0.6 : 0.3}
-                                className="transition-all duration-200"
-                                onMouseEnter={() => setHoveredLink(linkId)}
-                                onMouseLeave={() => setHoveredLink(null)}
-                            />
-                        );
-                    })}
-                </g>
-
-                {/* Nodes */}
-                <g className="nodes">
-                    {nodes.map((node) => {
-                        const x =
-                            COLUMN_POSITIONS[node.column] * width -
-                            NODE_WIDTH / 2;
-                        const isHovered = hoveredNode === node.id;
-                        const isOtherNode = node.id.endsWith('-other');
-                        const otherGroup = isOtherNode
-                            ? otherGroups[node.id]
-                            : null;
-                        const categoryUrl =
-                            node.category && period
-                                ? transactionsIndex({
-                                      query: {
-                                          category_ids: node.category.id,
-                                          date_from: format(
-                                              period.from,
-                                              'yyyy-MM-dd',
-                                          ),
-                                          date_to: format(
-                                              period.to,
-                                              'yyyy-MM-dd',
-                                          ),
-                                      },
-                                  }).url
-                                : null;
-                        const isNavigable =
-                            !isOtherNode && categoryUrl !== null;
-
-                        const nodeContent = (
-                            <g
-                                key={node.id}
-                                onMouseEnter={() => setHoveredNode(node.id)}
-                                onMouseLeave={() => setHoveredNode(null)}
-                                onClick={() => {
-                                    if (categoryUrl) {
-                                        router.visit(categoryUrl);
-                                    }
-                                }}
-                                onKeyDown={(event) => {
-                                    if (!categoryUrl) {
-                                        return;
-                                    }
-
-                                    if (
-                                        event.key === 'Enter' ||
-                                        event.key === ' '
-                                    ) {
-                                        event.preventDefault();
-                                        router.visit(categoryUrl);
-                                    }
-                                }}
-                                role={isNavigable ? 'link' : undefined}
-                                tabIndex={isNavigable ? 0 : undefined}
-                                aria-label={
-                                    isNavigable
-                                        ? `View ${node.label} transactions`
-                                        : undefined
-                                }
-                                className={cn(
-                                    'transition-all duration-200',
-                                    isOtherNode && 'cursor-pointer',
-                                    isNavigable && 'cursor-pointer',
-                                    !isOtherNode &&
-                                        !isNavigable &&
-                                        'cursor-default',
-                                )}
-                            >
-                                <rect
-                                    x={x}
-                                    y={node.y}
-                                    width={NODE_WIDTH}
-                                    height={node.height}
-                                    rx={2}
-                                    fill={
-                                        node.id === 'center'
-                                            ? 'var(--color-chart-1)'
-                                            : node.color
-                                    }
-                                    fillOpacity={
-                                        isOtherNode
-                                            ? isHovered
-                                                ? 1
-                                                : 0.6
-                                            : isHovered
-                                              ? 1
-                                              : 0.8
-                                    }
-                                    stroke={
-                                        isOtherNode ? 'var(--border)' : 'none'
-                                    }
-                                    strokeWidth={isOtherNode ? 1 : 0}
-                                    className="transition-all duration-200"
-                                />
-
-                                {/* Label */}
-                                <text
-                                    x={
-                                        node.column === 0
-                                            ? x - 6
-                                            : node.column === 2
-                                              ? x + NODE_WIDTH + 6
-                                              : x + NODE_WIDTH / 2
-                                    }
-                                    y={node.y + node.height / 2 - 6}
-                                    textAnchor={
-                                        node.column === 0
-                                            ? 'end'
-                                            : node.column === 2
-                                              ? 'start'
-                                              : 'middle'
-                                    }
-                                    dominantBaseline="middle"
-                                    className="fill-foreground text-[9px] font-medium"
-                                >
-                                    {node.label}
-                                    {isOtherNode && (
-                                        <tspan className="fill-muted-foreground">
-                                            {' '}
-                                            ⋯
-                                        </tspan>
-                                    )}
-                                </text>
-                                {/* Amount */}
-                                <text
-                                    x={
-                                        node.column === 0
-                                            ? x - 6
-                                            : node.column === 2
-                                              ? x + NODE_WIDTH + 6
-                                              : x + NODE_WIDTH / 2
-                                    }
-                                    y={node.y + node.height / 2 + 6}
-                                    textAnchor={
-                                        node.column === 0
-                                            ? 'end'
-                                            : node.column === 2
-                                              ? 'start'
-                                              : 'middle'
-                                    }
-                                    dominantBaseline="middle"
-                                    className="fill-muted-foreground text-[9px]"
-                                >
-                                    {maskIfPrivate(node.value)}
-                                </text>
-                            </g>
-                        );
-
-                        // Wrap "Other" nodes in Popover
-                        if (isOtherNode && otherGroup) {
-                            const grandTotal = node.id.startsWith('income-')
-                                ? data.total_income
-                                : data.total_expense;
-
-                            return (
-                                <Popover key={node.id}>
-                                    <PopoverTrigger
-                                        asChild
-                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${maskIfPrivate(otherGroup.total)}`}
-                                    >
-                                        {nodeContent}
-                                    </PopoverTrigger>
-                                    <PopoverContent
-                                        align={
-                                            node.column === 0 ? 'start' : 'end'
-                                        }
-                                        side="top"
-                                        className="p-4"
-                                    >
-                                        <OtherCategoriesBreakdown
-                                            categories={otherGroup.categories}
-                                            total={otherGroup.total}
-                                            currency={currency}
-                                            grandTotal={grandTotal}
-                                            locale={locale}
-                                            isPrivacyModeEnabled={
-                                                isPrivacyModeEnabled
-                                            }
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            );
+            <div ref={containerRef} style={{ minWidth: minChartWidth }}>
+                <ResponsiveContainer width="100%" height={chartHeight}>
+                    <Sankey
+                        data={chartData}
+                        node={
+                            renderNode as ComponentProps<typeof Sankey>['node']
                         }
-
-                        return nodeContent;
-                    })}
-                </g>
-            </svg>
+                        link={
+                            renderLink as ComponentProps<typeof Sankey>['link']
+                        }
+                        nodeWidth={NODE_WIDTH}
+                        nodePadding={NODE_PADDING}
+                        sort={false}
+                        // 'left' keeps sink nodes at their natural depth instead
+                        // of shoving them all into the last column, so an
+                        // expanded parent's subcategories get their own column
+                        // and line up beside it rather than crossing every flow.
+                        align="left"
+                        margin={{
+                            top: 12,
+                            right: sideMargin,
+                            bottom: 12,
+                            left: sideMargin,
+                        }}
+                    />
+                </ResponsiveContainer>
+            </div>
         </div>
     );
 }

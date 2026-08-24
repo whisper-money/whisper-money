@@ -7,20 +7,15 @@ use App\Http\Requests\Settings\ApplyAutomationRuleRequest;
 use App\Jobs\ApplySingleAutomationRuleJob;
 use App\Models\AutomationRule;
 use App\Models\Transaction;
-use App\Services\AutomationRuleService;
+use App\Services\AutomationRuleApplier;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 
 class AutomationRuleApplicationController extends Controller
 {
     use AuthorizesRequests;
-
-    private const SYNC_THRESHOLD = 100;
-
-    private const MATCHES_CACHE_TTL_MINUTES = 15;
 
     private const PER_PAGE_DEFAULT = 50;
 
@@ -32,7 +27,7 @@ class AutomationRuleApplicationController extends Controller
     public function matches(
         Request $request,
         AutomationRule $automationRule,
-        AutomationRuleService $service,
+        AutomationRuleApplier $applier,
     ): JsonResponse {
         $this->authorize('update', $automationRule);
 
@@ -40,13 +35,13 @@ class AutomationRuleApplicationController extends Controller
         $offset = max(0, (int) $request->integer('offset', 0));
         $perPage = min(self::PER_PAGE_MAX, max(1, (int) $request->integer('per_page', self::PER_PAGE_DEFAULT)));
 
-        $matchingIds = $this->resolveMatchingIds($automationRule, $service, $onlyUncategorized);
+        $matchingIds = $applier->matchingIds($automationRule, $onlyUncategorized);
         $total = count($matchingIds);
         $pageIds = array_slice($matchingIds, $offset, $perPage);
 
         $transactions = Transaction::query()
             ->whereIn('id', $pageIds)
-            ->with(['account:id,name,bank_id', 'account.bank:id,name', 'category:id,name,icon,color', 'labels:id,name,color'])
+            ->with(['account.bank', 'category', 'labels'])
             ->orderByDesc('transaction_date')
             ->orderByDesc('created_at')
             ->get();
@@ -75,14 +70,12 @@ class AutomationRuleApplicationController extends Controller
     public function apply(
         ApplyAutomationRuleRequest $request,
         AutomationRule $automationRule,
-        AutomationRuleService $service,
+        AutomationRuleApplier $applier,
     ): JsonResponse {
         $this->authorize('update', $automationRule);
 
-        $automationRule->loadMissing('labels');
-
         $onlyUncategorized = (bool) $request->boolean('only_uncategorized', true);
-        $matchingIds = $this->resolveMatchingIds($automationRule, $service, $onlyUncategorized);
+        $matchingIds = $applier->matchingIds($automationRule, $onlyUncategorized);
         $total = count($matchingIds);
 
         if ($total === 0) {
@@ -95,49 +88,20 @@ class AutomationRuleApplicationController extends Controller
             ]);
         }
 
-        if ($total <= self::SYNC_THRESHOLD) {
-            $changed = 0;
-
-            $transactions = Transaction::query()
-                ->where('user_id', $automationRule->user_id)
-                ->whereIn('id', $matchingIds)
-                ->whereNull('description_iv')
-                ->with(['account.bank', 'category', 'labels'])
-                ->get();
-
-            foreach ($transactions as $transaction) {
-                if ($service->applyRuleActions($transaction, $automationRule)) {
-                    $changed++;
-                }
-            }
-
-            $applied = $transactions->count();
-
-            $this->forgetMatchesCache($automationRule, $onlyUncategorized);
+        if ($total <= AutomationRuleApplier::SYNC_THRESHOLD) {
+            $result = $applier->applyNow($automationRule, $matchingIds, $onlyUncategorized);
 
             return response()->json([
                 'status' => 'done',
-                'processed' => $applied,
+                'processed' => $result['applied'],
                 'total' => $total,
-                'applied' => $applied,
-                'updated' => $changed,
+                'applied' => $result['applied'],
+                'updated' => $result['updated'],
             ]);
         }
 
-        $jobId = (string) Str::uuid();
-
-        Cache::put(
-            ApplySingleAutomationRuleJob::cacheKeyForJobId($jobId),
-            ['status' => 'pending', 'processed' => 0, 'total' => $total, 'applied' => 0, 'updated' => 0],
-            now()->addHour(),
-        );
-
-        ApplySingleAutomationRuleJob::dispatch($automationRule, $jobId, $matchingIds);
-
-        $this->forgetMatchesCache($automationRule, $onlyUncategorized);
-
         return response()->json([
-            'job_id' => $jobId,
+            'job_id' => $applier->queue($automationRule, $matchingIds, $onlyUncategorized),
             'total' => $total,
         ], 202);
     }
@@ -147,71 +111,12 @@ class AutomationRuleApplicationController extends Controller
      */
     public function status(Request $request, string $jobId): JsonResponse
     {
-        $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($jobId));
+        $progress = Cache::get(ApplySingleAutomationRuleJob::cacheKeyForJobId($request->user()->id, $jobId));
 
         if ($progress === null) {
             return response()->json(['message' => 'Job not found.'], 404);
         }
 
         return response()->json($progress);
-    }
-
-    /**
-     * Resolve and cache the list of transaction IDs matching this rule.
-     *
-     * @return array<int, string>
-     */
-    private function resolveMatchingIds(
-        AutomationRule $rule,
-        AutomationRuleService $service,
-        bool $onlyUncategorized,
-    ): array {
-        $cacheKey = $this->matchesCacheKey($rule, $onlyUncategorized);
-
-        $cached = Cache::get($cacheKey);
-        if (is_array($cached)) {
-            return array_values(array_unique($cached));
-        }
-
-        $rule->loadMissing('labels');
-
-        $ids = [];
-
-        Transaction::query()
-            ->where('user_id', $rule->user_id)
-            ->whereNull('description_iv')
-            ->with(['account.bank', 'category', 'labels'])
-            ->orderByDesc('transaction_date')
-            ->orderByDesc('created_at')
-            ->chunkById(500, function ($transactions) use ($rule, $service, $onlyUncategorized, &$ids) {
-                foreach ($transactions as $transaction) {
-                    if ($onlyUncategorized && $service->shouldSkipForOnlyUncategorized($rule, $transaction)) {
-                        continue;
-                    }
-
-                    if ($service->ruleMatches($rule, $transaction)) {
-                        $ids[] = $transaction->id;
-                    }
-                }
-            });
-
-        $ids = array_values(array_unique($ids));
-
-        Cache::put($cacheKey, $ids, now()->addMinutes(self::MATCHES_CACHE_TTL_MINUTES));
-
-        return $ids;
-    }
-
-    private function matchesCacheKey(AutomationRule $rule, bool $onlyUncategorized): string
-    {
-        $flag = $onlyUncategorized ? '1' : '0';
-        $stamp = $rule->updated_at?->getTimestamp() ?? 0;
-
-        return "automation_rule_matches:{$rule->user_id}:{$rule->id}:{$flag}:{$stamp}";
-    }
-
-    private function forgetMatchesCache(AutomationRule $rule, bool $onlyUncategorized): void
-    {
-        Cache::forget($this->matchesCacheKey($rule, $onlyUncategorized));
     }
 }

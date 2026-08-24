@@ -2,11 +2,16 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
+use App\Features\SavingsGoals;
+use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
+use App\Models\User;
 use App\Services\CurrencyOptions;
+use App\Services\Subscriptions\PriceExperiment;
+use Closure;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -47,8 +52,6 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
-        $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local');
-        $isDemoQuery = $request->query('demo') === '1';
 
         // Cache encryption checks to avoid duplicate queries
         $hasEncryptedAccounts = $user?->accounts()->where('encrypted', true)->exists() ?? false;
@@ -56,12 +59,12 @@ class HandleInertiaRequests extends Middleware
             ->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
             ->exists() ?? false;
 
-        // Clean up encryption data if no encrypted accounts or transactions remain
-        if (! $request->is('api/*') && $user?->encryption_salt !== null) {
-            if (! $hasEncryptedAccounts && ! $hasEncryptedTransactions) {
-                $user->encryptedMessage()->delete();
-                $user->update(['encryption_salt' => null]);
-            }
+        // A shared-data provider must stay read-only, so hand the residual
+        // encryption cleanup off to a queued job instead of mutating the user
+        // inline during the render. The job re-checks the condition and is
+        // idempotent, so dispatching it on repeat requests is harmless.
+        if ($this->hasResidualEncryptionArtifacts($request, $user, $hasEncryptedAccounts, $hasEncryptedTransactions)) {
+            PurgeResidualEncryptionArtifactsJob::dispatch($user);
         }
 
         return [
@@ -79,19 +82,19 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 'hasProPlan' => $user?->hasProPlan() ?? false,
-                'isDemoAccount' => $isDemoAccount,
+                'isDemoAccount' => $user?->isRestrictedDemoAccount() ?? false,
+                'isSharedAccount' => $user?->isRestrictedSharedAccount() ?? false,
             ],
             'subscriptionPaymentIssue' => $user?->hasPastDueSubscription() ? [
                 'status' => 'past_due',
                 'action_url' => route('settings.billing.portal'),
             ] : null,
-            'demoCredentials' => ($isDemoQuery || $isDemoAccount) ? [
-                'email' => config('app.demo.email'),
-                'password' => config('app.demo.password'),
-            ] : null,
+            'demoEnabled' => (bool) config('app.demo.enabled'),
+            'demoCredentials' => $this->demoCredentials($request, $user),
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
+            'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
             'pricing' => [
-                'plans' => config('subscriptions.plans', []),
+                'plans' => PriceExperiment::plansFor($user, $request->cookie(PriceExperiment::COOKIE)),
                 'defaultPlan' => config('subscriptions.default_plan', 'monthly'),
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),
@@ -102,66 +105,7 @@ class HandleInertiaRequests extends Middleware
             'includeRealEstateInNetWorthChart' => $user?->setting->include_real_estate_in_net_worth_chart ?? true,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => $this->resolveFeatureFlags(),
-            'expiredBankingConnections' => fn () => $user ? $user->bankingConnections()
-                ->where('provider', 'enablebanking')
-                ->where(function ($query) {
-                    $query->where('status', BankingConnectionStatus::Expired)
-                        ->orWhere(function ($query) {
-                            $query->whereNotNull('valid_until')
-                                ->where('valid_until', '<=', now());
-                        });
-                })
-                ->orderBy('valid_until')
-                ->limit(5)
-                ->get(['id', 'aspsp_name', 'provider', 'valid_until'])
-                ->map(fn (BankingConnection $connection): array => [
-                    'id' => $connection->id,
-                    'aspsp_name' => $connection->aspsp_name,
-                    'provider' => $connection->provider,
-                    'valid_until' => $connection->valid_until?->toIso8601String(),
-                    'reconnect_url' => route('open-banking.reconnect', $connection),
-                ]) : [],
-            'accounts' => fn () => $user ? $user->accounts()
-                ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
-                ->orderBy('name')
-                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code'])
-                ->map(function ($account) {
-                    $data = $account->only([
-                        'id',
-                        'name',
-                        'name_iv',
-                        'encrypted',
-                        'bank_id',
-                        'type',
-                        'currency_code',
-                        'bank',
-                    ]);
-
-                    if ($account->type === AccountType::RealEstate) {
-                        $data['linked_loan_account_id'] = $account->realEstateDetail?->linked_loan_account_id;
-                    }
-
-                    return $data;
-                }) : [],
-            'categories' => fn () => $user ? $user->categories()
-                ->orderBy('name')
-                ->get(['id', 'name', 'icon', 'color']) : [],
-            'banks' => fn () => $user ? $user->banks()
-                ->orderBy('name')
-                ->get(['id', 'name', 'logo']) : [],
-            'automationRules' => function () use ($user) {
-                if (! $user) {
-                    return [];
-                }
-
-                return $user->automationRules()
-                    ->with(['category:id,name,icon,color', 'labels:id,name,color'])
-                    ->orderBy('priority')
-                    ->get();
-            },
-            'labels' => fn () => $user ? $user->labels()
-                ->orderBy('name')
-                ->get(['id', 'name', 'color']) : [],
+            ...$this->userCollectionProps($user),
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
             'hasEncryptionSetup' => $user?->encryption_salt !== null,
             'hasEncryptedTransactions' => $hasEncryptedTransactions,
@@ -175,17 +119,133 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
+     * The deferred props that list the user's own records. Guests get empty lists
+     * so the frontend can read them unconditionally.
+     *
+     * @return array<string, Closure>
+     */
+    private function userCollectionProps(?User $user): array
+    {
+        if ($user === null) {
+            return array_fill_keys([
+                'expiredBankingConnections',
+                'bankingConnections',
+                'accounts',
+                'categories',
+                'banks',
+                'automationRules',
+                'labels',
+            ], fn () => []);
+        }
+
+        return [
+            'expiredBankingConnections' => fn () => $user->bankingConnections()
+                ->where('provider', BankingProvider::EnableBanking)
+                ->where(function ($query) {
+                    $query->where('status', BankingConnectionStatus::Expired)
+                        ->orWhere(function ($query) {
+                            $query->whereNotNull('valid_until')
+                                ->where('valid_until', '<=', now());
+                        });
+                })
+                ->orderBy('valid_until')
+                ->limit(5)
+                ->get(['id', 'aspsp_name', 'provider', 'valid_until'])
+                ->map(fn (BankingConnection $connection): array => [
+                    'id' => $connection->id,
+                    'aspsp_name' => $connection->aspsp_name,
+                    'provider' => $connection->provider->value,
+                    'valid_until' => $connection->valid_until?->toIso8601String(),
+                    'reconnect_url' => route('open-banking.reconnect', $connection),
+                ])
+                ->all(),
+            'bankingConnections' => fn () => $user->bankingConnections()
+                ->get(['id', 'aspsp_name', 'provider', 'status'])
+                ->map(fn (BankingConnection $connection): array => [
+                    'id' => $connection->id,
+                    'aspsp_name' => $connection->aspsp_name,
+                    'provider' => $connection->provider->value,
+                    'status' => $connection->status->value,
+                ])
+                ->all(),
+            'accounts' => fn () => $user->accounts()
+                ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
+                ->orderBy('name')
+                ->get()
+                ->makeHidden('realEstateDetail'),
+            'categories' => fn () => $user->categories()
+                ->forDisplay()
+                ->get(),
+            'banks' => fn () => $user->banks()
+                ->orderBy('name')
+                ->get(),
+            'automationRules' => fn () => $user->automationRules()
+                ->with(['category', 'labels'])
+                ->orderBy('priority')
+                ->get(),
+            'labels' => fn () => $user->labels()
+                ->orderBy('name')
+                ->get(),
+        ];
+    }
+
+    /**
+     * The demo login is prefilled for whoever asked for it (?demo=1) and for the
+     * demo account itself, so it can sign back in after logging out.
+     *
+     * @return array{email: ?string, password: ?string}|null
+     */
+    private function demoCredentials(Request $request, ?User $user): ?array
+    {
+        $wantsDemo = $request->query('demo') === '1' || ($user?->isRestrictedDemoAccount() ?? false);
+
+        if (! config('app.demo.enabled') || ! $wantsDemo) {
+            return null;
+        }
+
+        return [
+            'email' => config('app.demo.email'),
+            'password' => config('app.demo.password'),
+        ];
+    }
+
+    /**
+     * True when the user finished decrypting their data but the encryption salt
+     * and other artifacts are still on the row, so the cleanup job has work.
+     * Skipped for API requests, which are not a render path.
+     */
+    private function hasResidualEncryptionArtifacts(Request $request, ?User $user, bool $hasEncryptedAccounts, bool $hasEncryptedTransactions): bool
+    {
+        return ! $request->is('api/*')
+            && $user?->encryption_salt !== null
+            && ! $hasEncryptedAccounts
+            && ! $hasEncryptedTransactions;
+    }
+
+    /**
      * @return array<string, bool>
      */
     protected function resolveFeatureFlags(): array
     {
         $user = request()->user();
 
+        if (! $user) {
+            return [
+                'cashflow' => true,
+                'calculateBalancesOnImport' => false,
+                'savingsGoals' => false,
+            ];
+        }
+
+        $features = Feature::for($user)->values([
+            CalculateBalancesOnImport::class,
+            SavingsGoals::class,
+        ]);
+
         return [
             'cashflow' => true,
-            'calculateBalancesOnImport' => $user
-                ? Feature::for($user)->active(CalculateBalancesOnImport::class)
-                : false,
+            'calculateBalancesOnImport' => $features[CalculateBalancesOnImport::class] !== false,
+            'savingsGoals' => $features[SavingsGoals::class] !== false,
         ];
     }
 

@@ -68,6 +68,8 @@ beforeEach(function () {
         ],
         'subscriptions.products.pro' => 'prod_test123',
         'cashier.currency' => 'eur',
+        // Base-plan tests isolate the plans loop; variant syncing has its own test.
+        'subscriptions.price_experiment.variants' => [],
     ]);
 });
 
@@ -147,5 +149,27 @@ test('returns success and warns when no plans are configured', function () {
 
     $this->artisan('stripe:sync-prices')
         ->expectsOutputToContain('No plans found')
+        ->assertSuccessful();
+});
+
+test('syncs the price-experiment variant tiers alongside the base plans', function () {
+    config([
+        'subscriptions.price_experiment.variants' => [
+            'high' => [
+                'monthly' => ['price' => 8.99, 'lookup' => 'whisper_pro_monthly_high'],
+                'yearly' => ['price' => 53.94, 'lookup' => 'whisper_pro_yearly_high'],
+            ],
+        ],
+    ]);
+
+    // Base plans already in sync; both high tiers are new → 2 created, 2 skipped.
+    bindMockStripeClientForSync([
+        'whisper_pro_monthly' => makeStripePrice('price_monthly', 399, 'eur', 'month'),
+        'whisper_pro_yearly' => makeStripePrice('price_yearly', 2388, 'eur', 'year'),
+    ]);
+
+    $this->artisan('stripe:sync-prices')
+        ->expectsOutputToContain('(price: high)')
+        ->expectsOutputToContain('2 created, 0 updated, 2 skipped')
         ->assertSuccessful();
 });

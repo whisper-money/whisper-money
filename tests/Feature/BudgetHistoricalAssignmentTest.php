@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\assertDatabaseHas;
@@ -23,12 +24,67 @@ test('budget creation dispatches the historical assignment job', function () {
         'name' => 'Test Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
 
     Queue::assertPushed(AssignHistoricalTransactionsToBudget::class);
+});
+
+test('budget creation dispatches the historical assignment job for the current and previous periods', function () {
+    Queue::fake();
+
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $this->actingAs($this->user)->post('/budgets', [
+        'name' => 'Test Budget',
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+        'category_ids' => [$category->id],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 100000,
+    ]);
+
+    Queue::assertPushed(AssignHistoricalTransactionsToBudget::class, 2);
+
+    $budget = $this->user->budgets()->first();
+
+    expect($budget->periods()->count())->toBe(2);
+});
+
+test('historical transactions in the previous period are assigned for comparison', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $previousPeriodTransaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subMonthNoOverflow()->startOfMonth(),
+        'amount' => -4000,
+    ]);
+
+    $response = $this->actingAs($this->user)->post('/budgets', [
+        'name' => 'Comparison Budget',
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+        'category_ids' => [$category->id],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 100000,
+    ]);
+
+    $response->assertRedirect();
+
+    $this->artisan('queue:work --stop-when-empty');
+
+    $budget = $this->user->budgets()->first();
+    $previousPeriod = $budget->periods()->orderBy('start_date')->first();
+
+    expect($previousPeriod->start_date->toDateString())->toBe(now()->subMonthNoOverflow()->startOfMonth()->toDateString());
+
+    assertDatabaseHas('budget_transactions', [
+        'transaction_id' => $previousPeriodTransaction->id,
+        'budget_period_id' => $previousPeriod->id,
+    ]);
 });
 
 test('historical transactions matching by category are assigned', function () {
@@ -54,7 +110,7 @@ test('historical transactions matching by category are assigned', function () {
         'name' => 'Category Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -91,7 +147,7 @@ test('historical transactions matching by label are assigned', function () {
         'name' => 'Label Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'label_id' => $label->id,
+        'label_ids' => [$label->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -131,7 +187,7 @@ test('transactions outside the period date range are not assigned', function () 
         'name' => 'Date Range Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -179,7 +235,7 @@ test('transactions on boundary dates are assigned', function () {
         'name' => 'Boundary Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -217,7 +273,7 @@ test('soft deleted transactions are not assigned', function () {
         'name' => 'Soft Delete Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -248,7 +304,7 @@ test('duplicate assignments are prevented', function () {
         'name' => 'Duplicate Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -258,7 +314,7 @@ test('duplicate assignments are prevented', function () {
 
     // Get the budget and period
     $budget = $this->user->budgets()->first();
-    $period = $budget->periods()->first();
+    $period = $budget->getCurrentPeriod();
 
     // Count initial assignments
     $initialCount = BudgetTransaction::where('transaction_id', $transaction->id)
@@ -303,7 +359,7 @@ test('multiple budgets assign independently', function () {
         'name' => 'Budget 1',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category1->id,
+        'category_ids' => [$category1->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -313,7 +369,7 @@ test('multiple budgets assign independently', function () {
         'name' => 'Budget 2',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category2->id,
+        'category_ids' => [$category2->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -325,8 +381,8 @@ test('multiple budgets assign independently', function () {
     $budget1 = $this->user->budgets()->where('name', 'Budget 1')->first();
     $budget2 = $this->user->budgets()->where('name', 'Budget 2')->first();
 
-    $period1 = $budget1->periods()->first();
-    $period2 = $budget2->periods()->first();
+    $period1 = $budget1->getCurrentPeriod();
+    $period2 = $budget2->getCurrentPeriod();
 
     // Transaction 1 should only be in budget 1
     assertDatabaseHas('budget_transactions', [
@@ -349,4 +405,46 @@ test('multiple budgets assign independently', function () {
         'transaction_id' => $transaction2->id,
         'budget_period_id' => $period1->id,
     ]);
+});
+
+test('a biweekly budget counts a spend in its previous period once, not twice', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    // Dated in the week the current period and its predecessor used to share:
+    // the current fortnight opens 2026-08-16, and the old reference date put the
+    // predecessor at 08-09..08-22.
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => '2026-08-18',
+        'amount' => -5000,
+    ]);
+
+    $this->actingAs($this->user)->post('/budgets', [
+        'name' => 'Fortnightly',
+        'period_type' => 'biweekly',
+        'period_start_day' => 0,
+        'category_ids' => [$category->id],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 100000,
+    ])->assertRedirect();
+
+    $this->artisan('queue:work --stop-when-empty');
+
+    // Scoped to the budget rather than to one period: the existing duplicate
+    // test counts within a single `budget_period_id`, which is exactly why a
+    // transaction sitting in two overlapping periods of the same budget went
+    // unnoticed. `BudgetService::create` hands both periods to the backfill.
+    $rows = BudgetTransaction::where('transaction_id', $transaction->id)
+        ->whereIn(
+            'budget_period_id',
+            $this->user->budgets()->first()->periods()->pluck('id'),
+        )
+        ->count();
+
+    expect($rows)->toBe(1);
+
+    Carbon::setTestNow();
 });

@@ -22,6 +22,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Public Registration
+    |--------------------------------------------------------------------------
+    |
+    | When disabled, public sign-ups are closed: the /register routes return a
+    | 403 and every registration CTA is hidden, while /login stays open. The
+    | routes themselves remain registered so Wayfinder can generate their
+    | helpers and the frontend build is deterministic regardless of this flag.
+    |
+    */
+
+    'registration_enabled' => env('REGISTRATION_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Authentication Guards
     |--------------------------------------------------------------------------
     |
@@ -40,6 +54,11 @@ return [
     'guards' => [
         'web' => [
             'driver' => 'session',
+            'provider' => 'users',
+        ],
+
+        'api' => [
+            'driver' => 'passport',
             'provider' => 'users',
         ],
     ],

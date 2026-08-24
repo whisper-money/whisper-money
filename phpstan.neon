@@ -23,6 +23,12 @@ parameters:
           path: app/Http/Controllers/*
         - identifier: public.method.unused
           path: app/Http/Controllers/**/*
+        # MCP servers and tools are entry points invoked by laravel/mcp via
+        # reflection, not called from PHP code.
+        - identifier: public.method.unused
+          path: app/Mcp/*
+        - identifier: public.method.unused
+          path: app/Mcp/**/*
         - identifier: public.method.unused
           path: app/Http/Middleware/*
         - identifier: public.property.unused
@@ -57,6 +63,9 @@ parameters:
         - identifier: public.method.unused
           path: app/Models/*
         - identifier: public.property.unused
+          path: app/Models/*
+        # Eloquent reads model constants (CREATED_AT, UPDATED_AT, …) itself
+        - identifier: public.classConstant.unused
           path: app/Models/*
         # Enum label/description methods used in Blade/frontend
         - identifier: public.method.unused
