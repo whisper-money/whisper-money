@@ -1,10 +1,14 @@
 import { UUID } from './uuid';
 
+// Mirrors App\Enums\LabelSource (PHP). Keep both in sync.
+export type LabelSource = 'user' | 'saving_goal';
+
 export interface Label {
     id: UUID;
     user_id: UUID;
     name: string;
     color: string;
+    source?: LabelSource;
     created_at: string;
     updated_at: string;
     deleted_at: string | null;

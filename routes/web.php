@@ -259,6 +259,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::post('savings-goals', [SavingsGoalController::class, 'store'])->name('savings-goals.store');
     Route::get('savings-goals/{savingsGoal}', [SavingsGoalController::class, 'show'])->name('savings-goals.show');
     Route::patch('savings-goals/{savingsGoal}', [SavingsGoalController::class, 'update'])->name('savings-goals.update');
+    Route::put('savings-goals/{savingsGoal}/transactions', [SavingsGoalController::class, 'syncTransactions'])->name('savings-goals.transactions.sync');
     Route::delete('savings-goals/{savingsGoal}', [SavingsGoalController::class, 'destroy'])->name('savings-goals.destroy');
 });
 

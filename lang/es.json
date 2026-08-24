@@ -2561,5 +2561,7 @@
     "On this page": "En esta página",
     "Open documentation menu": "Abrir el menú de documentación",
     "Resources": "Recursos",
-    "Compatible banks and apps": "Bancos y apps compatibles"
+    "Compatible banks and apps": "Bancos y apps compatibles",
+    "Link transactions": "Vincular transacciones",
+    "Tick the transactions that count toward this goal. Unticking one removes it from the goal.": "Marca las transacciones que cuentan para este objetivo. Al desmarcarlas se quitan del objetivo."
 }

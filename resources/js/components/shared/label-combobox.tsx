@@ -1,5 +1,6 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import { normalizeLabelComboboxState } from '@/components/shared/label-combobox-state';
+import { LabelIcon } from '@/components/shared/label-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +19,7 @@ import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
-import { Check, ChevronsUpDown, Plus, Tag, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 interface LabelComboboxProps {
@@ -180,7 +181,10 @@ export function LabelCombobox({
                                             colorClasses.text,
                                         )}
                                     >
-                                        <Tag className="h-3 w-3" />
+                                        <LabelIcon
+                                            label={label}
+                                            className="h-3 w-3"
+                                        />
                                         {label.name}
                                         <span
                                             role="button"
@@ -282,7 +286,8 @@ export function LabelCombobox({
                                                     colorClasses.bg,
                                                 )}
                                             >
-                                                <Tag
+                                                <LabelIcon
+                                                    label={label}
                                                     className={cn(
                                                         'h-3 w-3',
                                                         colorClasses.text,
@@ -321,7 +326,7 @@ export function LabelBadge({ label }: { label: Label }) {
                 colorClasses.text,
             )}
         >
-            <Tag className="h-3 w-3" />
+            <LabelIcon label={label} className="h-3 w-3" />
             {label.name}
         </Badge>
     );

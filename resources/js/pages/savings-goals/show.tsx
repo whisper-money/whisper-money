@@ -4,6 +4,7 @@ import HeadingSmall from '@/components/heading-small';
 import { MobileBackButton } from '@/components/mobile-back-button';
 import { DeleteSavingsGoalDialog } from '@/components/savings-goals/delete-savings-goal-dialog';
 import { EditSavingsGoalDialog } from '@/components/savings-goals/edit-savings-goal-dialog';
+import { LinkTransactionsDialog } from '@/components/savings-goals/link-transactions-dialog';
 import { SavingsGoalProgressChart } from '@/components/savings-goals/savings-goal-progress-chart';
 import { LabelBadge } from '@/components/shared/label-combobox';
 import { TransactionList } from '@/components/transactions/transaction-list';
@@ -30,7 +31,7 @@ import {
     SavingsGoal,
     SavingsGoalStats,
 } from '@/types/savings-goal';
-import { Transaction } from '@/types/transaction';
+import { ServerTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
@@ -39,13 +40,14 @@ import { useState } from 'react';
 
 interface Props {
     savingsGoal: SavingsGoal;
-    transactions: Transaction[];
+    transactions: ServerTransaction[];
     stats: SavingsGoalStats;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
     currencyCode: string;
+    recentTransactions?: ServerTransaction[];
 }
 
 export default function SavingsGoalShow({
@@ -57,8 +59,10 @@ export default function SavingsGoalShow({
     banks,
     labels,
     currencyCode,
+    recentTransactions,
 }: Props) {
     const locale = useLocale();
+    const [linkOpen, setLinkOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -108,28 +112,36 @@ export default function SavingsGoalShow({
                         }
                     />
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                aria-label={__('More options')}
-                            >
-                                <ChevronDown className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                                {__('Edit goal')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => setDeleteOpen(true)}
-                                variant="destructive"
-                            >
-                                {__('Delete goal')}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-2">
+                        <Button onClick={() => setLinkOpen(true)}>
+                            {__('Link transactions')}
+                        </Button>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label={__('More options')}
+                                >
+                                    <ChevronDown className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                    onClick={() => setEditOpen(true)}
+                                >
+                                    {__('Edit goal')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => setDeleteOpen(true)}
+                                    variant="destructive"
+                                >
+                                    {__('Delete goal')}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
 
                 <Card>
@@ -225,6 +237,15 @@ export default function SavingsGoalShow({
                     maxHeight={600}
                 />
             </div>
+
+            <LinkTransactionsDialog
+                savingsGoal={savingsGoal}
+                transactions={transactions}
+                recentTransactions={recentTransactions}
+                currencyCode={currencyCode}
+                open={linkOpen}
+                onOpenChange={setLinkOpen}
+            />
 
             <EditSavingsGoalDialog
                 savingsGoal={savingsGoal}
