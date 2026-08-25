@@ -99,6 +99,8 @@ Use notes when the bank description is not enough.
 
 Use filters when the list is too large.
 
+![The transaction filter bar, with the date range, account, category and label pickers open above the list](/docs/documentation/transaction-filters.png)
+
 You can filter by:
 
 - Date range
@@ -119,12 +121,17 @@ A filter combination you keep coming back to can be saved and given a name. It
 then sits alongside the transaction list, one click away, instead of being
 rebuilt every time.
 
+![The bookmark button next to the filters, its menu open on a list of saved filters](/docs/documentation/saved-filters.png)
+
 Saved filters are useful for the reviews you repeat: uncategorized transactions,
 one account's month, a merchant you are keeping an eye on.
 
 ## Bulk actions
 
-Bulk actions help when many transactions need the same change.
+Bulk actions help when many transactions need the same change. Selecting rows
+brings up a bar with everything that can be applied to all of them at once.
+
+![The bulk actions bar, showing the number of selected transactions next to the category and label pickers](/docs/documentation/bulk-actions-bar.png)
 
 Good uses:
 

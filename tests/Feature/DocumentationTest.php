@@ -74,14 +74,23 @@ it('sends a search index of every page and every heading', function () {
         );
 });
 
-it('links each page to the pages either side of it', function () {
+it('links each page to the pages either side of it, reading through its children', function () {
     $this->get(route('documentation.show', ['slug' => 'accounts', 'lang' => 'en']))
         ->assertOk()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
                 ->where('neighbours.previous.title', 'Getting started')
+                ->where('neighbours.next.title', 'Import balances')
+                ->where('neighbours.next.url', '/documentation/accounts/import-balances?lang=en')
+        );
+
+    // The last child of a page leads on to the next page, not back up.
+    $this->get(route('documentation.show', ['slug' => 'accounts/edit-balances', 'lang' => 'en']))
+        ->assertOk()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('neighbours.previous.title', 'Import balances')
                 ->where('neighbours.next.title', 'Transactions')
-                ->where('neighbours.next.url', '/documentation/transactions?lang=en')
         );
 
     $this->get(route('documentation.index'))
@@ -161,11 +170,86 @@ it('serves every page as markdown for agents', function () {
         ->and($body)->not->toContain('<div class="card">');
 });
 
-it('serves the default page as markdown too', function () {
-    $this->get('/documentation.md')
+it('serves an index of every page at /documentation.md, rather than the first page', function () {
+    $body = $this->get('/documentation.md')
         ->assertOk()
         ->assertHeader('Content-Type', 'text/markdown; charset=UTF-8')
-        ->assertSee('# Getting started', false);
+        ->getContent();
+
+    expect($body)->toStartWith('# Whisper Money documentation')
+        ->and($body)->not->toContain('# Getting started');
+
+    foreach (publishedSlugs() as $slug) {
+        expect($body)->toContain(route('documentation.markdown', ['slug' => $slug, 'lang' => 'en']));
+    }
+});
+
+it('indexes the pages under the section that groups them, nested under their parent', function () {
+    $body = $this->get('/documentation.md')->assertOk()->getContent();
+
+    expect($body)->toContain('## Your data')
+        ->and($body)->toContain('- [Transactions](')
+        ->and($body)->toContain('  - [Import transactions](');
+});
+
+it('writes the index in the language asked for', function () {
+    $body = $this->get(route('documentation.index.markdown', ['lang' => 'es']))->assertOk()->getContent();
+
+    expect($body)->toStartWith('# Documentación de Whisper Money')
+        ->and($body)->toContain('## Tus datos')
+        ->and($body)->toContain(route('documentation.markdown', ['slug' => 'transactions', 'lang' => 'es']));
+});
+
+it('ends every page for agents with its own children and a link to the index', function () {
+    $transactions = $this->get(route('documentation.markdown', ['slug' => 'transactions', 'lang' => 'en']))
+        ->assertOk()
+        ->getContent();
+
+    expect($transactions)->toContain('Pages inside this one:')
+        ->and($transactions)->toContain('- [Create a transaction]('.route('documentation.markdown', ['slug' => 'transactions/create', 'lang' => 'en']).')')
+        ->and($transactions)->toContain('Full documentation index: '.route('documentation.index.markdown', ['lang' => 'en']));
+
+    $leaf = $this->get(route('documentation.markdown', ['slug' => 'labels', 'lang' => 'es']))
+        ->assertOk()
+        ->getContent();
+
+    expect($leaf)->not->toContain('Páginas dentro de esta:')
+        ->and($leaf)->toContain('Índice completo de la documentación: '.route('documentation.index.markdown', ['lang' => 'es']));
+});
+
+it('serves a page nested under another page at a path of its own', function () {
+    $this->get(route('documentation.show', ['slug' => 'transactions/import', 'lang' => 'en']))
+        ->assertOk()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('document.slug', 'transactions/import')
+                ->where('document.title', 'Import transactions')
+                ->where('navigation.1.children.1.children.1.slug', 'transactions/import')
+        );
+
+    $this->get('/documentation/transactions/import.md')
+        ->assertOk()
+        ->assertSee('# Import transactions', false);
+});
+
+it('redirects a page that has moved under another page, in html and in markdown', function () {
+    $this->get('/documentation/imports')
+        ->assertMovedPermanently()
+        ->assertRedirect(route('documentation.show', ['slug' => 'transactions/import', 'lang' => 'en']));
+
+    $this->get('/documentation/imports.md')
+        ->assertMovedPermanently()
+        ->assertRedirect(route('documentation.markdown', ['slug' => 'transactions/import', 'lang' => 'en']));
+
+    $this->get(route('documentation.show', ['slug' => 'imports', 'lang' => 'es']))
+        ->assertMovedPermanently()
+        ->assertRedirect(route('documentation.show', ['slug' => 'transactions/import', 'lang' => 'es']));
+});
+
+it('points llms.txt at the index as well as at each page', function () {
+    expect($this->get(route('llms'))->assertOk()->getContent())
+        ->toContain(route('documentation.index.markdown', ['lang' => 'en']))
+        ->toContain(route('documentation.index.markdown', ['lang' => 'es']));
 });
 
 it('lists the documentation in llms.txt', function () {

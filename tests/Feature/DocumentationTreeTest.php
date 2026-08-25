@@ -122,8 +122,18 @@ it('nests the pages of a directory named after a page under that page', function
 
     expect($accounts['slug'])->toBe('accounts')
         ->and($accounts['children'])->toHaveCount(1)
-        ->and($accounts['children'][0]['slug'])->toBe('account-types')
-        ->and($accounts['children'][0]['children'][0]['slug'])->toBe('savings');
+        ->and($accounts['children'][0]['slug'])->toBe('accounts/account-types')
+        ->and($accounts['children'][0]['children'][0]['slug'])->toBe('accounts/account-types/savings');
+});
+
+it('keeps sections out of the slug, because a section only groups the sidebar', function () {
+    documentationFixture([
+        '20-your-data/section.md' => "- en: Your data\n",
+        '20-your-data/10-accounts-en.md' => documentationPage('Accounts'),
+        '20-your-data/10-accounts/10-balances-en.md' => documentationPage('Balances'),
+    ]);
+
+    expect(slugsOf(DocumentationTree::for('en')))->toBe(['accounts', 'accounts/balances']);
 });
 
 it('orders entries by their numeric prefix and keeps the prefix out of the slug', function () {
@@ -160,7 +170,7 @@ it('flattens nested pages in reading order, so neighbours are neighbours', funct
     ]);
 
     expect(slugsOf(DocumentationTree::for('en')))
-        ->toBe(['getting-started', 'accounts', 'types', 'transactions']);
+        ->toBe(['getting-started', 'accounts', 'accounts/types', 'transactions']);
 });
 
 it('ignores files that are not language-suffixed markdown', function () {

@@ -156,7 +156,7 @@ export default function Labels() {
                         description={__('Manage your transaction labels')}
                     />
 
-                    <div className="space-y-4">
+                    <div className="space-y-4" data-test="labels-table">
                         <div className="flex items-center justify-between gap-4">
                             <Input
                                 placeholder={__('Filter labels...')}

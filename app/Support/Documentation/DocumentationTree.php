@@ -17,6 +17,11 @@ use Illuminate\Support\Str;
  *     your-data/accounts-en.md           a page inside the group
  *     your-data/accounts/types-en.md     a page nested under accounts
  *
+ * A section groups pages in the sidebar and nothing more, so it stays out of
+ * their slugs: the page above is `accounts`. Nesting a page under another page
+ * is a real hierarchy and does reach the slug, so its child is
+ * `accounts/types`.
+ *
  * A leading `10-` orders an entry and is dropped from its slug; without one,
  * entries sort by name. English is the only required language: a page with no
  * `-en.md` is not published, and a language we have no file for falls back to
@@ -69,7 +74,7 @@ final class DocumentationTree
      */
     public function nodes(): array
     {
-        return $this->nodes ??= File::isDirectory($this->root) ? $this->scan($this->root) : [];
+        return $this->nodes ??= File::isDirectory($this->root) ? $this->scan($this->root, '') : [];
     }
 
     /**
@@ -98,22 +103,25 @@ final class DocumentationTree
     }
 
     /**
+     * @param  string  $prefix  the slug of the page these entries hang under,
+     *                          with its trailing slash, or '' at the top level
      * @return list<PageNode|SectionNode>
      */
-    private function scan(string $directory): array
+    private function scan(string $directory, string $prefix): array
     {
         $directories = $this->subdirectories($directory);
         $nodes = [];
 
-        foreach ($this->pageGroups($directory) as $slug => $group) {
+        foreach ($this->pageGroups($directory) as $name => $group) {
             if (! isset($group['files'][$this->fallbackLocale])) {
                 continue;
             }
 
             $file = $group['files'][$this->locale] ?? $group['files'][$this->fallbackLocale];
+            $slug = $prefix.$name;
 
-            $children = $directories[$slug]['path'] ?? null;
-            unset($directories[$slug]);
+            $children = $directories[$name]['path'] ?? null;
+            unset($directories[$name]);
 
             $nodes[] = [
                 'type' => 'page',
@@ -121,7 +129,7 @@ final class DocumentationTree
                 'order' => $group['order'],
                 ...$this->metadata($file),
                 'file' => $file,
-                'children' => $children === null ? [] : $this->scan($children),
+                'children' => $children === null ? [] : $this->scan($children, $slug.'/'),
             ];
         }
 
@@ -131,7 +139,7 @@ final class DocumentationTree
                 'id' => $id,
                 'order' => $entry['order'],
                 'title' => $this->sectionTitle($entry['path'], $id),
-                'children' => $this->scan($entry['path']),
+                'children' => $this->scan($entry['path'], $prefix),
             ];
         }
 
@@ -141,8 +149,8 @@ final class DocumentationTree
     }
 
     /**
-     * The pages in a directory, one entry per slug, holding every language we
-     * found a file for.
+     * The pages in a directory, one entry per name, holding every language we
+     * found a file for. The name is the last segment of the page's slug.
      *
      * @return array<string, array{order: int, files: array<string, string>}>
      */
@@ -155,9 +163,9 @@ final class DocumentationTree
                 continue;
             }
 
-            $slug = $matches[2];
-            $groups[$slug] ??= ['order' => self::order($matches[1]), 'files' => []];
-            $groups[$slug]['files'][self::normalizeLocale($matches[3])] = $file->getPathname();
+            $name = $matches[2];
+            $groups[$name] ??= ['order' => self::order($matches[1]), 'files' => []];
+            $groups[$name]['files'][self::normalizeLocale($matches[3])] = $file->getPathname();
         }
 
         return $groups;

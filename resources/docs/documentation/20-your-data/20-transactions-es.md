@@ -99,6 +99,8 @@ Usa notas cuando la descripción del banco no sea suficiente.
 
 Usa filtros cuando la lista sea demasiado grande.
 
+![La barra de filtros de transacciones, con los selectores de rango de fechas, cuenta, categoría y etiqueta abiertos sobre la lista](/docs/documentation/transaction-filters.png)
+
 Puedes filtrar por:
 
 - Rango de fechas
@@ -119,12 +121,17 @@ Una combinación de filtros a la que vuelves a menudo se puede guardar con un
 nombre. Queda junto a la lista de transacciones, a un clic, en lugar de tener que
 rehacerla cada vez.
 
+![El botón de marcador junto a los filtros, con su menú abierto sobre una lista de filtros guardados](/docs/documentation/saved-filters.png)
+
 Los filtros guardados sirven para las revisiones que repites: transacciones sin
 categoría, el mes de una cuenta, un comercio que estás vigilando.
 
 ## Acciones masivas
 
 Las acciones masivas ayudan cuando muchas transacciones necesitan el mismo cambio.
+Al seleccionar filas aparece una barra con todo lo que se puede aplicar a la vez.
+
+![La barra de acciones masivas, con el número de transacciones seleccionadas junto a los selectores de categoría y etiqueta](/docs/documentation/bulk-actions-bar.png)
 
 Buenos usos:
 
