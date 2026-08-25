@@ -48,6 +48,7 @@ interface Props {
     labels: Label[];
     currencyCode: string;
     recentTransactions?: ServerTransaction[];
+    recentPageSize: number;
 }
 
 export default function SavingsGoalShow({
@@ -60,6 +61,7 @@ export default function SavingsGoalShow({
     labels,
     currencyCode,
     recentTransactions,
+    recentPageSize,
 }: Props) {
     const locale = useLocale();
     const [linkOpen, setLinkOpen] = useState(false);
@@ -235,6 +237,7 @@ export default function SavingsGoalShow({
                     pageSize={10}
                     showActionsMenu={false}
                     maxHeight={600}
+                    hiddenLabelId={savingsGoal.label_id ?? undefined}
                 />
             </div>
 
@@ -242,6 +245,7 @@ export default function SavingsGoalShow({
                 savingsGoal={savingsGoal}
                 transactions={transactions}
                 recentTransactions={recentTransactions}
+                recentPageSize={recentPageSize}
                 currencyCode={currencyCode}
                 open={linkOpen}
                 onOpenChange={setLinkOpen}

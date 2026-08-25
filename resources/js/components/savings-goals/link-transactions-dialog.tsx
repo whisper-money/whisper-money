@@ -12,6 +12,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { SavingsGoal } from '@/types/savings-goal';
@@ -28,6 +29,8 @@ interface Props {
     transactions: ServerTransaction[];
     /** The user's latest transactions, loaded on demand when the dialog opens. */
     recentTransactions?: ServerTransaction[];
+    /** How many more the load-more link asks for, straight from the controller. */
+    recentPageSize: number;
     currencyCode: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -37,6 +40,7 @@ export function LinkTransactionsDialog({
     savingsGoal,
     transactions,
     recentTransactions,
+    recentPageSize,
     currencyCode,
     open,
     onOpenChange,
@@ -44,6 +48,8 @@ export function LinkTransactionsDialog({
     const locale = useLocale();
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [recentLimit, setRecentLimit] = useState(recentPageSize);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     // The already-tagged ones come first so nothing you can untick is ever off
     // the list — that is what makes sending the whole set back safe.
@@ -75,6 +81,38 @@ export function LinkTransactionsDialog({
         // Re-seeding on every recentTransactions change would wipe the user's ticks.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
+
+    // A short page means the query ran out of transactions, so there is nothing
+    // left to widen the window for.
+    const hasMore =
+        recentTransactions !== undefined &&
+        recentTransactions.length >= recentLimit;
+
+    const loadMore = () => {
+        const nextLimit = recentLimit + recentPageSize;
+
+        // A spinner that just stops leaves the user thinking nothing happened, and
+        // Inertia's own error handling would tear the page down under the dialog.
+        const reportFailure = (): false => {
+            toast.error(__('Failed to load more transactions.'));
+
+            return false;
+        };
+
+        setIsLoadingMore(true);
+
+        router.reload({
+            only: ['recentTransactions'],
+            data: { recent: nextLimit },
+            // The window the dialog wants is not something to leave in the address
+            // bar: a reopen would then load a wider window than it thinks it has.
+            preserveUrl: true,
+            onSuccess: () => setRecentLimit(nextLimit),
+            onHttpException: reportFailure,
+            onNetworkError: reportFailure,
+            onFinish: () => setIsLoadingMore(false),
+        });
+    };
 
     // A transaction can back more than one goal, and then it counts toward both.
     // Surfacing the other goals' labels is what makes that visible before ticking.
@@ -181,6 +219,26 @@ export function LinkTransactionsDialog({
                                 <Skeleton key={index} className="h-10 w-full" />
                             ))}
                         </div>
+                    )}
+
+                    {hasMore && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={loadMore}
+                            disabled={isLoadingMore}
+                        >
+                            {isLoadingMore ? (
+                                <>
+                                    <Spinner />
+                                    {__('Loading')}
+                                </>
+                            ) : (
+                                __('Load more')
+                            )}
+                        </Button>
                     )}
                 </div>
 
