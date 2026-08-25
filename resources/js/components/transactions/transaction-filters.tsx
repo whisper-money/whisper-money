@@ -239,7 +239,7 @@ export function TransactionFilters({
         (hideAccountFilter ? 0 : filters.accountIds.length);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4" data-test="transaction-filters">
             <div className="flex flex-col gap-3">
                 <div className="flex w-full flex-row items-center gap-2">
                     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -260,6 +260,7 @@ export function TransactionFilters({
                         <PopoverContent
                             className="max-h-[600px] w-96 overflow-y-auto"
                             align="start"
+                            data-test="transaction-filters-panel"
                         >
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
