@@ -183,6 +183,12 @@ return [
             'allows_account' => true,
         ],
         [
+            'code' => 'HNL',
+            'name' => 'Honduran Lempira',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
             'code' => 'HKD',
             'name' => 'Hong Kong Dollar',
             'allows_primary' => true,
