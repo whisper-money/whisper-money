@@ -35,8 +35,9 @@ const awaitedUrls = new Set<string>();
  * Backstop for a request nobody ever asked for afterwards. Matched to Inertia's own
  * `cacheFor` default: past that a successful prefetch has been evicted, so a click
  * issues a fresh request and its failure is the user's, not ours to explain away.
- * Inertia sets no XHR timeout, so a hung request can still fail after this and be
- * reported - which is the safe direction to be wrong in.
+ *
+ * Measured from the moment the request *ended*, not the moment it started - see the
+ * `finish` listener below.
  */
 const ATTRIBUTION_WINDOW_MS = 30_000;
 
@@ -80,10 +81,28 @@ export function trackUnattendedRequests(): void {
     // to, and `finish` is the one event that fires on every outcome.
     router.on('finish', (event) => {
         const { visit } = event.detail;
+        const key = requestKey(visit.url);
 
-        if (!isPoll(visit) && !visit.prefetch) {
-            awaitedUrls.delete(requestKey(visit.url));
+        if (isPoll(visit) || visit.prefetch) {
+            // Restart the window from when the request ended rather than when it
+            // started. A connection that dies mid-flight does not fail fast: the
+            // browser holds the socket open and only gives up long afterwards, so a
+            // window measured from `before` has already lapsed by the time the
+            // rejection arrives - and a poll nobody asked for reads as a navigation
+            // somebody was waiting for. `finish` runs on the rejecting chain, ahead
+            // of the unhandled rejection, so the stamp is in place when beforeSend
+            // asks.
+            //
+            // Only ever refresh an entry that is still ours: a real visit to the same
+            // URL deletes it, and that deletion has to stick.
+            if (unattendedAt.has(key)) {
+                unattendedAt.set(key, Date.now());
+            }
+
+            return;
         }
+
+        awaitedUrls.delete(key);
     });
 }
 
