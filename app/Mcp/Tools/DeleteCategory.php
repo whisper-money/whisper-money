@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Delete a category. strategy decides its children: "reparent" (default) lifts them to its parent, "promote" makes them roots, "cascade" deletes the subtree and uncategorizes its transactions.')]
+#[Description('Delete a category, uncategorizing its transactions. strategy decides its children: "reparent" (default) lifts them to its parent, "promote" makes them roots, "cascade" deletes the subtree too.')]
 class DeleteCategory extends WriteTool
 {
     /**
@@ -45,26 +45,21 @@ class DeleteCategory extends WriteTool
 
         match ($strategy) {
             CategoryDeletionStrategy::Cascade => $tree->deleteSubtree($category),
-            CategoryDeletionStrategy::Promote => $this->detachChildrenAndDelete($category, null),
-            CategoryDeletionStrategy::Reparent => $this->detachChildrenAndDelete($category, $category->parent_id),
+            CategoryDeletionStrategy::Promote => $this->detachChildrenAndDelete($tree, $category, null),
+            CategoryDeletionStrategy::Reparent => $this->detachChildrenAndDelete($tree, $category, $category->parent_id),
         };
 
         return $this->json(['deleted' => true, 'id' => $category->id, 'strategy' => $strategy->value]);
     }
 
-    /**
-     * Move the category's direct children to a new parent, then delete it.
-     */
-    private function detachChildrenAndDelete(Category $category, ?string $newParentId): void
+    private function detachChildrenAndDelete(CategoryTree $tree, Category $category, ?string $newParentId): void
     {
         try {
-            $category->children()->update(['parent_id' => $newParentId]);
+            $tree->detachChildrenAndDelete($category, $newParentId);
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages([
                 'strategy' => 'A category with the same name already exists at the destination level. Rename it first.',
             ]);
         }
-
-        $category->delete();
     }
 }
