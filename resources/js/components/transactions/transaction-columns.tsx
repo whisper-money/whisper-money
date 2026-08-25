@@ -54,6 +54,8 @@ interface CreateColumnsOptions {
     isDateHidden?: boolean;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
+    /** A label every row already carries, so showing it would say nothing. */
+    hiddenLabelId?: string;
 }
 
 export function createTransactionColumns({
@@ -72,6 +74,7 @@ export function createTransactionColumns({
     splitsEnabled = false,
     isDateHidden = false,
     categorizingIds,
+    hiddenLabelId,
 }: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
     return [
         {
@@ -222,6 +225,7 @@ export function createTransactionColumns({
                 const showNotes = columnVisibility.notes !== false;
 
                 const transactionLabels = (transaction.label_ids || [])
+                    .filter((id) => id !== hiddenLabelId)
                     .map((id) => labels.find((l) => l.id === id))
                     .filter(Boolean) as Label[];
 

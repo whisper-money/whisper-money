@@ -235,6 +235,7 @@ export default function SavingsGoalShow({
                     pageSize={10}
                     showActionsMenu={false}
                     maxHeight={600}
+                    hiddenLabelId={savingsGoal.label_id ?? undefined}
                 />
             </div>
 

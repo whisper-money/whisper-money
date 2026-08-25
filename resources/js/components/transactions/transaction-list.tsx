@@ -294,6 +294,8 @@ export interface TransactionListProps {
     maxHeight?: number;
     hideColumns?: string[];
     onBalanceUpdated?: () => void;
+    /** A label every listed transaction already carries; hidden from the rows. */
+    hiddenLabelId?: UUID;
 }
 
 export function TransactionList({
@@ -311,6 +313,7 @@ export function TransactionList({
     maxHeight,
     hideColumns = [],
     onBalanceUpdated,
+    hiddenLabelId,
 }: TransactionListProps) {
     const locale = useLocale();
     const { features } = usePage<SharedData>().props;
@@ -783,6 +786,7 @@ export function TransactionList({
             onUnsplit: setUnsplitTransaction,
             splitsEnabled: features.splitTransactions,
             isDateHidden: columnVisibility.transaction_date === false,
+            hiddenLabelId,
         });
 
         if (hideColumns.length === 0) {
@@ -806,6 +810,7 @@ export function TransactionList({
         hideColumns,
         columnVisibility,
         features.splitTransactions,
+        hiddenLabelId,
     ]);
 
     const table = useReactTable({
