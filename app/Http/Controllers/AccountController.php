@@ -9,6 +9,7 @@ use App\Http\Requests\ReorderAccountsRequest;
 use App\Http\Requests\UpdateAccountVisibilityRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\BankingConnection;
 use App\Models\LoanDetail;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
@@ -16,6 +17,7 @@ use App\Services\LoanAmortizationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -86,35 +88,45 @@ class AccountController extends Controller
         Account $account,
         DisconnectBankingConnection $disconnectBankingConnection,
     ): RedirectResponse {
-        $archiving = $request->validated('archived');
+        $archiving = $request->boolean('archived');
 
-        $account->update([
-            'archived_at' => $archiving ? now() : null,
-        ]);
+        $orphanedConnection = DB::transaction(function () use ($account, $archiving): ?BankingConnection {
+            $account->update([
+                'archived_at' => $archiving ? now() : null,
+            ]);
 
-        if ($archiving && $account->isConnected()) {
-            $this->disconnectFromBank($account, $disconnectBankingConnection);
+            return $archiving ? $this->detachFromBank($account) : null;
+        });
+
+        // Revoking talks to the provider, so it stays outside the transaction:
+        // a slow bank would otherwise hold the connection row locked.
+        if ($orphanedConnection) {
+            $disconnectBankingConnection->handle($orphanedConnection);
         }
 
         return back();
     }
 
     /**
-     * The connection itself is only revoked once nothing hangs off it any more:
-     * the other accounts of the same bank must keep syncing.
+     * Returns the connection only when this was the last account hanging off it,
+     * so it can be revoked — the other accounts of the same bank must keep
+     * syncing. The row is locked because two accounts archived at once would
+     * otherwise both see it as empty and revoke it twice.
      */
-    private function disconnectFromBank(Account $account, DisconnectBankingConnection $disconnectBankingConnection): void
+    private function detachFromBank(Account $account): ?BankingConnection
     {
-        $connection = $account->bankingConnection;
+        if (! $account->isConnected()) {
+            return null;
+        }
+
+        $connection = $account->bankingConnection()->lockForUpdate()->first();
 
         $account->update([
             'banking_connection_id' => null,
             'external_account_id' => null,
         ]);
 
-        if ($connection && $connection->accounts()->doesntExist()) {
-            $disconnectBankingConnection->handle($connection);
-        }
+        return $connection && $connection->accounts()->doesntExist() ? $connection : null;
     }
 
     public function show(Request $request, Account $account): Response

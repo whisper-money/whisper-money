@@ -50,7 +50,7 @@ export function ArchiveAccountDialog({
                     {!!account.banking_connection_id && (
                         <li className="font-medium text-foreground">
                             {__(
-                                'It will be disconnected from the bank: no new transactions or balances will come in, and bringing it back later means connecting the bank again.',
+                                'It will be disconnected from the bank: no new transactions or balances will come in. Unarchiving brings the account back, not the connection — you would have to connect the bank again.',
                             )}
                         </li>
                     )}

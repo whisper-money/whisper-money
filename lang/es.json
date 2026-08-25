@@ -740,7 +740,7 @@
     "Unarchive account": "Desarchivar cuenta",
     "Archiving...": "Archivando...",
     "Archiving :name puts it away without deleting anything:": "Archivar :name la guarda sin borrar nada:",
-    "It will be disconnected from the bank: no new transactions or balances will come in, and bringing it back later means connecting the bank again.": "Se desconectar\u00e1 del banco: no entrar\u00e1n nuevas transacciones ni balances, y para recuperarla m\u00e1s adelante tendr\u00e1s que volver a conectar el banco.",
+    "It will be disconnected from the bank: no new transactions or balances will come in. Unarchiving brings the account back, not the connection \u2014 you would have to connect the bank again.": "Se desconectar\u00e1 del banco: no entrar\u00e1n nuevas transacciones ni balances. Al desarchivarla recuperas la cuenta, no la conexi\u00f3n \u2014 tendr\u00edas que volver a conectar el banco.",
     "It disappears from the dashboard and from the accounts page.": "Desaparece del panel y de la p\u00e1gina de cuentas.",
     "It stops counting towards your net worth from today. The months before today keep the figures they already have.": "Deja de contar en tu patrimonio a partir de hoy. Los meses anteriores mantienen las cifras que ya ten\u00edan.",
     "You will not be able to pick it for new transactions, but the ones it already has stay in your history and stay editable.": "No podr\u00e1s elegirla para nuevas transacciones, pero las que ya tiene siguen en tu historial y siguen siendo editables.",
