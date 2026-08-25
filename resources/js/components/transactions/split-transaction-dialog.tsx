@@ -161,7 +161,7 @@ export function SplitTransactionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[640px]">
+            <DialogContent className="p-4 sm:max-w-[640px] sm:p-6">
                 <DialogHeader>
                     <DialogTitle>{__('Split transaction')}</DialogTitle>
                     <DialogDescription>
@@ -171,7 +171,9 @@ export function SplitTransactionDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit}>
+                {/* min-w-0: the dialog is a grid, so a nowrap child (the truncated
+                    description below) would otherwise stretch it past the viewport. */}
+                <form onSubmit={handleSubmit} className="min-w-0">
                     <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
                         <div className="flex items-center justify-between gap-3">
                             <span className="truncate font-medium">
@@ -202,7 +204,7 @@ export function SplitTransactionDialog({
                                 key={draft.key}
                                 className="flex flex-col gap-1.5"
                             >
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <span className="w-4 shrink-0 text-right text-xs text-muted-foreground">
                                         {index + 1}
                                     </span>
@@ -224,7 +226,14 @@ export function SplitTransactionDialog({
                                             showUncategorized={true}
                                         />
                                     </div>
-                                    <div className="flex w-[150px] shrink-0 items-center gap-1">
+                                    {/* The four controls do not fit on one
+                                        line on a phone, so the amount drops
+                                        below the category. `order-last` moves
+                                        it there without reordering the DOM,
+                                        which would leave the desktop tab order
+                                        out of step with what is on screen;
+                                        `pl-6` lines it up with the labels. */}
+                                    <div className="order-last flex w-full items-center gap-1 pl-6 sm:order-none sm:w-[150px] sm:shrink-0 sm:pl-0">
                                         {isExpense && (
                                             <span
                                                 aria-hidden="true"
