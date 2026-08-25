@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\CategoryType;
-use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\Concerns\ConvertsTransactionCurrency;
 use App\Services\ExchangeRateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;

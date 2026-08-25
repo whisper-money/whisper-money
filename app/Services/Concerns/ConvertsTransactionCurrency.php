@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Api\Concerns;
+namespace App\Services\Concerns;
 
 use App\Models\Transaction;
 use App\Services\ExchangeRateService;
 use Illuminate\Support\Collection;
 
 /**
- * Shared currency conversion for the analytics controllers. Each consumer
+ * Shared currency conversion for whoever adds up transactions. Each consumer
  * injects an {@see ExchangeRateService} as `$exchangeRateService`, then reads
  * transaction amounts in the user's currency through these helpers.
  */
