@@ -1,6 +1,6 @@
-# Importaciones
+# Importar transacciones
 
-Las importaciones te permiten traer archivos bancarios a Whisper Money cuando la sincronización automática no está disponible o cuando quieres más control.
+Importar trae un archivo del banco a Whisper Money cuando la sincronización automática no está disponible para ese banco, o cuando prefieres hacerlo tú.
 
 {{TOC}}
 
@@ -24,7 +24,15 @@ flowchart TD
     import --> review[Revisar transacciones]
 ```
 
+El panel se abre pidiendo el archivo que necesita.
+
+![El primer paso del panel de importación, pidiendo un archivo CSV o Excel para soltar o buscar](/docs/documentation/import-transactions-upload.png)
+
 ## Columnas necesarias
+
+Whisper Money lee la fila de cabecera y adivina qué columna es cada cosa. Sus suposiciones son tuyas para corregirlas, y el mapeo se recuerda por cuenta para la próxima vez.
+
+![El paso de mapeo de columnas, con cada columna del archivo emparejada con un campo de la transacción](/docs/documentation/import-transactions-mapping.png)
 
 <div class="cards-wrapper">
 
@@ -74,12 +82,17 @@ importación. Cuando no la tiene, la importación trae solo las transacciones, y
 cuenta conserva los saldos que hayas introducido tú.
 
 Calcular el historial de saldos a partir de las transacciones y un saldo conocido
-todavía no está disponible. Hasta que lo esté, añade un saldo a mano en la cuenta
-cuando quieras que el gráfico de patrimonio neto sea correcto.
+todavía no está disponible. Hasta que lo esté, pon los saldos tú: un archivo de
+saldos se puede traer desde [Importar saldos](/documentation/accounts/import-balances),
+y una cifra concreta se corrige en [Editar saldos](/documentation/accounts/edit-balances).
 
 ## Vista previa antes de importar
 
-Revisa siempre la vista previa.
+Revisa siempre la vista previa. Las filas que se parecen a transacciones que ya
+tienes salen marcadas y desmarcadas, así que importar el mismo archivo dos veces
+no duplica tu historial.
+
+![El paso de vista previa, con las filas a importar y los duplicados marcados y desmarcados](/docs/documentation/import-transactions-preview.png)
 
 Busca:
 

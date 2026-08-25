@@ -2,6 +2,7 @@
 
 namespace App\Support\Documentation;
 
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 /**
@@ -16,6 +17,14 @@ final class DocumentationMarkdown
     private const MARKDOWN_OPTIONS = ['html_input' => 'strip', 'allow_unsafe_links' => false];
 
     /**
+     * Screenshots are taken at twice the size they are shown at, by
+     * scripts/docs-screenshots.mjs, so that they stay sharp on a high-density
+     * screen. Telling the browser the size it will really paint them at is what
+     * makes that work, and it stops the page reflowing as they load.
+     */
+    private const SCREENSHOT_DENSITY = 2;
+
+    /**
      * @param  list<int>  $levels  heading levels that belong in the contents
      * @return array{html: string, headings: list<Heading>}
      */
@@ -27,7 +36,7 @@ final class DocumentationMarkdown
         $html = self::replaceCardPlaceholders($html, $cards['html']);
 
         return [
-            'html' => self::addHeadingIds($html, $headings, $levels),
+            'html' => self::withThemedImages(self::addHeadingIds($html, $headings, $levels)),
             'headings' => $headings,
         ];
     }
@@ -40,7 +49,7 @@ final class DocumentationMarkdown
     {
         $lines = [];
 
-        foreach (preg_split('/\R/', self::withoutTocPlaceholder($markdown)) ?: [] as $line) {
+        foreach (preg_split('/\R/', self::withAbsoluteUrls(self::withoutTocPlaceholder($markdown))) ?: [] as $line) {
             if (! self::isLayoutMarkup(trim($line))) {
                 $lines[] = $line;
             }
@@ -52,6 +61,88 @@ final class DocumentationMarkdown
     private static function isLayoutMarkup(string $line): bool
     {
         return in_array($line, ['<div class="cards-wrapper">', '<div class="card">', '</div>'], true);
+    }
+
+    /**
+     * A screenshot is written once in the Markdown and rendered twice: the file
+     * itself for light mode and its `-dark` twin for dark, with CSS showing one
+     * of them. The app switches theme with a class on <html> and offers a
+     * "system" setting, so a <picture> keyed on prefers-color-scheme would hand
+     * the wrong screenshot to anyone who has chosen a theme of their own.
+     *
+     * A page whose dark twin has not been taken points both copies at the light
+     * file, which keeps one code path and one CSS rule instead of a third case.
+     */
+    private static function withThemedImages(string $html): string
+    {
+        return (string) preg_replace_callback(
+            '/<img src="([^"]*)" alt="([^"]*)"\s*\/?>/',
+            function (array $match): string {
+                $light = $match[1];
+                $dark = self::darkTwin($light) ?? $light;
+
+                return self::image($light, $match[2], 'documentation-shot--light')
+                    .self::image($dark, $match[2], 'documentation-shot--dark');
+            },
+            $html,
+        );
+    }
+
+    /**
+     * The source and the alt text come out of the rendered HTML already escaped,
+     * so they go back in as they are rather than through e() twice.
+     */
+    private static function image(string $src, string $alt, string $variant): string
+    {
+        return '<img src="'.$src.'" alt="'.$alt.'" class="documentation-shot '.$variant.'"'.self::dimensions($src).' loading="lazy" decoding="async">';
+    }
+
+    /**
+     * The size the browser should paint a screenshot at, when it is one of ours
+     * and can be measured. An external or missing image simply goes without.
+     */
+    private static function dimensions(string $src): string
+    {
+        $path = public_path(ltrim($src, '/'));
+        $size = File::exists($path) ? getimagesize($path) : false;
+
+        if ($size === false) {
+            return '';
+        }
+
+        return sprintf(
+            ' width="%d" height="%d"',
+            (int) round($size[0] / self::SCREENSHOT_DENSITY),
+            (int) round($size[1] / self::SCREENSHOT_DENSITY),
+        );
+    }
+
+    /**
+     * `screenshot.png` -> `screenshot-dark.png`, when that file has been taken.
+     */
+    private static function darkTwin(string $src): ?string
+    {
+        $dark = preg_replace('/(\.[a-z0-9]+)$/i', '-dark$1', $src);
+
+        if ($dark === null || $dark === $src) {
+            return null;
+        }
+
+        return File::exists(public_path(ltrim($dark, '/'))) ? $dark : null;
+    }
+
+    /**
+     * Links and image paths become absolute, so a page an agent has read on its
+     * own is enough to reach the pages it points at and the screenshots it
+     * embeds. Anything already absolute, and any anchor, is left alone.
+     */
+    private static function withAbsoluteUrls(string $markdown): string
+    {
+        return (string) preg_replace_callback(
+            '/\]\((\/[^)\s]*)\)/',
+            fn (array $match): string => ']('.url($match[1]).')',
+            $markdown,
+        );
     }
 
     private static function withoutTocPlaceholder(string $markdown): string
