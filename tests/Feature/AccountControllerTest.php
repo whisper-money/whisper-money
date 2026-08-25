@@ -1,10 +1,13 @@
 <?php
 
+use App\Contracts\BankingProviderInterface;
 use App\Enums\AccountType;
+use App\Enums\BankingConnectionStatus;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\AutomationRule;
 use App\Models\Bank;
+use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\RealEstateDetail;
@@ -180,6 +183,66 @@ test('archiving leaves the dashboard visibility flag alone', function () {
 
     expect($account->archived_at)->not->toBeNull();
     expect($account->hidden_on_dashboard)->toBeTrue();
+});
+
+test('archiving a connected account detaches it and revokes a connection nothing else uses', function () {
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('revokeSession')->once();
+    app()->instance(BankingProviderInterface::class, $provider);
+
+    $connection = BankingConnection::factory()->create(['user_id' => $this->user->id]);
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-1',
+    ]);
+
+    $this->patch(route('accounts.archived', $account), ['archived' => true])
+        ->assertRedirect();
+
+    $account->refresh();
+
+    expect($account->archived_at)->not->toBeNull();
+    expect($account->banking_connection_id)->toBeNull();
+    expect($account->external_account_id)->toBeNull();
+    expect(BankingConnection::query()->whereKey($connection->id)->exists())->toBeFalse();
+});
+
+test('archiving a connected account keeps the connection alive for its other accounts', function () {
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldNotReceive('revokeSession');
+    app()->instance(BankingProviderInterface::class, $provider);
+
+    $connection = BankingConnection::factory()->create(['user_id' => $this->user->id]);
+    $archived = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+    $sibling = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+
+    $this->patch(route('accounts.archived', $archived), ['archived' => true])
+        ->assertRedirect();
+
+    expect($archived->fresh()->banking_connection_id)->toBeNull();
+    expect($sibling->fresh()->banking_connection_id)->toBe($connection->id);
+    expect($connection->fresh()->status)->toBe(BankingConnectionStatus::Active);
+});
+
+test('unarchiving does not touch the bank connection', function () {
+    $connection = BankingConnection::factory()->create(['user_id' => $this->user->id]);
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'banking_connection_id' => $connection->id,
+        'archived_at' => now(),
+    ]);
+
+    $this->patch(route('accounts.archived', $account), ['archived' => false])
+        ->assertRedirect();
+
+    expect($account->fresh()->banking_connection_id)->toBe($connection->id);
 });
 
 test('the archived flag is required when archiving', function () {
