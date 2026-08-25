@@ -22,8 +22,23 @@ import { router } from '@inertiajs/react';
  * Kept by timestamp rather than cleared on completion, because `finish` fires on the
  * rejecting chain before the unhandled rejection is captured — anything cleared
  * there would already be gone by the time beforeSend asks.
+ *
+ * The timestamp is when the request *ended*, or {@link STILL_IN_FLIGHT} while it is
+ * running.
  */
 const unattendedAt = new Map<string, number>();
+
+/**
+ * The stamp on a request that has not come back yet, which no window can outlast.
+ *
+ * A request nobody asked for stays a request nobody asked for however long it takes
+ * to die, and dying is exactly what takes long: Inertia sets no XHR timeout, so a
+ * connection that drops mid-flight leaves the browser sitting on the socket for
+ * minutes before it gives up. Ageing an entry out from the moment the request
+ * *started* meant the hung ones - the only ones slow enough to matter - were the ones
+ * that lapsed, and a 4s poll came back as a navigation someone was waiting for.
+ */
+const STILL_IN_FLIGHT = Infinity;
 
 /**
  * URLs a real request is in flight for right now, which a poll to the same URL
@@ -43,7 +58,7 @@ const ATTRIBUTION_WINDOW_MS = 30_000;
 
 export function trackUnattendedRequests(): void {
     router.on('prefetching', (event) => {
-        unattendedAt.set(requestKey(event.detail.visit.url), Date.now());
+        unattendedAt.set(requestKey(event.detail.visit.url), STILL_IN_FLIGHT);
     });
 
     // The moment someone asks for the page themselves, its failure is theirs and not
@@ -65,7 +80,7 @@ export function trackUnattendedRequests(): void {
             // and its failure, and re-arm the very entry that decides whether that
             // failure is worth telling anyone about.
             if (!awaitedUrls.has(key)) {
-                unattendedAt.set(key, Date.now());
+                unattendedAt.set(key, STILL_IN_FLIGHT);
             }
 
             return;
@@ -84,16 +99,11 @@ export function trackUnattendedRequests(): void {
         const key = requestKey(visit.url);
 
         if (isPoll(visit) || visit.prefetch) {
-            // Restart the window from when the request ended rather than when it
-            // started. A connection that dies mid-flight does not fail fast: the
-            // browser holds the socket open and only gives up long afterwards, so a
-            // window measured from `before` has already lapsed by the time the
-            // rejection arrives - and a poll nobody asked for reads as a navigation
-            // somebody was waiting for. `finish` runs on the rejecting chain, ahead
-            // of the unhandled rejection, so the stamp is in place when beforeSend
-            // asks.
+            // Start the window here, now that there is an end to measure from. Until
+            // this point the entry was {@link STILL_IN_FLIGHT} and no elapsed time
+            // could age it out.
             //
-            // Only ever refresh an entry that is still ours: a real visit to the same
+            // Only ever stamp an entry that is still ours: a real visit to the same
             // URL deletes it, and that deletion has to stick.
             if (unattendedAt.has(key)) {
                 unattendedAt.set(key, Date.now());
@@ -127,6 +137,20 @@ function requestKey(url: URL): string {
     return withoutHash.href;
 }
 
+/**
+ * Two callers ask this about the same failure, and they do not get to disagree.
+ *
+ * Inertia's `networkError` event is a synchronous `dispatchEvent` inside the
+ * rejecting `.catch()`, so the toast in {@link installFailedNavigationToast} asks
+ * first - before the `.finally()` that fires `finish`. Sentry's beforeSend asks last,
+ * off the unhandled rejection. An entry has to read the same way at both moments, and
+ * the expiry below deletes as it reports, so a disagreement is not merely two
+ * different answers: the first caller destroys the entry the second one needed.
+ *
+ * {@link STILL_IN_FLIGHT} is what keeps them in step. The request is unfinished when
+ * the toast asks and freshly stamped when beforeSend does, and neither reading can
+ * age out.
+ */
 export function wasUnattended(url: string): boolean {
     const at = unattendedAt.get(url);
 

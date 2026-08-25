@@ -25,11 +25,32 @@ async function freshModules() {
     const leavePageModule = await import('./leave-page');
     const { installFailedNavigationToast } =
         await import('./failed-navigation-toast');
+    // The other half of what `app.tsx` wires to this tracker. The two read the same
+    // entries at different moments of the same failure, so they have to be able to
+    // be asked together.
+    const sentry = await import('./sentry');
 
     tracker.trackUnattendedRequests();
     installFailedNavigationToast();
 
-    return { listeners, leavePage: leavePageModule.leavePage };
+    return {
+        listeners,
+        leavePage: leavePageModule.leavePage,
+        isUnattendedRequestNoise: sentry.isUnattendedRequestNoise,
+    };
+}
+
+function sentryEvent(url: string) {
+    return {
+        exception: {
+            values: [
+                {
+                    type: 'HttpNetworkError',
+                    value: `Network error (${url})`,
+                },
+            ],
+        },
+    };
 }
 
 function failure(url: string) {
@@ -194,14 +215,50 @@ describe('installFailedNavigationToast', () => {
             const { listeners } = await freshModules();
 
             // The poll stopped - the step moved on, the page unmounted - so the
-            // next failure at that url belongs to whoever asked for it next.
+            // next failure at that url belongs to whoever asked for it next. Its
+            // last tick has to have come back for the window to be running at all:
+            // while a request is still out there, no amount of elapsed time makes
+            // it somebody's.
             listeners.before?.(polling('https://whisper.money/onboarding'));
+            listeners.finish?.(polling('https://whisper.money/onboarding'));
             vi.setSystemTime(Date.now() + 31_000);
             listeners.networkError?.(
                 failure('https://whisper.money/onboarding'),
             );
 
             expect(toastError).toHaveBeenCalledOnce();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('keeps both readers of a hung poll in step, in the order they ask', async () => {
+        vi.useFakeTimers();
+
+        try {
+            const { listeners, isUnattendedRequestNoise } =
+                await freshModules();
+            const url = 'https://whisper.money/onboarding';
+
+            listeners.before?.(polling(url));
+
+            // Inertia sets no XHR timeout, so a dropped connection leaves the
+            // browser on the socket long past any window. This is the failure in
+            // PHP-LARAVEL-5E: eleven users, one event each, on a url only the 4s
+            // poll ever requests.
+            vi.setSystemTime(Date.now() + 61_000);
+
+            // The order `app.tsx` really produces. `networkError` is a synchronous
+            // dispatch from inside the rejecting `catch`, so the toast asks while
+            // the request is still unfinished; `finish` comes from the `finally`
+            // after it; Sentry's beforeSend asks last, off the unhandled rejection.
+            // A disagreement here is not two answers - the first reader deletes the
+            // lapsed entry the second one needs.
+            listeners.networkError?.(failure(url));
+            listeners.finish?.(polling(url));
+
+            expect(toastError).not.toHaveBeenCalled();
+            expect(isUnattendedRequestNoise(sentryEvent(url))).toBe(true);
         } finally {
             vi.useRealTimers();
         }
