@@ -8,6 +8,7 @@ import { StepList } from '@/components/onboarding/step-list';
 import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
+import { isRecoveringFromExpiredSession } from '@/lib/session-expiry-recovery';
 import { store as storeConsent } from '@/routes/ai/consent';
 import { accept, generate, show } from '@/routes/ai/rule-suggestions';
 import { type SharedData } from '@/types';
@@ -19,6 +20,7 @@ import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 // Client-side give-up: the backend marks the run failed on timeout/crash, but
 // this guarantees the spinner resolves even if the worker dies before it can.
@@ -259,6 +261,19 @@ export function StepAiSuggestions({
                 },
             });
         } catch {
+            // Silence here read as a dead button. An expired session is already
+            // being answered by a reload, and "try again in a moment" would be
+            // the wrong thing to say on the way to the login screen - but a 5xx
+            // or a lost connection leaves the user on this screen, and they need
+            // to know the rules were not created.
+            if (!isRecoveringFromExpiredSession()) {
+                toast.error(
+                    __(
+                        'We could not create your rules. Try again in a moment.',
+                    ),
+                );
+            }
+
             setSubmitting(false);
         }
     };

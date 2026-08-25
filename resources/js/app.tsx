@@ -39,12 +39,14 @@ import {
     isSafariCashbackExtensionNoise,
     isUnattendedRequestNoise,
 } from './lib/sentry';
+import { installSessionExpiryRecovery } from './lib/session-expiry-recovery';
 import { trackUnattendedRequests } from './lib/unattended-requests';
 import type { ExpiredBankingConnectionNotification, SharedData } from './types';
 import { __, setTranslations } from './utils/i18n';
 
 installChunkLoadRecovery();
 installDeferredPropsRecovery();
+installSessionExpiryRecovery();
 trackUnattendedRequests();
 installFailedNavigationToast();
 
