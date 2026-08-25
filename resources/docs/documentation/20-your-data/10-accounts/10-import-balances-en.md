@@ -12,7 +12,7 @@ A connected account does not offer this. Its balances come from the bank on ever
 
 ## Where to find it
 
-The **Import balances** button on the account page. On an investment or retirement account it reads _Import market values_, and on a loan _Import owed amounts_ — the same drawer, named after what that account holds.
+The **Import balances** button on the account page. On a real estate account it reads _Import market values_, and on a loan _Import owed amounts_ — the same drawer, named after what that account holds.
 
 ## What the file needs
 

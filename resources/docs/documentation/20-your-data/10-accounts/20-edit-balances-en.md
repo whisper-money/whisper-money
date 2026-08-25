@@ -10,7 +10,7 @@ Correct the balance history of an account you keep by hand: change a figure, fix
 
 ![The balance history modal, listing one balance per date with edit and delete actions on each row](/docs/documentation/balances-modal.png)
 
-Both are named after what the account holds: _market values_ on an investment or retirement account, _owed amount_ on a loan.
+Both are named after what the account holds: _market values_ on a real estate account, _owed amount_ on a loan.
 
 A connected account has neither. Its balances arrive from the bank on every sync, so there is nothing here to correct — fix it at the bank, or the next sync puts it back.
 

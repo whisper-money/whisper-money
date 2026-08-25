@@ -103,7 +103,9 @@ final class AgentMarkdown
                 ...$lines,
                 '## '.($locale === 'es' ? 'Documentación (español)' : 'Documentation (English)'),
                 '',
-                '- ['.($locale === 'es' ? 'Índice completo' : 'Full index').']('.route('documentation.index.markdown', ['lang' => $locale]).'): every page below in one list, with the pages nested under each one.',
+                '- ['.($locale === 'es' ? 'Índice completo' : 'Full index').']('.route('documentation.index.markdown', ['lang' => $locale]).'): '.($locale === 'es'
+                    ? 'todas las páginas de abajo en una lista, con las páginas anidadas bajo cada una.'
+                    : 'every page below in one list, with the pages nested under each one.'),
             ];
 
             foreach ($pages as $page) {

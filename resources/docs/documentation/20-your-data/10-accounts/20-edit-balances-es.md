@@ -10,7 +10,7 @@ Corrige el historial de saldos de una cuenta que llevas a mano: cambia una cifra
 
 ![El modal de historial de saldos, con un saldo por fecha y acciones de editar y borrar en cada fila](/docs/documentation/balances-modal.png)
 
-Las dos se nombran según lo que guarda la cuenta: _valores de mercado_ en una cuenta de inversión o de jubilación, _importe pendiente_ en un préstamo.
+Las dos se nombran según lo que guarda la cuenta: _valores de mercado_ en una cuenta de inmueble, _importe pendiente_ en un préstamo.
 
 Una cuenta conectada no tiene ninguna de las dos. Sus saldos llegan del banco en cada sincronización, así que aquí no hay nada que corregir: arréglalo en el banco, o la siguiente sincronización lo devuelve a como estaba.
 

@@ -12,7 +12,7 @@ Una cuenta conectada no ofrece esto. Sus saldos vienen del banco en cada sincron
 
 ## Dónde está
 
-El botón **Importar saldos** de la página de la cuenta. En una cuenta de inversión o de jubilación se lee _Importar valores de mercado_, y en un préstamo _Importar importes pendientes_: el mismo panel, nombrado según lo que guarda esa cuenta.
+El botón **Importar saldos** de la página de la cuenta. En una cuenta de inmueble se lee _Importar valores de mercado_, y en un préstamo _Importar importes pendientes_: el mismo panel, nombrado según lo que guarda esa cuenta.
 
 ## Qué necesita el archivo
 
