@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\AccountType;
 use App\Http\Requests\ArchiveAccountRequest;
 use App\Http\Requests\ReorderAccountsRequest;
@@ -74,14 +75,46 @@ class AccountController extends Controller
      * Archiving records the day it happened so the account stops counting from
      * then on without touching the history it already has; unarchiving clears
      * the date and the account goes back to counting.
+     *
+     * A connected account also stops syncing: sync runs off the connection's
+     * accounts, so detaching it is what ends the new transactions and balances
+     * the dialog warns about. Reconnecting means going through the bank again,
+     * which is why unarchiving cannot undo this half.
      */
-    public function updateArchived(ArchiveAccountRequest $request, Account $account): RedirectResponse
-    {
+    public function updateArchived(
+        ArchiveAccountRequest $request,
+        Account $account,
+        DisconnectBankingConnection $disconnectBankingConnection,
+    ): RedirectResponse {
+        $archiving = $request->validated('archived');
+
         $account->update([
-            'archived_at' => $request->validated('archived') ? now() : null,
+            'archived_at' => $archiving ? now() : null,
         ]);
 
+        if ($archiving && $account->isConnected()) {
+            $this->disconnectFromBank($account, $disconnectBankingConnection);
+        }
+
         return back();
+    }
+
+    /**
+     * The connection itself is only revoked once nothing hangs off it any more:
+     * the other accounts of the same bank must keep syncing.
+     */
+    private function disconnectFromBank(Account $account, DisconnectBankingConnection $disconnectBankingConnection): void
+    {
+        $connection = $account->bankingConnection;
+
+        $account->update([
+            'banking_connection_id' => null,
+            'external_account_id' => null,
+        ]);
+
+        if ($connection && $connection->accounts()->doesntExist()) {
+            $disconnectBankingConnection->handle($connection);
+        }
     }
 
     public function show(Request $request, Account $account): Response

@@ -23,6 +23,9 @@ interface ArchiveAccountDialogProps {
  * Archiving is reversible, so it asks for a plain confirmation rather than a
  * typed one — but it reaches enough of the app that it has to say what it does.
  * Unarchiving needs no dialog at all.
+ *
+ * The one half that is not reversible is the bank connection: archiving a
+ * connected account detaches it, so that consequence is spelled out first.
  */
 export function ArchiveAccountDialog({
     account,
@@ -44,6 +47,13 @@ export function ArchiveAccountDialog({
                 </DialogHeader>
 
                 <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                    {!!account.banking_connection_id && (
+                        <li className="font-medium text-foreground">
+                            {__(
+                                'It will be disconnected from the bank: no new transactions or balances will come in, and bringing it back later means connecting the bank again.',
+                            )}
+                        </li>
+                    )}
                     <li>
                         {__(
                             'It disappears from the dashboard and from the accounts page.',

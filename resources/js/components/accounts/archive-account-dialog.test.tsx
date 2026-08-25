@@ -54,6 +54,36 @@ describe('ArchiveAccountDialog', () => {
         expect(screen.getByText(/bring it back any time/)).toBeInTheDocument();
     });
 
+    it('warns a connected account will be disconnected', () => {
+        render(
+            <ArchiveAccountDialog
+                account={
+                    { ...account, banking_connection_id: 'conn-1' } as Account
+                }
+                open={true}
+                onOpenChange={() => {}}
+            />,
+        );
+
+        expect(
+            screen.getByText(/disconnected from the bank/),
+        ).toBeInTheDocument();
+    });
+
+    it('does not mention the bank for a manual account', () => {
+        render(
+            <ArchiveAccountDialog
+                account={account}
+                open={true}
+                onOpenChange={() => {}}
+            />,
+        );
+
+        expect(
+            screen.queryByText(/disconnected from the bank/),
+        ).not.toBeInTheDocument();
+    });
+
     it('submits archived=1 to the account it was given', () => {
         render(
             <ArchiveAccountDialog
