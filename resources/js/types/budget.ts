@@ -105,3 +105,48 @@ export function getRolloverTypeDescription(type: RolloverType): string {
     };
     return descriptions[type];
 }
+
+/**
+ * How much of the current period's allocation is already spent, as a
+ * percentage. The card and the Planning list's ordering both read it, so it
+ * has to be computed in one place.
+ */
+export function budgetPercentageUsed(budget: Budget): number {
+    const period = budget.periods?.[0];
+
+    if (!period || period.allocated_amount <= 0) {
+        return 0;
+    }
+
+    const spent =
+        period.budget_transactions?.reduce((sum, t) => sum + t.amount, 0) ?? 0;
+
+    return (spent / period.allocated_amount) * 100;
+}
+
+export type BudgetSeverity = 'over' | 'near' | 'ok';
+
+/**
+ * Where a budget sits against its allocation. The card's colour and the
+ * Planning list's ordering both read it, so the position an item takes in the
+ * list can never disagree with the colour the user is looking at.
+ */
+export function budgetSeverity(budget: Budget): BudgetSeverity {
+    const used = budgetPercentageUsed(budget);
+
+    if (used >= 100) {
+        return 'over';
+    }
+
+    return used >= 80 ? 'near' : 'ok';
+}
+
+export function getBudgetSeverityColor(severity: BudgetSeverity): string {
+    const colors: Record<BudgetSeverity, string> = {
+        over: 'text-red-600 dark:text-red-400',
+        near: 'text-yellow-600 dark:text-yellow-400',
+        ok: 'text-green-600 dark:text-green-400',
+    };
+
+    return colors[severity];
+}

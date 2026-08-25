@@ -1,7 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/SavingsGoalController';
+import { CreatePlaceholderCard } from '@/components/shared/create-placeholder-card';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -14,10 +14,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label as UILabel } from '@/components/ui/label';
 import { useControllableOpen } from '@/hooks/use-controllable-open';
-import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
 
 interface Props {
@@ -86,19 +84,9 @@ export function CreateSavingsGoalDialog({
                 <DialogTrigger asChild>{trigger}</DialogTrigger>
             ) : isControlled ? null : (
                 <DialogTrigger asChild>
-                    <Card
-                        className={cn(
-                            'cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100',
-                            className,
-                        )}
-                    >
-                        <CardContent className="flex h-full items-center justify-center">
-                            <div className="flex flex-row items-center justify-center gap-1">
-                                <Plus className="mr-2 h-4 w-4" />
-                                {__('Create Savings Goal')}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <CreatePlaceholderCard className={className}>
+                        {__('Create Savings Goal')}
+                    </CreatePlaceholderCard>
                 </DialogTrigger>
             )}
             <DialogContent className="sm:max-w-[500px]">
