@@ -12,21 +12,30 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Budget } from '@/types/budget';
 import { SavingsGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
-import { Head } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { ChevronDown, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Budgets',
+        title: 'Planning',
         href: index().url,
     },
 ];
+
+export type BudgetTypeFilter = 'all' | 'budgets' | 'goals';
+
+export function budgetTypeFilterFromUrl(url: string): BudgetTypeFilter {
+    const show = new URL(url, 'https://localhost').searchParams.get('show');
+
+    return show === 'budgets' || show === 'goals' ? show : 'all';
+}
 
 interface Props {
     budgets: Budget[];
@@ -44,15 +53,33 @@ export default function BudgetsIndex({
     const [createType, setCreateType] = useState<'budget' | 'goal' | null>(
         null,
     );
+    const { url } = usePage();
+    // Without savings goals there is no toggle to undo a ?show= filter coming
+    // from a stale bookmark, so clamp it to 'all' instead of hiding sections.
+    const [filter, setFilter] = useState<BudgetTypeFilter>(() =>
+        savingsGoalsEnabled ? budgetTypeFilterFromUrl(url) : 'all',
+    );
+
+    const changeFilter = (value: string) => {
+        const next = (value || 'all') as BudgetTypeFilter;
+        setFilter(next);
+        // preserveState defaults to false on client-side visits, which would
+        // remount the page and reset local state (see use-period-url-sync.ts).
+        router.replace({
+            url: next === 'all' ? index().url : `${index().url}?show=${next}`,
+            preserveScroll: true,
+            preserveState: true,
+        });
+    };
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
-            <Head title={__('Budgets')} />
+            <Head title={__('Planning')} />
 
             <div className="space-y-8 p-6">
                 <div className="flex items-center justify-between gap-2">
                     <HeadingSmall
-                        title={__('Budgets')}
+                        title={__('Planning')}
                         description={__(
                             'Track your spending and save toward your goals',
                         )}
@@ -103,30 +130,68 @@ export default function BudgetsIndex({
                     )}
                 </div>
 
-                <section className="space-y-4">
-                    {savingsGoalsEnabled && (
-                        <h2 className="text-lg font-medium">{__('Budgets')}</h2>
-                    )}
-                    <div className="grid gap-4 lg:grid-cols-2">
-                        {budgets.map((budget) => (
-                            <BudgetListCard
-                                key={budget.id}
-                                budget={budget}
-                                currencyCode={currencyCode}
-                            />
-                        ))}
-                        <CreateBudgetDialog
-                            currencyCode={currencyCode}
-                            className={budgets.length ? '' : 'min-h-[260px]'}
-                        />
-                    </div>
-                </section>
-
                 {savingsGoalsEnabled && (
-                    <section className="space-y-4">
-                        <h2 className="text-lg font-medium">
+                    <ToggleGroup
+                        type="single"
+                        variant="outline"
+                        size="sm"
+                        value={filter}
+                        onValueChange={changeFilter}
+                        aria-label={__('Filter by type')}
+                    >
+                        <ToggleGroupItem
+                            value="all"
+                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                        >
+                            {__('All')}
+                        </ToggleGroupItem>
+                        <ToggleGroupItem
+                            value="budgets"
+                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                        >
+                            {__('Budgets')}
+                        </ToggleGroupItem>
+                        <ToggleGroupItem
+                            value="goals"
+                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                        >
                             {__('Savings Goals')}
-                        </h2>
+                        </ToggleGroupItem>
+                    </ToggleGroup>
+                )}
+
+                {filter !== 'goals' && (
+                    <section className="space-y-4">
+                        {savingsGoalsEnabled && filter === 'all' && (
+                            <h2 className="text-lg font-medium">
+                                {__('Budgets')}
+                            </h2>
+                        )}
+                        <div className="grid gap-4 lg:grid-cols-2">
+                            {budgets.map((budget) => (
+                                <BudgetListCard
+                                    key={budget.id}
+                                    budget={budget}
+                                    currencyCode={currencyCode}
+                                />
+                            ))}
+                            <CreateBudgetDialog
+                                currencyCode={currencyCode}
+                                className={
+                                    budgets.length ? '' : 'min-h-[260px]'
+                                }
+                            />
+                        </div>
+                    </section>
+                )}
+
+                {savingsGoalsEnabled && filter !== 'budgets' && (
+                    <section className="space-y-4">
+                        {filter === 'all' && (
+                            <h2 className="text-lg font-medium">
+                                {__('Savings Goals')}
+                            </h2>
+                        )}
                         <div className="grid gap-4 lg:grid-cols-2">
                             {savingsGoals.map((goal) => (
                                 <SavingsGoalListCard

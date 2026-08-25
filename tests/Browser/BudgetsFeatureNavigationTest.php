@@ -9,7 +9,7 @@ test('budgets menu item visible when feature enabled', function () {
 
     $page = $this->actingAs($user)->visit('/dashboard');
 
-    $page->assertSee('Budgets')
+    $page->assertSee('Planning')
         ->assertNoJavascriptErrors();
 });
 
@@ -19,7 +19,7 @@ test('user can navigate to budgets index page', function () {
     $page = $this->actingAs($user)->visit('/budgets');
 
     $page->assertPathIs('/budgets')
-        ->assertSee('Budgets')
+        ->assertSee('Planning')
         ->assertNoJavascriptErrors();
 });
 
@@ -28,7 +28,7 @@ test('user can view empty budgets list', function () {
 
     $page = $this->actingAs($user)->visit('/budgets');
 
-    $page->assertSee('Budgets')
+    $page->assertSee('Planning')
         ->assertNoJavascriptErrors();
 });
 
@@ -43,7 +43,7 @@ test('user can view budgets list with existing budgets', function () {
 
     $page = $this->actingAs($user)->visit('/budgets');
 
-    $page->waitForText('Budgets', 10)
+    $page->waitForText('Planning', 10)
         ->assertSee('Test Budget')
         ->assertNoJavascriptErrors();
 });
@@ -55,7 +55,7 @@ test('user can open create budget dialog', function () {
 
     $page = $this->actingAs($user)->visit('/budgets');
 
-    $page->waitForText('Budgets', 10)
+    $page->waitForText('Planning', 10)
         ->click('Create Budget')
         ->wait(1)
         ->assertSee('Create Budget')
@@ -139,7 +139,7 @@ test('budgets navigation works from sidebar', function () {
 
     $page = $this->actingAs($user)->visit('/dashboard');
 
-    $page->assertSee('Budgets')
+    $page->assertSee('Planning')
         ->assertNoJavascriptErrors();
 });
 
@@ -148,7 +148,7 @@ test('budgets page shows correct feature flag state', function () {
 
     $page = $this->actingAs($user)->visit('/budgets');
 
-    $page->assertSee('Budgets')
+    $page->assertSee('Planning')
         ->assertNoJavascriptErrors()
         ->assertNoConsoleLogs();
 });

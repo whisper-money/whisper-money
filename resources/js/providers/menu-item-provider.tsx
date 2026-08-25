@@ -17,14 +17,14 @@ const mobileLabels: Record<string, Record<string, string>> = {
         cashflow: 'Cashflow',
         accounts: 'Accounts',
         transactions: 'Movements',
-        budgets: 'Budget',
+        budgets: 'Plan',
     },
     es: {
         dashboard: 'Inicio',
         cashflow: 'Cashflow',
         accounts: 'Cuentas',
         transactions: 'Movim.',
-        budgets: 'Presup.',
+        budgets: 'Plan',
     },
 };
 
@@ -70,7 +70,7 @@ export function getMainNavItems(features: Features, locale: string): NavItem[] {
         },
         {
             type: 'nav-item',
-            title: 'Budgets',
+            title: 'Planning',
             mobileTitle: getMobileLabel('budgets', locale),
             href: budgetsIndex(),
             icon: PiggyBank,

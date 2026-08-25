@@ -16,7 +16,7 @@ test('catch-all toggle hides category and label selection', function () {
     $page = $this->actingAs($user)->visit('/budgets');
     $page->wait(2);
 
-    $page->assertSee('Budgets')
+    $page->assertSee('Planning')
         ->waitForText('Create Budget', 10)
         ->wait(1)
         ->click('Create Budget')

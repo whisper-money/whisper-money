@@ -71,7 +71,7 @@ export default function BudgetShow({
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: 'Budgets',
+            title: 'Planning',
             href: index().url,
         },
         {
