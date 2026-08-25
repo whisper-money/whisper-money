@@ -32,6 +32,7 @@ import {
     SavingsGoalStats,
 } from '@/types/savings-goal';
 import { ServerTransaction } from '@/types/transaction';
+import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
@@ -173,6 +174,17 @@ export default function SavingsGoalShow({
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {savingsGoal.initial_amount > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                                {__('Includes :amount you had already saved.', {
+                                    amount: formatCurrency(
+                                        savingsGoal.initial_amount,
+                                        currencyCode,
+                                        locale,
+                                    ),
+                                })}
+                            </p>
+                        )}
                         <Progress
                             value={Math.min(Math.max(stats.percentage, 0), 100)}
                             className="h-2"

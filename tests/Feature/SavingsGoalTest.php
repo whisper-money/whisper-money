@@ -108,6 +108,35 @@ test('show exposes computed progress stats', function () {
     );
 });
 
+test('the goal page stats include the starting amount', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create([
+        'user_id' => $user->id,
+        'target_amount' => 400000,
+        'initial_amount' => 100000,
+        'target_date' => null,
+    ]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $contribution = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -25000,
+        'transaction_date' => now()->subDays(10),
+    ]);
+    $contribution->labels()->attach($goal->label_id);
+
+    $this->actingAs($user)->get("/savings-goals/{$goal->id}")
+        ->assertInertia(fn ($page) => $page
+            ->component('savings-goals/show')
+            ->where('stats.saved', 125000)
+            // The pace only counts the contribution, not the starting balance:
+            // 25000 cents over the elapsed window, nowhere near 125000/day.
+            ->where('stats.rate_per_day', fn ($rate) => $rate > 0 && $rate <= 2500.0)
+        );
+});
+
 test('a goal can start from an amount already saved', function () {
     $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);

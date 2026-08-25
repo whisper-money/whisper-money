@@ -77,6 +77,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
                 'label_id' => $label->id,
                 'name' => $request->name,
                 'target_amount' => $request->target_amount,
+                // Nullable input coerced to 0 cents: the column is NOT NULL.
                 'initial_amount' => $request->integer('initial_amount'),
                 'target_date' => $request->target_date,
             ]);

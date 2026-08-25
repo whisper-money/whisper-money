@@ -125,7 +125,10 @@ export function EditSavingsGoalDialog({
 
                         <div className="space-y-2">
                             <UILabel htmlFor="edit-goal-initial">
-                                {__('Already Saved')}
+                                {__('Already Saved')}{' '}
+                                <span className="text-muted-foreground">
+                                    {__('(optional)')}
+                                </span>
                             </UILabel>
                             <AmountInput
                                 id="edit-goal-initial"
