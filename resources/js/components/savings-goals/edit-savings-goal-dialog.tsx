@@ -33,6 +33,9 @@ export function EditSavingsGoalDialog({
     const [targetAmount, setTargetAmount] = useState<number>(
         savingsGoal.target_amount,
     );
+    const [initialAmount, setInitialAmount] = useState<number>(
+        savingsGoal.initial_amount,
+    );
     const [targetDate, setTargetDate] = useState<string>(
         savingsGoal.target_date ?? '',
     );
@@ -43,6 +46,7 @@ export function EditSavingsGoalDialog({
         if (open) {
             setName(savingsGoal.name);
             setTargetAmount(savingsGoal.target_amount);
+            setInitialAmount(savingsGoal.initial_amount);
             setTargetDate(savingsGoal.target_date ?? '');
             setErrors({});
         }
@@ -58,6 +62,7 @@ export function EditSavingsGoalDialog({
             {
                 name,
                 target_amount: targetAmount,
+                initial_amount: initialAmount,
                 target_date: targetDate || null,
             },
             {
@@ -114,6 +119,29 @@ export function EditSavingsGoalDialog({
                             {errors.target_amount && (
                                 <p className="text-sm text-destructive">
                                     {errors.target_amount}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <UILabel htmlFor="edit-goal-initial">
+                                {__('Already Saved')}
+                            </UILabel>
+                            <AmountInput
+                                id="edit-goal-initial"
+                                value={initialAmount}
+                                onChange={setInitialAmount}
+                                currencyCode={currencyCode}
+                                placeholder="0.00"
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                {__(
+                                    'What you had already put aside before creating this goal. Linked transactions add on top of it.',
+                                )}
+                            </p>
+                            {errors.initial_amount && (
+                                <p className="text-sm text-destructive">
+                                    {errors.initial_amount}
                                 </p>
                             )}
                         </div>

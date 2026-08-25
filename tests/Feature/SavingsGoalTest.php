@@ -108,6 +108,102 @@ test('show exposes computed progress stats', function () {
     );
 });
 
+test('a goal can start from an amount already saved', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'House deposit',
+        'target_amount' => 1000000,
+        'initial_amount' => 300000,
+    ])->assertRedirect();
+
+    $goal = SavingsGoal::where('user_id', $user->id)->first();
+
+    expect($goal->initial_amount)->toBe(300000)
+        ->and($goal->savedAmountInCents())->toBe(300000);
+});
+
+test('the starting amount adds to the tagged transactions', function () {
+    $user = onboardedSavingsUser();
+    $goal = SavingsGoal::factory()->create([
+        'user_id' => $user->id,
+        'initial_amount' => 100000,
+    ]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $contribution = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -25000,
+    ]);
+    $contribution->labels()->attach($goal->label_id);
+
+    expect($goal->savedAmountInCents())->toBe(125000);
+});
+
+test('a goal with no starting amount defaults to zero', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'Rainy day',
+        'target_amount' => 500000,
+    ])->assertRedirect();
+
+    expect(SavingsGoal::where('user_id', $user->id)->first()->initial_amount)->toBe(0);
+});
+
+test('the starting amount can be adjusted later', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create([
+        'user_id' => $user->id,
+        'target_amount' => 800000,
+        'initial_amount' => 100000,
+    ]);
+
+    $this->actingAs($user)->patch("/savings-goals/{$goal->id}", [
+        'initial_amount' => 250000,
+    ])->assertRedirect();
+
+    expect($goal->fresh()->savedAmountInCents())->toBe(250000);
+});
+
+test('the starting amount cannot be negative', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'Negative',
+        'target_amount' => 500000,
+        'initial_amount' => -1,
+    ])->assertSessionHasErrors('initial_amount');
+
+    expect(SavingsGoal::where('user_id', $user->id)->count())->toBe(0);
+});
+
+test('the starting amount does not inflate the projected pace', function () {
+    $start = Carbon::parse('2026-07-20');
+    $today = Carbon::parse('2026-07-30');
+    $targetDate = Carbon::parse('2026-12-31');
+
+    // A goal opened ten days ago with 300k already put aside and nothing added since:
+    // the pace is zero, not 30k a day.
+    $stats = SavingsGoal::project(300000, 1000000, $start, $targetDate, $today, 300000);
+
+    expect($stats['rate_per_day'])->toBe(0.0)
+        ->and($stats['estimated_date'])->toBeNull()
+        // The ideal pace runs from the starting balance to the target, so ten days in
+        // it expects only a little more than what was already there.
+        ->and($stats['expected_today'])->toBeGreaterThan(300000)
+        ->and($stats['expected_today'])->toBeLessThan(400000)
+        // Nothing added in those ten days, so the goal is behind its ideal pace
+        // rather than being credited for money that was already there.
+        ->and($stats['status'])->toBe('behind');
+});
+
 test('renaming the goal renames its label', function () {
     $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);
@@ -121,6 +217,28 @@ test('renaming the goal renames its label', function () {
 
     $this->assertDatabaseHas('savings_goals', ['id' => $goal->id, 'name' => 'Emergency fund']);
     $this->assertDatabaseHas('labels', ['id' => $goal->label_id, 'name' => 'Emergency fund']);
+});
+
+test('the goals list adds the starting amount to its progress', function () {
+    $user = onboardedSavingsUser();
+    $goal = SavingsGoal::factory()->create([
+        'user_id' => $user->id,
+        'target_amount' => 400000,
+        'initial_amount' => 100000,
+    ]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $contribution = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -100000,
+    ]);
+    $contribution->labels()->attach($goal->label_id);
+
+    $goals = SavingsGoal::withStatsForUser($user);
+
+    expect($goals[0]['initial_amount'])->toBe(100000)
+        ->and($goals[0]['stats']['saved'])->toBe(200000)
+        ->and($goals[0]['stats']['percentage'])->toBe(50.0);
 });
 
 test('deleting the goal also removes its label', function () {

@@ -30,6 +30,7 @@ class UpdateSavingsGoalRequest extends FormRequest
                     ->ignore($this->route('savingsGoal')?->label_id),
             ],
             'target_amount' => ['sometimes', 'required', 'integer', 'min:1'],
+            'initial_amount' => ['sometimes', 'required', 'integer', 'min:0'],
             'target_date' => ['nullable', 'date'],
         ];
     }

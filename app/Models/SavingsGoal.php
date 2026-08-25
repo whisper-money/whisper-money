@@ -26,6 +26,7 @@ class SavingsGoal extends Model
         'label_id',
         'name',
         'target_amount',
+        'initial_amount',
         'target_date',
     ];
 
@@ -38,6 +39,7 @@ class SavingsGoal extends Model
     {
         return [
             'target_amount' => 'integer',
+            'initial_amount' => 'integer',
             'target_date' => 'date:Y-m-d',
         ];
     }
@@ -55,17 +57,18 @@ class SavingsGoal extends Model
     }
 
     /**
-     * Money set aside toward the goal, in cents. Contributions are outflows, so
-     * the natural transaction sign is negated (same convention as budgets): a
-     * transfer out (−) adds, a withdrawal back (+) subtracts.
+     * Money set aside toward the goal, in cents: whatever was already saved when
+     * the goal was created plus its tagged transactions. Contributions are
+     * outflows, so the natural transaction sign is negated (same convention as
+     * budgets): a transfer out (−) adds, a withdrawal back (+) subtracts.
      */
     public function savedAmountInCents(): int
     {
         if ($this->label === null) {
-            return 0;
+            return $this->initial_amount;
         }
 
-        return -1 * (int) $this->label->transactions()->sum('transactions.amount');
+        return $this->initial_amount - (int) $this->label->transactions()->sum('transactions.amount');
     }
 
     /**
@@ -90,8 +93,9 @@ class SavingsGoal extends Model
 
         return $goals->map(function (SavingsGoal $goal) use ($aggByLabel): array {
             $agg = $aggByLabel->get($goal->label_id);
-            // Negated net flow, mirroring savedAmountInCents(); batched to avoid N+1.
-            $saved = -1 * (int) ($agg->total ?? 0);
+            // Starting balance plus negated net flow, mirroring savedAmountInCents();
+            // batched to avoid N+1.
+            $saved = $goal->initial_amount - (int) ($agg->total ?? 0);
 
             return array_merge($goal->toArray(), [
                 'stats' => self::project(
@@ -100,6 +104,7 @@ class SavingsGoal extends Model
                     self::effectiveStart($goal->created_at, $agg->earliest ?? null),
                     $goal->target_date,
                     now(),
+                    $goal->initial_amount,
                 ),
             ]);
         })->all();
@@ -156,13 +161,16 @@ class SavingsGoal extends Model
      *     required_per_month: ?int,
      * }
      */
-    public static function project(int $saved, int $target, Carbon $start, ?Carbon $targetDate, Carbon $today): array
+    public static function project(int $saved, int $target, Carbon $start, ?Carbon $targetDate, Carbon $today, int $initialAmount = 0): array
     {
         $start = $start->copy()->startOfDay();
         $today = $today->copy()->startOfDay();
 
         $daysElapsed = max(1, $start->diffInDays($today));
-        $ratePerDay = $saved / $daysElapsed;
+        // Only what was added since the start sets the pace: the starting balance
+        // was already there on day one, and counting it would read as a huge daily
+        // rate and project completion almost immediately.
+        $ratePerDay = ($saved - $initialAmount) / $daysElapsed;
         $remaining = $target - $saved;
 
         $percentage = $target > 0 ? round(($saved / $target) * 100, 1) : 0.0;
@@ -181,7 +189,8 @@ class SavingsGoal extends Model
         if ($targetDate !== null) {
             $targetDate = $targetDate->copy()->startOfDay();
             $totalDays = max(1, $start->diffInDays($targetDate));
-            $expectedToday = (int) round($target * min($daysElapsed, $totalDays) / $totalDays);
+            // The ideal pace runs from the starting balance to the target, not from zero.
+            $expectedToday = (int) round($initialAmount + ($target - $initialAmount) * min($daysElapsed, $totalDays) / $totalDays);
 
             $status = self::status($saved, $target, $expectedToday);
 

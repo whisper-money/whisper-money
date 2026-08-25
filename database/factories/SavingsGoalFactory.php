@@ -31,6 +31,7 @@ class SavingsGoalFactory extends Factory
             ]),
             'name' => $name,
             'target_amount' => fake()->numberBetween(100000, 5000000),
+            'initial_amount' => 0,
             'target_date' => fake()->optional()->dateTimeBetween('+1 month', '+1 year')?->format('Y-m-d'),
         ];
     }
