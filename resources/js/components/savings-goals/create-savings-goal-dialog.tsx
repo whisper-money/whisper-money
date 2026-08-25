@@ -43,6 +43,7 @@ export function CreateSavingsGoalDialog({
 
     const [name, setName] = useState('');
     const [targetAmount, setTargetAmount] = useState<number>(0);
+    const [initialAmount, setInitialAmount] = useState<number>(0);
     const [targetDate, setTargetDate] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -59,12 +60,14 @@ export function CreateSavingsGoalDialog({
             {
                 name,
                 target_amount: targetAmount,
+                initial_amount: initialAmount,
                 target_date: targetDate || null,
             },
             {
                 onSuccess: () => {
                     setName('');
                     setTargetAmount(0);
+                    setInitialAmount(0);
                     setTargetDate('');
                     setErrors({});
                     setDialogOpen(false);
@@ -142,6 +145,32 @@ export function CreateSavingsGoalDialog({
                             {errors.target_amount && (
                                 <p className="text-sm text-destructive">
                                     {errors.target_amount}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <UILabel htmlFor="goal-initial">
+                                {__('Already Saved')}{' '}
+                                <span className="text-muted-foreground">
+                                    {__('(optional)')}
+                                </span>
+                            </UILabel>
+                            <AmountInput
+                                id="goal-initial"
+                                value={initialAmount}
+                                onChange={setInitialAmount}
+                                currencyCode={currencyCode}
+                                placeholder="0.00"
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                {__(
+                                    'What you had already put aside before creating this goal. Linked transactions add on top of it.',
+                                )}
+                            </p>
+                            {errors.initial_amount && (
+                                <p className="text-sm text-destructive">
+                                    {errors.initial_amount}
                                 </p>
                             )}
                         </div>

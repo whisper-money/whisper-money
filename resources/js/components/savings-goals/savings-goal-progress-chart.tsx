@@ -123,6 +123,9 @@ export function SavingsGoalProgressChart({
         const createdAt = startOfDay(parseISO(savingsGoal.created_at));
         const today = startOfDay(new Date());
         const target = savingsGoal.target_amount;
+        // What was already put aside before the goal existed: the baseline every
+        // line starts from, with linked transactions stacking on top.
+        const initial = savingsGoal.initial_amount;
         const targetDate = savingsGoal.target_date
             ? startOfDay(parseISO(savingsGoal.target_date))
             : null;
@@ -145,7 +148,7 @@ export function SavingsGoalProgressChart({
         // those contributions and joins the projection at today.
         const start = earliest && earliest < createdAt ? earliest : createdAt;
 
-        let savedToday = 0;
+        let savedToday = initial;
         byDate.forEach((amount, key) => {
             if (parseISO(key) <= today) {
                 savedToday += amount;
@@ -172,7 +175,7 @@ export function SavingsGoalProgressChart({
         // ponytail: one point per day. A multi-year goal renders more points but
         // stays well within Recharts' comfort zone for a personal-finance app.
         const data: ChartDataPoint[] = [];
-        let cumulative = 0;
+        let cumulative = initial;
         let cursor = start;
 
         while (cursor <= end) {
@@ -196,7 +199,11 @@ export function SavingsGoalProgressChart({
                     totalDays !== null
                         ? Math.min(
                               target,
-                              Math.round((target * daysFromStart) / totalDays),
+                              Math.round(
+                                  initial +
+                                      ((target - initial) * daysFromStart) /
+                                          totalDays,
+                              ),
                           )
                         : null,
             });

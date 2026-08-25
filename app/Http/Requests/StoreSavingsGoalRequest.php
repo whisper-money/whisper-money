@@ -28,6 +28,7 @@ class StoreSavingsGoalRequest extends FormRequest
                     ->whereNull('deleted_at'),
             ],
             'target_amount' => ['required', 'integer', 'min:1'],
+            'initial_amount' => ['nullable', 'integer', 'min:0'],
             'target_date' => ['nullable', 'date', 'after:today'],
         ];
     }

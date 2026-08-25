@@ -77,6 +77,8 @@ class SavingsGoalController extends Controller implements HasMiddleware
                 'label_id' => $label->id,
                 'name' => $request->name,
                 'target_amount' => $request->target_amount,
+                // Nullable input coerced to 0 cents: the column is NOT NULL.
+                'initial_amount' => $request->integer('initial_amount'),
                 'target_date' => $request->target_date,
             ]);
         });
@@ -104,6 +106,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
             SavingsGoal::effectiveStart($savingsGoal->created_at, $transactions->first()?->transaction_date),
             $savingsGoal->target_date,
             now(),
+            $savingsGoal->initial_amount,
         );
 
         return Inertia::render('savings-goals/show', [
@@ -201,7 +204,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
         $this->authorize('update', $savingsGoal);
 
         DB::transaction(function () use ($request, $savingsGoal) {
-            $savingsGoal->update($request->only(['name', 'target_amount', 'target_date']));
+            $savingsGoal->update($request->only(['name', 'target_amount', 'initial_amount', 'target_date']));
 
             if ($request->has('name') && $savingsGoal->label) {
                 $savingsGoal->label->update(['name' => $request->name]);
