@@ -500,11 +500,18 @@ it('creates, updates and deletes a category', function () {
 
     expect($category->fresh()->name)->toBe('Holidays');
 
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => Account::factory()->create(['user_id' => $user->id])->id,
+        'category_id' => $category->id,
+    ]);
+
     callWriteTool($user, DeleteCategory::class, [
         'category_id' => $category->id,
     ])->assertOk();
 
-    expect(Category::query()->find($category->id))->toBeNull();
+    expect(Category::query()->find($category->id))->toBeNull()
+        ->and($transaction->fresh()->category_id)->toBeNull();
 });
 
 it('creates, updates and deletes a label', function () {

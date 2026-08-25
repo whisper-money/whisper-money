@@ -4,19 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
-use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\CashflowSummaryService;
 use App\Services\CategoryTree;
+use App\Services\Concerns\ConvertsTransactionCurrency;
 use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use InvalidArgumentException;
 
 class CashflowAnalyticsController extends Controller
 {
@@ -27,6 +26,7 @@ class CashflowAnalyticsController extends Controller
     public function __construct(
         private ExchangeRateService $exchangeRateService,
         private CategoryTree $tree,
+        private CashflowSummaryService $summaries,
     ) {}
 
     public function summary(Request $request): JsonResponse
@@ -41,7 +41,7 @@ class CashflowAnalyticsController extends Controller
         $user = $request->user();
 
         return $this->cashflowJson(
-            $this->calculateCashflowSummaries($user->id, $user->currency_code, $period, $previousPeriod)
+            $this->summaries->forComparedPeriods($user->id, $user->currency_code, $period, $previousPeriod)
         );
     }
 
@@ -179,63 +179,6 @@ class CashflowAnalyticsController extends Controller
         return response()
             ->json($data)
             ->header('Cache-Control', 'no-store, private');
-    }
-
-    private function calculateCashflowSummaries(string $userId, string $userCurrency, PeriodComparator $period, PeriodComparator $previousPeriod): array
-    {
-        $transactions = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$previousPeriod->from, $period->to])
-            ->with(['account', 'category'])
-            ->get();
-
-        $this->preloadExchangeRates($transactions, $userCurrency);
-
-        return [
-            'current' => $this->cashflowSummaryFromTransactions(
-                $this->transactionsForPeriod($transactions, $period->from, $period->to),
-                $userCurrency,
-            ),
-            'previous' => $this->cashflowSummaryFromTransactions(
-                $this->transactionsForPeriod($transactions, $previousPeriod->from, $previousPeriod->to),
-                $userCurrency,
-            ),
-        ];
-    }
-
-    private function cashflowSummaryFromTransactions(Collection $transactions, string $userCurrency): array
-    {
-        $income = max(0, $this->sumTransactions($transactions, $userCurrency, CategoryType::Income));
-        $expense = max(0, -$this->sumTransactions($transactions, $userCurrency, CategoryType::Expense));
-        $savings = $this->sumOutflowTransactions($transactions, $userCurrency, CategoryType::Savings);
-        $investments = $this->sumOutflowTransactions($transactions, $userCurrency, CategoryType::Investment);
-
-        return [
-            ...CashflowSummaryService::summarize($income, $expense),
-            'savings' => $savings,
-            'investments' => $investments,
-        ];
-    }
-
-    private function sumTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
-    {
-        $onSide = match ($type) {
-            CategoryType::Income => fn (Transaction $transaction): bool => $transaction->isIncomeSide(),
-            CategoryType::Expense => fn (Transaction $transaction): bool => $transaction->isExpenseSide(),
-            default => throw new InvalidArgumentException("sumTransactions only supports Income and Expense, got {$type->value}."),
-        };
-
-        return $transactions
-            ->filter($onSide)
-            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
-    }
-
-    private function sumOutflowTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
-    {
-        return abs($transactions
-            ->filter(fn (Transaction $transaction): bool => $transaction->categoryType() === $type
-                && $transaction->amount < 0)
-            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency)));
     }
 
     private function getSankeyBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, string $operator, ?string $drillParentId = null): Collection
@@ -450,13 +393,6 @@ class CashflowAnalyticsController extends Controller
         }
 
         return $categorized;
-    }
-
-    private function transactionsForPeriod(Collection $transactions, Carbon $from, Carbon $to): Collection
-    {
-        return $transactions->filter(function (Transaction $transaction) use ($from, $to): bool {
-            return $transaction->transaction_date->betweenIncluded($from, $to);
-        });
     }
 
     private function categoryCashflowDirection(Transaction $transaction): ?CategoryCashflowDirection

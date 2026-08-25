@@ -86,20 +86,15 @@ class CategoryController extends Controller
         return to_route('categories.index');
     }
 
-    /**
-     * Move the category's direct children to a new parent, then soft delete it.
-     */
     private function detachChildrenAndDelete(Category $category, ?string $newParentId): void
     {
         try {
-            $category->children()->update(['parent_id' => $newParentId]);
+            $this->tree->detachChildrenAndDelete($category, $newParentId);
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages([
                 'strategy' => __('A category with the same name already exists at the destination level. Rename it first.'),
             ]);
         }
-
-        $category->delete();
     }
 
     private function throwDuplicateCategoryNameValidationException(UniqueConstraintViolationException $exception): never

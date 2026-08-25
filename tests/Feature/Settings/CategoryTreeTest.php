@@ -153,6 +153,27 @@ test('deleting a parent with the cascade strategy removes the subtree and uncate
     expect($transaction->refresh()->category_id)->toBeNull();
 });
 
+test('deleting a category uncategorizes its transactions whatever happens to its children', function (string $strategy) {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $root = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
+    $parent = Category::factory()->childOf($root)->create(['user_id' => $user->id]);
+    $child = Category::factory()->childOf($parent)->create(['user_id' => $user->id]);
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $parent->id,
+    ]);
+
+    $this->actingAs($user)->delete(route('categories.destroy', $parent), ['strategy' => $strategy])
+        ->assertRedirect(route('categories.index'));
+
+    $this->assertSoftDeleted('categories', ['id' => $parent->id]);
+    $this->assertNotSoftDeleted('categories', ['id' => $child->id]);
+    expect($transaction->refresh()->category_id)->toBeNull();
+})->with(['promote', 'reparent']);
+
 test('deleting a parent with the promote strategy rejects child name collisions at the top level', function () {
     $user = User::factory()->create();
     Category::factory()->create(['user_id' => $user->id, 'name' => 'Other', 'type' => CategoryType::Expense]);

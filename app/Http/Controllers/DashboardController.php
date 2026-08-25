@@ -2,16 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\CategoryType;
 use App\Models\Account;
-use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,6 +17,7 @@ class DashboardController extends Controller
     public function __construct(
         private AccountMetricsService $accountMetricsService,
         private CategorySpendingService $categorySpendingService,
+        private CashflowSummaryService $summaries,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -88,44 +86,8 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $now = Carbon::now();
-        $from = $now->copy()->startOfMonth();
-        $to = $now->copy()->endOfMonth();
+        $period = new PeriodComparator($now->copy()->startOfMonth(), $now->copy()->endOfMonth());
 
-        $period = new PeriodComparator($from, $to);
-        $previousPeriod = $period->previous();
-
-        return [
-            'current' => $this->calculateCashflowSummary($user->id, $period->from, $period->to),
-            'previous' => $this->calculateCashflowSummary($user->id, $previousPeriod->from, $previousPeriod->to),
-        ];
-    }
-
-    private function calculateCashflowSummary(string $userId, Carbon $from, Carbon $to): array
-    {
-        $income = max(0, $this->getTransactionSum($userId, $from, $to, CategoryType::Income));
-        $expense = max(0, -$this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
-
-        return CashflowSummaryService::summarize($income, $expense);
-    }
-
-    private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
-    {
-        return (int) Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->joinOwningAccount()
-            ->where(function ($q) use ($type) {
-                $q->whereExists(function ($sub) use ($type) {
-                    $sub->select(DB::raw(1))
-                        ->from('categories')
-                        ->whereColumn('categories.id', 'transactions.category_id')
-                        ->where('categories.type', $type);
-                })
-                    ->orWhere(function ($q) use ($type) {
-                        $q->whereNull('transactions.category_id')
-                            ->where('transactions.amount', $type === CategoryType::Income ? '>' : '<', 0);
-                    });
-            })
-            ->sum(Transaction::ownedAmount());
+        return $this->summaries->forComparedPeriods($user->id, $user->currency_code, $period, $period->previous());
     }
 }

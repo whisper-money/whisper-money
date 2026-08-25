@@ -104,15 +104,17 @@ export function DeleteCategoryDialog({
                                             </Label>
                                         ))}
                                     </RadioGroup>
-                                    {strategy === 'cascade' && (
-                                        <p className="text-sm text-red-500">
-                                            {__(
-                                                'Transactions in the deleted categories will become uncategorized.',
-                                            )}
-                                        </p>
-                                    )}
                                 </div>
                             )}
+                            <p className="text-sm text-red-500">
+                                {hasChildren && strategy === 'cascade'
+                                    ? __(
+                                          'Transactions in the deleted categories will become uncategorized.',
+                                      )
+                                    : __(
+                                          'Its transactions will become uncategorized.',
+                                      )}
+                            </p>
                             {errors.strategy && (
                                 <p className="text-sm text-red-500">
                                     {errors.strategy}

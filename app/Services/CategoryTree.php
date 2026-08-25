@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\Transaction;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 class CategoryTree
 {
@@ -386,6 +387,20 @@ class CategoryTree
                 'type' => $category->type,
                 'cashflow_direction' => $category->cashflow_direction,
             ]);
+    }
+
+    /**
+     * Move the category's direct children to a new parent, then delete it on
+     * its own. The children are out of the way first, so the subtree the delete
+     * sees is the category alone.
+     *
+     * @throws UniqueConstraintViolationException when a moved child's name collides at the destination
+     */
+    public function detachChildrenAndDelete(Category $category, ?string $newParentId): void
+    {
+        $category->children()->update(['parent_id' => $newParentId]);
+
+        $this->deleteSubtree($category);
     }
 
     /**

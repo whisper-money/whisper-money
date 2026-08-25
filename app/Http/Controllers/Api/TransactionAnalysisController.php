@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Services\CategoryTree;
+use App\Services\Concerns\ConvertsTransactionCurrency;
 use App\Services\ExchangeRateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
