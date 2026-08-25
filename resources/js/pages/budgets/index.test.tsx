@@ -2,6 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import BudgetsIndex, { budgetTypeFilterFromUrl } from './index';
 
+interface DialogMockProps {
+    trigger?: React.ReactNode;
+    onOpenChange?: (open: boolean) => void;
+}
+
 const replace = vi.fn();
 let pageUrl = '/budgets';
 
@@ -31,16 +36,29 @@ vi.mock('@/components/savings-goals/savings-goal-list-card', () => ({
     SavingsGoalListCard: () => <div>goal-card</div>,
 }));
 
+// The page mounts each dialog up to three times: once as the header button,
+// once as the list's trailing card, and once controlled at the bottom. Only the
+// uncontrolled ones render a trigger, so the mocks mirror that.
 vi.mock('@/components/budgets/create-budget-dialog', () => ({
-    CreateBudgetDialog: () => <div>create-budget</div>,
+    CreateBudgetDialog: ({ trigger, onOpenChange }: DialogMockProps) =>
+        onOpenChange ? null : (
+            <div>{trigger ? 'create-budget-header' : 'create-budget'}</div>
+        ),
 }));
 
 vi.mock('@/components/savings-goals/create-savings-goal-dialog', () => ({
-    CreateSavingsGoalDialog: () => <div>create-goal</div>,
+    CreateSavingsGoalDialog: ({ onOpenChange }: DialogMockProps) =>
+        onOpenChange ? null : <div>create-goal</div>,
 }));
 
-const budget = { id: '1' } as never;
-const goal = { id: '2' } as never;
+vi.mock('@/components/shared/create-placeholder-card', () => ({
+    CreatePlaceholderCard: ({ children }: { children: React.ReactNode }) => (
+        <div>create-either: {children}</div>
+    ),
+}));
+
+const budget = { id: '1', name: 'Groceries' } as never;
+const goal = { id: '2', name: 'Japan trip' } as never;
 
 function renderPage() {
     return render(
@@ -70,11 +88,22 @@ describe('budgetTypeFilterFromUrl', () => {
 });
 
 describe('BudgetsIndex filter', () => {
-    it('shows both sections by default', () => {
+    it('shows both types in one list by default', () => {
         renderPage();
 
         expect(screen.getByText('budget-card')).toBeInTheDocument();
         expect(screen.getByText('goal-card')).toBeInTheDocument();
+    });
+
+    it('does not split the list into per-type sections', () => {
+        renderPage();
+
+        expect(
+            screen.queryByRole('heading', { name: 'Budgets' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('heading', { name: 'Savings Goals' }),
+        ).not.toBeInTheDocument();
     });
 
     it('shows only savings goals and updates the URL when filtering', () => {
@@ -126,5 +155,37 @@ describe('BudgetsIndex filter', () => {
             preserveScroll: true,
             preserveState: true,
         });
+    });
+});
+
+describe('BudgetsIndex create card', () => {
+    it('offers both types when the list is unfiltered', () => {
+        renderPage();
+
+        expect(screen.getByText(/create-either/)).toBeInTheDocument();
+    });
+
+    it('creates the type being filtered on instead of asking again', () => {
+        renderPage();
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Budgets' }));
+        expect(screen.getByText('create-budget')).toBeInTheDocument();
+        expect(screen.queryByText(/create-either/)).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Savings Goals' }));
+        expect(screen.getByText('create-goal')).toBeInTheDocument();
+    });
+
+    it('keeps the budget-only create card when savings goals are disabled', () => {
+        render(
+            <BudgetsIndex
+                budgets={[budget]}
+                savingsGoalsEnabled={false}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(screen.getByText('create-budget')).toBeInTheDocument();
+        expect(screen.queryByText(/create-either/)).not.toBeInTheDocument();
     });
 });
