@@ -3,11 +3,13 @@
 use App\Enums\LabelSource;
 use App\Features\SavingsGoals;
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 
 function onboardedSavingsUser(): User
@@ -301,6 +303,50 @@ test('the goal page only loads recent transactions when asked for them', functio
         ])
         ->assertOk()
         ->assertJsonCount(1, 'props.recentTransactions');
+});
+
+test('the link dialog can widen the recent transactions window, up to a cap', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    // One shared category: the factory only has a handful of unique names to give.
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    Transaction::factory()->count(55)->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'amount' => -1000,
+    ]);
+
+    $recentTransactions = function (int|string|null $recent) use ($user, $goal) {
+        $url = "/savings-goals/{$goal->id}".($recent === null ? '' : "?recent={$recent}");
+
+        return $this->actingAs($user)->withoutVite()
+            ->get($url, [
+                'X-Inertia' => 'true',
+                'X-Inertia-Partial-Component' => 'savings-goals/show',
+                'X-Inertia-Partial-Data' => 'recentTransactions',
+            ])
+            ->assertOk()
+            ->json('props.recentTransactions');
+    };
+
+    expect($recentTransactions(null))->toHaveCount(50);
+    expect($recentTransactions(100))->toHaveCount(55);
+    // Garbage falls back to the default page rather than to an unbounded query.
+    expect($recentTransactions('nonsense'))->toHaveCount(50);
+
+    // Asking past the cap is clamped to it, which only the query itself can show
+    // without seeding hundreds of rows.
+    DB::enableQueryLog();
+    $recentTransactions(10000);
+
+    $clamped = collect(DB::getQueryLog())
+        ->contains(fn (array $entry) => str_contains($entry['query'], 'limit 500'));
+
+    expect($clamped)->toBeTrue();
 });
 
 test('the goal label carries its source so the UI can mark it as a savings goal', function () {

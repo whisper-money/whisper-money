@@ -12,6 +12,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { SavingsGoal } from '@/types/savings-goal';
@@ -21,6 +22,9 @@ import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+
+/** Has to match the controller's RECENT_TRANSACTIONS_LIMIT. */
+const RECENT_PAGE_SIZE = 50;
 
 interface Props {
     savingsGoal: SavingsGoal;
@@ -44,6 +48,8 @@ export function LinkTransactionsDialog({
     const locale = useLocale();
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [recentLimit, setRecentLimit] = useState(RECENT_PAGE_SIZE);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     // The already-tagged ones come first so nothing you can untick is ever off
     // the list — that is what makes sending the whole set back safe.
@@ -75,6 +81,25 @@ export function LinkTransactionsDialog({
         // Re-seeding on every recentTransactions change would wipe the user's ticks.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
+
+    // A short page means the query ran out of transactions, so there is nothing
+    // left to widen the window for.
+    const hasMore =
+        recentTransactions !== undefined &&
+        recentTransactions.length >= recentLimit;
+
+    const loadMore = () => {
+        const nextLimit = recentLimit + RECENT_PAGE_SIZE;
+
+        setIsLoadingMore(true);
+
+        router.reload({
+            only: ['recentTransactions'],
+            data: { recent: nextLimit },
+            onSuccess: () => setRecentLimit(nextLimit),
+            onFinish: () => setIsLoadingMore(false),
+        });
+    };
 
     // A transaction can back more than one goal, and then it counts toward both.
     // Surfacing the other goals' labels is what makes that visible before ticking.
@@ -181,6 +206,26 @@ export function LinkTransactionsDialog({
                                 <Skeleton key={index} className="h-10 w-full" />
                             ))}
                         </div>
+                    )}
+
+                    {hasMore && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={loadMore}
+                            disabled={isLoadingMore}
+                        >
+                            {isLoadingMore ? (
+                                <>
+                                    <Spinner />
+                                    {__('Loading')}
+                                </>
+                            ) : (
+                                __('Load more')
+                            )}
+                        </Button>
                     )}
                 </div>
 

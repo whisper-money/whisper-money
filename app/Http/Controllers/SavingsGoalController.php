@@ -29,9 +29,16 @@ class SavingsGoalController extends Controller implements HasMiddleware
 {
     use AuthorizesRequests;
 
-    // ponytail: a flat window, no search. If people can't find older contributions
-    // in it, the dialog needs a search box hitting the transactions query instead.
+    // ponytail: a flat window the dialog widens with its load-more link, no search.
+    // If people still can't find older contributions, it needs a search box hitting
+    // the transactions query instead.
     private const RECENT_TRANSACTIONS_LIMIT = 50;
+
+    /**
+     * How far the dialog's load-more link may widen the window. Past this, the flat
+     * list stops being a usable way to find anything.
+     */
+    private const RECENT_TRANSACTIONS_MAX = 500;
 
     /**
      * What a transaction row needs to render, both in the page's list and in the
@@ -121,15 +128,29 @@ class SavingsGoalController extends Controller implements HasMiddleware
                 ->orderBy('name')
                 ->get(),
             'currencyCode' => $user->currency_code ?? 'USD',
-            // Only fetched when the link-transactions dialog asks for it.
+            // Only fetched when the link-transactions dialog asks for it, which also
+            // decides how wide a window it wants.
             'recentTransactions' => Inertia::optional(fn () => Transaction::query()
                 ->where('user_id', $user->id)
                 ->with(self::TRANSACTION_RELATIONS)
                 ->orderByDesc('transaction_date')
                 ->orderByDesc('created_at')
-                ->limit(self::RECENT_TRANSACTIONS_LIMIT)
+                ->limit($this->recentTransactionsLimit($request))
                 ->get()),
         ]);
+    }
+
+    /**
+     * The window the link dialog asked for, clamped to a size the flat list can still
+     * carry. Anything unusable falls back to the first page instead of to no rows.
+     */
+    private function recentTransactionsLimit(Request $request): int
+    {
+        $requested = $request->integer('recent');
+
+        return $requested < 1
+            ? self::RECENT_TRANSACTIONS_LIMIT
+            : min($requested, self::RECENT_TRANSACTIONS_MAX);
     }
 
     /**
