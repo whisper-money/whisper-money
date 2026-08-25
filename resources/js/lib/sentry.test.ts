@@ -522,6 +522,82 @@ describe('isUnattendedRequestNoise', () => {
         ).toBe(false);
     });
 
+    it('keeps a hung poll that a real visit claimed while it was out', async () => {
+        const { isUnattendedRequestNoise, listeners } =
+            await freshModulesWithFakedRouter();
+
+        const url = new URL('https://whisper.money/onboarding');
+
+        listeners.before?.({
+            detail: { visit: { url, prefetch: false, poll: true } },
+        });
+        // Somebody asks for the page themselves while the tick is still out. From
+        // here the url is theirs, and the poll's late failure must not be waved
+        // through on the strength of a claim the visit already revoked.
+        listeners.before?.({ detail: { visit: { url, prefetch: false } } });
+        listeners.finish?.({
+            detail: { visit: { url, prefetch: false, poll: true } },
+        });
+
+        expect(
+            isUnattendedRequestNoise(
+                networkError('https://whisper.money/onboarding'),
+            ),
+        ).toBe(false);
+    });
+
+    it('drops a poll that hung for longer than its window before dying', async () => {
+        const { isUnattendedRequestNoise, listeners } =
+            await freshModulesWithFakedRouter();
+
+        const visit = {
+            detail: {
+                visit: {
+                    url: new URL('https://whisper.money/onboarding'),
+                    prefetch: false,
+                    poll: true,
+                },
+            },
+        };
+
+        listeners.before?.(visit);
+
+        // A connection that dies mid-flight does not fail fast - the browser sits on
+        // the socket for minutes before giving up, which is how a poll nobody asked
+        // for used to outlive the window and get reported as a real navigation.
+        vi.setSystemTime(Date.now() + 61_000);
+        listeners.finish?.(visit);
+
+        expect(
+            isUnattendedRequestNoise(
+                networkError('https://whisper.money/onboarding'),
+            ),
+        ).toBe(true);
+    });
+
+    it('does not resurrect a prefetch a real click has already claimed', async () => {
+        const { isUnattendedRequestNoise, listeners } =
+            await freshModulesWithFakedRouter();
+
+        const url = new URL('https://whisper.money/cashflow');
+
+        listeners.prefetching?.({ detail: { visit: { url } } });
+        listeners.before?.({
+            detail: { visit: { url, prefetch: false } },
+        });
+        // The request Inertia handed to the click is still flagged as a prefetch
+        // when it ends, so `finish` must not undo the claim the click made.
+        listeners.finish?.({
+            detail: { visit: { url, prefetch: true } },
+        });
+
+        expect(
+            isUnattendedRequestNoise(
+                networkError('https://whisper.money/cashflow'),
+            ),
+        ).toBe(false);
+    });
+
     it('keeps a network error that is not Inertia-shaped', async () => {
         const { isUnattendedRequestNoise } =
             await freshModulesWithFakedRouter();
