@@ -19,9 +19,19 @@ import { reloadPage } from './leave-page';
  * silence for a bug the user was staring at.
  *
  * Reloading is the whole fix: Laravel answers the fresh load by redirecting to
- * wherever {@link \App\Services\AuthEntryPointService} sends guests, so the user
- * logs back in and lands somewhere real instead of poking a dead screen. Hence
- * no hardcoded `/login` here — that would skip `guestRedirectRoute`.
+ * wherever it sends guests, so the user logs back in and lands somewhere real
+ * instead of poking a dead screen. Hence no hardcoded `/login` here — that would
+ * skip `AuthEntryPointService::guestRedirectRoute`, which is what decides where
+ * a given guest actually belongs.
+ *
+ * Which of the two statuses you actually get depends on the Laravel version, so
+ * both are handled. `PreventRequestForgery` (Laravel 13, replacing
+ * `ValidateCsrfToken`) accepts any request carrying `Sec-Fetch-Site:
+ * same-origin` without looking at the token at all — so a real browser tab now
+ * gets past CSRF with a dead token and is turned away one middleware later by
+ * `Authenticate`, as a `401` on anything asking for JSON. Verified in a browser
+ * against a session deleted underneath it: `401`, not `419`. The `419` is still
+ * what a request without that header gets, and what production reported.
  *
  * All three transports are covered, because all three break the same way and
  * none of them can tell the user why:
@@ -42,10 +52,12 @@ import { reloadPage } from './leave-page';
  * page Laravel then serves fires no authenticated request to expire.
  */
 const SESSION_EXPIRED_STATUSES = [
-    // The CSRF token died with the session. What a stale tab's writes get.
+    // The CSRF token died with the session, and the token is what was checked.
     419,
     // No session left, on a request that asked for JSON — Laravel cannot answer
-    // an XHR with a redirect, so it says so with a status instead.
+    // an XHR with a redirect, so it says so with a status instead. What a stale
+    // browser tab gets once the origin check has waved the missing token
+    // through.
     401,
 ];
 
@@ -56,23 +68,37 @@ interface SessionExpiryRecoveryOptions {
 }
 
 /**
- * Reloads if this status says the session is gone, and reports whether it did so
- * the caller can suppress whatever it would otherwise have shown.
+ * Whether a recovery reload is already on its way.
+ *
+ * For the `catch` blocks that have their own error message to show. An axios
+ * response interceptor runs before the promise reaches the caller, so this is
+ * already true by the time they ask - and "try again in a moment" is the wrong
+ * thing to tell someone whose page is being replaced by a login screen.
+ */
+export function isRecoveringFromExpiredSession(): boolean {
+    return recovering;
+}
+
+/**
+ * Reloads if this status says the session is gone.
+ *
+ * Reports whether the status *was* an expired session rather than whether it
+ * reloaded, so a caller can suppress what it would otherwise have shown even
+ * when it is the second of several requests to expire at once. Only the reload
+ * itself is once-per-page.
  */
 function recoverFromExpiredSession(
     status: number | undefined,
     options: SessionExpiryRecoveryOptions,
 ): boolean {
-    if (status === undefined || recovering) {
+    if (status === undefined || !SESSION_EXPIRED_STATUSES.includes(status)) {
         return false;
     }
 
-    if (!SESSION_EXPIRED_STATUSES.includes(status)) {
-        return false;
+    if (!recovering) {
+        recovering = true;
+        (options.reload ?? reloadPage)();
     }
-
-    recovering = true;
-    (options.reload ?? reloadPage)();
 
     return true;
 }

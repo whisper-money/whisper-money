@@ -35,13 +35,14 @@ async function freshModules(networkFetch?: typeof window.fetch) {
         },
     }));
 
-    const { installSessionExpiryRecovery } =
+    const { installSessionExpiryRecovery, isRecoveringFromExpiredSession } =
         await import('./session-expiry-recovery');
 
     installSessionExpiryRecovery({ reload });
 
     return {
         listeners,
+        isRecoveringFromExpiredSession,
         rejectAxios: async (status: number | undefined) => {
             const error = { isAxiosError: true, response: { status } };
 
@@ -129,6 +130,28 @@ describe('installSessionExpiryRecovery', () => {
         expect(reload).not.toHaveBeenCalled();
     });
 
+    // Every `catch` in the app that has its own message to show asks this before
+    // showing it: "try again in a moment" is wrong on the way to a login screen.
+    it('tells the callers waiting on a reload that one is coming', async () => {
+        const { rejectAxios, isRecoveringFromExpiredSession } =
+            await freshModules();
+
+        expect(isRecoveringFromExpiredSession()).toBe(false);
+
+        await rejectAxios(419);
+
+        expect(isRecoveringFromExpiredSession()).toBe(true);
+    });
+
+    it('leaves the callers of an ordinary failure to speak for themselves', async () => {
+        const { rejectAxios, isRecoveringFromExpiredSession } =
+            await freshModules();
+
+        await rejectAxios(500);
+
+        expect(isRecoveringFromExpiredSession()).toBe(false);
+    });
+
     it('reloads instead of showing Inertia its error page', async () => {
         const { listeners } = await freshModules();
 
@@ -137,6 +160,17 @@ describe('installSessionExpiryRecovery', () => {
                 detail: { response: { status: 419 } },
             }),
         ).toBe(false);
+        expect(reload).toHaveBeenCalledOnce();
+    });
+
+    // The once-guard is on the reload, not on the answer: a second expired
+    // request must still be told to keep Inertia's error modal off the screen.
+    it('keeps Inertia quiet for every request that expired together', async () => {
+        const { listeners } = await freshModules();
+        const expired = { detail: { response: { status: 419 } } };
+
+        expect(listeners.httpException?.(expired)).toBe(false);
+        expect(listeners.httpException?.(expired)).toBe(false);
         expect(reload).toHaveBeenCalledOnce();
     });
 
