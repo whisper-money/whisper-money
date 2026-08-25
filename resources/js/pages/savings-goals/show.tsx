@@ -2,6 +2,7 @@ import { index } from '@/actions/App/Http/Controllers/BudgetController';
 import { show } from '@/actions/App/Http/Controllers/SavingsGoalController';
 import HeadingSmall from '@/components/heading-small';
 import { MobileBackButton } from '@/components/mobile-back-button';
+import { ArchiveSavingsGoalDialog } from '@/components/savings-goals/archive-savings-goal-dialog';
 import { DeleteSavingsGoalDialog } from '@/components/savings-goals/delete-savings-goal-dialog';
 import { EditSavingsGoalDialog } from '@/components/savings-goals/edit-savings-goal-dialog';
 import { LinkTransactionsDialog } from '@/components/savings-goals/link-transactions-dialog';
@@ -68,6 +69,8 @@ export default function SavingsGoalShow({
     const [linkOpen, setLinkOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [archiveOpen, setArchiveOpen] = useState(false);
+    const archived = savingsGoal.archived_at !== null;
 
     const statusColor = stats.status
         ? getSavingsGoalStatusColor(stats.status)
@@ -97,6 +100,11 @@ export default function SavingsGoalShow({
                         title={savingsGoal.name}
                         description={
                             <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
+                                {archived && (
+                                    <Badge variant="secondary">
+                                        {__('Archived')}
+                                    </Badge>
+                                )}
                                 {savingsGoal.label && (
                                     <LabelBadge label={savingsGoal.label} />
                                 )}
@@ -116,9 +124,13 @@ export default function SavingsGoalShow({
                     />
 
                     <div className="flex items-center gap-2">
-                        <Button onClick={() => setLinkOpen(true)}>
-                            {__('Link transactions')}
-                        </Button>
+                        {/* Linking would change a frozen amount, so it goes
+                            away with the rest of the editing. */}
+                        {!archived && (
+                            <Button onClick={() => setLinkOpen(true)}>
+                                {__('Link transactions')}
+                            </Button>
+                        )}
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -131,11 +143,20 @@ export default function SavingsGoalShow({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    onClick={() => setEditOpen(true)}
-                                >
-                                    {__('Edit goal')}
-                                </DropdownMenuItem>
+                                {!archived && (
+                                    <>
+                                        <DropdownMenuItem
+                                            onClick={() => setEditOpen(true)}
+                                        >
+                                            {__('Edit goal')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => setArchiveOpen(true)}
+                                        >
+                                            {__('Archive goal')}
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
                                 <DropdownMenuItem
                                     onClick={() => setDeleteOpen(true)}
                                     variant="destructive"
@@ -261,6 +282,12 @@ export default function SavingsGoalShow({
                 currencyCode={currencyCode}
                 open={linkOpen}
                 onOpenChange={setLinkOpen}
+            />
+
+            <ArchiveSavingsGoalDialog
+                savingsGoal={savingsGoal}
+                open={archiveOpen}
+                onOpenChange={setArchiveOpen}
             />
 
             <EditSavingsGoalDialog

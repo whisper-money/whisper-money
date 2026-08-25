@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateBudgetRequest;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Budget;
+use App\Models\BudgetPeriod;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
@@ -63,24 +64,7 @@ class BudgetController extends Controller
 
         $user = $request->user();
 
-        // If a specific period UUID is requested, load it (scoped to this budget, past/current only)
-        $periodId = $request->query('period');
-        if ($periodId) {
-            $viewedPeriod = $budget->periods()
-                ->where('id', $periodId)
-                ->where('start_date', '<=', today())
-                ->firstOrFail();
-        } else {
-            $viewedPeriod = $budget->getCurrentPeriod();
-
-            if (! $viewedPeriod) {
-                // Same anchoring as the scheduled command: without an explicit
-                // start date this picks up where the chain ends, which can be in
-                // the past - showing a stale period as the current one and
-                // appending another row on every visit.
-                $viewedPeriod = $this->budgetPeriodService->generatePeriod($budget, null, today());
-            }
-        }
+        $viewedPeriod = $this->periodToView($request, $budget);
 
         $viewedPeriod->load([
             'budgetTransactions.transaction.account.bank',
@@ -138,6 +122,36 @@ class BudgetController extends Controller
         ]);
     }
 
+    /**
+     * The period the page shows: the one explicitly asked for (scoped to this
+     * budget, past or current only), or the one covering today.
+     *
+     * An archived budget gets no new periods, so it falls back to the last one
+     * it had instead of minting one — visiting the page must not resume a budget
+     * that stopped counting.
+     */
+    private function periodToView(Request $request, Budget $budget): BudgetPeriod
+    {
+        $periodId = $request->query('period');
+
+        if ($periodId) {
+            return $budget->periods()
+                ->where('id', $periodId)
+                ->where('start_date', '<=', today())
+                ->firstOrFail();
+        }
+
+        $viewedPeriod = $budget->getCurrentPeriod()
+            ?? ($budget->isArchived() ? $budget->periods()->orderByDesc('start_date')->first() : null);
+
+        // Same anchoring as the scheduled command: without an explicit start
+        // date this picks up where the chain ends, which can be in the past -
+        // showing a stale period as the current one and appending another row on
+        // every visit. A budget always has at least the period it was created
+        // with, so this is only reached by one that is still running.
+        return $viewedPeriod ?? $this->budgetPeriodService->generatePeriod($budget, null, today());
+    }
+
     public function store(StoreBudgetRequest $request): RedirectResponse
     {
         $budget = $this->budgetService->create(
@@ -177,5 +191,28 @@ class BudgetController extends Controller
         $budget->delete();
 
         return redirect()->route('budgets.index');
+    }
+
+    /**
+     * Archiving records the day it happened and is one-way: the budget turns
+     * read-only, stops absorbing transactions and stops claiming its categories
+     * away from the catch-all, and no further periods are generated for it. The
+     * periods it already has keep their figures, which is why the budget stays
+     * reachable instead of being deleted.
+     *
+     * The periods `GenerateBudgetPeriods` had already run ahead are left behind
+     * on purpose: `show()` only navigates to periods that have started, so they
+     * are already invisible and cleaning them up would buy nothing.
+     */
+    public function archive(Request $request, Budget $budget): RedirectResponse
+    {
+        $this->authorize('archive', $budget);
+
+        $budget->update(['archived_at' => now()]);
+
+        // Named route, not back(): the dialog only exists on this page, and the
+        // previous-url redirect resolves to the app's internal host behind a
+        // proxy (same reason as SavingsGoalController::syncTransactions).
+        return redirect()->route('budgets.show', $budget);
     }
 }

@@ -31,6 +31,7 @@ class ListBudgets extends McpTool
         // period's spend). Fine for the handful of budgets a user keeps; eager
         // load the current period with a sum if anyone ever runs dozens.
         $budgets = $user->budgets()
+            ->notArchived()
             ->with(['categories:id,name', 'labels:id,name'])
             ->orderBy('name')
             ->get()

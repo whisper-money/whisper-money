@@ -91,7 +91,9 @@ class SavingsGoalController extends Controller implements HasMiddleware
         $this->authorize('view', $savingsGoal);
 
         $user = $request->user();
-        $savingsGoal->load('label');
+        // Trashed too: archiving deletes the label, and without it the page
+        // would silently drop the very contributions it is there to show.
+        $savingsGoal->load(['label' => fn ($query) => $query->withTrashed()]);
 
         $transactions = $savingsGoal->label
             ? $savingsGoal->label->transactions()
@@ -105,7 +107,7 @@ class SavingsGoalController extends Controller implements HasMiddleware
             $savingsGoal->target_amount,
             SavingsGoal::effectiveStart($savingsGoal->created_at, $transactions->first()?->transaction_date),
             $savingsGoal->target_date,
-            now(),
+            $savingsGoal->measuredAt(),
             $savingsGoal->initial_amount,
         );
 
@@ -211,6 +213,39 @@ class SavingsGoalController extends Controller implements HasMiddleware
             }
         });
 
+        return redirect()->route('savings-goals.show', $savingsGoal);
+    }
+
+    /**
+     * Archiving is one-way and freezes the goal.
+     *
+     * Its label goes with it — the goal is done, so the label must never be
+     * pickable again, and soft-deleting it takes it out of every picker at once
+     * through the global scope. That also means the saved amount can no longer
+     * be derived (the sum would collapse to the starting balance, and re-tagging
+     * one of those transactions later would move a final figure), so it is
+     * snapshotted here. Both writes and the archive date share one transaction:
+     * a goal that is half-archived has no meaning.
+     */
+    public function archive(Request $request, SavingsGoal $savingsGoal): RedirectResponse
+    {
+        $this->authorize('archive', $savingsGoal);
+
+        DB::transaction(function () use ($savingsGoal) {
+            // Read before the archive date is written: savedAmountInCents()
+            // switches to the snapshot the moment the goal counts as archived.
+            $saved = $savingsGoal->savedAmountInCents();
+
+            $savingsGoal->update([
+                'archived_at' => now(),
+                'archived_saved_amount' => $saved,
+            ]);
+
+            $savingsGoal->label?->delete();
+        });
+
+        // Named route, not back(): see syncTransactions — the previous-url
+        // redirect resolves to the app's internal host behind a proxy.
         return redirect()->route('savings-goals.show', $savingsGoal);
     }
 

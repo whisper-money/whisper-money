@@ -6,6 +6,7 @@ use App\Mail\Drip\TrialEndingEmail;
 use App\Models\User;
 use App\Models\UserMailLog;
 use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Cashier\Events\WebhookReceived;
@@ -35,6 +36,10 @@ function trialWillEndPayload(array $overrides = [], string $eventId = 'evt_trial
         ], $overrides)],
     ];
 }
+
+afterEach(function () {
+    Carbon::setTestNow();
+});
 
 function handleTrialWillEnd(array $payload): void
 {
@@ -142,6 +147,27 @@ test('the email states the amount from the payload, not a hardcoded price', func
             && str_contains($body, $mail->trialEndsAt->setTimezone($user->timezone)->isoFormat('LL'))
             && str_contains($body, '/settings/billing/portal');
     });
+});
+
+test('the email states the trial end date in the reader timezone', function () {
+    // Pinned to a moment where UTC and the reader's day disagree: the trial ends
+    // late on the 28th in UTC, which is already the 29th in Madrid. Without the
+    // pin this only fails for the two hours a day the two calendars differ, and
+    // the bug it guards — a public Mailable property silently overwriting the
+    // localised value passed to Content::with — went unnoticed that way.
+    Carbon::setTestNow('2026-08-25 22:30:00');
+
+    $user = User::factory()->create(['stripe_id' => 'cus_123', 'timezone' => 'Europe/Madrid']);
+
+    // Its own event id, so this never rides on the shared one being unclaimed.
+    handleTrialWillEnd(trialWillEndPayload(eventId: 'evt_trial_timezone'));
+
+    $mail = Mail::queued(TrialEndingEmail::class)->first();
+
+    expect($mail)->not->toBeNull()
+        ->and($user->timezone)->toBe('Europe/Madrid')
+        ->and($mail->trialEndsAt->toDateString())->toBe('2026-08-28')
+        ->and($mail->render())->toContain('August 29, 2026');
 });
 
 test('a failed dispatch hands the event back so Stripe can redeliver it', function () {

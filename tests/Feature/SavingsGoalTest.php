@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Laravel\Pennant\Feature;
 
 function onboardedSavingsUser(): User
@@ -507,4 +508,147 @@ test('the goal label carries its source so the UI can mark it as a savings goal'
 
     $this->actingAs($user)->get("/savings-goals/{$goal->id}")
         ->assertInertia(fn ($page) => $page->where('savingsGoal.label.source', LabelSource::SavingsGoal->value));
+});
+
+test('archiving a goal freezes its saved amount and removes its label', function () {
+    Carbon::setTestNow('2026-03-10 09:00:00');
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create([
+        'user_id' => $user->id,
+        'target_amount' => 500000,
+    ]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $contribution = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -20000,
+        'transaction_date' => now()->subDay(),
+    ]);
+    $contribution->labels()->attach($goal->label_id);
+
+    // The named route, not back(): behind a proxy the previous-url redirect
+    // resolves to the app's internal host and the dialog's request is blocked.
+    $this->actingAs($user)
+        ->post("/savings-goals/{$goal->id}/archive")
+        ->assertRedirect(route('savings-goals.show', $goal));
+
+    $goal->refresh();
+
+    expect($goal->archived_at->toDateTimeString())->toBe('2026-03-10 09:00:00')
+        ->and($goal->archived_saved_amount)->toBe(20000)
+        ->and($goal->savedAmountInCents())->toBe(20000);
+
+    // Soft-deleted, so it drops out of every picker through the global scope.
+    expect(Label::find($goal->label_id))->toBeNull();
+    $this->assertSoftDeleted('labels', ['id' => $goal->label_id]);
+});
+
+test('an archived goal does not move when a transaction is tagged afterwards', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $labelId = $goal->label_id;
+
+    $this->actingAs($user)->post("/savings-goals/{$goal->id}/archive")->assertRedirect();
+
+    // Straight through the pivot, which is the only way it could still happen.
+    $late = Transaction::factory()->create(['user_id' => $user->id, 'amount' => -99999]);
+    DB::table('label_transaction')->insert([
+        'id' => (string) Str::uuid(),
+        'label_id' => $labelId,
+        'transaction_id' => $late->id,
+    ]);
+
+    expect($goal->fresh()->savedAmountInCents())->toBe(0);
+
+    $goals = SavingsGoal::withStatsForUser($user->fresh());
+    expect($goals[0]['stats']['saved'])->toBe(0);
+});
+
+test('an archived goal still lists the contributions it had', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $contribution = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -15000,
+        'transaction_date' => now()->subDays(2),
+    ]);
+    $contribution->labels()->attach($goal->label_id);
+
+    $this->actingAs($user)->post("/savings-goals/{$goal->id}/archive")->assertRedirect();
+
+    $this->actingAs($user)
+        ->get("/savings-goals/{$goal->id}")
+        ->assertOk()
+        ->assertInertia(function ($page) use ($contribution) {
+            $props = $page->toArray()['props'];
+
+            expect(collect($props['transactions'])->pluck('id'))->toContain($contribution->id)
+                ->and($props['stats']['saved'])->toBe(15000);
+        });
+});
+
+test('an archived goal cannot be edited or take on more transactions', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->archived(12345)->create([
+        'user_id' => $user->id,
+        'name' => 'New car',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/savings-goals/{$goal->id}", ['name' => 'Renamed'])
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->put("/savings-goals/{$goal->id}/transactions", ['transaction_ids' => []])
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->post("/savings-goals/{$goal->id}/archive")
+        ->assertForbidden();
+
+    expect($goal->fresh()->name)->toBe('New car');
+});
+
+test('an archived goal can still be deleted', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+
+    $goal = SavingsGoal::factory()->archived()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->delete("/savings-goals/{$goal->id}")
+        ->assertRedirect('/budgets');
+
+    $this->assertSoftDeleted('savings_goals', ['id' => $goal->id]);
+});
+
+test('users cannot archive goals they do not own', function () {
+    $user = onboardedSavingsUser();
+    Feature::for($user)->activate(SavingsGoals::class);
+    $other = SavingsGoal::factory()->create();
+
+    $this->actingAs($user)
+        ->post("/savings-goals/{$other->id}/archive")
+        ->assertForbidden();
+
+    expect($other->fresh()->archived_at)->toBeNull();
+});
+
+test('archiving a goal is behind the feature flag like the rest of the surface', function () {
+    $user = onboardedSavingsUser();
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->post("/savings-goals/{$goal->id}/archive")
+        ->assertNotFound();
 });

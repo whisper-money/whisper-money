@@ -153,8 +153,12 @@ abstract class WriteTool extends McpTool
     /**
      * Resolve a budget. Budgets hang off the user rather than off a space,
      * matching how the app decides which budgets a transaction feeds.
+     *
+     * An archived budget is read-only for good, so it is refused here rather
+     * than in each tool. Deleting one is still fine, which is what
+     * $allowArchived is for.
      */
-    protected function budgetOfUser(Request $request, User $user, string $key = 'budget_id'): Budget
+    protected function budgetOfUser(Request $request, User $user, string $key = 'budget_id', bool $allowArchived = false): Budget
     {
         $id = $request->string($key)->toString();
 
@@ -163,6 +167,12 @@ abstract class WriteTool extends McpTool
         if ($budget === null) {
             throw ValidationException::withMessages([
                 $key => "No budget with id {$id}. Call list_budgets to see valid ids.",
+            ]);
+        }
+
+        if ($budget->isArchived() && ! $allowArchived) {
+            throw ValidationException::withMessages([
+                $key => "Budget {$id} is archived and can no longer be changed. Archiving cannot be undone.",
             ]);
         }
 

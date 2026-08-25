@@ -25,7 +25,8 @@ class DeleteBudget extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $budget = $this->budgetOfUser($request, $user);
+        // An archived budget can still be thrown away, it just cannot change.
+        $budget = $this->budgetOfUser($request, $user, allowArchived: true);
 
         $budget->delete();
 

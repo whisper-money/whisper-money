@@ -212,6 +212,18 @@ it('reports the remaining amount the app shows, ignoring carry-over', function (
         ->assertSee('"remaining_amount":38000');
 });
 
+it('leaves archived budgets out of the list', function () {
+    $user = User::factory()->create();
+    Budget::factory()->create(['user_id' => $user->id, 'name' => 'Running Budget']);
+    Budget::factory()->archived()->create(['user_id' => $user->id, 'name' => 'Archived Budget']);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListBudgets::class)
+        ->assertOk()
+        ->assertSee('Running Budget')
+        ->assertDontSee('Archived Budget');
+});
+
 it('never exposes another user\'s budgets', function () {
     $user = User::factory()->create();
     Budget::factory()->create(['user_id' => User::factory()->create()->id, 'name' => 'Secret Budget']);

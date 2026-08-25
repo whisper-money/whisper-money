@@ -536,3 +536,127 @@ test('opening a dormant budget lands on the period covering today', function () 
 
     expect(BudgetPeriod::where('budget_id', $budget->id)->count())->toBe(2);
 });
+
+test('archiving a budget records the day it happened', function () {
+    Carbon::setTestNow('2026-03-10 09:00:00');
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create(['user_id' => $user->id]);
+
+    // The named route, not back(): behind a proxy the previous-url redirect
+    // resolves to the app's internal host and the dialog's request is blocked.
+    $this->actingAs($user)
+        ->post("/budgets/{$budget->id}/archive")
+        ->assertRedirect(route('budgets.show', $budget));
+
+    expect($budget->fresh()->archived_at->toDateTimeString())->toBe('2026-03-10 09:00:00');
+});
+
+test('archiving is one-way: an archived budget cannot be archived again', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->archived()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->post("/budgets/{$budget->id}/archive")
+        ->assertForbidden();
+});
+
+test('users cannot archive budgets they do not own', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $other = Budget::factory()->create();
+
+    $this->actingAs($user)
+        ->post("/budgets/{$other->id}/archive")
+        ->assertForbidden();
+
+    expect($other->fresh()->archived_at)->toBeNull();
+});
+
+test('an archived budget cannot be edited', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->archived()->create([
+        'user_id' => $user->id,
+        'name' => 'Groceries',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/budgets/{$budget->id}", ['name' => 'Renamed'])
+        ->assertForbidden();
+
+    expect($budget->fresh()->name)->toBe('Groceries');
+});
+
+test('an archived budget can still be deleted', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->archived()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->delete("/budgets/{$budget->id}")
+        ->assertRedirect('/budgets');
+
+    expect($budget->fresh()->deleted_at)->not->toBeNull();
+});
+
+test('an archived budget stays reachable without minting a new period', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->archived()->create(['user_id' => $user->id]);
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subMonths(3)->startOfMonth(),
+        'end_date' => now()->subMonths(3)->endOfMonth(),
+    ]);
+
+    $this->actingAs($user)
+        ->get("/budgets/{$budget->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('currentPeriod.id', $period->id));
+
+    expect($budget->periods()->count())->toBe(1);
+});
+
+test('the budgets index sends archived budgets alongside the running ones', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $running = Budget::factory()->create(['user_id' => $user->id, 'name' => 'Running']);
+    $archived = Budget::factory()->archived()->create(['user_id' => $user->id, 'name' => 'Done']);
+
+    $this->actingAs($user)
+        ->get('/budgets')
+        ->assertOk()
+        ->assertInertia(function ($page) use ($running, $archived) {
+            $ids = collect($page->toArray()['props']['budgets'])->pluck('id');
+
+            expect($ids)->toContain($running->id)->toContain($archived->id);
+        });
+});
+
+test('archived budgets drop off the notification preferences list', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    Budget::factory()->create(['user_id' => $user->id, 'name' => 'Running']);
+    Budget::factory()->archived()->create(['user_id' => $user->id, 'name' => 'Done']);
+
+    $this->actingAs($user)
+        ->get('/settings/notifications')
+        ->assertOk()
+        ->assertInertia(function ($page) {
+            $names = collect($page->toArray()['props']['budgets'])->pluck('name');
+
+            expect($names)->toContain('Running')->not->toContain('Done');
+        });
+});
+
+test('an archived catch-all budget frees the slot for a new one', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    Budget::factory()->archived()->catchAll()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->post('/budgets', [
+            'name' => 'New catch-all',
+            'period_type' => 'monthly',
+            'period_start_day' => 1,
+            'rollover_type' => 'reset',
+            'allocated_amount' => 100000,
+            'is_catch_all' => true,
+        ])
+        ->assertRedirect();
+
+    expect(Budget::where('user_id', $user->id)->notArchived()->where('is_catch_all', true)->count())->toBe(1);
+});

@@ -44,7 +44,10 @@ class NotificationPreferenceController extends Controller
                 'notify_on_close_to_limit' => (bool) ($setting->budget_notify_on_close_to_limit ?? true),
                 'notify_on_over_limit' => (bool) ($setting->budget_notify_on_over_limit ?? true),
             ],
+            // Archived budgets send no notifications, so they have nothing to
+            // configure here.
             'budgets' => $user->budgets()
+                ->notArchived()
                 ->orderBy('name')
                 ->get([
                     'id',

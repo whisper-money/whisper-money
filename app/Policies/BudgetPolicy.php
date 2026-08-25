@@ -22,9 +22,19 @@ class BudgetPolicy
         return true;
     }
 
+    /**
+     * Archiving is one-way and turns the budget read-only, so the refusal lives
+     * here rather than in each controller: every caller — web, MCP, whatever
+     * comes next — is covered by construction.
+     */
     public function update(User $user, Budget $budget): bool
     {
-        return $user->id === $budget->user_id;
+        return $user->id === $budget->user_id && ! $budget->isArchived();
+    }
+
+    public function archive(User $user, Budget $budget): bool
+    {
+        return $this->update($user, $budget);
     }
 
     public function delete(User $user, Budget $budget): bool

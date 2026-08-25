@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Archivable;
 use App\Models\Concerns\BelongsToSpace;
 use Database\Factories\SavingsGoalFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -14,11 +15,13 @@ use Illuminate\Support\Carbon;
 /**
  * @property Carbon $created_at
  * @property Carbon|null $target_date
+ * @property Carbon|null $archived_at
+ * @property int|null $archived_saved_amount
  */
 class SavingsGoal extends Model
 {
     /** @use HasFactory<SavingsGoalFactory> */
-    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
+    use Archivable, BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -28,6 +31,8 @@ class SavingsGoal extends Model
         'target_amount',
         'initial_amount',
         'target_date',
+        'archived_at',
+        'archived_saved_amount',
     ];
 
     /** @var list<string> */
@@ -41,6 +46,8 @@ class SavingsGoal extends Model
             'target_amount' => 'integer',
             'initial_amount' => 'integer',
             'target_date' => 'date:Y-m-d',
+            'archived_at' => 'datetime',
+            'archived_saved_amount' => 'integer',
         ];
     }
 
@@ -61,9 +68,18 @@ class SavingsGoal extends Model
      * the goal was created plus its tagged transactions. Contributions are
      * outflows, so the natural transaction sign is negated (same convention as
      * budgets): a transfer out (−) adds, a withdrawal back (+) subtracts.
+     *
+     * An archived goal reads its snapshot instead. Recomputing would drift:
+     * archiving deletes the label, so the sum would collapse to the starting
+     * balance, and re-tagging one of those transactions afterwards would move a
+     * figure that is meant to be final.
      */
     public function savedAmountInCents(): int
     {
+        if ($this->isArchived()) {
+            return (int) $this->archived_saved_amount;
+        }
+
         if ($this->label === null) {
             return $this->initial_amount;
         }
@@ -80,7 +96,9 @@ class SavingsGoal extends Model
      */
     public static function withStatsForUser(User $user): array
     {
-        $goals = $user->savingsGoals()->with('label')->get();
+        // Archiving soft-deletes the label, so it has to be read through the
+        // trashed scope or an archived goal loses the name it saved under.
+        $goals = $user->savingsGoals()->with(['label' => fn ($query) => $query->withTrashed()])->get();
 
         // ponytail: one grouped sum+min for all goals' labels avoids N+1 across the list.
         $aggByLabel = Transaction::query()
@@ -94,8 +112,10 @@ class SavingsGoal extends Model
         return $goals->map(function (SavingsGoal $goal) use ($aggByLabel): array {
             $agg = $aggByLabel->get($goal->label_id);
             // Starting balance plus negated net flow, mirroring savedAmountInCents();
-            // batched to avoid N+1.
-            $saved = $goal->initial_amount - (int) ($agg->total ?? 0);
+            // batched to avoid N+1. An archived goal keeps the snapshot it froze.
+            $saved = $goal->isArchived()
+                ? (int) $goal->archived_saved_amount
+                : $goal->initial_amount - (int) ($agg->total ?? 0);
 
             return array_merge($goal->toArray(), [
                 'stats' => self::project(
@@ -103,11 +123,21 @@ class SavingsGoal extends Model
                     $goal->target_amount,
                     self::effectiveStart($goal->created_at, $agg->earliest ?? null),
                     $goal->target_date,
-                    now(),
+                    $goal->measuredAt(),
                     $goal->initial_amount,
                 ),
             ]);
         })->all();
+    }
+
+    /**
+     * The moment the goal's figures are read at. An archived goal is frozen on
+     * the day it was archived, so its pace and projection stop moving too — a
+     * finished goal that keeps sliding further behind schedule reads as a bug.
+     */
+    public function measuredAt(): Carbon
+    {
+        return $this->archived_at ?? now();
     }
 
     /**

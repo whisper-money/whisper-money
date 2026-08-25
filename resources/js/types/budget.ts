@@ -25,6 +25,8 @@ export interface Budget {
     period_start_day: number | null;
     rollover_type: RolloverType;
     is_catch_all: boolean;
+    /** Set once and never cleared: archiving a budget cannot be undone. */
+    archived_at: string | null;
     notify_on_new_transaction: boolean;
     notify_on_close_to_limit: boolean;
     notify_on_over_limit: boolean;
