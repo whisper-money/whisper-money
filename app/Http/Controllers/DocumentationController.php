@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Documentation\DocumentationIndex;
 use App\Support\Documentation\DocumentationMarkdown;
 use App\Support\Documentation\DocumentationTree;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
@@ -22,9 +22,26 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class DocumentationController extends Controller
 {
+    /**
+     * Pages that used to have a slug of their own and now live under another
+     * page. Their old URLs are three months of indexing and inbound links, so
+     * they redirect rather than 404. Add the next one here.
+     *
+     * @var array<string, string>
+     */
+    private const MOVED_SLUGS = [
+        'imports' => 'transactions/import',
+    ];
+
     public function show(Request $request, ?string $slug = null): Response
     {
         $locale = $this->locale();
+        $moved = self::MOVED_SLUGS[$slug] ?? null;
+
+        if ($moved !== null) {
+            return redirect()->to($this->pageUrl($moved, $locale), 301);
+        }
+
         $tree = DocumentationTree::for($locale);
         $page = $this->page($tree, $slug);
         $levels = $this->tocLevels();
@@ -57,16 +74,33 @@ class DocumentationController extends Controller
     }
 
     /**
-     * The same page as Markdown, for agents and for anything that would rather
-     * read the source than parse the rendered page.
+     * The documentation as Markdown, for agents and for anything that would
+     * rather read the source than parse the rendered page. Without a slug it is
+     * the index of every page there is; with one it is that page, ending with
+     * the pages nested under it and a link back to the index.
      */
-    public function markdown(?string $slug = null): HttpResponse
+    public function markdown(?string $slug = null): Response
     {
         $locale = $this->locale();
-        $page = $this->page(DocumentationTree::for($locale), $slug);
+        $moved = self::MOVED_SLUGS[$slug] ?? null;
+
+        if ($moved !== null) {
+            return redirect()->to($this->pageUrl($moved, $locale, markdown: true), 301);
+        }
+
+        $tree = DocumentationTree::for($locale);
+
+        if ($slug === null) {
+            return ComparisonController::respondWithMarkdown(
+                DocumentationIndex::markdown($tree, $locale),
+                route('documentation.index.markdown', ['lang' => $locale]),
+            );
+        }
+
+        $page = $this->page($tree, $slug);
 
         return ComparisonController::respondWithMarkdown(
-            DocumentationMarkdown::forAgents(File::get($page['file'])),
+            DocumentationMarkdown::forAgents(File::get($page['file'])).DocumentationIndex::footer($page, $locale),
             $this->pageUrl($page['slug'], $locale),
         );
     }

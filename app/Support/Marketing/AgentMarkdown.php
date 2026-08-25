@@ -99,7 +99,12 @@ final class AgentMarkdown
                 continue;
             }
 
-            $lines = [...$lines, '## '.($locale === 'es' ? 'Documentación (español)' : 'Documentation (English)'), ''];
+            $lines = [
+                ...$lines,
+                '## '.($locale === 'es' ? 'Documentación (español)' : 'Documentation (English)'),
+                '',
+                '- ['.($locale === 'es' ? 'Índice completo' : 'Full index').']('.route('documentation.index.markdown', ['lang' => $locale]).'): every page below in one list, with the pages nested under each one.',
+            ];
 
             foreach ($pages as $page) {
                 $url = route('documentation.show', ['slug' => $page['slug'], 'lang' => $locale]);
