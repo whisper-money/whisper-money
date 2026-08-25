@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Support\Documentation\DocumentationIndex;
 use App\Support\Documentation\DocumentationMarkdown;
 use App\Support\Documentation\DocumentationTree;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
@@ -36,10 +37,10 @@ class DocumentationController extends Controller
     public function show(Request $request, ?string $slug = null): Response
     {
         $locale = $this->locale();
-        $moved = self::MOVED_SLUGS[$slug] ?? null;
+        $moved = $this->redirectIfMoved($slug, $locale);
 
         if ($moved !== null) {
-            return redirect()->to($this->pageUrl($moved, $locale), 301);
+            return $moved;
         }
 
         $tree = DocumentationTree::for($locale);
@@ -82,10 +83,10 @@ class DocumentationController extends Controller
     public function markdown(?string $slug = null): Response
     {
         $locale = $this->locale();
-        $moved = self::MOVED_SLUGS[$slug] ?? null;
+        $moved = $this->redirectIfMoved($slug, $locale, markdown: true);
 
         if ($moved !== null) {
-            return redirect()->to($this->pageUrl($moved, $locale, markdown: true), 301);
+            return $moved;
         }
 
         $tree = DocumentationTree::for($locale);
@@ -103,6 +104,16 @@ class DocumentationController extends Controller
             DocumentationMarkdown::forAgents(File::get($page['file'])).DocumentationIndex::footer($page, $locale),
             $this->pageUrl($page['slug'], $locale),
         );
+    }
+
+    /**
+     * Where a page that used to answer to this slug went, when it went anywhere.
+     */
+    private function redirectIfMoved(?string $slug, string $locale, bool $markdown = false): ?RedirectResponse
+    {
+        $moved = self::MOVED_SLUGS[$slug] ?? null;
+
+        return $moved === null ? null : redirect()->to($this->pageUrl($moved, $locale, $markdown), 301);
     }
 
     /**

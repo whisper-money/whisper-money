@@ -24,9 +24,9 @@ flowchart TD
     import --> review[Review transactions]
 ```
 
-The drawer opens on the file it needs.
+The drawer asks which account the file belongs to, then for the file itself.
 
-![The first step of the import drawer, asking for a CSV or Excel file to be dropped or browsed for](/docs/documentation/import-transactions-upload.png)
+![The file step of the import drawer, with a CSV chosen and the Next button ready](/docs/documentation/import-transactions-upload.png)
 
 ## Required columns
 

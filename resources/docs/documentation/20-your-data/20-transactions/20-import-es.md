@@ -24,9 +24,9 @@ flowchart TD
     import --> review[Revisar transacciones]
 ```
 
-El panel se abre pidiendo el archivo que necesita.
+El panel pregunta primero a qué cuenta pertenece el archivo, y después pide el archivo.
 
-![El primer paso del panel de importación, pidiendo un archivo CSV o Excel para soltar o buscar](/docs/documentation/import-transactions-upload.png)
+![El paso del archivo en el panel de importación, con un CSV ya elegido y listo para continuar](/docs/documentation/import-transactions-upload.png)
 
 ## Columnas necesarias
 
