@@ -15,7 +15,7 @@ test('user can create a budget with category', function () {
     $page = $this->actingAs($user)->visit('/budgets');
     $page->wait(2); // Wait for page to fully load
 
-    $page->assertSee('Budgets')
+    $page->assertSee('Planning')
         ->waitForText('Create Budget', 10)
         ->wait(1) // Extra wait before clicking
         ->click('Create Budget')
@@ -133,7 +133,7 @@ test('budget creation validates required fields', function () {
     $page = $this->actingAs($user)->visit('/budgets');
     $page->wait(2); // Wait for page to fully load
 
-    $page->assertSee('Budgets')
+    $page->assertSee('Planning')
         ->waitForText('Create Budget', 10)
         ->wait(1) // Extra wait before clicking
         ->click('Create Budget')
@@ -172,9 +172,9 @@ test('user can navigate back to budgets list from budget detail', function () {
 
     $page->assertSee($budget->name)
         ->wait(2)
-        ->waitForText('Budgets', 10)
+        ->waitForText('Planning', 10)
         ->wait(1) // Extra wait before clicking
-        ->click('nav[aria-label="breadcrumb"] a:has-text("Budgets")')
+        ->click('nav[aria-label="breadcrumb"] a:has-text("Planning")')
         ->wait(4) // Wait for navigation
         ->assertPathIs('/budgets')
         ->assertNoJavascriptErrors();

@@ -75,7 +75,7 @@ export default function SavingsGoalShow({
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: 'Budgets',
+            title: 'Planning',
             href: index().url,
         },
         {
