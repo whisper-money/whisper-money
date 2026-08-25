@@ -128,6 +128,10 @@ class SavingsGoalController extends Controller implements HasMiddleware
                 ->orderBy('name')
                 ->get(),
             'currencyCode' => $user->currency_code ?? 'USD',
+            // The dialog widens its window by this much per click. Sent rather than
+            // hardcoded there: a client-side copy that drifted below this one would
+            // silently hide the load-more link while more rows still existed.
+            'recentPageSize' => self::RECENT_TRANSACTIONS_LIMIT,
             // Only fetched when the link-transactions dialog asks for it, which also
             // decides how wide a window it wants.
             'recentTransactions' => Inertia::optional(fn () => Transaction::query()

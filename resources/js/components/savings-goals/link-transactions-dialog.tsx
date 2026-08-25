@@ -23,15 +23,14 @@ import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-/** Has to match the controller's RECENT_TRANSACTIONS_LIMIT. */
-const RECENT_PAGE_SIZE = 50;
-
 interface Props {
     savingsGoal: SavingsGoal;
     /** Everything already carrying the goal's label, straight from the page. */
     transactions: ServerTransaction[];
     /** The user's latest transactions, loaded on demand when the dialog opens. */
     recentTransactions?: ServerTransaction[];
+    /** How many more the load-more link asks for, straight from the controller. */
+    recentPageSize: number;
     currencyCode: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -41,6 +40,7 @@ export function LinkTransactionsDialog({
     savingsGoal,
     transactions,
     recentTransactions,
+    recentPageSize,
     currencyCode,
     open,
     onOpenChange,
@@ -48,7 +48,7 @@ export function LinkTransactionsDialog({
     const locale = useLocale();
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [recentLimit, setRecentLimit] = useState(RECENT_PAGE_SIZE);
+    const [recentLimit, setRecentLimit] = useState(recentPageSize);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     // The already-tagged ones come first so nothing you can untick is ever off
@@ -89,14 +89,27 @@ export function LinkTransactionsDialog({
         recentTransactions.length >= recentLimit;
 
     const loadMore = () => {
-        const nextLimit = recentLimit + RECENT_PAGE_SIZE;
+        const nextLimit = recentLimit + recentPageSize;
+
+        // A spinner that just stops leaves the user thinking nothing happened, and
+        // Inertia's own error handling would tear the page down under the dialog.
+        const reportFailure = (): false => {
+            toast.error(__('Failed to load more transactions.'));
+
+            return false;
+        };
 
         setIsLoadingMore(true);
 
         router.reload({
             only: ['recentTransactions'],
             data: { recent: nextLimit },
+            // The window the dialog wants is not something to leave in the address
+            // bar: a reopen would then load a wider window than it thinks it has.
+            preserveUrl: true,
             onSuccess: () => setRecentLimit(nextLimit),
+            onHttpException: reportFailure,
+            onNetworkError: reportFailure,
             onFinish: () => setIsLoadingMore(false),
         });
     };

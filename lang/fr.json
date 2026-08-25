@@ -2222,5 +2222,6 @@
     "Password changes are disabled on this shared account.": "Le changement de mot de passe est désactivé sur ce compte partagé.",
     "Billing management is not available on this shared account.": "La gestion de la facturation n'est pas disponible sur ce compte partagé.",
     "Link transactions": "Associer des transactions",
-    "Tick the transactions that count toward this goal. Unticking one removes it from the goal.": "Cochez les transactions qui comptent pour cet objectif. Les décocher les retire de l’objectif."
+    "Tick the transactions that count toward this goal. Unticking one removes it from the goal.": "Cochez les transactions qui comptent pour cet objectif. Les décocher les retire de l’objectif.",
+    "Failed to load more transactions.": "Impossible de charger plus de transactions."
 }

@@ -333,6 +333,9 @@ test('the link dialog can widen the recent transactions window, up to a cap', fu
             ->json('props.recentTransactions');
     };
 
+    $this->actingAs($user)->get("/savings-goals/{$goal->id}")
+        ->assertInertia(fn ($page) => $page->where('recentPageSize', 50));
+
     expect($recentTransactions(null))->toHaveCount(50);
     expect($recentTransactions(100))->toHaveCount(55);
     // Garbage falls back to the default page rather than to an unbounded query.
