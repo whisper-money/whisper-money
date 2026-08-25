@@ -2596,5 +2596,6 @@
     "Link transactions": "Vincular transacciones",
     "Tick the transactions that count toward this goal. Unticking one removes it from the goal.": "Marca las transacciones que cuentan para este objetivo. Al desmarcarlas se quitan del objetivo.",
     "Failed to load more transactions.": "No se pudieron cargar más transacciones.",
-    "Its transactions will become uncategorized.": "Sus transacciones quedar\u00e1n sin categor\u00eda."
+    "Its transactions will become uncategorized.": "Sus transacciones quedar\u00e1n sin categor\u00eda.",
+    "We could not create your rules. Try again in a moment.": "No hemos podido crear tus reglas. Vuelve a intentarlo en un momento."
 }

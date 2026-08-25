@@ -2224,5 +2224,6 @@
     "Billing management is not available on this shared account.": "La gestion de la facturation n'est pas disponible sur ce compte partagé.",
     "Link transactions": "Associer des transactions",
     "Tick the transactions that count toward this goal. Unticking one removes it from the goal.": "Cochez les transactions qui comptent pour cet objectif. Les décocher les retire de l’objectif.",
-    "Failed to load more transactions.": "Impossible de charger plus de transactions."
+    "Failed to load more transactions.": "Impossible de charger plus de transactions.",
+    "We could not create your rules. Try again in a moment.": "Nous n\u2019avons pas pu cr\u00e9er vos r\u00e8gles. R\u00e9essayez dans un instant."
 }

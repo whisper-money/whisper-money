@@ -19,6 +19,7 @@ import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 // Client-side give-up: the backend marks the run failed on timeout/crash, but
 // this guarantees the spinner resolves even if the worker dies before it can.
@@ -259,6 +260,13 @@ export function StepAiSuggestions({
                 },
             });
         } catch {
+            // Silence here read as a dead button: the most common way this fails
+            // is an expired session, whose 419 the recovery reloads out from
+            // under us - but a 5xx or a lost connection leaves the user on this
+            // screen, and they need to know the rules were not created.
+            toast.error(
+                __('We could not create your rules. Try again in a moment.'),
+            );
             setSubmitting(false);
         }
     };
