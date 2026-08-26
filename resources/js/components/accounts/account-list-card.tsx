@@ -103,7 +103,10 @@ export function AccountListCard({
             <Card className="w-full">
                 <CardContent className="p-6">
                     <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between">
+                        {/* Stacks on phones like the loaded card does, so the
+                            fixed-width bars cannot push the card past the
+                            viewport while the metrics are still deferred. */}
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
                                 <div className="flex flex-col gap-2">
@@ -111,7 +114,7 @@ export function AccountListCard({
                                     <div className="h-6 w-40 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
+                            <div className="flex flex-col items-start gap-2 sm:items-end">
                                 <div className="h-8 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                                 <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                             </div>
@@ -430,7 +433,7 @@ export function AccountListCard({
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <div className="relative size-5 shrink-0 text-muted-foreground">
                             <AccountTypeIcon
                                 type={account.type}
