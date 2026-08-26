@@ -200,13 +200,13 @@ class CashflowAnalyticsController extends Controller
             fn (Transaction $transaction): bool => $this->isTransferOnCashflowSide($transaction, $type),
         );
 
-        $categorized = collect($this->tree->rollUp(
+        $rolledUp = $this->tree->rollUp(
             $regularCategories->concat($transferCategories)->values()->all(),
             $userId,
             $drillParentId,
-        ));
+        );
 
-        return $this->appendUncategorized($categorized, $transactions, $userCurrency, $type, $drillParentId);
+        return collect($this->appendUncategorized($rolledUp, $transactions, $userCurrency, $type, $drillParentId));
     }
 
     private function getMonthlyTrendTotals(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
@@ -272,13 +272,13 @@ class CashflowAnalyticsController extends Controller
             fn (Transaction $transaction): bool => $transaction->categoryType() === $type,
         );
 
-        return $this->appendUncategorized(
-            collect($this->tree->rollUp($categorized->values()->all(), $userId, $drillParentId)),
+        return collect($this->appendUncategorized(
+            $this->tree->rollUp($categorized->values()->all(), $userId, $drillParentId),
             $transactions,
             $userCurrency,
             $type,
             $drillParentId,
-        );
+        ));
     }
 
     /**
@@ -363,11 +363,11 @@ class CashflowAnalyticsController extends Controller
      * Appends the transactions with no category as a single synthetic row. Only
      * at the top level: a drilled-down parent has no uncategorized children.
      *
-     * @param  Collection<int, array<string, mixed>>  $categorized
+     * @param  array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>  $rolledUp
      * @param  Collection<int, Transaction>  $transactions
-     * @return Collection<int, array<string, mixed>>
+     * @return array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>
      */
-    private function appendUncategorized(Collection $categorized, Collection $transactions, string $userCurrency, CategoryType $type, ?string $drillParentId): Collection
+    private function appendUncategorized(array $rolledUp, Collection $transactions, string $userCurrency, CategoryType $type, ?string $drillParentId): array
     {
         $uncategorized = $transactions
             ->filter(fn (Transaction $transaction): bool => $transaction->category_id === null
@@ -375,7 +375,7 @@ class CashflowAnalyticsController extends Controller
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
 
         if ($drillParentId === null && $uncategorized != 0) {
-            $categorized->push([
+            $rolledUp[] = [
                 'category_id' => null,
                 'category' => (new Category)->forceFill([
                     'id' => null,
@@ -387,10 +387,10 @@ class CashflowAnalyticsController extends Controller
                 'amount' => abs($uncategorized),
                 'has_children' => false,
                 'is_direct' => false,
-            ]);
+            ];
         }
 
-        return $categorized;
+        return $rolledUp;
     }
 
     private function categoryCashflowDirection(Transaction $transaction): ?CategoryCashflowDirection
