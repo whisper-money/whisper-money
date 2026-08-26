@@ -19,6 +19,20 @@ function getDateFnsLocale(locale: string) {
 }
 
 /**
+ * `new Date('2026-08-01')` is UTC midnight per the ECMAScript spec, so at a
+ * negative UTC offset it formats as the previous day. Appending a time makes
+ * the same string parse as local midnight, which is what a date-only value
+ * from the server (a budget period, a transaction date) actually means.
+ */
+function toLocalDate(date: Date | string | number): Date {
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return new Date(`${date}T00:00:00`);
+    }
+
+    return date instanceof Date ? date : new Date(date);
+}
+
+/**
  * Format a date using the user's locale
  */
 export function formatDate(
@@ -26,10 +40,7 @@ export function formatDate(
     formatStr: string,
     locale: string = 'en-US',
 ): string {
-    const dateObj =
-        typeof date === 'string' || typeof date === 'number'
-            ? new Date(date)
-            : date;
+    const dateObj = toLocalDate(date);
 
     const dateFnsLocale = getDateFnsLocale(locale);
 

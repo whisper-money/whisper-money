@@ -202,7 +202,7 @@ test('budget show returns previous period when it exists', function () {
         ->component('budgets/show')
         ->has('currentPeriod')
         ->has('previousPeriod')
-        ->where('previousPeriod.start_date', now()->subMonthNoOverflow()->startOfMonth()->toJSON())
+        ->where('previousPeriod.start_date', now()->subMonthNoOverflow()->startOfMonth()->toDateString())
     );
 });
 
@@ -276,7 +276,7 @@ test('budget show returns next period only when it starts on or before today', f
         ->component('budgets/show')
         ->has('currentPeriod')
         ->has('nextPeriod')
-        ->where('nextPeriod.start_date', now()->startOfMonth()->toJSON())
+        ->where('nextPeriod.start_date', now()->startOfMonth()->toDateString())
     );
 });
 
