@@ -132,6 +132,93 @@ test('spend booked directly on a split parent surfaces as a Direct child', funct
     expect($children->firstWhere('name', 'Direct')['amount'])->toBe(5000);
 });
 
+test('filtering by a parent category breaks the spending down by sub-category', function () {
+    $subscriptions = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Subscriptions']);
+    $windy = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Windy', 'parent_id' => $subscriptions->id]);
+    $rainAlarm = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Rain Alarm', 'parent_id' => $subscriptions->id]);
+
+    makeTransaction(['amount' => -3000, 'category_id' => $windy->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -1000, 'category_id' => $rainAlarm->id, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis?category_ids[]='.$subscriptions->id);
+
+    $response->assertOk();
+    expect($response->json('distinct_category_count'))->toBe(2);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Windy', 'amount' => 3000, 'children' => []]);
+    expect($response->json('by_category.1'))->toMatchArray(['name' => 'Rain Alarm', 'amount' => 1000, 'children' => []]);
+});
+
+test('drilled breakdown nests grand-children under the sub-category rows', function () {
+    $subscriptions = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Subscriptions']);
+    $streaming = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Streaming', 'parent_id' => $subscriptions->id]);
+    $netflix = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Netflix', 'parent_id' => $streaming->id]);
+    $software = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Software', 'parent_id' => $subscriptions->id]);
+
+    makeTransaction(['amount' => -2000, 'category_id' => $netflix->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -1500, 'category_id' => $software->id, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis?category_ids[]='.$subscriptions->id);
+
+    $response->assertOk();
+    expect($response->json('distinct_category_count'))->toBe(2);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Streaming', 'amount' => 2000]);
+    expect($response->json('by_category.0.children.0'))->toMatchArray(['name' => 'Netflix', 'amount' => 2000]);
+    expect($response->json('by_category.1'))->toMatchArray(['name' => 'Software', 'amount' => 1500, 'children' => []]);
+});
+
+test('spend booked on the drilled parent itself surfaces as its own Direct row', function () {
+    $subscriptions = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Subscriptions']);
+    $windy = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Windy', 'parent_id' => $subscriptions->id]);
+
+    makeTransaction(['amount' => -3000, 'category_id' => $windy->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -800, 'category_id' => $subscriptions->id, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis?category_ids[]='.$subscriptions->id);
+
+    $response->assertOk();
+    expect($response->json('distinct_category_count'))->toBe(2);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Windy', 'amount' => 3000]);
+    expect($response->json('by_category.1'))->toMatchArray(['name' => 'Direct', 'amount' => 800, 'children' => []]);
+});
+
+test('a label filter alongside a category keeps the top-level rollup', function () {
+    $subscriptions = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Subscriptions']);
+    $windy = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Windy', 'parent_id' => $subscriptions->id]);
+    $travel = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Travel']);
+    $work = Label::factory()->create(['user_id' => $this->user->id, 'name' => 'Work']);
+
+    makeTransaction(['amount' => -3000, 'category_id' => $windy->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -5000, 'category_id' => $travel->id, 'transaction_date' => '2026-01-11'])
+        ->labels()->attach($work);
+
+    $response = $this->getJson('/api/transactions/analysis?category_ids[]='.$subscriptions->id.'&label_ids[]='.$work->id);
+
+    // Labels are ORed with categories, so the Travel expense is part of the
+    // filtered set and has to stay visible in the breakdown.
+    $response->assertOk();
+    expect($response->json('summary.expense'))->toBe(8000);
+    expect(collect($response->json('by_category'))->sum('amount'))->toBe(8000);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Travel', 'amount' => 5000]);
+    expect($response->json('by_category.1'))->toMatchArray(['name' => 'Subscriptions', 'amount' => 3000]);
+});
+
+test('filtering by several categories keeps the top-level rollup', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
+    $groceries = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Groceries', 'parent_id' => $food->id]);
+    $travel = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Travel']);
+
+    makeTransaction(['amount' => -30000, 'category_id' => $groceries->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -10000, 'category_id' => $travel->id, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis?category_ids[]='.$food->id.'&category_ids[]='.$travel->id);
+
+    $response->assertOk();
+    expect($response->json('distinct_category_count'))->toBe(2);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Food', 'amount' => 30000]);
+    expect($response->json('by_category.0.children.0'))->toMatchArray(['name' => 'Groceries', 'amount' => 30000]);
+    expect($response->json('by_category.1'))->toMatchArray(['name' => 'Travel', 'amount' => 10000]);
+});
+
 test('grand-children fold into their level-two sub-category', function () {
     $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
     $groceries = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Groceries', 'parent_id' => $food->id]);

@@ -228,10 +228,15 @@ class CategoryTree
      * sub-categories surfaces as a "Direct" child so the children always sum
      * to the parent total. Uncategorized items are left for the caller.
      *
+     * Pass $drillParentId to re-root the breakdown at that category: its
+     * children become the rows, their own children the nested level, and items
+     * outside the subtree drop out. Spend booked on the drilled parent itself
+     * has no child to sit under, so it becomes a "Direct" row of its own.
+     *
      * @param  array<int, array{category_id: ?string, amount: int}>  $categorized
      * @return array<int, array{category_id: string, category: Category, amount: int, children: array<int, array{category_id: string, category: Category, amount: int}>}>
      */
-    public function spendingBreakdown(array $categorized, string $userId): array
+    public function spendingBreakdown(array $categorized, string $userId, ?string $drillParentId = null): array
     {
         $categories = Category::query()
             ->where('user_id', $userId)
@@ -250,30 +255,43 @@ class CategoryTree
             }
 
             $chain = $this->chainFromRoot($categoryId, $parentMap);
-            $rootId = $chain[0];
+            $offset = $this->chainOffsetAfter($chain, $drillParentId);
 
-            $roots[$rootId] ??= [
-                'category_id' => $rootId,
-                'category' => $categories->get($rootId),
+            if ($offset === null) {
+                continue;
+            }
+
+            // Nothing left in the chain means the spend sits on the drilled
+            // parent itself, so it gets a "Direct" row instead of a child.
+            $isDirectRow = ! isset($chain[$offset]);
+            $rowId = $chain[$offset] ?? $drillParentId;
+            $key = $isDirectRow ? $rowId.':direct' : $rowId;
+
+            $roots[$key] ??= [
+                'category_id' => $rowId,
+                'category' => $isDirectRow
+                    ? $this->renamedCopy($categories->get($rowId), __('Direct'))
+                    : $categories->get($rowId),
                 'amount' => 0,
                 'direct' => 0,
                 'children' => [],
             ];
-            $roots[$rootId]['amount'] += $item['amount'];
+            $roots[$key]['amount'] += $item['amount'];
 
-            if (count($chain) === 1) {
-                $roots[$rootId]['direct'] += $item['amount'];
+            $childId = $chain[$offset + 1] ?? null;
+
+            if ($childId === null) {
+                $roots[$key]['direct'] += $item['amount'];
 
                 continue;
             }
 
-            $childId = $chain[1];
-            $roots[$rootId]['children'][$childId] ??= [
+            $roots[$key]['children'][$childId] ??= [
                 'category_id' => $childId,
                 'category' => $categories->get($childId),
                 'amount' => 0,
             ];
-            $roots[$rootId]['children'][$childId]['amount'] += $item['amount'];
+            $roots[$key]['children'][$childId]['amount'] += $item['amount'];
         }
 
         return collect($roots)
@@ -281,18 +299,9 @@ class CategoryTree
                 $children = collect($root['children'])->values();
 
                 if ($root['direct'] > 0 && $children->isNotEmpty()) {
-                    $parent = $root['category'];
                     $children->push([
                         'category_id' => $root['category_id'],
-                        'category' => (new Category)->forceFill([
-                            'id' => $parent->id,
-                            'name' => __('Direct'),
-                            'icon' => $parent->icon,
-                            'color' => $parent->color,
-                            'type' => $parent->type,
-                            'cashflow_direction' => $parent->cashflow_direction,
-                            'parent_id' => $parent->id,
-                        ]),
+                        'category' => $this->renamedCopy($root['category'], __('Direct')),
                         'amount' => $root['direct'],
                     ]);
                 }
@@ -306,6 +315,41 @@ class CategoryTree
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Where the breakdown's own rows start inside a category chain: the top for
+     * an undrilled breakdown, the position right after the drilled parent
+     * otherwise. Null when the chain never passes through that parent.
+     *
+     * @param  array<int, string>  $chain
+     */
+    private function chainOffsetAfter(array $chain, ?string $drillParentId): ?int
+    {
+        if ($drillParentId === null) {
+            return 0;
+        }
+
+        $index = array_search($drillParentId, $chain, true);
+
+        return $index === false ? null : $index + 1;
+    }
+
+    /**
+     * A detached copy of a category under a different name, used for the
+     * synthetic "Direct" nodes that carry a parent's own spending.
+     */
+    private function renamedCopy(Category $category, string $name): Category
+    {
+        return (new Category)->forceFill([
+            'id' => $category->id,
+            'name' => $name,
+            'icon' => $category->icon,
+            'color' => $category->color,
+            'type' => $category->type,
+            'cashflow_direction' => $category->cashflow_direction,
+            'parent_id' => $category->id,
+        ]);
     }
 
     /**
@@ -337,22 +381,16 @@ class CategoryTree
     private function displayNodeFor(string $categoryId, array $parentMap, ?string $drillParentId): ?array
     {
         $chain = $this->chainFromRoot($categoryId, $parentMap);
+        $offset = $this->chainOffsetAfter($chain, $drillParentId);
 
-        if ($drillParentId === null) {
-            return ['id' => $chain[0], 'is_direct' => false];
-        }
-
-        $index = array_search($drillParentId, $chain, true);
-
-        if ($index === false) {
+        if ($offset === null) {
             return null;
         }
 
-        if ($index === count($chain) - 1) {
-            return ['id' => $drillParentId, 'is_direct' => true];
-        }
-
-        return ['id' => $chain[$index + 1], 'is_direct' => false];
+        // Nothing left in the chain means the spend sits on the drilled parent.
+        return isset($chain[$offset])
+            ? ['id' => $chain[$offset], 'is_direct' => false]
+            : ['id' => $drillParentId, 'is_direct' => true];
     }
 
     /**
