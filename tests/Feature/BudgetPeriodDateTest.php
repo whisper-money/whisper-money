@@ -111,7 +111,36 @@ test('budget show finds current period on last day of period', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('budgets/show')
         ->has('currentPeriod')
-        ->where('currentPeriod.start_date', '2026-01-01T00:00:00.000000Z')
+        ->where('currentPeriod.start_date', '2026-01-01')
+    );
+
+    Carbon::setTestNow();
+});
+
+test('budget show serializes period dates as bare date keys', function () {
+    Carbon::setTestNow(Carbon::parse('2026-01-15 12:00:00'));
+
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 1,
+    ]);
+
+    BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-01-01',
+        'end_date' => '2026-01-31',
+        'allocated_amount' => 100000,
+    ]);
+
+    $response = $this->actingAs($user)->get("/budgets/{$budget->id}");
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('currentPeriod.start_date', '2026-01-01')
+        ->where('currentPeriod.end_date', '2026-01-31')
     );
 
     Carbon::setTestNow();
