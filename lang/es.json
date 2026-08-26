@@ -2620,5 +2620,17 @@
     "This cannot be undone: there is no way to bring it back.": "Esto no se puede deshacer: no hay forma de recuperarlo.",
     "Any automation rule that adds that label stops adding it.": "Cualquier regla de automatización que añada esa etiqueta deja de añadirla.",
     "The budget could not be archived.": "No se pudo archivar el presupuesto.",
-    "The goal could not be archived.": "No se pudo archivar el objetivo."
+    "The goal could not be archived.": "No se pudo archivar el objetivo.",
+    "Split Transactions": "Dividir transacciones",
+    "Home": "Hogar",
+    "Electronics": "Electrónica",
+    "Gifts": "Regalos",
+    "Holiday in Japan": "Viaje a Japón",
+    "Emergency fund": "Fondo de emergencia",
+    "New laptop": "Portátil nuevo",
+    "Car service": "Revisión del coche",
+    "Savings goals filling up as you set money aside": "Objetivos de ahorro llenándose a medida que apartas dinero",
+    "A transaction split across two categories": "Una transacción dividida en dos categorías",
+    "Put money aside for what matters. Tag the transfers once and every goal fills itself up, so you always know how far off you are.": "Aparta dinero para lo que te importa. Etiqueta las transferencias una vez y cada objetivo se va llenando solo, así siempre sabes cuánto te falta.",
+    "One receipt, several categories. Break a transaction into parts and each part counts where it belongs — merge it back whenever you want.": "Un mismo recibo, varias categorías. Divide una transacción en partes y cada parte cuenta donde le toca; vuelve a unirlas cuando quieras."
 }

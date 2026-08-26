@@ -19,6 +19,11 @@ import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
 import { LANGUAGE_OPTIONS } from '@/types/language';
 import { Plan } from '@/types/pricing';
+import {
+    getSavingsGoalStatusColor,
+    getSavingsGoalStatusLabel,
+    type SavingsGoalStatus,
+} from '@/types/savings-goal';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -31,18 +36,24 @@ import {
     BoltIcon,
     BriefcaseIcon,
     BusIcon,
+    CarIcon,
     CheckIcon,
     ChevronDownIcon,
     ClapperboardIcon,
     CoinsIcon,
     FileSpreadsheetIcon,
+    GiftIcon,
     HeartPulseIcon,
+    HomeIcon,
+    LaptopIcon,
     LockIcon,
     type LucideIcon,
     PencilIcon,
     SearchIcon,
+    ShirtIcon,
     ShoppingBasketIcon,
     SparklesIcon,
+    SplitIcon,
     WineIcon,
     WrenchIcon,
     XIcon,
@@ -805,6 +816,482 @@ function PrivacyRedactedPreview() {
 
             <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+type SavingsGoalPreviewRow = {
+    name: string;
+    savedInCents: number;
+    targetInCents: number;
+    status: SavingsGoalStatus;
+};
+
+const SAVINGS_GOALS_PREVIEW_ROWS: ReadonlyArray<SavingsGoalPreviewRow> = [
+    {
+        name: 'Holiday in Japan',
+        savedInCents: 124000,
+        targetInCents: 200000,
+        status: 'on_track',
+    },
+    {
+        name: 'Emergency fund',
+        savedInCents: 450000,
+        targetInCents: 600000,
+        status: 'ahead',
+    },
+    {
+        name: 'New laptop',
+        savedInCents: 38000,
+        targetInCents: 150000,
+        status: 'behind',
+    },
+    {
+        name: 'Car service',
+        savedInCents: 90000,
+        targetInCents: 90000,
+        status: 'completed',
+    },
+] as const;
+
+const GOAL_RING_SIZE = 40;
+const GOAL_RING_STROKE = 5;
+const GOAL_RING_RADIUS = (GOAL_RING_SIZE - GOAL_RING_STROKE) / 2;
+const GOAL_RING_CIRCUMFERENCE = 2 * Math.PI * GOAL_RING_RADIUS;
+
+function SavingsGoalsPreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
+
+    const ROW_SLIDE_SPAN = 0.15;
+    const RING_FILL_SPAN = 0.2;
+    const rowSlideStart = (i: number) => 0.05 + i * 0.1;
+    const ringFillStart = (i: number) => rowSlideStart(i) + 0.12;
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('Savings goals filling up as you set money aside')}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <ul className="flex flex-col gap-2 p-3 sm:p-4">
+                {SAVINGS_GOALS_PREVIEW_ROWS.map((goal, index) => {
+                    const slideProgress = Math.min(
+                        1,
+                        Math.max(
+                            0,
+                            (scrollProgress - rowSlideStart(index)) /
+                                ROW_SLIDE_SPAN,
+                        ),
+                    );
+                    const fillProgress = Math.min(
+                        1,
+                        Math.max(
+                            0,
+                            (scrollProgress - ringFillStart(index)) /
+                                RING_FILL_SPAN,
+                        ),
+                    );
+
+                    const percentage = Math.min(
+                        100,
+                        (goal.savedInCents / goal.targetInCents) * 100,
+                    );
+                    const filledPct = percentage * fillProgress;
+                    const toGoInCents = Math.max(
+                        goal.targetInCents - goal.savedInCents,
+                        0,
+                    );
+                    const statusColor = getSavingsGoalStatusColor(goal.status);
+
+                    return (
+                        <li
+                            key={goal.name}
+                            className="flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 will-change-transform dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                            style={{
+                                transform: `translateX(${32 * (1 - slideProgress)}px)`,
+                                opacity: slideProgress,
+                            }}
+                        >
+                            {/* A goal fills up, so it reads as a ring closing
+                                rather than the draining bar the budget preview
+                                uses — the same contrast the app itself makes. */}
+                            <div className="relative size-10 shrink-0">
+                                <svg
+                                    viewBox={`0 0 ${GOAL_RING_SIZE} ${GOAL_RING_SIZE}`}
+                                    className="size-10 -rotate-90"
+                                    aria-hidden="true"
+                                >
+                                    <circle
+                                        cx={GOAL_RING_SIZE / 2}
+                                        cy={GOAL_RING_SIZE / 2}
+                                        r={GOAL_RING_RADIUS}
+                                        fill="none"
+                                        strokeWidth={GOAL_RING_STROKE}
+                                        className="stroke-[#e3e3e0] dark:stroke-[#3E3E3A]"
+                                    />
+                                    <circle
+                                        cx={GOAL_RING_SIZE / 2}
+                                        cy={GOAL_RING_SIZE / 2}
+                                        r={GOAL_RING_RADIUS}
+                                        fill="none"
+                                        strokeWidth={GOAL_RING_STROKE}
+                                        strokeLinecap="round"
+                                        className="stroke-[#1b1b18] dark:stroke-[#EDEDEC]"
+                                        strokeDasharray={`${(GOAL_RING_CIRCUMFERENCE * filledPct) / 100} ${GOAL_RING_CIRCUMFERENCE}`}
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold tabular-nums">
+                                    {Math.round(filledPct)}%
+                                </div>
+                            </div>
+
+                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="truncate text-xs font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                        {__(goal.name)}
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            'shrink-0 rounded-full border border-[#e3e3e0]/85 px-1.5 py-px text-[9px] dark:border-[#3E3E3A]/80',
+                                            statusColor,
+                                        )}
+                                    >
+                                        {getSavingsGoalStatusLabel(goal.status)}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 text-[10px]">
+                                    <span className="text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__('Saved')}
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            'tabular-nums',
+                                            statusColor,
+                                        )}
+                                    >
+                                        {formatCurrency(
+                                            goal.savedInCents,
+                                            currency,
+                                            locale,
+                                        )}{' '}
+                                        {__('of')}{' '}
+                                        {formatCurrency(
+                                            goal.targetInCents,
+                                            currency,
+                                            locale,
+                                        )}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 text-[10px]">
+                                    <span className="text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__('To go')}
+                                    </span>
+                                    <span className="tabular-nums">
+                                        {formatCurrency(
+                                            toGoInCents,
+                                            currency,
+                                            locale,
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+type SplitPreviewPart = {
+    name: string;
+    color: CategoryColor;
+    icon: LucideIcon;
+    amountInCents: number;
+};
+
+type SplitPreviewRow = {
+    id: string;
+    date: string;
+    description: string;
+    color: CategoryColor;
+    icon: LucideIcon;
+    amountInCents: number;
+    parts?: ReadonlyArray<SplitPreviewPart>;
+};
+
+const SPLIT_PREVIEW_ROWS: ReadonlyArray<SplitPreviewRow> = [
+    {
+        id: 'split-1',
+        date: 'Jan 14',
+        description: 'Mercadona',
+        color: 'rose',
+        icon: ShoppingBasketIcon,
+        amountInCents: -7040,
+        parts: [
+            {
+                name: 'Groceries',
+                color: 'rose',
+                icon: ShoppingBasketIcon,
+                amountInCents: -4820,
+            },
+            {
+                name: 'Home',
+                color: 'blue',
+                icon: HomeIcon,
+                amountInCents: -2220,
+            },
+        ],
+    },
+    {
+        id: 'split-2',
+        date: 'Jan 11',
+        description: 'Amazon',
+        color: 'violet',
+        icon: LaptopIcon,
+        amountInCents: -12999,
+        parts: [
+            {
+                name: 'Electronics',
+                color: 'violet',
+                icon: LaptopIcon,
+                amountInCents: -8999,
+            },
+            {
+                name: 'Gifts',
+                color: 'pink',
+                icon: GiftIcon,
+                amountInCents: -4000,
+            },
+        ],
+    },
+    {
+        id: 'split-3',
+        date: 'Jan 9',
+        description: 'Zara',
+        color: 'amber',
+        icon: ShirtIcon,
+        amountInCents: -5990,
+    },
+    {
+        id: 'split-4',
+        date: 'Jan 7',
+        description: 'Netflix',
+        color: 'violet',
+        icon: ClapperboardIcon,
+        amountInCents: -1399,
+    },
+    {
+        id: 'split-5',
+        date: 'Jan 5',
+        description: 'Uber',
+        color: 'blue',
+        icon: CarIcon,
+        amountInCents: -1840,
+    },
+    {
+        id: 'split-6',
+        date: 'Jan 3',
+        description: 'Glovo',
+        color: 'orange',
+        icon: WineIcon,
+        amountInCents: -3860,
+        parts: [
+            {
+                name: 'Dining Out',
+                color: 'orange',
+                icon: WineIcon,
+                amountInCents: -2660,
+            },
+            {
+                name: 'Groceries',
+                color: 'rose',
+                icon: ShoppingBasketIcon,
+                amountInCents: -1200,
+            },
+        ],
+    },
+] as const;
+
+function SplitTransactionsPreview({
+    currency,
+    locale,
+    className,
+}: {
+    currency: string;
+    locale: string;
+    className?: string;
+}) {
+    const { ref: containerRef, progress: scrollProgress } =
+        useScrollProgress<HTMLDivElement>();
+
+    const ROW_REVEAL_SPAN = 0.14;
+    const PART_REVEAL_SPAN = 0.16;
+    const rowRevealStart = (i: number) => 0.04 + i * 0.09;
+    const partRevealStart = (i: number) => rowRevealStart(i) + 0.1;
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('A transaction split across two categories')}
+            className={cn(
+                'relative min-h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950',
+                className,
+            )}
+        >
+            <ul className="flex flex-col gap-2 p-3 sm:p-4">
+                {SPLIT_PREVIEW_ROWS.map((row, index) => {
+                    const revealProgress = Math.min(
+                        1,
+                        Math.max(
+                            0,
+                            (scrollProgress - rowRevealStart(index)) /
+                                ROW_REVEAL_SPAN,
+                        ),
+                    );
+                    const railProgress = Math.min(
+                        1,
+                        Math.max(
+                            0,
+                            (scrollProgress - partRevealStart(index)) /
+                                PART_REVEAL_SPAN,
+                        ),
+                    );
+
+                    const RowIcon = row.icon;
+                    const rowColorClasses = getCategoryColorClasses(row.color);
+
+                    return (
+                        <li
+                            key={row.id}
+                            className="rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 will-change-transform dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                            style={{
+                                transform: `translateY(${-12 * (1 - revealProgress)}px)`,
+                                opacity: revealProgress,
+                            }}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className={cn(
+                                        'flex size-5 shrink-0 items-center justify-center rounded-full',
+                                        rowColorClasses.bg,
+                                    )}
+                                >
+                                    <RowIcon
+                                        className={cn(
+                                            'size-2.5',
+                                            rowColorClasses.text,
+                                        )}
+                                    />
+                                </span>
+                                <span className="truncate text-xs font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                    {row.description}
+                                </span>
+                                <span className="flex-1 text-[10px] text-[#706f6c] dark:text-[#A1A09A]">
+                                    {row.date}
+                                </span>
+                                {row.parts && (
+                                    <SplitIcon
+                                        aria-hidden="true"
+                                        className="size-3 shrink-0 text-[#706f6c] dark:text-[#A1A09A]"
+                                    />
+                                )}
+                                <span className="text-[11px] font-medium tabular-nums">
+                                    -
+                                    {formatCurrency(
+                                        Math.abs(row.amountInCents),
+                                        currency,
+                                        locale,
+                                    )}
+                                </span>
+                            </div>
+
+                            {row.parts && (
+                                <div className="relative mt-2 ml-[9px] flex flex-col gap-1.5 pl-4">
+                                    {/* The rail grows out of the original row,
+                                        then each part drops off it. */}
+                                    <span
+                                        aria-hidden="true"
+                                        className="absolute top-[-4px] bottom-2.5 left-0 w-px origin-top bg-[#e3e3e0] will-change-transform dark:bg-[#3E3E3A]"
+                                        style={{
+                                            transform: `scaleY(${railProgress})`,
+                                        }}
+                                    />
+
+                                    {row.parts.map((part, partIndex) => {
+                                        const partProgress = Math.min(
+                                            1,
+                                            Math.max(
+                                                0,
+                                                (scrollProgress -
+                                                    (partRevealStart(index) +
+                                                        partIndex * 0.04)) /
+                                                    PART_REVEAL_SPAN,
+                                            ),
+                                        );
+                                        const PartIcon = part.icon;
+                                        const partColorClasses =
+                                            getCategoryColorClasses(part.color);
+
+                                        return (
+                                            <div
+                                                key={part.name}
+                                                className="relative flex items-center gap-2 will-change-transform"
+                                                style={{
+                                                    transform: `translateX(${-8 * (1 - partProgress)}px)`,
+                                                    opacity: partProgress,
+                                                }}
+                                            >
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="absolute top-1/2 -left-4 h-px w-[11px] bg-[#e3e3e0] dark:bg-[#3E3E3A]"
+                                                />
+                                                <span
+                                                    className={cn(
+                                                        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                                        partColorClasses.bg,
+                                                        partColorClasses.text,
+                                                    )}
+                                                >
+                                                    <PartIcon className="size-2.5 shrink-0 opacity-80" />
+                                                    {__(part.name)}
+                                                </span>
+                                                <span className="ml-auto text-[10px] text-[#706f6c] tabular-nums dark:text-[#A1A09A]">
+                                                    -
+                                                    {formatCurrency(
+                                                        Math.abs(
+                                                            part.amountInCents,
+                                                        ),
+                                                        currency,
+                                                        locale,
+                                                    )}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
         </div>
     );
 }
@@ -2629,7 +3116,51 @@ export default function Welcome({
                                 </div>
                             </FeatureCard>
 
-                            {/* Row 3: Cashflow at a Glance (always full width) */}
+                            {/* Row 3: Savings Goals + Split Transactions.
+                                Split takes two columns so the row fills out —
+                                the same 1 + 2 shape as Row 1, mirrored. */}
+                            <FeatureCard>
+                                <div className="p-2">
+                                    <SavingsGoalsPreview
+                                        currency={pricing.currency}
+                                        locale={locale}
+                                    />
+                                </div>
+                                <div className="p-6 pt-4">
+                                    <h3 className="text-xl font-semibold">
+                                        {__('Savings Goals')}
+                                    </h3>
+                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__(
+                                            'Put money aside for what matters. Tag the transfers once and every goal fills itself up, so you always know how far off you are.',
+                                        )}
+                                    </p>
+                                </div>
+                            </FeatureCard>
+
+                            <FeatureCard className="sm:col-span-2">
+                                <div className="grid h-full grid-rows-1 gap-0 sm:grid-cols-2">
+                                    <div className="relative min-h-[320px]">
+                                        <SplitTransactionsPreview
+                                            currency={pricing.currency}
+                                            locale={locale}
+                                            className="absolute inset-2"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col justify-center p-8 sm:p-12">
+                                        <h2 className="text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight">
+                                            {__('Split Transactions')}
+                                        </h2>
+                                        <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
+                                            {__(
+                                                'One receipt, several categories. Break a transaction into parts and each part counts where it belongs — merge it back whenever you want.',
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            </FeatureCard>
+
+                            {/* Row 4: Cashflow at a Glance (always full width) */}
                             <FeatureCard className="sm:col-span-3">
                                 <div className="grid items-center gap-0 sm:grid-cols-2">
                                     <div className="p-2">
