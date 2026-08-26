@@ -2246,5 +2246,22 @@
     "This cannot be undone: there is no way to bring it back.": "Cette action est irréversible : il n'y a aucun moyen de le récupérer.",
     "Any automation rule that adds that label stops adding it.": "Toute règle d'automatisation qui ajoute cette étiquette cesse de l'ajouter.",
     "The budget could not be archived.": "Le budget n'a pas pu être archivé.",
-    "The goal could not be archived.": "L'objectif n'a pas pu être archivé."
+    "The goal could not be archived.": "L'objectif n'a pas pu être archivé.",
+    "Split Transactions": "Diviser les transactions",
+    "Home": "Maison",
+    "Electronics": "Électronique",
+    "Gifts": "Cadeaux",
+    "Holiday in Japan": "Voyage au Japon",
+    "Emergency fund": "Fonds d'urgence",
+    "New laptop": "Nouvel ordinateur portable",
+    "Car service": "Révision de la voiture",
+    "Savings goals filling up as you set money aside": "Objectifs d'épargne qui se remplissent à mesure que vous mettez de l'argent de côté",
+    "A transaction split across two categories": "Une transaction répartie sur deux catégories",
+    "Put money aside for what matters. Tag the transfers once and every goal fills itself up, so you always know how far off you are.": "Mettez de l'argent de côté pour ce qui compte. Étiquetez les virements une seule fois et chaque objectif se remplit tout seul : vous savez toujours où vous en êtes.",
+    "One receipt, several categories. Break a transaction into parts and each part counts where it belongs — merge it back whenever you want.": "Un seul reçu, plusieurs catégories. Divisez une transaction en parts et chacune compte là où il faut — refusionnez-la quand vous voulez.",
+    "Savings Goals": "Objectifs d'épargne",
+    "Ahead of schedule": "En avance",
+    "On track": "Dans les temps",
+    "Behind schedule": "En retard",
+    "Goal reached": "Objectif atteint"
 }
