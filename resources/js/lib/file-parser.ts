@@ -368,53 +368,68 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         'deudor',
     ];
 
-    for (let i = 0; i < lowerHeaders.length; i++) {
-        const header = lowerHeaders[i];
-        const originalHeader = headers[i];
+    // Each header is claimed by a single field: the one whose longest pattern
+    // matches it, and on a tie the field listed first below. Amount is last
+    // because its patterns are the most generic: 'valor' is the real amount
+    // header in Portuguese exports, but in "Fecha valor" it is a date column
+    // and must not end up holding a date rendered as a number.
+    const fieldPatterns = [
+        ['transaction_date', datePatterns],
+        ['description', descriptionPatterns],
+        ['balance', balancePatterns],
+        ['creditor_name', creditorPatterns],
+        ['debtor_name', debtorPatterns],
+        ['amount', amountPatterns],
+    ] as const;
 
-        if (!header || typeof header !== 'string') {
-            continue;
+    const longestMatch = (
+        patterns: readonly string[],
+        header: string,
+    ): number => {
+        return Math.max(
+            0,
+            ...patterns
+                .filter((pattern) => header.includes(pattern))
+                .map((pattern) => pattern.length),
+        );
+    };
+
+    const claims: Record<string, { header: string; length: number }> = {};
+
+    lowerHeaders.forEach((header, index) => {
+        let claimedField: { field: string; length: number } | null = null;
+
+        for (const [field, patterns] of fieldPatterns) {
+            const length = longestMatch(patterns, header);
+
+            if (
+                length > 0 &&
+                (claimedField === null || length > claimedField.length)
+            ) {
+                claimedField = { field, length };
+            }
         }
 
-        if (
-            !mapping.transaction_date &&
-            datePatterns.some((p) => header.includes(p))
-        ) {
-            mapping.transaction_date = originalHeader;
+        if (claimedField === null) {
+            return;
         }
 
-        if (
-            !mapping.description &&
-            descriptionPatterns.some((p) => header.includes(p))
-        ) {
-            mapping.description = originalHeader;
-        }
+        const current = claims[claimedField.field];
 
-        if (!mapping.amount && amountPatterns.some((p) => header.includes(p))) {
-            mapping.amount = originalHeader;
+        if (current === undefined || claimedField.length > current.length) {
+            claims[claimedField.field] = {
+                header: headers[index],
+                length: claimedField.length,
+            };
         }
+    });
 
-        if (
-            !mapping.balance &&
-            balancePatterns.some((p) => header.includes(p))
-        ) {
-            mapping.balance = originalHeader;
-        }
-
-        if (
-            !mapping.creditor_name &&
-            creditorPatterns.some((p) => header.includes(p))
-        ) {
-            mapping.creditor_name = originalHeader;
-        }
-
-        if (
-            !mapping.debtor_name &&
-            debtorPatterns.some((p) => header.includes(p))
-        ) {
-            mapping.debtor_name = originalHeader;
-        }
-    }
+    mapping.transaction_date = claims.transaction_date?.header ?? null;
+    mapping.description = claims.description?.header ?? null;
+    mapping.amount = claims.amount?.header ?? null;
+    mapping.balance = claims.balance?.header ?? null;
+    mapping.creditor_name = claims.creditor_name?.header ?? null;
+    mapping.debtor_name = claims.debtor_name?.header ?? null;
 
     return mapping;
 }
@@ -526,7 +541,14 @@ export function parseAmount(amountStr: string | number): number | null {
 
     let str = String(amountStr).trim();
 
-    const isNegative = /^-/.test(str) || /^\(.*\)$/.test(str);
+    // A sign only counts at either edge: leading it may sit behind a currency
+    // symbol or code ("€ -50,32"), trailing it must follow the digits
+    // ("50,32-"). Hyphens between digits are date separators ("31-07-2026")
+    // and a trailing "1'234.-" means zero cents, not a negative sign.
+    const isNegative =
+        /^\D*[-\u2212\u2013]/.test(str) ||
+        /\d\s*[-\u2212\u2013]\D*$/.test(str) ||
+        /^\(.*\)$/.test(str);
 
     const dotPos = str.lastIndexOf('.');
     const commaPos = str.lastIndexOf(',');
