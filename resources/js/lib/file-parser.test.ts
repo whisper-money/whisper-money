@@ -264,6 +264,26 @@ describe('autoDetectColumns', () => {
         expect(mapping.amount).toBe('Importe');
     });
 
+    it('leaves the amount unmapped rather than taking a losing date column', () => {
+        const mapping = autoDetectColumns([
+            'Fecha operación',
+            'Fecha valor',
+            'Concepto',
+            'Saldo',
+        ]);
+
+        expect(mapping.transaction_date).toBe('Fecha operación');
+        expect(mapping.balance).toBe('Saldo');
+        expect(mapping.amount).toBeNull();
+    });
+
+    it('reads "Saldo total" as a balance rather than an amount', () => {
+        const mapping = autoDetectColumns(['Fecha', 'Concepto', 'Saldo total']);
+
+        expect(mapping.balance).toBe('Saldo total');
+        expect(mapping.amount).toBeNull();
+    });
+
     it('keeps Valor as the amount column when it is the only match', () => {
         const mapping = autoDetectColumns(['Data', 'Descrição', 'Valor']);
 

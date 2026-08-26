@@ -368,52 +368,68 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         'deudor',
     ];
 
-    const claimedIndexes = new Set<number>();
+    // Each header is claimed by a single field: the one whose longest pattern
+    // matches it, and on a tie the field listed first below. Amount is last
+    // because its patterns are the most generic: 'valor' is the real amount
+    // header in Portuguese exports, but in "Fecha valor" it is a date column
+    // and must not end up holding a date rendered as a number.
+    const fieldPatterns = [
+        ['transaction_date', datePatterns],
+        ['description', descriptionPatterns],
+        ['balance', balancePatterns],
+        ['creditor_name', creditorPatterns],
+        ['debtor_name', debtorPatterns],
+        ['amount', amountPatterns],
+    ] as const;
 
-    // Each header can only be claimed by a single field, and the field takes
-    // the header with the longest matching pattern instead of the leftmost one.
-    // "Fecha valor" matches both the date patterns and the amount pattern
-    // 'valor', but it is a date column, so "Importe" stays free to become the
-    // amount column.
-    const claimBestHeader = (patterns: string[]): string | null => {
-        let bestIndex = -1;
-        let bestMatchLength = 0;
-
-        for (let i = 0; i < lowerHeaders.length; i++) {
-            const header = lowerHeaders[i];
-
-            if (!header || claimedIndexes.has(i)) {
-                continue;
-            }
-
-            const matchLength = Math.max(
-                0,
-                ...patterns
-                    .filter((pattern) => header.includes(pattern))
-                    .map((pattern) => pattern.length),
-            );
-
-            if (matchLength > bestMatchLength) {
-                bestIndex = i;
-                bestMatchLength = matchLength;
-            }
-        }
-
-        if (bestIndex === -1) {
-            return null;
-        }
-
-        claimedIndexes.add(bestIndex);
-
-        return headers[bestIndex];
+    const longestMatch = (
+        patterns: readonly string[],
+        header: string,
+    ): number => {
+        return Math.max(
+            0,
+            ...patterns
+                .filter((pattern) => header.includes(pattern))
+                .map((pattern) => pattern.length),
+        );
     };
 
-    mapping.transaction_date = claimBestHeader(datePatterns);
-    mapping.description = claimBestHeader(descriptionPatterns);
-    mapping.amount = claimBestHeader(amountPatterns);
-    mapping.balance = claimBestHeader(balancePatterns);
-    mapping.creditor_name = claimBestHeader(creditorPatterns);
-    mapping.debtor_name = claimBestHeader(debtorPatterns);
+    const claims: Record<string, { header: string; length: number }> = {};
+
+    lowerHeaders.forEach((header, index) => {
+        let claimedField: { field: string; length: number } | null = null;
+
+        for (const [field, patterns] of fieldPatterns) {
+            const length = longestMatch(patterns, header);
+
+            if (
+                length > 0 &&
+                (claimedField === null || length > claimedField.length)
+            ) {
+                claimedField = { field, length };
+            }
+        }
+
+        if (claimedField === null) {
+            return;
+        }
+
+        const current = claims[claimedField.field];
+
+        if (current === undefined || claimedField.length > current.length) {
+            claims[claimedField.field] = {
+                header: headers[index],
+                length: claimedField.length,
+            };
+        }
+    });
+
+    mapping.transaction_date = claims.transaction_date?.header ?? null;
+    mapping.description = claims.description?.header ?? null;
+    mapping.amount = claims.amount?.header ?? null;
+    mapping.balance = claims.balance?.header ?? null;
+    mapping.creditor_name = claims.creditor_name?.header ?? null;
+    mapping.debtor_name = claims.debtor_name?.header ?? null;
 
     return mapping;
 }
