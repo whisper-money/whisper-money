@@ -10,6 +10,7 @@ import {
     detectDateFormat,
     getLatestTransactionDate,
     getLocaleDateFormat,
+    parseAmount,
     parseDate,
     parseFile,
 } from './file-parser';
@@ -98,6 +99,29 @@ describe('convertRowsToTransactions', () => {
 
         expect(transactions).toHaveLength(1);
         expect(transactions[0].transaction_date).toBe('2024-12-31');
+    });
+
+    it('stores an amount with a trailing sign as an expense', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Card purchase',
+                    amount: '10,32-',
+                },
+            ],
+            {
+                transaction_date: 'date',
+                description: 'description',
+                amount: 'amount',
+                balance: null,
+                creditor_name: null,
+                debtor_name: null,
+            },
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].amount).toBe(-1032);
     });
 });
 
@@ -192,6 +216,104 @@ describe('autoDetectColumns', () => {
 
         expect(mapping.creditor_name).toBe('Creditor Name');
         expect(mapping.debtor_name).toBe('Debtor Name');
+    });
+
+    it('maps an English header set', () => {
+        const mapping = autoDetectColumns([
+            'Transaction Date',
+            'Description',
+            'Amount',
+        ]);
+
+        expect(mapping.transaction_date).toBe('Transaction Date');
+        expect(mapping.description).toBe('Description');
+        expect(mapping.amount).toBe('Amount');
+    });
+
+    it('maps a Spanish header set', () => {
+        const mapping = autoDetectColumns(['Fecha', 'Concepto', 'Importe']);
+
+        expect(mapping.transaction_date).toBe('Fecha');
+        expect(mapping.description).toBe('Concepto');
+        expect(mapping.amount).toBe('Importe');
+    });
+
+    it('prefers Importe over a date column matching "valor"', () => {
+        const mapping = autoDetectColumns([
+            'Fecha operación',
+            'Fecha valor',
+            'Concepto',
+            'Importe',
+            'Saldo',
+        ]);
+
+        expect(mapping.transaction_date).toBe('Fecha operación');
+        expect(mapping.description).toBe('Concepto');
+        expect(mapping.amount).toBe('Importe');
+        expect(mapping.balance).toBe('Saldo');
+    });
+
+    it('does not claim the date column as the amount column', () => {
+        const mapping = autoDetectColumns([
+            'Fecha valor',
+            'Concepto',
+            'Importe',
+        ]);
+
+        expect(mapping.transaction_date).toBe('Fecha valor');
+        expect(mapping.amount).toBe('Importe');
+    });
+
+    it('keeps Valor as the amount column when it is the only match', () => {
+        const mapping = autoDetectColumns(['Data', 'Descrição', 'Valor']);
+
+        expect(mapping.description).toBe('Descrição');
+        expect(mapping.amount).toBe('Valor');
+    });
+});
+
+describe('parseAmount', () => {
+    it('keeps the sign for the layouts that already worked', () => {
+        expect(parseAmount('-50,32')).toBe(-50.32);
+        expect(parseAmount('-50,32 €')).toBe(-50.32);
+        expect(parseAmount('(50,32)')).toBe(-50.32);
+        expect(parseAmount('- 50,32')).toBe(-50.32);
+        expect(parseAmount('-1.234,56')).toBe(-1234.56);
+    });
+
+    it('detects a sign written after the currency symbol or code', () => {
+        expect(parseAmount('€ -50,32')).toBe(-50.32);
+        expect(parseAmount('EUR -50,32')).toBe(-50.32);
+    });
+
+    it('detects a trailing sign', () => {
+        expect(parseAmount('50,32-')).toBe(-50.32);
+        expect(parseAmount('1.234,56-')).toBe(-1234.56);
+    });
+
+    it('detects the unicode minus sign and the en dash', () => {
+        expect(parseAmount('\u221250,32')).toBe(-50.32);
+        expect(parseAmount('\u2013 50,32')).toBe(-50.32);
+    });
+
+    it('detects a sign wrapped in quotes', () => {
+        expect(parseAmount('"-50,32"')).toBe(-50.32);
+    });
+
+    it('does not read hyphens between digits as a negative sign', () => {
+        expect(parseAmount('31-07-2026')).toBe(31072026);
+        expect(parseAmount('2026-07-31')).toBe(20260731);
+        expect(parseAmount('50,32')).toBe(50.32);
+    });
+
+    it('leaves numeric cells untouched', () => {
+        expect(parseAmount(-50.32)).toBe(-50.32);
+        expect(parseAmount(50.32)).toBe(50.32);
+    });
+
+    it('returns null when there is no number to parse', () => {
+        expect(parseAmount('')).toBeNull();
+        expect(parseAmount('-')).toBeNull();
     });
 });
 
