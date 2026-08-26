@@ -165,6 +165,23 @@ export function supportsInvestedAmount(
     return INVESTED_AMOUNT_ACCOUNT_TYPES.includes(account.type);
 }
 
+/**
+ * What a transaction tagged to a savings goal contributes to it. On a savings
+ * account the money arriving IS the contribution, so the amount counts as it
+ * stands. On any other account type the transaction is the outflow that funded
+ * the goal, so its sign is negated.
+ *
+ * Mirrors the backend `SavingsGoal::CONTRIBUTION_AMOUNT_SQL`.
+ */
+export function savingsContributionAmount(transaction: {
+    amount: number;
+    account?: Pick<Account, 'type'> | null;
+}): number {
+    return transaction.account?.type === 'savings'
+        ? transaction.amount
+        : -transaction.amount;
+}
+
 export function accountIconByType(type: AccountType): LucideIcon {
     const typeMap: Record<AccountType, LucideIcon> = {
         checking: Wallet,

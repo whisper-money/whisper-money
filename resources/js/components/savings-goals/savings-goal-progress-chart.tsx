@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/chart';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
+import { savingsContributionAmount } from '@/types/account';
 import { SavingsGoal, SavingsGoalStats } from '@/types/savings-goal';
 import { Transaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
@@ -131,13 +132,15 @@ export function SavingsGoalProgressChart({
             : null;
         const rate = stats.rate_per_day;
 
-        // Contributions are outflows, so the natural sign is negated.
         const byDate = new Map<string, number>();
         let earliest: Date | null = null;
         transactions.forEach((t) => {
             const day = startOfDay(parseISO(t.transaction_date));
             const key = toKey(day);
-            byDate.set(key, (byDate.get(key) ?? 0) + -t.amount);
+            byDate.set(
+                key,
+                (byDate.get(key) ?? 0) + savingsContributionAmount(t),
+            );
             if (!earliest || day < earliest) {
                 earliest = day;
             }

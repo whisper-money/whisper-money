@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\LabelSource;
 use App\Features\SavingsGoals;
 use App\Models\Account;
@@ -16,6 +17,15 @@ use Laravel\Pennant\Feature;
 function onboardedSavingsUser(): User
 {
     return User::factory()->create(['onboarded_at' => now()]);
+}
+
+/**
+ * The account factory picks a random type, and the contribution sign depends on
+ * it, so every test spells out the type it means.
+ */
+function savingsGoalAccount(User $user, AccountType $type = AccountType::Checking): Account
+{
+    return Account::factory()->create(['user_id' => $user->id, 'type' => $type]);
 }
 
 test('creating a goal creates a linked hidden label with the same name', function () {
@@ -59,10 +69,10 @@ test('goal-backed labels are hidden from the labels settings screen', function (
     );
 });
 
-test('saved amount is the negated net flow of tagged transactions', function () {
+test('saved amount is the negated net flow of transactions outside a savings account', function () {
     $user = onboardedSavingsUser();
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
 
     // Outflow to savings (−500) contributes +500; a withdrawal back (+200) subtracts.
     $outflow = Transaction::factory()->create([
@@ -82,6 +92,91 @@ test('saved amount is the negated net flow of tagged transactions', function () 
     expect($goal->savedAmountInCents())->toBe(30000);
 });
 
+test('saved amount counts a savings account inflow as the contribution', function () {
+    $user = onboardedSavingsUser();
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user, AccountType::Savings);
+
+    // On the savings account itself the arriving money (+500) IS the contribution,
+    // and taking it back out (−200) subtracts.
+    $deposit = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 50000,
+    ]);
+    $withdrawal = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -20000,
+    ]);
+
+    $deposit->labels()->attach($goal->label_id);
+    $withdrawal->labels()->attach($goal->label_id);
+
+    expect($goal->savedAmountInCents())->toBe(30000);
+});
+
+test('each leg of a transfer counts on its own terms', function () {
+    $user = onboardedSavingsUser();
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+
+    // Both legs of the same 500 transfer: −500 leaving checking and +500
+    // arriving in savings each read as +500. Tagging both therefore counts the
+    // transfer twice — the sign is per transaction, and it is up to the user to
+    // tag the leg they mean, exactly as it was before this rule existed.
+    $checkingLeg = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => savingsGoalAccount($user)->id,
+        'amount' => -50000,
+    ]);
+    $savingsLeg = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => savingsGoalAccount($user, AccountType::Savings)->id,
+        'amount' => 50000,
+    ]);
+
+    $checkingLeg->labels()->attach($goal->label_id);
+    $savingsLeg->labels()->attach($goal->label_id);
+
+    expect($goal->savedAmountInCents())->toBe(100000);
+});
+
+test('the goals list applies the same sign rule per account type', function () {
+    $user = onboardedSavingsUser();
+    $goal = SavingsGoal::factory()->create([
+        'user_id' => $user->id,
+        'target_amount' => 400000,
+        'initial_amount' => 0,
+    ]);
+
+    $checkingOutflow = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => savingsGoalAccount($user)->id,
+        'amount' => -50000,
+    ]);
+    $savingsDeposit = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => savingsGoalAccount($user, AccountType::Savings)->id,
+        'amount' => 30000,
+    ]);
+    $savingsWithdrawal = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => savingsGoalAccount($user, AccountType::Savings)->id,
+        'amount' => -10000,
+    ]);
+
+    $checkingOutflow->labels()->attach($goal->label_id);
+    $savingsDeposit->labels()->attach($goal->label_id);
+    $savingsWithdrawal->labels()->attach($goal->label_id);
+
+    // The grouped query behind the list is separate code from savedAmountInCents(),
+    // so it gets its own assertion.
+    $goals = SavingsGoal::withStatsForUser($user);
+
+    expect($goals[0]['stats']['saved'])->toBe(70000)
+        ->and($goal->savedAmountInCents())->toBe(70000);
+});
+
 test('show exposes computed progress stats', function () {
     $user = onboardedSavingsUser();
     Feature::for($user)->activate(SavingsGoals::class);
@@ -91,7 +186,7 @@ test('show exposes computed progress stats', function () {
         'target_amount' => 100000,
         'target_date' => null,
     ]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
@@ -119,7 +214,7 @@ test('the goal page stats include the starting amount', function () {
         'initial_amount' => 100000,
         'target_date' => null,
     ]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
     $contribution = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
@@ -160,7 +255,7 @@ test('the starting amount adds to the tagged transactions', function () {
         'user_id' => $user->id,
         'initial_amount' => 100000,
     ]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
 
     $contribution = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -256,7 +351,7 @@ test('the goals list adds the starting amount to its progress', function () {
         'target_amount' => 400000,
         'initial_amount' => 100000,
     ]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
     $contribution = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
@@ -367,7 +462,7 @@ test('syncing transactions attaches the ticked ones and detaches the rest', func
     Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
 
     $alreadyTagged = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -402,7 +497,7 @@ test('syncing transactions ignores ids belonging to someone else', function () {
     $stranger = User::factory()->create();
     $theirTransaction = Transaction::factory()->create([
         'user_id' => $stranger->id,
-        'account_id' => Account::factory()->create(['user_id' => $stranger->id])->id,
+        'account_id' => savingsGoalAccount($stranger)->id,
         'amount' => -50000,
     ]);
 
@@ -433,7 +528,7 @@ test('the goal page only loads recent transactions when asked for them', functio
     Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
     Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
@@ -458,7 +553,7 @@ test('the link dialog can widen the recent transactions window, up to a cap', fu
     Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
     // One shared category: the factory only has a handful of unique names to give.
     $category = Category::factory()->create(['user_id' => $user->id]);
     Transaction::factory()->count(55)->create([
