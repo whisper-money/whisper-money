@@ -198,3 +198,20 @@ test('foreign-currency transactions are converted to the user currency', functio
     // 1000 EUR cents / 0.5 = 2000 USD cents.
     expect($response->json('months.11.'.$category->id))->toBe(2000);
 });
+
+test('the monthly chart stops counting an archived account from the day it was archived', function () {
+    $category = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Groceries',
+    ]);
+
+    accountsAcrossArchiveCutoff($this->user, $category);
+
+    $response = monthlyBreakdown($category)->assertOk();
+
+    // The May bar reads the live account's 70 plus the 10 the archived account
+    // spent before it was archived, not the 30 it spent from that day on.
+    expect($response->json('months.10.key'))->toBe('2026-05');
+    expect($response->json('months.10.'.$category->id))->toBe(8000);
+});

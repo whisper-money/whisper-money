@@ -59,9 +59,10 @@ class CategoryMonthlyBreakdownController extends Controller
         ));
 
         $transactions = Transaction::query()
-            ->where('user_id', $user->id)
-            ->whereIn('category_id', $subtreeIds)
-            ->where('transaction_date', '>=', $start->toDateString())
+            ->where('transactions.user_id', $user->id)
+            ->whereIn('transactions.category_id', $subtreeIds)
+            ->where('transactions.transaction_date', '>=', $start->toDateString())
+            ->countingTowardsTotals()
             ->with('account')
             ->get();
 

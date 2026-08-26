@@ -1480,3 +1480,37 @@ test('drilling into a parent splits it into children plus a direct node', functi
     expect($directNode['category_id'])->toBe($parent->id)
         ->and($directNode['amount'])->toBe(10000);
 });
+
+test('archived accounts stop feeding the cashflow figures from the day they were archived', function () {
+    $expenseCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Groceries',
+    ]);
+
+    accountsAcrossArchiveCutoff($this->user, $expenseCategory);
+
+    $period = [
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+    ];
+
+    // The dashboard widget and the cashflow screen read the same summary, so
+    // both stop counting the archived account from its archive day.
+    $this->getJson('/api/cashflow/summary?'.http_build_query($period))
+        ->assertOk()
+        ->assertJsonPath('current.expense', 8000);
+
+    $this->getJson('/api/cashflow/trend?'.http_build_query(['months' => 1, 'to' => '2026-05-31']))
+        ->assertOk()
+        ->assertJsonPath('data.0.expense', 8000);
+
+    $this->getJson('/api/cashflow/sankey?'.http_build_query($period))
+        ->assertOk()
+        ->assertJsonPath('total_expense', 8000);
+
+    $this->getJson('/api/cashflow/breakdown?'.http_build_query([...$period, 'type' => 'expense']))
+        ->assertOk()
+        ->assertJsonPath('total', 8000)
+        ->assertJsonPath('data.0.amount', 8000);
+});

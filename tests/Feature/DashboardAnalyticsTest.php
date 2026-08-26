@@ -1671,60 +1671,22 @@ test('archived accounts stop feeding dashboard totals from the day they were arc
         'name' => 'Salary',
     ]);
 
-    // Archived mid-month, with a time of day, so the cutoff cannot lean on the
-    // archiving moment being midnight.
-    $archived = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'archived_at' => '2026-05-15 10:30:00',
-    ]);
-    $active = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'archived_at' => null,
-    ]);
+    ['archived' => $archived, 'active' => $active] = accountsAcrossArchiveCutoff($this->user, $expense);
 
-    // Before archiving: still counts, the history must not move.
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $archived->id,
-        'category_id' => $expense->id,
-        'amount' => -1000,
-        'transaction_date' => '2026-05-14',
-    ]);
-    // On the archiving day: excluded.
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $archived->id,
-        'category_id' => $expense->id,
-        'amount' => -2000,
-        'transaction_date' => '2026-05-15',
-    ]);
-    // After archiving: excluded, expense and income alike.
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $archived->id,
-        'category_id' => $expense->id,
-        'amount' => -4000,
-        'transaction_date' => '2026-05-16',
-    ]);
+    // Income after the cutoff is dropped too, not just spending.
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $archived->id,
         'category_id' => $income->id,
+        'currency_code' => $this->user->currency_code,
         'amount' => 9000,
         'transaction_date' => '2026-05-16',
     ]);
-    // A live account is untouched by any of this.
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $active->id,
-        'category_id' => $expense->id,
-        'amount' => -8000,
-        'transaction_date' => '2026-05-16',
-    ]);
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $active->id,
         'category_id' => $income->id,
+        'currency_code' => $this->user->currency_code,
         'amount' => 3000,
         'transaction_date' => '2026-05-16',
     ]);
@@ -1734,18 +1696,60 @@ test('archived accounts stop feeding dashboard totals from the day they were arc
         'to' => '2026-05-31',
     ];
 
-    // 1000 (before archiving) + 8000 (live account), never the 2000 or the 4000.
     $this->getJson('/api/dashboard/monthly-spending?'.http_build_query($period))
         ->assertOk()
-        ->assertJsonPath('current', 9000);
+        ->assertJsonPath('current', 8000);
 
     $this->getJson('/api/dashboard/cash-flow?'.http_build_query($period))
         ->assertOk()
-        ->assertJsonPath('current.expense', 9000)
+        ->assertJsonPath('current.expense', 8000)
         ->assertJsonPath('current.income', 3000);
 
     $this->getJson('/api/dashboard/top-categories?'.http_build_query($period))
         ->assertOk()
         ->assertJsonPath('0.category.name', 'Groceries')
-        ->assertJsonPath('0.amount', 9000);
+        ->assertJsonPath('0.amount', 8000);
+});
+
+test('drilling into a parent category keeps archived account activity out of the children', function () {
+    $food = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Food',
+    ]);
+    $groceries = Category::factory()->childOf($food)->create([
+        'user_id' => $this->user->id,
+        'name' => 'Groceries',
+    ]);
+
+    accountsAcrossArchiveCutoff($this->user, $groceries);
+
+    $this->getJson('/api/dashboard/top-categories?'.http_build_query([
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+        'parent' => $food->id,
+    ]))
+        ->assertOk()
+        ->assertJsonPath('0.category.name', 'Groceries')
+        ->assertJsonPath('0.amount', 8000);
+});
+
+test('unarchiving an account puts its transactions back into the totals', function () {
+    $expense = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+
+    ['archived' => $archived] = accountsAcrossArchiveCutoff($this->user, $expense);
+
+    // Accounts can come back, unlike budgets and savings goals, and nothing was
+    // snapshotted while it was away: the whole 7000 counts again.
+    $archived->update(['archived_at' => null]);
+
+    $this->getJson('/api/dashboard/monthly-spending?'.http_build_query([
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+    ]))
+        ->assertOk()
+        ->assertJsonPath('current', 14000);
 });

@@ -61,7 +61,7 @@ export function ArchiveAccountDialog({
                     </li>
                     <li>
                         {__(
-                            'It stops counting towards your net worth from today. The months before today keep the figures they already have.',
+                            'It stops counting towards your net worth, your spending and your category totals from today. The months before today keep the figures they already have.',
                         )}
                     </li>
                     <li>

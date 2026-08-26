@@ -350,6 +350,12 @@ class Transaction extends Model
      * soft-delete scope, so the row set is exactly what it was before the
      * ownership weighting existed.
      *
+     * A query that adds up a period — spending, cash flow, a category total —
+     * also wants {@see self::scopeWithoutArchivedAccountActivity()}, or an
+     * archived account keeps feeding the figure. A running accumulation is the
+     * exception: SavingsGoal's tagged contributions deliberately count archived
+     * accounts, since money set aside stays set aside.
+     *
      * @param  Builder<Transaction>  $query
      * @return Builder<Transaction>
      */
@@ -361,11 +367,18 @@ class Transaction extends Model
     /**
      * Drop what an archived account should no longer contribute: a transaction
      * dated on or after the day the account was archived. Earlier ones keep
-     * counting, so archiving never moves the history retroactively — the same
-     * cutoff that freezes an archived account's balance.
+     * counting, so archiving never moves the history retroactively. This mirrors
+     * AccountMetricsService, which freezes an archived account's balance from the
+     * same day, and BudgetTransactionService, where an archived budget stops
+     * taking in new spending from its own archive date.
      *
      * Spelled out rather than via Account::scopeNotArchived, which would drop
      * the account's whole past too.
+     *
+     * The cutoff day is `archived_at` read in UTC, not in the user's timezone,
+     * matching how the balance side reads it. At a non-zero offset that can land
+     * a day either side of the user's own day; fixing it means fixing both paths
+     * together, or they would disagree about when an account stopped counting.
      *
      * Only valid on queries that ran {@see self::scopeJoinOwningAccount()}.
      *
@@ -374,12 +387,32 @@ class Transaction extends Model
      */
     public function scopeWithoutArchivedAccountActivity(Builder $query): Builder
     {
-        return $query->where(function (Builder $query): void {
+        return $query->where(function (Builder $group): void {
             // date() on archived_at: it carries a time of day, transaction_date
             // does not, so a raw comparison would let the archiving day through.
-            $query->whereNull('accounts.archived_at')
+            $group->whereNull('accounts.archived_at')
                 ->orWhereRaw('transactions.transaction_date < date(accounts.archived_at)');
         });
+    }
+
+    /**
+     * Only the rows a period total should count: the same cutoff as
+     * {@see self::scopeWithoutArchivedAccountActivity()}, packaged for the
+     * queries that hydrate models and add up in PHP rather than in SQL.
+     *
+     * It re-selects `transactions.*` because the join drags the account's own
+     * columns into the default `select *`, where `id`, `user_id` and
+     * `currency_code` would overwrite the transaction's own values.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeCountingTowardsTotals(Builder $query): Builder
+    {
+        return $query
+            ->joinOwningAccount()
+            ->withoutArchivedAccountActivity()
+            ->select('transactions.*');
     }
 
     /**

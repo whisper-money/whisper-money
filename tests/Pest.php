@@ -372,6 +372,52 @@ function finalAttemptJobFor(BankingConnection $connection): SyncBankingConnectio
 }
 
 /**
+ * Two accounts either side of the archive cutoff, for the surfaces that must
+ * stop counting an archived account from the day it was archived.
+ *
+ * One account is archived mid-May at 10:30 — a time of day, so a cutoff that
+ * compares the raw timestamp instead of the day is caught — and the other stays
+ * live. Both get the same three expenses: the day before the archive date, the
+ * day of, and the day after. So of the archived account's 7000 only the first
+ * 1000 may ever count, while the live account keeps all 7000, for 8000 in total
+ * over May 2026.
+ *
+ * Currencies are pinned to the user's so no exchange rate is involved.
+ *
+ * @return array{archived: Account, active: Account}
+ */
+function accountsAcrossArchiveCutoff(User $user, Category $category): array
+{
+    $accounts = [
+        'archived' => Account::factory()->create([
+            'user_id' => $user->id,
+            'currency_code' => $user->currency_code,
+            'archived_at' => '2026-05-15 10:30:00',
+        ]),
+        'active' => Account::factory()->create([
+            'user_id' => $user->id,
+            'currency_code' => $user->currency_code,
+            'archived_at' => null,
+        ]),
+    ];
+
+    foreach ($accounts as $account) {
+        foreach (['2026-05-14' => -1000, '2026-05-15' => -2000, '2026-05-16' => -4000] as $date => $amount) {
+            Transaction::factory()->create([
+                'user_id' => $user->id,
+                'account_id' => $account->id,
+                'category_id' => $category->id,
+                'currency_code' => $user->currency_code,
+                'amount' => $amount,
+                'transaction_date' => $date,
+            ]);
+        }
+    }
+
+    return $accounts;
+}
+
+/**
  * Fake the external currency-rate provider (the jsdelivr CDN and its pages.dev
  * fallback) that CurrencyConversionService and ExchangeRateService fetch from,
  * returning a deterministic 1:1 rate for every currency. Tests that trigger a

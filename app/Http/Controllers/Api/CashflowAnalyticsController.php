@@ -188,6 +188,7 @@ class CashflowAnalyticsController extends Controller
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->countingTowardsTotals()
             ->with(['account', 'category'])
             ->get();
 
@@ -283,6 +284,7 @@ class CashflowAnalyticsController extends Controller
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->countingTowardsTotals()
             ->with(['account', 'category'])
             ->get();
 
@@ -341,6 +343,7 @@ class CashflowAnalyticsController extends Controller
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->countingTowardsTotals()
             ->with(['account', 'category'])
             ->get();
 

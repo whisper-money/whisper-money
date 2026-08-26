@@ -43,6 +43,7 @@ class CashflowSummaryService
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$previousPeriod->from, $period->to])
+            ->countingTowardsTotals()
             ->with(['account', 'category'])
             ->get();
 
