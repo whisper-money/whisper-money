@@ -19,6 +19,7 @@ Follow this order if you are setting things up for the first time.
 
 ```mermaid
 flowchart TD
+    %% diagram: money-map-en
     accounts[Accounts] --> transactions[Transactions]
     transactions --> categories[Categories]
     transactions --> labels[Labels]

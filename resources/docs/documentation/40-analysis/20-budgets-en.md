@@ -16,6 +16,7 @@ Budgets help you plan spending and see how much room is left in a period.
 
 ```mermaid
 flowchart TD
+    %% diagram: budget-flow-en
     budget[Budget] --> target[Category or label]
     transactions[Transactions] --> target
     target --> progress[Progress]

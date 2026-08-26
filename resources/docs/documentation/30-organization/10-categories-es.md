@@ -17,6 +17,7 @@ Las categorías explican qué significa cada transacción. Elige bien la categor
 
 ```mermaid
 flowchart TD
+    %% diagram: category-fanout-es
     transaction[Transacción] --> category[Categoría]
     category --> cashflow[Flujo de efectivo]
     category --> budgets[Presupuestos]

@@ -17,6 +17,7 @@ Importar trae un archivo del banco a Whisper Money cuando la sincronización aut
 
 ```mermaid
 flowchart TD
+    %% diagram: import-steps-es
     account[Elegir cuenta] --> file[Subir archivo]
     file --> mapping[Mapear columnas]
     mapping --> preview[Vista previa]

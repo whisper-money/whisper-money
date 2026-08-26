@@ -16,13 +16,13 @@ Las transacciones son los movimientos individuales de dinero en tus cuentas. Ali
 
 ```mermaid
 flowchart TD
+    %% diagram: transaction-flow-es
     new[Nueva transacción] --> review[Revisión]
     review --> category[Categoría]
     review --> labels[Etiquetas]
-    category --> reports[Informes]
-    labels --> filters[Filtros y presupuestos]
-    rules[Reglas de automatización] --> category
-    rules --> labels
+    category --> reports[Informes y presupuestos]
+    labels --> reports
+    rules[Reglas de automatización] --> review
 ```
 
 ## Qué contiene una transacción

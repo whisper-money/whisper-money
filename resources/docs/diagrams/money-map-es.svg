@@ -1,0 +1,48 @@
+<svg viewBox="0 0 720 280" role="img" aria-labelledby="money-map-es-title money-map-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="money-map-es-title">Cómo encajan las piezas de Whisper Money</title>
+    <desc id="money-map-es-desc">Las cuentas alimentan las transacciones; las transacciones se organizan en categorías y etiquetas, y de ahí salen el flujo de efectivo y los presupuestos. Las reglas de automatización actúan sobre la transacción al llegar.</desc>
+    <defs>
+        <marker id="money-map-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">ENTRA</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="156" y2="24"/>
+    <text class="dg-eyebrow" x="204" y="16">SE ORGANIZA</text>
+    <line class="dg-hairline" x1="204" y1="24" x2="336" y2="24"/>
+    <text class="dg-eyebrow" x="384" y="16">SE ENTIENDE</text>
+    <line class="dg-hairline" x1="384" y1="24" x2="696" y2="24"/>
+    <path class="dg-edge" d="M156,112 H200" marker-end="url(#money-map-es-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M270,176 V144" marker-end="url(#money-map-es-arrow)"/>
+    <rect class="dg-mask" x="278" y="152" width="60" height="12" rx="2"/>
+    <text class="dg-edge-label" x="282" y="161">AL LLEGAR</text>
+    <path class="dg-edge" d="M336,100 H352 Q360,100 360,92 V84 Q360,76 368,76 H380" marker-end="url(#money-map-es-arrow)"/>
+    <path class="dg-edge" d="M336,124 H352 Q360,124 360,132 V140 Q360,148 368,148 H380" marker-end="url(#money-map-es-arrow)"/>
+    <path class="dg-edge" d="M516,76 H560" marker-end="url(#money-map-es-arrow)"/>
+    <path class="dg-edge" d="M516,92 H532 Q540,92 540,100 V128 Q540,136 548,136 H560" marker-end="url(#money-map-es-arrow)"/>
+    <path class="dg-edge" d="M516,156 H560" marker-end="url(#money-map-es-arrow)"/>
+    <rect class="dg-mask" x="24" y="84" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="84" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="90" y="116" text-anchor="middle">Cuentas</text>
+    <rect class="dg-mask" x="204" y="84" width="132" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="204" y="84" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="270" y="116" text-anchor="middle">Transacciones</text>
+    <rect class="dg-mask" x="384" y="48" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="384" y="48" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="450" y="80" text-anchor="middle">Categorías</text>
+    <rect class="dg-mask" x="384" y="120" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="384" y="120" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="450" y="152" text-anchor="middle">Etiquetas</text>
+    <rect class="dg-mask" x="564" y="48" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="564" y="48" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="630" y="72" text-anchor="middle">Flujo de</text>
+    <text class="dg-name" x="630" y="88" text-anchor="middle">efectivo</text>
+    <rect class="dg-mask" x="564" y="120" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="564" y="120" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="630" y="152" text-anchor="middle">Presupuestos</text>
+    <rect class="dg-mask" x="204" y="176" width="132" height="48" rx="6"/>
+    <rect class="dg-node-soft" x="204" y="176" width="132" height="48" rx="6"/>
+    <text class="dg-name" x="270" y="196" text-anchor="middle">Reglas de</text>
+    <text class="dg-name" x="270" y="212" text-anchor="middle">automatización</text>
+    <text class="dg-aside" x="24" y="264">Todo empieza en una cuenta, y todo lo demás se apoya en las transacciones.</text>
+</svg>

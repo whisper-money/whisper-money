@@ -16,8 +16,10 @@ Las reglas de automatización ahorran tiempo actualizando transacciones coincide
 
 ```mermaid
 flowchart TD
-    transaction[Transacción] --> conditions[Condiciones de la regla]
-    conditions -->|coincide| actions[Acciones]
+    %% diagram: rule-flow-es
+    transaction[Nueva transacción] --> conditions{¿Coincide con las condiciones?}
+    conditions -->|sí| actions[Acciones de la regla]
+    conditions -->|no| unchanged[Se queda sin cambios]
     actions --> category[Asignar categoría]
     actions --> labels[Añadir etiquetas]
     actions --> note[Añadir nota]

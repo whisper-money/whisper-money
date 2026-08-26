@@ -16,13 +16,13 @@ Transactions are the individual money movements in your accounts. They power cat
 
 ```mermaid
 flowchart TD
+    %% diagram: transaction-flow-en
     new[New transaction] --> review[Review]
     review --> category[Category]
     review --> labels[Labels]
-    category --> reports[Reports]
-    labels --> filters[Filters and budgets]
-    rules[Automation rules] --> category
-    rules --> labels
+    category --> reports[Reports and budgets]
+    labels --> reports
+    rules[Automation rules] --> review
 ```
 
 ## What a transaction contains

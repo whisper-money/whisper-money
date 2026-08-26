@@ -16,6 +16,7 @@ Los presupuestos te ayudan a planificar gastos y ver cuánto margen queda en un 
 
 ```mermaid
 flowchart TD
+    %% diagram: budget-flow-es
     budget[Presupuesto] --> target[Categoría o etiqueta]
     transactions[Transacciones] --> target
     target --> progress[Progreso]

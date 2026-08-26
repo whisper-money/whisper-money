@@ -1,0 +1,30 @@
+<svg viewBox="0 0 720 208" role="img" aria-labelledby="import-steps-en-title import-steps-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="import-steps-en-title">The six steps of an import</title>
+    <desc id="import-steps-en-desc">Choose the account, upload the bank file, map the columns, check the preview, import what you selected, and review categories and duplicates afterwards.</desc>
+    <line class="dg-edge" x1="88" y1="104" x2="648" y2="104"/>
+    <text class="dg-name" x="88" y="52" text-anchor="middle">Choose account</text>
+    <text class="dg-sub" x="88" y="64" text-anchor="middle">where the file belongs</text>
+    <circle class="dg-station" cx="88" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="88" y="107" text-anchor="middle">1</text>
+    <text class="dg-name" x="200" y="148" text-anchor="middle">Upload file</text>
+    <text class="dg-sub" x="200" y="160" text-anchor="middle">bank CSV</text>
+    <circle class="dg-station" cx="200" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="200" y="107" text-anchor="middle">2</text>
+    <text class="dg-name" x="312" y="52" text-anchor="middle">Map columns</text>
+    <text class="dg-sub" x="312" y="64" text-anchor="middle">date · description · amount</text>
+    <circle class="dg-station" cx="312" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="312" y="107" text-anchor="middle">3</text>
+    <text class="dg-name" x="424" y="148" text-anchor="middle">Preview</text>
+    <text class="dg-sub" x="424" y="160" text-anchor="middle">where mistakes get caught</text>
+    <circle class="dg-station-focal" cx="424" cy="104" r="16"/>
+    <text class="dg-station-number-focal dg-station-number" x="424" y="107" text-anchor="middle">4</text>
+    <text class="dg-name" x="536" y="52" text-anchor="middle">Import</text>
+    <text class="dg-sub" x="536" y="64" text-anchor="middle">selected rows only</text>
+    <circle class="dg-station" cx="536" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="536" y="107" text-anchor="middle">5</text>
+    <text class="dg-name" x="648" y="148" text-anchor="middle">Review</text>
+    <text class="dg-sub" x="648" y="160" text-anchor="middle">categories and duplicates</text>
+    <circle class="dg-station" cx="648" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="648" y="107" text-anchor="middle">6</text>
+    <text class="dg-aside" x="24" y="188">The preview is the last point where you can still fix the mapping.</text>
+</svg>

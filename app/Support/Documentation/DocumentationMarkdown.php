@@ -17,6 +17,12 @@ final class DocumentationMarkdown
     private const MARKDOWN_OPTIONS = ['html_input' => 'strip', 'allow_unsafe_links' => false];
 
     /**
+     * The line inside a mermaid block that names the drawing the page shows in
+     * its place, as a mermaid comment so the block still renders anywhere else.
+     */
+    private const DIAGRAM_MARKER = '%% diagram:';
+
+    /**
      * Screenshots are taken at twice the size they are shown at, by
      * scripts/docs-screenshots.mjs, so that they stay sharp on a high-density
      * screen. Telling the browser the size it will really paint them at is what
@@ -30,10 +36,11 @@ final class DocumentationMarkdown
      */
     public static function render(string $markdown, array $levels): array
     {
-        $cards = self::extractCardBlocks($markdown);
+        $diagrams = self::extractDiagramBlocks($markdown);
+        $cards = self::extractCardBlocks($diagrams['markdown']);
         $headings = self::headings($markdown, $levels);
         $html = (string) Str::of(self::withoutTocPlaceholder($cards['markdown']))->markdown(self::MARKDOWN_OPTIONS);
-        $html = self::replaceCardPlaceholders($html, $cards['html']);
+        $html = self::replacePlaceholders($html, [...$cards['html'], ...$diagrams['html']]);
 
         return [
             'html' => self::withThemedImages(self::addHeadingIds($html, $headings, $levels)),
@@ -60,7 +67,57 @@ final class DocumentationMarkdown
 
     private static function isLayoutMarkup(string $line): bool
     {
-        return in_array($line, ['<div class="cards-wrapper">', '<div class="card">', '</div>'], true);
+        return in_array($line, ['<div class="cards-wrapper">', '<div class="card">', '</div>'], true)
+            || Str::startsWith($line, self::DIAGRAM_MARKER);
+    }
+
+    /**
+     * A page's mermaid block stays in the Markdown, because for an agent reading
+     * the `.md` twin it is the best description of the diagram there is. The
+     * page itself shows the drawing that was made for that block instead, named
+     * by the `%% diagram:` line inside it. The block is lifted out before the
+     * Markdown is rendered — raw HTML is stripped — and the SVG goes back in
+     * once the page around it is HTML.
+     *
+     * @return array{markdown: string, html: array<string, string>}
+     */
+    private static function extractDiagramBlocks(string $markdown): array
+    {
+        $diagrams = [];
+
+        $replaced = preg_replace_callback(
+            '/^```mermaid\R(.*?)^```$/ms',
+            function (array $match) use (&$diagrams): string {
+                $svg = self::diagramSvg($match[1]);
+
+                if ($svg === null) {
+                    return $match[0];
+                }
+
+                $placeholder = 'DOCUMENTATION_DIAGRAM_'.count($diagrams);
+                $diagrams[$placeholder] = '<div class="documentation-diagram">'.$svg.'</div>';
+
+                return $placeholder;
+            },
+            $markdown,
+        );
+
+        return ['markdown' => $replaced ?? $markdown, 'html' => $diagrams];
+    }
+
+    /**
+     * The drawing a mermaid block names, when it names one that has been drawn.
+     * Anything else keeps the block as it is written.
+     */
+    private static function diagramSvg(string $definition): ?string
+    {
+        if (preg_match('/^[ \t]*'.preg_quote(self::DIAGRAM_MARKER, '/').'[ \t]*([a-z0-9-]+)[ \t]*$/m', $definition, $match) !== 1) {
+            return null;
+        }
+
+        $file = resource_path('docs/diagrams/'.$match[1].'.svg');
+
+        return File::exists($file) ? trim(File::get($file)) : null;
     }
 
     /**
@@ -228,12 +285,12 @@ final class DocumentationMarkdown
     }
 
     /**
-     * @param  array<string, string>  $cardBlocks
+     * @param  array<string, string>  $blocks
      */
-    private static function replaceCardPlaceholders(string $html, array $cardBlocks): string
+    private static function replacePlaceholders(string $html, array $blocks): string
     {
-        foreach ($cardBlocks as $placeholder => $cardHtml) {
-            $html = str_replace(["<p>{$placeholder}</p>", $placeholder], $cardHtml, $html);
+        foreach ($blocks as $placeholder => $blockHtml) {
+            $html = str_replace(["<p>{$placeholder}</p>", $placeholder], $blockHtml, $html);
         }
 
         return $html;

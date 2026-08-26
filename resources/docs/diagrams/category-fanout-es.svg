@@ -1,0 +1,30 @@
+<svg viewBox="0 0 720 272" role="img" aria-labelledby="category-fanout-es-title category-fanout-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="category-fanout-es-title">Para qué sirve una categoría</title>
+    <desc id="category-fanout-es-desc">La categoría de una transacción es lo que alimenta el flujo de efectivo, los presupuestos y los informes.</desc>
+    <defs>
+        <marker id="category-fanout-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="40" y="16">UNA CATEGORÍA, TRES LECTURAS</text>
+    <line class="dg-hairline" x1="40" y1="24" x2="680" y2="24"/>
+    <path class="dg-edge" d="M216,152 H268" marker-end="url(#category-fanout-es-arrow)"/>
+    <path class="dg-edge" d="M448,136 H468 Q476,136 476,128 V88 Q476,80 484,80 H500" marker-end="url(#category-fanout-es-arrow)"/>
+    <path class="dg-edge" d="M448,152 H500" marker-end="url(#category-fanout-es-arrow)"/>
+    <path class="dg-edge" d="M448,168 H468 Q476,168 476,176 V216 Q476,224 484,224 H500" marker-end="url(#category-fanout-es-arrow)"/>
+    <rect class="dg-mask" x="40" y="124" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="40" y="124" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="128" y="156" text-anchor="middle">Transacción</text>
+    <rect class="dg-mask" x="272" y="124" width="176" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="272" y="124" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="360" y="156" text-anchor="middle">Categoría</text>
+    <rect class="dg-mask" x="504" y="56" width="176" height="48" rx="6"/>
+    <rect class="dg-node" x="504" y="56" width="176" height="48" rx="6"/>
+    <text class="dg-name" x="592" y="84" text-anchor="middle">Flujo de efectivo</text>
+    <rect class="dg-mask" x="504" y="128" width="176" height="48" rx="6"/>
+    <rect class="dg-node" x="504" y="128" width="176" height="48" rx="6"/>
+    <text class="dg-name" x="592" y="156" text-anchor="middle">Presupuestos</text>
+    <rect class="dg-mask" x="504" y="200" width="176" height="48" rx="6"/>
+    <rect class="dg-node" x="504" y="200" width="176" height="48" rx="6"/>
+    <text class="dg-name" x="592" y="228" text-anchor="middle">Informes</text>
+</svg>

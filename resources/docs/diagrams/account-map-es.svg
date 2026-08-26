@@ -1,0 +1,35 @@
+<svg viewBox="0 0 720 200" role="img" aria-labelledby="account-map-es-title account-map-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="account-map-es-title">Qué registra una cuenta</title>
+    <desc id="account-map-es-desc">Una cuenta guarda un historial de saldos y sus transacciones. El historial de saldos explica el patrimonio neto y las transacciones explican el flujo de efectivo.</desc>
+    <defs>
+        <marker id="account-map-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="40" y="16">LA CUENTA</text>
+    <line class="dg-hairline" x1="40" y1="24" x2="216" y2="24"/>
+    <text class="dg-eyebrow" x="272" y="16">LO QUE REGISTRA</text>
+    <line class="dg-hairline" x1="272" y1="24" x2="448" y2="24"/>
+    <text class="dg-eyebrow" x="504" y="16">LO QUE EXPLICA</text>
+    <line class="dg-hairline" x1="504" y1="24" x2="680" y2="24"/>
+    <path class="dg-edge" d="M216,100 H236 Q244,100 244,92 V84 Q244,76 252,76 H268" marker-end="url(#account-map-es-arrow)"/>
+    <path class="dg-edge" d="M216,124 H236 Q244,124 244,132 V140 Q244,148 252,148 H268" marker-end="url(#account-map-es-arrow)"/>
+    <path class="dg-edge" d="M448,76 H500" marker-end="url(#account-map-es-arrow)"/>
+    <path class="dg-edge" d="M448,148 H500" marker-end="url(#account-map-es-arrow)"/>
+    <rect class="dg-mask" x="40" y="84" width="176" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="40" y="84" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="128" y="116" text-anchor="middle">Cuenta</text>
+    <rect class="dg-mask" x="272" y="48" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="272" y="48" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="360" y="72" text-anchor="middle">Historial de</text>
+    <text class="dg-name" x="360" y="88" text-anchor="middle">saldos</text>
+    <rect class="dg-mask" x="272" y="120" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="272" y="120" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="360" y="152" text-anchor="middle">Transacciones</text>
+    <rect class="dg-mask" x="504" y="48" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="504" y="48" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="592" y="80" text-anchor="middle">Patrimonio neto</text>
+    <rect class="dg-mask" x="504" y="120" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="504" y="120" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="592" y="152" text-anchor="middle">Flujo de efectivo</text>
+</svg>

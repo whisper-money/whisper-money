@@ -1,0 +1,33 @@
+<svg viewBox="0 0 720 344" role="img" aria-labelledby="cashflow-sankey-en-title cashflow-sankey-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="cashflow-sankey-en-title">How a month of income splits</title>
+    <desc id="cashflow-sankey-en-desc">Income for the period splits between spending and net cashflow, and net cashflow is what can end up saved or invested. Band width is the amount.</desc>
+    <text class="dg-eyebrow" x="212" y="24" text-anchor="end">COMES IN</text>
+    <text class="dg-eyebrow" x="426" y="24" text-anchor="middle">SPLITS</text>
+    <text class="dg-eyebrow" x="600" y="24">IS LEFT</text>
+    <path class="dg-band" d="M212,100 C316,100 316,80 420,80 L420,164 C316,164 316,184 212,184 Z"/>
+    <path class="dg-band-accent" d="M212,184 C316,184 316,204 420,204 L420,240 C316,240 316,220 212,220 Z"/>
+    <path class="dg-band-accent" d="M432,204 C516,204 516,196 600,196 L600,220 C516,220 516,228 432,228 Z"/>
+    <path class="dg-band-accent" d="M432,228 C516,228 516,236 600,236 L600,248 C516,248 516,240 432,240 Z"/>
+    <rect class="dg-bar" x="200" y="100" width="12" height="120"/>
+    <rect class="dg-bar" x="420" y="80" width="12" height="84"/>
+    <rect class="dg-bar-accent" x="420" y="204" width="12" height="36"/>
+    <rect class="dg-bar-accent" x="600" y="196" width="12" height="24"/>
+    <rect class="dg-bar-accent" x="600" y="236" width="12" height="12"/>
+    <text class="dg-name" x="192" y="156" text-anchor="end">Income</text>
+    <text class="dg-sub" x="192" y="168" text-anchor="end">3,000</text>
+    <text class="dg-name" x="426" y="56" text-anchor="middle">Expenses</text>
+    <text class="dg-sub" x="426" y="68" text-anchor="middle">2,100</text>
+    <text class="dg-name" x="426" y="182" text-anchor="middle">Net cashflow</text>
+    <text class="dg-sub" x="426" y="194" text-anchor="middle">900</text>
+    <text class="dg-name" x="620" y="204">Saved</text>
+    <text class="dg-sub" x="620" y="216">600</text>
+    <text class="dg-name" x="620" y="238">Invested</text>
+    <text class="dg-sub" x="620" y="250">300</text>
+    <line class="dg-hairline" x1="24" y1="284" x2="696" y2="284"/>
+    <text class="dg-eyebrow" x="24" y="304">LEGEND</text>
+    <rect class="dg-band" x="96" y="296" width="16" height="8" rx="1"/>
+    <text class="dg-edge-label" x="120" y="304">WIDTH = AMOUNT</text>
+    <rect class="dg-band-accent" x="288" y="296" width="16" height="8" rx="1"/>
+    <text class="dg-edge-label" x="312" y="304">WHAT YOU KEEP</text>
+    <text class="dg-aside" x="24" y="328">Savings rate = net cashflow ÷ income = 30%. Example figures.</text>
+</svg>

@@ -1,0 +1,30 @@
+<svg viewBox="0 0 720 272" role="img" aria-labelledby="category-fanout-en-title category-fanout-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="category-fanout-en-title">What a category is for</title>
+    <desc id="category-fanout-en-desc">The category on a transaction is what feeds cashflow, budgets and reports.</desc>
+    <defs>
+        <marker id="category-fanout-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="40" y="16">ONE CATEGORY, THREE READINGS</text>
+    <line class="dg-hairline" x1="40" y1="24" x2="680" y2="24"/>
+    <path class="dg-edge" d="M216,152 H268" marker-end="url(#category-fanout-en-arrow)"/>
+    <path class="dg-edge" d="M448,136 H468 Q476,136 476,128 V88 Q476,80 484,80 H500" marker-end="url(#category-fanout-en-arrow)"/>
+    <path class="dg-edge" d="M448,152 H500" marker-end="url(#category-fanout-en-arrow)"/>
+    <path class="dg-edge" d="M448,168 H468 Q476,168 476,176 V216 Q476,224 484,224 H500" marker-end="url(#category-fanout-en-arrow)"/>
+    <rect class="dg-mask" x="40" y="124" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="40" y="124" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="128" y="156" text-anchor="middle">Transaction</text>
+    <rect class="dg-mask" x="272" y="124" width="176" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="272" y="124" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="360" y="156" text-anchor="middle">Category</text>
+    <rect class="dg-mask" x="504" y="56" width="176" height="48" rx="6"/>
+    <rect class="dg-node" x="504" y="56" width="176" height="48" rx="6"/>
+    <text class="dg-name" x="592" y="84" text-anchor="middle">Cashflow</text>
+    <rect class="dg-mask" x="504" y="128" width="176" height="48" rx="6"/>
+    <rect class="dg-node" x="504" y="128" width="176" height="48" rx="6"/>
+    <text class="dg-name" x="592" y="156" text-anchor="middle">Budgets</text>
+    <rect class="dg-mask" x="504" y="200" width="176" height="48" rx="6"/>
+    <rect class="dg-node" x="504" y="200" width="176" height="48" rx="6"/>
+    <text class="dg-name" x="592" y="228" text-anchor="middle">Reports</text>
+</svg>

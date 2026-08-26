@@ -1,0 +1,40 @@
+<svg viewBox="0 0 720 272" role="img" aria-labelledby="budget-flow-en-title budget-flow-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="budget-flow-en-title">How a budget progresses</title>
+    <desc id="budget-flow-en-desc">A budget and your transactions meet on the category or label the budget watches, and that produces the progress for the period that tells you whether to carry on, adjust or pause.</desc>
+    <defs>
+        <marker id="budget-flow-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">WHAT YOU SET</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="164" y2="24"/>
+    <text class="dg-eyebrow" x="204" y="16">WHAT IT WATCHES</text>
+    <line class="dg-hairline" x1="204" y1="24" x2="344" y2="24"/>
+    <text class="dg-eyebrow" x="384" y="16">WHAT YOU SEE</text>
+    <line class="dg-hairline" x1="384" y1="24" x2="696" y2="24"/>
+    <path class="dg-edge" d="M164,72 H176 Q184,72 184,80 V88 Q184,96 192,96 H200" marker-end="url(#budget-flow-en-arrow)"/>
+    <path class="dg-edge" d="M164,144 H176 Q184,144 184,136 V128 Q184,120 192,120 H200" marker-end="url(#budget-flow-en-arrow)"/>
+    <path class="dg-edge" d="M344,108 H380" marker-end="url(#budget-flow-en-arrow)"/>
+    <path class="dg-edge" d="M540,152 V196" marker-end="url(#budget-flow-en-arrow)"/>
+    <rect class="dg-mask" x="24" y="48" width="140" height="48" rx="6"/>
+    <rect class="dg-node" x="24" y="48" width="140" height="48" rx="6"/>
+    <text class="dg-name" x="94" y="76" text-anchor="middle">Budget</text>
+    <rect class="dg-mask" x="24" y="120" width="140" height="48" rx="6"/>
+    <rect class="dg-node" x="24" y="120" width="140" height="48" rx="6"/>
+    <text class="dg-name" x="94" y="148" text-anchor="middle">Transactions</text>
+    <rect class="dg-mask" x="204" y="80" width="140" height="56" rx="6"/>
+    <rect class="dg-node" x="204" y="80" width="140" height="56" rx="6"/>
+    <text class="dg-name" x="274" y="104" text-anchor="middle">Category or</text>
+    <text class="dg-name" x="274" y="120" text-anchor="middle">label</text>
+    <rect class="dg-mask" x="384" y="64" width="312" height="88" rx="6"/>
+    <rect class="dg-node-focal" x="384" y="64" width="312" height="88" rx="6"/>
+    <text class="dg-name" x="400" y="92">Progress this period</text>
+    <rect class="dg-track" x="400" y="104" width="280" height="16" rx="4"/>
+    <rect class="dg-bar-accent" x="400" y="104" width="168" height="16" rx="4"/>
+    <text class="dg-sub" x="400" y="140">480 spent</text>
+    <text class="dg-sub" x="680" y="140" text-anchor="end">800 budgeted</text>
+    <rect class="dg-mask" x="384" y="200" width="312" height="48" rx="6"/>
+    <rect class="dg-node-soft" x="384" y="200" width="312" height="48" rx="6"/>
+    <text class="dg-name" x="540" y="220" text-anchor="middle">Spend, pause, or adjust</text>
+    <text class="dg-sub" x="540" y="236" text-anchor="middle">when real spending changes</text>
+</svg>
