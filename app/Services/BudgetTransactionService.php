@@ -252,7 +252,12 @@ class BudgetTransactionService
         // Find budget periods that potentially match this transaction.
         $budgetPeriods = BudgetPeriod::query()
             ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $userId) {
-                $query->where('user_id', $userId)
+                // An archived budget stops counting from the day it was
+                // archived, so it takes in nothing new from here on. Spelled
+                // out rather than via Budget::scopeNotArchived: inside a
+                // whereHas closure the builder is not typed to the model.
+                $query->whereNull('archived_at')
+                    ->where('user_id', $userId)
                     ->where(function ($q) use ($categoryMatchIds, $transactionLabelIds) {
                         $q->whereHas('categories', function ($cq) use ($categoryMatchIds) {
                             $cq->whereIn('categories.id', $categoryMatchIds);
@@ -307,7 +312,10 @@ class BudgetTransactionService
 
         return BudgetPeriod::query()
             ->whereHas('budget', function ($query) use ($transaction) {
-                $query->where('user_id', $transaction->user_id)->where('is_catch_all', true);
+                // whereNull rather than the scope, as in trackedPeriodIds().
+                $query->whereNull('archived_at')
+                    ->where('user_id', $transaction->user_id)
+                    ->where('is_catch_all', true);
             })
             ->where('start_date', '<=', $transaction->transaction_date)
             ->where('end_date', '>=', $transaction->transaction_date)
@@ -329,6 +337,9 @@ class BudgetTransactionService
     private function claimedIds(string $userId, BudgetPeriod $period): array
     {
         $budgets = Budget::query()
+            // An archived budget releases what it used to claim: it no longer
+            // counts those expenses, so the catch-all has to pick them up.
+            ->notArchived()
             ->where('user_id', $userId)
             ->where('is_catch_all', false)
             ->whereHas('periods', function ($query) use ($period) {

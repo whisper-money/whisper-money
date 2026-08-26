@@ -54,6 +54,17 @@ class BudgetFactory extends Factory
         ]);
     }
 
+    /**
+     * A budget that has stopped counting. Archiving is one-way, so nothing
+     * unsets this.
+     */
+    public function archived(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'archived_at' => now(),
+        ]);
+    }
+
     public function catchAll(): static
     {
         return $this->state(fn (array $attributes) => [

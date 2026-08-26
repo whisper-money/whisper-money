@@ -90,3 +90,13 @@ it('restarts a budget whose last period ended months ago on today', function () 
     expect($current)->not->toBeNull()
         ->and($current->start_date->toDateString())->toBe('2026-08-01');
 });
+
+test('the command skips archived budgets', function () {
+    Carbon::setTestNow('2026-03-15 08:00:00');
+    $budget = monthlyBudgetWithPeriods([['2026-01-01', '2026-01-31']]);
+    $budget->update(['archived_at' => now()]);
+
+    $this->artisan('budgets:generate-periods')->assertExitCode(0);
+
+    expect($budget->periods()->count())->toBe(1);
+});

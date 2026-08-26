@@ -52,7 +52,7 @@ class StoreBudgetRequest extends FormRequest
                 );
             }
 
-            if ($isCatchAll && $this->user()->budgets()->where('is_catch_all', true)->exists()) {
+            if ($isCatchAll && $this->user()->budgets()->notArchived()->where('is_catch_all', true)->exists()) {
                 $validator->errors()->add(
                     'is_catch_all',
                     'You already have a catch-all budget.'

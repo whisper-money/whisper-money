@@ -2603,5 +2603,22 @@
     "Tick the transactions that count toward this goal. Unticking one removes it from the goal.": "Marca las transacciones que cuentan para este objetivo. Al desmarcarlas se quitan del objetivo.",
     "Failed to load more transactions.": "No se pudieron cargar más transacciones.",
     "Its transactions will become uncategorized.": "Sus transacciones quedar\u00e1n sin categor\u00eda.",
-    "We could not create your rules. Try again in a moment.": "No hemos podido crear tus reglas. Vuelve a intentarlo en un momento."
+    "We could not create your rules. Try again in a moment.": "No hemos podido crear tus reglas. Vuelve a intentarlo en un momento.",
+    "Archive budget": "Archivar presupuesto",
+    "Archive goal": "Archivar objetivo",
+    "Archive savings goal": "Archivar objetivo de ahorro",
+    "Archived (:count)": "Archivados (:count)",
+    "Archived on :date": "Archivado el :date",
+    "It stops counting from today. New transactions will never land in it again, not even ones dated before today.": "Deja de contar a partir de hoy. Ninguna transacción nueva volverá a entrar en él, ni siquiera las que tengan fecha anterior a hoy.",
+    "The periods it already has keep the figures they have now, and you can still open the budget to look at them.": "Los periodos que ya tiene conservan las cifras que tienen ahora, y podrás seguir abriendo el presupuesto para consultarlas.",
+    "You will not be able to edit its name or its limit any more.": "Ya no podrás editar su nombre ni su límite.",
+    "The categories and labels it was watching go back to your catch-all budget, if you have one.": "Las categorías y etiquetas que vigilaba vuelven a tu presupuesto de gastos no asignados, si tienes uno.",
+    "It drops off your notification settings.": "Desaparece de tus ajustes de notificaciones.",
+    "Its label is removed. The transactions that carry it keep their history but stop showing it, and you will not be able to pick that label again.": "Su etiqueta se elimina. Las transacciones que la llevan conservan su historial pero dejan de mostrarla, y no podrás volver a elegir esa etiqueta.",
+    "The amount saved is frozen at what it is today, whatever happens to those transactions afterwards.": "El importe ahorrado se congela en lo que es hoy, pase lo que pase después con esas transacciones.",
+    "You will not be able to edit it or link more transactions to it, but you can still open it to look at what you saved.": "No podrás editarlo ni vincularle más transacciones, pero podrás seguir abriéndolo para ver lo que ahorraste.",
+    "This cannot be undone: there is no way to bring it back.": "Esto no se puede deshacer: no hay forma de recuperarlo.",
+    "Any automation rule that adds that label stops adding it.": "Cualquier regla de automatización que añada esa etiqueta deja de añadirla.",
+    "The budget could not be archived.": "No se pudo archivar el presupuesto.",
+    "The goal could not be archived.": "No se pudo archivar el objetivo."
 }

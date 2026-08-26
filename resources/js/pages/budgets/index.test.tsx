@@ -28,12 +28,28 @@ vi.mock('@/layouts/app/app-sidebar-layout', () => ({
     ),
 }));
 
+// The name is rendered in its own node so the archived tests can tell the
+// cards apart while the rest keep matching on the plain marker.
 vi.mock('@/components/budgets/budget-list-card', () => ({
-    BudgetListCard: () => <div>budget-card</div>,
+    BudgetListCard: ({ budget }: { budget: { name?: string } }) => (
+        <div>
+            <span>budget-card</span>
+            <span>{budget.name}</span>
+        </div>
+    ),
 }));
 
 vi.mock('@/components/savings-goals/savings-goal-list-card', () => ({
-    SavingsGoalListCard: () => <div>goal-card</div>,
+    SavingsGoalListCard: ({
+        savingsGoal,
+    }: {
+        savingsGoal: { name?: string };
+    }) => (
+        <div>
+            <span>goal-card</span>
+            <span>{savingsGoal.name}</span>
+        </div>
+    ),
 }));
 
 // The page mounts each dialog up to three times: once as the header button,
@@ -187,5 +203,82 @@ describe('BudgetsIndex create card', () => {
 
         expect(screen.getByText('create-budget')).toBeInTheDocument();
         expect(screen.queryByText(/create-either/)).not.toBeInTheDocument();
+    });
+});
+
+const archivedBudget = {
+    id: '3',
+    name: 'Old budget',
+    archived_at: '2026-03-01T00:00:00Z',
+} as never;
+const archivedGoal = {
+    id: '4',
+    name: 'Old goal',
+    archived_at: '2026-03-01T00:00:00Z',
+} as never;
+
+function renderWithArchived(
+    props: Partial<Parameters<typeof BudgetsIndex>[0]> = {},
+) {
+    render(
+        <BudgetsIndex
+            budgets={[budget, archivedBudget]}
+            savingsGoals={[goal, archivedGoal]}
+            savingsGoalsEnabled
+            currencyCode="EUR"
+            {...props}
+        />,
+    );
+}
+
+describe('BudgetsIndex archived section', () => {
+    it('keeps archived budgets and goals out of the live list', () => {
+        renderWithArchived();
+
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+        expect(screen.getByText('Japan trip')).toBeInTheDocument();
+        expect(screen.queryByText('Old budget')).not.toBeInTheDocument();
+        expect(screen.queryByText('Old goal')).not.toBeInTheDocument();
+    });
+
+    it('counts both types together and reveals them on click', () => {
+        renderWithArchived();
+
+        fireEvent.click(screen.getByText('Archived (2)'));
+
+        expect(screen.getByText('Old budget')).toBeInTheDocument();
+        expect(screen.getByText('Old goal')).toBeInTheDocument();
+    });
+
+    it('still shows archived budgets when savings goals are switched off', () => {
+        renderWithArchived({ savingsGoals: [], savingsGoalsEnabled: false });
+
+        fireEvent.click(screen.getByText('Archived (1)'));
+
+        expect(screen.getByText('Old budget')).toBeInTheDocument();
+    });
+
+    it('narrows the archived section with the type filter', () => {
+        renderWithArchived();
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Budgets' }));
+        fireEvent.click(screen.getByText('Archived (1)'));
+
+        expect(screen.getByText('Old budget')).toBeInTheDocument();
+        expect(screen.queryByText('Old goal')).not.toBeInTheDocument();
+    });
+
+    it('hides the section entirely when nothing is archived', () => {
+        renderWithArchived({ budgets: [budget], savingsGoals: [goal] });
+
+        expect(screen.queryByText(/^Archived/)).not.toBeInTheDocument();
+    });
+
+    // The create card asks "is the list empty", and an archived-only list is
+    // empty as far as the live grid is concerned.
+    it('still offers the create card when everything is archived', () => {
+        renderWithArchived({ budgets: [archivedBudget], savingsGoals: [] });
+
+        expect(screen.getByText(/create-either/)).toBeInTheDocument();
     });
 });

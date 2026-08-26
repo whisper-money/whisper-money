@@ -25,6 +25,10 @@ export interface SavingsGoal {
     target_amount: number;
     initial_amount: number;
     target_date: string | null;
+    /** Set once and never cleared: archiving a goal cannot be undone. */
+    archived_at: string | null;
+    /** The saved amount frozen at archive time; null while the goal is running. */
+    archived_saved_amount: number | null;
     created_at: string;
     updated_at: string;
     deleted_at: string | null;

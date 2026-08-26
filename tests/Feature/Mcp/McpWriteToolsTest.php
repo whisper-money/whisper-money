@@ -1038,3 +1038,42 @@ it('moves a subcategory under a different parent and cascades the type down its 
         ->and($grandchild->fresh()->type)->toBe(CategoryType::Savings)
         ->and($grandchild->fresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Outflow);
 });
+
+it('refuses to edit an archived budget', function () {
+    $user = User::factory()->create();
+    $budget = Budget::factory()->archived()->create([
+        'user_id' => $user->id,
+        'name' => 'Food Budget',
+    ]);
+
+    callWriteTool($user, UpdateBudget::class, [
+        'budget_id' => $budget->id,
+        'name' => 'Groceries Budget',
+    ])->assertHasErrors();
+
+    expect($budget->fresh()->name)->toBe('Food Budget');
+});
+
+it('still deletes an archived budget', function () {
+    $user = User::factory()->create();
+    $budget = Budget::factory()->archived()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, DeleteBudget::class, ['budget_id' => $budget->id])->assertOk();
+
+    expect($user->budgets()->count())->toBe(0);
+});
+
+it('lets an archived catch-all budget be replaced', function () {
+    $user = User::factory()->create();
+    Budget::factory()->archived()->catchAll()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, CreateBudget::class, [
+        'name' => 'Everything else',
+        'period_type' => 'monthly',
+        'rollover_type' => 'reset',
+        'allocated_amount' => 50_000,
+        'is_catch_all' => true,
+    ])->assertOk();
+
+    expect($user->budgets()->notArchived()->where('is_catch_all', true)->count())->toBe(1);
+});

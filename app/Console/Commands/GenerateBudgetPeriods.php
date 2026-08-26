@@ -39,7 +39,9 @@ class GenerateBudgetPeriods extends Command
         // loading every period of every budget is what eventually exhausted the
         // 128M limit and killed this command outright. Lazily for the same
         // reason - nothing here needs every budget in memory at once.
-        $budgets = Budget::query()->lazyById();
+        // Archived budgets are left out: they stopped counting, so they get
+        // no further periods.
+        $budgets = Budget::query()->notArchived()->lazyById();
         $generatedCount = 0;
         $closedCount = 0;
 

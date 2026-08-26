@@ -6,6 +6,11 @@ import { CreateSavingsGoalDialog } from '@/components/savings-goals/create-savin
 import { SavingsGoalListCard } from '@/components/savings-goals/savings-goal-list-card';
 import { CreatePlaceholderCard } from '@/components/shared/create-placeholder-card';
 import { Button } from '@/components/ui/button';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { CreateButton } from '@/components/ui/create-button';
 import {
     DropdownMenu,
@@ -16,13 +21,13 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import { mergePlanningItems } from '@/lib/planning-items';
+import { mergePlanningItems, PlanningItem } from '@/lib/planning-items';
 import { BreadcrumbItem } from '@/types';
 import { Budget } from '@/types/budget';
 import { SavingsGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -56,6 +61,7 @@ export default function BudgetsIndex({
     const [createType, setCreateType] = useState<'budget' | 'goal' | null>(
         null,
     );
+    const [archivedOpen, setArchivedOpen] = useState(false);
     const { url } = usePage();
     const locale = useLocale();
     // Without savings goals there is no toggle to undo a ?show= filter coming
@@ -79,15 +85,25 @@ export default function BudgetsIndex({
 
     // Budgets and savings goals share one list: whichever needs attention
     // first leads it, and neither type is stuck below the other.
-    const items = useMemo(
-        () =>
+    //
+    // Archived ones arrive in the same props and are split off here into their
+    // own collapsed section, ordered by the same rule so the two lists cannot
+    // disagree about how they sort.
+    const { items, archivedItems } = useMemo(() => {
+        const visibleBudgets = filter === 'goals' ? [] : budgets;
+        const visibleGoals =
+            savingsGoalsEnabled && filter !== 'budgets' ? savingsGoals : [];
+        const merge = (archived: boolean) =>
             mergePlanningItems(
-                filter === 'goals' ? [] : budgets,
-                savingsGoalsEnabled && filter !== 'budgets' ? savingsGoals : [],
+                visibleBudgets.filter(
+                    (budget) => !!budget.archived_at === archived,
+                ),
+                visibleGoals.filter((goal) => !!goal.archived_at === archived),
                 locale,
-            ),
-        [budgets, savingsGoals, savingsGoalsEnabled, filter, locale],
-    );
+            );
+
+        return { items: merge(false), archivedItems: merge(true) };
+    }, [budgets, savingsGoals, savingsGoalsEnabled, filter, locale]);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
@@ -155,21 +171,7 @@ export default function BudgetsIndex({
                 )}
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                    {items.map((item) =>
-                        item.type === 'budget' ? (
-                            <BudgetListCard
-                                key={item.id}
-                                budget={item.budget}
-                                currencyCode={currencyCode}
-                            />
-                        ) : (
-                            <SavingsGoalListCard
-                                key={item.id}
-                                savingsGoal={item.goal}
-                                currencyCode={currencyCode}
-                            />
-                        ),
-                    )}
+                    <PlanningCards items={items} currencyCode={currencyCode} />
                     <CreateCard
                         currencyCode={currencyCode}
                         savingsGoalsEnabled={savingsGoalsEnabled}
@@ -178,6 +180,31 @@ export default function BudgetsIndex({
                         onCreate={setCreateType}
                     />
                 </div>
+
+                {archivedItems.length > 0 && (
+                    <Collapsible
+                        open={archivedOpen}
+                        onOpenChange={setArchivedOpen}
+                        className="space-y-4"
+                    >
+                        <CollapsibleTrigger className="flex cursor-pointer items-center gap-2 text-lg font-medium text-muted-foreground">
+                            {archivedOpen ? (
+                                <ChevronDown className="h-4 w-4" />
+                            ) : (
+                                <ChevronRight className="h-4 w-4" />
+                            )}
+                            {__('Archived (:count)', {
+                                count: archivedItems.length,
+                            })}
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="grid gap-4 lg:grid-cols-2">
+                            <PlanningCards
+                                items={archivedItems}
+                                currencyCode={currencyCode}
+                            />
+                        </CollapsibleContent>
+                    </Collapsible>
+                )}
             </div>
 
             {savingsGoalsEnabled && (
@@ -195,6 +222,34 @@ export default function BudgetsIndex({
                 </>
             )}
         </AppSidebarLayout>
+    );
+}
+
+/**
+ * The cards themselves, picked by type. Both the live list and the archived
+ * section render the same grid, so the mapping lives in one place.
+ */
+function PlanningCards({
+    items,
+    currencyCode,
+}: {
+    items: PlanningItem[];
+    currencyCode: string;
+}) {
+    return items.map((item) =>
+        item.type === 'budget' ? (
+            <BudgetListCard
+                key={item.id}
+                budget={item.budget}
+                currencyCode={currencyCode}
+            />
+        ) : (
+            <SavingsGoalListCard
+                key={item.id}
+                savingsGoal={item.goal}
+                currencyCode={currencyCode}
+            />
+        ),
     );
 }
 

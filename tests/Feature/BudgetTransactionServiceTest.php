@@ -758,3 +758,49 @@ test('assigning a child category transaction matches a budget tracking the paren
         ->where('budget_period_id', $period->id)
         ->exists())->toBeTrue();
 });
+
+test('an archived budget takes in no new transactions', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    $budget = Budget::factory()->archived()->forCategories($category)->create([
+        'user_id' => $this->user->id,
+    ]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->count())->toBe(0);
+});
+
+test('an archived budget tracking a label takes in no new transactions either', function () {
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    $budget = Budget::factory()->archived()->forLabels($label)->create([
+        'user_id' => $this->user->id,
+    ]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+    $transaction->labels()->attach($label->id);
+
+    $this->service->assignTransaction($transaction->fresh());
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->count())->toBe(0);
+});

@@ -24,6 +24,8 @@ interface Props {
     footerStart?: ReactNode;
     /** The progress readout: a bar for budgets, a ring for savings goals. */
     children: ReactNode;
+    /** Greys the card out. Archived items are read-only leftovers. */
+    dimmed?: boolean;
 }
 
 /**
@@ -38,9 +40,10 @@ export function PlanningCard({
     description,
     footerStart,
     children,
+    dimmed = false,
 }: Props) {
     return (
-        <Card>
+        <Card className={cn(dimmed && 'opacity-60')}>
             <CardHeader>
                 <div className="flex items-start justify-between">
                     <div className="space-y-1">

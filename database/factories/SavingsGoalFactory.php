@@ -35,4 +35,16 @@ class SavingsGoalFactory extends Factory
             'target_date' => fake()->optional()->dateTimeBetween('+1 month', '+1 year')?->format('Y-m-d'),
         ];
     }
+
+    /**
+     * A frozen goal: its label is gone and its progress is whatever the snapshot
+     * says. Mirrors what SavingsGoalController::archive() leaves behind.
+     */
+    public function archived(int $savedAmount = 0): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'archived_at' => now(),
+            'archived_saved_amount' => $savedAmount,
+        ])->afterCreating(fn (SavingsGoal $goal) => $goal->label?->delete());
+    }
 }

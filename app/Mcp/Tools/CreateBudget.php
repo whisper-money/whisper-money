@@ -100,7 +100,7 @@ class CreateBudget extends WriteTool
             ]);
         }
 
-        if ($isCatchAll && $user->budgets()->where('is_catch_all', true)->exists()) {
+        if ($isCatchAll && $user->budgets()->notArchived()->where('is_catch_all', true)->exists()) {
             throw ValidationException::withMessages([
                 'is_catch_all' => 'This account already has a catch-all budget.',
             ]);

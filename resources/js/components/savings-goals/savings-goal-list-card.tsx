@@ -10,7 +10,7 @@ import {
 } from '@/types/savings-goal';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Target } from 'lucide-react';
+import { Archive, Target } from 'lucide-react';
 
 const RING_SIZE = 64;
 const RING_STROKE = 6;
@@ -63,6 +63,7 @@ export function SavingsGoalListCard({ savingsGoal, currencyCode }: Props) {
     const saved = stats?.saved ?? 0;
     const toGo = Math.max(savingsGoal.target_amount - saved, 0);
     const status = stats?.status ?? null;
+    const archivedAt = savingsGoal.archived_at;
 
     const statusColor = status
         ? getSavingsGoalStatusColor(status)
@@ -72,15 +73,25 @@ export function SavingsGoalListCard({ savingsGoal, currencyCode }: Props) {
         <PlanningCard
             href={show({ savingsGoal: savingsGoal.id }).url}
             title={savingsGoal.name}
+            dimmed={!!archivedAt}
             badge={
-                status ? (
+                archivedAt ? (
+                    <Badge variant="secondary">{__('Archived')}</Badge>
+                ) : status ? (
                     <Badge variant="outline" className={statusColor}>
                         {getSavingsGoalStatusLabel(status)}
                     </Badge>
                 ) : undefined
             }
             description={
-                savingsGoal.target_date ? (
+                archivedAt ? (
+                    <>
+                        <Archive className="h-3 w-3" />
+                        {__('Archived on :date', {
+                            date: formatDate(archivedAt, 'MMM d, yyyy', locale),
+                        })}
+                    </>
+                ) : savingsGoal.target_date ? (
                     <>
                         <Target className="h-3 w-3" />
                         {__('By :date', {

@@ -1,4 +1,5 @@
 import { index, show } from '@/actions/App/Http/Controllers/BudgetController';
+import { ArchiveBudgetDialog } from '@/components/budgets/archive-budget-dialog';
 import { BudgetPeriodNavigation } from '@/components/budgets/budget-period-navigation';
 import { BudgetSpendingChart } from '@/components/budgets/budget-spending-chart';
 import { DeleteBudgetDialog } from '@/components/budgets/delete-budget-dialog';
@@ -53,6 +54,8 @@ export default function BudgetShow({
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [archiveOpen, setArchiveOpen] = useState(false);
+    const archived = budget.archived_at !== null;
 
     // Poll for updates when processing historical transactions
     useEffect(() => {
@@ -116,6 +119,11 @@ export default function BudgetShow({
                             title={budget.name}
                             description={
                                 <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
+                                    {archived && (
+                                        <Badge variant="secondary">
+                                            {__('Archived')}
+                                        </Badge>
+                                    )}
                                     {budget.is_catch_all ? (
                                         <Badge variant="secondary">
                                             {__('All untracked expenses')}
@@ -169,11 +177,23 @@ export default function BudgetShow({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    onClick={() => setEditOpen(true)}
-                                >
-                                    {__('Edit budget')}
-                                </DropdownMenuItem>
+                                {/* An archived budget is read-only, so editing
+                                    and archiving are both gone — only deleting
+                                    it outright is still on offer. */}
+                                {!archived && (
+                                    <>
+                                        <DropdownMenuItem
+                                            onClick={() => setEditOpen(true)}
+                                        >
+                                            {__('Edit budget')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => setArchiveOpen(true)}
+                                        >
+                                            {__('Archive budget')}
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
                                 <DropdownMenuItem
                                     onClick={() => setDeleteOpen(true)}
                                     variant="destructive"
@@ -243,6 +263,12 @@ export default function BudgetShow({
                 currencyCode={currencyCode}
                 open={editOpen}
                 onOpenChange={setEditOpen}
+            />
+
+            <ArchiveBudgetDialog
+                budget={budget}
+                open={archiveOpen}
+                onOpenChange={setArchiveOpen}
             />
 
             <DeleteBudgetDialog

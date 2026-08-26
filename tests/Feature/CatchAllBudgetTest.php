@@ -319,3 +319,58 @@ test('historical assignment backfills only unclaimed expenses into a catch-all b
     expect($count)->toBe(2);
     expect(BudgetTransaction::where('budget_period_id', $period->id)->count())->toBe(2);
 });
+
+test('an archived catch-all budget absorbs nothing new', function () {
+    $budget = Budget::factory()->archived()->catchAll()->create(['user_id' => $this->user->id]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $category = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->count())->toBe(0);
+});
+
+test('archiving a budget releases its categories back to the catch-all', function () {
+    $catchAll = catchAllPeriod($this->user);
+    $category = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+
+    $tracked = Budget::factory()->archived()->forCategories($category)->create([
+        'user_id' => $this->user->id,
+    ]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $tracked->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+
+    // Nothing counts it any more, so the catch-all has to.
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)
+        ->where('budget_period_id', $catchAll->id)
+        ->exists())->toBeTrue();
+});
