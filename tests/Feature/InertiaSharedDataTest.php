@@ -198,4 +198,6 @@ test('shared currency options split profile and account currencies', function ()
     expect(collect($props['currencies']['profile'])->pluck('code'))->toContain('ARS');
     expect(collect($props['currencies']['profile'])->pluck('code'))->not->toContain('BTC');
     expect(collect($props['currencies']['accounts'])->pluck('code'))->toContain('BTC');
+    expect(collect($props['currencies']['profile'])->pluck('code'))->toContain('CZK');
+    expect(collect($props['currencies']['accounts'])->pluck('code'))->toContain('CZK');
 });

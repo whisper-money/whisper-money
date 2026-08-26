@@ -33,6 +33,12 @@ return [
             'allows_account' => true,
         ],
         [
+            'code' => 'CZK',
+            'name' => 'Czech Koruna',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
             'code' => 'CAD',
             'name' => 'Canadian Dollar',
             'allows_primary' => true,
