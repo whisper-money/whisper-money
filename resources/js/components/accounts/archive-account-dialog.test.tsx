@@ -45,7 +45,7 @@ describe('ArchiveAccountDialog', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                /stops counting towards your net worth from today/,
+                /stops counting towards your net worth, your spending and your category totals from today/,
             ),
         ).toBeInTheDocument();
         expect(
