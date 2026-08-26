@@ -275,6 +275,7 @@ class DashboardAnalyticsController extends Controller
             ->where('transactions.user_id', request()->user()->id)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->joinOwningAccount()
+            ->withoutArchivedAccountActivity()
             ->join('categories', function ($join) use ($type) {
                 $join->on('transactions.category_id', '=', 'categories.id')
                     ->where('categories.type', '=', $type)

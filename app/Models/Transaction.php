@@ -359,6 +359,30 @@ class Transaction extends Model
     }
 
     /**
+     * Drop what an archived account should no longer contribute: a transaction
+     * dated on or after the day the account was archived. Earlier ones keep
+     * counting, so archiving never moves the history retroactively — the same
+     * cutoff that freezes an archived account's balance.
+     *
+     * Spelled out rather than via Account::scopeNotArchived, which would drop
+     * the account's whole past too.
+     *
+     * Only valid on queries that ran {@see self::scopeJoinOwningAccount()}.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeWithoutArchivedAccountActivity(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            // date() on archived_at: it carries a time of day, transaction_date
+            // does not, so a raw comparison would let the archiving day through.
+            $query->whereNull('accounts.archived_at')
+                ->orWhereRaw('transactions.transaction_date < date(accounts.archived_at)');
+        });
+    }
+
+    /**
      * {@see self::OWNED_AMOUNT_SQL} as an expression, for `sum()` and friends.
      */
     public static function ownedAmount(): Expression

@@ -1658,3 +1658,94 @@ test('real estate balance evolution appends projected mortgage balance from link
         expect($mortgages[$i])->toBeLessThan($mortgages[$i - 1]);
     }
 });
+
+test('archived accounts stop feeding dashboard totals from the day they were archived', function () {
+    $expense = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Groceries',
+    ]);
+    $income = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Income,
+        'name' => 'Salary',
+    ]);
+
+    // Archived mid-month, with a time of day, so the cutoff cannot lean on the
+    // archiving moment being midnight.
+    $archived = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'archived_at' => '2026-05-15 10:30:00',
+    ]);
+    $active = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'archived_at' => null,
+    ]);
+
+    // Before archiving: still counts, the history must not move.
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $archived->id,
+        'category_id' => $expense->id,
+        'amount' => -1000,
+        'transaction_date' => '2026-05-14',
+    ]);
+    // On the archiving day: excluded.
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $archived->id,
+        'category_id' => $expense->id,
+        'amount' => -2000,
+        'transaction_date' => '2026-05-15',
+    ]);
+    // After archiving: excluded, expense and income alike.
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $archived->id,
+        'category_id' => $expense->id,
+        'amount' => -4000,
+        'transaction_date' => '2026-05-16',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $archived->id,
+        'category_id' => $income->id,
+        'amount' => 9000,
+        'transaction_date' => '2026-05-16',
+    ]);
+    // A live account is untouched by any of this.
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $active->id,
+        'category_id' => $expense->id,
+        'amount' => -8000,
+        'transaction_date' => '2026-05-16',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $active->id,
+        'category_id' => $income->id,
+        'amount' => 3000,
+        'transaction_date' => '2026-05-16',
+    ]);
+
+    $period = [
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+    ];
+
+    // 1000 (before archiving) + 8000 (live account), never the 2000 or the 4000.
+    $this->getJson('/api/dashboard/monthly-spending?'.http_build_query($period))
+        ->assertOk()
+        ->assertJsonPath('current', 9000);
+
+    $this->getJson('/api/dashboard/cash-flow?'.http_build_query($period))
+        ->assertOk()
+        ->assertJsonPath('current.expense', 9000)
+        ->assertJsonPath('current.income', 3000);
+
+    $this->getJson('/api/dashboard/top-categories?'.http_build_query($period))
+        ->assertOk()
+        ->assertJsonPath('0.category.name', 'Groceries')
+        ->assertJsonPath('0.amount', 9000);
+});
