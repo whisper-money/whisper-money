@@ -17,6 +17,7 @@ Importing brings a bank file into Whisper Money when automatic syncing is not av
 
 ```mermaid
 flowchart TD
+    %% diagram: import-steps-en
     account[Choose account] --> file[Upload file]
     file --> mapping[Map columns]
     mapping --> preview[Preview]

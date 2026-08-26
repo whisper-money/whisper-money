@@ -16,9 +16,11 @@ Flujo de efectivo muestra cómo entra y sale el dinero durante un periodo. Te ay
 
 ```mermaid
 flowchart LR
-    income[Ingresos] --> net[Flujo neto]
-    expenses[Gastos] --> net
-    net --> savings[Tasa de ahorro]
+    %% diagram: cashflow-sankey-es
+    income[Ingresos] --> expenses[Gastos]
+    income --> net[Flujo neto]
+    net --> saved[Ahorrado]
+    net --> invested[Invertido]
 ```
 
 La fórmula básica es:

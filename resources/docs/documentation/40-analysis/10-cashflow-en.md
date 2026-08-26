@@ -16,9 +16,11 @@ Cashflow shows how money moves in and out during a period. It helps you understa
 
 ```mermaid
 flowchart LR
-    income[Income] --> net[Net cashflow]
-    expenses[Expenses] --> net
-    net --> savings[Savings rate]
+    %% diagram: cashflow-sankey-en
+    income[Income] --> expenses[Expenses]
+    income --> net[Net cashflow]
+    net --> saved[Saved]
+    net --> invested[Invested]
 ```
 
 The basic formula is:

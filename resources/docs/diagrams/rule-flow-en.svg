@@ -1,0 +1,33 @@
+<svg viewBox="0 0 720 264" role="img" aria-labelledby="rule-flow-en-title rule-flow-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="rule-flow-en-title">How an automation rule decides</title>
+    <desc id="rule-flow-en-desc">When a transaction arrives, the rule checks its conditions. On a match it applies its actions: set a category, add labels, or add a note. Without a match the transaction is left unchanged.</desc>
+    <defs>
+        <marker id="rule-flow-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-sub" x="300" y="48" text-anchor="middle">description · amount · bank · account</text>
+    <path class="dg-edge" d="M184,112 H232" marker-end="url(#rule-flow-en-arrow)"/>
+    <rect class="dg-mask" x="366" y="90" width="28" height="12" rx="2"/>
+    <text class="dg-edge-label" x="380" y="99" text-anchor="middle">YES</text>
+    <path class="dg-edge" d="M364,112 H396 Q404,112 404,104 V84 Q404,76 412,76 H436" marker-end="url(#rule-flow-en-arrow)"/>
+    <path class="dg-edge" d="M300,160 V192 Q300,200 308,200 H436" marker-end="url(#rule-flow-en-arrow)"/>
+    <rect class="dg-mask" x="308" y="170" width="24" height="12" rx="2"/>
+    <text class="dg-edge-label" x="312" y="179">NO</text>
+    <rect class="dg-mask" x="24" y="88" width="160" height="48" rx="24"/>
+    <rect class="dg-node" x="24" y="88" width="160" height="48" rx="24"/>
+    <text class="dg-name" x="104" y="116" text-anchor="middle">New transaction</text>
+    <polygon class="dg-mask" points="300,64 364,112 300,160 236,112"/>
+    <polygon class="dg-node" points="300,64 364,112 300,160 236,112"/>
+    <text class="dg-name" x="300" y="116" text-anchor="middle">Match?</text>
+    <rect class="dg-mask" x="440" y="32" width="248" height="88" rx="6"/>
+    <rect class="dg-node-focal" x="440" y="32" width="248" height="88" rx="6"/>
+    <text class="dg-name" x="464" y="60">Rule actions</text>
+    <text class="dg-sub" x="464" y="80">· Set category</text>
+    <text class="dg-sub" x="464" y="96">· Add labels</text>
+    <text class="dg-sub" x="464" y="112">· Add note</text>
+    <rect class="dg-mask" x="440" y="176" width="248" height="48" rx="6"/>
+    <rect class="dg-node-soft" x="440" y="176" width="248" height="48" rx="6"/>
+    <text class="dg-name" x="564" y="204" text-anchor="middle">Left unchanged</text>
+    <text class="dg-aside" x="24" y="244">Rules are checked in priority order: the first one that matches applies its actions.</text>
+</svg>

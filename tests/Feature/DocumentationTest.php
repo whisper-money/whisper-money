@@ -2,6 +2,7 @@
 
 use App\Support\Documentation\DocumentationTree;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
 use Inertia\Testing\AssertableInertia;
 
 /**
@@ -133,8 +134,10 @@ it('renders headings, cards and diagrams in the page html', function () {
             fn (AssertableInertia $page) => $page
                 ->where('document.html', fn (string $html): bool => str_contains($html, '<h2 id="category-map">')
                     && str_contains($html, '<h3 id="expense">')
-                    && str_contains($html, 'language-mermaid')
-                    && str_contains($html, 'flowchart TD')
+                    && str_contains($html, '<div class="documentation-diagram">')
+                    && str_contains($html, '<svg viewBox="0 0 720 272"')
+                    && str_contains($html, '<title id="category-fanout-en-title">What a category is for</title>')
+                    && ! str_contains($html, 'language-mermaid')
                     && str_contains($html, '<div class="cards-wrapper">')
                     && str_contains($html, '<section class="card">')
                     && ! str_contains($html, '<div class="card">'))
@@ -165,6 +168,7 @@ it('serves every page as markdown for agents', function () {
     expect($body)->toStartWith('# Cuentas')
         ->and($body)->toContain('## Tipos de cuenta')
         ->and($body)->toContain('```mermaid')
+        ->and($body)->not->toContain('%% diagram:')
         ->and($body)->not->toContain('{{TOC}}')
         ->and($body)->not->toContain('<div class="cards-wrapper">')
         ->and($body)->not->toContain('<div class="card">');
@@ -273,4 +277,29 @@ it('lists every documentation page in the sitemap, with its other languages', fu
 it('returns not found for unknown pages, in html and in markdown', function () {
     $this->get('/documentation/unknown')->assertNotFound();
     $this->get('/documentation/unknown.md')->assertNotFound();
+});
+
+it('draws every mermaid block in the documentation as inline svg', function () {
+    $pages = File::allFiles(resource_path('docs/documentation'));
+    $markers = 0;
+
+    foreach ($pages as $page) {
+        $markdown = File::get($page->getPathname());
+
+        if (! str_contains($markdown, '```mermaid')) {
+            continue;
+        }
+
+        preg_match_all('/^\s*%% diagram: ([a-z0-9-]+)$/m', $markdown, $matches);
+
+        expect($matches[1])
+            ->toHaveCount(substr_count($markdown, '```mermaid'), "{$page->getRelativePathname()} has a mermaid block without a diagram marker");
+
+        foreach ($matches[1] as $diagram) {
+            expect(resource_path("docs/diagrams/{$diagram}.svg"))->toBeFile();
+            $markers++;
+        }
+    }
+
+    expect($markers)->toBeGreaterThan(0);
 });

@@ -378,3 +378,188 @@
         animation: icon-pulse 2s ease-in-out infinite;
     }
 }
+
+/*
+ * Documentation diagrams.
+ *
+ * Each diagram is an inline SVG under resources/docs/diagrams, drawn against
+ * the tokens below rather than against baked-in hex values, so one file serves
+ * both themes: the label masks are painted with the same paper the page is
+ * painted with, and the strokes follow the theme the reader chose. The type and
+ * shape classes live here too, which keeps the SVG files down to geometry.
+ */
+.documentation-diagram {
+    --dg-paper: #fdfdfc;
+    --dg-fill: #ffffff;
+    --dg-fill-2: rgba(27, 27, 24, 0.04);
+    --dg-ink: #1b1b18;
+    --dg-muted: #706f6c;
+    --dg-soft: #8f8e8a;
+    --dg-rule: #e3e3e0;
+    --dg-accent: #5e7a9b;
+    --dg-accent-tint: rgba(94, 122, 155, 0.1);
+    --dg-band: rgba(112, 111, 108, 0.18);
+    --dg-band-accent: rgba(94, 122, 155, 0.28);
+    --dg-solid: #1b1b18;
+    --dg-mono: ui-monospace, sfmono-regular, menlo, monospace;
+
+    margin: 2rem 0;
+    overflow-x: auto;
+}
+
+.dark .documentation-diagram {
+    --dg-paper: #0a0a0a;
+    --dg-fill: #131312;
+    --dg-fill-2: rgba(237, 237, 236, 0.07);
+    --dg-ink: #ededec;
+    --dg-muted: #a1a09a;
+    --dg-soft: #7c7b77;
+    --dg-rule: #3e3e3a;
+    --dg-accent: #82a0c0;
+    --dg-accent-tint: rgba(130, 160, 192, 0.14);
+    --dg-band: rgba(161, 160, 154, 0.2);
+    --dg-band-accent: rgba(130, 160, 192, 0.32);
+    --dg-solid: #a1a09a;
+}
+
+/*
+ * Below the minimum width a 12px label stops being readable, so the container
+ * scrolls sideways rather than the diagram shrinking any further.
+ */
+.documentation-diagram svg {
+    display: block;
+    width: 100%;
+    min-width: 34rem;
+    height: auto;
+}
+
+.documentation-diagram text {
+    font-family: var(--font-sans);
+}
+
+.documentation-diagram .dg-name {
+    font-size: 12px;
+    font-weight: 600;
+    fill: var(--dg-ink);
+}
+
+.documentation-diagram .dg-sub {
+    font-family: var(--dg-mono);
+    font-size: 9px;
+    fill: var(--dg-muted);
+}
+
+.documentation-diagram .dg-eyebrow,
+.documentation-diagram .dg-edge-label {
+    font-family: var(--dg-mono);
+    font-size: 8px;
+    font-weight: 500;
+    fill: var(--dg-soft);
+    letter-spacing: 0.14em;
+}
+
+.documentation-diagram .dg-edge-label {
+    fill: var(--dg-muted);
+    letter-spacing: 0.06em;
+}
+
+.documentation-diagram .dg-aside {
+    font-family: 'IBM Plex Serif', ui-serif, Georgia, serif;
+    font-size: 12px;
+    font-style: italic;
+    fill: var(--dg-muted);
+}
+
+.documentation-diagram .dg-mask {
+    fill: var(--dg-paper);
+}
+
+.documentation-diagram .dg-node {
+    fill: var(--dg-fill);
+    stroke: var(--dg-ink);
+    stroke-width: 1;
+}
+
+.documentation-diagram .dg-node-soft {
+    fill: var(--dg-fill-2);
+    stroke: var(--dg-muted);
+    stroke-width: 1;
+}
+
+.documentation-diagram .dg-node-focal {
+    fill: var(--dg-accent-tint);
+    stroke: var(--dg-accent);
+    stroke-width: 1.2;
+}
+
+.documentation-diagram .dg-edge {
+    fill: none;
+    stroke: var(--dg-muted);
+    stroke-width: 1.2;
+}
+
+.documentation-diagram .dg-edge-dashed {
+    stroke-dasharray: 4 3;
+    stroke-width: 1;
+}
+
+.documentation-diagram .dg-edge-accent {
+    stroke: var(--dg-accent);
+}
+
+.documentation-diagram .dg-hairline {
+    fill: none;
+    stroke: var(--dg-rule);
+    stroke-width: 0.8;
+}
+
+.documentation-diagram .dg-arrowhead {
+    fill: var(--dg-muted);
+}
+
+.documentation-diagram .dg-arrowhead-accent {
+    fill: var(--dg-accent);
+}
+
+.documentation-diagram .dg-band {
+    fill: var(--dg-band);
+}
+
+.documentation-diagram .dg-band-accent {
+    fill: var(--dg-band-accent);
+}
+
+.documentation-diagram .dg-bar {
+    fill: var(--dg-solid);
+}
+
+.documentation-diagram .dg-bar-accent {
+    fill: var(--dg-accent);
+}
+
+.documentation-diagram .dg-track {
+    fill: var(--dg-fill-2);
+}
+
+.documentation-diagram .dg-station {
+    fill: var(--dg-fill);
+    stroke: var(--dg-muted);
+    stroke-width: 1;
+}
+
+.documentation-diagram .dg-station-focal {
+    fill: var(--dg-accent);
+    stroke: var(--dg-accent);
+    stroke-width: 1;
+}
+
+.documentation-diagram .dg-station-number {
+    font-family: var(--dg-mono);
+    font-size: 9px;
+    font-weight: 600;
+    fill: var(--dg-muted);
+}
+
+.documentation-diagram .dg-station-number-focal {
+    fill: var(--dg-paper);
+}

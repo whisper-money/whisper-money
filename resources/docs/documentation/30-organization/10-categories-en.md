@@ -17,6 +17,7 @@ Categories explain what each transaction means. Pick the right category and your
 
 ```mermaid
 flowchart TD
+    %% diagram: category-fanout-en
     transaction[Transaction] --> category[Category]
     category --> cashflow[Cashflow]
     category --> budgets[Budgets]

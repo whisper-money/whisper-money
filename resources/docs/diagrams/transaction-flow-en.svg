@@ -1,0 +1,47 @@
+<svg viewBox="0 0 720 280" role="img" aria-labelledby="transaction-flow-en-title transaction-flow-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="transaction-flow-en-title">The journey of a transaction</title>
+    <desc id="transaction-flow-en-desc">A new transaction goes through review, where it gets a category and labels, and ends up in the reports and budgets. Automation rules do part of that work up front.</desc>
+    <defs>
+        <marker id="transaction-flow-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">ARRIVES</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="156" y2="24"/>
+    <text class="dg-eyebrow" x="204" y="16">GETS REVIEWED</text>
+    <line class="dg-hairline" x1="204" y1="24" x2="336" y2="24"/>
+    <text class="dg-eyebrow" x="384" y="16">GETS ORGANISED</text>
+    <line class="dg-hairline" x1="384" y1="24" x2="516" y2="24"/>
+    <text class="dg-eyebrow" x="564" y="16">GETS USED</text>
+    <line class="dg-hairline" x1="564" y1="24" x2="696" y2="24"/>
+    <path class="dg-edge" d="M156,112 H200" marker-end="url(#transaction-flow-en-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M270,176 V144" marker-end="url(#transaction-flow-en-arrow)"/>
+    <rect class="dg-mask" x="278" y="152" width="60" height="12" rx="2"/>
+    <text class="dg-edge-label" x="282" y="161">AUTOMATIC</text>
+    <path class="dg-edge" d="M336,100 H352 Q360,100 360,92 V84 Q360,76 368,76 H380" marker-end="url(#transaction-flow-en-arrow)"/>
+    <path class="dg-edge" d="M336,124 H352 Q360,124 360,132 V140 Q360,148 368,148 H380" marker-end="url(#transaction-flow-en-arrow)"/>
+    <path class="dg-edge" d="M516,76 H532 Q540,76 540,84 V92 Q540,100 548,100 H560" marker-end="url(#transaction-flow-en-arrow)"/>
+    <path class="dg-edge" d="M516,148 H532 Q540,148 540,140 V132 Q540,124 548,124 H560" marker-end="url(#transaction-flow-en-arrow)"/>
+    <rect class="dg-mask" x="24" y="84" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="84" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="90" y="108" text-anchor="middle">New</text>
+    <text class="dg-name" x="90" y="124" text-anchor="middle">transaction</text>
+    <rect class="dg-mask" x="204" y="84" width="132" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="204" y="84" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="270" y="116" text-anchor="middle">Review</text>
+    <rect class="dg-mask" x="384" y="48" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="384" y="48" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="450" y="80" text-anchor="middle">Category</text>
+    <rect class="dg-mask" x="384" y="120" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="384" y="120" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="450" y="152" text-anchor="middle">Labels</text>
+    <rect class="dg-mask" x="564" y="84" width="132" height="56" rx="6"/>
+    <rect class="dg-node" x="564" y="84" width="132" height="56" rx="6"/>
+    <text class="dg-name" x="630" y="108" text-anchor="middle">Reports and</text>
+    <text class="dg-name" x="630" y="124" text-anchor="middle">budgets</text>
+    <rect class="dg-mask" x="204" y="176" width="132" height="48" rx="6"/>
+    <rect class="dg-node-soft" x="204" y="176" width="132" height="48" rx="6"/>
+    <text class="dg-name" x="270" y="196" text-anchor="middle">Automation</text>
+    <text class="dg-name" x="270" y="212" text-anchor="middle">rules</text>
+    <text class="dg-aside" x="24" y="264">Reviewing is optional, but it is what makes the reports trustworthy.</text>
+</svg>

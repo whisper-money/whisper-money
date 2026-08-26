@@ -16,8 +16,10 @@ Automation rules save time by updating matching transactions for you. They can s
 
 ```mermaid
 flowchart TD
-    transaction[Transaction] --> conditions[Rule conditions]
-    conditions -->|matches| actions[Rule actions]
+    %% diagram: rule-flow-en
+    transaction[New transaction] --> conditions{Match the conditions?}
+    conditions -->|yes| actions[Rule actions]
+    conditions -->|no| unchanged[Left unchanged]
     actions --> category[Set category]
     actions --> labels[Add labels]
     actions --> note[Add note]

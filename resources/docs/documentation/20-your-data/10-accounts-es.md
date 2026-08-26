@@ -16,6 +16,7 @@ Las cuentas son la base de Whisper Money. Guardan saldos, transacciones e histor
 
 ```mermaid
 flowchart TD
+    %% diagram: account-map-es
     account[Cuenta] --> balances[Historial de saldos]
     account --> transactions[Transacciones]
     balances --> networth[Patrimonio neto]

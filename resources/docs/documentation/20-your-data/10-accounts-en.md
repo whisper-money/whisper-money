@@ -16,6 +16,7 @@ Accounts are the foundation of Whisper Money. They hold balances, transactions, 
 
 ```mermaid
 flowchart TD
+    %% diagram: account-map-en
     account[Account] --> balances[Balance history]
     account --> transactions[Transactions]
     balances --> networth[Net worth]
