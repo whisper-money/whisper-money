@@ -4,6 +4,7 @@ import {
 } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { categorize } from '@/actions/App/Http/Controllers/TransactionController';
 import AlertError from '@/components/alert-error';
+import { ImportStepUpload } from '@/components/import-step-upload';
 import {
     Drawer,
     DrawerContent,
@@ -48,7 +49,6 @@ import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
 import { ImportStepMapping } from './import-step-mapping';
 import { ImportStepPreview } from './import-step-preview';
-import { ImportStepUpload } from './import-step-upload';
 
 interface ImportTransactionsDrawerProps {
     accounts?: Account[];
@@ -155,6 +155,9 @@ export function ImportTransactionsDrawer({
     };
 
     const handleFileSelect = async (file: File) => {
+        // Whatever the last file failed on no longer applies to this one.
+        setError(null);
+
         if (!file) {
             setState((prev) => ({
                 ...prev,
@@ -273,7 +276,7 @@ export function ImportTransactionsDrawer({
             }
         } catch (err) {
             setError(
-                err instanceof Error ? err.message : 'Failed to parse file',
+                __(err instanceof Error ? err.message : 'Failed to parse file'),
             );
         }
     };
@@ -770,7 +773,7 @@ export function ImportTransactionsDrawer({
                 return {
                     title: __('Upload File'),
                     description: __(
-                        'Drop your CSV or Excel file here, or click to browse',
+                        'Drop your CSV, Excel, or Numbers file here, or click to browse',
                     ),
                 };
             case ImportStep.MapColumns:
@@ -798,7 +801,7 @@ export function ImportTransactionsDrawer({
                 return {
                     title: __('Import Transactions'),
                     description: __(
-                        'Import transactions from CSV or Excel files',
+                        'Import transactions from CSV, Excel, or Numbers files',
                     ),
                 };
         }

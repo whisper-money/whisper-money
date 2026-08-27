@@ -1,5 +1,6 @@
 import { store } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import AlertError from '@/components/alert-error';
+import { ImportStepUpload } from '@/components/import-step-upload';
 import {
     Drawer,
     DrawerContent,
@@ -11,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { getCsrfToken } from '@/lib/csrf';
 import {
     detectDateFormat,
+    formatLocalDate,
     parseAmount,
     parseDate,
     parseFile,
@@ -37,7 +39,6 @@ import { toast } from 'sonner';
 import { ImportBalanceStepAccount } from './import-balances/import-balance-step-account';
 import { ImportBalanceStepMapping } from './import-balances/import-balance-step-mapping';
 import { ImportBalanceStepPreview } from './import-balances/import-balance-step-preview';
-import { ImportBalanceStepUpload } from './import-balances/import-balance-step-upload';
 
 interface ImportBalancesDrawerProps {
     open: boolean;
@@ -223,6 +224,9 @@ export function ImportBalancesDrawer({
     };
 
     const handleFileSelect = async (file: File) => {
+        // Whatever the last file failed on no longer applies to this one.
+        setError(null);
+
         if (!file) {
             setState((prev) => ({
                 ...prev,
@@ -330,7 +334,7 @@ export function ImportBalancesDrawer({
             }
         } catch (err) {
             setError(
-                err instanceof Error ? err.message : 'Failed to parse file',
+                __(err instanceof Error ? err.message : 'Failed to parse file'),
             );
         }
     };
@@ -376,7 +380,7 @@ export function ImportBalancesDrawer({
                     continue;
                 }
 
-                const formattedDate = date.toISOString().split('T')[0];
+                const formattedDate = formatLocalDate(date);
 
                 let investedAmount: number | null = null;
                 if (state.columnMapping.invested_amount) {
@@ -573,7 +577,7 @@ export function ImportBalancesDrawer({
                 return {
                     title: 'Upload File',
                     description:
-                        'Drop your CSV or Excel file here, or click to browse',
+                        'Drop your CSV, Excel, or Numbers file here, or click to browse',
                 };
             case BalanceImportStep.MapColumns:
                 return {
@@ -604,8 +608,8 @@ export function ImportBalancesDrawer({
                 return {
                     title: isLoan ? 'Import Owed Amounts' : 'Import Balances',
                     description: isLoan
-                        ? 'Import owed amounts from CSV or Excel files'
-                        : 'Import balances from CSV or Excel files',
+                        ? 'Import owed amounts from CSV, Excel, or Numbers files'
+                        : 'Import balances from CSV, Excel, or Numbers files',
                 };
         }
     };
@@ -639,7 +643,7 @@ export function ImportBalancesDrawer({
 
             case BalanceImportStep.UploadFile:
                 return (
-                    <ImportBalanceStepUpload
+                    <ImportStepUpload
                         file={state.file}
                         onFileSelect={handleFileSelect}
                         onNext={() => moveToStep(BalanceImportStep.MapColumns)}

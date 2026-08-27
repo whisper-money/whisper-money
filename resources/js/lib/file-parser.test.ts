@@ -1,5 +1,6 @@
 import type { ColumnMapping, ParsedTransaction } from '@/types/import';
 import { DateFormat } from '@/types/import';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
     autoDetectColumns,
@@ -10,6 +11,7 @@ import {
     collectCurrencyCodes,
     convertRowsToTransactions,
     detectDateFormat,
+    formatLocalDate,
     getLatestTransactionDate,
     getLocaleDateFormat,
     isInAccountCurrency,
@@ -18,6 +20,19 @@ import {
     parseDate,
     parseFile,
 } from './file-parser';
+
+/**
+ * A spreadsheet Numbers itself saved, with three rows and a real date column.
+ * The preset image fills and previews Numbers bundles in were stripped to keep
+ * it small; the Index/*.iwa archives holding the data are untouched.
+ */
+function numbersFixture(): Uint8Array<ArrayBuffer> {
+    return new Uint8Array(
+        readFileSync(
+            'resources/js/lib/__fixtures__/numbers-with-date-cells.numbers',
+        ),
+    );
+}
 
 describe('getLocaleDateFormat', () => {
     it('returns null for undefined locale', () => {
@@ -967,6 +982,24 @@ describe('buildMappingReport', () => {
     });
 });
 
+describe('formatLocalDate', () => {
+    // parseDate builds local midnight, so toISOString() names the day before
+    // for anywhere east of Greenwich. CI runs in UTC, where both agree.
+    it('names the day the date holds locally, not its UTC day', () => {
+        const originalTimezone = process.env.TZ;
+        process.env.TZ = 'Europe/Madrid';
+
+        try {
+            const date = parseDate('2026-01-31', DateFormat.YearMonthDay)!;
+
+            expect(formatLocalDate(date)).toBe('2026-01-31');
+            expect(date.toISOString().slice(0, 10)).toBe('2026-01-30');
+        } finally {
+            process.env.TZ = originalTimezone;
+        }
+    });
+});
+
 describe('parseFile', () => {
     it('keeps CSV date cells as their original strings instead of coercing them to date serials', async () => {
         const csv = [
@@ -996,5 +1029,68 @@ describe('parseFile', () => {
 
         expect(asDmy?.getMonth()).toBe(5);
         expect(asMdy?.getMonth()).toBe(1);
+    });
+
+    it('reads an Apple Numbers file, dropping the empty rows it pads the grid with', async () => {
+        const file = new File([numbersFixture()], 'budget.numbers');
+
+        const { headers, data, rowNumbers } = await parseFile(file);
+
+        expect(headers).toEqual([
+            'Date',
+            'Amount',
+            'Currency',
+            'Category',
+            'Note',
+        ]);
+        expect(data).toHaveLength(3);
+        expect(rowNumbers).toEqual([2, 3, 4]);
+        expect(data[0].Amount).toBe(-396);
+        expect(data[0].Currency).toBe('PEN');
+    });
+
+    it('turns Numbers date cells into ISO date strings the chosen format can read', async () => {
+        const file = new File([numbersFixture()], 'budget.numbers');
+
+        const { data } = await parseFile(file);
+
+        // Numbers hands SheetJS a Date, not text or a serial. Left alone it
+        // would reach parseDate as "Mon May 14 2018 00:00:00 GMT+0200 (...)".
+        expect(data.map((row) => row.Date)).toEqual([
+            '2018-05-14',
+            '2018-05-15',
+            '2018-12-03',
+        ]);
+
+        // ISO dates are unambiguous, so the format detection settles on one.
+        expect(detectDateFormat(data, 'Date')).toEqual({
+            format: DateFormat.YearMonthDay,
+            ambiguous: false,
+        });
+        expect(
+            parseDate(data[0].Date as string, DateFormat.YearMonthDay),
+        ).toEqual(new Date(2018, 4, 14));
+    });
+
+    // CI runs in UTC, where the epoch correction is a no-op and any mistake in
+    // it hides. New Zealand is the case that catches it: reading the Date
+    // SheetJS builds gives 13 May there, a day before what the file says.
+    it('keeps Numbers dates on the right day in a southern-hemisphere timezone', async () => {
+        const originalTimezone = process.env.TZ;
+        process.env.TZ = 'Pacific/Auckland';
+
+        try {
+            const file = new File([numbersFixture()], 'budget.numbers');
+
+            const { data } = await parseFile(file);
+
+            expect(data.map((row) => row.Date)).toEqual([
+                '2018-05-14',
+                '2018-05-15',
+                '2018-12-03',
+            ]);
+        } finally {
+            process.env.TZ = originalTimezone;
+        }
     });
 });
