@@ -1,30 +1,33 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/Api/TransactionController';
+import {
+    CollapsibleSection,
+    FOOTNOTE,
+    HEAD_CELL,
+} from '@/components/transactions/import-section';
 import { TransactionDescription } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
 import { type ParsedTransaction } from '@/types/import';
 import { type Transaction } from '@/types/transaction';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
-import { ChevronDown } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+
+/**
+ * The table's own shape, shared by the header and every row so the columns line
+ * up. One row per transaction on a phone — checkbox, then description and
+ * amount over date and balance — and the table proper from md up.
+ */
+const rowGrid = (hasBalances: boolean) =>
+    `grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 md:gap-x-4 md:gap-y-0 ${
+        hasBalances
+            ? 'md:grid-cols-[1.25rem_7.5rem_minmax(0,1fr)_7rem_7rem]'
+            : 'md:grid-cols-[1.25rem_7.5rem_minmax(0,1fr)_7rem]'
+    }`;
 
 interface ImportStepPreviewProps {
     transactions: ParsedTransaction[];
@@ -35,6 +38,66 @@ interface ImportStepPreviewProps {
     onSelectionChange: (index: number, selected: boolean) => void;
     onSelectAll: (selected: boolean) => void;
     isImporting: boolean;
+}
+
+/** A row kept with its index in the full list, which selection is keyed by. */
+interface IndexedTransaction {
+    transaction: ParsedTransaction;
+    index: number;
+}
+
+interface CompactRow {
+    key: string;
+    date: string;
+    description: ReactNode;
+    amountInCents: number;
+    currencyCode: string;
+}
+
+/** Date, description, amount: the shape both folded-away tables take. */
+function CompactTransactionTable({
+    rows,
+    locale,
+}: {
+    rows: CompactRow[];
+    locale: string;
+}) {
+    return (
+        <table className="w-full text-[13px] text-muted-foreground">
+            <thead>
+                <tr className="bg-muted">
+                    <th className={`px-4 py-2 text-left ${HEAD_CELL}`}>
+                        {__('Date')}
+                    </th>
+                    <th className={`px-4 py-2 text-left ${HEAD_CELL}`}>
+                        {__('Description')}
+                    </th>
+                    <th className={`px-4 py-2 text-right ${HEAD_CELL}`}>
+                        {__('Amount')}
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows.map((row) => (
+                    <tr key={row.key} className="border-t">
+                        <td className="px-4 py-2 font-mono whitespace-nowrap">
+                            {formatDateMedium(row.date, locale)}
+                        </td>
+                        <td className="max-w-[220px] truncate px-4 py-2">
+                            {row.description}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                            <AmountDisplay
+                                amountInCents={row.amountInCents}
+                                currencyCode={row.currencyCode}
+                                monospace
+                            />
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
 }
 
 export function ImportStepPreview({
@@ -51,7 +114,8 @@ export function ImportStepPreview({
     const [existingTransactions, setExistingTransactions] = useState<
         Transaction[]
     >([]);
-    const [isExistingOpen, setIsExistingOpen] = useState(false);
+    const [existingOpen, setExistingOpen] = useState(false);
+    const [duplicatesOpen, setDuplicatesOpen] = useState(false);
 
     useEffect(() => {
         if (!accountId) {
@@ -73,268 +137,295 @@ export function ImportStepPreview({
             });
     }, [accountId]);
 
-    const stats = useMemo(() => {
-        const selectableTransactions = transactions.filter(
-            (t) => !t.isDuplicate,
+    const {
+        importable,
+        duplicates,
+        selectedCount,
+        allSelected,
+        someSelected,
+        hasBalances,
+        dateRange,
+        net,
+        netCurrency,
+    } = useMemo(() => {
+        const importable: IndexedTransaction[] = [];
+        const duplicates: ParsedTransaction[] = [];
+
+        transactions.forEach((transaction, index) => {
+            if (transaction.isDuplicate) {
+                duplicates.push(transaction);
+            } else {
+                importable.push({ transaction, index });
+            }
+        });
+
+        const selected = importable.filter(
+            ({ transaction }) => transaction.selected,
         );
-        const selectedCount = selectableTransactions.filter(
-            (t) => t.selected,
-        ).length;
-        const duplicateCount = transactions.filter((t) => t.isDuplicate).length;
-        const allSelected =
-            selectableTransactions.length > 0 &&
-            selectedCount === selectableTransactions.length;
-        const someSelected = selectedCount > 0 && !allSelected;
+        const dates = selected
+            .map(({ transaction }) => transaction.transaction_date)
+            .sort();
+        const currencies = new Set(
+            selected.map(
+                ({ transaction }) => transaction.currency_code ?? currencyCode,
+            ),
+        );
 
         return {
-            selectedCount,
-            duplicateCount,
-            total: transactions.length,
-            selectableCount: selectableTransactions.length,
-            allSelected,
-            someSelected,
-        };
-    }, [transactions]);
-
-    const handleHeaderCheckboxChange = (checked: boolean) => {
-        onSelectAll(checked);
-    };
-
-    const hasBalances = useMemo(
-        () =>
-            transactions.some(
-                (t) => t.balance !== null && t.balance !== undefined,
+            importable,
+            duplicates,
+            selectedCount: selected.length,
+            allSelected:
+                importable.length > 0 && selected.length === importable.length,
+            someSelected:
+                selected.length > 0 && selected.length < importable.length,
+            hasBalances: importable.some(
+                ({ transaction }) =>
+                    transaction.balance !== null &&
+                    transaction.balance !== undefined,
             ),
-        [transactions],
-    );
+            dateRange:
+                dates.length > 0
+                    ? { from: dates[0], to: dates[dates.length - 1] }
+                    : null,
+            // A mapped currency column leaves the rows in several currencies,
+            // and those have no one net to report.
+            net:
+                currencies.size === 1
+                    ? selected.reduce(
+                          (total, { transaction }) =>
+                              total + transaction.amount,
+                          0,
+                      )
+                    : null,
+            netCurrency: [...currencies][0] ?? currencyCode,
+        };
+    }, [transactions, currencyCode]);
+
+    const grid = rowGrid(hasBalances);
+
+    const dateRangeLabel = dateRange
+        ? dateRange.from === dateRange.to
+            ? formatDateMedium(dateRange.from, locale)
+            : `${formatDateMedium(dateRange.from, locale)} → ${formatDateMedium(dateRange.to, locale)}`
+        : '';
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex gap-4 rounded-lg border bg-muted/50 p-4">
-                <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                        {__('Total')}
-                    </p>
-                    <p className="text-2xl font-bold">{stats.total}</p>
-                </div>
-                <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                        {__('Selected')}
-                    </p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                        {stats.selectedCount}
-                    </p>
-                </div>
-                <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                        {__('Duplicates')}
-                    </p>
-                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                        {stats.duplicateCount}
-                    </p>
-                </div>
-            </div>
-
-            {stats.selectableCount === 0 && stats.duplicateCount > 0 && (
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                        {__(
-                            'All transactions appear to be duplicates. No new transactions will be imported.',
-                        )}
-                    </p>
-                </div>
-            )}
-
-            <div className="max-h-[400px] overflow-auto rounded-lg border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[50px]">
-                                <Checkbox
-                                    checked={
-                                        stats.someSelected
-                                            ? 'indeterminate'
-                                            : stats.allSelected
-                                    }
-                                    onCheckedChange={handleHeaderCheckboxChange}
-                                    disabled={stats.selectableCount === 0}
-                                    aria-label={__('Select all transactions')}
-                                />
-                            </TableHead>
-                            <TableHead className="text-center">
-                                {__('Status')}
-                            </TableHead>
-                            <TableHead>{__('Date')}</TableHead>
-                            <TableHead>{__('Description')}</TableHead>
-                            <TableHead className="text-right">
-                                {__('Amount')}
-                            </TableHead>
-                            {hasBalances && (
-                                <TableHead className="text-right">
-                                    {__('Balance')}
-                                </TableHead>
-                            )}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {transactions.length === 0 ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={hasBalances ? 6 : 5}
-                                    className="text-center text-muted-foreground"
-                                >
-                                    No valid transactions found
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            transactions.map((transaction, index) => (
-                                <TableRow
-                                    key={index}
-                                    className={
-                                        transaction.isDuplicate
-                                            ? 'opacity-60'
-                                            : ''
-                                    }
-                                >
-                                    <TableCell>
-                                        <Checkbox
-                                            checked={
-                                                transaction.selected ?? false
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                onSelectionChange(
-                                                    index,
-                                                    checked === true,
-                                                )
-                                            }
-                                            disabled={transaction.isDuplicate}
-                                            aria-label={`Select transaction: ${transaction.description}`}
-                                        />
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        {transaction.isDuplicate ? (
-                                            <Badge variant="secondary">
-                                                {__('Duplicate')}
-                                            </Badge>
-                                        ) : (
-                                            <Badge
-                                                variant="secondary"
-                                                className="bg-green-50 text-green-600 dark:bg-green-900 dark:text-green-600"
-                                            >
-                                                {__('New')}
-                                            </Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="whitespace-nowrap">
-                                        {formatDateMedium(
-                                            transaction.transaction_date,
-                                            locale,
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="max-w-[200px] truncate">
-                                        {transaction.description}
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono">
-                                        <AmountDisplay
-                                            amountInCents={transaction.amount}
-                                            currencyCode={
-                                                transaction.currency_code ??
-                                                currencyCode
-                                            }
-                                        />
-                                    </TableCell>
-                                    {hasBalances && (
-                                        <TableCell className="text-right font-mono">
-                                            {transaction.balance !== null &&
-                                            transaction.balance !==
-                                                undefined ? (
-                                                <AmountDisplay
-                                                    amountInCents={
-                                                        transaction.balance
-                                                    }
-                                                    currencyCode={currencyCode}
-                                                />
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    —
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                    )}
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-
-            {existingTransactions.length > 0 && (
-                <Collapsible
-                    open={isExistingOpen}
-                    onOpenChange={setIsExistingOpen}
-                    className="rounded-lg border border-sidebar-border bg-sidebar p-1"
-                >
-                    <CollapsibleTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            className="flex w-full cursor-pointer items-center justify-between hover:bg-transparent"
+        <div className="flex flex-col gap-4">
+            {/* What will be imported */}
+            <div className="overflow-hidden rounded-lg border">
+                <div className={`${grid} min-h-11 bg-muted px-4 py-2.5`}>
+                    <Checkbox
+                        checked={someSelected ? 'indeterminate' : allSelected}
+                        onCheckedChange={(checked) =>
+                            onSelectAll(checked === true)
+                        }
+                        disabled={importable.length === 0}
+                        aria-label={__('Select all transactions')}
+                        className="self-center"
+                    />
+                    <span
+                        className={`${HEAD_CELL} col-start-2 row-start-1 md:col-start-3`}
+                    >
+                        {__('Description')}
+                    </span>
+                    <span
+                        className={`${HEAD_CELL} col-start-3 row-start-1 text-right md:col-start-4`}
+                    >
+                        {__('Amount')}
+                    </span>
+                    <span
+                        className={`${HEAD_CELL} hidden md:col-start-2 md:row-start-1 md:block`}
+                    >
+                        {__('Date')}
+                    </span>
+                    {hasBalances && (
+                        <span
+                            className={`${HEAD_CELL} hidden text-right md:col-start-5 md:row-start-1 md:block`}
                         >
-                            <span className="text-sm text-muted-foreground">
-                                {__('Latest transactions in this account')}
-                            </span>
-                            <ChevronDown
-                                className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                                    isExistingOpen ? 'rotate-180' : ''
+                            {__('Balance')}
+                        </span>
+                    )}
+                </div>
+
+                <div className="max-h-[45vh] overflow-auto">
+                    {importable.length === 0 ? (
+                        <p className="border-t px-4 py-6 text-center text-sm text-muted-foreground">
+                            {__('No valid transactions found')}
+                        </p>
+                    ) : (
+                        importable.map(({ transaction, index }) => (
+                            <div
+                                key={index}
+                                className={`${grid} min-h-11 border-t px-4 py-2.5 text-[13px] ${
+                                    transaction.selected
+                                        ? ''
+                                        : 'bg-muted/30 text-muted-foreground'
                                 }`}
-                            />
-                        </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                        <div className="mt-3 max-h-[250px] overflow-auto rounded-lg border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>{__('Date')}</TableHead>
-                                        <TableHead>
-                                            {__('Description')}
-                                        </TableHead>
-                                        <TableHead className="text-right">
-                                            {__('Amount')}
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {existingTransactions.map((tx) => (
-                                        <TableRow key={tx.id}>
-                                            <TableCell className="whitespace-nowrap">
-                                                {formatDateMedium(
-                                                    tx.transaction_date,
-                                                    locale,
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="max-w-[200px] truncate">
-                                                <TransactionDescription
-                                                    text={tx.description}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-right font-mono">
-                                                <AmountDisplay
-                                                    amountInCents={tx.amount}
-                                                    currencyCode={
-                                                        tx.currency_code
-                                                    }
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CollapsibleContent>
-                </Collapsible>
+                            >
+                                <Checkbox
+                                    checked={transaction.selected ?? false}
+                                    onCheckedChange={(checked) =>
+                                        onSelectionChange(
+                                            index,
+                                            checked === true,
+                                        )
+                                    }
+                                    aria-label={__('Select :description', {
+                                        description: transaction.description,
+                                    })}
+                                    className="row-span-2 self-center md:row-span-1"
+                                />
+                                <span className="col-start-2 row-start-1 truncate md:col-start-3">
+                                    {transaction.description}
+                                </span>
+                                <span className="col-start-3 row-start-1 text-right md:col-start-4">
+                                    <AmountDisplay
+                                        amountInCents={transaction.amount}
+                                        currencyCode={
+                                            transaction.currency_code ??
+                                            currencyCode
+                                        }
+                                        variant="positive-highlight"
+                                        highlightPositive={
+                                            transaction.amount >= 0
+                                        }
+                                        monospace
+                                    />
+                                </span>
+                                <span className="col-start-2 row-start-2 text-xs whitespace-nowrap text-muted-foreground tabular-nums md:col-start-2 md:row-start-1 md:text-[13px] md:text-inherit">
+                                    {formatDateMedium(
+                                        transaction.transaction_date,
+                                        locale,
+                                    )}
+                                </span>
+                                {hasBalances && (
+                                    <span className="col-start-3 row-start-2 text-right text-xs text-muted-foreground md:col-start-5 md:row-start-1 md:text-[13px]">
+                                        {transaction.balance !== null &&
+                                        transaction.balance !== undefined ? (
+                                            <AmountDisplay
+                                                amountInCents={
+                                                    transaction.balance
+                                                }
+                                                currencyCode={currencyCode}
+                                                monospace
+                                            />
+                                        ) : (
+                                            '—'
+                                        )}
+                                    </span>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <div
+                    className={`${FOOTNOTE} flex flex-wrap items-center justify-between gap-x-4 gap-y-1`}
+                >
+                    <span className="tabular-nums">{dateRangeLabel}</span>
+                    <span className="flex items-center gap-3">
+                        {net !== null && (
+                            <span>
+                                {__('Net')}{' '}
+                                <AmountDisplay
+                                    amountInCents={net}
+                                    currencyCode={netCurrency}
+                                    showSign
+                                    monospace
+                                />
+                            </span>
+                        )}
+                        <span>
+                            {__(':count of :total selected', {
+                                count: selectedCount,
+                                total: importable.length,
+                            })}
+                        </span>
+                    </span>
+                </div>
+            </div>
+
+            {/* Already here, so out of the list above */}
+            {duplicates.length > 0 && (
+                <CollapsibleSection
+                    open={duplicatesOpen}
+                    onOpenChange={setDuplicatesOpen}
+                    className="border-sidebar-border bg-sidebar"
+                    hint={__('Show them')}
+                    title={
+                        <>
+                            <span className="text-sm font-medium">
+                                {duplicates.length === 1
+                                    ? __(
+                                          ':count row is already in this account',
+                                          { count: duplicates.length },
+                                      )
+                                    : __(
+                                          ':count rows are already in this account',
+                                          { count: duplicates.length },
+                                      )}
+                            </span>
+                            <span className="rounded-md border bg-muted px-1.5 text-xs font-medium">
+                                {__("Won't be imported")}
+                            </span>
+                        </>
+                    }
+                >
+                    <div className="max-h-[35vh] overflow-auto">
+                        <CompactTransactionTable
+                            locale={locale}
+                            rows={duplicates.map((transaction, index) => ({
+                                key: `${index}`,
+                                date: transaction.transaction_date,
+                                description: transaction.description,
+                                amountInCents: transaction.amount,
+                                currencyCode:
+                                    transaction.currency_code ?? currencyCode,
+                            }))}
+                        />
+                    </div>
+                    <p className={FOOTNOTE}>
+                        {__(
+                            'Matched on date, description and amount. Re-upload without them, or carry on — they will be left as they are.',
+                        )}
+                    </p>
+                </CollapsibleSection>
             )}
 
-            <div className="flex justify-between">
+            {/* Folded away until asked for */}
+            {existingTransactions.length > 0 && (
+                <CollapsibleSection
+                    open={existingOpen}
+                    onOpenChange={setExistingOpen}
+                    className="border-sidebar-border bg-sidebar"
+                    contentClassName="border-sidebar-border bg-background"
+                    title={
+                        <span className="text-sm font-medium">
+                            {__('Latest transactions in this account')}
+                        </span>
+                    }
+                >
+                    <div className="max-h-[250px] overflow-auto">
+                        <CompactTransactionTable
+                            locale={locale}
+                            rows={existingTransactions.map((transaction) => ({
+                                key: transaction.id,
+                                date: transaction.transaction_date,
+                                description: (
+                                    <TransactionDescription
+                                        text={transaction.description}
+                                    />
+                                ),
+                                amountInCents: transaction.amount,
+                                currencyCode: transaction.currency_code,
+                            }))}
+                        />
+                    </div>
+                </CollapsibleSection>
+            )}
+
+            <div className="flex items-center justify-between pt-2">
                 <Button
                     variant="outline"
                     onClick={onBack}
@@ -342,14 +433,28 @@ export function ImportStepPreview({
                 >
                     {__('Back')}
                 </Button>
-                <Button
-                    onClick={onConfirm}
-                    disabled={isImporting || stats.selectedCount === 0}
-                >
-                    {isImporting
-                        ? 'Importing...'
-                        : `Import ${stats.selectedCount} Transaction${stats.selectedCount !== 1 ? 's' : ''}`}
-                </Button>
+                <div className="flex items-center gap-3">
+                    <span className="hidden text-xs text-muted-foreground sm:block">
+                        {__(':count of :total rows ready', {
+                            count: selectedCount,
+                            total: importable.length,
+                        })}
+                    </span>
+                    <Button
+                        onClick={onConfirm}
+                        disabled={isImporting || selectedCount === 0}
+                    >
+                        {isImporting
+                            ? __('Importing...')
+                            : selectedCount === 1
+                              ? __('Import :count transaction', {
+                                    count: selectedCount,
+                                })
+                              : __('Import :count transactions', {
+                                    count: selectedCount,
+                                })}
+                    </Button>
+                </div>
             </div>
         </div>
     );

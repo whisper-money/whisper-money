@@ -392,7 +392,6 @@
     "All fees are non-refundable except as required by law or explicitly stated otherwise": "Todas las tarifas no son reembolsables excepto según lo requiera la ley o se indique explícitamente de otra manera",
     "All fees are non-refundable except as\\n                                    required by law or explicitly stated\\n                                    otherwise": "Todas las tarifas no son reembolsables excepto cuando lo exija la ley o se indique explícitamente lo contrario",
     "All matching filters": "Todas por filtro",
-    "All transactions appear to be duplicates. No new transactions will be imported.": "Todas las transacciones parecen ser duplicadas. No se importarán transacciones nuevas.",
     "All transactions failed to import": "Todas las transacciones fallaron al importar",
     "All untracked expenses": "Todos los gastos no asignados",
     "All your accounts at a glance": "Todas tus cuentas de un vistazo",
@@ -2667,5 +2666,16 @@
     "Savings goals filling up as you set money aside": "Objetivos de ahorro llenándose a medida que apartas dinero",
     "A transaction split across two categories": "Una transacción dividida en dos categorías",
     "Put money aside for what matters. Tag the transfers once and every goal fills itself up, so you always know how far off you are.": "Aparta dinero para lo que te importa. Etiqueta las transferencias una vez y cada objetivo se va llenando solo, así siempre sabes cuánto te falta.",
-    "One receipt, several categories. Break a transaction into parts and each part counts where it belongs — merge it back whenever you want.": "Un mismo recibo, varias categorías. Divide una transacción en partes y cada parte cuenta donde le toca; vuelve a unirlas cuando quieras."
+    "One receipt, several categories. Break a transaction into parts and each part counts where it belongs — merge it back whenever you want.": "Un mismo recibo, varias categorías. Divide una transacción en partes y cada parte cuenta donde le toca; vuelve a unirlas cuando quieras.",
+    ":count rows are already in this account": ":count filas ya están en esta cuenta",
+    "Won't be imported": "No se importarán",
+    "Matched on date, description and amount. Re-upload without them, or carry on — they will be left as they are.": "Coinciden en fecha, descripción e importe. Vuelve a subir el fichero sin ellas, o continúa: se quedarán como están.",
+    "Import :count transactions": "Importar :count transacciones",
+    "Importing...": "Importando...",
+    "No valid transactions found": "No se ha encontrado ninguna transacción válida",
+    ":count of :total selected": ":count de :total seleccionadas",
+    "Select :description": "Seleccionar :description",
+    "Import :count transaction": "Importar :count transacción",
+    ":count row is already in this account": ":count fila ya está en esta cuenta",
+    ":count of :total rows ready": ":count de :total filas listas"
 }
