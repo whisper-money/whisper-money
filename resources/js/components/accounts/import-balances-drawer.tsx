@@ -1,5 +1,6 @@
 import { store } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import AlertError from '@/components/alert-error';
+import { ImportStepUpload } from '@/components/import-step-upload';
 import {
     Drawer,
     DrawerContent,
@@ -37,7 +38,6 @@ import { toast } from 'sonner';
 import { ImportBalanceStepAccount } from './import-balances/import-balance-step-account';
 import { ImportBalanceStepMapping } from './import-balances/import-balance-step-mapping';
 import { ImportBalanceStepPreview } from './import-balances/import-balance-step-preview';
-import { ImportBalanceStepUpload } from './import-balances/import-balance-step-upload';
 
 interface ImportBalancesDrawerProps {
     open: boolean;
@@ -330,7 +330,7 @@ export function ImportBalancesDrawer({
             }
         } catch (err) {
             setError(
-                err instanceof Error ? err.message : 'Failed to parse file',
+                __(err instanceof Error ? err.message : 'Failed to parse file'),
             );
         }
     };
@@ -573,7 +573,7 @@ export function ImportBalancesDrawer({
                 return {
                     title: 'Upload File',
                     description:
-                        'Drop your CSV or Excel file here, or click to browse',
+                        'Drop your CSV, Excel, or Numbers file here, or click to browse',
                 };
             case BalanceImportStep.MapColumns:
                 return {
@@ -604,8 +604,8 @@ export function ImportBalancesDrawer({
                 return {
                     title: isLoan ? 'Import Owed Amounts' : 'Import Balances',
                     description: isLoan
-                        ? 'Import owed amounts from CSV or Excel files'
-                        : 'Import balances from CSV or Excel files',
+                        ? 'Import owed amounts from CSV, Excel, or Numbers files'
+                        : 'Import balances from CSV, Excel, or Numbers files',
                 };
         }
     };
@@ -639,7 +639,7 @@ export function ImportBalancesDrawer({
 
             case BalanceImportStep.UploadFile:
                 return (
-                    <ImportBalanceStepUpload
+                    <ImportStepUpload
                         file={state.file}
                         onFileSelect={handleFileSelect}
                         onNext={() => moveToStep(BalanceImportStep.MapColumns)}

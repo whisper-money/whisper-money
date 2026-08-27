@@ -111,7 +111,7 @@ export function StepImportTransactions({
                             {__('Supported formats')}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            {__('CSV, XLS, XLSX files')}
+                            {__('CSV, XLS, XLSX, Numbers files')}
                         </p>
                     </div>
                 </div>

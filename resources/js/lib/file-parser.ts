@@ -10,6 +10,9 @@ import {
 } from '@/types/import';
 import * as XLSX from 'xlsx';
 
+export const UNREADABLE_FILE_MESSAGE =
+    'This file could not be read. If it is a Numbers file saved as a package, open it in Numbers and use File > Save As to save it as a single file.';
+
 function detectHeaderRow(columns: unknown[][]): number {
     if (!columns || columns.length === 0) {
         return 0;
@@ -49,6 +52,26 @@ function detectHeaderRow(columns: unknown[][]): number {
     return 0;
 }
 
+/**
+ * Apple Numbers date cells reach us as `Date` objects, where CSV and Excel
+ * dates arrive as text or as a serial number. Numbers counts seconds from
+ * 2001-01-01 UTC but SheetJS adds them to a *local* 2001-01-01, so the instant
+ * it hands back is shifted by this timezone's offset on that day — enough to
+ * land on the wrong calendar day east of Greenwich or in southern-hemisphere
+ * winter. Shifting it back by that same offset recovers the day the user typed.
+ *
+ * The result is an ISO date string so the rest of the importer keeps seeing one
+ * cell type it already understands, previews included.
+ */
+function spreadsheetDateToIsoDate(value: Date): string {
+    const localEpochOffset =
+        Date.UTC(2001, 0, 1) - new Date(2001, 0, 1).getTime();
+
+    return new Date(value.getTime() + localEpochOffset)
+        .toISOString()
+        .slice(0, 10);
+}
+
 export async function parseFile(file: File): Promise<{
     headers: string[];
     data: ParsedRow[];
@@ -63,7 +86,7 @@ export async function parseFile(file: File): Promise<{
             try {
                 const data = e.target?.result;
                 if (!data) {
-                    reject(new Error('Failed to read file'));
+                    reject(new Error(UNREADABLE_FILE_MESSAGE));
                     return;
                 }
 
@@ -76,10 +99,20 @@ export async function parseFile(file: File): Promise<{
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
 
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-                    header: 1,
-                    raw: true,
-                }) as unknown[][];
+                const jsonData = (
+                    XLSX.utils.sheet_to_json(worksheet, {
+                        header: 1,
+                        raw: true,
+                    }) as unknown[][]
+                ).map((row) =>
+                    Array.isArray(row)
+                        ? row.map((cell) =>
+                              cell instanceof Date
+                                  ? spreadsheetDateToIsoDate(cell)
+                                  : cell,
+                          )
+                        : row,
+                );
 
                 if (jsonData.length === 0) {
                     reject(new Error('File is empty'));
@@ -198,7 +231,9 @@ export async function parseFile(file: File): Promise<{
         };
 
         reader.onerror = () => {
-            reject(new Error('Failed to read file'));
+            // A folder, or a Numbers file saved as a macOS package, is a
+            // directory: the browser hands over a File it can never read.
+            reject(new Error(UNREADABLE_FILE_MESSAGE));
         };
 
         reader.readAsBinaryString(file);

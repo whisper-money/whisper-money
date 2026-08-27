@@ -4,6 +4,28 @@ import { __ } from '@/utils/i18n';
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+/**
+ * Everything SheetJS can read for us. Apple Numbers files are a zipped IWA
+ * bundle, but the same reader handles them, so they need no special casing
+ * beyond being let through here.
+ */
+const supportedExtensions = ['.csv', '.xls', '.xlsx', '.numbers'];
+
+export function isSupportedImportFile(file: File | null | undefined): boolean {
+    if (!file || !file.name) {
+        return false;
+    }
+
+    const lastDotIndex = file.name.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+        return false;
+    }
+
+    return supportedExtensions.includes(
+        file.name.toLowerCase().slice(lastDotIndex),
+    );
+}
+
 interface ImportStepUploadProps {
     file: File | null;
     onFileSelect: (file: File) => void;
@@ -31,43 +53,27 @@ export function ImportStepUpload({
         setIsDragging(false);
     }, []);
 
-    const isValidFile = useCallback(
-        (file: File | null | undefined): boolean => {
-            if (!file || !file.name) {
-                return false;
-            }
-            const validExtensions = ['.csv', '.xls', '.xlsx'];
-            const lastDotIndex = file.name.lastIndexOf('.');
-            if (lastDotIndex === -1) {
-                return false;
-            }
-            const extension = file.name.toLowerCase().slice(lastDotIndex);
-            return validExtensions.includes(extension);
-        },
-        [],
-    );
-
     const handleDrop = useCallback(
         (e: React.DragEvent) => {
             e.preventDefault();
             setIsDragging(false);
 
             const droppedFile = e.dataTransfer.files[0];
-            if (droppedFile && isValidFile(droppedFile)) {
+            if (droppedFile && isSupportedImportFile(droppedFile)) {
                 onFileSelect(droppedFile);
             }
         },
-        [onFileSelect, isValidFile],
+        [onFileSelect],
     );
 
     const handleFileInput = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
             const selectedFile = e.target.files?.[0];
-            if (selectedFile && isValidFile(selectedFile)) {
+            if (selectedFile && isSupportedImportFile(selectedFile)) {
                 onFileSelect(selectedFile);
             }
         },
-        [onFileSelect, isValidFile],
+        [onFileSelect],
     );
 
     const formatFileSize = (bytes: number): string => {
@@ -95,7 +101,7 @@ export function ImportStepUpload({
                             {__('Drop your file here, or click to browse')}
                         </p>
                         <p className="mb-4 text-xs text-muted-foreground">
-                            {__('Supports CSV, XLS, and XLSX files')}
+                            {__('Supports CSV, XLS, XLSX, and Numbers files')}
                         </p>
                         <Button asChild variant="secondary">
                             <label className="cursor-pointer">
@@ -104,7 +110,7 @@ export function ImportStepUpload({
                                 <input
                                     type="file"
                                     className="hidden"
-                                    accept=".csv,.xls,.xlsx"
+                                    accept={supportedExtensions.join(',')}
                                     onChange={handleFileInput}
                                 />
                             </label>
