@@ -293,6 +293,7 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         transaction_date: null,
         description: null,
         amount: null,
+        currency: null,
         balance: null,
         creditor_name: null,
         debtor_name: null,
@@ -339,6 +340,13 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         'quantity',
         'cantidad',
     ];
+    const currencyPatterns = [
+        'currency',
+        'currency_code',
+        'moneda',
+        'divisa',
+        'ccy',
+    ];
     const balancePatterns = [
         'balance',
         'saldo',
@@ -376,6 +384,7 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
     const fieldPatterns = [
         ['transaction_date', datePatterns],
         ['description', descriptionPatterns],
+        ['currency', currencyPatterns],
         ['balance', balancePatterns],
         ['creditor_name', creditorPatterns],
         ['debtor_name', debtorPatterns],
@@ -427,6 +436,7 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
     mapping.transaction_date = claims.transaction_date?.header ?? null;
     mapping.description = claims.description?.header ?? null;
     mapping.amount = claims.amount?.header ?? null;
+    mapping.currency = claims.currency?.header ?? null;
     mapping.balance = claims.balance?.header ?? null;
     mapping.creditor_name = claims.creditor_name?.header ?? null;
     mapping.debtor_name = claims.debtor_name?.header ?? null;
@@ -577,6 +587,81 @@ export function parseAmount(amountStr: string | number): number | null {
     return isNegative ? -Math.abs(amount) : amount;
 }
 
+/**
+ * Normalise a currency cell to an ISO 4217 code. Returns null when the value is
+ * not a three-letter code, or when `supportedCurrencies` is given and does not
+ * contain it, so the caller falls back to the account currency.
+ */
+export function parseCurrencyCode(
+    value: string | number | null | undefined,
+    supportedCurrencies?: readonly string[],
+): string | null {
+    const code = String(value ?? '')
+        .trim()
+        .toUpperCase();
+
+    if (!/^[A-Z]{3}$/.test(code)) {
+        return null;
+    }
+
+    if (supportedCurrencies && !supportedCurrencies.includes(code)) {
+        return null;
+    }
+
+    return code;
+}
+
+/**
+ * The distinct currencies found in a mapped currency column, split into the
+ * codes the app supports and the raw values it does not recognise. Used to tell
+ * the user which rows will fall back to the account currency.
+ */
+export function collectCurrencyCodes(
+    rows: ParsedRow[],
+    column: string | null,
+    supportedCurrencies: readonly string[],
+): { supported: string[]; unsupported: string[] } {
+    const supported = new Set<string>();
+    const unsupported = new Set<string>();
+
+    if (!column) {
+        return { supported: [], unsupported: [] };
+    }
+
+    for (const row of rows) {
+        const raw = String(row[column] ?? '').trim();
+
+        if (raw === '') {
+            continue;
+        }
+
+        const code = parseCurrencyCode(raw, supportedCurrencies);
+
+        if (code) {
+            supported.add(code);
+        } else {
+            unsupported.add(raw);
+        }
+    }
+
+    return { supported: [...supported], unsupported: [...unsupported] };
+}
+
+/**
+ * The transactions whose money is the account's own. Balances belong to the
+ * account and are held in its currency, so rows in another currency say nothing
+ * about them. A row without a currency already defaults to the account's.
+ */
+export function inAccountCurrency(
+    transactions: ParsedTransaction[],
+    accountCurrency: string,
+): ParsedTransaction[] {
+    return transactions.filter(
+        (transaction) =>
+            (transaction.currency_code ?? accountCurrency) === accountCurrency,
+    );
+}
+
 function getDescriptionFromRow(row: ParsedRow, mapping: ColumnMapping): string {
     if (!mapping.description) {
         return '';
@@ -656,6 +741,7 @@ export function convertRowsToTransactions(
     rows: ParsedRow[],
     mapping: ColumnMapping,
     dateFormat: DateFormat,
+    supportedCurrencies?: readonly string[],
 ): ParsedTransaction[] {
     const results: ParsedTransaction[] = [];
 
@@ -702,6 +788,9 @@ export function convertRowsToTransactions(
             transaction_date: formattedDate,
             description,
             amount: Math.round(amount * 100),
+            currency_code: mapping.currency
+                ? parseCurrencyCode(row[mapping.currency], supportedCurrencies)
+                : null,
             balance,
             creditor_name: creditorName,
             debtor_name: debtorName,

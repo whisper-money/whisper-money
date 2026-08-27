@@ -12,8 +12,10 @@ import {
 } from '@/components/ui/select';
 import { useLocale } from '@/hooks/use-locale';
 import {
+    collectCurrencyCodes,
     getLatestTransactionDate,
     parseAmount,
+    parseCurrencyCode,
     parseDate,
 } from '@/lib/file-parser';
 import {
@@ -33,6 +35,7 @@ interface ImportStepMappingProps {
     dateFormatDetected: boolean;
     parsedData: ParsedRow[];
     currencyCode: string;
+    supportedCurrencies: string[];
     calculateBalances: boolean;
     referenceBalance: number | null;
     referenceBalancePrefilled: boolean;
@@ -49,6 +52,53 @@ interface ImportStepMappingProps {
     onBack: () => void;
 }
 
+/**
+ * A "map this field to a column, or leave it out" select. Shared by every
+ * optional field so they stay identical.
+ */
+function OptionalColumnSelect({
+    id,
+    label,
+    placeholder,
+    value,
+    columnOptions,
+    onChange,
+}: {
+    id: string;
+    label: string;
+    placeholder: string;
+    value: string | null;
+    columnOptions: ColumnOption[];
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-2">
+            <Label htmlFor={id}>{label}</Label>
+            <Select
+                value={value || '__none__'}
+                onValueChange={(next) =>
+                    onChange(next === '__none__' ? '' : next)
+                }
+            >
+                <SelectTrigger id={id}>
+                    <SelectValue placeholder={placeholder} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="__none__">{__('None')}</SelectItem>
+                    {columnOptions.map((option, index) => (
+                        <SelectItem
+                            key={`${id}-${option.value}-${index}`}
+                            value={option.value}
+                        >
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}
+
 export function ImportStepMapping({
     columnOptions,
     columnMapping,
@@ -56,6 +106,7 @@ export function ImportStepMapping({
     dateFormatDetected,
     parsedData,
     currencyCode,
+    supportedCurrencies,
     calculateBalances,
     referenceBalance,
     referenceBalancePrefilled,
@@ -89,6 +140,16 @@ export function ImportStepMapping({
     useEffect(() => {
         onLatestDateChange(latestDate);
     }, [latestDate, onLatestDateChange]);
+
+    const detectedCurrencies = useMemo(
+        () =>
+            collectCurrencyCodes(
+                parsedData,
+                columnMapping.currency,
+                supportedCurrencies,
+            ),
+        [parsedData, columnMapping.currency, supportedCurrencies],
+    );
 
     const baseMappingValid =
         !!columnMapping.transaction_date &&
@@ -157,6 +218,12 @@ export function ImportStepMapping({
         const amount = columnMapping.amount
             ? parseAmount(row[columnMapping.amount] as string | number)
             : null;
+        const rowCurrency = columnMapping.currency
+            ? (parseCurrencyCode(
+                  row[columnMapping.currency],
+                  supportedCurrencies,
+              ) ?? currencyCode)
+            : currencyCode;
 
         return {
             date: date
@@ -171,7 +238,7 @@ export function ImportStepMapping({
                 amount !== null
                     ? new Intl.NumberFormat(locale, {
                           style: 'currency',
-                          currency: currencyCode,
+                          currency: rowCurrency,
                       })
                           .format(amount)
                           .replace(/\s/g, '\u202F')
@@ -345,39 +412,53 @@ export function ImportStepMapping({
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <Label htmlFor="balance-column">
-                        {__('Balance (Optional)')}
-                    </Label>
-                    <Select
-                        value={columnMapping.balance || '__none__'}
-                        onValueChange={(value) =>
-                            onMappingChange(
-                                'balance',
-                                value === '__none__' ? '' : value,
-                            )
-                        }
-                    >
-                        <SelectTrigger id="balance-column">
-                            <SelectValue
-                                placeholder={__(
-                                    'Select balance column (optional)',
-                                )}
-                            />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="__none__">
-                                {__('None')}
-                            </SelectItem>
-                            {columnOptions.map((option, index) => (
-                                <SelectItem
-                                    key={`balance-${option.value}-${index}`}
-                                    value={option.value}
-                                >
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <OptionalColumnSelect
+                        id="currency-column"
+                        label={__('Currency (Optional)')}
+                        placeholder={__('Select currency column (optional)')}
+                        value={columnMapping.currency}
+                        columnOptions={columnOptions}
+                        onChange={(value) => onMappingChange('currency', value)}
+                    />
+
+                    {!columnMapping.currency ? (
+                        <p className="text-xs text-muted-foreground">
+                            {__(
+                                'Every transaction will use the account currency',
+                            )}{' '}
+                            ({currencyCode}).
+                        </p>
+                    ) : (
+                        <>
+                            {detectedCurrencies.supported.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                    {__('Currencies found:')}{' '}
+                                    {detectedCurrencies.supported.join(', ')}
+                                </p>
+                            )}
+                            {detectedCurrencies.unsupported.length > 0 && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                    {__('Not supported yet:')}{' '}
+                                    {detectedCurrencies.unsupported.join(', ')}.{' '}
+                                    {__(
+                                        'Those rows will use the account currency',
+                                    )}{' '}
+                                    ({currencyCode}).
+                                </p>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <OptionalColumnSelect
+                        id="balance-column"
+                        label={__('Balance (Optional)')}
+                        placeholder={__('Select balance column (optional)')}
+                        value={columnMapping.balance}
+                        columnOptions={columnOptions}
+                        onChange={(value) => onMappingChange('balance', value)}
+                    />
 
                     {calculateBalancesAvailable && (
                         <div className="flex flex-col gap-3 pt-2">
@@ -443,77 +524,27 @@ export function ImportStepMapping({
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="creditor-column">
-                            {__('Creditor name (Optional)')}
-                        </Label>
-                        <Select
-                            value={columnMapping.creditor_name || '__none__'}
-                            onValueChange={(value) =>
-                                onMappingChange(
-                                    'creditor_name',
-                                    value === '__none__' ? '' : value,
-                                )
-                            }
-                        >
-                            <SelectTrigger id="creditor-column">
-                                <SelectValue
-                                    placeholder={__(
-                                        'Select creditor column (optional)',
-                                    )}
-                                />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="__none__">
-                                    {__('None')}
-                                </SelectItem>
-                                {columnOptions.map((option, index) => (
-                                    <SelectItem
-                                        key={`creditor-${option.value}-${index}`}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <OptionalColumnSelect
+                        id="creditor-column"
+                        label={__('Creditor name (Optional)')}
+                        placeholder={__('Select creditor column (optional)')}
+                        value={columnMapping.creditor_name}
+                        columnOptions={columnOptions}
+                        onChange={(value) =>
+                            onMappingChange('creditor_name', value)
+                        }
+                    />
 
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="debtor-column">
-                            {__('Debtor name (Optional)')}
-                        </Label>
-                        <Select
-                            value={columnMapping.debtor_name || '__none__'}
-                            onValueChange={(value) =>
-                                onMappingChange(
-                                    'debtor_name',
-                                    value === '__none__' ? '' : value,
-                                )
-                            }
-                        >
-                            <SelectTrigger id="debtor-column">
-                                <SelectValue
-                                    placeholder={__(
-                                        'Select debtor column (optional)',
-                                    )}
-                                />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="__none__">
-                                    {__('None')}
-                                </SelectItem>
-                                {columnOptions.map((option, index) => (
-                                    <SelectItem
-                                        key={`debtor-${option.value}-${index}`}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <OptionalColumnSelect
+                        id="debtor-column"
+                        label={__('Debtor name (Optional)')}
+                        placeholder={__('Select debtor column (optional)')}
+                        value={columnMapping.debtor_name}
+                        columnOptions={columnOptions}
+                        onChange={(value) =>
+                            onMappingChange('debtor_name', value)
+                        }
+                    />
                 </div>
 
                 {!dateFormatDetected && (

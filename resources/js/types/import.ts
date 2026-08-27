@@ -18,6 +18,7 @@ export interface ColumnMapping {
     transaction_date: string | null;
     description: string | string[] | null;
     amount: string | null;
+    currency: string | null;
     balance: string | null;
     creditor_name: string | null;
     debtor_name: string | null;
@@ -31,6 +32,8 @@ export interface ParsedTransaction {
     transaction_date: string;
     description: string;
     amount: number;
+    /** Null when the row has no currency of its own: the account's is used. */
+    currency_code?: string | null;
     balance?: number | null;
     creditor_name?: string | null;
     debtor_name?: string | null;

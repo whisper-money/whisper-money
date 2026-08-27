@@ -237,7 +237,10 @@ export function ImportStepPreview({
                                     <TableCell className="text-right font-mono">
                                         <AmountDisplay
                                             amountInCents={transaction.amount}
-                                            currencyCode={currencyCode}
+                                            currencyCode={
+                                                transaction.currency_code ??
+                                                currencyCode
+                                            }
                                         />
                                     </TableCell>
                                     {hasBalances && (

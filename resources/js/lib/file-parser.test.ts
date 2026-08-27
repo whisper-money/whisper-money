@@ -6,11 +6,14 @@ import {
     autoDetectDateFormat,
     calculateBalancesFromTransactions,
     collectBalancesToImport,
+    collectCurrencyCodes,
     convertRowsToTransactions,
     detectDateFormat,
     getLatestTransactionDate,
     getLocaleDateFormat,
+    inAccountCurrency,
     parseAmount,
+    parseCurrencyCode,
     parseDate,
     parseFile,
 } from './file-parser';
@@ -63,6 +66,7 @@ describe('convertRowsToTransactions', () => {
                     transaction_date: 'date',
                     description: 'description',
                     amount: 'amount',
+                    currency: null,
                     balance: null,
                     creditor_name: null,
                     debtor_name: null,
@@ -90,6 +94,7 @@ describe('convertRowsToTransactions', () => {
                 transaction_date: 'date',
                 description: 'description',
                 amount: 'amount',
+                currency: null,
                 balance: null,
                 creditor_name: null,
                 debtor_name: null,
@@ -114,6 +119,7 @@ describe('convertRowsToTransactions', () => {
                 transaction_date: 'date',
                 description: 'description',
                 amount: 'amount',
+                currency: null,
                 balance: null,
                 creditor_name: null,
                 debtor_name: null,
@@ -130,6 +136,7 @@ describe('convertRowsToTransactions balance column', () => {
         transaction_date: 'date',
         description: 'description',
         amount: 'amount',
+        currency: null,
         balance: 'balance',
         creditor_name: null,
         debtor_name: null,
@@ -142,6 +149,7 @@ describe('convertRowsToTransactions balance column', () => {
                     date: '2026-05-04',
                     description: 'Drained account',
                     amount: '-10.00',
+                    currency: null,
                     balance: 0,
                 },
             ],
@@ -159,6 +167,7 @@ describe('convertRowsToTransactions balance column', () => {
                     date: '2026-05-04',
                     description: 'Drained account',
                     amount: '-10.00',
+                    currency: null,
                     balance: '0',
                 },
             ],
@@ -176,6 +185,7 @@ describe('convertRowsToTransactions balance column', () => {
                     date: '2026-05-04',
                     description: 'Overdrawn',
                     amount: '-10.00',
+                    currency: null,
                     balance: '-25.50',
                 },
             ],
@@ -193,6 +203,7 @@ describe('convertRowsToTransactions balance column', () => {
                     date: '2026-05-04',
                     description: 'No balance',
                     amount: '-10.00',
+                    currency: null,
                     balance: '',
                 },
             ],
@@ -353,6 +364,7 @@ describe('convertRowsToTransactions counterparty fields', () => {
                 transaction_date: 'date',
                 description: 'description',
                 amount: 'amount',
+                currency: null,
                 balance: null,
                 creditor_name: 'creditor',
                 debtor_name: 'debtor',
@@ -508,6 +520,7 @@ describe('getLatestTransactionDate', () => {
         transaction_date: 'date',
         description: 'desc',
         amount: 'amount',
+        currency: null,
         balance: null,
         creditor_name: null,
         debtor_name: null,
@@ -648,6 +661,142 @@ describe('collectBalancesToImport', () => {
         const balances = collectBalancesToImport(transactions);
 
         expect(balances.size).toBe(0);
+    });
+});
+
+describe('currency mapping', () => {
+    const SUPPORTED = ['EUR', 'USD', 'PEN'];
+
+    const mapping: ColumnMapping = {
+        transaction_date: 'Date',
+        description: 'Note',
+        amount: 'Amount',
+        currency: 'Currency',
+        balance: null,
+        creditor_name: null,
+        debtor_name: null,
+    };
+
+    function row(currency: string | null) {
+        return {
+            Date: '2018-05-14',
+            Note: 'Camara',
+            Amount: '-396.00',
+            Currency: currency,
+        };
+    }
+
+    it('normalises the code found in the mapped column', () => {
+        expect(parseCurrencyCode(' pen ', SUPPORTED)).toBe('PEN');
+    });
+
+    it('rejects values that are not a three-letter code', () => {
+        expect(parseCurrencyCode('S/.', SUPPORTED)).toBeNull();
+        expect(parseCurrencyCode('', SUPPORTED)).toBeNull();
+        expect(parseCurrencyCode(null, SUPPORTED)).toBeNull();
+    });
+
+    it('rejects codes the app does not support', () => {
+        expect(parseCurrencyCode('XAU', SUPPORTED)).toBeNull();
+        expect(parseCurrencyCode('XAU')).toBe('XAU');
+    });
+
+    it('detects a currency column by header name', () => {
+        expect(
+            autoDetectColumns(['Date', 'Amount', 'Currency', 'Note']).currency,
+        ).toBe('Currency');
+        expect(autoDetectColumns(['Fecha', 'Importe', 'Moneda']).currency).toBe(
+            'Moneda',
+        );
+    });
+
+    it('does not invent a currency column when there is none', () => {
+        expect(
+            autoDetectColumns(['Date', 'Amount', 'Note']).currency,
+        ).toBeNull();
+    });
+
+    it('keeps each row currency when a column is mapped', () => {
+        const transactions = convertRowsToTransactions(
+            [row('PEN'), row('USD')],
+            mapping,
+            DateFormat.YearMonthDay,
+            SUPPORTED,
+        );
+
+        expect(transactions.map((t) => t.currency_code)).toEqual([
+            'PEN',
+            'USD',
+        ]);
+    });
+
+    it('falls back to the account currency for unmapped or unusable values', () => {
+        const transactions = convertRowsToTransactions(
+            [row(null), row('S/.'), row('XAU')],
+            mapping,
+            DateFormat.YearMonthDay,
+            SUPPORTED,
+        );
+
+        expect(transactions.map((t) => t.currency_code)).toEqual([
+            null,
+            null,
+            null,
+        ]);
+    });
+
+    it('leaves the currency unset when no column is mapped', () => {
+        const transactions = convertRowsToTransactions(
+            [row('PEN')],
+            { ...mapping, currency: null },
+            DateFormat.YearMonthDay,
+            SUPPORTED,
+        );
+
+        expect(transactions[0].currency_code).toBeNull();
+    });
+
+    it('splits the codes found in a column into supported and unsupported', () => {
+        const found = collectCurrencyCodes(
+            [row('PEN'), row('pen'), row('XAU'), row('S/.'), row(null)],
+            'Currency',
+            SUPPORTED,
+        );
+
+        expect(found.supported).toEqual(['PEN']);
+        expect(found.unsupported).toEqual(['XAU', 'S/.']);
+    });
+
+    it('finds no codes when no column is mapped', () => {
+        expect(collectCurrencyCodes([row('PEN')], null, SUPPORTED)).toEqual({
+            supported: [],
+            unsupported: [],
+        });
+    });
+});
+
+describe('inAccountCurrency', () => {
+    function txn(currencyCode: string | null): ParsedTransaction {
+        return {
+            transaction_date: '2024-01-15',
+            description: 'x',
+            amount: 100,
+            currency_code: currencyCode,
+        };
+    }
+
+    it('keeps rows with no currency of their own', () => {
+        expect(inAccountCurrency([txn(null)], 'EUR')).toHaveLength(1);
+    });
+
+    it('drops rows held in another currency', () => {
+        const transactions = inAccountCurrency(
+            [txn('EUR'), txn('PEN'), txn(null)],
+            'EUR',
+        );
+
+        expect(transactions).toHaveLength(2);
+        expect(transactions.map((t) => t.currency_code)).toEqual(['EUR', null]);
     });
 });
 
