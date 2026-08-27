@@ -384,8 +384,18 @@ export function ImportStepMapping({
             : `${formatDateMedium(report.dateRange.from, locale)} → ${formatDateMedium(report.dateRange.to, locale)}`
         : null;
 
+    // With a currency column mapped the rows are not all in one currency, so the
+    // range is shown as bare numbers rather than claiming the account's.
+    const formatRangeAmount = (cents: number) =>
+        columnMapping.currency
+            ? new Intl.NumberFormat(locale, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+              }).format(cents / 100)
+            : formatCurrency(cents, currencyCode, locale);
+
     const amountRangeSample = report?.amountRange
-        ? `${formatCurrency(report.amountRange.min, currencyCode, locale)} → ${formatCurrency(report.amountRange.max, currencyCode, locale)}`
+        ? `${formatRangeAmount(report.amountRange.min)} → ${formatRangeAmount(report.amountRange.max)}`
         : null;
 
     return (
