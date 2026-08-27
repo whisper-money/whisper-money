@@ -66,6 +66,7 @@ const EMPTY_STATE: ImportState = {
     selectedAccountId: null,
     file: null,
     parsedData: [],
+    rowNumbers: [],
     columnHeaders: [],
     columnOptions: [],
     columnMapping: {
@@ -159,6 +160,7 @@ export function ImportTransactionsDrawer({
                 ...prev,
                 file: null,
                 parsedData: [],
+                rowNumbers: [],
                 columnHeaders: [],
                 columnOptions: [],
             }));
@@ -166,7 +168,7 @@ export function ImportTransactionsDrawer({
         }
 
         try {
-            const { headers, data, columns, headerRowIndex } =
+            const { headers, data, rowNumbers, columns, headerRowIndex } =
                 await parseFile(file);
             const autoMapping = autoDetectColumns(headers);
 
@@ -218,6 +220,7 @@ export function ImportTransactionsDrawer({
                 ...prev,
                 file,
                 parsedData: data,
+                rowNumbers,
                 columnHeaders: headers,
                 columnOptions,
                 columnMapping: autoMapping,
@@ -838,6 +841,7 @@ export function ImportTransactionsDrawer({
                         dateFormat={state.dateFormat}
                         dateFormatDetected={state.dateFormatDetected}
                         parsedData={state.parsedData}
+                        rowNumbers={state.rowNumbers}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
                         supportedCurrencies={supportedCurrencies}
                         calculateBalances={state.calculateBalances}

@@ -1,8 +1,12 @@
 import {
     DateFormat,
     type ColumnMapping,
+    type MappedField,
+    type MappingReport,
     type ParsedRow,
     type ParsedTransaction,
+    type RowFault,
+    type RowProblem,
 } from '@/types/import';
 import * as XLSX from 'xlsx';
 
@@ -48,6 +52,7 @@ function detectHeaderRow(columns: unknown[][]): number {
 export async function parseFile(file: File): Promise<{
     headers: string[];
     data: ParsedRow[];
+    rowNumbers: number[];
     columns: unknown[][];
     headerRowIndex: number;
 }> {
@@ -145,32 +150,48 @@ export async function parseFile(file: File): Promise<{
                     headerRowIndex + 1,
                 ) as unknown[][];
 
-                const parsedData: ParsedRow[] = dataRows
-                    .filter(
-                        (row) =>
-                            Array.isArray(row) &&
-                            row.some(
-                                (cell) =>
-                                    cell !== null &&
-                                    cell !== undefined &&
-                                    cell !== '',
-                            ),
-                    )
-                    .map((row) => {
-                        const obj: ParsedRow = {};
-                        headers.forEach((header, index) => {
-                            if (header) {
-                                const value = row[index];
-                                obj[header] =
-                                    value === null || value === undefined
-                                        ? null
-                                        : (value as string | number);
-                            }
-                        });
-                        return obj;
+                const parsedData: ParsedRow[] = [];
+                const rowNumbers: number[] = [];
+
+                dataRows.forEach((row, index) => {
+                    const hasValue =
+                        Array.isArray(row) &&
+                        row.some(
+                            (cell) =>
+                                cell !== null &&
+                                cell !== undefined &&
+                                cell !== '',
+                        );
+
+                    if (!hasValue) {
+                        return;
+                    }
+
+                    const obj: ParsedRow = {};
+                    headers.forEach((header, columnIndex) => {
+                        if (header) {
+                            const value = row[columnIndex];
+                            obj[header] =
+                                value === null || value === undefined
+                                    ? null
+                                    : (value as string | number);
+                        }
                     });
 
-                resolve({ headers, data: parsedData, columns, headerRowIndex });
+                    parsedData.push(obj);
+                    // Empty rows are dropped, so the index no longer matches the
+                    // file. Keep the row's own number for anything the user has
+                    // to go and find in their spreadsheet.
+                    rowNumbers.push(headerRowIndex + index + 2);
+                });
+
+                resolve({
+                    headers,
+                    data: parsedData,
+                    rowNumbers,
+                    columns,
+                    headerRowIndex,
+                });
             } catch {
                 reject(new Error('Failed to parse file'));
             }
@@ -797,6 +818,185 @@ export function convertRowsToTransactions(
 
     return results;
 }
+
+function rawCell(row: ParsedRow, column: string | null): string {
+    if (!column) {
+        return '';
+    }
+
+    const value = row[column];
+
+    return value === null || value === undefined ? '' : String(value).trim();
+}
+
+/**
+ * What the current mapping would make of the whole file.
+ *
+ * The import itself drops any row it cannot read — no date, no description, no
+ * amount — so this is what tells the user it happened, and which rows, before
+ * they commit. A row is `skipped` as soon as one of those three fails, and
+ * `adjusted` when it will import but not as written, which today only means a
+ * currency falling back to the account's.
+ */
+export function buildMappingReport(
+    rows: ParsedRow[],
+    rowNumbers: number[],
+    mapping: ColumnMapping,
+    dateFormat: DateFormat,
+    accountCurrency: string,
+    supportedCurrencies?: readonly string[],
+): MappingReport {
+    const fields: MappingReport['fields'] = {
+        transaction_date: { ok: 0, skipped: 0, adjusted: 0 },
+        description: { ok: 0, skipped: 0, adjusted: 0 },
+        amount: { ok: 0, skipped: 0, adjusted: 0 },
+        currency: { ok: 0, skipped: 0, adjusted: 0 },
+    };
+    const problems: RowProblem[] = [];
+    const used = new Set<string>();
+    const fallback = new Set<string>();
+
+    let from: string | null = null;
+    let to: string | null = null;
+    let min: number | null = null;
+    let max: number | null = null;
+    let descriptionSample: string | null = null;
+    let readyCount = 0;
+    let adjustedCount = 0;
+
+    rows.forEach((row, index) => {
+        const faults: RowFault[] = [];
+
+        const date = mapping.transaction_date
+            ? parseDate(
+                  row[mapping.transaction_date] as string | number,
+                  dateFormat,
+              )
+            : null;
+
+        if (date) {
+            fields.transaction_date.ok++;
+            const iso = formatLocalDate(date);
+            if (from === null || iso < from) {
+                from = iso;
+            }
+            if (to === null || iso > to) {
+                to = iso;
+            }
+        } else {
+            fields.transaction_date.skipped++;
+            faults.push({
+                field: 'transaction_date',
+                reason: rawCell(row, mapping.transaction_date)
+                    ? "Date can't be read"
+                    : 'No date',
+                severity: 'skipped',
+            });
+        }
+
+        const description = getDescriptionFromRow(row, mapping);
+
+        if (description) {
+            fields.description.ok++;
+            descriptionSample = descriptionSample ?? description;
+        } else {
+            fields.description.skipped++;
+            faults.push({
+                field: 'description',
+                reason: 'No description',
+                severity: 'skipped',
+            });
+        }
+
+        const amount = mapping.amount
+            ? parseAmount(row[mapping.amount] as string | number)
+            : null;
+
+        if (amount === null) {
+            fields.amount.skipped++;
+            faults.push({
+                field: 'amount',
+                reason: rawCell(row, mapping.amount)
+                    ? "Amount can't be read"
+                    : 'No amount',
+                severity: 'skipped',
+            });
+        } else {
+            fields.amount.ok++;
+            const cents = Math.round(amount * 100);
+            if (min === null || cents < min) {
+                min = cents;
+            }
+            if (max === null || cents > max) {
+                max = cents;
+            }
+        }
+
+        if (mapping.currency) {
+            const raw = rawCell(row, mapping.currency);
+            const code = parseCurrencyCode(raw, supportedCurrencies);
+
+            if (code) {
+                fields.currency.ok++;
+                used.add(code);
+            } else {
+                fields.currency.adjusted++;
+                fallback.add(raw === '' ? '(empty)' : raw.toUpperCase());
+                faults.push({
+                    field: 'currency',
+                    reason: `Will import as ${accountCurrency}`,
+                    severity: 'adjusted',
+                });
+            }
+        }
+
+        const skipped = faults.some((fault) => fault.severity === 'skipped');
+
+        // A skipped row never reaches the import, so its currency fallback is
+        // not something the user has to weigh.
+        if (!skipped) {
+            readyCount++;
+            if (faults.length > 0) {
+                adjustedCount++;
+            }
+        }
+
+        if (faults.length > 0) {
+            problems.push({
+                rowNumber: rowNumbers[index] ?? index + 1,
+                cells: {
+                    transaction_date: rawCell(row, mapping.transaction_date),
+                    description: getDescriptionFromRow(row, mapping),
+                    amount: rawCell(row, mapping.amount),
+                    currency: rawCell(row, mapping.currency),
+                },
+                faults,
+                severity: skipped ? 'skipped' : 'adjusted',
+            });
+        }
+    });
+
+    return {
+        total: rows.length,
+        readyCount,
+        skippedCount: rows.length - readyCount,
+        adjustedCount,
+        fields,
+        dateRange: from !== null && to !== null ? { from, to } : null,
+        amountRange: min !== null && max !== null ? { min, max } : null,
+        descriptionSample,
+        currencies: { used: [...used], fallback: [...fallback] },
+        problems,
+    };
+}
+
+/** The fields the mapping table reports on, in the order it shows them. */
+export const REPORTED_FIELDS: readonly MappedField[] = [
+    'transaction_date',
+    'description',
+    'amount',
+    'currency',
+];
 
 /**
  * Find the latest transaction date (YYYY-MM-DD) from parsed rows using the

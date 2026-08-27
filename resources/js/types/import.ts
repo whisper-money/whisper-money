@@ -24,6 +24,56 @@ export interface ColumnMapping {
     debtor_name: string | null;
 }
 
+/** The fields a file column can be mapped to and then reported on. */
+export type MappedField =
+    | 'transaction_date'
+    | 'description'
+    | 'amount'
+    | 'currency';
+
+/** Why one row's cell could not be taken as written. */
+export interface RowFault {
+    field: MappedField;
+    reason: string;
+    /** `skipped` drops the row; `adjusted` imports it with a different value. */
+    severity: 'skipped' | 'adjusted';
+}
+
+/** A row worth showing the user, with the cells they need to recognise it. */
+export interface RowProblem {
+    /** The row's own number in the file, so it can be found in a spreadsheet. */
+    rowNumber: number;
+    cells: Record<MappedField, string>;
+    faults: RowFault[];
+    /** `skipped` as soon as one fault drops the row. */
+    severity: 'skipped' | 'adjusted';
+}
+
+/**
+ * What the current mapping would make of the whole file: how many rows each
+ * field could be read from, what those values look like, and every row that
+ * will not import as written.
+ */
+export interface MappingReport {
+    total: number;
+    readyCount: number;
+    skippedCount: number;
+    adjustedCount: number;
+    fields: Record<
+        MappedField,
+        { ok: number; skipped: number; adjusted: number }
+    >;
+    /** ISO bounds of the parsed dates: what the chosen date format produced. */
+    dateRange: { from: string; to: string } | null;
+    /** Cent bounds of the parsed amounts. */
+    amountRange: { min: number; max: number } | null;
+    /** The first description the mapping could build. */
+    descriptionSample: string | null;
+    /** Codes kept as they stand, and the raw values falling back to the account. */
+    currencies: { used: string[]; fallback: string[] };
+    problems: RowProblem[];
+}
+
 export interface ParsedRow {
     [key: string]: string | number | null;
 }
@@ -53,6 +103,8 @@ export interface ImportState {
     selectedAccountId: UUID | null;
     file: File | null;
     parsedData: ParsedRow[];
+    /** Each parsed row's own number in the file, aligned with `parsedData`. */
+    rowNumbers: number[];
     columnHeaders: string[];
     columnOptions: ColumnOption[];
     columnMapping: ColumnMapping;

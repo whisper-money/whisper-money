@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
     autoDetectColumns,
     autoDetectDateFormat,
+    buildMappingReport,
     calculateBalancesFromTransactions,
     collectBalancesToImport,
     collectCurrencyCodes,
@@ -798,6 +799,174 @@ describe('isInAccountCurrency', () => {
     });
 });
 
+describe('buildMappingReport', () => {
+    const SUPPORTED = ['EUR', 'USD', 'PEN'];
+
+    const mapping: ColumnMapping = {
+        transaction_date: 'Date',
+        description: 'Note',
+        amount: 'Amount',
+        currency: 'Currency',
+        balance: null,
+        creditor_name: null,
+        debtor_name: null,
+    };
+
+    function row(
+        overrides: Partial<Record<string, string | null>> = {},
+    ): ParsedRow {
+        return {
+            Date: '2018-05-14',
+            Note: 'Camara',
+            Amount: '-396.00',
+            Currency: 'PEN',
+            ...overrides,
+        };
+    }
+
+    function report(rows: ParsedRow[], columnMapping: ColumnMapping = mapping) {
+        return buildMappingReport(
+            rows,
+            rows.map((_, index) => index + 2),
+            columnMapping,
+            DateFormat.YearMonthDay,
+            'EUR',
+            SUPPORTED,
+        );
+    }
+
+    it('counts a clean file as all ready, with nothing to report', () => {
+        const result = report([row(), row({ Date: '2018-05-18' })]);
+
+        expect(result.total).toBe(2);
+        expect(result.readyCount).toBe(2);
+        expect(result.skippedCount).toBe(0);
+        expect(result.adjustedCount).toBe(0);
+        expect(result.problems).toEqual([]);
+        expect(result.fields.transaction_date.ok).toBe(2);
+        expect(result.fields.description.ok).toBe(2);
+        expect(result.fields.amount.ok).toBe(2);
+    });
+
+    it('reports a row with no description as skipped, not imported', () => {
+        const result = report([row(), row({ Note: '' })]);
+
+        expect(result.readyCount).toBe(1);
+        expect(result.skippedCount).toBe(1);
+        expect(result.fields.description.skipped).toBe(1);
+        expect(result.problems).toHaveLength(1);
+        expect(result.problems[0].severity).toBe('skipped');
+        expect(result.problems[0].faults).toEqual([
+            {
+                field: 'description',
+                reason: 'No description',
+                severity: 'skipped',
+            },
+        ]);
+    });
+
+    it('reports an unreadable amount separately from a missing one', () => {
+        const result = report([row({ Amount: 'n/a' }), row({ Amount: '' })]);
+
+        expect(result.fields.amount.skipped).toBe(2);
+        expect(result.problems.map((p) => p.faults[0].reason)).toEqual([
+            "Amount can't be read",
+            'No amount',
+        ]);
+    });
+
+    it('marks an unsupported currency as adjusted, and still imports the row', () => {
+        const result = report([row(), row({ Currency: 'XAU' })]);
+
+        expect(result.readyCount).toBe(2);
+        expect(result.skippedCount).toBe(0);
+        expect(result.adjustedCount).toBe(1);
+        expect(result.fields.currency.adjusted).toBe(1);
+        expect(result.problems[0].severity).toBe('adjusted');
+        expect(result.problems[0].faults[0].reason).toBe('Will import as EUR');
+        expect(result.currencies).toEqual({ used: ['PEN'], fallback: ['XAU'] });
+    });
+
+    it('does not count a skipped row as adjusted as well', () => {
+        const result = report([row({ Note: '', Currency: 'XAU' })]);
+
+        expect(result.skippedCount).toBe(1);
+        expect(result.adjustedCount).toBe(0);
+        expect(result.problems[0].severity).toBe('skipped');
+        expect(result.problems[0].faults).toHaveLength(2);
+    });
+
+    it('keeps both faults on one row instead of listing it twice', () => {
+        const result = report([row({ Note: '', Amount: 'n/a' })]);
+
+        expect(result.problems).toHaveLength(1);
+        expect(result.problems[0].faults.map((f) => f.field)).toEqual([
+            'description',
+            'amount',
+        ]);
+    });
+
+    it('reports the row number from the file, not the index', () => {
+        const result = buildMappingReport(
+            [row(), row({ Note: '' })],
+            [4, 19],
+            mapping,
+            DateFormat.YearMonthDay,
+            'EUR',
+            SUPPORTED,
+        );
+
+        expect(result.problems[0].rowNumber).toBe(19);
+    });
+
+    it('reports the range the chosen date format produced', () => {
+        const result = report([
+            row({ Date: '2018-05-18' }),
+            row({ Date: '2018-05-14' }),
+        ]);
+
+        expect(result.dateRange).toEqual({
+            from: '2018-05-14',
+            to: '2018-05-18',
+        });
+    });
+
+    it('reports the amount range in cents', () => {
+        const result = report([
+            row({ Amount: '-396.00' }),
+            row({ Amount: '3' }),
+        ]);
+
+        expect(result.amountRange).toEqual({ min: -39600, max: 300 });
+    });
+
+    it('leaves currency out of it when no column is mapped', () => {
+        const result = report([row({ Currency: 'XAU' })], {
+            ...mapping,
+            currency: null,
+        });
+
+        expect(result.adjustedCount).toBe(0);
+        expect(result.fields.currency).toEqual({
+            ok: 0,
+            skipped: 0,
+            adjusted: 0,
+        });
+        expect(result.currencies).toEqual({ used: [], fallback: [] });
+        expect(result.problems).toEqual([]);
+    });
+
+    it('handles an empty file without inventing ranges', () => {
+        const result = report([]);
+
+        expect(result.total).toBe(0);
+        expect(result.readyCount).toBe(0);
+        expect(result.dateRange).toBeNull();
+        expect(result.amountRange).toBeNull();
+        expect(result.descriptionSample).toBeNull();
+    });
+});
+
 describe('parseFile', () => {
     it('keeps CSV date cells as their original strings instead of coercing them to date serials', async () => {
         const csv = [
@@ -807,8 +976,10 @@ describe('parseFile', () => {
         ].join('\n');
         const file = new File([csv], 'transactions.csv', { type: 'text/csv' });
 
-        const { data } = await parseFile(file);
+        const { data, rowNumbers } = await parseFile(file);
 
+        // Row 1 is the header, so the first data row is row 2 of the file.
+        expect(rowNumbers).toEqual([2, 3]);
         expect(data[0].Fecha).toBe('02/06/2026');
         expect(typeof data[0].Fecha).toBe('string');
 
