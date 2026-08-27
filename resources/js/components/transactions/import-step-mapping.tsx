@@ -1,11 +1,11 @@
+import {
+    CollapsibleSection,
+    FOOTNOTE,
+    HEAD_CELL,
+} from '@/components/transactions/import-section';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Label } from '@/components/ui/label';
 import { MultiSelect } from '@/components/ui/multi-select';
 import {
@@ -32,7 +32,7 @@ import {
 import { formatCurrency } from '@/utils/currency';
 import { formatDateMedium, formatRelativeDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { AlertCircle, Check, ChevronDown, XCircle } from 'lucide-react';
+import { AlertCircle, Check, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 const NONE = '__none__';
@@ -42,9 +42,6 @@ const NONE = '__none__';
 // proper from md up.
 const ROW_GRID =
     'grid grid-cols-1 gap-2 md:grid-cols-[7.5rem_minmax(0,1fr)_17rem] md:items-start md:gap-4';
-
-const HEAD_CELL =
-    'text-[11px] font-medium tracking-wider uppercase text-muted-foreground';
 
 const DATE_FORMAT_LABELS: Record<DateFormat, string> = {
     [DateFormat.YearMonthDay]: 'YYYY-MM-DD',
@@ -259,7 +256,7 @@ function ProblemRows({
                     ))}
                 </tbody>
             </table>
-            <p className="border-t bg-muted px-4 py-2.5 text-xs text-muted-foreground">
+            <p className={FOOTNOTE}>
                 {__(
                     'Fix them in your file and upload it again, or carry on without those rows.',
                 )}
@@ -532,264 +529,220 @@ export function ImportStepMapping({
 
             {/* The rows that will not arrive as written */}
             {report && report.problems.length > 0 && (
-                <Collapsible
+                <CollapsibleSection
                     open={problemsOpen}
                     onOpenChange={setProblemsOpen}
-                    className={`overflow-hidden rounded-lg border ${report.skippedCount > 0 ? 'border-destructive/40' : 'border-amber-500/40'}`}
-                >
-                    <CollapsibleTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            className={`flex h-auto w-full cursor-pointer items-center justify-between gap-3 rounded-none px-4 py-3 hover:bg-transparent ${report.skippedCount > 0 ? 'bg-destructive/5' : 'bg-amber-500/5'}`}
-                        >
-                            <span className="flex items-center gap-2 text-left">
-                                {report.skippedCount > 0 ? (
-                                    <XCircle className="size-4 shrink-0 text-destructive" />
-                                ) : (
-                                    <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                                )}
-                                <span className="text-sm font-medium">
-                                    {report.skippedCount > 0
-                                        ? `${report.skippedCount} ${__("rows won't be imported")}`
-                                        : `${report.adjustedCount} ${__('rows will change')}`}
-                                </span>
-                                {report.skippedCount > 0 &&
-                                    report.adjustedCount > 0 && (
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                            · {report.adjustedCount}{' '}
-                                            {__('more will change')}
-                                        </span>
-                                    )}
+                    className={
+                        report.skippedCount > 0
+                            ? 'border-destructive/40'
+                            : 'border-amber-500/40'
+                    }
+                    triggerClassName={
+                        report.skippedCount > 0
+                            ? 'bg-destructive/5'
+                            : 'bg-amber-500/5'
+                    }
+                    hint={__('Show them')}
+                    title={
+                        <>
+                            {report.skippedCount > 0 ? (
+                                <XCircle className="size-4 shrink-0 text-destructive" />
+                            ) : (
+                                <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                            )}
+                            <span className="text-sm font-medium">
+                                {report.skippedCount > 0
+                                    ? `${report.skippedCount} ${__("rows won't be imported")}`
+                                    : `${report.adjustedCount} ${__('rows will change')}`}
                             </span>
-                            <span className="flex items-center gap-2">
-                                {!problemsOpen && (
+                            {report.skippedCount > 0 &&
+                                report.adjustedCount > 0 && (
                                     <span className="text-xs font-normal text-muted-foreground">
-                                        {__('Show them')}
+                                        · {report.adjustedCount}{' '}
+                                        {__('more will change')}
                                     </span>
                                 )}
-                                <ChevronDown
-                                    className={`size-4 text-muted-foreground transition-transform duration-200 ${problemsOpen ? 'rotate-180' : ''}`}
-                                />
-                            </span>
-                        </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                        <div className="border-t">
-                            <ProblemRows
-                                problems={report.problems}
-                                hasCurrency={!!columnMapping.currency}
-                            />
-                        </div>
-                    </CollapsibleContent>
-                </Collapsible>
+                        </>
+                    }
+                >
+                    <ProblemRows
+                        problems={report.problems}
+                        hasCurrency={!!columnMapping.currency}
+                    />
+                </CollapsibleSection>
             )}
 
             {/* Folded away until asked for */}
-            <Collapsible
+            <CollapsibleSection
                 open={optionalOpen}
                 onOpenChange={setOptionalOpen}
-                className="overflow-hidden rounded-lg border border-sidebar-border bg-sidebar"
-            >
-                <CollapsibleTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        className="flex h-auto w-full cursor-pointer items-center justify-between gap-3 rounded-none px-4 py-3 hover:bg-transparent"
-                    >
-                        <span className="flex items-center gap-2.5 text-left">
-                            <span className="text-sm font-medium">
-                                {__('Optional fields')}
+                className="border-sidebar-border bg-sidebar"
+                contentClassName="border-sidebar-border bg-background"
+                hint={__('Currency, balance, creditor, debtor')}
+                title={
+                    <>
+                        <span className="text-sm font-medium">
+                            {__('Optional fields')}
+                        </span>
+                        {!optionalOpen && mappedOptional.length > 0 && (
+                            <span className="rounded-md border bg-muted px-1.5 text-xs font-medium">
+                                {mappedOptional.join(', ')}
                             </span>
-                            {!optionalOpen && mappedOptional.length > 0 && (
-                                <span className="rounded-md border bg-muted px-1.5 text-xs font-medium">
-                                    {mappedOptional.join(', ')}
-                                </span>
-                            )}
-                        </span>
-                        <span className="flex items-center gap-2">
-                            {!optionalOpen && (
-                                <span className="hidden text-xs font-normal text-muted-foreground sm:block">
-                                    {__('Currency, balance, creditor, debtor')}
-                                </span>
-                            )}
-                            <ChevronDown
-                                className={`size-4 text-muted-foreground transition-transform duration-200 ${optionalOpen ? 'rotate-180' : ''}`}
-                            />
-                        </span>
-                    </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                    <div className="border-t border-sidebar-border bg-background">
-                        <div className={`${ROW_GRID} px-4 py-3`}>
-                            <Label
-                                htmlFor="currency-column"
-                                className="md:pt-2.5"
-                            >
-                                {__('Currency')}
-                            </Label>
-                            <ColumnSelect
-                                id="currency-column"
-                                value={columnMapping.currency}
-                                placeholder={__('Select currency column')}
-                                optional
-                                columnOptions={columnOptions}
-                                onChange={(value) =>
-                                    onMappingChange('currency', value)
-                                }
-                            />
-                            {columnMapping.currency && report ? (
-                                <FieldStatus
-                                    {...report.fields.currency}
-                                    total={report.total}
-                                    adjustedLabel={`${__('fall back to')} ${currencyCode}`}
-                                    sample={
-                                        report.currencies.used.length > 0
-                                            ? report.currencies.used.join(', ')
-                                            : null
-                                    }
-                                />
-                            ) : (
-                                <p className="text-xs text-muted-foreground md:pt-2.5">
-                                    {__('Every row uses')} {currencyCode}
-                                </p>
-                            )}
-                        </div>
+                        )}
+                    </>
+                }
+            >
+                <div className={`${ROW_GRID} px-4 py-3`}>
+                    <Label htmlFor="currency-column" className="md:pt-2.5">
+                        {__('Currency')}
+                    </Label>
+                    <ColumnSelect
+                        id="currency-column"
+                        value={columnMapping.currency}
+                        placeholder={__('Select currency column')}
+                        optional
+                        columnOptions={columnOptions}
+                        onChange={(value) => onMappingChange('currency', value)}
+                    />
+                    {columnMapping.currency && report ? (
+                        <FieldStatus
+                            {...report.fields.currency}
+                            total={report.total}
+                            adjustedLabel={`${__('fall back to')} ${currencyCode}`}
+                            sample={
+                                report.currencies.used.length > 0
+                                    ? report.currencies.used.join(', ')
+                                    : null
+                            }
+                        />
+                    ) : (
+                        <p className="text-xs text-muted-foreground md:pt-2.5">
+                            {__('Every row uses')} {currencyCode}
+                        </p>
+                    )}
+                </div>
 
-                        <div className={`${ROW_GRID} border-t px-4 py-3`}>
-                            <Label
-                                htmlFor="balance-column"
-                                className="md:pt-2.5"
-                            >
-                                {__('Balance')}
-                            </Label>
+                <div className={`${ROW_GRID} border-t px-4 py-3`}>
+                    <Label htmlFor="balance-column" className="md:pt-2.5">
+                        {__('Balance')}
+                    </Label>
+                    <div className="flex flex-col gap-3">
+                        <ColumnSelect
+                            id="balance-column"
+                            value={columnMapping.balance}
+                            placeholder={__('Select balance column')}
+                            optional
+                            columnOptions={columnOptions}
+                            onChange={(value) =>
+                                onMappingChange('balance', value)
+                            }
+                        />
+
+                        {calculateBalancesAvailable && (
                             <div className="flex flex-col gap-3">
-                                <ColumnSelect
-                                    id="balance-column"
-                                    value={columnMapping.balance}
-                                    placeholder={__('Select balance column')}
-                                    optional
-                                    columnOptions={columnOptions}
-                                    onChange={(value) =>
-                                        onMappingChange('balance', value)
-                                    }
-                                />
+                                <div className="flex items-start gap-2">
+                                    <Checkbox
+                                        id="calculate-balances"
+                                        checked={
+                                            balanceColumnSet
+                                                ? false
+                                                : calculateBalances
+                                        }
+                                        disabled={balanceColumnSet}
+                                        onCheckedChange={(checked) =>
+                                            onCalculateBalancesChange(
+                                                checked === true,
+                                            )
+                                        }
+                                        className="mt-0.5"
+                                    />
+                                    <Label
+                                        htmlFor="calculate-balances"
+                                        className={`cursor-pointer font-normal ${balanceColumnSet ? 'opacity-50' : ''}`}
+                                    >
+                                        {__(
+                                            'Work balances out from the transactions instead',
+                                        )}
+                                    </Label>
+                                </div>
 
-                                {calculateBalancesAvailable && (
-                                    <div className="flex flex-col gap-3">
-                                        <div className="flex items-start gap-2">
-                                            <Checkbox
-                                                id="calculate-balances"
-                                                checked={
-                                                    balanceColumnSet
-                                                        ? false
-                                                        : calculateBalances
-                                                }
-                                                disabled={balanceColumnSet}
-                                                onCheckedChange={(checked) =>
-                                                    onCalculateBalancesChange(
-                                                        checked === true,
-                                                    )
-                                                }
-                                                className="mt-0.5"
-                                            />
-                                            <Label
-                                                htmlFor="calculate-balances"
-                                                className={`cursor-pointer font-normal ${balanceColumnSet ? 'opacity-50' : ''}`}
-                                            >
+                                {effectiveCalculate && latestDate && (
+                                    <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
+                                        <Label htmlFor="reference-balance">
+                                            {__('Balance on')}{' '}
+                                            {formatRelativeDate(
+                                                latestDate,
+                                                locale,
+                                            )}{' '}
+                                            <span className="text-destructive">
+                                                *
+                                            </span>
+                                        </Label>
+                                        <AmountInput
+                                            id="reference-balance"
+                                            value={referenceBalance ?? 0}
+                                            onChange={onReferenceBalanceChange}
+                                            currencyCode={currencyCode}
+                                        />
+                                        {referenceBalancePrefilled && (
+                                            <p className="text-xs text-muted-foreground">
                                                 {__(
-                                                    'Work balances out from the transactions instead',
+                                                    'Pre-filled from an existing balance for this date.',
                                                 )}
-                                            </Label>
-                                        </div>
-
-                                        {effectiveCalculate && latestDate && (
-                                            <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
-                                                <Label htmlFor="reference-balance">
-                                                    {__('Balance on')}{' '}
-                                                    {formatRelativeDate(
-                                                        latestDate,
-                                                        locale,
-                                                    )}{' '}
-                                                    <span className="text-destructive">
-                                                        *
-                                                    </span>
-                                                </Label>
-                                                <AmountInput
-                                                    id="reference-balance"
-                                                    value={
-                                                        referenceBalance ?? 0
-                                                    }
-                                                    onChange={
-                                                        onReferenceBalanceChange
-                                                    }
-                                                    currencyCode={currencyCode}
-                                                />
-                                                {referenceBalancePrefilled && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {__(
-                                                            'Pre-filled from an existing balance for this date.',
-                                                        )}
-                                                    </p>
-                                                )}
-                                            </div>
+                                            </p>
                                         )}
                                     </div>
                                 )}
                             </div>
-                            {columnMapping.currency && (
-                                <p className="text-xs text-muted-foreground md:pt-2.5">
-                                    {__(
-                                        "Rows in another currency won't get a balance.",
-                                    )}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className={`${ROW_GRID} border-t px-4 py-3`}>
-                            <Label
-                                htmlFor="creditor-column"
-                                className="md:pt-2.5"
-                            >
-                                {__('Creditor')}
-                            </Label>
-                            <ColumnSelect
-                                id="creditor-column"
-                                value={columnMapping.creditor_name}
-                                placeholder={__('Select creditor column')}
-                                optional
-                                columnOptions={columnOptions}
-                                onChange={(value) =>
-                                    onMappingChange('creditor_name', value)
-                                }
-                            />
-                            <p className="text-xs text-muted-foreground md:pt-2.5">
-                                {__('Who was paid')}
-                            </p>
-                        </div>
-
-                        <div className={`${ROW_GRID} border-t px-4 py-3`}>
-                            <Label
-                                htmlFor="debtor-column"
-                                className="md:pt-2.5"
-                            >
-                                {__('Debtor')}
-                            </Label>
-                            <ColumnSelect
-                                id="debtor-column"
-                                value={columnMapping.debtor_name}
-                                placeholder={__('Select debtor column')}
-                                optional
-                                columnOptions={columnOptions}
-                                onChange={(value) =>
-                                    onMappingChange('debtor_name', value)
-                                }
-                            />
-                            <p className="text-xs text-muted-foreground md:pt-2.5">
-                                {__('Who paid')}
-                            </p>
-                        </div>
+                        )}
                     </div>
-                </CollapsibleContent>
-            </Collapsible>
+                    {columnMapping.currency && (
+                        <p className="text-xs text-muted-foreground md:pt-2.5">
+                            {__(
+                                "Rows in another currency won't get a balance.",
+                            )}
+                        </p>
+                    )}
+                </div>
+
+                <div className={`${ROW_GRID} border-t px-4 py-3`}>
+                    <Label htmlFor="creditor-column" className="md:pt-2.5">
+                        {__('Creditor')}
+                    </Label>
+                    <ColumnSelect
+                        id="creditor-column"
+                        value={columnMapping.creditor_name}
+                        placeholder={__('Select creditor column')}
+                        optional
+                        columnOptions={columnOptions}
+                        onChange={(value) =>
+                            onMappingChange('creditor_name', value)
+                        }
+                    />
+                    <p className="text-xs text-muted-foreground md:pt-2.5">
+                        {__('Who was paid')}
+                    </p>
+                </div>
+
+                <div className={`${ROW_GRID} border-t px-4 py-3`}>
+                    <Label htmlFor="debtor-column" className="md:pt-2.5">
+                        {__('Debtor')}
+                    </Label>
+                    <ColumnSelect
+                        id="debtor-column"
+                        value={columnMapping.debtor_name}
+                        placeholder={__('Select debtor column')}
+                        optional
+                        columnOptions={columnOptions}
+                        onChange={(value) =>
+                            onMappingChange('debtor_name', value)
+                        }
+                    />
+                    <p className="text-xs text-muted-foreground md:pt-2.5">
+                        {__('Who paid')}
+                    </p>
+                </div>
+            </CollapsibleSection>
 
             <div className="flex items-center justify-between pt-2">
                 <Button variant="outline" onClick={onBack}>
