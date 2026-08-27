@@ -1,6 +1,11 @@
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
@@ -26,7 +31,8 @@ import {
 } from '@/types/import';
 import { formatRelativeDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { useEffect, useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface ImportStepMappingProps {
     columnOptions: ColumnOption[];
@@ -156,6 +162,19 @@ export function ImportStepMapping({
     const hasForeignCurrency = detectedCurrencies.supported.some(
         (code) => code !== currencyCode,
     );
+
+    // Only date, description and amount are asked for up front. The optional
+    // fields stay folded away unless one is already mapped (auto-detected or
+    // restored from a saved config), which can happen after mount.
+    const hasOptionalMapping =
+        !!columnMapping.currency ||
+        !!columnMapping.balance ||
+        !!columnMapping.creditor_name ||
+        !!columnMapping.debtor_name;
+    const [optionalToggled, setOptionalToggled] = useState<boolean | null>(
+        null,
+    );
+    const optionalOpen = optionalToggled ?? hasOptionalMapping;
 
     const baseMappingValid =
         !!columnMapping.transaction_date &&
@@ -417,149 +436,200 @@ export function ImportStepMapping({
                     </Select>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                    <OptionalColumnSelect
-                        id="currency-column"
-                        label={__('Currency (Optional)')}
-                        placeholder={__('Select currency column (optional)')}
-                        value={columnMapping.currency}
-                        columnOptions={columnOptions}
-                        onChange={(value) => onMappingChange('currency', value)}
-                    />
-
-                    {!columnMapping.currency ? (
-                        <p className="text-xs text-muted-foreground">
-                            {__(
-                                'Every transaction will use the account currency',
-                            )}{' '}
-                            ({currencyCode}).
-                        </p>
-                    ) : (
-                        <>
-                            {detectedCurrencies.supported.length > 0 && (
-                                <p className="text-xs text-muted-foreground">
-                                    {__('Currencies found:')}{' '}
-                                    {detectedCurrencies.supported.join(', ')}
-                                </p>
-                            )}
-                            {detectedCurrencies.unsupported.length > 0 && (
-                                <p className="text-xs text-amber-600 dark:text-amber-400">
-                                    {__('Not supported yet:')}{' '}
-                                    {detectedCurrencies.unsupported.join(', ')}.{' '}
-                                    {__(
-                                        'Those rows will use the account currency',
-                                    )}{' '}
-                                    ({currencyCode}).
-                                </p>
-                            )}
-                        </>
-                    )}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <OptionalColumnSelect
-                        id="balance-column"
-                        label={__('Balance (Optional)')}
-                        placeholder={__('Select balance column (optional)')}
-                        value={columnMapping.balance}
-                        columnOptions={columnOptions}
-                        onChange={(value) => onMappingChange('balance', value)}
-                    />
-
-                    {hasForeignCurrency && (
-                        <p className="text-xs text-muted-foreground">
-                            {__(
-                                "Rows in another currency won't get a balance.",
-                            )}
-                        </p>
-                    )}
-
-                    {calculateBalancesAvailable && (
-                        <div className="flex flex-col gap-3 pt-2">
-                            <div className="flex items-start gap-2">
-                                <Checkbox
-                                    id="calculate-balances"
-                                    checked={
-                                        balanceColumnSet
-                                            ? false
-                                            : calculateBalances
+                <Collapsible
+                    open={optionalOpen}
+                    onOpenChange={setOptionalToggled}
+                    className="rounded-lg border border-sidebar-border bg-sidebar p-1"
+                >
+                    <CollapsibleTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            className="flex w-full cursor-pointer items-center justify-between hover:bg-transparent"
+                        >
+                            <span className="text-sm text-muted-foreground">
+                                {__('Optional fields')}
+                            </span>
+                            <ChevronDown
+                                className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                                    optionalOpen ? 'rotate-180' : ''
+                                }`}
+                            />
+                        </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                        <div className="flex flex-col gap-4 p-3 pt-2">
+                            <div className="flex flex-col gap-2">
+                                <OptionalColumnSelect
+                                    id="currency-column"
+                                    label={__('Currency')}
+                                    placeholder={__(
+                                        'Select currency column (optional)',
+                                    )}
+                                    value={columnMapping.currency}
+                                    columnOptions={columnOptions}
+                                    onChange={(value) =>
+                                        onMappingChange('currency', value)
                                     }
-                                    disabled={checkboxDisabled}
-                                    onCheckedChange={(checked) =>
-                                        onCalculateBalancesChange(
-                                            checked === true,
-                                        )
-                                    }
-                                    className="mt-0.5"
                                 />
-                                <div className="flex flex-col gap-1">
-                                    <Label
-                                        htmlFor="calculate-balances"
-                                        className={`cursor-pointer font-normal ${checkboxDisabled ? 'opacity-50' : ''}`}
-                                    >
-                                        {__(
-                                            'Calculate balances from transactions',
-                                        )}
-                                    </Label>
+
+                                {!columnMapping.currency ? (
                                     <p className="text-xs text-muted-foreground">
                                         {__(
-                                            'Use the balance on the latest transaction date as a reference to compute balances for older dates.',
-                                        )}
+                                            'Every transaction will use the account currency',
+                                        )}{' '}
+                                        ({currencyCode}).
                                     </p>
-                                </div>
+                                ) : (
+                                    <>
+                                        {detectedCurrencies.supported.length >
+                                            0 && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {__('Currencies found:')}{' '}
+                                                {detectedCurrencies.supported.join(
+                                                    ', ',
+                                                )}
+                                            </p>
+                                        )}
+                                        {detectedCurrencies.unsupported.length >
+                                            0 && (
+                                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                                                {__('Not supported yet:')}{' '}
+                                                {detectedCurrencies.unsupported.join(
+                                                    ', ',
+                                                )}
+                                                .{' '}
+                                                {__(
+                                                    'Those rows will use the account currency',
+                                                )}{' '}
+                                                ({currencyCode}).
+                                            </p>
+                                        )}
+                                    </>
+                                )}
                             </div>
 
-                            {effectiveCalculate && latestDate && (
-                                <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
-                                    <Label htmlFor="reference-balance">
-                                        {__('Balance on')}{' '}
-                                        {formatRelativeDate(latestDate, locale)}{' '}
-                                        <span className="text-destructive">
-                                            *
-                                        </span>
-                                    </Label>
-                                    <AmountInput
-                                        id="reference-balance"
-                                        value={referenceBalance ?? 0}
-                                        onChange={onReferenceBalanceChange}
-                                        currencyCode={currencyCode}
-                                    />
-                                    {referenceBalancePrefilled && (
-                                        <p className="text-xs text-muted-foreground">
-                                            {__(
-                                                'Pre-filled from an existing balance for this date.',
-                                            )}
-                                        </p>
+                            <div className="flex flex-col gap-2">
+                                <OptionalColumnSelect
+                                    id="balance-column"
+                                    label={__('Balance')}
+                                    placeholder={__(
+                                        'Select balance column (optional)',
                                     )}
-                                </div>
-                            )}
+                                    value={columnMapping.balance}
+                                    columnOptions={columnOptions}
+                                    onChange={(value) =>
+                                        onMappingChange('balance', value)
+                                    }
+                                />
+
+                                {hasForeignCurrency && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {__(
+                                            "Rows in another currency won't get a balance.",
+                                        )}
+                                    </p>
+                                )}
+
+                                {calculateBalancesAvailable && (
+                                    <div className="flex flex-col gap-3 pt-2">
+                                        <div className="flex items-start gap-2">
+                                            <Checkbox
+                                                id="calculate-balances"
+                                                checked={
+                                                    balanceColumnSet
+                                                        ? false
+                                                        : calculateBalances
+                                                }
+                                                disabled={checkboxDisabled}
+                                                onCheckedChange={(checked) =>
+                                                    onCalculateBalancesChange(
+                                                        checked === true,
+                                                    )
+                                                }
+                                                className="mt-0.5"
+                                            />
+                                            <div className="flex flex-col gap-1">
+                                                <Label
+                                                    htmlFor="calculate-balances"
+                                                    className={`cursor-pointer font-normal ${checkboxDisabled ? 'opacity-50' : ''}`}
+                                                >
+                                                    {__(
+                                                        'Calculate balances from transactions',
+                                                    )}
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {__(
+                                                        'Use the balance on the latest transaction date as a reference to compute balances for older dates.',
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {effectiveCalculate && latestDate && (
+                                            <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
+                                                <Label htmlFor="reference-balance">
+                                                    {__('Balance on')}{' '}
+                                                    {formatRelativeDate(
+                                                        latestDate,
+                                                        locale,
+                                                    )}{' '}
+                                                    <span className="text-destructive">
+                                                        *
+                                                    </span>
+                                                </Label>
+                                                <AmountInput
+                                                    id="reference-balance"
+                                                    value={
+                                                        referenceBalance ?? 0
+                                                    }
+                                                    onChange={
+                                                        onReferenceBalanceChange
+                                                    }
+                                                    currencyCode={currencyCode}
+                                                />
+                                                {referenceBalancePrefilled && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {__(
+                                                            'Pre-filled from an existing balance for this date.',
+                                                        )}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <OptionalColumnSelect
+                                    id="creditor-column"
+                                    label={__('Creditor name')}
+                                    placeholder={__(
+                                        'Select creditor column (optional)',
+                                    )}
+                                    value={columnMapping.creditor_name}
+                                    columnOptions={columnOptions}
+                                    onChange={(value) =>
+                                        onMappingChange('creditor_name', value)
+                                    }
+                                />
+
+                                <OptionalColumnSelect
+                                    id="debtor-column"
+                                    label={__('Debtor name')}
+                                    placeholder={__(
+                                        'Select debtor column (optional)',
+                                    )}
+                                    value={columnMapping.debtor_name}
+                                    columnOptions={columnOptions}
+                                    onChange={(value) =>
+                                        onMappingChange('debtor_name', value)
+                                    }
+                                />
+                            </div>
                         </div>
-                    )}
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                    <OptionalColumnSelect
-                        id="creditor-column"
-                        label={__('Creditor name (Optional)')}
-                        placeholder={__('Select creditor column (optional)')}
-                        value={columnMapping.creditor_name}
-                        columnOptions={columnOptions}
-                        onChange={(value) =>
-                            onMappingChange('creditor_name', value)
-                        }
-                    />
-
-                    <OptionalColumnSelect
-                        id="debtor-column"
-                        label={__('Debtor name (Optional)')}
-                        placeholder={__('Select debtor column (optional)')}
-                        value={columnMapping.debtor_name}
-                        columnOptions={columnOptions}
-                        onChange={(value) =>
-                            onMappingChange('debtor_name', value)
-                        }
-                    />
-                </div>
+                    </CollapsibleContent>
+                </Collapsible>
 
                 {!dateFormatDetected && (
                     <div className="flex flex-col gap-3 rounded-lg border p-4">
