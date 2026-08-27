@@ -19,6 +19,7 @@ import {
     calculateBalancesFromTransactions,
     collectBalancesToImport,
     convertRowsToTransactions,
+    isInAccountCurrency,
     parseFile,
 } from '@/lib/file-parser';
 import {
@@ -37,11 +38,12 @@ import {
     ImportStep,
     type ColumnMapping,
     type ImportState,
+    type ParsedTransaction,
 } from '@/types/import';
 import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
 import { ImportStepMapping } from './import-step-mapping';
@@ -58,6 +60,32 @@ interface ImportTransactionsDrawerProps {
     onImportComplete?: () => void;
     autoSelectSingleAccount?: boolean;
 }
+
+const EMPTY_STATE: ImportState = {
+    step: ImportStep.SelectAccount,
+    selectedAccountId: null,
+    file: null,
+    parsedData: [],
+    rowNumbers: [],
+    columnHeaders: [],
+    columnOptions: [],
+    columnMapping: {
+        transaction_date: null,
+        description: null,
+        amount: null,
+        currency: null,
+        balance: null,
+        creditor_name: null,
+        debtor_name: null,
+    },
+    dateFormat: DateFormat.YearMonthDay,
+    dateFormatDetected: false,
+    transactions: [],
+    calculateBalances: false,
+    referenceBalance: null,
+    referenceBalanceDate: null,
+    referenceBalancePrefilled: false,
+};
 
 interface ImportError {
     rowNumber: number;
@@ -79,7 +107,11 @@ export function ImportTransactionsDrawer({
     onImportComplete,
     autoSelectSingleAccount = false,
 }: ImportTransactionsDrawerProps) {
-    const { locale, features } = usePage<SharedData>().props;
+    const { locale, features, currencies } = usePage<SharedData>().props;
+    const supportedCurrencies = useMemo(
+        () => currencies.accounts.map((currency) => currency.code),
+        [currencies],
+    );
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
@@ -90,29 +122,7 @@ export function ImportTransactionsDrawer({
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(
         null,
     );
-    const [state, setState] = useState<ImportState>({
-        step: ImportStep.SelectAccount,
-        selectedAccountId: null,
-        file: null,
-        parsedData: [],
-        columnHeaders: [],
-        columnOptions: [],
-        columnMapping: {
-            transaction_date: null,
-            description: null,
-            amount: null,
-            balance: null,
-            creditor_name: null,
-            debtor_name: null,
-        },
-        dateFormat: DateFormat.YearMonthDay,
-        dateFormatDetected: false,
-        transactions: [],
-        calculateBalances: false,
-        referenceBalance: null,
-        referenceBalanceDate: null,
-        referenceBalancePrefilled: false,
-    });
+    const [state, setState] = useState<ImportState>(EMPTY_STATE);
 
     useEffect(() => {
         if (state.selectedAccountId) {
@@ -127,29 +137,7 @@ export function ImportTransactionsDrawer({
 
     useEffect(() => {
         if (!open) {
-            setState({
-                step: ImportStep.SelectAccount,
-                selectedAccountId: null,
-                file: null,
-                parsedData: [],
-                columnHeaders: [],
-                columnOptions: [],
-                columnMapping: {
-                    transaction_date: null,
-                    description: null,
-                    amount: null,
-                    balance: null,
-                    creditor_name: null,
-                    debtor_name: null,
-                },
-                dateFormat: DateFormat.YearMonthDay,
-                dateFormatDetected: false,
-                transactions: [],
-                calculateBalances: false,
-                referenceBalance: null,
-                referenceBalanceDate: null,
-                referenceBalancePrefilled: false,
-            });
+            setState(EMPTY_STATE);
             setIsImporting(false);
             setError(null);
             setWasSingleAccountAutoSelected(false);
@@ -172,6 +160,7 @@ export function ImportTransactionsDrawer({
                 ...prev,
                 file: null,
                 parsedData: [],
+                rowNumbers: [],
                 columnHeaders: [],
                 columnOptions: [],
             }));
@@ -179,7 +168,7 @@ export function ImportTransactionsDrawer({
         }
 
         try {
-            const { headers, data, columns, headerRowIndex } =
+            const { headers, data, rowNumbers, columns, headerRowIndex } =
                 await parseFile(file);
             const autoMapping = autoDetectColumns(headers);
 
@@ -231,6 +220,7 @@ export function ImportTransactionsDrawer({
                 ...prev,
                 file,
                 parsedData: data,
+                rowNumbers,
                 columnHeaders: headers,
                 columnOptions,
                 columnMapping: autoMapping,
@@ -269,7 +259,10 @@ export function ImportTransactionsDrawer({
                             prev.file === file
                                 ? {
                                       ...prev,
-                                      columnMapping: savedConfig.columnMapping,
+                                      columnMapping: {
+                                          ...autoMapping,
+                                          ...savedConfig.columnMapping,
+                                      },
                                       dateFormat: savedConfig.dateFormat,
                                       dateFormatDetected: !formatAmbiguous,
                                   }
@@ -412,12 +405,6 @@ export function ImportTransactionsDrawer({
 
     const handlePreviewTransactions = async () => {
         try {
-            const parsedTransactions = convertRowsToTransactions(
-                state.parsedData,
-                state.columnMapping,
-                state.dateFormat,
-            );
-
             const account = accounts.find(
                 (a) => a.id === state.selectedAccountId,
             );
@@ -426,6 +413,22 @@ export function ImportTransactionsDrawer({
                 setError('Selected account not found');
                 return;
             }
+
+            const ownMoney = (transaction: ParsedTransaction): boolean =>
+                isInAccountCurrency(transaction, account.currency_code);
+
+            // A balance belongs to the account and is held in its currency, so
+            // a row in another currency carries none.
+            const parsedTransactions = convertRowsToTransactions(
+                state.parsedData,
+                state.columnMapping,
+                state.dateFormat,
+                supportedCurrencies,
+            ).map((transaction) =>
+                ownMoney(transaction)
+                    ? transaction
+                    : { ...transaction, balance: null },
+            );
 
             const duplicateFlags = await transactionSyncService.checkDuplicates(
                 account.id,
@@ -451,7 +454,7 @@ export function ImportTransactionsDrawer({
 
             if (shouldCalculate) {
                 const calculatedBalances = calculateBalancesFromTransactions(
-                    transactionsWithDuplicateCheck,
+                    transactionsWithDuplicateCheck.filter(ownMoney),
                     state.referenceBalanceDate as string,
                     state.referenceBalance as number,
                 );
@@ -459,12 +462,13 @@ export function ImportTransactionsDrawer({
                 transactionsWithDuplicateCheck =
                     transactionsWithDuplicateCheck.map((transaction) => ({
                         ...transaction,
-                        balance:
-                            calculatedBalances.get(
-                                transaction.transaction_date,
-                            ) ??
-                            transaction.balance ??
-                            null,
+                        balance: ownMoney(transaction)
+                            ? (calculatedBalances.get(
+                                  transaction.transaction_date,
+                              ) ??
+                              transaction.balance ??
+                              null)
+                            : null,
                     }));
             }
 
@@ -581,7 +585,9 @@ export function ImportTransactionsDrawer({
                         description_iv: iv,
                         transaction_date: transaction.transaction_date,
                         amount: transaction.amount,
-                        currency_code: selectedAccount.currency_code,
+                        currency_code:
+                            transaction.currency_code ??
+                            selectedAccount.currency_code,
                         notes: notes,
                         notes_iv: notesIv,
                         creditor_name: transaction.creditor_name ?? null,
@@ -835,7 +841,9 @@ export function ImportTransactionsDrawer({
                         dateFormat={state.dateFormat}
                         dateFormatDetected={state.dateFormatDetected}
                         parsedData={state.parsedData}
+                        rowNumbers={state.rowNumbers}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
+                        supportedCurrencies={supportedCurrencies}
                         calculateBalances={state.calculateBalances}
                         referenceBalance={state.referenceBalance}
                         referenceBalancePrefilled={

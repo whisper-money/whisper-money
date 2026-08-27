@@ -614,7 +614,7 @@ test('archiving a goal freezes its saved amount and removes its label', function
         'user_id' => $user->id,
         'target_amount' => 500000,
     ]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
     $contribution = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
@@ -668,7 +668,7 @@ test('an archived goal still lists the contributions it had', function () {
     Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = savingsGoalAccount($user);
     $contribution = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
