@@ -1,0 +1,52 @@
+<svg viewBox="0 0 720 296" role="img" aria-labelledby="split-flow-en-title split-flow-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="split-flow-en-title">How a split adds up</title>
+    <desc id="split-flow-en-desc">One transaction is replaced by two parts that each carry their own category, and together they add up to exactly what the original was worth. The original steps aside rather than being deleted, and merging the split back brings it out again.</desc>
+    <defs>
+        <marker id="split-flow-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">WHAT YOU SPLIT</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="200" y2="24"/>
+    <text class="dg-eyebrow" x="240" y="16">THE PARTS</text>
+    <line class="dg-hairline" x1="240" y1="24" x2="400" y2="24"/>
+    <text class="dg-eyebrow" x="440" y="16">WHAT IT ADDS UP TO</text>
+    <line class="dg-hairline" x1="440" y1="24" x2="696" y2="24"/>
+    <path class="dg-edge" d="M200,72 H240" marker-end="url(#split-flow-en-arrow)"/>
+    <path class="dg-edge" d="M200,112 H212 Q220,112 220,120 V136 Q220,144 228,144 H240" marker-end="url(#split-flow-en-arrow)"/>
+    <path class="dg-edge" d="M400,72 H440" marker-end="url(#split-flow-en-arrow)"/>
+    <path class="dg-edge" d="M400,144 H440" marker-end="url(#split-flow-en-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M112,120 V208" marker-end="url(#split-flow-en-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M568,160 V208" marker-end="url(#split-flow-en-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M440,244 H208" marker-end="url(#split-flow-en-arrow)"/>
+    <rect class="dg-mask" x="288" y="224" width="64" height="12" rx="2"/>
+    <text class="dg-edge-label" x="320" y="233" text-anchor="middle">RESTORES IT</text>
+    <rect class="dg-mask" x="24" y="64" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="64" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="112" y="88" text-anchor="middle">Supermarket</text>
+    <text class="dg-sub" x="112" y="104" text-anchor="middle">−86.40</text>
+    <rect class="dg-mask" x="240" y="48" width="160" height="48" rx="6"/>
+    <rect class="dg-node" x="240" y="48" width="160" height="48" rx="6"/>
+    <text class="dg-name" x="320" y="68" text-anchor="middle">Groceries</text>
+    <text class="dg-sub" x="320" y="84" text-anchor="middle">−61.40</text>
+    <rect class="dg-mask" x="240" y="120" width="160" height="48" rx="6"/>
+    <rect class="dg-node" x="240" y="120" width="160" height="48" rx="6"/>
+    <text class="dg-name" x="320" y="140" text-anchor="middle">Gifts</text>
+    <text class="dg-sub" x="320" y="156" text-anchor="middle">−25.00</text>
+    <rect class="dg-mask" x="440" y="56" width="256" height="104" rx="6"/>
+    <rect class="dg-node-focal" x="440" y="56" width="256" height="104" rx="6"/>
+    <text class="dg-name" x="456" y="84">Adds up to the original</text>
+    <rect class="dg-track" x="456" y="100" width="224" height="16" rx="4"/>
+    <rect class="dg-bar-accent" x="456" y="100" width="156" height="16" rx="4"/>
+    <rect class="dg-bar" x="616" y="100" width="64" height="16" rx="4"/>
+    <text class="dg-sub" x="456" y="136">61.40 + 25.00</text>
+    <text class="dg-sub" x="680" y="136" text-anchor="end">= 86.40</text>
+    <rect class="dg-mask" x="24" y="216" width="176" height="56" rx="6"/>
+    <rect class="dg-node-soft" x="24" y="216" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="112" y="240" text-anchor="middle">The original</text>
+    <text class="dg-sub" x="112" y="256" text-anchor="middle">steps aside, not deleted</text>
+    <rect class="dg-mask" x="440" y="216" width="256" height="56" rx="6"/>
+    <rect class="dg-node-soft" x="440" y="216" width="256" height="56" rx="6"/>
+    <text class="dg-name" x="568" y="240" text-anchor="middle">Merge the split back</text>
+    <text class="dg-sub" x="568" y="256" text-anchor="middle">from any one part</text>
+</svg>

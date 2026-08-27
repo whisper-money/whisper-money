@@ -23,11 +23,13 @@ Individual pages follow `https://whisper.money/documentation/{slug}.md`:
 | Importing and editing balances | `accounts/import-balances`, `accounts/edit-balances` |
 | Transactions | `transactions` |
 | Creating and importing transactions | `transactions/create`, `transactions/import` |
+| Splitting a transaction | `transactions/split` |
 | Categories | `categories` |
 | Labels | `labels` |
 | Automation rules | `automation-rules` |
 | Cashflow | `cashflow` |
 | Budgets | `budgets` |
+| Savings goals | `savings-goals` |
 
 Add `?lang=es` for Spanish: `https://whisper.money/documentation/budgets.md?lang=es`.
 

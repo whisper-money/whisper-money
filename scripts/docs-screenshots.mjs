@@ -28,6 +28,8 @@ const OUT_DIR = 'public/docs/documentation';
 const EMAIL = 'docs-screenshots@example.test';
 const PASSWORD = 'password123456';
 const ACCOUNT = 'Primary Checking';
+const GOAL_NAME = 'New kitchen';
+const CONTRIBUTION = 'Transfer to savings';
 // Narrow on purpose: a full-width filter bar shot at 1280 is a thin strip that
 // reads as nothing once it is scaled into a 768px column of prose.
 const VIEWPORT = { width: 900, height: 1000 };
@@ -107,6 +109,116 @@ function seededTransaction() {
              'date' => $transaction->transaction_date->format('Y-m-d'),
              'description' => $transaction->description,
              'amount' => number_format($transaction->amount / 100, 2, '.', ''),
+         ]);`,
+    ]);
+}
+
+/**
+ * Splits and savings goals are both still behind a feature flag that resolves
+ * false, and `demo:reset` seeds neither one, so their screens would be a 404 and
+ * an empty chart. They are seeded here rather than in app/Services/Demo, which
+ * is the public demo account and is governed by its own rules.
+ *
+ * The goal's contributions are written rather than borrowed from the seeded
+ * transactions: six even monthly transfers draw a saving pace, which is the
+ * thing the progress screenshot exists to show, and a handful of random
+ * expenses would draw a zigzag that teaches nothing.
+ */
+function seedFeatures() {
+    return artisan([
+        'tinker',
+        '--execute',
+        `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
+         Laravel\\Pennant\\Feature::for($user)->activate(App\\Features\\SplitTransactions::class);
+         Laravel\\Pennant\\Feature::for($user)->activate(App\\Features\\SavingsGoals::class);
+
+         // demo:reset clears labels but not goals, so a re-run would otherwise
+         // pile up goals whose label no longer exists.
+         App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->forceDelete();
+
+         $label = $user->labels()->create([
+             'name' => '${GOAL_NAME}',
+             'color' => App\\Enums\\LabelColor::Emerald->value,
+             'source' => App\\Enums\\LabelSource::SavingsGoal,
+         ]);
+         $goal = $user->savingsGoals()->create([
+             'label_id' => $label->id,
+             'name' => '${GOAL_NAME}',
+             'target_amount' => 600000,
+             'initial_amount' => 120000,
+             'target_date' => now()->addMonths(6)->toDateString(),
+         ]);
+         // Half a year of saving already behind it, so the chart has a line to
+         // draw and the projection has a pace to extend.
+         $goal->forceFill(['created_at' => now()->subMonths(6)])->save();
+
+         $account = $user->accounts()->where('name', '${ACCOUNT}')->firstOrFail();
+         $savings = $user->categories()->where('type', 'savings')->first();
+
+         // Created through the model, events and all: no seeded automation rule
+         // matches "transfer", and the category is set here, so nothing re-files
+         // these. A rule provider that grows one would break that.
+         foreach (range(5, 0) as $month) {
+             $account->transactions()->create([
+                 'user_id' => $user->id,
+                 'category_id' => $savings?->id,
+                 'description' => '${CONTRIBUTION}',
+                 'description_iv' => null,
+                 'transaction_date' => now()->subMonthsNoOverflow($month)->startOfDay(),
+                 'amount' => -40000,
+                 'currency_code' => $user->currency_code ?? 'USD',
+             ])->labels()->attach($label->id);
+         }
+
+         // A grocery run, so that splitting it between groceries and a present
+         // reads as something somebody would actually do. Split through the
+         // service, so the seeded split obeys the invariants a real one does.
+         $original = App\\Models\\Transaction::query()
+             ->whereBelongsTo($user)
+             ->whereBelongsTo($account)
+             ->whereNull('split_parent_id')
+             ->whereHas('category', fn ($category) => $category->where('name', 'Groceries'))
+             ->where('amount', '<', -3000)
+             ->orderByDesc('transaction_date')
+             ->firstOrFail();
+         $share = (int) round($original->amount * 0.7);
+         $parts = app(App\\Services\\TransactionSplitter::class)->split($original, [
+             ['amount' => $share],
+             ['amount' => $original->amount - $share],
+         ]);
+
+         // The categories go straight onto the rows afterwards, through the
+         // query builder so no model events fire. A demo automation rule
+         // matches this merchant and files every new transaction it sees under
+         // one category — which is the one thing this screenshot must not show,
+         // since the whole point is that each part gets its own.
+         $categories = $user->categories()->whereIn('name', ['Groceries', 'Gifts'])->pluck('id', 'name');
+         foreach (['Groceries', 'Gifts'] as $index => $name) {
+             App\\Models\\Transaction::whereKey($parts[$index]->id)->update([
+                 'category_id' => $categories[$name] ?? null,
+                 'category_source' => App\\Enums\\CategorySource::Manual->value,
+                 'categorized_by_rule_id' => null,
+             ]);
+         }`,
+    ]);
+}
+
+/**
+ * The goal to shoot and the description the split parts inherited, read back
+ * rather than returned by the seed so that SKIP_SEED=1 can reuse what the last
+ * run left behind.
+ */
+function seededFeatures() {
+    return artisanJson([
+        'tinker',
+        '--execute',
+        `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
+         echo json_encode([
+             'goal' => App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->value('id'),
+             'split' => App\\Models\\Transaction::query()
+                 ->whereBelongsTo($user)
+                 ->whereNotNull('split_parent_id')
+                 ->value('description'),
          ]);`,
     ]);
 }
@@ -225,6 +337,43 @@ async function openImportDrawer(page) {
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByText('Upload File').waitFor();
     await page.waitForTimeout(600);
+}
+
+/**
+ * The mark a row carries when it is one part of a split, and the trigger for
+ * the popover listing the rest of them.
+ */
+const SPLIT_MARK = '[aria-label="This transaction is part of a split"]';
+
+/**
+ * Give the next part of a split its category. The label picker beside it is a
+ * combobox too, so the category ones are told apart by the placeholder they are
+ * still showing — which also means each call lands on the next part along.
+ */
+async function pickCategory(page, name) {
+    await dialog(page)
+        .getByRole('combobox')
+        .filter({ hasText: 'Uncategorized' })
+        .first()
+        .click();
+    await page.getByPlaceholder('Search categories...').fill(name);
+    await page
+        .getByRole('option', { name: new RegExp(name) })
+        .first()
+        .click();
+    await page.waitForTimeout(300);
+}
+
+async function openSavingsGoal(page, features) {
+    await page.goto(`${BASE_URL}/savings-goals/${features.goal}`, {
+        waitUntil: 'domcontentloaded',
+    });
+    await page.getByRole('button', { name: 'Link transactions' }).waitFor();
+    // The pointer lands mid-page on navigation, which is over the progress
+    // chart, and the chart answers with a tooltip that has no business being in
+    // the picture.
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(1200);
 }
 
 async function openAccount(page) {
@@ -370,6 +519,98 @@ const SHOTS = {
         return [dialog(page)];
     },
 
+    'split-transaction-dialog': async (page) => {
+        // The row menu the split is reached from lives in a column the table
+        // drops below desktop width.
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await openTransactions(page);
+
+        // The table groups rows under a date heading that is a row of its own,
+        // so a row is only a transaction if it carries the actions menu. And it
+        // must not already be a part: the menu on a part offers merging the
+        // split back, not splitting again.
+        const row = page
+            .locator('tbody tr')
+            .filter({ has: page.getByRole('button', { name: 'Open menu' }) })
+            .filter({ hasNot: page.locator(SPLIT_MARK) })
+            .filter({ hasText: 'Groceries' })
+            .first();
+
+        await row.getByRole('button', { name: 'Open menu' }).click();
+        await page.getByRole('menuitem', { name: 'Split', exact: true }).click();
+        await dialog(page).waitFor();
+        await page.waitForTimeout(600);
+
+        await pickCategory(page, 'Groceries');
+        await pickCategory(page, 'Gifts');
+
+        // Typing one amount and handing over the remainder is what makes the
+        // shot balanced without the script having to know what the row was
+        // worth: the dialog does that arithmetic itself.
+        await page.locator('#split-amount-0').fill('20.00');
+        await page
+            .getByRole('button', { name: /Give the rest to split/ })
+            .click();
+        await page.waitForTimeout(500);
+
+        return [dialog(page)];
+    },
+
+    'split-parts-list': async (page, fixtures, features) => {
+        // The row is wider than 900px and would be cut off mid-description.
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await openTransactions(page);
+
+        const row = page
+            .locator('tbody tr')
+            .filter({ has: page.locator(SPLIT_MARK) })
+            .first();
+        await row.waitFor();
+        await row.locator(SPLIT_MARK).click();
+
+        // Only the row that was clicked, not both parts: the popover opens
+        // downwards over whatever follows, so framing the pair would mean
+        // framing one row and the thing covering the other.
+        const popover = page.locator('[data-slot="popover-content"]');
+        await popover.waitFor();
+        await page.waitForTimeout(500);
+
+        log(`split parts of "${features.split}"`);
+
+        // Clipped rather than framed: rows sit flush against each other, so the
+        // padding union() adds would put a sliced-off half of the row above
+        // into the picture.
+        const framed = await union([row, popover]);
+        const top = (await row.boundingBox()).y;
+
+        return { ...framed, y: top, height: framed.y + framed.height - top };
+    },
+
+    'savings-goal-progress': async (page, fixtures, features) => {
+        await openSavingsGoal(page, features);
+
+        const cards = page.locator('[data-slot="card"]');
+        await cards.nth(1).waitFor();
+        // The chart animates its line in, so it is given time to settle before
+        // the shutter rather than caught halfway.
+        await page.waitForTimeout(2500);
+
+        return [cards.nth(0), cards.nth(1)];
+    },
+
+    'savings-goal-link-transactions': async (page, fixtures, features) => {
+        // The dialog grows to fill the viewport, and a full 1000px of tick
+        // boxes is a tower of repeated rows by the time it reaches a column of
+        // prose. Eight rows say the same thing.
+        await page.setViewportSize({ width: 900, height: 720 });
+        await openSavingsGoal(page, features);
+        await page.getByRole('button', { name: 'Link transactions' }).click();
+        await dialog(page).waitFor();
+        await page.waitForTimeout(1500);
+
+        return [dialog(page)];
+    },
+
     'labels-settings': async (page) => {
         await page.goto(`${BASE_URL}/settings/labels`, {
             waitUntil: 'domcontentloaded',
@@ -437,11 +678,15 @@ async function main() {
                  ]);
              }`,
         ]);
+
+        log('seeding a savings goal and a split');
+        seedFeatures();
     }
 
     mkdirSync(OUT_DIR, { recursive: true });
 
     const fixtures = writeFixtures(seededTransaction());
+    const features = seededFeatures();
     const browser = await launchBrowser();
     const failures = [];
 
@@ -480,7 +725,7 @@ async function main() {
             try {
                 await page.setViewportSize(VIEWPORT);
 
-                const target = await SHOTS[name](page, fixtures);
+                const target = await SHOTS[name](page, fixtures, features);
                 const clip = Array.isArray(target)
                     ? await union(target)
                     : target;

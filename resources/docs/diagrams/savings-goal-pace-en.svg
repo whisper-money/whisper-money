@@ -1,0 +1,52 @@
+<svg viewBox="0 0 720 288" role="img" aria-labelledby="savings-goal-pace-en-title savings-goal-pace-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="savings-goal-pace-en-title">How a savings goal keeps pace</title>
+    <desc id="savings-goal-pace-en-desc">A goal's own label gathers the transactions that funded it, which add to whatever was already saved to give the amount saved. That total is plotted against the straight line the target date would need, and the current pace is continued as a dotted line to show when the goal will actually be reached.</desc>
+    <defs>
+        <marker id="savings-goal-pace-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">WHAT IT WATCHES</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="200" y2="24"/>
+    <text class="dg-eyebrow" x="240" y="16">WHAT IT ADDS UP</text>
+    <line class="dg-hairline" x1="240" y1="24" x2="400" y2="24"/>
+    <text class="dg-eyebrow" x="440" y="16">WHERE THAT PUTS YOU</text>
+    <line class="dg-hairline" x1="440" y1="24" x2="696" y2="24"/>
+    <path class="dg-edge" d="M112,104 V120" marker-end="url(#savings-goal-pace-en-arrow)"/>
+    <path class="dg-edge" d="M200,156 H240" marker-end="url(#savings-goal-pace-en-arrow)"/>
+    <path class="dg-edge" d="M200,236 H212 Q220,236 220,228 V188 Q220,180 228,180 H240" marker-end="url(#savings-goal-pace-en-arrow)"/>
+    <path class="dg-edge" d="M400,156 H440" marker-end="url(#savings-goal-pace-en-arrow)"/>
+    <rect class="dg-mask" x="24" y="48" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="48" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="112" y="72" text-anchor="middle">Its own label</text>
+    <text class="dg-sub" x="112" y="88" text-anchor="middle">created with the goal</text>
+    <rect class="dg-mask" x="24" y="128" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="128" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="112" y="152" text-anchor="middle">Tagged transactions</text>
+    <text class="dg-sub" x="112" y="168" text-anchor="middle">on any account</text>
+    <rect class="dg-mask" x="24" y="208" width="176" height="56" rx="6"/>
+    <rect class="dg-node-soft" x="24" y="208" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="112" y="232" text-anchor="middle">Already saved</text>
+    <text class="dg-sub" x="112" y="248" text-anchor="middle">what was in the pot</text>
+    <rect class="dg-mask" x="240" y="124" width="160" height="64" rx="6"/>
+    <rect class="dg-node" x="240" y="124" width="160" height="64" rx="6"/>
+    <text class="dg-name" x="320" y="152" text-anchor="middle">Amount saved</text>
+    <text class="dg-sub" x="320" y="168" text-anchor="middle">1,240 of 3,000</text>
+    <rect class="dg-mask" x="440" y="48" width="256" height="208" rx="6"/>
+    <rect class="dg-node-focal" x="440" y="48" width="256" height="208" rx="6"/>
+    <text class="dg-name" x="456" y="76">Saved against the plan</text>
+    <text class="dg-eyebrow" x="456" y="96">TARGET</text>
+    <line class="dg-hairline" x1="456" y1="104" x2="680" y2="104"/>
+    <line class="dg-hairline" x1="456" y1="188" x2="680" y2="188"/>
+    <line class="dg-hairline" x1="584" y1="104" x2="584" y2="188"/>
+    <path class="dg-edge dg-edge-dashed" d="M456,164 L680,104"/>
+    <path class="dg-edge dg-edge-accent" d="M456,164 L500,152 L544,134 L584,118"/>
+    <path class="dg-edge dg-edge-accent dg-edge-dashed" d="M584,118 L620,104"/>
+    <circle class="dg-station-focal" cx="620" cy="104" r="4"/>
+    <text class="dg-eyebrow" x="600" y="96" text-anchor="middle">AT THIS PACE</text>
+    <text class="dg-eyebrow" x="584" y="204" text-anchor="middle">TODAY</text>
+    <line class="dg-edge dg-edge-accent" x1="456" y1="224" x2="476" y2="224"/>
+    <text class="dg-sub" x="484" y="228">Saved</text>
+    <line class="dg-edge dg-edge-dashed" x1="552" y1="224" x2="572" y2="224"/>
+    <text class="dg-sub" x="580" y="228">On-pace</text>
+</svg>
