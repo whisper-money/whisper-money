@@ -155,6 +155,9 @@ export function ImportTransactionsDrawer({
     };
 
     const handleFileSelect = async (file: File) => {
+        // Whatever the last file failed on no longer applies to this one.
+        setError(null);
+
         if (!file) {
             setState((prev) => ({
                 ...prev,

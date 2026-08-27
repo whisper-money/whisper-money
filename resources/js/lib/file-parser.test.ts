@@ -11,6 +11,7 @@ import {
     collectCurrencyCodes,
     convertRowsToTransactions,
     detectDateFormat,
+    formatLocalDate,
     getLatestTransactionDate,
     getLocaleDateFormat,
     isInAccountCurrency,
@@ -981,6 +982,24 @@ describe('buildMappingReport', () => {
     });
 });
 
+describe('formatLocalDate', () => {
+    // parseDate builds local midnight, so toISOString() names the day before
+    // for anywhere east of Greenwich. CI runs in UTC, where both agree.
+    it('names the day the date holds locally, not its UTC day', () => {
+        const originalTimezone = process.env.TZ;
+        process.env.TZ = 'Europe/Madrid';
+
+        try {
+            const date = parseDate('2026-01-31', DateFormat.YearMonthDay)!;
+
+            expect(formatLocalDate(date)).toBe('2026-01-31');
+            expect(date.toISOString().slice(0, 10)).toBe('2026-01-30');
+        } finally {
+            process.env.TZ = originalTimezone;
+        }
+    });
+});
+
 describe('parseFile', () => {
     it('keeps CSV date cells as their original strings instead of coercing them to date serials', async () => {
         const csv = [
@@ -1051,5 +1070,27 @@ describe('parseFile', () => {
         expect(
             parseDate(data[0].Date as string, DateFormat.YearMonthDay),
         ).toEqual(new Date(2018, 4, 14));
+    });
+
+    // CI runs in UTC, where the epoch correction is a no-op and any mistake in
+    // it hides. New Zealand is the case that catches it: reading the Date
+    // SheetJS builds gives 13 May there, a day before what the file says.
+    it('keeps Numbers dates on the right day in a southern-hemisphere timezone', async () => {
+        const originalTimezone = process.env.TZ;
+        process.env.TZ = 'Pacific/Auckland';
+
+        try {
+            const file = new File([numbersFixture()], 'budget.numbers');
+
+            const { data } = await parseFile(file);
+
+            expect(data.map((row) => row.Date)).toEqual([
+                '2018-05-14',
+                '2018-05-15',
+                '2018-12-03',
+            ]);
+        } finally {
+            process.env.TZ = originalTimezone;
+        }
     });
 });

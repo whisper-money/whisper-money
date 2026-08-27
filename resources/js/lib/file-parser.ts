@@ -62,6 +62,10 @@ function detectHeaderRow(columns: unknown[][]): number {
  *
  * The result is an ISO date string so the rest of the importer keeps seeing one
  * cell type it already understands, previews included.
+ *
+ * Only Numbers reaches this: SheetJS builds `Date` cells for the other formats
+ * only under `cellDates`, which the read below leaves off. Turning that on
+ * would send Excel dates through this shift too, and they do not need it.
  */
 function spreadsheetDateToIsoDate(value: Date): string {
     const localEpochOffset =
@@ -588,7 +592,12 @@ export function parseDate(
     return date;
 }
 
-function formatLocalDate(date: Date): string {
+/**
+ * The calendar day a Date names locally. `toISOString()` cannot stand in for
+ * this: parseDate builds local midnight, which is the day before in UTC for
+ * anywhere east of Greenwich.
+ */
+export function formatLocalDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');

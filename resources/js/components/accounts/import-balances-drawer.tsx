@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { getCsrfToken } from '@/lib/csrf';
 import {
     detectDateFormat,
+    formatLocalDate,
     parseAmount,
     parseDate,
     parseFile,
@@ -223,6 +224,9 @@ export function ImportBalancesDrawer({
     };
 
     const handleFileSelect = async (file: File) => {
+        // Whatever the last file failed on no longer applies to this one.
+        setError(null);
+
         if (!file) {
             setState((prev) => ({
                 ...prev,
@@ -376,7 +380,7 @@ export function ImportBalancesDrawer({
                     continue;
                 }
 
-                const formattedDate = date.toISOString().split('T')[0];
+                const formattedDate = formatLocalDate(date);
 
                 let investedAmount: number | null = null;
                 if (state.columnMapping.invested_amount) {
