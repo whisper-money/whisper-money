@@ -523,7 +523,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
 
     // Preview step - import all 5 transactions from the CSV
     $page->assertSee('Preview Transactions')
-        ->click('Import 5 Transactions')
+        ->click('Import 5 transactions')
         ->wait(15);
 
     // After import completes, back to create-account step in list mode
