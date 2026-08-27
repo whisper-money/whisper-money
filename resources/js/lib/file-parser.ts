@@ -640,7 +640,7 @@ export function collectCurrencyCodes(
         if (code) {
             supported.add(code);
         } else {
-            unsupported.add(raw);
+            unsupported.add(raw.toUpperCase());
         }
     }
 
@@ -648,18 +648,15 @@ export function collectCurrencyCodes(
 }
 
 /**
- * The transactions whose money is the account's own. Balances belong to the
- * account and are held in its currency, so rows in another currency say nothing
- * about them. A row without a currency already defaults to the account's.
+ * Whether the transaction holds the account's own money. Balances belong to the
+ * account and are held in its currency, so a row in another currency says
+ * nothing about them. A row without a currency defaults to the account's.
  */
-export function inAccountCurrency(
-    transactions: ParsedTransaction[],
+export function isInAccountCurrency(
+    transaction: ParsedTransaction,
     accountCurrency: string,
-): ParsedTransaction[] {
-    return transactions.filter(
-        (transaction) =>
-            (transaction.currency_code ?? accountCurrency) === accountCurrency,
-    );
+): boolean {
+    return (transaction.currency_code ?? accountCurrency) === accountCurrency;
 }
 
 function getDescriptionFromRow(row: ParsedRow, mapping: ColumnMapping): string {

@@ -151,6 +151,12 @@ export function ImportStepMapping({
         [parsedData, columnMapping.currency, supportedCurrencies],
     );
 
+    // Balances are the account's own, held in its currency, so rows in another
+    // currency get none: worth saying out loud next to the balance controls.
+    const hasForeignCurrency = detectedCurrencies.supported.some(
+        (code) => code !== currencyCode,
+    );
+
     const baseMappingValid =
         !!columnMapping.transaction_date &&
         !!columnMapping.description &&
@@ -459,6 +465,14 @@ export function ImportStepMapping({
                         columnOptions={columnOptions}
                         onChange={(value) => onMappingChange('balance', value)}
                     />
+
+                    {hasForeignCurrency && (
+                        <p className="text-xs text-muted-foreground">
+                            {__(
+                                "Rows in another currency won't get a balance.",
+                            )}
+                        </p>
+                    )}
 
                     {calculateBalancesAvailable && (
                         <div className="flex flex-col gap-3 pt-2">

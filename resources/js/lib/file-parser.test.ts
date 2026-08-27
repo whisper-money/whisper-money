@@ -11,7 +11,7 @@ import {
     detectDateFormat,
     getLatestTransactionDate,
     getLocaleDateFormat,
-    inAccountCurrency,
+    isInAccountCurrency,
     parseAmount,
     parseCurrencyCode,
     parseDate,
@@ -775,7 +775,7 @@ describe('currency mapping', () => {
     });
 });
 
-describe('inAccountCurrency', () => {
+describe('isInAccountCurrency', () => {
     function txn(currencyCode: string | null): ParsedTransaction {
         return {
             transaction_date: '2024-01-15',
@@ -785,18 +785,16 @@ describe('inAccountCurrency', () => {
         };
     }
 
-    it('keeps rows with no currency of their own', () => {
-        expect(inAccountCurrency([txn(null)], 'EUR')).toHaveLength(1);
+    it('counts a row with no currency of its own as the account currency', () => {
+        expect(isInAccountCurrency(txn(null), 'EUR')).toBe(true);
     });
 
-    it('drops rows held in another currency', () => {
-        const transactions = inAccountCurrency(
-            [txn('EUR'), txn('PEN'), txn(null)],
-            'EUR',
-        );
+    it('counts a row that names the account currency', () => {
+        expect(isInAccountCurrency(txn('EUR'), 'EUR')).toBe(true);
+    });
 
-        expect(transactions).toHaveLength(2);
-        expect(transactions.map((t) => t.currency_code)).toEqual(['EUR', null]);
+    it('rejects a row held in another currency', () => {
+        expect(isInAccountCurrency(txn('PEN'), 'EUR')).toBe(false);
     });
 });
 

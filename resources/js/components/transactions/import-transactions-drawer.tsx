@@ -19,7 +19,7 @@ import {
     calculateBalancesFromTransactions,
     collectBalancesToImport,
     convertRowsToTransactions,
-    inAccountCurrency,
+    isInAccountCurrency,
     parseFile,
 } from '@/lib/file-parser';
 import {
@@ -38,6 +38,7 @@ import {
     ImportStep,
     type ColumnMapping,
     type ImportState,
+    type ParsedTransaction,
 } from '@/types/import';
 import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
@@ -401,13 +402,6 @@ export function ImportTransactionsDrawer({
 
     const handlePreviewTransactions = async () => {
         try {
-            const parsedTransactions = convertRowsToTransactions(
-                state.parsedData,
-                state.columnMapping,
-                state.dateFormat,
-                supportedCurrencies,
-            );
-
             const account = accounts.find(
                 (a) => a.id === state.selectedAccountId,
             );
@@ -416,6 +410,22 @@ export function ImportTransactionsDrawer({
                 setError('Selected account not found');
                 return;
             }
+
+            const ownMoney = (transaction: ParsedTransaction): boolean =>
+                isInAccountCurrency(transaction, account.currency_code);
+
+            // A balance belongs to the account and is held in its currency, so
+            // a row in another currency carries none.
+            const parsedTransactions = convertRowsToTransactions(
+                state.parsedData,
+                state.columnMapping,
+                state.dateFormat,
+                supportedCurrencies,
+            ).map((transaction) =>
+                ownMoney(transaction)
+                    ? transaction
+                    : { ...transaction, balance: null },
+            );
 
             const duplicateFlags = await transactionSyncService.checkDuplicates(
                 account.id,
@@ -441,10 +451,7 @@ export function ImportTransactionsDrawer({
 
             if (shouldCalculate) {
                 const calculatedBalances = calculateBalancesFromTransactions(
-                    inAccountCurrency(
-                        transactionsWithDuplicateCheck,
-                        account.currency_code,
-                    ),
+                    transactionsWithDuplicateCheck.filter(ownMoney),
                     state.referenceBalanceDate as string,
                     state.referenceBalance as number,
                 );
@@ -452,12 +459,13 @@ export function ImportTransactionsDrawer({
                 transactionsWithDuplicateCheck =
                     transactionsWithDuplicateCheck.map((transaction) => ({
                         ...transaction,
-                        balance:
-                            calculatedBalances.get(
-                                transaction.transaction_date,
-                            ) ??
-                            transaction.balance ??
-                            null,
+                        balance: ownMoney(transaction)
+                            ? (calculatedBalances.get(
+                                  transaction.transaction_date,
+                              ) ??
+                              transaction.balance ??
+                              null)
+                            : null,
                     }));
             }
 
@@ -638,9 +646,7 @@ export function ImportTransactionsDrawer({
             setImportProgress(processedCount);
         }
 
-        const balancesToImport = collectBalancesToImport(
-            inAccountCurrency(newTransactions, selectedAccount.currency_code),
-        );
+        const balancesToImport = collectBalancesToImport(newTransactions);
 
         if (balancesToImport.size > 0) {
             try {

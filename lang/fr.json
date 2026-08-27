@@ -20,6 +20,7 @@
     "Not supported yet:": "Pas encore prises en charge :",
     "Nothing is connected until you connect it yourself, from your settings, under AI Connector. If you never connect it, nothing changes for you.": "Rien n'est connecté avant que vous ne le connectiez vous-même, depuis vos réglages, dans Connecteur d'IA. Si vous ne le connectez jamais, rien ne change pour vous.",
     "Put them under :category and make a rule for the next ones.": "Mets-les dans :category et crée une règle pour les suivantes.",
+    "Rows in another currency won't get a balance.": "Les lignes dans une autre devise n'auront pas de solde.",
     "Sample conversation": "Exemple de conversation",
     "Select currency column (optional)": "Sélectionnez la colonne de devise (facultatif)",
     "Those rows will use the account currency": "Ces lignes utiliseront la devise du compte",
