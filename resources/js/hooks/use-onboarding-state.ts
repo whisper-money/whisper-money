@@ -1,3 +1,8 @@
+import {
+    readStoredValue,
+    removeStoredValue,
+    writeStoredValue,
+} from '@/lib/safe-storage';
 import { type AccountType } from '@/types/account';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -14,6 +19,60 @@ export type OnboardingStep =
     | 'import-balances'
     | 'categorize-transactions'
     | 'complete';
+
+/**
+ * Every step onboarding may be resumed on, whether from ?step=, from the server
+ * prop or from the value stored below. Mirrors `OnboardingController::VALID_STEPS`.
+ */
+export const VALID_STEPS: OnboardingStep[] = [
+    'welcome',
+    'account-types',
+    'create-account',
+    'import-transactions',
+    'import-balances',
+    'category-types',
+    'customize-categories',
+    'smart-rules',
+    'syncing',
+    'ai-suggestions',
+    'categorize-transactions',
+    'complete',
+];
+
+/**
+ * The step is otherwise only ever persisted into ?step=, and a bank redirect
+ * that dies on iOS drops the user back on a bare /onboarding — which restarted
+ * them from 'welcome' having already created their accounts. localStorage
+ * survives that round trip; the URL does not.
+ */
+const STEP_STORAGE_KEY = 'onboarding-step';
+
+/**
+ * Forget the resume point. Called once onboarding is actually finished, so a
+ * returning user is not pulled back into it.
+ */
+export function clearStoredOnboardingStep(): void {
+    removeStoredValue(STEP_STORAGE_KEY);
+}
+
+/**
+ * The stored resume point, or undefined when there is none worth trusting. A
+ * stale or hand-edited key is validated like any deep link, so it cannot drop a
+ * free-plan user onto the AI step they never see.
+ */
+function readStoredStep(
+    skipAiSuggestions: boolean,
+): OnboardingStep | undefined {
+    const stored = readStoredValue(STEP_STORAGE_KEY) as OnboardingStep | null;
+
+    if (!stored || !VALID_STEPS.includes(stored)) {
+        return undefined;
+    }
+
+    return skipAiSuggestions && stored === 'ai-suggestions'
+        ? undefined
+        : stored;
+}
 
 // Primary steps shown in the progress indicator
 // import-transactions and import-balances are sub-steps that don't increment the counter
@@ -91,10 +150,11 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         [skipAiSuggestions],
     );
 
-    // Determine initial step based on existing state
+    // Determine initial step based on existing state. The server prop (already
+    // covering ?step=) wins; the stored step only answers a return with neither.
     const resolvedInitialStep = useMemo((): OnboardingStep => {
-        return initialStep ?? 'welcome';
-    }, [initialStep]);
+        return initialStep ?? readStoredStep(skipAiSuggestions) ?? 'welcome';
+    }, [initialStep, skipAiSuggestions]);
 
     const [currentStep, setCurrentStep] =
         useState<OnboardingStep>(resolvedInitialStep);
@@ -117,6 +177,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         if (typeof window === 'undefined') {
             return;
         }
+        writeStoredValue(STEP_STORAGE_KEY, currentStep);
         const url = new URL(window.location.href);
         if (url.searchParams.get('step') === currentStep) {
             return;

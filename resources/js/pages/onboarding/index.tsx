@@ -18,6 +18,7 @@ import {
     BACKABLE_STEPS,
     CreatedAccount,
     OnboardingStep,
+    VALID_STEPS,
     useOnboardingState,
 } from '@/hooks/use-onboarding-state';
 import OnboardingLayout from '@/layouts/onboarding-layout';
@@ -38,21 +39,6 @@ interface OnboardingProps {
     signupPlan?: SignupPlan | null;
 }
 
-const VALID_STEPS: OnboardingStep[] = [
-    'welcome',
-    'account-types',
-    'create-account',
-    'import-transactions',
-    'import-balances',
-    'category-types',
-    'customize-categories',
-    'smart-rules',
-    'syncing',
-    'ai-suggestions',
-    'categorize-transactions',
-    'complete',
-];
-
 export default function Onboarding({
     banks,
     accounts,
@@ -66,7 +52,8 @@ export default function Onboarding({
     const isFreePlan = signupPlan === 'free';
 
     // Prefer the server-validated step; fall back to ?step= from the URL so
-    // client-side deep links keep working.
+    // client-side deep links keep working. Neither is the hook's last resort:
+    // it falls back again to the step it stored locally.
     const initialStep = useMemo((): OnboardingStep | undefined => {
         const validSteps = isFreePlan
             ? VALID_STEPS.filter((step) => step !== 'ai-suggestions')

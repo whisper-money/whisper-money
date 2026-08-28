@@ -668,3 +668,38 @@ test('getInstitutions passes the provider beta flag through, defaulting to stabl
         // A connector the provider says nothing about is not a beta connector.
         ->and($institutions['CaixaBank']['beta'])->toBeFalse();
 });
+
+test('startAuthorization upgrades the authorization url the provider hands back to https', function () {
+    Http::fake([
+        'api.enablebanking.com/auth' => Http::response([
+            'url' => 'http://tilisy.enablebanking.com/ais/start?sessionid=auth-1',
+            'authorization_id' => 'auth-1',
+        ]),
+    ]);
+
+    $result = enableBankingProviderForTest()
+        ->startAuthorization('CaixaBank', 'ES', 'https://example.com/callback', 'state-1');
+
+    // Port 80 on that host never answers, so the browser navigation dies where
+    // the user cannot see it. The HSTS header that would upgrade the scheme is
+    // only served over HTTPS, so a browser reaching the host for the first time
+    // has nothing cached to upgrade with.
+    expect($result['url'])->toBe('https://tilisy.enablebanking.com/ais/start?sessionid=auth-1')
+        ->and($result['authorization_id'])->toBe('auth-1');
+});
+
+test('startAuthorization leaves an https authorization url untouched', function () {
+    Http::fake([
+        'api.enablebanking.com/auth' => Http::response([
+            // A query param carrying its own http:// url: a bare str_replace
+            // would corrupt it, so the rewrite is anchored to the scheme.
+            'url' => 'https://tilisy.enablebanking.com/ais/start?redirect=http://localhost/callback',
+            'authorization_id' => 'auth-2',
+        ]),
+    ]);
+
+    $result = enableBankingProviderForTest()
+        ->startAuthorization('CaixaBank', 'ES', 'https://example.com/callback', 'state-2');
+
+    expect($result['url'])->toBe('https://tilisy.enablebanking.com/ais/start?redirect=http://localhost/callback');
+});

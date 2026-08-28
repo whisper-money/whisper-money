@@ -46,3 +46,11 @@ export function writeStoredValue(key: string, value: string): void {
         // simply does not survive the session.
     }
 }
+
+export function removeStoredValue(key: string): void {
+    try {
+        getStorage('local')?.removeItem(key);
+    } catch {
+        // Same as above: nothing was persisted, so nothing needs clearing.
+    }
+}

@@ -120,6 +120,58 @@ describe('useOnboardingState', () => {
         });
     });
 
+    describe('resuming after a redirect that lost the ?step= param', () => {
+        // iOS hands the user back to a bare /onboarding when a bank redirect
+        // dies, and the step only ever lived in the URL.
+        it('resumes from the stored step when nothing else says otherwise', () => {
+            window.localStorage.setItem('onboarding-step', 'create-account');
+
+            const { result } = renderHook(() => useOnboardingState());
+
+            expect(result.current.currentStep).toBe('create-account');
+        });
+
+        it('lets the server-resolved step win over the stored one', () => {
+            window.localStorage.setItem('onboarding-step', 'create-account');
+
+            const { result } = renderHook(() =>
+                useOnboardingState({ initialStep: 'smart-rules' }),
+            );
+
+            expect(result.current.currentStep).toBe('smart-rules');
+        });
+
+        it('falls back to welcome when the stored step is not a real step', () => {
+            window.localStorage.setItem('onboarding-step', 'not-a-step');
+
+            const { result } = renderHook(() => useOnboardingState());
+
+            expect(result.current.currentStep).toBe('welcome');
+        });
+
+        it('never resumes a free signup onto the AI step', () => {
+            window.localStorage.setItem('onboarding-step', 'ai-suggestions');
+
+            const { result } = renderHook(() =>
+                useOnboardingState({ skipAiSuggestions: true }),
+            );
+
+            expect(result.current.currentStep).toBe('welcome');
+        });
+
+        it('stores every step it moves to', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.goToStep('syncing');
+            });
+
+            expect(window.localStorage.getItem('onboarding-step')).toBe(
+                'syncing',
+            );
+        });
+    });
+
     it('remembers connected account setup when a connected account appears later', () => {
         const { result, rerender } = renderHook(
             ({ hasConnectedAccount }: { hasConnectedAccount: boolean }) =>
