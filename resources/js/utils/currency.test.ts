@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { formatCurrency } from './currency';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+    currencyDecimals,
+    formatCurrency,
+    setCurrencyDecimals,
+    toMajorUnits,
+    toMinorUnits,
+} from './currency';
 
 describe('formatCurrency', () => {
     it('formats a basic USD amount', () => {
@@ -92,5 +98,58 @@ describe('formatCurrency', () => {
                 `Expected thousands separator for ${cents} cents in es-ES`,
             ).toContain(expectedInteger);
         }
+    });
+});
+
+describe('per-currency scale', () => {
+    // The map is module state seeded from the server on boot, so each test that
+    // touches it has to hand it back.
+    afterEach(() => setCurrencyDecimals(undefined));
+
+    it('renders a zero-decimal currency without a minor unit', () => {
+        expect(formatCurrency(123456, 'COP', 'es-ES')).toContain('123.456');
+        expect(formatCurrency(123456, 'COP', 'es-ES')).not.toContain(',00');
+    });
+
+    it('renders three decimals for KWD and eight for BTC', () => {
+        expect(formatCurrency(35135, 'KWD', 'en-US')).toContain('35.135');
+        expect(formatCurrency(80000000, 'BTC', 'en-US')).toContain(
+            '0.80000000',
+        );
+    });
+
+    it('prefers the server map over the browser CLDR', () => {
+        // A browser whose CLDR disagrees must not divide by the wrong power of
+        // ten: that renders a real amount a hundred times off, silently.
+        setCurrencyDecimals({ COP: 0, EUR: 2 });
+
+        expect(currencyDecimals('COP')).toBe(0);
+        expect(currencyDecimals('cop')).toBe(0);
+    });
+
+    it('falls back to the declared override for a non-ISO currency', () => {
+        expect(currencyDecimals('BTC')).toBe(8);
+    });
+
+    it('falls back to two decimals for a code nothing knows', () => {
+        expect(currencyDecimals('ZZZ')).toBe(2);
+    });
+
+    it('round-trips major and minor units', () => {
+        expect(toMinorUnits(3.99, 'EUR')).toBe(399);
+        expect(toMinorUnits(123456, 'COP')).toBe(123456);
+        expect(toMinorUnits(0.00123456, 'BTC')).toBe(123456);
+        expect(toMajorUnits(399, 'EUR')).toBe(3.99);
+        expect(toMajorUnits(123456, 'BTC')).toBe(0.00123456);
+    });
+
+    it('rounds a fraction a zero-decimal currency cannot store', () => {
+        expect(toMinorUnits(1234.56, 'COP')).toBe(1235);
+    });
+
+    it('still honours an explicit fraction-digit override', () => {
+        // Chart labels pass 0 deliberately; that must keep working, including
+        // for a currency whose own scale is not 0.
+        expect(formatCurrency(164545, 'EUR', 'en-US', 0, 0)).toBe('€1,645');
     });
 });

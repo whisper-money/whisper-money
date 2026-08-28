@@ -29,8 +29,8 @@ class SearchTransactions extends McpTool
             'label_ids' => $schema->array()->items($schema->string())->description('Restrict to transactions carrying any of these label ids. Call list_labels to see valid ids.'),
             'from' => $schema->string()->description('Earliest transaction date, YYYY-MM-DD.'),
             'to' => $schema->string()->description('Latest transaction date, YYYY-MM-DD.'),
-            'min_amount' => $schema->integer()->description('Minimum signed amount in minor units (cents).'),
-            'max_amount' => $schema->integer()->description('Maximum signed amount in minor units (cents).'),
+            'min_amount' => $schema->integer()->description('Minimum signed amount in the account currency\'s minor units.'),
+            'max_amount' => $schema->integer()->description('Maximum signed amount in the account currency\'s minor units.'),
             'limit' => $schema->integer()->min(1)->max(200)->description('Max rows to return (default 50).'),
             'space' => $schema->string()->description('Space id to query. Defaults to the personal space.'),
         ];

@@ -23,7 +23,7 @@ class UpdateBudget extends WriteTool
         return [
             'budget_id' => $schema->string()->description('Id of the budget to edit. Call list_budgets to see valid ids.')->required(),
             'name' => $schema->string()->description('New budget name.'),
-            'allocated_amount' => $schema->integer()->description('New limit per period, in minor units (50000 = 500.00). Applies to the period in progress and every future one.'),
+            'allocated_amount' => $schema->integer()->description('New limit per period, in the user currency\'s minor units. Applies to the period in progress and every future one.'),
         ];
     }
 

@@ -3,6 +3,11 @@ import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import {
+    currencyDecimals,
+    toMajorUnits,
+    toMinorUnits,
+} from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 
 interface AmountInputProps {
@@ -15,6 +20,7 @@ interface AmountInputProps {
     currencyCode: string;
     disabled?: boolean;
     required?: boolean;
+    /** Defaults to a zero at the currency's own precision. */
     placeholder?: string;
     id?: string;
     className?: string;
@@ -45,15 +51,52 @@ const getCurrencyInfo = (
     return { symbol, position };
 };
 
-const formatCurrency = (value: number, locale: string): string => {
-    const amount = value / 100;
+const formatAmount = (
+    value: number,
+    locale: string,
+    currencyCode: string,
+): string => {
+    const decimals = currencyDecimals(currencyCode);
+
     return new Intl.NumberFormat(locale, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(amount);
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+    }).format(toMajorUnits(value, currencyCode));
 };
 
-const parseInputValue = (input: string): number => {
+const occurrences = (text: string, character: string): number =>
+    text.split(character).length - 1;
+
+/**
+ * Turn typed digits and separators into something `parseFloat` reads, without
+ * knowing the user's locale: whichever of `.` or `,` comes last is the decimal
+ * separator, and a repeated one can only be grouping.
+ */
+const normalizeAmountText = (cleaned: string, decimals: number): string => {
+    // A currency with no minor unit cannot carry a decimal separator at all, so
+    // every dot and comma in it groups thousands: "1.234.567" is 1234567 pesos.
+    if (decimals === 0) {
+        return cleaned.replace(/[.,]/g, '');
+    }
+
+    const lastComma = cleaned.lastIndexOf(',');
+    const lastDot = cleaned.lastIndexOf('.');
+
+    if (lastComma > lastDot) {
+        return cleaned.replace(/\./g, '').replace(',', '.');
+    }
+
+    if (lastDot > lastComma) {
+        // More than one dot rules out a decimal point: "1.234.567", not "1.234".
+        return occurrences(cleaned, '.') > 1
+            ? cleaned.replace(/\./g, '')
+            : cleaned.replace(/,/g, '');
+    }
+
+    return cleaned.replace(',', '.');
+};
+
+const parseInputValue = (input: string, currencyCode: string): number => {
     const isNegative = input.trim().startsWith('-');
     const cleaned = input.replace(/[^\d.,]/g, '');
 
@@ -61,30 +104,23 @@ const parseInputValue = (input: string): number => {
         return 0;
     }
 
-    const lastComma = cleaned.lastIndexOf(',');
-    const lastDot = cleaned.lastIndexOf('.');
-
-    let normalized: string;
-
-    if (lastComma > lastDot) {
-        normalized = cleaned.replace(/\./g, '').replace(',', '.');
-    } else if (lastDot > lastComma) {
-        normalized = cleaned.replace(/,/g, '');
-    } else {
-        normalized = cleaned.replace(',', '.');
-    }
-
-    const parsed = parseFloat(normalized);
+    const parsed = parseFloat(
+        normalizeAmountText(cleaned, currencyDecimals(currencyCode)),
+    );
 
     if (isNaN(parsed)) {
         return 0;
     }
 
-    const cents = Math.round(parsed * 100);
-    return isNegative ? -cents : cents;
+    const minorUnits = toMinorUnits(parsed, currencyCode);
+
+    return isNegative ? -minorUnits : minorUnits;
 };
 
-const evaluateMathExpression = (input: string): number | null => {
+const evaluateMathExpression = (
+    input: string,
+    currencyCode: string,
+): number | null => {
     // Check for leading minus (negative result)
     const trimmed = input.trim();
     const isNegativeResult = trimmed.startsWith('-');
@@ -99,9 +135,10 @@ const evaluateMathExpression = (input: string): number | null => {
         // Remove spaces
         const cleaned = withoutLeadingMinus.replace(/\s/g, '');
 
-        // Helper to convert parsed cents to dollars for calculation
-        const parseToDollars = (str: string): number => {
-            return parseInputValue(str) / 100;
+        // Operands are compared and combined in major units, so 12,50 + 3
+        // means 15,50 rather than 12,53.
+        const parseToMajorUnits = (str: string): number => {
+            return toMajorUnits(parseInputValue(str, currencyCode), currencyCode);
         };
 
         // Split into tokens (numbers and operators)
@@ -111,7 +148,7 @@ const evaluateMathExpression = (input: string): number | null => {
         for (let i = 0; i < cleaned.length; i++) {
             const char = cleaned[i];
             if (['+', '-', '*', '/'].includes(char) && currentNumber) {
-                tokens.push(parseToDollars(currentNumber));
+                tokens.push(parseToMajorUnits(currentNumber));
                 tokens.push(char);
                 currentNumber = '';
             } else {
@@ -119,7 +156,7 @@ const evaluateMathExpression = (input: string): number | null => {
             }
         }
         if (currentNumber) {
-            tokens.push(parseToDollars(currentNumber));
+            tokens.push(parseToMajorUnits(currentNumber));
         }
 
         if (tokens.length < 3) {
@@ -159,14 +196,15 @@ const evaluateMathExpression = (input: string): number | null => {
             result = -result;
         }
 
-        return Math.round(result * 100);
+        return toMinorUnits(result, currencyCode);
     } catch {
         return null;
     }
 };
 
-const resolveCents = (input: string): number =>
-    evaluateMathExpression(input) ?? parseInputValue(input);
+const resolveMinorUnits = (input: string, currencyCode: string): number =>
+    evaluateMathExpression(input, currencyCode) ??
+    parseInputValue(input, currencyCode);
 
 export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
     (
@@ -176,7 +214,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             currencyCode,
             disabled = false,
             required = false,
-            placeholder = '0.00',
+            placeholder,
             id,
             className = '',
             allowNegative = false,
@@ -185,6 +223,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
         ref,
     ) => {
         const locale = useLocale();
+        const zeroPlaceholder = (0).toFixed(currencyDecimals(currencyCode));
         const [displayValue, setDisplayValue] = React.useState<string>('');
         const [isFocused, setIsFocused] = React.useState<boolean>(false);
 
@@ -193,15 +232,17 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                 if (value === 0) {
                     setDisplayValue('');
                 } else {
-                    setDisplayValue(formatCurrency(value, locale));
+                    setDisplayValue(formatAmount(value, locale, currencyCode));
                 }
             }
-        }, [value, isFocused, locale]);
+        }, [value, isFocused, locale, currencyCode]);
 
         const handleFocus = () => {
             setIsFocused(true);
             if (value !== 0) {
-                const amount = (value / 100).toFixed(2);
+                const amount = toMajorUnits(value, currencyCode).toFixed(
+                    currencyDecimals(currencyCode),
+                );
                 setDisplayValue(amount);
             } else if (!displayValue.startsWith('-')) {
                 // Keep a lone '-' the user set via the toggle before typing.
@@ -210,7 +251,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
         };
 
         const commit = (text: string) => {
-            onChange(resolveCents(text), text.trim() === '');
+            onChange(resolveMinorUnits(text, currencyCode), text.trim() === '');
         };
 
         const handleBlur = () => {
@@ -270,7 +311,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                     onKeyDown={handleKeyDown}
-                    placeholder={placeholder}
+                    placeholder={placeholder ?? zeroPlaceholder}
                     disabled={disabled}
                     required={required}
                     className={cn([

@@ -8,6 +8,7 @@ import {
     type RowFault,
     type RowProblem,
 } from '@/types/import';
+import { toMinorUnits } from '@/utils/currency';
 import * as XLSX from 'xlsx';
 
 export const UNREADABLE_FILE_MESSAGE =
@@ -803,6 +804,7 @@ export function convertRowsToTransactions(
     rows: ParsedRow[],
     mapping: ColumnMapping,
     dateFormat: DateFormat,
+    accountCurrency: string,
     supportedCurrencies?: readonly string[],
 ): ParsedTransaction[] {
     const results: ParsedTransaction[] = [];
@@ -841,18 +843,20 @@ export function convertRowsToTransactions(
                     rawBalance as string | number,
                 );
                 if (parsedBalance !== null) {
-                    balance = Math.round(parsedBalance * 100);
+                    balance = toMinorUnits(parsedBalance, accountCurrency);
                 }
             }
         }
 
+        const rowCurrency = mapping.currency
+            ? parseCurrencyCode(row[mapping.currency], supportedCurrencies)
+            : null;
+
         results.push({
             transaction_date: formattedDate,
             description,
-            amount: Math.round(amount * 100),
-            currency_code: mapping.currency
-                ? parseCurrencyCode(row[mapping.currency], supportedCurrencies)
-                : null,
+            amount: toMinorUnits(amount, rowCurrency ?? accountCurrency),
+            currency_code: rowCurrency,
             balance,
             creditor_name: creditorName,
             debtor_name: debtorName,
@@ -967,12 +971,12 @@ export function buildMappingReport(
             });
         } else {
             fields.amount.ok++;
-            const cents = Math.round(amount * 100);
-            if (min === null || cents < min) {
-                min = cents;
+            const minorUnits = toMinorUnits(amount, accountCurrency);
+            if (min === null || minorUnits < min) {
+                min = minorUnits;
             }
-            if (max === null || cents > max) {
-                max = cents;
+            if (max === null || minorUnits > max) {
+                max = minorUnits;
             }
         }
 

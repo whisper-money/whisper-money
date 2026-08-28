@@ -5,6 +5,11 @@ import { formatCurrency } from '@/utils/currency';
 import { useMemo } from 'react';
 
 interface AmountDisplayProps {
+    /**
+     * The amount in the currency's minor units. Named for the common case, but
+     * a minor unit is not always a cent: it is a whole peso for COP and a
+     * satoshi for BTC. `formatCurrency` resolves the scale from the code.
+     */
     amountInCents: number;
     currencyCode: string;
     className?: string;
@@ -48,8 +53,8 @@ export function AmountDisplay({
     currencyCode,
     className,
     showSign = false,
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2,
+    minimumFractionDigits,
+    maximumFractionDigits,
     variant = 'default',
     size,
     weight,

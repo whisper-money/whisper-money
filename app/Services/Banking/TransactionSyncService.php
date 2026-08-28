@@ -6,6 +6,7 @@ use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
 use App\Exceptions\Banking\WrongTransactionsPeriodException;
 use App\Models\Account;
+use App\Support\Money;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -93,7 +94,7 @@ class TransactionSyncService
                         }
 
                         if ($saveDailyBalances) {
-                            $this->trackDailyBalance($transaction, $dailyBalances);
+                            $this->trackDailyBalance($transaction, $dailyBalances, $account->currency_code);
                         }
                     }
 
@@ -319,12 +320,12 @@ class TransactionSyncService
             return false;
         }
 
-        $amount = $this->parseAmount($data);
+        $currency = $data['transaction_amount']['currency'] ?? $account->currency_code;
+        $amount = $this->parseAmount($data, $currency);
         $rawDescription = $this->parseDescription($data);
         $formatted = $this->descriptionFormatter->format($rawDescription, $bankName);
         $counterparties = TransactionCounterpartyExtractor::fromPayload($data);
         $transactionDate = $this->parseDate($data);
-        $currency = $data['transaction_amount']['currency'] ?? $account->currency_code;
 
         try {
             $account->transactions()->create([
@@ -410,10 +411,10 @@ class TransactionSyncService
      * Parse amount from EnableBanking transaction data.
      * Returns amount in cents (bigint). Debits are negative.
      */
-    private function parseAmount(array $data): int
+    private function parseAmount(array $data, string $currency): int
     {
         $rawAmount = $data['transaction_amount']['amount'] ?? '0';
-        $cents = (int) round(floatval($rawAmount) * 100);
+        $cents = Money::toMinor(floatval($rawAmount), $currency);
 
         $indicator = $data['credit_debit_indicator'] ?? null;
 
@@ -457,7 +458,7 @@ class TransactionSyncService
      *
      * @param  array<string, int>  $dailyBalances
      */
-    private function trackDailyBalance(array $transaction, array &$dailyBalances): void
+    private function trackDailyBalance(array $transaction, array &$dailyBalances, string $currency): void
     {
         $balanceAfter = $transaction['balance_after_transaction'] ?? null;
 
@@ -466,7 +467,9 @@ class TransactionSyncService
         }
 
         $date = $this->parseDate($transaction);
-        $amount = (int) round(floatval($balanceAfter['amount']) * 100);
+        // The snapshot lands in `account_balances`, which holds the
+        // account's own currency.
+        $amount = Money::toMinor(floatval($balanceAfter['amount']), $currency);
 
         $dailyBalances[$date] = $amount;
     }

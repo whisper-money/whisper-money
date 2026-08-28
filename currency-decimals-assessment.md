@@ -1,7 +1,17 @@
 # Per-currency decimal precision — feasibility assessment
 
 Assessed 2026-08-28 against `currency-decimals-research` (base `6861010c`). Production
-numbers read live via `php artisan agent:db --prod`. **No production code changed.**
+numbers read live via `php artisan agent:db --prod`.
+
+> **Decision taken (2026-08-28), overriding the recommendation below.** The product owner
+> accepted the centavo loss on the zero-decimal currencies, so option **(A)** was
+> implemented in full rather than the asymmetric (C): COP, CLP, PYG, JPY and **PKR** were
+> rescaled down to 0 decimals, KWD up to 3 and BTC up to 8. PKR was added on the same
+> CLDR-over-ISO rule as COP. Everything in §"Data integrity" risk 1 still happened on
+> purpose — 1,874 COP transactions and 1,542 COP balance rows lost their centavos. Risks
+> 2 to 6 were all honoured: no global rescale, `archived_saved_amount` widened to bigint,
+> the currency reachable from every rescaled row, `varchar(3)` left as a stated limit, and
+> the seven BTC holders told to re-enter their balances.
 
 ## The current model
 

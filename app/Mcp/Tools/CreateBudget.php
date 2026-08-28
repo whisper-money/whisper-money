@@ -30,7 +30,7 @@ class CreateBudget extends WriteTool
     {
         return [
             'name' => $schema->string()->description('Budget name.')->required(),
-            'allocated_amount' => $schema->integer()->description('Limit for each period, in minor units (50000 = 500.00).')->required(),
+            'allocated_amount' => $schema->integer()->description('Limit for each period, in the user currency\'s minor units (50000 = 500.00 EUR, 50000 = 50000 COP).')->required(),
             'period_type' => $schema->string()->enum(array_column(BudgetPeriodType::cases(), 'value'))->description('How often the budget starts over.')->required(),
             'rollover_type' => $schema->string()->enum(array_column(RolloverType::cases(), 'value'))->description('"carry_over" adds what is left to the next period, "reset" starts every period at the limit.')->required(),
             'period_start_day' => $schema->integer()->min(0)->max(31)->description('Day the period starts: day of the month (1-31) when monthly, day of the week (0 = Sunday, 6 = Saturday) when weekly or biweekly. Ignored when yearly.'),

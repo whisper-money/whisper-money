@@ -73,6 +73,8 @@ class SyncStripePricesCommand extends Command
             return 'skipped';
         }
 
+        // Stripe's own smallest-currency-unit table, not the app's per-currency
+        // scale: this value goes out to the Stripe API, not into our columns.
         $amountInCents = (int) round($plan['price'] * 100);
         $billingPeriod = $plan['billing_period'] ?? null;
         $productId = config('subscriptions.products.pro');

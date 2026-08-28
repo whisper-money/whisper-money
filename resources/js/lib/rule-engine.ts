@@ -6,6 +6,7 @@ import type { Category } from '@/types/category';
 import type { Label } from '@/types/label';
 import type { DecryptedTransaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
+import { toMajorUnits } from '@/utils/currency';
 import jsonLogic from 'json-logic-js';
 
 export interface RuleEvaluationResult {
@@ -124,7 +125,7 @@ export async function prepareTransactionData(
         description: normalizeWhitespace(
             (transaction.decryptedDescription || '').toLowerCase(),
         ),
-        amount: transaction.amount / 100,
+        amount: toMajorUnits(transaction.amount, transaction.currency_code),
         transaction_date: transaction.transaction_date,
         bank_name: (bank?.name || '').toLowerCase(),
         account_name: accountName.toLowerCase(),

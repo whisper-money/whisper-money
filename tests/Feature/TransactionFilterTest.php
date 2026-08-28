@@ -658,3 +658,55 @@ test('does not expose the sort alias attribute when sorting by a nullable column
         ->missing('transactions.data.0.creditor_name_sort')
     );
 });
+
+test('filter by amount compares each currency at its own scale', function () {
+    // 50 in major units: 50 minor units in COP, 5000 in EUR, and the same
+    // threshold has to catch both.
+    $copAccount = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'COP']);
+    $eurAccount = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $copAccount->id,
+        'currency_code' => 'COP',
+        'amount' => 60, // 60 COP
+    ]);
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $eurAccount->id,
+        'currency_code' => 'EUR',
+        'amount' => 6000, // 60.00 EUR
+    ]);
+    // Below the threshold in its own currency, and a decoy: read at the old
+    // fixed scale of 2 it would look like 40.00 and be excluded either way,
+    // so the row that proves the point is the 60 COP one above.
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $copAccount->id,
+        'currency_code' => 'COP',
+        'amount' => 40, // 40 COP
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'amount_min' => 50,
+    ]));
+
+    $response->assertInertia(fn ($page) => $page->has('transactions.data', 2));
+});
+
+test('filter by amount still covers a currency the config no longer offers', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'currency_code' => 'ZWL',
+        'amount' => 6000,
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'amount_min' => 50,
+    ]));
+
+    $response->assertInertia(fn ($page) => $page->has('transactions.data', 1));
+});

@@ -123,11 +123,11 @@ class SendDailyStatsReportCommand extends Command
     }
 
     /**
-     * MRR figures are held in major units (e.g. euros), so convert to cents for
-     * the shared formatter.
+     * MRR figures are held in major units (e.g. euros), so convert to the
+     * currency's minor units for the shared formatter.
      */
     private function money(float $amount, string $currency): string
     {
-        return Money::format((int) round($amount * 100), $currency);
+        return Money::format(Money::toMinor($amount, $currency), $currency);
     }
 }

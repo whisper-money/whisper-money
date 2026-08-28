@@ -117,3 +117,101 @@ describe('AmountInput commitOnChange', () => {
         expect(onChange).toHaveBeenNthCalledWith(2, 3000, false);
     });
 });
+
+describe('AmountInput per-currency scale', () => {
+    it('emits whole units for a zero-decimal currency', () => {
+        const onChange = vi.fn();
+        render(<AmountInput value={0} onChange={onChange} currencyCode="COP" />);
+
+        const input = screen.getByRole('textbox');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: '25000' } });
+        fireEvent.blur(input);
+
+        expect(onChange).toHaveBeenCalledWith(25000, false);
+    });
+
+    it('emits satoshis for BTC', () => {
+        const onChange = vi.fn();
+        render(<AmountInput value={0} onChange={onChange} currencyCode="BTC" />);
+
+        const input = screen.getByRole('textbox');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: '0.00123456' } });
+        fireEvent.blur(input);
+
+        expect(onChange).toHaveBeenCalledWith(123456, false);
+    });
+
+    it('adds up in major units whatever the scale', () => {
+        const onChange = vi.fn();
+        render(<AmountInput value={0} onChange={onChange} currencyCode="COP" />);
+
+        const input = screen.getByRole('textbox');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: '20000+5000' } });
+        fireEvent.blur(input);
+
+        expect(onChange).toHaveBeenCalledWith(25000, false);
+    });
+
+    it('shapes the placeholder to the currency precision', () => {
+        const { rerender } = render(
+            <AmountInput value={0} onChange={vi.fn()} currencyCode="COP" />,
+        );
+        expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '0');
+
+        rerender(<AmountInput value={0} onChange={vi.fn()} currencyCode="BTC" />);
+        expect(screen.getByRole('textbox')).toHaveAttribute(
+            'placeholder',
+            '0.00000000',
+        );
+
+        rerender(<AmountInput value={0} onChange={vi.fn()} currencyCode="EUR" />);
+        expect(screen.getByRole('textbox')).toHaveAttribute(
+            'placeholder',
+            '0.00',
+        );
+    });
+
+    it('renders a stored value back at the currency scale', () => {
+        render(<AmountInput value={123456} onChange={vi.fn()} currencyCode="BTC" />);
+
+        expect(screen.getByRole('textbox')).toHaveValue('0.00123456');
+    });
+});
+
+describe('AmountInput separators', () => {
+    const typeAndCommit = (typed: string, currencyCode: string) => {
+        const onChange = vi.fn();
+        const { unmount } = render(
+            <AmountInput value={0} onChange={onChange} currencyCode={currencyCode} />,
+        );
+        const input = screen.getByRole('textbox');
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: typed } });
+        fireEvent.blur(input);
+        unmount();
+
+        return onChange.mock.calls[0][0];
+    };
+
+    it('reads every separator as grouping in a zero-decimal currency', () => {
+        // Colombians type "1.234.567" for a million-and-change pesos. There is
+        // no centavo, so no separator can be a decimal point.
+        expect(typeAndCommit('1.234.567', 'COP')).toBe(1234567);
+        expect(typeAndCommit('1.234', 'COP')).toBe(1234);
+        expect(typeAndCommit('25000', 'COP')).toBe(25000);
+    });
+
+    it('still reads the last separator as the decimal point', () => {
+        expect(typeAndCommit('1.234,56', 'EUR')).toBe(123456);
+        expect(typeAndCommit('1,234.56', 'EUR')).toBe(123456);
+        expect(typeAndCommit('12,50', 'EUR')).toBe(1250);
+        expect(typeAndCommit('12.50', 'EUR')).toBe(1250);
+    });
+
+    it('treats a repeated separator as grouping', () => {
+        expect(typeAndCommit('1.234.567', 'EUR')).toBe(123456700);
+    });
+});

@@ -41,7 +41,7 @@ class SplitTransaction extends WriteTool
         return [
             'transaction_id' => $schema->string()->description('Id of the transaction to split. A part of an existing split cannot be split again — merge it back first.')->required(),
             'splits' => $schema->array()->items($schema->object([
-                'amount' => $schema->integer()->description('Signed amount in minor units (cents). Must have the same sign as the original: parts of an expense are all negative.')->required(),
+                'amount' => $schema->integer()->description('Signed amount in the transaction currency\'s minor units. Must have the same sign as the original: parts of an expense are all negative.')->required(),
                 'category_id' => $schema->string()->description('Category for this part. Omit to leave it uncategorized.'),
                 'label_ids' => $schema->array()->items($schema->string())->description('Label ids for this part. Defaults to none; the original\'s labels are not copied.'),
             ]))->description('The parts to create, 2 to '.TransactionSplitter::MAX_PARTS.' of them. Their amounts must add up to the original amount exactly.')->required(),

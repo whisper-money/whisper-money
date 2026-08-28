@@ -27,7 +27,7 @@ class CreateAutomationRule extends WriteTool
             'title' => $schema->string()->description('Human-readable rule name.')->required(),
             'priority' => $schema->integer()->min(0)->description('Lower numbers are evaluated first.')->required(),
             'rules_json' => $schema->object()->description(<<<'TEXT'
-                JsonLogic condition object, evaluated against these lowercase variables: description, notes, creditor_name, debtor_name, account_name, bank_name, category, transaction_date (YYYY-MM-DD) and amount. Note: amount here is in MAJOR units (e.g. 12.50), not cents. Example: {"and":[{">":[{"var":"amount"},100]},{"in":["grocery",{"var":"description"}]}]}
+                JsonLogic condition object, evaluated against these lowercase variables: description, notes, creditor_name, debtor_name, account_name, bank_name, category, transaction_date (YYYY-MM-DD) and amount. Note: amount here is in MAJOR units (e.g. 12.50), not the minor units every other tool takes. Example: {"and":[{">":[{"var":"amount"},100]},{"in":["grocery",{"var":"description"}]}]}
                 TEXT)->required(),
             'action_category_id' => $schema->string()->description('Category id to assign to matching transactions.'),
             'action_label_ids' => $schema->array()->items($schema->string())->description('Label ids to attach to matching transactions.'),

@@ -42,6 +42,7 @@ import {
     type ParsedTransaction,
 } from '@/types/import';
 import { type UUID } from '@/types/uuid';
+import { toMajorUnits } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -426,6 +427,7 @@ export function ImportTransactionsDrawer({
                 state.parsedData,
                 state.columnMapping,
                 state.dateFormat,
+                account.currency_code,
                 supportedCurrencies,
             ).map((transaction) =>
                 ownMoney(transaction)
@@ -541,7 +543,10 @@ export function ImportTransactionsDrawer({
                         const ruleMatch = await evaluateRulesForNewTransaction(
                             {
                                 description: transaction.description,
-                                amount: transaction.amount / 100,
+                                amount: toMajorUnits(
+                                    transaction.amount,
+                                    selectedAccount.currency_code,
+                                ),
                                 transaction_date: transaction.transaction_date,
                                 account_id: selectedAccount.id,
                                 creditor_name: transaction.creditor_name,

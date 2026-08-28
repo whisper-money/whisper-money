@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ExchangeRate;
+use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -23,19 +24,26 @@ class ExchangeRateService
      *
      * @param  string  $source  Source currency code (e.g., "EUR")
      * @param  string  $target  Target currency code (e.g., "USD")
-     * @param  int  $amountInCents  Amount in the source currency's smallest unit
+     * @param  int  $amountInMinorUnits  Amount in the source currency's minor units
      * @param  string  $date  Date string (YYYY-MM-DD)
+     * @return int Amount in the *target* currency's minor units
      */
-    public function convert(string $source, string $target, int $amountInCents, string $date): int
+    public function convert(string $source, string $target, int $amountInMinorUnits, string $date): int
     {
         $source = strtolower($source);
         $target = strtolower($target);
 
-        if ($source === $target || $amountInCents === 0) {
-            return $amountInCents;
+        if ($source === $target || $amountInMinorUnits === 0) {
+            return $amountInMinorUnits;
         }
 
         $rates = $this->getRates($target, $date);
+
+        // Source and target can hold a different number of decimals (COP 0,
+        // EUR 2, BTC 8), so the rate is applied in major units and the result
+        // rescaled to the target. Applying it to the stored integers directly
+        // would be off by a power of ten between any two unequal scales.
+        $majorUnits = Money::toMajor($amountInMinorUnits, $source);
 
         if (! isset($rates[$source]) || $rates[$source] == 0) {
             Log::warning('Exchange rate not found, returning unconverted amount', [
@@ -44,10 +52,12 @@ class ExchangeRateService
                 'date' => $date,
             ]);
 
-            return $amountInCents;
+            // Unconverted, but still rescaled: the caller reads the result as
+            // the target's minor units either way.
+            return Money::toMinor($majorUnits, $target);
         }
 
-        return (int) round($amountInCents / $rates[$source]);
+        return Money::toMinor($majorUnits / $rates[$source], $target);
     }
 
     /**

@@ -14,28 +14,30 @@ class LoanAmortizationService
      * Uses the standard amortization formula:
      * M = P * [r(1+r)^n] / [(1+r)^n - 1]
      *
-     * @param  int  $principalCents  Original loan amount in cents
+     * The formula is homogeneous in the principal, so it needs no currency: an
+     * amount in minor units in gives a payment in the same minor units out,
+     * whether those are cents, whole pesos or satoshis.
+     *
+     * @param  int  $principalMinorUnits  Original loan amount in minor units
      * @param  float  $annualRate  Annual interest rate as percentage (e.g. 3.5)
      * @param  int  $termMonths  Total loan term in months
-     * @return int Monthly payment in cents
+     * @return int Monthly payment in the same minor units
      */
-    public function calculateMonthlyPayment(int $principalCents, float $annualRate, int $termMonths): int
+    public function calculateMonthlyPayment(int $principalMinorUnits, float $annualRate, int $termMonths): int
     {
         if ($termMonths <= 0) {
             return 0;
         }
 
-        $principal = $principalCents / 100;
         $monthlyRate = ($annualRate / 100) / 12;
 
         if ($monthlyRate === 0.0) {
-            return (int) round(($principal / $termMonths) * 100);
+            return (int) round($principalMinorUnits / $termMonths);
         }
 
         $factor = pow(1 + $monthlyRate, $termMonths);
-        $payment = $principal * ($monthlyRate * $factor) / ($factor - 1);
 
-        return (int) round($payment * 100);
+        return (int) round($principalMinorUnits * ($monthlyRate * $factor) / ($factor - 1));
     }
 
     /**
@@ -43,36 +45,36 @@ class LoanAmortizationService
      *
      * Uses the formula: B(k) = P * [(1+r)^n - (1+r)^k] / [(1+r)^n - 1]
      *
-     * @param  int  $principalCents  Original loan amount in cents
+     * Scale-agnostic for the same reason as {@see self::calculateMonthlyPayment()}.
+     *
+     * @param  int  $principalMinorUnits  Original loan amount in minor units
      * @param  float  $annualRate  Annual interest rate as percentage (e.g. 3.5)
      * @param  int  $termMonths  Total loan term in months
      * @param  int  $paymentsMade  Number of payments already made
-     * @return int Remaining balance in cents
+     * @return int Remaining balance in the same minor units
      */
-    public function calculateRemainingBalance(int $principalCents, float $annualRate, int $termMonths, int $paymentsMade): int
+    public function calculateRemainingBalance(int $principalMinorUnits, float $annualRate, int $termMonths, int $paymentsMade): int
     {
         if ($paymentsMade >= $termMonths) {
             return 0;
         }
 
         if ($paymentsMade <= 0) {
-            return $principalCents;
+            return $principalMinorUnits;
         }
 
-        $principal = $principalCents / 100;
         $monthlyRate = ($annualRate / 100) / 12;
 
         if ($monthlyRate === 0.0) {
-            $remaining = $principal - ($principal / $termMonths * $paymentsMade);
+            $remaining = $principalMinorUnits - ($principalMinorUnits / $termMonths * $paymentsMade);
 
-            return max(0, (int) round($remaining * 100));
+            return max(0, (int) round($remaining));
         }
 
         $factorN = pow(1 + $monthlyRate, $termMonths);
         $factorK = pow(1 + $monthlyRate, $paymentsMade);
-        $remaining = $principal * ($factorN - $factorK) / ($factorN - 1);
 
-        return max(0, (int) round($remaining * 100));
+        return max(0, (int) round($principalMinorUnits * ($factorN - $factorK) / ($factorN - 1)));
     }
 
     /**

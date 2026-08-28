@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Models\Account;
 use App\Services\CurrencyConversionService;
+use App\Support\Money;
 use Illuminate\Support\Facades\Log;
 
 class BitpandaBalanceSyncService
@@ -40,7 +41,7 @@ class BitpandaBalanceSyncService
         $totalValue += $this->sumCryptoWallets($client, $ticker, $targetCurrency);
         $totalValue += $this->sumFiatWallets($client, $targetCurrency);
 
-        $totalValueCents = (int) round($totalValue * 100);
+        $totalValueCents = Money::toMinor($totalValue, $targetCurrency);
 
         $account->balances()->updateOrCreate(
             ['balance_date' => now()->toDateString()],
@@ -173,7 +174,7 @@ class BitpandaBalanceSyncService
             return null;
         }
 
-        return (int) round(($totalDeposited - $totalWithdrawn) * 100);
+        return Money::toMinor($totalDeposited - $totalWithdrawn, $targetCurrency);
     }
 
     /**

@@ -29,7 +29,7 @@ class TransactionFactory extends Factory
             'description_iv' => fake()->regexify('[A-Za-z0-9]{16}'),
             'transaction_date' => fake()->dateTimeBetween('-1 year', 'now'),
             'amount' => fake()->numberBetween(-100000, 100000),
-            'currency_code' => fake()->randomElement(['USD', 'EUR', 'GBP', 'JPY']),
+            'currency_code' => fake()->randomElement(['USD', 'EUR', 'GBP', 'CHF']),
             'notes' => fake()->optional()->paragraph(),
             'notes_iv' => fake()->optional()->regexify('[A-Za-z0-9]{16}'),
             'source' => TransactionSource::ManuallyCreated,

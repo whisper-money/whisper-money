@@ -2,16 +2,18 @@
 
 namespace App\Support;
 
+use App\Services\CurrencyOptions;
+
 /**
- * Formats a minor-unit amount (cents) with its currency symbol, e.g. "€3.99".
+ * Converts between a currency's minor units — the integers every money column
+ * stores — and its major units, and formats them.
  *
- * Centralizes the money formatting that was duplicated across the stats report
- * commands and the Discord Stripe listener. Currencies without a known symbol
- * fall back to the uppercased currency code plus a trailing space ("CHF 3.99").
+ * The number of minor units per major unit depends on the currency: 100 for
+ * EUR, 1 for COP, 100_000_000 for BTC. Nothing here may assume 2 decimals.
  */
 final class Money
 {
-    public static function format(int $cents, string $currency): string
+    public static function format(int $minorUnits, string $currency): string
     {
         $symbol = match (strtolower($currency)) {
             'eur' => '€',
@@ -22,6 +24,40 @@ final class Money
             default => strtoupper($currency).' ',
         };
 
-        return $symbol.number_format($cents / 100, 2);
+        $decimals = self::decimals($currency);
+
+        return $symbol.number_format(self::toMajor($minorUnits, $currency), $decimals);
+    }
+
+    /**
+     * A major-unit amount as the integer the database stores, e.g. 3.99 EUR to
+     * 399 and 0.5 BTC to 50_000_000.
+     */
+    public static function toMinor(float $majorUnits, string $currency): int
+    {
+        return (int) round($majorUnits * self::factor($currency));
+    }
+
+    /**
+     * A stored integer back to major units, e.g. 399 EUR to 3.99. Lossy by
+     * nature — the result is a float, so never round-trip it through arithmetic
+     * that must balance.
+     */
+    public static function toMajor(int $minorUnits, string $currency): float
+    {
+        return $minorUnits / self::factor($currency);
+    }
+
+    /**
+     * How many minor units make one major unit of this currency.
+     */
+    public static function factor(string $currency): int
+    {
+        return 10 ** self::decimals($currency);
+    }
+
+    public static function decimals(string $currency): int
+    {
+        return app(CurrencyOptions::class)->decimals($currency);
     }
 }

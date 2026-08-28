@@ -86,6 +86,7 @@ import {
     type Transaction,
 } from '@/types/transaction';
 import { UUID } from '@/types/uuid';
+import { toMajorUnits } from '@/utils/currency';
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
 
@@ -529,15 +530,20 @@ export function TransactionList({
                 }
             }
 
+            const amountInMajorUnits = toMajorUnits(
+                transaction.amount,
+                transaction.currency_code,
+            );
+
             if (
                 filters.amountMin !== null &&
-                transaction.amount / 100 < filters.amountMin
+                amountInMajorUnits < filters.amountMin
             ) {
                 return false;
             }
             if (
                 filters.amountMax !== null &&
-                transaction.amount / 100 > filters.amountMax
+                amountInMajorUnits > filters.amountMax
             ) {
                 return false;
             }

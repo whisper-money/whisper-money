@@ -11,6 +11,7 @@ use App\Events\TransactionDeleted;
 use App\Events\TransactionUpdated;
 use App\Models\Concerns\BelongsToSpace;
 use App\Services\CategoryTree;
+use App\Services\CurrencyOptions;
 use Carbon\Carbon;
 use Database\Factories\TransactionFactory;
 use Illuminate\Contracts\Database\Query\Expression;
@@ -433,9 +434,8 @@ class Transaction extends Model
         $query
             ->when(isset($filters['date_from']), fn (Builder $q) => $q->whereDate('transaction_date', '>=', $filters['date_from']))
             ->when(isset($filters['date_to']), fn (Builder $q) => $q->whereDate('transaction_date', '<=', $filters['date_to']))
-            // Amounts arrive in major units from the UI but are stored in cents.
-            ->when(isset($filters['amount_min']), fn (Builder $q) => $q->where('amount', '>=', $filters['amount_min'] * 100))
-            ->when(isset($filters['amount_max']), fn (Builder $q) => $q->where('amount', '<=', $filters['amount_max'] * 100))
+            ->when(isset($filters['amount_min']), fn (Builder $q) => $this->applyAmountFilter($q, (float) $filters['amount_min'], '>='))
+            ->when(isset($filters['amount_max']), fn (Builder $q) => $this->applyAmountFilter($q, (float) $filters['amount_max'], '<='))
             ->when(! empty($filters['account_ids']), fn (Builder $q) => $q->whereIn('account_id', $filters['account_ids']))
             ->when(! empty($filters['category_source']), fn (Builder $q) => $q->where('category_source', $filters['category_source']))
             ->when(! empty($filters['creditor_name']), fn (Builder $q) => $q->where('creditor_name', 'LIKE', '%'.$filters['creditor_name'].'%'))
@@ -451,6 +451,33 @@ class Transaction extends Model
         $this->applyCategoryAndLabelFilters($query, $filters);
 
         return $query;
+    }
+
+    /**
+     * An amount filter arrives from the UI in major units, while the column holds
+     * minor units at each currency's own scale. One threshold therefore becomes
+     * one comparison per scale, ORed over the currencies that share it.
+     *
+     * @param  Builder<Transaction>  $query
+     */
+    private function applyAmountFilter(Builder $query, float $majorUnits, string $operator): void
+    {
+        $currencies = app(CurrencyOptions::class);
+        $knownCodes = array_keys($currencies->decimalsMap());
+
+        $query->where(function (Builder $group) use ($currencies, $knownCodes, $majorUnits, $operator): void {
+            foreach ($currencies->codesByDecimals() as $decimals => $codes) {
+                $group->orWhere(fn (Builder $scale) => $scale
+                    ->whereIn('currency_code', $codes)
+                    ->where('amount', $operator, (int) round($majorUnits * 10 ** $decimals)));
+            }
+
+            // A row in a currency the config no longer offers still has to be
+            // filterable, and every such row predates the per-currency scale.
+            $group->orWhere(fn (Builder $scale) => $scale
+                ->whereNotIn('currency_code', $knownCodes)
+                ->where('amount', $operator, (int) round($majorUnits * 10 ** CurrencyOptions::DEFAULT_DECIMALS)));
+        });
     }
 
     /**
