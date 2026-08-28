@@ -9,7 +9,6 @@ import { CreateSavingsGoalDialog } from '@/components/savings-goals/create-savin
 import { SavingsGoalListCard } from '@/components/savings-goals/savings-goal-list-card';
 import { CreatePlaceholderCard } from '@/components/shared/create-placeholder-card';
 import { PlanningReorderDialog } from '@/components/shared/planning-reorder-dialog';
-import { SortableGrid } from '@/components/sortable-grid';
 import { Button } from '@/components/ui/button';
 import {
     Collapsible,
@@ -128,10 +127,10 @@ export default function BudgetsIndex({
 
     const handleReorder = useCallback(
         (orderedVisibleIds: string[]) => {
-            // The drag only saw what the filter left on screen, so the full
-            // order is rebuilt around it and the whole live list is persisted
-            // — never just the filtered subset, or the hidden items would lose
-            // their slots and the two types would drift apart.
+            // The dialog only lists what the filter left on screen, so the
+            // full order is rebuilt around it and the whole live list is
+            // persisted — never just the filtered subset, or the hidden items
+            // would lose their slots and the two types would drift apart.
             const nextOrder = applyFilteredOrder(
                 liveItems.map((item) => item.id),
                 orderedVisibleIds,
@@ -165,25 +164,12 @@ export default function BudgetsIndex({
 
             <div className="space-y-8 p-6">
                 <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1">
-                        <HeadingSmall
-                            title={__('Planning')}
-                            description={__(
-                                'Track your spending and save toward your goals',
-                            )}
-                        />
-                        {items.length > 1 && (
-                            <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="md:hidden"
-                                onClick={() => setReorderOpen(true)}
-                                aria-label={__('Reorder')}
-                            >
-                                <Pencil className="size-4" />
-                            </Button>
+                    <HeadingSmall
+                        title={__('Planning')}
+                        description={__(
+                            'Track your spending and save toward your goals',
                         )}
-                    </div>
+                    />
                     {savingsGoalsEnabled ? (
                         <CreateMenu
                             onCreate={setCreateType}
@@ -207,58 +193,70 @@ export default function BudgetsIndex({
                     )}
                 </div>
 
-                {savingsGoalsEnabled && (
-                    <ToggleGroup
-                        type="single"
-                        variant="outline"
-                        size="sm"
-                        value={filter}
-                        onValueChange={changeFilter}
-                        aria-label={__('Filter by type')}
-                    >
-                        <ToggleGroupItem
-                            value="all"
-                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
-                        >
-                            {__('All')}
-                        </ToggleGroupItem>
-                        <ToggleGroupItem
-                            value="budgets"
-                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
-                        >
-                            {__('Budgets')}
-                        </ToggleGroupItem>
-                        <ToggleGroupItem
-                            value="goals"
-                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
-                        >
-                            {__('Savings Goals')}
-                        </ToggleGroupItem>
-                    </ToggleGroup>
+                {/* The row exists for either control, so it still lays the
+                    reorder button out on the right with savings goals off and
+                    no filter to sit beside it. It wraps rather than shrinks:
+                    the filter is already as narrow as its labels allow, so on
+                    a phone the button drops to its own line instead of sitting
+                    on top of it. */}
+                {(savingsGoalsEnabled || items.length > 1) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        {savingsGoalsEnabled && (
+                            <ToggleGroup
+                                type="single"
+                                variant="outline"
+                                size="sm"
+                                value={filter}
+                                onValueChange={changeFilter}
+                                aria-label={__('Filter by type')}
+                            >
+                                <ToggleGroupItem
+                                    value="all"
+                                    className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                                >
+                                    {__('All')}
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                    value="budgets"
+                                    className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                                >
+                                    {__('Budgets')}
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                    value="goals"
+                                    className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                                >
+                                    {__('Savings Goals')}
+                                </ToggleGroupItem>
+                            </ToggleGroup>
+                        )}
+                        {items.length > 1 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="ml-auto"
+                                onClick={() => setReorderOpen(true)}
+                                aria-label={__('Edit order')}
+                            >
+                                <Pencil className="size-4" />
+                                <span className="hidden md:inline">
+                                    {__('Edit order')}
+                                </span>
+                            </Button>
+                        )}
+                    </div>
                 )}
 
-                <SortableGrid
-                    className="grid gap-4 lg:grid-cols-2"
-                    items={items}
-                    getId={(item) => item.id}
-                    onReorder={handleReorder}
-                    renderItem={(item, dragHandle) => (
-                        <PlanningCard
-                            item={item}
-                            currencyCode={currencyCode}
-                            dragHandle={dragHandle}
-                        />
-                    )}
-                    footer={
-                        <CreateCard
-                            currencyCode={currencyCode}
-                            savingsGoalsEnabled={savingsGoalsEnabled}
-                            filter={filter}
-                            isListEmpty={items.length === 0}
-                            onCreate={setCreateType}
-                        />
-                    }
-                />
+                <div className="grid gap-4 lg:grid-cols-2">
+                    <PlanningCards items={items} currencyCode={currencyCode} />
+                    <CreateCard
+                        currencyCode={currencyCode}
+                        savingsGoalsEnabled={savingsGoalsEnabled}
+                        filter={filter}
+                        isListEmpty={items.length === 0}
+                        onCreate={setCreateType}
+                    />
+                </div>
 
                 {archivedItems.length > 0 && (
                     <Collapsible
@@ -277,13 +275,10 @@ export default function BudgetsIndex({
                             })}
                         </CollapsibleTrigger>
                         <CollapsibleContent className="grid gap-4 lg:grid-cols-2">
-                            {archivedItems.map((item) => (
-                                <PlanningCard
-                                    key={item.id}
-                                    item={item}
-                                    currencyCode={currencyCode}
-                                />
-                            ))}
+                            <PlanningCards
+                                items={archivedItems}
+                                currencyCode={currencyCode}
+                            />
                         </CollapsibleContent>
                     </Collapsible>
                 )}
@@ -315,30 +310,30 @@ export default function BudgetsIndex({
 }
 
 /**
- * One card, picked by type. Both the live list and the archived section render
- * it, so the mapping lives in one place.
+ * The cards themselves, picked by type. Both the live list and the archived
+ * section render the same grid, so the mapping lives in one place.
  */
-function PlanningCard({
-    item,
+function PlanningCards({
+    items,
     currencyCode,
-    dragHandle,
 }: {
-    item: PlanningItem;
+    items: PlanningItem[];
     currencyCode: string;
-    dragHandle?: ReactNode;
 }) {
-    return item.type === 'budget' ? (
-        <BudgetListCard
-            budget={item.budget}
-            currencyCode={currencyCode}
-            dragHandle={dragHandle}
-        />
-    ) : (
-        <SavingsGoalListCard
-            savingsGoal={item.goal}
-            currencyCode={currencyCode}
-            dragHandle={dragHandle}
-        />
+    return items.map((item) =>
+        item.type === 'budget' ? (
+            <BudgetListCard
+                key={item.id}
+                budget={item.budget}
+                currencyCode={currencyCode}
+            />
+        ) : (
+            <SavingsGoalListCard
+                key={item.id}
+                savingsGoal={item.goal}
+                currencyCode={currencyCode}
+            />
+        ),
     );
 }
 

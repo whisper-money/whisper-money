@@ -130,7 +130,7 @@ class SavingsGoal extends Model
     {
         // Archiving soft-deletes the label, so it has to be read through the
         // trashed scope or an archived goal loses the name it saved under.
-        $goals = $user->savingsGoals()->orderBy('position')->with(['label' => fn ($query) => $query->withTrashed()])->get();
+        $goals = $user->savingsGoals()->orderBy('position')->orderBy('name')->with(['label' => fn ($query) => $query->withTrashed()])->get();
 
         // ponytail: one grouped sum+min for all goals' labels avoids N+1 across the list.
         $aggByLabel = self::taggedContributions($goals->pluck('label_id')->filter())

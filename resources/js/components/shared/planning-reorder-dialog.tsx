@@ -18,9 +18,9 @@ interface Props {
 }
 
 /**
- * Reordering for touch. The cards themselves only take a drag from `md` up,
- * where a hover reveals the grip; below that the pencil next to the heading
- * opens this compact list instead.
+ * Where the Planning list gets reordered, on every viewport. The cards stay
+ * undraggable — one compact list behaves the same under a mouse and a finger,
+ * and it does not put a drag target on top of a card that is also a link.
  */
 export function PlanningReorderDialog({
     open,
@@ -28,17 +28,21 @@ export function PlanningReorderDialog({
     items,
     onReorder,
 }: Props) {
-    // With savings goals switched off everything is a budget, so the type hint
-    // would only be noise.
-    const showType = items.some((item) => item.type === 'goal');
+    // With savings goals switched off everything is a budget, so neither the
+    // type hint nor a description naming goals would say anything true.
+    const hasGoals = items.some((item) => item.type === 'goal');
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{__('Reorder')}</DialogTitle>
+                    <DialogTitle>{__('Edit order')}</DialogTitle>
                     <DialogDescription>
-                        {__('Drag to reorder your budgets and savings goals.')}
+                        {hasGoals
+                            ? __(
+                                  'Drag to reorder your budgets and savings goals.',
+                              )
+                            : __('Drag to reorder your budgets.')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -52,7 +56,7 @@ export function PlanningReorderDialog({
                             <span className="flex-1 truncate text-sm">
                                 {item.name}
                             </span>
-                            {showType && (
+                            {hasGoals && (
                                 <span className="shrink-0 text-xs text-muted-foreground">
                                     {item.type === 'budget'
                                         ? __('Budget')

@@ -38,6 +38,7 @@ class BudgetController extends Controller
         $budgets = $user
             ->budgets()
             ->orderBy('position')
+            ->orderBy('name')
             ->with(['categories', 'labels', 'periods' => function ($query) {
                 // Same ordering as Budget::getCurrentPeriod, for the same
                 // reason: the card reads `periods[0]`, and where two periods

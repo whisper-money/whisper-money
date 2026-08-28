@@ -25,35 +25,24 @@ vi.mock('@/actions/App/Http/Controllers/BudgetController', () => ({
     reorder: { url: () => '/planning/reorder' },
 }));
 
-// Driving a real dnd-kit drag in jsdom tests the grid, not the page. What
-// matters here is what the page does with the ids a drag hands back, so the
-// grid is reduced to a button that replays the list backwards.
-vi.mock('@/components/sortable-grid', () => ({
-    SortableGrid: ({
+// Driving a real dnd-kit drag in jsdom tests the sortable list, not the page.
+// What matters here is what the page does with the ids the dialog hands back,
+// so the dialog is reduced to a button that replays its list backwards.
+vi.mock('@/components/shared/planning-reorder-dialog', () => ({
+    PlanningReorderDialog: ({
         items,
-        getId,
-        renderItem,
         onReorder,
-        footer,
     }: {
         items: { id: string }[];
-        getId: (item: { id: string }) => string;
-        renderItem: (
-            item: { id: string },
-            handle: React.ReactNode,
-        ) => React.ReactNode;
         onReorder: (ids: string[]) => void;
-        footer?: React.ReactNode;
     }) => (
-        <div>
-            {items.map((item) => (
-                <div key={getId(item)}>{renderItem(item, null)}</div>
-            ))}
-            <button onClick={() => onReorder([...items.map(getId)].reverse())}>
-                reverse-order
-            </button>
-            {footer}
-        </div>
+        <button
+            onClick={() =>
+                onReorder([...items.map((item) => item.id)].reverse())
+            }
+        >
+            reverse-order
+        </button>
     ),
 }));
 
@@ -329,7 +318,7 @@ describe('BudgetsIndex reordering', () => {
     it('persists both types in one ordered list', () => {
         renderPage();
 
-        fireEvent.click(screen.getAllByText('reverse-order')[0]);
+        fireEvent.click(screen.getByText('reverse-order'));
 
         expect(patch.mock.calls[0][0]).toBe('/planning/reorder');
         expect(reorderPayload()).toEqual([
@@ -354,7 +343,7 @@ describe('BudgetsIndex reordering', () => {
         );
 
         fireEvent.click(screen.getByRole('radio', { name: 'Budgets' }));
-        fireEvent.click(screen.getAllByText('reverse-order')[0]);
+        fireEvent.click(screen.getByText('reverse-order'));
 
         // The goal was filtered out of the drag but keeps the slot it had, so
         // only the two budgets swap around it.
@@ -368,7 +357,7 @@ describe('BudgetsIndex reordering', () => {
     it('leaves archived items out of the order it persists', () => {
         renderWithArchived();
 
-        fireEvent.click(screen.getAllByText('reverse-order')[0]);
+        fireEvent.click(screen.getByText('reverse-order'));
 
         expect(reorderPayload()).toEqual([
             { id: '2', type: 'goal' },
@@ -376,9 +365,9 @@ describe('BudgetsIndex reordering', () => {
         ]);
     });
 
-    it('offers the mobile reorder dialog only when there is something to reorder', () => {
+    it('offers the reorder dialog only when there is something to reorder', () => {
         renderPage();
-        expect(screen.getByLabelText('Reorder')).toBeInTheDocument();
+        expect(screen.getByLabelText('Edit order')).toBeInTheDocument();
 
         cleanup();
         render(
@@ -388,6 +377,6 @@ describe('BudgetsIndex reordering', () => {
                 currencyCode="EUR"
             />,
         );
-        expect(screen.queryByLabelText('Reorder')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Edit order')).not.toBeInTheDocument();
     });
 });

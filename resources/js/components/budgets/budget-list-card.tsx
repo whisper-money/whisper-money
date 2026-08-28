@@ -14,15 +14,14 @@ import {
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Archive, Calendar } from 'lucide-react';
-import { ReactNode, useMemo } from 'react';
+import { useMemo } from 'react';
 
 interface Props {
     budget: Budget;
     currencyCode: string;
-    dragHandle?: ReactNode;
 }
 
-export function BudgetListCard({ budget, currencyCode, dragHandle }: Props) {
+export function BudgetListCard({ budget, currencyCode }: Props) {
     const locale = useLocale();
     const currentPeriod = budget.periods?.[0];
     const archivedAt = budget.archived_at;
@@ -86,7 +85,6 @@ export function BudgetListCard({ budget, currencyCode, dragHandle }: Props) {
             href={show({ budget: budget.id }).url}
             title={budget.name}
             dimmed={!!archivedAt}
-            dragHandle={dragHandle}
             badge={
                 archivedAt ? (
                     <Badge variant="secondary">{__('Archived')}</Badge>
