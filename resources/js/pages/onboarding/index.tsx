@@ -18,16 +18,17 @@ import {
     BACKABLE_STEPS,
     CreatedAccount,
     OnboardingStep,
-    VALID_STEPS,
     useOnboardingState,
+    validStepsFor,
 } from '@/hooks/use-onboarding-state';
 import OnboardingLayout from '@/layouts/onboarding-layout';
+import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type SignupPlan } from '@/types/pricing';
 import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { Head, usePoll } from '@inertiajs/react';
+import { Head, usePage, usePoll } from '@inertiajs/react';
 import { useEffect, useMemo, useRef } from 'react';
 
 interface OnboardingProps {
@@ -48,6 +49,7 @@ export default function Onboarding({
     signupPlan = null,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
+    const { auth } = usePage<SharedData>().props;
     const hasSyncedRef = useRef(false);
     const isFreePlan = signupPlan === 'free';
 
@@ -55,9 +57,7 @@ export default function Onboarding({
     // client-side deep links keep working. Neither is the hook's last resort:
     // it falls back again to the step it stored locally.
     const initialStep = useMemo((): OnboardingStep | undefined => {
-        const validSteps = isFreePlan
-            ? VALID_STEPS.filter((step) => step !== 'ai-suggestions')
-            : VALID_STEPS;
+        const validSteps = validStepsFor(isFreePlan);
 
         if (initialStepProp && validSteps.includes(initialStepProp)) {
             return initialStepProp;
@@ -101,6 +101,7 @@ export default function Onboarding({
         initialStep,
         hasConnectedAccount,
         skipAiSuggestions: isFreePlan,
+        userId: auth.user.id,
     });
 
     // While on the connections step, poll for connections finalized elsewhere
