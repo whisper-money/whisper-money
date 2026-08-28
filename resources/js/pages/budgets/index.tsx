@@ -1,10 +1,14 @@
-import { index } from '@/actions/App/Http/Controllers/BudgetController';
+import {
+    index,
+    reorder,
+} from '@/actions/App/Http/Controllers/BudgetController';
 import { BudgetListCard } from '@/components/budgets/budget-list-card';
 import { CreateBudgetDialog } from '@/components/budgets/create-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { CreateSavingsGoalDialog } from '@/components/savings-goals/create-savings-goal-dialog';
 import { SavingsGoalListCard } from '@/components/savings-goals/savings-goal-list-card';
 import { CreatePlaceholderCard } from '@/components/shared/create-placeholder-card';
+import { PlanningReorderDialog } from '@/components/shared/planning-reorder-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Collapsible,
@@ -21,14 +25,19 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import { mergePlanningItems, PlanningItem } from '@/lib/planning-items';
+import {
+    applyFilteredOrder,
+    mergePlanningItems,
+    orderPlanningItems,
+    PlanningItem,
+} from '@/lib/planning-items';
 import { BreadcrumbItem } from '@/types';
 import { Budget } from '@/types/budget';
 import { SavingsGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
-import { ReactNode, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, Pencil, Plus } from 'lucide-react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -62,6 +71,10 @@ export default function BudgetsIndex({
         null,
     );
     const [archivedOpen, setArchivedOpen] = useState(false);
+    const [reorderOpen, setReorderOpen] = useState(false);
+    // Optimistic ordering layered on top of the server order. Null means "use
+    // the server order"; a drag sets the new live-item order and persists it.
+    const [order, setOrder] = useState<string[] | null>(null);
     const { url } = usePage();
     const locale = useLocale();
     // Without savings goals there is no toggle to undo a ?show= filter coming
@@ -83,27 +96,67 @@ export default function BudgetsIndex({
         });
     };
 
-    // Budgets and savings goals share one list: whichever needs attention
-    // first leads it, and neither type is stuck below the other.
+    // Budgets and savings goals share one list: a manual position leads, and
+    // otherwise whichever needs attention first — neither type is stuck below
+    // the other.
     //
     // Archived ones arrive in the same props and are split off here into their
     // own collapsed section, ordered by the same rule so the two lists cannot
-    // disagree about how they sort.
-    const { items, archivedItems } = useMemo(() => {
-        const visibleBudgets = filter === 'goals' ? [] : budgets;
-        const visibleGoals =
-            savingsGoalsEnabled && filter !== 'budgets' ? savingsGoals : [];
+    // disagree about how they sort. They are not reorderable.
+    const { liveItems, items, archivedItems } = useMemo(() => {
+        const goals = savingsGoalsEnabled ? savingsGoals : [];
         const merge = (archived: boolean) =>
             mergePlanningItems(
-                visibleBudgets.filter(
-                    (budget) => !!budget.archived_at === archived,
-                ),
-                visibleGoals.filter((goal) => !!goal.archived_at === archived),
+                budgets.filter((budget) => !!budget.archived_at === archived),
+                goals.filter((goal) => !!goal.archived_at === archived),
                 locale,
             );
 
-        return { items: merge(false), archivedItems: merge(true) };
-    }, [budgets, savingsGoals, savingsGoalsEnabled, filter, locale]);
+        const live = merge(false);
+        const ordered = order ? orderPlanningItems(live, order) : live;
+        const matchesFilter = (item: PlanningItem) =>
+            filter === 'all' ||
+            item.type === (filter === 'budgets' ? 'budget' : 'goal');
+
+        return {
+            liveItems: ordered,
+            items: ordered.filter(matchesFilter),
+            archivedItems: merge(true).filter(matchesFilter),
+        };
+    }, [budgets, savingsGoals, savingsGoalsEnabled, filter, locale, order]);
+
+    const handleReorder = useCallback(
+        (orderedVisibleIds: string[]) => {
+            // The dialog only lists what the filter left on screen, so the
+            // full order is rebuilt around it and the whole live list is
+            // persisted — never just the filtered subset, or the hidden items
+            // would lose their slots and the two types would drift apart.
+            const nextOrder = applyFilteredOrder(
+                liveItems.map((item) => item.id),
+                orderedVisibleIds,
+            );
+            setOrder(nextOrder);
+
+            const typeById = new Map(
+                liveItems.map((item) => [item.id, item.type]),
+            );
+            router.patch(
+                reorder.url(),
+                {
+                    items: nextOrder.map((id) => ({
+                        id,
+                        type: typeById.get(id),
+                    })),
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    only: ['budgets', 'savingsGoals'],
+                },
+            );
+        },
+        [liveItems],
+    );
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
@@ -140,34 +193,58 @@ export default function BudgetsIndex({
                     )}
                 </div>
 
-                {savingsGoalsEnabled && (
-                    <ToggleGroup
-                        type="single"
-                        variant="outline"
-                        size="sm"
-                        value={filter}
-                        onValueChange={changeFilter}
-                        aria-label={__('Filter by type')}
-                    >
-                        <ToggleGroupItem
-                            value="all"
-                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
-                        >
-                            {__('All')}
-                        </ToggleGroupItem>
-                        <ToggleGroupItem
-                            value="budgets"
-                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
-                        >
-                            {__('Budgets')}
-                        </ToggleGroupItem>
-                        <ToggleGroupItem
-                            value="goals"
-                            className="cursor-pointer px-3 aria-checked:bg-primary/10"
-                        >
-                            {__('Savings Goals')}
-                        </ToggleGroupItem>
-                    </ToggleGroup>
+                {/* The row exists for either control, so it still lays the
+                    reorder button out on the right with savings goals off and
+                    no filter to sit beside it. It wraps rather than shrinks:
+                    the filter is already as narrow as its labels allow, so on
+                    a phone the button drops to its own line instead of sitting
+                    on top of it. */}
+                {(savingsGoalsEnabled || items.length > 1) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        {savingsGoalsEnabled && (
+                            <ToggleGroup
+                                type="single"
+                                variant="outline"
+                                size="sm"
+                                value={filter}
+                                onValueChange={changeFilter}
+                                aria-label={__('Filter by type')}
+                            >
+                                <ToggleGroupItem
+                                    value="all"
+                                    className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                                >
+                                    {__('All')}
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                    value="budgets"
+                                    className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                                >
+                                    {__('Budgets')}
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                    value="goals"
+                                    className="cursor-pointer px-3 aria-checked:bg-primary/10"
+                                >
+                                    {__('Savings Goals')}
+                                </ToggleGroupItem>
+                            </ToggleGroup>
+                        )}
+                        {items.length > 1 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="ml-auto"
+                                onClick={() => setReorderOpen(true)}
+                                aria-label={__('Edit order')}
+                            >
+                                <Pencil className="size-4" />
+                                <span className="hidden md:inline">
+                                    {__('Edit order')}
+                                </span>
+                            </Button>
+                        )}
+                    </div>
                 )}
 
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -206,6 +283,13 @@ export default function BudgetsIndex({
                     </Collapsible>
                 )}
             </div>
+
+            <PlanningReorderDialog
+                open={reorderOpen}
+                onOpenChange={setReorderOpen}
+                items={items}
+                onReorder={handleReorder}
+            />
 
             {savingsGoalsEnabled && (
                 <>

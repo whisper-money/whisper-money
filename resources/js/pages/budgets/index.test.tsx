@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import BudgetsIndex, { budgetTypeFilterFromUrl } from './index';
 
@@ -8,18 +8,42 @@ interface DialogMockProps {
 }
 
 const replace = vi.fn();
+const patch = vi.fn();
 let pageUrl = '/budgets';
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     router: {
         replace: (...args: unknown[]) => replace(...args),
+        patch: (...args: unknown[]) => patch(...args),
     },
     usePage: () => ({ url: pageUrl, props: {} }),
 }));
 
 vi.mock('@/actions/App/Http/Controllers/BudgetController', () => ({
     index: () => ({ url: '/budgets' }),
+    reorder: { url: () => '/planning/reorder' },
+}));
+
+// Driving a real dnd-kit drag in jsdom tests the sortable list, not the page.
+// What matters here is what the page does with the ids the dialog hands back,
+// so the dialog is reduced to a button that replays its list backwards.
+vi.mock('@/components/shared/planning-reorder-dialog', () => ({
+    PlanningReorderDialog: ({
+        items,
+        onReorder,
+    }: {
+        items: { id: string }[];
+        onReorder: (ids: string[]) => void;
+    }) => (
+        <button
+            onClick={() =>
+                onReorder([...items.map((item) => item.id)].reverse())
+            }
+        >
+            reverse-order
+        </button>
+    ),
 }));
 
 vi.mock('@/layouts/app/app-sidebar-layout', () => ({
@@ -89,6 +113,7 @@ function renderPage() {
 
 beforeEach(() => {
     replace.mockClear();
+    patch.mockClear();
     pageUrl = '/budgets';
 });
 
@@ -280,5 +305,78 @@ describe('BudgetsIndex archived section', () => {
         renderWithArchived({ budgets: [archivedBudget], savingsGoals: [] });
 
         expect(screen.getByText(/create-either/)).toBeInTheDocument();
+    });
+});
+
+const secondBudget = { id: '5', name: 'Rent' } as never;
+
+function reorderPayload() {
+    return (patch.mock.calls[0][1] as { items: unknown[] }).items;
+}
+
+describe('BudgetsIndex reordering', () => {
+    it('persists both types in one ordered list', () => {
+        renderPage();
+
+        fireEvent.click(screen.getByText('reverse-order'));
+
+        expect(patch.mock.calls[0][0]).toBe('/planning/reorder');
+        expect(reorderPayload()).toEqual([
+            { id: '2', type: 'goal' },
+            { id: '1', type: 'budget' },
+        ]);
+        expect(patch.mock.calls[0][2]).toEqual({
+            preserveScroll: true,
+            preserveState: true,
+            only: ['budgets', 'savingsGoals'],
+        });
+    });
+
+    it('persists the whole live list when the type filter hides some of it', () => {
+        render(
+            <BudgetsIndex
+                budgets={[budget, secondBudget]}
+                savingsGoals={[goal]}
+                savingsGoalsEnabled
+                currencyCode="EUR"
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Budgets' }));
+        fireEvent.click(screen.getByText('reverse-order'));
+
+        // The goal was filtered out of the drag but keeps the slot it had, so
+        // only the two budgets swap around it.
+        expect(reorderPayload()).toEqual([
+            { id: '5', type: 'budget' },
+            { id: '2', type: 'goal' },
+            { id: '1', type: 'budget' },
+        ]);
+    });
+
+    it('leaves archived items out of the order it persists', () => {
+        renderWithArchived();
+
+        fireEvent.click(screen.getByText('reverse-order'));
+
+        expect(reorderPayload()).toEqual([
+            { id: '2', type: 'goal' },
+            { id: '1', type: 'budget' },
+        ]);
+    });
+
+    it('offers the reorder dialog only when there is something to reorder', () => {
+        renderPage();
+        expect(screen.getByLabelText('Edit order')).toBeInTheDocument();
+
+        cleanup();
+        render(
+            <BudgetsIndex
+                budgets={[budget]}
+                savingsGoalsEnabled={false}
+                currencyCode="EUR"
+            />,
+        );
+        expect(screen.queryByLabelText('Edit order')).not.toBeInTheDocument();
     });
 });
