@@ -1,10 +1,15 @@
-import { index } from '@/actions/App/Http/Controllers/BudgetController';
+import {
+    index,
+    reorder,
+} from '@/actions/App/Http/Controllers/BudgetController';
 import { BudgetListCard } from '@/components/budgets/budget-list-card';
 import { CreateBudgetDialog } from '@/components/budgets/create-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { CreateSavingsGoalDialog } from '@/components/savings-goals/create-savings-goal-dialog';
 import { SavingsGoalListCard } from '@/components/savings-goals/savings-goal-list-card';
 import { CreatePlaceholderCard } from '@/components/shared/create-placeholder-card';
+import { PlanningReorderDialog } from '@/components/shared/planning-reorder-dialog';
+import { SortableGrid } from '@/components/sortable-grid';
 import { Button } from '@/components/ui/button';
 import {
     Collapsible,
@@ -21,14 +26,19 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import { mergePlanningItems, PlanningItem } from '@/lib/planning-items';
+import {
+    applyFilteredOrder,
+    mergePlanningItems,
+    orderPlanningItems,
+    PlanningItem,
+} from '@/lib/planning-items';
 import { BreadcrumbItem } from '@/types';
 import { Budget } from '@/types/budget';
 import { SavingsGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
-import { ReactNode, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, Pencil, Plus } from 'lucide-react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -62,6 +72,10 @@ export default function BudgetsIndex({
         null,
     );
     const [archivedOpen, setArchivedOpen] = useState(false);
+    const [reorderOpen, setReorderOpen] = useState(false);
+    // Optimistic ordering layered on top of the server order. Null means "use
+    // the server order"; a drag sets the new live-item order and persists it.
+    const [order, setOrder] = useState<string[] | null>(null);
     const { url } = usePage();
     const locale = useLocale();
     // Without savings goals there is no toggle to undo a ?show= filter coming
@@ -83,27 +97,67 @@ export default function BudgetsIndex({
         });
     };
 
-    // Budgets and savings goals share one list: whichever needs attention
-    // first leads it, and neither type is stuck below the other.
+    // Budgets and savings goals share one list: a manual position leads, and
+    // otherwise whichever needs attention first — neither type is stuck below
+    // the other.
     //
     // Archived ones arrive in the same props and are split off here into their
     // own collapsed section, ordered by the same rule so the two lists cannot
-    // disagree about how they sort.
-    const { items, archivedItems } = useMemo(() => {
-        const visibleBudgets = filter === 'goals' ? [] : budgets;
-        const visibleGoals =
-            savingsGoalsEnabled && filter !== 'budgets' ? savingsGoals : [];
+    // disagree about how they sort. They are not reorderable.
+    const { liveItems, items, archivedItems } = useMemo(() => {
+        const goals = savingsGoalsEnabled ? savingsGoals : [];
         const merge = (archived: boolean) =>
             mergePlanningItems(
-                visibleBudgets.filter(
-                    (budget) => !!budget.archived_at === archived,
-                ),
-                visibleGoals.filter((goal) => !!goal.archived_at === archived),
+                budgets.filter((budget) => !!budget.archived_at === archived),
+                goals.filter((goal) => !!goal.archived_at === archived),
                 locale,
             );
 
-        return { items: merge(false), archivedItems: merge(true) };
-    }, [budgets, savingsGoals, savingsGoalsEnabled, filter, locale]);
+        const live = merge(false);
+        const ordered = order ? orderPlanningItems(live, order) : live;
+        const matchesFilter = (item: PlanningItem) =>
+            filter === 'all' ||
+            item.type === (filter === 'budgets' ? 'budget' : 'goal');
+
+        return {
+            liveItems: ordered,
+            items: ordered.filter(matchesFilter),
+            archivedItems: merge(true).filter(matchesFilter),
+        };
+    }, [budgets, savingsGoals, savingsGoalsEnabled, filter, locale, order]);
+
+    const handleReorder = useCallback(
+        (orderedVisibleIds: string[]) => {
+            // The drag only saw what the filter left on screen, so the full
+            // order is rebuilt around it and the whole live list is persisted
+            // — never just the filtered subset, or the hidden items would lose
+            // their slots and the two types would drift apart.
+            const nextOrder = applyFilteredOrder(
+                liveItems.map((item) => item.id),
+                orderedVisibleIds,
+            );
+            setOrder(nextOrder);
+
+            const typeById = new Map(
+                liveItems.map((item) => [item.id, item.type]),
+            );
+            router.patch(
+                reorder.url(),
+                {
+                    items: nextOrder.map((id) => ({
+                        id,
+                        type: typeById.get(id),
+                    })),
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    only: ['budgets', 'savingsGoals'],
+                },
+            );
+        },
+        [liveItems],
+    );
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
@@ -111,12 +165,25 @@ export default function BudgetsIndex({
 
             <div className="space-y-8 p-6">
                 <div className="flex items-center justify-between gap-2">
-                    <HeadingSmall
-                        title={__('Planning')}
-                        description={__(
-                            'Track your spending and save toward your goals',
+                    <div className="flex items-center gap-1">
+                        <HeadingSmall
+                            title={__('Planning')}
+                            description={__(
+                                'Track your spending and save toward your goals',
+                            )}
+                        />
+                        {items.length > 1 && (
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="md:hidden"
+                                onClick={() => setReorderOpen(true)}
+                                aria-label={__('Reorder')}
+                            >
+                                <Pencil className="size-4" />
+                            </Button>
                         )}
-                    />
+                    </div>
                     {savingsGoalsEnabled ? (
                         <CreateMenu
                             onCreate={setCreateType}
@@ -170,16 +237,28 @@ export default function BudgetsIndex({
                     </ToggleGroup>
                 )}
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                    <PlanningCards items={items} currencyCode={currencyCode} />
-                    <CreateCard
-                        currencyCode={currencyCode}
-                        savingsGoalsEnabled={savingsGoalsEnabled}
-                        filter={filter}
-                        isListEmpty={items.length === 0}
-                        onCreate={setCreateType}
-                    />
-                </div>
+                <SortableGrid
+                    className="grid gap-4 lg:grid-cols-2"
+                    items={items}
+                    getId={(item) => item.id}
+                    onReorder={handleReorder}
+                    renderItem={(item, dragHandle) => (
+                        <PlanningCard
+                            item={item}
+                            currencyCode={currencyCode}
+                            dragHandle={dragHandle}
+                        />
+                    )}
+                    footer={
+                        <CreateCard
+                            currencyCode={currencyCode}
+                            savingsGoalsEnabled={savingsGoalsEnabled}
+                            filter={filter}
+                            isListEmpty={items.length === 0}
+                            onCreate={setCreateType}
+                        />
+                    }
+                />
 
                 {archivedItems.length > 0 && (
                     <Collapsible
@@ -198,14 +277,24 @@ export default function BudgetsIndex({
                             })}
                         </CollapsibleTrigger>
                         <CollapsibleContent className="grid gap-4 lg:grid-cols-2">
-                            <PlanningCards
-                                items={archivedItems}
-                                currencyCode={currencyCode}
-                            />
+                            {archivedItems.map((item) => (
+                                <PlanningCard
+                                    key={item.id}
+                                    item={item}
+                                    currencyCode={currencyCode}
+                                />
+                            ))}
                         </CollapsibleContent>
                     </Collapsible>
                 )}
             </div>
+
+            <PlanningReorderDialog
+                open={reorderOpen}
+                onOpenChange={setReorderOpen}
+                items={items}
+                onReorder={handleReorder}
+            />
 
             {savingsGoalsEnabled && (
                 <>
@@ -226,30 +315,30 @@ export default function BudgetsIndex({
 }
 
 /**
- * The cards themselves, picked by type. Both the live list and the archived
- * section render the same grid, so the mapping lives in one place.
+ * One card, picked by type. Both the live list and the archived section render
+ * it, so the mapping lives in one place.
  */
-function PlanningCards({
-    items,
+function PlanningCard({
+    item,
     currencyCode,
+    dragHandle,
 }: {
-    items: PlanningItem[];
+    item: PlanningItem;
     currencyCode: string;
+    dragHandle?: ReactNode;
 }) {
-    return items.map((item) =>
-        item.type === 'budget' ? (
-            <BudgetListCard
-                key={item.id}
-                budget={item.budget}
-                currencyCode={currencyCode}
-            />
-        ) : (
-            <SavingsGoalListCard
-                key={item.id}
-                savingsGoal={item.goal}
-                currencyCode={currencyCode}
-            />
-        ),
+    return item.type === 'budget' ? (
+        <BudgetListCard
+            budget={item.budget}
+            currencyCode={currencyCode}
+            dragHandle={dragHandle}
+        />
+    ) : (
+        <SavingsGoalListCard
+            savingsGoal={item.goal}
+            currencyCode={currencyCode}
+            dragHandle={dragHandle}
+        />
     );
 }
 

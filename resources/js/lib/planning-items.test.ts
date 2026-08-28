@@ -2,15 +2,23 @@ import { Budget } from '@/types/budget';
 import { SavingsGoal, SavingsGoalStatus } from '@/types/savings-goal';
 import { describe, expect, it } from 'vitest';
 import {
+    applyFilteredOrder,
     mergePlanningItems,
+    orderPlanningItems,
     planningAttentionTier,
     PlanningItem,
 } from './planning-items';
 
-function budget(name: string, allocated: number, spent: number): Budget {
+function budget(
+    name: string,
+    allocated: number,
+    spent: number,
+    position: number | null = null,
+): Budget {
     return {
         id: name,
         name,
+        position,
         periods: [
             {
                 allocated_amount: allocated,
@@ -24,10 +32,15 @@ function budgetWithoutPeriod(name: string): Budget {
     return { id: name, name, periods: [] } as unknown as Budget;
 }
 
-function goal(name: string, status: SavingsGoalStatus | null): SavingsGoal {
+function goal(
+    name: string,
+    status: SavingsGoalStatus | null,
+    position: number | null = null,
+): SavingsGoal {
     return {
         id: name,
         name,
+        position,
         stats: { status },
     } as unknown as SavingsGoal;
 }
@@ -132,5 +145,131 @@ describe('mergePlanningItems', () => {
             ),
         ).toEqual(['goal']);
         expect(mergePlanningItems([], [])).toEqual([]);
+    });
+});
+
+describe('mergePlanningItems manual order', () => {
+    it('keeps the attention ordering while nothing has been dragged', () => {
+        const merged = mergePlanningItems(
+            [budget('Groceries', 100, 85), budget('Eating out', 100, 130)],
+            [goal('Japan trip', 'on_track')],
+        );
+
+        expect(merged.map((i) => i.name)).toEqual([
+            'Eating out',
+            'Groceries',
+            'Japan trip',
+        ]);
+    });
+
+    it('lets an explicit position beat the attention tier', () => {
+        const merged = mergePlanningItems(
+            [
+                budget('Groceries', 100, 85, 1),
+                budget('Eating out', 100, 130, 2),
+            ],
+            [goal('Japan trip', 'on_track', 0)],
+        );
+
+        expect(merged.map((i) => i.name)).toEqual([
+            'Japan trip',
+            'Groceries',
+            'Eating out',
+        ]);
+    });
+
+    it('drops a newly created item at the end of a manually ordered list', () => {
+        const merged = mergePlanningItems(
+            [budget('Eating out', 100, 130), budget('Groceries', 100, 10, 0)],
+            [goal('Japan trip', 'on_track', 1)],
+        );
+
+        // 'Eating out' is over its limit and would normally lead the list;
+        // having no position of its own puts it behind everything dragged.
+        expect(merged.map((i) => i.name)).toEqual([
+            'Groceries',
+            'Japan trip',
+            'Eating out',
+        ]);
+    });
+
+    it('falls back to attention and name among the items with no position', () => {
+        const merged = mergePlanningItems(
+            [budget('Zoo', 100, 10), budget('Bills', 100, 130)],
+            [goal('Attic', 'on_track', 0)],
+        );
+
+        expect(merged.map((i) => i.name)).toEqual(['Attic', 'Bills', 'Zoo']);
+    });
+});
+
+describe('orderPlanningItems', () => {
+    const items = mergePlanningItems(
+        [budget('Bills', 100, 10), budget('Zoo', 100, 10)],
+        [goal('Attic', 'on_track')],
+    );
+
+    it('reorders the list to follow the given ids', () => {
+        expect(
+            orderPlanningItems(items, ['Zoo', 'Attic', 'Bills']).map(
+                (i) => i.name,
+            ),
+        ).toEqual(['Zoo', 'Attic', 'Bills']);
+    });
+
+    it('appends anything the order does not mention', () => {
+        expect(orderPlanningItems(items, ['Zoo']).map((i) => i.name)).toEqual([
+            'Zoo',
+            'Attic',
+            'Bills',
+        ]);
+    });
+
+    it('ignores ids that are no longer in the list', () => {
+        expect(
+            orderPlanningItems(items, ['Gone', 'Zoo']).map((i) => i.name),
+        ).toEqual(['Zoo', 'Attic', 'Bills']);
+    });
+});
+
+describe('applyFilteredOrder', () => {
+    it('is the drag order itself when nothing is filtered out', () => {
+        expect(applyFilteredOrder(['a', 'b', 'c'], ['c', 'a', 'b'])).toEqual([
+            'c',
+            'a',
+            'b',
+        ]);
+    });
+
+    it('leaves hidden items in the slots they already had', () => {
+        // b and d are hidden by the filter; a and c swap places and only the
+        // slots those two occupied are refilled.
+        expect(applyFilteredOrder(['a', 'b', 'c', 'd'], ['c', 'a'])).toEqual([
+            'c',
+            'b',
+            'a',
+            'd',
+        ]);
+    });
+
+    it('keeps the full list even when a single item is visible', () => {
+        expect(applyFilteredOrder(['a', 'b', 'c'], ['b'])).toEqual([
+            'a',
+            'b',
+            'c',
+        ]);
+    });
+
+    it('moves a visible item across hidden ones without disturbing them', () => {
+        expect(
+            applyFilteredOrder(
+                ['b1', 'g1', 'b2', 'g2', 'b3'],
+                ['b3', 'b1', 'b2'],
+            ),
+        ).toEqual(['b3', 'g1', 'b1', 'g2', 'b2']);
+    });
+
+    it('returns the list untouched when nothing is visible', () => {
+        expect(applyFilteredOrder(['a', 'b'], [])).toEqual(['a', 'b']);
     });
 });

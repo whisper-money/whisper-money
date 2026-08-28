@@ -26,6 +26,12 @@ interface Props {
     children: ReactNode;
     /** Greys the card out. Archived items are read-only leftovers. */
     dimmed?: boolean;
+    /**
+     * The grip from SortableGrid, parked in the card's left gutter. Desktop
+     * only: it is hidden below `md`, where reordering goes through the pencil
+     * dialog instead of an invisible target sitting over the card.
+     */
+    dragHandle?: ReactNode;
 }
 
 /**
@@ -41,9 +47,15 @@ export function PlanningCard({
     footerStart,
     children,
     dimmed = false,
+    dragHandle,
 }: Props) {
     return (
         <Card className={cn(dimmed && 'opacity-60')}>
+            {dragHandle && (
+                <span className="absolute top-6 left-1 hidden opacity-0 transition-opacity group-hover:opacity-100 md:block">
+                    {dragHandle}
+                </span>
+            )}
             <CardHeader>
                 <div className="flex items-start justify-between">
                     <div className="space-y-1">

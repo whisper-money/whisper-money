@@ -267,6 +267,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::patch('budgets/{budget}', [BudgetController::class, 'update'])->name('budgets.update');
     Route::delete('budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
     Route::post('budgets/{budget}/archive', [BudgetController::class, 'archive'])->name('budgets.archive');
+    Route::patch('planning/reorder', [BudgetController::class, 'reorder'])->name('planning.reorder');
 
     Route::post('savings-goals', [SavingsGoalController::class, 'store'])->name('savings-goals.store');
     Route::get('savings-goals/{savingsGoal}', [SavingsGoalController::class, 'show'])->name('savings-goals.show');

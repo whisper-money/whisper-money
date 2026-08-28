@@ -11,6 +11,7 @@ import {
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Archive, Target } from 'lucide-react';
+import { ReactNode } from 'react';
 
 const RING_SIZE = 64;
 const RING_STROKE = 6;
@@ -54,9 +55,14 @@ function ProgressRing({ percentage }: { percentage: number }) {
 interface Props {
     savingsGoal: SavingsGoal;
     currencyCode: string;
+    dragHandle?: ReactNode;
 }
 
-export function SavingsGoalListCard({ savingsGoal, currencyCode }: Props) {
+export function SavingsGoalListCard({
+    savingsGoal,
+    currencyCode,
+    dragHandle,
+}: Props) {
     const locale = useLocale();
     const stats = savingsGoal.stats;
     const percentage = Math.min(Math.max(stats?.percentage ?? 0, 0), 100);
@@ -74,6 +80,7 @@ export function SavingsGoalListCard({ savingsGoal, currencyCode }: Props) {
             href={show({ savingsGoal: savingsGoal.id }).url}
             title={savingsGoal.name}
             dimmed={!!archivedAt}
+            dragHandle={dragHandle}
             badge={
                 archivedAt ? (
                     <Badge variant="secondary">{__('Archived')}</Badge>

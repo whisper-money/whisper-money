@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Features\SavingsGoals;
+use App\Http\Requests\ReorderPlanningItemsRequest;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
 use App\Models\Account;
@@ -36,6 +37,7 @@ class BudgetController extends Controller
         $user = $request->user();
         $budgets = $user
             ->budgets()
+            ->orderBy('position')
             ->with(['categories', 'labels', 'periods' => function ($query) {
                 // Same ordering as Budget::getCurrentPeriod, for the same
                 // reason: the card reads `periods[0]`, and where two periods
@@ -56,6 +58,29 @@ class BudgetController extends Controller
             'savingsGoalsEnabled' => $savingsGoalsEnabled,
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
+    }
+
+    /**
+     * Persists the order of the Planning list, which mixes both types.
+     *
+     * A NULL position means "never dragged", so the client falls back to the
+     * automatic ordering; one drag gives every live item a number and the list
+     * is manual from then on.
+     */
+    public function reorder(ReorderPlanningItemsRequest $request): RedirectResponse
+    {
+        // ponytail: one update per row; fine for the handful of budgets and
+        // goals a user has. Switch to a single CASE update if that ever grows.
+        foreach (array_values($request->validated('items')) as $position => $item) {
+            $model = $item['type'] === 'goal' ? SavingsGoal::class : Budget::class;
+
+            $model::query()
+                ->whereKey($item['id'])
+                ->where('user_id', $request->user()->id)
+                ->update(['position' => $position]);
+        }
+
+        return back();
     }
 
     public function show(Request $request, Budget $budget): Response
