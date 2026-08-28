@@ -370,7 +370,6 @@ export function CreateBudgetDialog({
                                     value={allocatedAmount}
                                     onChange={setAllocatedAmount}
                                     currencyCode={currencyCode}
-                                    placeholder="0.00"
                                     required
                                 />
 
