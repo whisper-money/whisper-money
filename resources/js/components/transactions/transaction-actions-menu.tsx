@@ -30,10 +30,11 @@ import {
     BarChart3,
     ChevronDown,
     Plus,
+    Tags,
     Upload,
     WandSparkles,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
 import { TransactionAnalysisDrawer } from './transaction-analysis-drawer';
 
@@ -101,94 +102,73 @@ export function TransactionActionsMenu({
         (t) => !t.category_id,
     ).length;
 
+    const hasUncategorized = uncategorizedCount > 0;
+
+    const categorizeLabel = (
+        <>
+            {__('Categorize')}
+            {hasUncategorized && (
+                <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    {uncategorizedCount}
+                </span>
+            )}
+        </>
+    );
+
+    const withCategorizeLink = (content: ReactNode) =>
+        hasUncategorized ? (
+            <Link href={categorize.url()}>{content}</Link>
+        ) : (
+            content
+        );
+
     return (
         <>
             <ButtonGroup>
-                {isMobile ? (
-                    <TooltipProvider>
-                        <Tooltip
-                            open={!canAnalyze && analysisHintOpen}
-                            onOpenChange={setAnalysisHintOpen}
-                        >
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className={
-                                        !canAnalyze
-                                            ? 'cursor-not-allowed opacity-50'
-                                            : ''
-                                    }
-                                    aria-disabled={!canAnalyze}
-                                    onClick={handleAnalysisClick}
-                                >
-                                    <BarChart3 className="h-5 w-5" />
-                                    {__('Analysis')}
-                                </Button>
-                            </TooltipTrigger>
-                            {!canAnalyze && (
-                                <TooltipContent>
-                                    {__('Apply a filter to enable this button')}
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
-                    </TooltipProvider>
-                ) : (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className={
-                                        !canAnalyze
-                                            ? 'cursor-not-allowed opacity-50'
-                                            : ''
-                                    }
-                                    aria-disabled={!canAnalyze}
-                                    onClick={handleAnalysisClick}
-                                >
-                                    <BarChart3 className="h-5 w-5" />
-                                    {__('Analysis')}
-                                </Button>
-                            </TooltipTrigger>
-                            {!canAnalyze && (
-                                <TooltipContent>
-                                    {__('Apply a filter to enable this button')}
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
+                <TooltipProvider>
+                    <Tooltip
+                        open={!canAnalyze && analysisHintOpen}
+                        onOpenChange={setAnalysisHintOpen}
+                    >
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className={
+                                    !canAnalyze
+                                        ? 'cursor-not-allowed opacity-50'
+                                        : ''
+                                }
+                                aria-disabled={!canAnalyze}
+                                onClick={handleAnalysisClick}
+                            >
+                                <BarChart3 className="h-5 w-5" />
+                                {__('Analysis')}
+                            </Button>
+                        </TooltipTrigger>
+                        {!canAnalyze && (
+                            <TooltipContent>
+                                {__('Apply a filter to enable this button')}
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
+                </TooltipProvider>
 
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
                                 variant="outline"
-                                className={
-                                    uncategorizedCount === 0
-                                        ? 'cursor-not-allowed opacity-50'
-                                        : ''
-                                }
-                                disabled={uncategorizedCount === 0}
-                                asChild={uncategorizedCount > 0}
+                                onClick={handleAddTransaction}
+                                aria-label={__('Add transaction')}
                             >
-                                {uncategorizedCount > 0 ? (
-                                    <Link href={categorize.url()}>
-                                        {__('Categorize')}
-
-                                        <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                            {uncategorizedCount}
-                                        </span>
-                                    </Link>
-                                ) : (
-                                    <>{__('Categorize')}</>
-                                )}
+                                <Plus className="h-5 w-5" />
+                                <span className="hidden sm:inline">
+                                    {__('Transaction')}
+                                </span>
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                            {uncategorizedCount === 0
-                                ? 'All transactions are categorized'
-                                : `Categorize ${uncategorizedCount} transactions`}
+                            {__('Create a new transaction')}
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -199,17 +179,21 @@ export function TransactionActionsMenu({
                             <TooltipTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    onClick={handleAddTransaction}
-                                    aria-label={__('Add transaction')}
+                                    className={
+                                        hasUncategorized
+                                            ? ''
+                                            : 'cursor-not-allowed opacity-50'
+                                    }
+                                    disabled={!hasUncategorized}
+                                    asChild={hasUncategorized}
                                 >
-                                    <Plus className="h-5 w-5" />
-                                    <span className="hidden sm:inline">
-                                        {__('Transaction')}
-                                    </span>
+                                    {withCategorizeLink(categorizeLabel)}
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                                {__('Create a new transaction')}
+                                {hasUncategorized
+                                    ? `Categorize ${uncategorizedCount} transactions`
+                                    : 'All transactions are categorized'}
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -236,9 +220,16 @@ export function TransactionActionsMenu({
                     </TooltipProvider>
                     <DropdownMenuContent align="end">
                         {isMobile && (
-                            <DropdownMenuItem onClick={handleAddTransaction}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                {__('Add transaction')}
+                            <DropdownMenuItem
+                                disabled={!hasUncategorized}
+                                asChild={hasUncategorized}
+                            >
+                                {withCategorizeLink(
+                                    <>
+                                        <Tags className="mr-2 h-4 w-4" />
+                                        {categorizeLabel}
+                                    </>,
+                                )}
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={handleOpenImportDrawer}>

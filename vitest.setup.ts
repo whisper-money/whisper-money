@@ -19,6 +19,15 @@ Object.defineProperty(window, 'localStorage', {
     },
 });
 
+/**
+ * jsdom ships no `PointerEvent`, so `fireEvent.pointerDown` falls back to a plain
+ * `Event` and Radix triggers (dropdowns, selects) never open. `MouseEvent` already
+ * carries the `button` / `ctrlKey` fields they check.
+ */
+if (!('PointerEvent' in window)) {
+    window.PointerEvent = MouseEvent as unknown as typeof window.PointerEvent;
+}
+
 beforeEach(() => {
     store.clear();
 });
