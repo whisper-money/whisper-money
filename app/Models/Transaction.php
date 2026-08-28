@@ -474,6 +474,10 @@ class Transaction extends Model
 
             // A row in a currency the config no longer offers still has to be
             // filterable, and every such row predates the per-currency scale.
+            // This holds only while no *rescaled* currency is dropped from the
+            // config: retiring BTC from the offered list would leave its
+            // 8-decimal rows here, read as 2-decimal. Retire the code from the
+            // options but keep its `decimals` entry if that ever happens.
             $group->orWhere(fn (Builder $scale) => $scale
                 ->whereNotIn('currency_code', $knownCodes)
                 ->where('amount', $operator, (int) round($majorUnits * 10 ** CurrencyOptions::DEFAULT_DECIMALS)));

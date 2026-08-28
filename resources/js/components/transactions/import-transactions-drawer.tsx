@@ -543,9 +543,15 @@ export function ImportTransactionsDrawer({
                         const ruleMatch = await evaluateRulesForNewTransaction(
                             {
                                 description: transaction.description,
+                                // A mapped CSV can carry a per-row currency, and
+                                // the parser already scaled the amount to it —
+                                // so read it back the same way the save below
+                                // does, or a row in a different-scale currency
+                                // matches the wrong rules.
                                 amount: toMajorUnits(
                                     transaction.amount,
-                                    selectedAccount.currency_code,
+                                    transaction.currency_code ??
+                                        selectedAccount.currency_code,
                                 ),
                                 transaction_date: transaction.transaction_date,
                                 account_id: selectedAccount.id,

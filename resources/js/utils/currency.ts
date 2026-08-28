@@ -18,6 +18,12 @@ let decimalsByCode: Record<string, number> = {};
 /**
  * Seeded from the server's `currencies.decimals` prop on boot and on every
  * navigation, the same way translations are.
+ *
+ * Module state is safe here — including under SSR, where one process renders
+ * for many users — only because this map comes from `config/currencies.php` and
+ * is identical for everyone. Should it ever become per-user, two interleaved
+ * renders could read each other's scales and mis-state real amounts; it would
+ * have to move into a context at that point.
  */
 export function setCurrencyDecimals(
     map: Record<string, number> | undefined,
@@ -89,7 +95,7 @@ export function formatCurrency(
         useGrouping: 'always',
     })
         .format(toMajorUnits(valueInMinorUnits, currencyCode))
-        .replace(/\s/g, ' ');
+        .replace(/\s/g, '\u202F');
 }
 
 export function getCurrencySymbol(currencyCode: string): string {

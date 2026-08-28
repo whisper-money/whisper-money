@@ -409,7 +409,8 @@ class TransactionSyncService
 
     /**
      * Parse amount from EnableBanking transaction data.
-     * Returns amount in cents (bigint). Debits are negative.
+     * Returns the amount in the given currency's minor units, which are not
+     * always cents. Debits are negative.
      */
     private function parseAmount(array $data, string $currency): int
     {
