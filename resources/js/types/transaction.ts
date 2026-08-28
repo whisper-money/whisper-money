@@ -36,6 +36,8 @@ export interface Transaction {
     description: string;
     description_iv: string | null;
     transaction_date: string;
+    /** Where the bank or the import file dated this row, kept once the user moved it. Null when never moved. */
+    original_transaction_date?: string | null;
     amount: number;
     currency_code: string;
     notes: string | null;

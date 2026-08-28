@@ -36,6 +36,9 @@ El día en que se movió el dinero.
 
 La fecha controla en qué mes aparece la transacción.
 
+Puedes cambiar la fecha de cualquier transacción, incluso de una que venga de tu
+banco.
+
 </div>
 
 <div class="card">
@@ -171,6 +174,24 @@ Usa la reevaluación cuando quieras que las reglas vuelvan a ejecutarse sobre tr
 ### ¿Por qué una transacción aparece en el mes equivocado?
 
 Revisa la fecha de la transacción. Los informes usan esa fecha.
+
+### ¿Puedo cambiar la fecha de una transacción que envió mi banco?
+
+Sí. Abre la transacción y cambia la fecha. Es lo que necesitas cuando tu nómina
+entra el día 27 pero pertenece al presupuesto del mes siguiente.
+
+Cambiar la fecha cambia en qué mes, presupuesto y periodo de flujo de caja cuenta
+la transacción. No cambia nada más: el importe y la cuenta se quedan como los
+reportó tu banco, y el diálogo sigue mostrando debajo la fecha original para que
+siempre puedas ver de dónde salió la transacción.
+
+También se conserva la línea temporal de tu banco, así que cambiar una fecha
+nunca hace que la siguiente sincronización se salte transacciones ni que importe
+la misma dos veces.
+
+Las partes de una transacción dividida son la excepción. Su fecha se queda
+bloqueada, para que las partes sigan sumando lo mismo que la transacción de la
+que salieron.
 
 ### ¿Una transacción puede tener varias categorías?
 

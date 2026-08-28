@@ -2683,5 +2683,8 @@
     "Select :description": "Seleccionar :description",
     "Import :count transaction": "Importar :count transacción",
     ":count row is already in this account": ":count fila ya está en esta cuenta",
-    ":count of :total rows ready": ":count de :total filas listas"
+    ":count of :total rows ready": ":count de :total filas listas",
+    "Update the date, category and notes for this transaction.": "Actualiza la fecha, la categoría y las notas de esta transacción.",
+    "The date decides which month and budget this transaction counts towards.": "La fecha decide en qué mes y presupuesto cuenta esta transacción.",
+    "Original date: :date": "Fecha original: :date"
 }

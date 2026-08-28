@@ -274,30 +274,32 @@ describe('EditTransactionDialog', () => {
         ).toBeInTheDocument();
     });
 
-    it('keeps amount and description read-only for an imported transaction', () => {
+    const importedTransaction = {
+        id: 'tx-imported',
+        user_id: 'user-1',
+        account_id: 'account-1',
+        category_id: null,
+        description: 'Card payment',
+        description_iv: null,
+        transaction_date: '2026-05-27',
+        amount: -1200,
+        currency_code: 'EUR',
+        notes: null,
+        notes_iv: null,
+        creditor_name: null,
+        debtor_name: null,
+        source: 'imported' as const,
+        created_at: '2026-05-27T00:00:00Z',
+        updated_at: '2026-05-27T00:00:00Z',
+        decryptedDescription: 'Card payment',
+        decryptedNotes: null,
+        label_ids: [],
+    };
+
+    it('keeps amount and description read-only for an imported transaction but lets the date move', () => {
         render(
             <EditTransactionDialog
-                transaction={{
-                    id: 'tx-imported',
-                    user_id: 'user-1',
-                    account_id: 'account-1',
-                    category_id: null,
-                    description: 'Card payment',
-                    description_iv: null,
-                    transaction_date: '2026-05-27',
-                    amount: -1200,
-                    currency_code: 'EUR',
-                    notes: null,
-                    notes_iv: null,
-                    creditor_name: null,
-                    debtor_name: null,
-                    source: 'imported',
-                    created_at: '2026-05-27T00:00:00Z',
-                    updated_at: '2026-05-27T00:00:00Z',
-                    decryptedDescription: 'Card payment',
-                    decryptedNotes: null,
-                    label_ids: [],
-                }}
+                transaction={importedTransaction}
                 categories={[]}
                 accounts={[checkingAccount]}
                 banks={[]}
@@ -313,9 +315,62 @@ describe('EditTransactionDialog', () => {
         expect(
             screen.queryByPlaceholderText('Transaction description'),
         ).not.toBeInTheDocument();
+        expect(document.querySelector('input[type="date"]')).toHaveValue(
+            '2026-05-27',
+        );
+        expect(
+            screen.getByText(
+                'The date decides which month and budget this transaction counts towards.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('shows the source date once the transaction has been moved', () => {
+        render(
+            <EditTransactionDialog
+                transaction={{
+                    ...importedTransaction,
+                    transaction_date: '2026-06-01',
+                    original_transaction_date: '2026-05-27',
+                }}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(
+            screen.getByTestId('original-transaction-date'),
+        ).toHaveTextContent('Original date: May 27');
+    });
+
+    it('keeps the date locked on a part of a split', () => {
+        render(
+            <EditTransactionDialog
+                transaction={{
+                    ...importedTransaction,
+                    split_parent_id: 'tx-original',
+                }}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
         expect(
             document.querySelector('input[type="date"]'),
         ).not.toBeInTheDocument();
+        expect(screen.getByText('May 27')).toBeInTheDocument();
     });
 
     it('explains why the balance stays put on a connected account', () => {

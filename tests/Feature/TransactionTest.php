@@ -231,7 +231,7 @@ test('users can edit the amount, date and account of a manually created transact
     ]);
 });
 
-test('users cannot edit the amount, date or account of an imported transaction', function () {
+test('users cannot edit the amount or account of an imported transaction but can move its date', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $otherAccount = Account::factory()->create(['user_id' => $user->id]);
@@ -253,8 +253,91 @@ test('users cannot edit the amount, date or account of an imported transaction',
     $this->assertDatabaseHas('transactions', [
         'id' => $transaction->id,
         'amount' => 2500,
-        'transaction_date' => '2026-01-01',
+        'transaction_date' => '2026-02-15',
         'account_id' => $account->id,
+    ]);
+});
+
+test('moving a bank transaction date keeps the date the bank gave it', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $transaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-08-27',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'transaction_date' => '2026-09-01',
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('transactions', [
+        'id' => $transaction->id,
+        'transaction_date' => '2026-09-01',
+        'original_transaction_date' => '2026-08-27',
+    ]);
+
+    // A second move must not overwrite it: the point is where the bank put the
+    // row, not where the user last had it.
+    actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'transaction_date' => '2026-10-05',
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('transactions', [
+        'id' => $transaction->id,
+        'transaction_date' => '2026-10-05',
+        'original_transaction_date' => '2026-08-27',
+    ]);
+});
+
+test('a manually created transaction records no original date when its date moves', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-08-27',
+        'source' => 'manually_created',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $transaction), [
+        'transaction_date' => '2026-09-01',
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('transactions', [
+        'id' => $transaction->id,
+        'transaction_date' => '2026-09-01',
+        'original_transaction_date' => null,
+    ]);
+});
+
+test('a part of a split cannot have its date moved', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $original = Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-08-27',
+    ]);
+
+    $part = Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'split_parent_id' => $original->id,
+        'transaction_date' => '2026-08-27',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $part), [
+        'transaction_date' => '2026-09-01',
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('transactions', [
+        'id' => $part->id,
+        'transaction_date' => '2026-08-27',
+        'original_transaction_date' => null,
     ]);
 });
 

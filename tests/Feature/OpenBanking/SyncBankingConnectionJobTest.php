@@ -266,6 +266,48 @@ test('an account with bank transactions syncs from the watermark instead of a ye
     runSync($job, $transactionSync, $balanceSync);
 });
 
+test('a bank transaction the user moved forward does not shrink the next window', function () {
+    Carbon::setTestNow('2026-05-02 12:00:00');
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transaction = Transaction::factory()->enableBanking()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-04-28',
+    ]);
+
+    // The payroll case: the bank booked it on the 28th, the user moved it onto
+    // next month.
+    $transaction->update(['transaction_date' => '2026-05-01']);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')
+        ->once()
+        // Three days before the date the bank gave the row, not before the date
+        // the user moved it to. Rows the bank delivers late are dated around the
+        // 28th, and a window starting on the 29th would shut them out for good.
+        ->withArgs(fn ($acct, $dateFrom, $dateTo, $strategy) => $dateFrom === '2026-04-25'
+            && $dateTo === '2026-05-02')
+        ->andReturn(0);
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
+
+    $job = new SyncBankingConnectionJob($connection);
+    runSync($job, $transactionSync, $balanceSync);
+});
+
 test('a failing balance call does not fail the whole sync', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
