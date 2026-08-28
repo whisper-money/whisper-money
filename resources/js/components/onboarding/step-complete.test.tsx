@@ -12,6 +12,7 @@ type VisitCallbacks = {
     onError?: () => void;
     onFinish?: () => void;
     onNetworkError?: (error: Error) => void;
+    onSuccess?: () => void;
 };
 
 /**
@@ -45,6 +46,23 @@ const failures: Array<[string, (callbacks: VisitCallbacks) => void]> = [
 describe('StepComplete', () => {
     afterEach(() => {
         post.mockReset();
+    });
+
+    it('forgets the stored resume step once onboarding is done', async () => {
+        window.localStorage.setItem('onboarding-step', 'complete');
+
+        render(<StepComplete />);
+
+        fireEvent.click(screen.getByRole('button'));
+
+        await act(async () => {
+            const callbacks = post.mock.calls[0][2] as VisitCallbacks;
+            callbacks.onSuccess?.();
+            callbacks.onFinish?.();
+        });
+
+        // Left behind, it would drag a returning user back into onboarding.
+        expect(window.localStorage.getItem('onboarding-step')).toBeNull();
     });
 
     it.each(failures)(

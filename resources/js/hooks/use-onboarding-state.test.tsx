@@ -120,6 +120,95 @@ describe('useOnboardingState', () => {
         });
     });
 
+    describe('resuming after a redirect that lost the ?step= param', () => {
+        const store = (value: string) =>
+            window.localStorage.setItem('onboarding-step', value);
+
+        // iOS hands the user back to a bare /onboarding when a bank redirect
+        // dies, and the step only ever lived in the URL.
+        it('resumes from the stored step when nothing else says otherwise', () => {
+            store('user-1:create-account');
+
+            const { result } = renderHook(() =>
+                useOnboardingState({ userId: 'user-1' }),
+            );
+
+            expect(result.current.currentStep).toBe('create-account');
+        });
+
+        it('lets the server-resolved step win over the stored one', () => {
+            store('user-1:create-account');
+
+            const { result } = renderHook(() =>
+                useOnboardingState({
+                    userId: 'user-1',
+                    initialStep: 'smart-rules',
+                }),
+            );
+
+            expect(result.current.currentStep).toBe('smart-rules');
+        });
+
+        it('falls back to welcome when the stored step is not a real step', () => {
+            store('user-1:not-a-step');
+
+            const { result } = renderHook(() =>
+                useOnboardingState({ userId: 'user-1' }),
+            );
+
+            expect(result.current.currentStep).toBe('welcome');
+        });
+
+        it('never resumes a free signup onto the AI step', () => {
+            store('user-1:ai-suggestions');
+
+            const { result } = renderHook(() =>
+                useOnboardingState({
+                    userId: 'user-1',
+                    skipAiSuggestions: true,
+                }),
+            );
+
+            expect(result.current.currentStep).toBe('welcome');
+        });
+
+        // Storage is per browser, not per account: the next signup on a shared
+        // machine would otherwise land mid-onboarding with nothing created.
+        it('ignores a step another account left behind', () => {
+            store('user-1:smart-rules');
+
+            const { result } = renderHook(() =>
+                useOnboardingState({ userId: 'user-2' }),
+            );
+
+            expect(result.current.currentStep).toBe('welcome');
+        });
+
+        it('stores every step it moves to against its owner', () => {
+            const { result } = renderHook(() =>
+                useOnboardingState({ userId: 'user-1' }),
+            );
+
+            act(() => {
+                result.current.goToStep('syncing');
+            });
+
+            expect(window.localStorage.getItem('onboarding-step')).toBe(
+                'user-1:syncing',
+            );
+        });
+
+        it('stores nothing when there is no user to store it against', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.goToStep('syncing');
+            });
+
+            expect(window.localStorage.getItem('onboarding-step')).toBeNull();
+        });
+    });
+
     it('remembers connected account setup when a connected account appears later', () => {
         const { result, rerender } = renderHook(
             ({ hasConnectedAccount }: { hasConnectedAccount: boolean }) =>

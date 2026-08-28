@@ -172,6 +172,14 @@ class AuthorizationController extends Controller
         $user = $connection ? $connection->user : auth()->user();
 
         if (! $user) {
+            // Silent until now, which made "the bank never came back" and "it
+            // came back and we dropped it" indistinguishable in the logs.
+            // Presence only: the state token and the code are credentials.
+            Log::warning('EnableBanking callback could not be attributed to a user', [
+                'has_state' => $request->has('state'),
+                'has_code' => $request->has('code'),
+            ]);
+
             return redirect()->route('login')
                 ->with('error', __('Please log back in to finish connecting your bank account.'));
         }

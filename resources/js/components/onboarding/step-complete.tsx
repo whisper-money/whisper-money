@@ -2,6 +2,7 @@ import { complete } from '@/actions/App/Http/Controllers/OnboardingController';
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepList, StepRow } from '@/components/onboarding/step-list';
 import { StepScreen } from '@/components/onboarding/step-screen';
+import { clearStoredOnboardingStep } from '@/hooks/use-onboarding-state';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { Check } from 'lucide-react';
@@ -17,6 +18,9 @@ export function StepComplete() {
             complete.url(),
             {},
             {
+                // Onboarding is over, so the locally stored resume step has to
+                // go with it or a later visit drags the user back in.
+                onSuccess: clearStoredOnboardingStep,
                 // `onError` only fires for a response Inertia could read, so a
                 // request that died on the network left the last step of
                 // onboarding behind a spinning, disabled button with no way out

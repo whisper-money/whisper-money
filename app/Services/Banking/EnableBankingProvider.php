@@ -85,7 +85,14 @@ class EnableBankingProvider implements BankingProviderInterface
         $data = $response->json();
 
         return [
-            'url' => $data['url'],
+            // EnableBanking answers with an http:// authorization URL, and port
+            // 80 on that host is a black hole - it never responds, so the
+            // browser navigation dies rather than failing fast. Its HSTS header
+            // is only served over HTTPS, so a browser that has never reached
+            // the host over TLS has nothing cached to upgrade with and follows
+            // the http:// URL literally. That is why the same user could fail
+            // ten times in a row while other users connected fine.
+            'url' => preg_replace('#^http://#i', 'https://', $data['url']),
             'authorization_id' => $data['authorization_id'],
         ];
     }

@@ -1046,6 +1046,30 @@ test('callback without a session or a resolvable state redirects to login', func
     $response->assertRedirect(route('login'));
 });
 
+test('callback logs the callback it could not attribute to a user', function () {
+    Log::spy();
+
+    $this->get('/open-banking/callback?code=test-code&state=unknown-token');
+
+    // Presence only: both the state token and the code are credentials, and
+    // this branch is the one that made a dropped callback indistinguishable
+    // from a callback the bank never sent.
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(fn (string $message, array $context) => $message === 'EnableBanking callback could not be attributed to a user'
+            && $context === ['has_state' => true, 'has_code' => true]);
+});
+
+test('callback records which parameters were missing when it cannot attribute the callback', function () {
+    Log::spy();
+
+    $this->get('/open-banking/callback');
+
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(fn (string $message, array $context) => $context === ['has_state' => false, 'has_code' => false]);
+});
+
 test('callback renders the completion page on error without an authenticated session', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->pending()->create([

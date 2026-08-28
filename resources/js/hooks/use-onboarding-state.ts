@@ -1,3 +1,8 @@
+import {
+    readStoredValue,
+    removeStoredValue,
+    writeStoredValue,
+} from '@/lib/safe-storage';
 import { type AccountType } from '@/types/account';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -14,6 +19,76 @@ export type OnboardingStep =
     | 'import-balances'
     | 'categorize-transactions'
     | 'complete';
+
+/**
+ * Every step onboarding may be resumed on, whether from ?step=, from the server
+ * prop or from the value stored below. Mirrors `OnboardingController::VALID_STEPS`.
+ */
+const VALID_STEPS: OnboardingStep[] = [
+    'welcome',
+    'account-types',
+    'create-account',
+    'import-transactions',
+    'import-balances',
+    'category-types',
+    'customize-categories',
+    'smart-rules',
+    'syncing',
+    'ai-suggestions',
+    'categorize-transactions',
+    'complete',
+];
+
+/**
+ * The steps a signup may be resumed on. A free signup never sees the AI step, so
+ * no resume path - deep link, stored value or otherwise - may land them on it.
+ */
+export function validStepsFor(skipAiSuggestions: boolean): OnboardingStep[] {
+    return skipAiSuggestions
+        ? VALID_STEPS.filter((step) => step !== 'ai-suggestions')
+        : VALID_STEPS;
+}
+
+/**
+ * The step is otherwise only ever persisted into ?step=, and a bank redirect
+ * that dies on iOS drops the user back on a bare /onboarding — which restarted
+ * them from 'welcome' having already created their accounts. localStorage
+ * survives that round trip; the URL does not.
+ *
+ * The value carries the user it belongs to, because storage is per browser and
+ * not per account. Without that, the next person to sign up on a shared browser
+ * resumes into someone else's progress, having created none of the accounts the
+ * step they land on assumes.
+ */
+const STEP_STORAGE_KEY = 'onboarding-step';
+
+/**
+ * Forget the resume point. Called once onboarding is actually finished, so a
+ * returning user is not pulled back into it.
+ */
+export function clearStoredOnboardingStep(): void {
+    removeStoredValue(STEP_STORAGE_KEY);
+}
+
+/**
+ * The resume point stored for this user, or undefined when there is none worth
+ * trusting: another account's, or a stale or hand-edited step, which is
+ * validated like any deep link.
+ */
+function readStoredStep(
+    userId: string | undefined,
+    skipAiSuggestions: boolean,
+): OnboardingStep | undefined {
+    const [owner, stored] = (readStoredValue(STEP_STORAGE_KEY) ?? '').split(
+        ':',
+    );
+
+    return userId !== undefined &&
+        owner === userId &&
+        validStepsFor(skipAiSuggestions).includes(stored as OnboardingStep)
+        ? (stored as OnboardingStep)
+        : undefined;
+}
 
 // Primary steps shown in the progress indicator
 // import-transactions and import-balances are sub-steps that don't increment the counter
@@ -71,6 +146,8 @@ interface UseOnboardingStateOptions {
     initialStep?: OnboardingStep;
     hasConnectedAccount?: boolean;
     skipAiSuggestions?: boolean;
+    /** Owner of the stored resume point. Nothing is stored without it. */
+    userId?: string;
 }
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
@@ -79,6 +156,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         initialStep,
         hasConnectedAccount = false,
         skipAiSuggestions = false,
+        userId,
     } = options;
 
     // Dropped from the array rather than short-circuited in the component, so
@@ -91,10 +169,15 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         [skipAiSuggestions],
     );
 
-    // Determine initial step based on existing state
+    // Determine initial step based on existing state. The server prop (already
+    // covering ?step=) wins; the stored step only answers a return with neither.
     const resolvedInitialStep = useMemo((): OnboardingStep => {
-        return initialStep ?? 'welcome';
-    }, [initialStep]);
+        return (
+            initialStep ??
+            readStoredStep(userId, skipAiSuggestions) ??
+            'welcome'
+        );
+    }, [initialStep, skipAiSuggestions, userId]);
 
     const [currentStep, setCurrentStep] =
         useState<OnboardingStep>(resolvedInitialStep);
@@ -117,13 +200,16 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         if (typeof window === 'undefined') {
             return;
         }
+        if (userId !== undefined) {
+            writeStoredValue(STEP_STORAGE_KEY, `${userId}:${currentStep}`);
+        }
         const url = new URL(window.location.href);
         if (url.searchParams.get('step') === currentStep) {
             return;
         }
         url.searchParams.set('step', currentStep);
         window.history.replaceState(window.history.state, '', url.toString());
-    }, [currentStep]);
+    }, [currentStep, userId]);
 
     // Calculate step index for progress indicator
     // Sub-steps (import-transactions, import-balances) use the same index as 'create-account'
