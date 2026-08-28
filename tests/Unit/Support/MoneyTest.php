@@ -42,9 +42,9 @@ it('converts stored integers back to major units', function () {
         ->and(Money::toMajor(123456, 'btc'))->toBe(0.00123456);
 });
 
-it('exposes the minor units per major unit', function () {
-    expect(Money::factor('eur'))->toBe(100)
-        ->and(Money::factor('cop'))->toBe(1)
-        ->and(Money::factor('kwd'))->toBe(1000)
-        ->and(Money::factor('btc'))->toBe(100_000_000);
+it('scales one major unit into the right number of minor units', function () {
+    expect(Money::toMinor(1.0, 'eur'))->toBe(100)
+        ->and(Money::toMinor(1.0, 'cop'))->toBe(1)
+        ->and(Money::toMinor(1.0, 'kwd'))->toBe(1000)
+        ->and(Money::toMinor(1.0, 'btc'))->toBe(100_000_000);
 });

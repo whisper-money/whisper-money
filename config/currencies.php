@@ -8,10 +8,11 @@ return [
      * the default 2, so only the exceptions are spelled out.
      *
      * The scale decides how values are *stored*, so it must never be derived
-     * from the server's ICU version — an ICU upgrade would silently rescale the
-     * database. `CurrencyDecimalsMatchCldrTest` guards these values against
-     * CLDR instead, with BTC as the one declared override (it is not an ISO
-     * currency, so CLDR falls back to 2 for it).
+     * from the host's ICU version: `NumberFormatter` reads PKR as 0 decimals on
+     * macOS and 2 on Linux, which would make one row mean two different amounts
+     * and an ICU upgrade a silent data migration. `CurrencyDecimalsTest` pins
+     * these values against its own table, so editing this file without a
+     * rescaling migration turns it red.
      */
     'options' => [
         [

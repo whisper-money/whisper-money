@@ -51,12 +51,12 @@ final class Money
     /**
      * How many minor units make one major unit of this currency.
      */
-    public static function factor(string $currency): int
+    private static function factor(string $currency): int
     {
         return 10 ** self::decimals($currency);
     }
 
-    public static function decimals(string $currency): int
+    private static function decimals(string $currency): int
     {
         return app(CurrencyOptions::class)->decimals($currency);
     }
