@@ -3,6 +3,7 @@
 namespace App\Services\Banking;
 
 use App\Models\Account;
+use App\Services\Banking\Sync\BalanceSyncResumePoint;
 use App\Services\CurrencyConversionService;
 use App\Support\Money;
 use Carbon\Carbon;
@@ -116,11 +117,11 @@ class BinanceBalanceSyncService
         $targetCurrency = strtoupper($account->currency_code);
 
         $endDate = now()->subDay();
-        $startDate = $isFirstSync
-            ? now()->subDays(self::SNAPSHOT_MAX_DAYS)
-            : ($account->balances()->max('balance_date')
-                ? Carbon::parse($account->balances()->max('balance_date'))->addDay()
-                : now()->subDays(self::SNAPSHOT_MAX_DAYS));
+        $startDate = BalanceSyncResumePoint::startDate(
+            $account,
+            $isFirstSync,
+            now()->subDays(self::SNAPSHOT_MAX_DAYS),
+        );
 
         if ($startDate->greaterThanOrEqualTo($endDate)) {
             return false;

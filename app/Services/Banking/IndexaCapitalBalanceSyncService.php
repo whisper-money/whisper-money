@@ -3,6 +3,7 @@
 namespace App\Services\Banking;
 
 use App\Models\Account;
+use App\Services\Banking\Sync\BalanceSyncResumePoint;
 use App\Services\CurrencyConversionService;
 use App\Support\Money;
 use Illuminate\Support\Facades\Log;
@@ -35,15 +36,7 @@ class IndexaCapitalBalanceSyncService
             return;
         }
 
-        $sinceDate = null;
-
-        if (! $isFirstSync) {
-            $lastBalanceDate = $account->balances()->max('balance_date');
-
-            if ($lastBalanceDate) {
-                $sinceDate = $lastBalanceDate;
-            }
-        }
+        $sinceDate = BalanceSyncResumePoint::lastSyncedDate($account, $isFirstSync);
 
         $accountCurrency = strtoupper($account->currency_code);
         $userCurrency = strtoupper($account->user->currency_code);
