@@ -82,7 +82,7 @@ class BalanceSyncService
         // row would subtract money the bank never counted. A row the user moved
         // to another day counts on the day the bank gave it, for the same reason:
         // the bank's balance was reached on the bank's timeline.
-        $bankDate = 'COALESCE(original_transaction_date, transaction_date)';
+        $bankDate = 'COALESCE(source_date, transaction_date)';
 
         $dailyTotals = $account->transactions()
             ->where('source', TransactionSource::EnableBanking)

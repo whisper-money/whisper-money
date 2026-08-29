@@ -540,8 +540,7 @@ export function EditTransactionDialog({
                               transaction_date: transactionDate,
                               // The server stamps the source's own date on the
                               // first move, so the hint shows up straight away.
-                              original_transaction_date:
-                                  result.original_transaction_date ?? null,
+                              source_date: result.source_date ?? null,
                           }
                         : {}),
                     ...(canEditAllFields
@@ -626,15 +625,21 @@ export function EditTransactionDialog({
             ? [...transactionalAccounts, selectedAccount]
             : transactionalAccounts;
 
-    // Where the bank or the import file dated this row, once the user has moved
-    // it. Shown so the edit does not hide what actually happened.
-    const originalDate =
-        transaction?.original_transaction_date &&
-        transaction.original_transaction_date !== transaction.transaction_date
-            ? formatTransactionDate(
-                  transaction.original_transaction_date,
-                  locale,
-              )
+    // The date the source gave this row: the stored one once it has been moved,
+    // otherwise the day it still sits on. Manual rows have no source to compare
+    // against - the user picked every date they ever had.
+    const sourceDate =
+        transaction && transaction.source !== 'manually_created'
+            ? (transaction.source_date ?? transaction.transaction_date)
+            : null;
+
+    // Compared against the field rather than against the saved row, so it shows
+    // the moment the user types a different date instead of only after saving -
+    // which is when knowing what the source said is worth something. Moving the
+    // date back onto the source's own day hides it again.
+    const movedFromSourceDate =
+        sourceDate && sourceDate !== transactionDate
+            ? formatTransactionDate(sourceDate, locale)
             : null;
 
     const editDescription = canEditAllFields
@@ -725,13 +730,13 @@ export function EditTransactionDialog({
                                             )}
                                         </p>
                                     )}
-                                    {originalDate && (
+                                    {movedFromSourceDate && (
                                         <p
                                             className="text-xs text-muted-foreground"
                                             data-testid="original-transaction-date"
                                         >
                                             {__('Original date: :date', {
-                                                date: originalDate,
+                                                date: movedFromSourceDate,
                                             })}
                                         </p>
                                     )}

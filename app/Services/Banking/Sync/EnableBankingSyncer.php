@@ -504,7 +504,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $watermark = $forceFullWindow ? null : $account->transactions()
             ->withTrashed()
             ->where('source', TransactionSource::EnableBanking)
-            ->max(DB::raw('COALESCE(original_transaction_date, transaction_date)'));
+            ->max(DB::raw('COALESCE(source_date, transaction_date)'));
 
         if (! $watermark) {
             return now()->subYear()->toDateString();

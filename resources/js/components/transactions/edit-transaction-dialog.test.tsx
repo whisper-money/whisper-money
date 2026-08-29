@@ -331,7 +331,7 @@ describe('EditTransactionDialog', () => {
                 transaction={{
                     ...importedTransaction,
                     transaction_date: '2026-06-01',
-                    original_transaction_date: '2026-05-27',
+                    source_date: '2026-05-27',
                 }}
                 categories={[]}
                 accounts={[checkingAccount]}
@@ -347,6 +347,68 @@ describe('EditTransactionDialog', () => {
         expect(
             screen.getByTestId('original-transaction-date'),
         ).toHaveTextContent('Original date: May 27');
+    });
+
+    it('shows the source date as soon as the field moves off it, before saving', () => {
+        render(
+            <EditTransactionDialog
+                transaction={importedTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        // Nothing to point at while the field still sits on the source's day.
+        expect(
+            screen.queryByTestId('original-transaction-date'),
+        ).not.toBeInTheDocument();
+
+        const dateInput = document.querySelector(
+            'input[type="date"]',
+        ) as HTMLInputElement;
+        fireEvent.change(dateInput, { target: { value: '2026-06-01' } });
+
+        expect(
+            screen.getByTestId('original-transaction-date'),
+        ).toHaveTextContent('Original date: May 27');
+
+        // Moving it back onto the source's own day hides it again.
+        fireEvent.change(dateInput, { target: { value: '2026-05-27' } });
+
+        expect(
+            screen.queryByTestId('original-transaction-date'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('never offers a source date on a manually created transaction', () => {
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        const dateInput = document.querySelector(
+            'input[type="date"]',
+        ) as HTMLInputElement;
+        fireEvent.change(dateInput, { target: { value: '2026-06-01' } });
+
+        expect(
+            screen.queryByTestId('original-transaction-date'),
+        ).not.toBeInTheDocument();
     });
 
     it('keeps the date locked on a part of a split', () => {

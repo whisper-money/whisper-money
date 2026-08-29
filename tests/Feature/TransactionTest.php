@@ -275,7 +275,7 @@ test('moving a bank transaction date keeps the date the bank gave it', function 
     $this->assertDatabaseHas('transactions', [
         'id' => $transaction->id,
         'transaction_date' => '2026-09-01',
-        'original_transaction_date' => '2026-08-27',
+        'source_date' => '2026-08-27',
     ]);
 
     // A second move must not overwrite it: the point is where the bank put the
@@ -287,7 +287,7 @@ test('moving a bank transaction date keeps the date the bank gave it', function 
     $this->assertDatabaseHas('transactions', [
         'id' => $transaction->id,
         'transaction_date' => '2026-10-05',
-        'original_transaction_date' => '2026-08-27',
+        'source_date' => '2026-08-27',
     ]);
 });
 
@@ -309,7 +309,7 @@ test('a manually created transaction records no original date when its date move
     $this->assertDatabaseHas('transactions', [
         'id' => $transaction->id,
         'transaction_date' => '2026-09-01',
-        'original_transaction_date' => null,
+        'source_date' => null,
     ]);
 });
 
@@ -337,7 +337,7 @@ test('a part of a split cannot have its date moved', function () {
     $this->assertDatabaseHas('transactions', [
         'id' => $part->id,
         'transaction_date' => '2026-08-27',
-        'original_transaction_date' => null,
+        'source_date' => null,
     ]);
 });
 

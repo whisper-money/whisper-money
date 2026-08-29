@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * @property Carbon $transaction_date
- * @property ?Carbon $original_transaction_date
+ * @property ?Carbon $source_date
  * @property ?string $split_parent_id
  * @property int|float $total_amount
  * @property TransactionSource $source
@@ -101,7 +101,7 @@ class Transaction extends Model
     {
         return [
             'transaction_date' => 'date:Y-m-d',
-            'original_transaction_date' => 'date:Y-m-d',
+            'source_date' => 'date:Y-m-d',
             'amount' => 'integer',
             'source' => TransactionSource::class,
             'category_source' => CategorySource::class,
@@ -112,11 +112,11 @@ class Transaction extends Model
     }
 
     /**
-     * Keep the source's own date once the user moves a bank or imported row onto
-     * another day, so the sync watermark and the derived balance history stay on
-     * the bank's timeline instead of following the edit.
+     * Keep the date the source gave a row once the user moves it onto another
+     * day, so the sync watermark and the derived balance history stay on the
+     * source's timeline instead of following the edit.
      *
-     * Only the first move records it - the point is where the bank put the row,
+     * Only the first move records it - the point is where the source put the row,
      * not where the user last had it. Manual rows have no source timeline to
      * preserve, so they keep the column null.
      */
@@ -127,11 +127,11 @@ class Transaction extends Model
                 return;
             }
 
-            if ($transaction->original_transaction_date !== null || ! $transaction->isDirty('transaction_date')) {
+            if ($transaction->source_date !== null || ! $transaction->isDirty('transaction_date')) {
                 return;
             }
 
-            $transaction->original_transaction_date = $transaction->getOriginal('transaction_date');
+            $transaction->source_date = $transaction->getOriginal('transaction_date');
         });
     }
 
