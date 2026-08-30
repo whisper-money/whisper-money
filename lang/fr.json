@@ -2311,5 +2311,8 @@
     "Select :description": "Sélectionner :description",
     "Import :count transaction": "Importer :count transaction",
     ":count row is already in this account": ":count ligne est déjà sur ce compte",
-    ":count of :total rows ready": ":count ligne(s) prête(s) sur :total"
+    ":count of :total rows ready": ":count ligne(s) prête(s) sur :total",
+    "Update the date, category and notes for this transaction.": "Mettez à jour la date, la catégorie et les notes pour cette transaction.",
+    "The date decides which month and budget this transaction counts towards.": "La date détermine dans quel mois et quel budget cette transaction est comptée.",
+    "Original date: :date": "Date d'origine : :date"
 }

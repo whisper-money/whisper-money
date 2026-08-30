@@ -71,6 +71,20 @@ interface EditTransactionDialogProps {
     initialAccountId?: string | null;
 }
 
+/**
+ * A transaction date as the dialog shows it in plain text: the year is dropped
+ * when it is the current one, and the month name is capitalized for the locales
+ * that lowercase it.
+ */
+function formatTransactionDate(date: string, locale: string): string {
+    const parsed = parseISO(date);
+    const formatString =
+        getYear(parsed) === getYear(new Date()) ? 'MMMM d' : 'MMMM d, yyyy';
+    const formatted = formatDate(parsed, formatString, locale);
+
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
 export function EditTransactionDialog({
     transaction,
     categories,
@@ -113,14 +127,21 @@ export function EditTransactionDialog({
         return true;
     });
 
-    // Manually created transactions can edit every field (account, date, amount,
-    // description) both on creation and afterwards. Imported ones keep those locked.
-    // A part of a split keeps them locked whatever its source: changing one
-    // part's amount, date or account would leave the split no longer adding up.
+    // Manually created transactions can edit account, amount and currency both on
+    // creation and afterwards. Bank-synced and imported ones keep those locked to
+    // what the bank reported. A part of a split keeps them locked whatever its
+    // source: changing one part's amount or account would leave the split no
+    // longer adding up.
     const isSplitPartTransaction = !!transaction?.split_parent_id;
     const canEditAllFields =
         (mode === 'create' || transaction?.source === 'manually_created') &&
         !isSplitPartTransaction;
+
+    // The date is the exception: which month a transaction counts towards is the
+    // user's call, not the bank's — a payroll booked on the 27th can belong to
+    // next month's budget. Parts of a split stay locked, so the parts keep
+    // landing on the same day as the original.
+    const canEditDate = !isSplitPartTransaction;
 
     // A part is our row rather than something the bank sent, so its description
     // can be renamed to say which part it is even when the original is a bank
@@ -461,12 +482,15 @@ export function EditTransactionDialog({
                 const editedCurrencyCode =
                     editedAccount?.currency_code ?? transaction.currency_code;
 
+                if (canEditDate) {
+                    updateData.transaction_date = transactionDate;
+                }
+
                 if (canEditAllFields) {
                     updateData.description = trimmedDescription;
                     updateData.description_iv = null;
                     finalDecryptedDescription = trimmedDescription;
                     updateData.amount = amount;
-                    updateData.transaction_date = transactionDate;
                     updateData.account_id = accountId;
                     updateData.currency_code = editedCurrencyCode;
                 }
@@ -475,11 +499,13 @@ export function EditTransactionDialog({
                     transaction.id,
                     updateData,
                     {
-                        // Gate on the transaction being manual, not on the target
-                        // account: the backend adjuster skips connected accounts
-                        // per-account, so this still reverses the old manual
-                        // account when the edit moves it onto a connected one.
-                        updateBalance: canEditAllFields
+                        // Gate on the transaction being editable, not on the
+                        // target account: the backend adjuster skips connected
+                        // accounts per-account, so this still reverses the old
+                        // manual account when the edit moves it onto a connected
+                        // one. A moved date shifts the days in between by the
+                        // amount and leaves today's balance where it was.
+                        updateBalance: canEditDate
                             ? updateAccountBalance
                             : false,
                     },
@@ -514,10 +540,17 @@ export function EditTransactionDialog({
                     labels: selectedLabels,
                     updated_at:
                         updatedRecord?.updated_at ?? transaction.updated_at,
+                    ...(canEditDate
+                        ? {
+                              transaction_date: transactionDate,
+                              // The server stamps the source's own date on the
+                              // first move, so the hint shows up straight away.
+                              source_date: result.source_date ?? null,
+                          }
+                        : {}),
                     ...(canEditAllFields
                         ? {
                               amount,
-                              transaction_date: transactionDate,
                               account_id: accountId,
                               currency_code: editedCurrencyCode,
                               account: editedAccount ?? transaction.account,
@@ -597,6 +630,29 @@ export function EditTransactionDialog({
             ? [...transactionalAccounts, selectedAccount]
             : transactionalAccounts;
 
+    // The date the source gave this row: the stored one once it has been moved,
+    // otherwise the day it still sits on. Manual rows have no source to compare
+    // against - the user picked every date they ever had.
+    const sourceDate =
+        transaction && transaction.source !== 'manually_created'
+            ? (transaction.source_date ?? transaction.transaction_date)
+            : null;
+
+    // Compared against the field rather than against the saved row, so it shows
+    // the moment the user types a different date instead of only after saving -
+    // which is when knowing what the source said is worth something. Moving the
+    // date back onto the source's own day hides it again.
+    const movedFromSourceDate =
+        sourceDate && sourceDate !== transactionDate
+            ? formatTransactionDate(sourceDate, locale)
+            : null;
+
+    const editDescription = canEditAllFields
+        ? __('Update this transaction.')
+        : canEditDate
+          ? __('Update the date, category and notes for this transaction.')
+          : __('Update the category and notes for this transaction.');
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[525px]">
@@ -609,11 +665,7 @@ export function EditTransactionDialog({
                     <DialogDescription>
                         {mode === 'create'
                             ? __('Create a new transaction.')
-                            : canEditAllFields
-                              ? __('Update this transaction.')
-                              : __(
-                                    'Update the category and notes for this transaction.',
-                                )}
+                            : editDescription}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -653,57 +705,54 @@ export function EditTransactionDialog({
                             </div>
                         )}
 
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                             <FormLabel
                                 htmlFor="date"
                                 className={
-                                    canEditAllFields
+                                    canEditDate
                                         ? ''
                                         : 'text-sm text-muted-foreground'
                                 }
                             >
                                 {__('Date')}
                             </FormLabel>
-                            {canEditAllFields ? (
-                                <Input
-                                    id="date"
-                                    type="date"
-                                    value={transactionDate}
-                                    onChange={(e) =>
-                                        setTransactionDate(e.target.value)
-                                    }
-                                    disabled={isSubmitting}
-                                    required
-                                />
+                            {canEditDate ? (
+                                <>
+                                    <Input
+                                        id="date"
+                                        type="date"
+                                        value={transactionDate}
+                                        onChange={(e) =>
+                                            setTransactionDate(e.target.value)
+                                        }
+                                        disabled={isSubmitting}
+                                        required
+                                    />
+                                    {mode === 'edit' && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {__(
+                                                'The date decides which month and budget this transaction counts towards.',
+                                            )}
+                                        </p>
+                                    )}
+                                    {movedFromSourceDate && (
+                                        <p
+                                            className="text-xs text-muted-foreground"
+                                            data-testid="original-transaction-date"
+                                        >
+                                            {__('Original date: :date', {
+                                                date: movedFromSourceDate,
+                                            })}
+                                        </p>
+                                    )}
+                                </>
                             ) : (
                                 <div className="text-sm">
                                     {transaction &&
-                                        (() => {
-                                            const date = parseISO(
-                                                transaction.transaction_date,
-                                            );
-                                            const currentYear = getYear(
-                                                new Date(),
-                                            );
-                                            const transactionYear =
-                                                getYear(date);
-                                            const formatString =
-                                                transactionYear === currentYear
-                                                    ? 'MMMM d'
-                                                    : 'MMMM d, yyyy';
-                                            const formatted = formatDate(
-                                                date,
-                                                formatString,
-                                                locale,
-                                            );
-                                            // Capitalize first letter
-                                            return (
-                                                formatted
-                                                    .charAt(0)
-                                                    .toUpperCase() +
-                                                formatted.slice(1)
-                                            );
-                                        })()}
+                                        formatTransactionDate(
+                                            transaction.transaction_date,
+                                            locale,
+                                        )}
                                 </div>
                             )}
                         </div>

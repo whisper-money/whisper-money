@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * @property Carbon $transaction_date
+ * @property ?Carbon $source_date
  * @property ?string $split_parent_id
  * @property int|float $total_amount
  * @property TransactionSource $source
@@ -101,6 +102,7 @@ class Transaction extends Model
     {
         return [
             'transaction_date' => 'date:Y-m-d',
+            'source_date' => 'date:Y-m-d',
             'amount' => 'integer',
             'source' => TransactionSource::class,
             'category_source' => CategorySource::class,
@@ -108,6 +110,30 @@ class Transaction extends Model
             'ai_suggested_category_at' => 'datetime',
             'raw_data' => 'array',
         ];
+    }
+
+    /**
+     * Keep the date the source gave a row once the user moves it onto another
+     * day, so the sync watermark and the derived balance history stay on the
+     * source's timeline instead of following the edit.
+     *
+     * Only the first move records it - the point is where the source put the row,
+     * not where the user last had it. Manual rows have no source timeline to
+     * preserve, so they keep the column null.
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (Transaction $transaction): void {
+            if ($transaction->source === TransactionSource::ManuallyCreated) {
+                return;
+            }
+
+            if ($transaction->source_date !== null || ! $transaction->isDirty('transaction_date')) {
+                return;
+            }
+
+            $transaction->source_date = $transaction->getOriginal('transaction_date');
+        });
     }
 
     /** @return BelongsTo<User, $this> */

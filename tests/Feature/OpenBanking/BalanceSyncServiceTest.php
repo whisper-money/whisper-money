@@ -59,6 +59,51 @@ test('calculateHistoricalBalances derives balances from transactions', function 
     expect($feb5->balance)->toBe(85000);
 });
 
+test('calculateHistoricalBalances counts a moved transaction on the day the bank gave it', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => '2026-02-10',
+        'balance' => 100000,
+    ]);
+
+    // Booked by the bank on Feb 8, moved by the user onto Feb 10. The bank's
+    // reference balance was reached on the bank's timeline, so Feb 8 is the day
+    // this amount has to come off when walking backwards.
+    $moved = Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-02-08',
+        'amount' => 20000,
+    ]);
+    $moved->update(['transaction_date' => '2026-02-10']);
+
+    Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-02-05',
+        'amount' => -10000,
+    ]);
+
+    $service = new BalanceSyncService(Mockery::mock(BankingProviderInterface::class));
+    $service->calculateHistoricalBalances($account);
+
+    // End of Feb 8: 100000 (nothing the bank dated Feb 10 to strip)
+    // End of Feb 5: 100000 - 20000 = 80000
+    $feb8 = $account->balances()->where('balance_date', '2026-02-08')->first();
+    expect($feb8->balance)->toBe(100000);
+
+    $feb5 = $account->balances()->where('balance_date', '2026-02-05')->first();
+    expect($feb5->balance)->toBe(80000);
+});
+
 test('calculateHistoricalBalances writes missing balances in one query', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);

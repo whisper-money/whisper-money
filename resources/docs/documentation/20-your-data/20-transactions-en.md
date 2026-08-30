@@ -36,6 +36,8 @@ The day the money moved.
 
 Dates control which month the transaction appears in.
 
+You can move any transaction's date, including one that came from your bank.
+
 </div>
 
 <div class="card">
@@ -171,6 +173,22 @@ Use it after:
 ### Why does a transaction show in the wrong month?
 
 Check the transaction date. Reports use that date.
+
+### Can I move the date of a transaction my bank sent?
+
+Yes. Open the transaction and change the date. This is what you want when your
+payroll lands on the 27th but belongs to next month's budget.
+
+Moving the date changes which month, budget and cashflow period the transaction
+counts towards. It changes nothing else: the amount and the account stay as your
+bank reported them, and the dialog keeps showing the original date underneath so
+you can always see where the transaction started.
+
+Your bank's own timeline is kept too, so moving a date never makes the next sync
+skip transactions or re-import the same one twice.
+
+Parts of a split transaction are the exception. Their date stays locked, so the
+parts keep adding up to the transaction they came from.
 
 ### Can one transaction have multiple categories?
 
