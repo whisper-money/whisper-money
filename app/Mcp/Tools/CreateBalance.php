@@ -19,9 +19,9 @@ class CreateBalance extends WriteTool
     {
         return [
             'account_id' => $schema->string()->description('Id of a non-connected (manual) account.')->required(),
-            'balance' => $schema->integer()->description('Balance in minor units (cents).')->required(),
+            'balance' => $schema->integer()->description('Balance in the account currency\'s minor units (100 = 1.00 EUR, 1 = 1 COP, 1 = 0.00000001 BTC).')->required(),
             'balance_date' => $schema->string()->description('Snapshot date, YYYY-MM-DD. Defaults to today.'),
-            'invested_amount' => $schema->integer()->description('Optional invested amount in minor units (cents), for investment accounts.'),
+            'invested_amount' => $schema->integer()->description('Optional invested amount in the account currency\'s minor units, for investment accounts.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }

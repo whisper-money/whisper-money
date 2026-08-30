@@ -7,6 +7,7 @@ use App\Enums\CategorySource;
 use App\Jobs\RetryTransientAiCategorizationJob;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
@@ -157,7 +158,7 @@ class CategorizeTransactions
         $items = $chunk->map(fn (Transaction $transaction): array => [
             'ref' => $transaction->id,
             'text' => (string) $transaction->description,
-            'amount' => $transaction->amount / 100,
+            'amount' => Money::toMajor($transaction->amount, $transaction->currency_code),
             'direction' => $transaction->amount < 0 ? 'outflow' : 'inflow',
             'creditor_name' => $transaction->creditor_name,
             'debtor_name' => $transaction->debtor_name,

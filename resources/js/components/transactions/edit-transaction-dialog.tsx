@@ -40,6 +40,7 @@ import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
+import { formatCurrency, toMajorUnits } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
@@ -237,7 +238,11 @@ export function EditTransactionDialog({
         const result = await evaluateRulesForNewTransaction(
             {
                 description: description.trim(),
-                amount: amount / 100,
+                amount: toMajorUnits(
+                    amount,
+                    accounts.find((acc) => acc.id === accountId)
+                        ?.currency_code ?? 'USD',
+                ),
                 transaction_date: transactionDate,
                 account_id: accountId,
                 notes: notes.trim() || undefined,
@@ -842,12 +847,11 @@ export function EditTransactionDialog({
                             ) : (
                                 <div className="text-sm font-medium">
                                     {transaction &&
-                                        new Intl.NumberFormat(locale, {
-                                            style: 'currency',
-                                            currency: transaction.currency_code,
-                                        })
-                                            .format(transaction.amount / 100)
-                                            .replace(/\s/g, '\u202F')}
+                                        formatCurrency(
+                                            transaction.amount,
+                                            transaction.currency_code,
+                                            locale,
+                                        )}
                                 </div>
                             )}
                         </div>

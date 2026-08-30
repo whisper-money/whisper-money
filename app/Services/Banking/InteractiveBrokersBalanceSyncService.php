@@ -3,6 +3,7 @@
 namespace App\Services\Banking;
 
 use App\Models\Account;
+use App\Support\Money;
 use Illuminate\Support\Facades\Log;
 
 class InteractiveBrokersBalanceSyncService
@@ -54,10 +55,10 @@ class InteractiveBrokersBalanceSyncService
                 continue;
             }
 
-            $attributes = ['balance' => (int) round($nav * 100)];
+            $attributes = ['balance' => Money::toMinor($nav, $account->currency_code)];
 
             if ($date === $latestDate && $data['investedAmount'] !== null) {
-                $attributes['invested_amount'] = (int) round($data['investedAmount'] * 100);
+                $attributes['invested_amount'] = Money::toMinor($data['investedAmount'], $account->currency_code);
             }
 
             $account->balances()->updateOrCreate(['balance_date' => $date], $attributes);

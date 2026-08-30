@@ -11,6 +11,7 @@ import { CashflowPeriodType, TrendDataPoint } from '@/hooks/use-cashflow-data';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { toMajorUnits } from '@/utils/currency';
 import { formatCompactNumber, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { useEffect, useRef } from 'react';
@@ -217,7 +218,7 @@ export function CashflowTrendChart({
                                 axisLine={false}
                                 tickFormatter={(value: number) =>
                                     formatCompactNumber(
-                                        value / 100,
+                                        toMajorUnits(value, currency),
                                         locale,
                                         currency,
                                     )

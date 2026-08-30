@@ -356,7 +356,6 @@ export function createTransactionColumns({
             },
             cell: ({ row }) => {
                 const amountInCents = row.getValue('amount') as number;
-                const amount = amountInCents / 100;
                 const currencyCode = row.original.currency_code;
 
                 return (
@@ -365,7 +364,7 @@ export function createTransactionColumns({
                             amountInCents={amountInCents}
                             currencyCode={currencyCode}
                             variant="positive-highlight"
-                            highlightPositive={amount >= 0}
+                            highlightPositive={amountInCents >= 0}
                             monospace
                         />
                     </div>

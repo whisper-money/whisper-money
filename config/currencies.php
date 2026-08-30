@@ -1,6 +1,19 @@
 <?php
 
 return [
+    /*
+     * Every money value is stored as an integer in the currency's minor units,
+     * and `decimals` is that scale: EUR 2 (cents), COP 0 (no centavos in
+     * practice), BTC 8 (satoshis). Currencies omit the key when the scale is
+     * the default 2, so only the exceptions are spelled out.
+     *
+     * The scale decides how values are *stored*, so it must never be derived
+     * from the host's ICU version: `NumberFormatter` reads PKR as 0 decimals on
+     * macOS and 2 on Linux, which would make one row mean two different amounts
+     * and an ICU upgrade a silent data migration. `CurrencyDecimalsTest` pins
+     * these values against its own table, so editing this file without a
+     * rescaling migration turns it red.
+     */
     'options' => [
         [
             'code' => 'USD',
@@ -25,6 +38,7 @@ return [
             'name' => 'Japanese Yen',
             'allows_primary' => true,
             'allows_account' => true,
+            'decimals' => 0,
         ],
         [
             'code' => 'CHF',
@@ -73,6 +87,7 @@ return [
             'name' => 'Pakistani Rupee',
             'allows_primary' => true,
             'allows_account' => true,
+            'decimals' => 0,
         ],
         [
             'code' => 'MXN',
@@ -97,12 +112,14 @@ return [
             'name' => 'Chilean Peso',
             'allows_primary' => true,
             'allows_account' => true,
+            'decimals' => 0,
         ],
         [
             'code' => 'PYG',
             'name' => 'Paraguayan Guarani',
             'allows_primary' => true,
             'allows_account' => true,
+            'decimals' => 0,
         ],
         [
             'code' => 'PEN',
@@ -133,6 +150,7 @@ return [
             'name' => 'Colombian Peso',
             'allows_primary' => true,
             'allows_account' => true,
+            'decimals' => 0,
         ],
         [
             'code' => 'DOP',
@@ -151,12 +169,14 @@ return [
             'name' => 'Kuwaiti Dinar',
             'allows_primary' => true,
             'allows_account' => true,
+            'decimals' => 3,
         ],
         [
             'code' => 'BTC',
             'name' => 'Bitcoin',
             'allows_primary' => false,
             'allows_account' => true,
+            'decimals' => 8,
         ],
         [
             'code' => 'RSD',

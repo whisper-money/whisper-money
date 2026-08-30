@@ -88,6 +88,7 @@ describe('convertRowsToTransactions', () => {
                     debtor_name: null,
                 },
                 DateFormat.DayMonthYear,
+                'EUR',
             );
 
             expect(transactions).toHaveLength(1);
@@ -116,6 +117,7 @@ describe('convertRowsToTransactions', () => {
                 debtor_name: null,
             },
             DateFormat.YearMonthDayCompact,
+            'EUR',
         );
 
         expect(transactions).toHaveLength(1);
@@ -141,6 +143,7 @@ describe('convertRowsToTransactions', () => {
                 debtor_name: null,
             },
             DateFormat.YearMonthDay,
+            'EUR',
         );
 
         expect(transactions[0].amount).toBe(-1032);
@@ -171,6 +174,7 @@ describe('convertRowsToTransactions balance column', () => {
             ],
             mapping,
             DateFormat.YearMonthDay,
+            'EUR',
         );
 
         expect(transactions[0].balance).toBe(0);
@@ -189,6 +193,7 @@ describe('convertRowsToTransactions balance column', () => {
             ],
             mapping,
             DateFormat.YearMonthDay,
+            'EUR',
         );
 
         expect(transactions[0].balance).toBe(0);
@@ -207,6 +212,7 @@ describe('convertRowsToTransactions balance column', () => {
             ],
             mapping,
             DateFormat.YearMonthDay,
+            'EUR',
         );
 
         expect(transactions[0].balance).toBe(-2550);
@@ -225,6 +231,7 @@ describe('convertRowsToTransactions balance column', () => {
             ],
             mapping,
             DateFormat.YearMonthDay,
+            'EUR',
         );
 
         expect(transactions[0].balance).toBeNull();
@@ -386,6 +393,7 @@ describe('convertRowsToTransactions counterparty fields', () => {
                 debtor_name: 'debtor',
             },
             DateFormat.YearMonthDay,
+            'EUR',
         );
 
         expect(transactions[0].creditor_name).toBe('Landlord LLC');
@@ -737,6 +745,7 @@ describe('currency mapping', () => {
             [row('PEN'), row('USD')],
             mapping,
             DateFormat.YearMonthDay,
+            'EUR',
             SUPPORTED,
         );
 
@@ -751,6 +760,7 @@ describe('currency mapping', () => {
             [row(null), row('S/.'), row('XAU')],
             mapping,
             DateFormat.YearMonthDay,
+            'EUR',
             SUPPORTED,
         );
 
@@ -766,6 +776,7 @@ describe('currency mapping', () => {
             [row('PEN')],
             { ...mapping, currency: null },
             DateFormat.YearMonthDay,
+            'EUR',
             SUPPORTED,
         );
 

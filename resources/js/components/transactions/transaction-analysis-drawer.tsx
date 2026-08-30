@@ -39,6 +39,7 @@ import {
 import { type Label } from '@/types/label';
 import { type TransactionFilters } from '@/types/transaction';
 import { type UUID } from '@/types/uuid';
+import { toMajorUnits } from '@/utils/currency';
 import { formatDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
@@ -117,12 +118,16 @@ function detectMode(
     return hasSignificantIncome(income, expense) ? 'income' : 'expense';
 }
 
-/** Compact axis ticks: an amount in cents in, "1.2K" out. */
-function compactAmount(value: number, locale: string): string {
+/** Compact axis ticks: an amount in minor units in, "1.2K" out. */
+function compactAmount(
+    value: number,
+    locale: string,
+    currencyCode: string,
+): string {
     return new Intl.NumberFormat(locale, {
         notation: 'compact',
         compactDisplay: 'short',
-    }).format(value / 100);
+    }).format(toMajorUnits(value, currencyCode));
 }
 
 function modeLabel(mode: AnalysisMode): string {
@@ -1286,7 +1291,9 @@ function OverTimeChart({
                         tickLine={false}
                         axisLine={false}
                         width={48}
-                        tickFormatter={(value) => compactAmount(value, locale)}
+                        tickFormatter={(value) =>
+                            compactAmount(value, locale, currency)
+                        }
                     />
                     <Tooltip
                         content={
@@ -1460,7 +1467,9 @@ function MonthlyTrendChart({
                         tickLine={false}
                         axisLine={false}
                         width={48}
-                        tickFormatter={(value) => compactAmount(value, locale)}
+                        tickFormatter={(value) =>
+                            compactAmount(value, locale, currency)
+                        }
                     />
                     <Tooltip
                         content={
@@ -1848,7 +1857,7 @@ function HorizontalBarBreakdown({
                             type="number"
                             hide
                             tickFormatter={(value) =>
-                                compactAmount(value, locale)
+                                compactAmount(value, locale, currency)
                             }
                         />
                         <YAxis

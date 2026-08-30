@@ -254,7 +254,6 @@ export function SplitTransactionDialog({
                                             }
                                             currencyCode={currencyCode}
                                             disabled={isSubmitting}
-                                            placeholder="0.00"
                                             // The counter below and the submit
                                             // button track what is typed, so
                                             // waiting for blur reads as broken.

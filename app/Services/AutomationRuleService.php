@@ -7,6 +7,7 @@ use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\AutomationRule;
 use App\Models\LabelTransaction;
 use App\Models\Transaction;
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -317,7 +318,7 @@ class AutomationRuleService
 
         return [
             'description' => $this->normalizeWhitespace(mb_strtolower($transaction->description ?? '')),
-            'amount' => $transaction->amount / 100,
+            'amount' => Money::toMajor($transaction->amount, $transaction->currency_code),
             'transaction_date' => $transaction->transaction_date->format('Y-m-d'),
             'bank_name' => mb_strtolower($bank->name ?? ''),
             'account_name' => mb_strtolower($accountName),

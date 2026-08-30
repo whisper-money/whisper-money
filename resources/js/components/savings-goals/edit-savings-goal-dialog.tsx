@@ -114,7 +114,6 @@ export function EditSavingsGoalDialog({
                                 value={targetAmount}
                                 onChange={setTargetAmount}
                                 currencyCode={currencyCode}
-                                placeholder="0.00"
                             />
                             {errors.target_amount && (
                                 <p className="text-sm text-destructive">
@@ -135,7 +134,6 @@ export function EditSavingsGoalDialog({
                                 value={initialAmount}
                                 onChange={setInitialAmount}
                                 currencyCode={currencyCode}
-                                placeholder="0.00"
                             />
                             <p className="text-sm text-muted-foreground">
                                 {__(

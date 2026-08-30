@@ -5,6 +5,7 @@ namespace App\Services\Ai;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Support\Collection;
 
 /**
@@ -32,7 +33,7 @@ class RuleSuggestionAggregator
             ->where('user_id', $user->id)
             ->whereNull('category_id')
             ->whereNull('description_iv')
-            ->get(['id', 'description', 'creditor_name', 'debtor_name', 'amount']);
+            ->get(['id', 'description', 'creditor_name', 'debtor_name', 'amount', 'currency_code']);
 
         $documentFrequency = $this->descriptionDocumentFrequency($transactions);
         $noiseThreshold = $transactions->count() * (float) config('ai_suggestions.noise_token_fraction');
@@ -60,7 +61,7 @@ class RuleSuggestionAggregator
             ];
 
             $groups[$bucket]['count']++;
-            $groups[$bucket]['amount_sum'] += (int) $transaction->amount;
+            $groups[$bucket]['amount_sum'] += Money::toMajor((int) $transaction->amount, $transaction->currency_code);
 
             $sample = $this->normalizeWhitespace((string) ($transaction->description ?? $rawKey));
             if ($sample !== '' && count($groups[$bucket]['samples']) < self::SAMPLE_LIMIT) {
@@ -76,7 +77,7 @@ class RuleSuggestionAggregator
             ->sortByDesc('count')
             ->take($max)
             ->map(function (array $group): array {
-                $avg = $group['amount_sum'] / $group['count'] / 100;
+                $avg = $group['amount_sum'] / $group['count'];
 
                 return [
                     'key' => $group['key'],

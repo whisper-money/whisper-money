@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Enums\TransactionSource;
 use App\Models\Account;
+use App\Support\Money;
 use Carbon\CarbonInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
@@ -143,7 +144,7 @@ class WiseTransactionSyncService
             default => -1,
         };
 
-        $amountCents = (int) round($value * 100) * $sign;
+        $amountCents = Money::toMinor($value, $walletCurrency) * $sign;
 
         $description = trim(strip_tags($activity['title'] ?? ''));
 

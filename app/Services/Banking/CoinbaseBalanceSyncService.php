@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Models\Account;
 use App\Services\CurrencyConversionService;
+use App\Support\Money;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -78,7 +79,7 @@ class CoinbaseBalanceSyncService
 
         $cryptoTotal = $this->convertCryptoAssets($cryptoAssets, $priceMap, $targetCurrency);
 
-        $totalValueCents = (int) round(($fiatTotal + $cryptoTotal) * 100);
+        $totalValueCents = Money::toMinor($fiatTotal + $cryptoTotal, $targetCurrency);
 
         $account->balances()->updateOrCreate(
             ['balance_date' => now()->toDateString()],
@@ -118,7 +119,7 @@ class CoinbaseBalanceSyncService
 
             $account->balances()->updateOrCreate(
                 ['balance_date' => $dateString],
-                ['balance' => (int) round($totalValue * 100)],
+                ['balance' => Money::toMinor($totalValue, $targetCurrency)],
             );
 
             $count++;

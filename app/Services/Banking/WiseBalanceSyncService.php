@@ -3,6 +3,7 @@
 namespace App\Services\Banking;
 
 use App\Models\Account;
+use App\Support\Money;
 use Illuminate\Support\Facades\Log;
 
 class WiseBalanceSyncService
@@ -32,7 +33,7 @@ class WiseBalanceSyncService
             return;
         }
 
-        $amountCents = (int) round((float) $value * 100);
+        $amountCents = Money::toMinor((float) $value, $account->currency_code);
 
         $account->balances()->updateOrCreate(
             ['balance_date' => now()->toDateString()],

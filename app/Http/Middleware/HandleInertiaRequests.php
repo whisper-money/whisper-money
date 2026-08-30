@@ -115,6 +115,10 @@ class HandleInertiaRequests extends Middleware
             'currencies' => [
                 'profile' => $this->currencyOptions->primaryOptions(),
                 'accounts' => $this->currencyOptions->accountOptions(),
+                // Keyed by code rather than folded into the two lists above:
+                // a transaction can be in a currency no longer offered, and it
+                // still has to render at the right scale.
+                'decimals' => $this->currencyOptions->decimalsMap(),
             ],
         ];
     }

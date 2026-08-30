@@ -42,6 +42,7 @@ import {
 import { installSessionExpiryRecovery } from './lib/session-expiry-recovery';
 import { trackUnattendedRequests } from './lib/unattended-requests';
 import type { ExpiredBankingConnectionNotification, SharedData } from './types';
+import { setCurrencyDecimals } from './utils/currency';
 import { __, setTranslations } from './utils/i18n';
 
 installChunkLoadRecovery();
@@ -242,12 +243,18 @@ createInertiaApp({
             (initialPageProps?.translations as Record<string, string>) ?? {},
         );
 
+        // How many decimals each currency's minor unit has. Every amount is
+        // divided by this before rendering, so it has to be in place before the
+        // first paint.
+        setCurrencyDecimals(initialPageProps?.currencies?.decimals);
+
         // Keep translations in sync on every Inertia navigation
         router.on('navigate', (event) => {
             const pageProps = event.detail.page.props as unknown as SharedData;
             setTranslations(
                 (pageProps?.translations as Record<string, string>) ?? {},
             );
+            setCurrencyDecimals(pageProps?.currencies?.decimals);
 
             void syncUserTimezone(pageProps);
         });

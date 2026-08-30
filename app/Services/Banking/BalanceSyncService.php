@@ -6,6 +6,7 @@ use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -41,7 +42,7 @@ class BalanceSyncService
             return;
         }
 
-        $amount = (int) round(floatval($balance['balance_amount']['amount']) * 100);
+        $amount = Money::toMinor(floatval($balance['balance_amount']['amount']), $account->currency_code);
         $date = $balance['reference_date'] ?? now()->toDateString();
 
         $account->balances()->updateOrCreate(

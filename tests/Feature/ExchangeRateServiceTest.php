@@ -264,3 +264,37 @@ test('getRates caps future dates to today', function () {
     expect($rates['usd'])->toBe(1.12);
     Http::assertNothingSent();
 });
+
+test('convert rescales between currencies with different decimals', function () {
+    Http::fake();
+
+    // Rates are "how many units of the listed currency per 1 EUR".
+    ExchangeRate::factory()->create([
+        'base_currency' => 'eur',
+        'date' => '2026-01-15',
+        'rates' => ['cop' => 4300.0, 'kwd' => 0.32, 'btc' => 0.00001],
+    ]);
+
+    $service = app(ExchangeRateService::class);
+
+    // 100000 COP is stored as 100000 (no minor unit), which is ~23.26 EUR, so
+    // 2326 cents. Applying the rate to the raw integers would have produced 23
+    // cents — a hundred times off.
+    expect($service->convert('COP', 'EUR', 100000, '2026-01-15'))->toBe(2326);
+
+    // 0.5 BTC is stored as 50_000_000 satoshis and worth 50_000 EUR.
+    expect($service->convert('BTC', 'EUR', 50_000_000, '2026-01-15'))->toBe(5_000_000);
+
+    // 32.000 KWD is stored as 32000 thousandths and worth 100 EUR.
+    expect($service->convert('KWD', 'EUR', 32000, '2026-01-15'))->toBe(10000);
+});
+
+test('convert falls back to the target scale when no rate is found', function () {
+    Http::fake(['*' => Http::response([], 404)]);
+
+    $service = app(ExchangeRateService::class);
+
+    // No rate for COP: the amount stays unconverted, but the caller still reads
+    // the result as EUR minor units, so 100000 whole pesos become 100000.00.
+    expect($service->convert('COP', 'EUR', 100000, '2026-01-15'))->toBe(10_000_000);
+});

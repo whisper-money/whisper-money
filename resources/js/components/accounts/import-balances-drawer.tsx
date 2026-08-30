@@ -31,6 +31,7 @@ import {
 } from '@/types/balance-import';
 import { DateFormat } from '@/types/import';
 import type { UUID } from '@/types/uuid';
+import { toMajorUnits, toMinorUnits } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { Check } from 'lucide-react';
@@ -359,6 +360,9 @@ export function ImportBalancesDrawer({
     const handlePreviewBalances = () => {
         try {
             const parsedBalances: ParsedBalance[] = [];
+            // A balance is held in its account's currency, so that currency
+            // decides how many decimals the parsed number keeps.
+            const balanceCurrency = selectedAccount?.currency_code || 'USD';
 
             for (const row of state.parsedData) {
                 if (
@@ -390,13 +394,16 @@ export function ImportBalancesDrawer({
                             | number,
                     );
                     if (rawInvested !== null) {
-                        investedAmount = Math.round(rawInvested * 100);
+                        investedAmount = toMinorUnits(
+                            rawInvested,
+                            balanceCurrency,
+                        );
                     }
                 }
 
                 parsedBalances.push({
                     balance_date: formattedDate,
-                    balance: Math.round(balance * 100),
+                    balance: toMinorUnits(balance, balanceCurrency),
                     invested_amount: investedAmount,
                 });
             }
@@ -506,7 +513,10 @@ export function ImportBalancesDrawer({
                         rowNumber,
                         balance: {
                             date: balance.balance_date,
-                            amount: (balance.balance / 100).toString(),
+                            amount: toMajorUnits(
+                                balance.balance,
+                                selectedAccount?.currency_code || 'USD',
+                            ).toString(),
                         },
                         error: errorMessage,
                     });

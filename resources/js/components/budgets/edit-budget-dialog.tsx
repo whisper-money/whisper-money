@@ -245,7 +245,6 @@ export function EditBudgetDialog({
                                 value={allocatedAmount}
                                 onChange={setAllocatedAmount}
                                 currencyCode={currencyCode}
-                                placeholder="0.00"
                                 required
                             />
 

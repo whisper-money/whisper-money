@@ -6,6 +6,7 @@ import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
 import type { SharedData } from './types';
+import { setCurrencyDecimals } from './utils/currency';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -31,6 +32,11 @@ createServer((page) =>
             const initialIsAuthenticated = Boolean(initialUser);
             const hasEncryptionSetup =
                 (initialPageProps?.hasEncryptionSetup as boolean) ?? false;
+
+            // Without this the server-rendered pass falls back to the CLDR
+            // scale, which disagrees with the client on BTC and would swap the
+            // amount on hydration.
+            setCurrencyDecimals(initialPageProps?.currencies?.decimals);
 
             return (
                 <EncryptionKeyProvider hasEncryptionSetup={hasEncryptionSetup}>

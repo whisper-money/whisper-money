@@ -92,6 +92,26 @@ function initializeDatabase(): WhisperMoneyDB {
         sync_metadata: 'key',
     });
 
+    // Version 11: money is now stored at each currency's own scale, so amounts
+    // cached under the old fixed two decimals are wrong by a power of ten. The
+    // rescale migration deliberately left `updated_at` alone, so the sync cursor
+    // would never re-pull them — drop the cache and the cursor with it.
+    database
+        .version(11)
+        .stores({
+            transactions: 'id, user_id, account_id, updated_at',
+            budgets: 'id, user_id, updated_at',
+            budget_categories: 'id, budget_id, updated_at',
+            budget_labels: 'id, budget_id, updated_at',
+            budget_periods: 'id, budget_id, start_date, updated_at',
+            sync_metadata: 'key',
+        })
+        .upgrade(async (transaction) => {
+            await transaction.table('transactions').clear();
+            await transaction.table('budget_periods').clear();
+            await transaction.table('sync_metadata').clear();
+        });
+
     return database;
 }
 

@@ -96,6 +96,8 @@ export interface SharedData {
     currencies: {
         profile: CurrencyOption[];
         accounts: CurrencyOption[];
+        /** Minor-unit decimals per currency code, e.g. EUR 2, COP 0, BTC 8. */
+        decimals: Record<string, number>;
     };
     [key: string]: unknown;
 }

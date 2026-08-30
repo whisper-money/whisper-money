@@ -46,7 +46,10 @@ Access to the authenticated user's Whisper Money finance data, for analysing
 spending, cashflow and net worth — and, with write access, for editing that
 data.
 
-- All amounts are integers in minor units (cents). Divide by 100 for a display value.
+- All amounts are integers in the minor units of their own currency, and how many
+  those are per major unit depends on the currency: 100 for EUR and USD, 1 for
+  COP, CLP, PYG, JPY and PKR, 1000 for KWD, 100000000 for BTC. Read the row's
+  `currency` before scaling one, and never assume cents.
 - Data is organised into "spaces" (the personal space and any shared spaces).
   Transaction, account, category and label tools accept an optional `space` id and
   default to the personal space; call `list_spaces` to discover ids. The cashflow,

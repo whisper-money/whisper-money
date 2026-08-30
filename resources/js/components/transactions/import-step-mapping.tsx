@@ -29,7 +29,11 @@ import {
     type ParsedRow,
     type RowProblem,
 } from '@/types/import';
-import { formatCurrency } from '@/utils/currency';
+import {
+    currencyDecimals,
+    formatCurrency,
+    toMajorUnits,
+} from '@/utils/currency';
 import { formatDateMedium, formatRelativeDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { AlertCircle, Check, XCircle } from 'lucide-react';
@@ -386,9 +390,9 @@ export function ImportStepMapping({
     const formatRangeAmount = (cents: number) =>
         columnMapping.currency
             ? new Intl.NumberFormat(locale, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-              }).format(cents / 100)
+                  minimumFractionDigits: currencyDecimals(currencyCode),
+                  maximumFractionDigits: currencyDecimals(currencyCode),
+              }).format(toMajorUnits(cents, currencyCode))
             : formatCurrency(cents, currencyCode, locale);
 
     const amountRangeSample = report?.amountRange

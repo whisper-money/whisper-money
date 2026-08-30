@@ -3,6 +3,7 @@ import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { useLocale } from '@/hooks/use-locale';
 import { ChangeDataPoint } from '@/lib/chart-calculations';
 import { cn } from '@/lib/utils';
+import { toMajorUnits } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { useEffect, useRef } from 'react';
 import {
@@ -123,7 +124,7 @@ export function MoMChart({
                             return new Intl.NumberFormat(locale, {
                                 notation: 'compact',
                                 compactDisplay: 'short',
-                            }).format(value / 100);
+                            }).format(toMajorUnits(value, currencyCode));
                         }}
                         width={50}
                     />

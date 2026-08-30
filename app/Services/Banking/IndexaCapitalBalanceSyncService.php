@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Models\Account;
 use App\Services\CurrencyConversionService;
+use App\Support\Money;
 use Illuminate\Support\Facades\Log;
 
 class IndexaCapitalBalanceSyncService
@@ -61,7 +62,7 @@ class IndexaCapitalBalanceSyncService
                 continue;
             }
 
-            $balanceCents = (int) round(floatval($value) * 100);
+            $balanceCents = Money::toMinor(floatval($value), $accountCurrency);
             $investedAmountCents = $this->calculateInvestedAmount($entry, $netAmounts, $accountCurrency, $userCurrency, $date);
 
             $account->balances()->updateOrCreate(
@@ -124,6 +125,6 @@ class IndexaCapitalBalanceSyncService
             $amount = $this->currencyConverter->convert($accountCurrency, $userCurrency, $amount, $date);
         }
 
-        return (int) round($amount * 100);
+        return Money::toMinor($amount, $userCurrency);
     }
 }

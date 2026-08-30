@@ -23,7 +23,7 @@ class UpdateTransaction extends WriteTool
         return [
             'transaction_id' => $schema->string()->description('Id of the manually-created transaction to edit.')->required(),
             'description' => $schema->string()->description('New description.'),
-            'amount' => $schema->integer()->description('New signed amount in minor units (cents).'),
+            'amount' => $schema->integer()->description('New signed amount in the account currency\'s minor units.'),
             'transaction_date' => $schema->string()->description('New transaction date, YYYY-MM-DD.'),
             'currency_code' => $schema->string()->description('New ISO 4217 currency code (3 letters).'),
             'account_id' => $schema->string()->description('Move the transaction to another account.'),

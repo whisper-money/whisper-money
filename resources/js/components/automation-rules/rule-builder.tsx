@@ -22,6 +22,7 @@ import {
     type RuleStructure,
 } from '@/lib/rule-builder-utils';
 import type { SharedData } from '@/types';
+import { toMajorUnits, toMinorUnits } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { ChevronDown, Plus, Trash2, X } from 'lucide-react';
@@ -235,14 +236,15 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
 }
 
 /**
- * `condition.value` is stored as a string in currency units ("-21.99") because
- * that is what `buildJsonLogic` and the backend expect, while `AmountInput`
- * speaks cents.
+ * `condition.value` is stored as a string in major units ("-21.99") because that
+ * is what `buildJsonLogic` and the backend expect, while `AmountInput` speaks
+ * minor units. Storing the threshold in major units is why existing rules keep
+ * their meaning across a currency rescale.
  */
-function currencyUnitsToCents(value: string): number {
-    const cents = Math.round(parseFloat(value) * 100);
+function majorUnitsToMinor(value: string, currencyCode: string): number {
+    const parsed = parseFloat(value);
 
-    return Number.isNaN(cents) ? 0 : cents;
+    return Number.isNaN(parsed) ? 0 : toMinorUnits(parsed, currencyCode);
 }
 
 interface ConditionRowProps {
@@ -332,17 +334,25 @@ function ConditionRow({
                 ) : isAmountField ? (
                     <div className="w-full sm:flex-1">
                         <AmountInput
-                            value={currencyUnitsToCents(condition.value)}
+                            value={majorUnitsToMinor(
+                                condition.value,
+                                currencyCode,
+                            )}
                             onChange={(valueInCents, isEmpty) =>
                                 onChange({
                                     ...condition,
                                     // A cleared field and a typed 0 both resolve
-                                    // to 0 cents; only the cleared one may blank
+                                    // to 0; only the cleared one may blank
                                     // the condition, or `amount < 0` would be
                                     // impossible to express.
                                     value: isEmpty
                                         ? ''
-                                        : String(valueInCents / 100),
+                                        : String(
+                                              toMajorUnits(
+                                                  valueInCents,
+                                                  currencyCode,
+                                              ),
+                                          ),
                                 })
                             }
                             currencyCode={currencyCode}
