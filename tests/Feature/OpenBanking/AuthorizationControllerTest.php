@@ -135,10 +135,11 @@ test('callback with error redirects with error message and deletes pending conne
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
+        'state_token' => 'state-token-denied',
     ]);
 
     $response = $this->actingAs($user)
-        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access');
+        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access&state=state-token-denied');
 
     $response->assertRedirect(route('settings.connections.index'));
     $response->assertSessionHas('error', 'User denied access');
@@ -152,10 +153,11 @@ test('callback with error during onboarding redirects to the accounts step', fun
     Account::factory()->create(['user_id' => $user->id]);
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
+        'state_token' => 'state-token-onboarding-denied',
     ]);
 
     $response = $this->actingAs($user)
-        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access');
+        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access&state=state-token-onboarding-denied');
 
     $response->assertRedirect(route('onboarding', ['step' => 'create-account']));
     $response->assertSessionHas('error', 'User denied access');
@@ -170,6 +172,7 @@ test('callback with error during reconnect preserves existing connection', funct
         'user_id' => $user->id,
         'aspsp_name' => 'ING',
         'aspsp_country' => 'ES',
+        'state_token' => 'state-token-reconnect-denied',
     ]);
 
     Account::factory()->create([
@@ -178,7 +181,7 @@ test('callback with error during reconnect preserves existing connection', funct
     ]);
 
     $response = $this->actingAs($user)
-        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access');
+        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access&state=state-token-reconnect-denied');
 
     $response->assertRedirect(route('settings.connections.index'));
     $response->assertSessionHas('error', 'User denied access');
@@ -203,9 +206,10 @@ test('callback with error and no description falls back to a generic message', f
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
+        'state_token' => 'state-token-no-description',
     ]);
 
-    $response = $this->actingAs($user)->get('/open-banking/callback?error=access_denied');
+    $response = $this->actingAs($user)->get('/open-banking/callback?error=access_denied&state=state-token-no-description');
 
     $response->assertRedirect(route('settings.connections.index'));
     $response->assertSessionHas('error', 'Authorization was denied or cancelled.');
@@ -215,9 +219,12 @@ test('callback with error and no description falls back to a generic message', f
 
 test('callback does not blame the user when the bank fails the authorization', function (string $errorCode) {
     $user = User::factory()->onboarded()->create();
-    $connection = BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'state_token' => "state-token-{$errorCode}",
+    ]);
 
-    $response = $this->actingAs($user)->get("/open-banking/callback?error={$errorCode}");
+    $response = $this->actingAs($user)->get("/open-banking/callback?error={$errorCode}&state=state-token-{$errorCode}");
 
     $response->assertRedirect(route('settings.connections.index'));
     $response->assertSessionHas('error', 'We could not complete the connection with your bank. Please try again later.');
@@ -240,13 +247,16 @@ test('callback ignores the provider description unless the user denied the conse
 
 test('callback stores the bank failure on a reconnect instead of blaming the user', function () {
     $user = User::factory()->onboarded()->create();
-    $connection = BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'state_token' => 'state-token-reconnect-failure',
+    ]);
     Account::factory()->create([
         'user_id' => $user->id,
         'banking_connection_id' => $connection->id,
     ]);
 
-    $response = $this->actingAs($user)->get('/open-banking/callback?error=server_error');
+    $response = $this->actingAs($user)->get('/open-banking/callback?error=server_error&state=state-token-reconnect-failure');
 
     $response->assertSessionHas('error', 'We could not complete the connection with your bank. Please try again later.');
 
@@ -262,9 +272,10 @@ test('callback logs the bank behind an authorization error', function () {
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'Banco Mediolanum',
+        'state_token' => 'state-token-logged',
     ]);
 
-    $this->actingAs($user)->get('/open-banking/callback?error=server_error');
+    $this->actingAs($user)->get('/open-banking/callback?error=server_error&state=state-token-logged');
 
     Log::shouldHaveReceived('warning')
         ->once()
@@ -1088,6 +1099,167 @@ test('callback renders the completion page on error without an authenticated ses
     );
 
     expect($connection->fresh()->trashed())->toBeTrue();
+});
+
+// The iOS/PWA split-context race: the bank redirect leaves the installed app for
+// Safari, and only one of the two contexts gets the return. The orphan cancels the
+// authorization the other one is still completing.
+
+test('a valid code restores the connection a cancelled callback deleted', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'state_token' => 'state-token-race',
+    ]);
+
+    $accounts = [
+        [
+            'uid' => 'ext-account-1',
+            'currency' => 'EUR',
+            'name' => 'My Checking Account',
+            'account_id' => ['iban' => 'ES1234567890123456789012'],
+        ],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-race',
+            'accounts' => $accounts,
+            'aspsp' => ['name' => 'CaixaBank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    // The orphaned context aborts the flow seconds after it started.
+    $this->get('/open-banking/callback?error=access_denied&error_description=Cancelled+by+user&state=state-token-race');
+
+    expect($connection->fresh()->trashed())->toBeTrue();
+
+    // The context the user actually authorized in comes back with the code.
+    $this->actingAs($user)
+        ->get('/open-banking/callback?code=test-code&state=state-token-race')
+        ->assertRedirect(route('open-banking.map-accounts', $connection));
+
+    $connection->refresh();
+    expect($connection->trashed())->toBeFalse();
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->session_id)->toBe('session-race');
+    expect($connection->pending_accounts_data)->toEqual($accounts);
+    expect($connection->state_token)->toBeNull();
+});
+
+test('a valid code completes a reconnect a cancelled callback marked as failed', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'state_token' => 'state-token-race-reconnect',
+    ]);
+
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-ext-account-1',
+        'iban' => 'ES1234567890123456789012',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-race-reconnect',
+            'accounts' => [
+                [
+                    'uid' => 'new-ext-account-1',
+                    'currency' => 'EUR',
+                    'name' => 'My Checking Account',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+            ],
+            'aspsp' => ['name' => 'CaixaBank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->get('/open-banking/callback?error=access_denied&error_description=Cancelled+by+user&state=state-token-race-reconnect');
+
+    expect($connection->fresh()->status)->toBe(BankingConnectionStatus::Error);
+
+    $this->actingAs($user)
+        ->get('/open-banking/callback?code=test-code&state=state-token-race-reconnect')
+        ->assertRedirect(route('settings.connections.index'));
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->session_id)->toBe('session-race-reconnect');
+    expect($connection->error_message)->toBeNull();
+    expect($connection->state_token)->toBeNull();
+    expect($connection->accounts()->first()->external_account_id)->toBe('new-ext-account-1');
+});
+
+test('a code the provider rejects leaves a deleted connection deleted', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'state_token' => 'state-token-race-rejected',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('stale-code')
+        ->once()
+        ->andThrow(new RuntimeException('Invalid authorization code'));
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->get('/open-banking/callback?error=access_denied&error_description=Cancelled+by+user&state=state-token-race-rejected');
+
+    $response = $this->actingAs($user)
+        ->get('/open-banking/callback?code=stale-code&state=state-token-race-rejected');
+
+    $response->assertSessionHas('error', 'Failed to connect to your bank. Please try again.');
+
+    // Only a session the provider issued resurrects a connection, so this one
+    // stays trashed and keeps counting as a failed authorization.
+    $connection->refresh();
+    expect($connection->trashed())->toBeTrue();
+    expect($connection->status)->toBe(BankingConnectionStatus::Pending);
+    expect($connection->state_token)->toBeNull();
+});
+
+test('an error with no resolvable state token deletes nothing', function () {
+    $user = User::factory()->onboarded()->create();
+    $unrelated = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'state_token' => 'state-token-unrelated',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/open-banking/callback?error=access_denied&error_description=Cancelled+by+user');
+
+    $response->assertRedirect(route('settings.connections.index'));
+    $response->assertSessionHas('error', 'Cancelled by user');
+
+    // The old fallback deleted the latest pending connection, which in production
+    // was an attempt started an hour and a quarter earlier.
+    expect($unrelated->fresh()->trashed())->toBeFalse();
 });
 
 test('reconnect hands back the full scheduled retry budget', function () {
