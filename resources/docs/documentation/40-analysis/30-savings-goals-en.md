@@ -12,6 +12,8 @@ A savings goal is an amount you are working towards, and a way of watching wheth
 4. Link the transactions that fund it.
 5. Come back and see whether you are ahead or behind.
 
+![Creating a savings goal from the Planning screen: naming it, setting the target, the amount already saved and the date](/docs/documentation/savings-goal-create.mp4)
+
 ## How a goal counts
 
 ```mermaid
@@ -49,9 +51,15 @@ for more. If what you are looking for is further back than that, tag it from the
 transaction list instead: the goal's label is there like any other, and bulk
 actions can tag a whole group at once.
 
+### Letting a rule do it
+
 An [automation rule](/documentation/automation-rules) can also attach the label,
 which is the least effort of all when the same standing order funds the goal
-every month.
+every month. One rule keyed on the savings account files everything that lands
+in it, the history included, and every transfer from then on arrives already
+counted.
+
+![An automation rule that tags every transaction in the savings account with the goal's label, applied to the transactions already there](/docs/documentation/savings-goal-automate.mp4)
 
 ## Which way a transaction counts
 

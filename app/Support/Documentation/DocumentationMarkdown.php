@@ -31,6 +31,20 @@ final class DocumentationMarkdown
     private const SCREENSHOT_DENSITY = 2;
 
     /**
+     * What an `![...](...)` embed points at when it is a screen recording rather
+     * than a screenshot.
+     *
+     * @var list<string>
+     */
+    private const VIDEO_EXTENSIONS = ['.mp4', '.webm'];
+
+    /**
+     * The still a recording shows before it is played, alongside it, so the page
+     * is not a row of black rectangles. Written by scripts/docs-videos.mjs.
+     */
+    private const POSTER_SUFFIX = '-poster.jpg';
+
+    /**
      * @param  list<int>  $levels  heading levels that belong in the contents
      * @return array{html: string, headings: list<Heading>}
      */
@@ -136,6 +150,11 @@ final class DocumentationMarkdown
             '/<img src="([^"]*)" alt="([^"]*)"\s*\/?>/',
             function (array $match): string {
                 $light = $match[1];
+
+                if (self::isVideo($light)) {
+                    return self::video($light, $match[2]);
+                }
+
                 $dark = self::darkTwin($light) ?? $light;
 
                 return self::image($light, $match[2], 'documentation-shot--light')
@@ -143,6 +162,32 @@ final class DocumentationMarkdown
             },
             $html,
         );
+    }
+
+    private static function isVideo(string $src): bool
+    {
+        return Str::endsWith(Str::lower($src), self::VIDEO_EXTENSIONS);
+    }
+
+    /**
+     * A screen recording is written in the Markdown as an image, because that is
+     * the one embed syntax the page and its `.md` twin already share, and comes
+     * out as a video the reader controls. There is one copy rather than a light
+     * and a dark one: a recording is two orders of magnitude heavier than a
+     * screenshot, so the dark one is shown on both themes.
+     *
+     * The alt text is the caption, and stays the accessible name of the player.
+     */
+    private static function video(string $src, string $alt): string
+    {
+        $poster = self::poster($src);
+
+        return '<figure class="documentation-video">'
+            .'<video src="'.$src.'" controls muted playsinline preload="metadata"'
+            .($poster === null ? '' : ' poster="'.$poster.'"')
+            .' aria-label="'.$alt.'"></video>'
+            .'<figcaption>'.$alt.'</figcaption>'
+            .'</figure>';
     }
 
     /**
@@ -172,6 +217,20 @@ final class DocumentationMarkdown
             (int) round($size[0] / self::SCREENSHOT_DENSITY),
             (int) round($size[1] / self::SCREENSHOT_DENSITY),
         );
+    }
+
+    /**
+     * `demo.mp4` -> `demo-poster.jpg`, when that still has been written.
+     */
+    private static function poster(string $src): ?string
+    {
+        $poster = preg_replace('/\.[a-z0-9]+$/i', self::POSTER_SUFFIX, $src);
+
+        if ($poster === null || $poster === $src) {
+            return null;
+        }
+
+        return File::exists(public_path(ltrim($poster, '/'))) ? $poster : null;
     }
 
     /**

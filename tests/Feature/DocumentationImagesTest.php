@@ -8,6 +8,9 @@ use Inertia\Testing\AssertableInertia;
  * when a page points at a file that is not there, which is the failure mode that
  * would otherwise reach production as a broken image in one theme only.
  *
+ * A page embeds a screen recording with the same `![...](...)` syntax, so these
+ * cover both; what each one needs of its files differs, and is split below.
+ *
  * @return list<array{page: string, alt: string, url: string}>
  */
 function documentationImages(): array
@@ -29,8 +32,24 @@ function documentationImages(): array
     return $images;
 }
 
+function documentationVideos(): array
+{
+    return array_values(array_filter(
+        documentationImages(),
+        fn (array $embed): bool => str_ends_with($embed['url'], '.mp4') || str_ends_with($embed['url'], '.webm'),
+    ));
+}
+
+function documentationScreenshots(): array
+{
+    return array_values(array_filter(
+        documentationImages(),
+        fn (array $embed): bool => ! in_array($embed, documentationVideos(), true),
+    ));
+}
+
 it('has a light and a dark copy of every screenshot a page points at', function () {
-    $images = documentationImages();
+    $images = documentationScreenshots();
 
     expect($images)->not->toBeEmpty();
 
@@ -87,4 +106,34 @@ it('shows the light copy in both themes when the dark one has not been taken', f
         );
 
     File::deleteDirectory(base_path('tests/.documentation-images'));
+});
+
+it('has the file and the poster of every recording a page points at', function () {
+    $videos = documentationVideos();
+
+    expect($videos)->not->toBeEmpty();
+
+    foreach ($videos as $video) {
+        $url = $video['url'];
+
+        expect($url)->toStartWith('/docs/documentation/', "{$video['page']} points at {$url}, which is not under /docs/documentation/");
+        expect(File::exists(public_path(ltrim($url, '/'))))->toBeTrue("{$video['page']} points at {$url}, which does not exist");
+
+        // Without it the page shows a black rectangle until it is played.
+        $poster = (string) preg_replace('/\.[a-z0-9]+$/i', '-poster.jpg', $url);
+
+        expect(File::exists(public_path(ltrim($poster, '/'))))->toBeTrue("{$url} has no poster at {$poster}");
+    }
+});
+
+it('renders a recording as a video with its poster, not as an image', function () {
+    $this->get(route('documentation.show', ['slug' => 'savings-goals', 'lang' => 'en']))
+        ->assertOk()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('document.html', fn (string $html): bool => str_contains($html, '<figure class="documentation-video">')
+                    && str_contains($html, '<video src="/docs/documentation/savings-goal-create.mp4"')
+                    && str_contains($html, 'poster="/docs/documentation/savings-goal-create-poster.jpg"')
+                    && ! str_contains($html, '<img src="/docs/documentation/savings-goal-create.mp4"'))
+        );
 });

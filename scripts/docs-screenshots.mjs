@@ -17,16 +17,23 @@
 //   HEADLESS=0 node scripts/docs-screenshots.mjs       # watch it run
 //   SKIP_SEED=1 node scripts/docs-screenshots.mjs      # reuse the seeded data
 
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
-import { chromium } from 'playwright';
+import {
+    artisan,
+    artisanJson,
+    detectBaseUrl,
+    EMAIL,
+    launchBrowser,
+    log,
+    login,
+    OUT_DIR,
+    seedAccount,
+    themeCookie,
+} from './docs-media.mjs';
 
-const OUT_DIR = 'public/docs/documentation';
-const EMAIL = 'docs-screenshots@example.test';
-const PASSWORD = 'password123456';
 const ACCOUNT = 'Primary Checking';
 const GOAL_NAME = 'New kitchen';
 const CONTRIBUTION = 'Transfer to savings';
@@ -34,60 +41,8 @@ const CONTRIBUTION = 'Transfer to savings';
 // reads as nothing once it is scaled into a 768px column of prose.
 const VIEWPORT = { width: 900, height: 1000 };
 const SCALE = 2;
-const HEADLESS = process.env.HEADLESS !== '0';
-
-// `composer run dev` serves on a random port behind a portless hostname that is
-// not resolvable from here, so talk to `artisan serve` directly.
-//
-// The port has to belong to *this* checkout: several worktrees each run their own
-// dev server, and shooting another branch's app would produce screenshots that
-// look right and document code that is not there.
-function detectBaseUrl() {
-    if (process.env.APP_BASE_URL) {
-        return process.env.APP_BASE_URL.replace(/\/$/, '');
-    }
-
-    const port = execFileSync(
-        'bash',
-        [
-            '-c',
-            `for pid in $(pgrep -f 'artisan serve --port=[0-9]'); do
-                cwd=$(lsof -p "$pid" -a -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)
-                if [ "$cwd" = "$PWD" ]; then
-                    ps -o command= -p "$pid" | grep -oE -- '--port=[0-9]+' | grep -oE '[0-9]+$'
-                    break
-                fi
-            done`,
-        ],
-        { encoding: 'utf8' },
-    ).trim();
-
-    if (!port) {
-        throw new Error(
-            'No dev server for this checkout. Start it with `composer run dev` here, or pass APP_BASE_URL.',
-        );
-    }
-
-    return `http://127.0.0.1:${port}`;
-}
 
 const BASE_URL = detectBaseUrl();
-
-function artisan(args) {
-    return execFileSync('php', ['artisan', ...args], {
-        encoding: 'utf8',
-    }).trim();
-}
-
-function log(message) {
-    process.stdout.write(`  ${message}\n`);
-}
-
-function artisanJson(args) {
-    const out = artisan(args);
-
-    return JSON.parse(out.slice(out.indexOf('{')));
-}
 
 /**
  * A screenshot of the preview step is only worth taking if there is a duplicate
@@ -624,26 +579,6 @@ const SHOTS = {
     },
 };
 
-async function login(page) {
-    await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
-    await page.getByRole('textbox', { name: 'Email address' }).fill(EMAIL);
-    await page.getByRole('textbox', { name: 'Password' }).fill(PASSWORD);
-    await page.locator('[data-test="login-button"]').click();
-    await page.waitForURL((url) => !url.pathname.startsWith('/login'), {
-        timeout: 20000,
-    });
-}
-
-async function launchBrowser() {
-    try {
-        return await chromium.launch({ headless: HEADLESS });
-    } catch {
-        // The bundled headless shell is a slow download on a fresh machine;
-        // the system Chrome is already there.
-        return await chromium.launch({ headless: HEADLESS, channel: 'chrome' });
-    }
-}
-
 async function main() {
     const wanted = process.argv.slice(2);
     const names = wanted.length > 0 ? wanted : Object.keys(SHOTS);
@@ -657,14 +592,11 @@ async function main() {
     }
 
     if (process.env.SKIP_SEED !== '1') {
-        log(`seeding ${EMAIL}`);
-        artisan(['demo:reset', `--email=${EMAIL}`, `--password=${PASSWORD}`]);
-        // The screenshots are always English, whatever the reader's language.
+        seedAccount();
         artisan([
             'tinker',
             '--execute',
             `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
-             $user->update(['locale' => 'en']);
              App\\Models\\SavedFilter::query()->where('user_id', $user->id)->delete();
              foreach ([
                  'Coffee shops' => ['search' => 'coffee'],
@@ -696,27 +628,11 @@ async function main() {
             deviceScaleFactor: SCALE,
             colorScheme: theme,
             locale: 'en-US',
-            // The app resolves its theme from this cookie before it consults the
-            // operating system, so setting both leaves nothing to chance.
-            storageState: {
-                cookies: [
-                    {
-                        name: 'appearance',
-                        value: theme,
-                        domain: '127.0.0.1',
-                        path: '/',
-                        expires: -1,
-                        httpOnly: false,
-                        secure: false,
-                        sameSite: 'Lax',
-                    },
-                ],
-                origins: [],
-            },
+            storageState: themeCookie(theme),
         });
 
         const page = await context.newPage();
-        await login(page);
+        await login(page, BASE_URL);
 
         for (const name of names) {
             const suffix = theme === 'dark' ? '-dark' : '';
