@@ -215,3 +215,45 @@ describe('AmountInput separators', () => {
         expect(typeAndCommit('1.234.567', 'EUR')).toBe(123456700);
     });
 });
+
+describe('AmountInput currency symbol spacing', () => {
+    const reservedCharacters = (padding: string): number =>
+        Number(padding.match(/([\d.]+)ch/)?.[1] ?? 0);
+
+    it('reserves room for the whole symbol, not just one character', () => {
+        const { rerender } = render(
+            <AmountInput value={0} onChange={vi.fn()} currencyCode="EUR" />,
+        );
+        const euro = screen.getByRole('textbox').style.paddingLeft;
+
+        rerender(<AmountInput value={0} onChange={vi.fn()} currencyCode="BTC" />);
+        const bitcoin = screen.getByRole('textbox').style.paddingLeft;
+
+        expect(reservedCharacters(euro)).toBe(1);
+        expect(reservedCharacters(bitcoin)).toBeGreaterThan(
+            reservedCharacters(euro),
+        );
+    });
+
+    it('stacks the symbol room on top of the sign toggle room', () => {
+        const { rerender } = render(
+            <AmountInput value={0} onChange={vi.fn()} currencyCode="BTC" />,
+        );
+        const withoutToggle = screen.getByRole('textbox').style.paddingLeft;
+
+        rerender(
+            <AmountInput
+                value={0}
+                onChange={vi.fn()}
+                currencyCode="BTC"
+                allowNegative
+            />,
+        );
+        const withToggle = screen.getByRole('textbox').style.paddingLeft;
+
+        expect(withToggle).not.toBe(withoutToggle);
+        expect(reservedCharacters(withToggle)).toBe(
+            reservedCharacters(withoutToggle),
+        );
+    });
+});

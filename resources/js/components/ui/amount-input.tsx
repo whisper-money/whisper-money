@@ -202,6 +202,9 @@ const evaluateMathExpression = (
     }
 };
 
+/** Breathing room between the symbol and the number it labels. */
+const SYMBOL_GAP = '0.75rem';
+
 const resolveMinorUnits = (input: string, currencyCode: string): number =>
     evaluateMathExpression(input, currencyCode) ??
     parseInputValue(input, currencyCode);
@@ -289,14 +292,20 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
 
         const { symbol: currencySymbol, position: symbolPosition } = getCurrencyInfo(currencyCode, locale);
 
+        // The symbol sits `symbolInset` in from the edge, so the input has to
+        // reserve that plus the symbol's own width. Deriving the width from the
+        // character count keeps a code like `BTC` or `CHF` off the number, which
+        // a padding hardcoded for a one-character `€` did not.
+        const symbolInset =
+            symbolPosition === 'prefix' && allowNegative ? '2.5rem' : '0.75rem';
+        const symbolRoom = `calc(${symbolInset} + ${currencySymbol.length}ch + ${SYMBOL_GAP})`;
+
         return (
             <div className="relative">
                 {symbolPosition === 'prefix' && (
                     <span
-                        className={cn([
-                            '-translate-y-1/2 absolute top-1/2 text-muted-foreground text-sm',
-                            allowNegative ? 'left-10' : 'left-3',
-                        ])}
+                        className="-translate-y-1/2 absolute top-1/2 text-muted-foreground text-sm"
+                        style={{ left: symbolInset }}
                     >
                         {currencySymbol}
                     </span>
@@ -316,17 +325,20 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     required={required}
                     className={cn([
                         'bg-background',
-                        symbolPosition === 'suffix' && 'pr-9',
-                        allowNegative
-                            ? symbolPosition === 'prefix'
-                                ? 'pl-14'
-                                : 'pl-11'
-                            : symbolPosition === 'prefix' && 'pl-9',
+                        allowNegative && symbolPosition === 'suffix' && 'pl-11',
                         className,
                     ])}
+                    style={
+                        symbolPosition === 'prefix'
+                            ? { paddingLeft: symbolRoom }
+                            : { paddingRight: symbolRoom }
+                    }
                 />
                 {symbolPosition === 'suffix' && (
-                    <span className="-translate-y-1/2 absolute top-1/2 right-3 text-muted-foreground text-sm">
+                    <span
+                        className="-translate-y-1/2 absolute top-1/2 text-muted-foreground text-sm"
+                        style={{ right: symbolInset }}
+                    >
                         {currencySymbol}
                     </span>
                 )}
