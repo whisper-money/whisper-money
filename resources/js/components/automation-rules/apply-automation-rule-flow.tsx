@@ -6,11 +6,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useLocale } from '@/hooks/use-locale';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { ServerTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { format, parseISO } from 'date-fns';
 import { ArrowLeft, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -427,8 +428,9 @@ function PreviewRow({
     transaction: ServerTransaction;
     rule: AutomationRule;
 }) {
+    const locale = useLocale();
     const date = transaction.transaction_date
-        ? format(parseISO(transaction.transaction_date), 'MMM d, yyyy')
+        ? formatDate(transaction.transaction_date, 'MMM d, yyyy', locale)
         : '';
     const currentCategory = transaction.category?.name ?? __('Uncategorized');
     const newCategory = rule.category?.name ?? null;
@@ -448,6 +450,7 @@ function PreviewRow({
                     {formatCurrency(
                         transaction.amount,
                         transaction.currency_code,
+                        locale,
                     )}
                 </span>
             </div>
