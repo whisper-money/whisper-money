@@ -52,6 +52,18 @@ class ResetDemoAccountCommand extends Command
     ];
 
     /**
+     * Locally served logos for the banks the seeded datasets use, so no seeded
+     * screen ever renders a dead remote image.
+     *
+     * @var array<string, string>
+     */
+    private const BANK_LOGOS = [
+        'BBVA' => '/images/banks/logos/bbva.png',
+        'ING Direct' => '/images/banks/logos/ing.png',
+        'Indexa Capital' => '/images/banks/logos/indexa-capital.jpg',
+    ];
+
+    /**
      * @var array<int, array<string, mixed>>
      */
     private const DEMO_BUDGETS = [
@@ -245,6 +257,9 @@ class ResetDemoAccountCommand extends Command
     {
         $user->transactions()->forceDelete();
         $user->accounts()->forceDelete();
+        // Before the labels: deleting a goal's label only nulls its label_id,
+        // so a goal left behind survives every reseed as an empty shell.
+        $user->savingsGoals()->forceDelete();
         $user->labels()->forceDelete();
         $user->automationRules()->forceDelete();
         $user->categories()->forceDelete();
@@ -301,6 +316,13 @@ class ResetDemoAccountCommand extends Command
             $account = $user->accounts()->create([
                 'name' => $accountData['name'],
                 'name_iv' => null,
+                // The column defaults to true, but a seeded name is plaintext.
+                // Leaving the flag set is the exact mismatch the
+                // align_accounts_encrypted_flag_with_plaintext_names migration
+                // had to repair, and it blanks `account_name` for server-side
+                // rule evaluation, so no rule keyed on the account can ever
+                // match the seeded history.
+                'encrypted' => false,
                 'bank_id' => $this->bankId($accountData['bank'] ?? null),
                 'currency_code' => $this->dataset['currency'],
                 'type' => $type,
@@ -333,6 +355,14 @@ class ResetDemoAccountCommand extends Command
 
         $bank = Bank::query()->whereNull('user_id')->where('name', $name)->first()
             ?? Bank::factory()->create(['user_id' => null, 'name' => $name]);
+
+        // A seeded account is what a journalist or a reviewer sees first, so its
+        // logos cannot depend on a third-party CDN staying up. Any bank we ship
+        // an asset for is repointed at it on every reset.
+        $logo = self::BANK_LOGOS[$name] ?? null;
+        if ($logo !== null && $bank->logo !== $logo) {
+            $bank->update(['logo' => $logo]);
+        }
 
         return $bank->id;
     }

@@ -3,6 +3,7 @@
 use App\Enums\AccountType;
 use App\Enums\PlanFeature;
 use App\Models\User;
+use App\Services\AutomationRuleApplier;
 
 beforeEach(function () {
     config(['app.press' => [
@@ -97,4 +98,52 @@ test('demo:reset --press seeds a Spanish account that survives a re-run', functi
     expect($reseeded->id)->toBe($user->id)
         ->and($reseeded->tokens()->whereKey($token->accessToken->id)->exists())->toBeTrue()
         ->and($reseeded->subscriptions()->count())->toBe(1);
+})->group('slow');
+
+test('demo:reset --press seeds a history that automation rules can actually match', function () {
+    $this->artisan('demo:reset --press')->assertSuccessful();
+
+    $user = User::where('email', 'prensa@whisper.money')->first();
+    $savings = $user->accounts()->where('type', AccountType::Savings)->first();
+
+    // Server-side rule evaluation blanks account_name for encrypted accounts,
+    // so a seeded account left on the column default (true) with a plaintext
+    // name can never be matched by a rule keyed on the account it belongs to.
+    expect($user->accounts()->where('encrypted', true)->count())->toBe(0)
+        ->and($savings->transactions()->count())->toBeGreaterThan(0);
+
+    $label = $user->labels()->create(['name' => 'Objetivo', 'color' => '#10b981']);
+    $rule = $user->automationRules()->create([
+        'title' => 'Todo el ahorro',
+        'priority' => 0,
+        'rules_json' => ['==' => [['var' => 'account_name'], $savings->name]],
+    ]);
+    $rule->labels()->sync([$label->id]);
+
+    $matches = app(AutomationRuleApplier::class)->matchingIds($rule->fresh(), false);
+
+    expect($matches)->toHaveCount($savings->transactions()->count());
+
+    // No seeded bank may point at a third-party CDN that can go dark.
+    expect($user->accounts()->with('bank')->get()->pluck('bank.logo')->filter())
+        ->each->toStartWith('/images/banks/logos/');
+})->group('slow');
+
+test('demo:reset --press leaves no orphaned savings goal behind', function () {
+    $this->artisan('demo:reset --press')->assertSuccessful();
+
+    $user = User::where('email', 'prensa@whisper.money')->first();
+    $label = $user->labels()->create(['name' => 'Moto', 'color' => '#10b981']);
+    $user->savingsGoals()->create([
+        'label_id' => $label->id,
+        'name' => 'Moto',
+        'target_amount' => 1700000,
+        'initial_amount' => 0,
+    ]);
+
+    // Deleting the label only nulls label_id, so a goal that survives the
+    // reseed lingers as an empty shell on the planning screen.
+    $this->artisan('demo:reset --press')->assertSuccessful();
+
+    expect($user->savingsGoals()->withTrashed()->count())->toBe(0);
 })->group('slow');
