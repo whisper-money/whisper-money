@@ -362,10 +362,11 @@ export default function Dashboard() {
                         <TopCategoriesCard categories={topCategories} />
                     </Deferred>
 
-                    {/* No skeleton: most users have nothing labelled, and a
-                        placeholder for a card that then disappears reads as a
-                        glitch. */}
-                    <Deferred data="topLabels" fallback={null}>
+                    {/* An empty fragment, not null: Deferred rejects a falsy
+                        fallback. Nothing is drawn on purpose — most users have
+                        nothing labelled, and a placeholder for a card that then
+                        disappears reads as a glitch. */}
+                    <Deferred data="topLabels" fallback={<></>}>
                         <TopLabelsCard labels={props.topLabels ?? []} />
                     </Deferred>
 

@@ -15,6 +15,25 @@ export interface BreakdownTrend {
 }
 
 /**
+ * The trend between a period and the one before it. Nothing to compare against
+ * means no trend: a first-time amount is not a rise from zero.
+ */
+export function trendFrom(
+    amount: number,
+    previousAmount: number,
+): BreakdownTrend | null {
+    if (previousAmount <= 0) {
+        return null;
+    }
+
+    return {
+        change: ((amount - previousAmount) / previousAmount) * 100,
+        previousAmount,
+        currentAmount: amount,
+    };
+}
+
+/**
  * Maps an arbitrary item to the fields a breakdown row renders. Each widget
  * (dashboard categories, cash-flow income/expenses, the analysis drawer's
  * categories, tags and accounts) supplies one of these so they can all share

@@ -1,6 +1,7 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import {
     CategoryBreakdownRow,
+    trendFrom,
     type CategoryBreakdownAdapter,
 } from '@/components/shared/category-breakdown-list';
 import {
@@ -11,15 +12,14 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
+import { useLast30Days } from '@/hooks/use-last-30-days';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import { type CategoryColor } from '@/types/category';
 import { getLabelColorClasses } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
-import { format, subDays } from 'date-fns';
 import { Tag } from 'lucide-react';
-import { useMemo } from 'react';
 
 export interface LabelSpending {
     id: string;
@@ -39,13 +39,7 @@ export function TopLabelsCard({ labels }: { labels: LabelSpending[] }) {
     const { auth } = usePage<SharedData>().props;
     const { categoryBarColor } = useChartColors();
 
-    const { dateFrom, dateTo } = useMemo(() => {
-        const now = new Date();
-        return {
-            dateFrom: format(subDays(now, 30), 'yyyy-MM-dd'),
-            dateTo: format(now, 'yyyy-MM-dd'),
-        };
-    }, []);
+    const { dateFrom, dateTo } = useLast30Days();
 
     if (labels.length === 0 || !auth?.user) {
         return null;
@@ -82,17 +76,7 @@ export function TopLabelsCard({ labels }: { labels: LabelSpending[] }) {
                     date_to: dateTo,
                 },
             }).url,
-        getTrend: (item) =>
-            item.previous_amount > 0
-                ? {
-                      change:
-                          ((item.amount - item.previous_amount) /
-                              item.previous_amount) *
-                          100,
-                      previousAmount: item.previous_amount,
-                      currentAmount: item.amount,
-                  }
-                : null,
+        getTrend: (item) => trendFrom(item.amount, item.previous_amount),
     };
 
     return (

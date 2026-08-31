@@ -2,6 +2,7 @@ import { index as transactionsIndex } from '@/actions/App/Http/Controllers/Trans
 import { CategoryAnalysisButton } from '@/components/categories/category-analysis-button';
 import {
     CategoryBreakdownRow,
+    trendFrom,
     type CategoryBreakdownAdapter,
 } from '@/components/shared/category-breakdown-list';
 import {
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
+import { useLast30Days } from '@/hooks/use-last-30-days';
 import { fetchJson } from '@/lib/fetch-json';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
@@ -23,10 +25,9 @@ import {
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
-import { format, subDays } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 
 interface CategoryData {
     category: Category | null;
@@ -54,13 +55,7 @@ export function TopCategoriesCard({
     const { auth } = usePage<SharedData>().props;
     const { categoryBarColor } = useChartColors();
 
-    const { dateFrom, dateTo } = useMemo(() => {
-        const now = new Date();
-        return {
-            dateFrom: format(subDays(now, 30), 'yyyy-MM-dd'),
-            dateTo: format(now, 'yyyy-MM-dd'),
-        };
-    }, []);
+    const { dateFrom, dateTo } = useLast30Days();
 
     const fetchChildren = useCallback(
         async (categoryId: string): Promise<CategoryData[]> => {
@@ -124,17 +119,7 @@ export function TopCategoriesCard({
                     date_to: dateTo,
                 },
             }).url,
-        getTrend: (item) =>
-            item.previous_amount > 0
-                ? {
-                      change:
-                          ((item.amount - item.previous_amount) /
-                              item.previous_amount) *
-                          100,
-                      previousAmount: item.previous_amount,
-                      currentAmount: item.amount,
-                  }
-                : null,
+        getTrend: (item) => trendFrom(item.amount, item.previous_amount),
         canExpand: (item) =>
             Boolean(item.has_children && !item.is_direct && item.category),
     };
