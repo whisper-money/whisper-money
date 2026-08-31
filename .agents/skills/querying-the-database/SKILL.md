@@ -29,6 +29,13 @@ php artisan agent:db "<query>"
 - `--prod` — run against the **production** database (the `prod` connection backed by
   `PROD_DB_URL`). Without this flag the query runs against the local DB.
 
+  `PROD_DB_URL` holds a MySQL user with **read-only grants**, so any write —
+  `INSERT`, `UPDATE`, `DELETE`, DDL — fails with an access-denied error from the
+  server. That is deliberate, and it is the only thing enforcing read-only: the
+  command itself hands the query straight to PDO. If a prod write fails, the
+  guardrail is working; run it against the local connection, or ship it as a
+  migration or a release command. Never work around it.
+
 ### Examples
 
 ```bash
@@ -45,7 +52,7 @@ php artisan agent:db --prod --format=table "select status, count(*) from subscri
 
 ## Guidelines
 
-- **Be careful with `--prod`**: this is live customer data. Only run prod queries the
+- **`--prod` is read-only by credentials, not by convention** (see above), but it is still live customer data. Only run prod queries the
   user explicitly asked for, keep them scoped (add `LIMIT`, filter by id), and never
   dump large or sensitive datasets unprompted. This app is privacy-first.
 - Use `--format=json` when you need to read the values to continue working; use
