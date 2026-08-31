@@ -14,6 +14,7 @@ use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\AccountUserCurrencyService;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -165,6 +166,15 @@ class AuthorizationController extends Controller
      * back to the system browser (Safari), where the app session does not exist, so
      * the connection is resolved from the signed state token EnableBanking echoes
      * back rather than from the logged-in session.
+     *
+     * That split is also a race: the return URL is back inside the PWA scope, so
+     * iOS may deliver it to the app, to Safari, or to both. The context that did
+     * not run the SCA reports `access_denied` seconds after the flow starts and
+     * soft-deletes the connection the other one is still authorizing. So the
+     * callback carrying a code the provider accepts wins whatever the arrival
+     * order: a code EnableBanking honours is proof the user did authorize, and
+     * nothing weaker resurrects a row. Completion burns the state token, which
+     * is what keeps a finished connection out of a second callback's reach.
      */
     public function callback(Request $request, BankingProviderInterface $provider, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse|Response
     {
@@ -205,6 +215,12 @@ class AuthorizationController extends Controller
 
         if (! $connection) {
             return $this->finishWithError($user, 'No pending connection found.');
+        }
+
+        // Undo the cancellation an orphaned context sent while the user was
+        // still at their bank. See the race in this method's docblock.
+        if ($connection->trashed()) {
+            $connection->restore();
         }
 
         $isReconnect = $connection->accounts()->exists();
@@ -297,6 +313,15 @@ class AuthorizationController extends Controller
      *
      * A pending connection that already has accounts is a reconnect, so it is kept
      * and marked as failing. A brand new one has nothing worth keeping.
+     *
+     * Only the connection the state token names is touched. The old fallback -
+     * the user's latest pending connection - deleted whatever it happened to
+     * find: in production an error belonging to a 10:57 attempt deleted the
+     * connection started at 09:41. An error we cannot attribute is still shown
+     * to the user, but it takes no row down with it.
+     *
+     * The state token deliberately survives an error, so the winner of the race
+     * in callback() can still claim this attempt.
      */
     private function handleAuthorizationError(Request $request, User $user, ?BankingConnection $connection): RedirectResponse|Response
     {
@@ -307,29 +332,23 @@ class AuthorizationController extends Controller
             is_string($errorDescription) ? $errorDescription : null,
         );
 
-        $pendingConnection = $connection ?? $user->bankingConnections()
-            ->where('status', BankingConnectionStatus::Pending)
-            ->latest()
-            ->first();
-
         // The bank is logged because these failures are bank-specific, and the
         // connection row is about to be deleted on one of the branches below.
         Log::warning('EnableBanking authorization error', [
             'error' => $errorCode,
             'description' => $errorDescription,
-            'aspsp_name' => $pendingConnection?->aspsp_name,
-            'connection_id' => $pendingConnection?->id,
+            'aspsp_name' => $connection?->aspsp_name,
+            'connection_id' => $connection?->id,
         ]);
 
-        if ($pendingConnection) {
-            if ($pendingConnection->accounts()->exists()) {
-                $pendingConnection->update([
+        if ($connection) {
+            if ($connection->accounts()->exists()) {
+                $connection->update([
                     'status' => BankingConnectionStatus::Error,
                     'error_message' => $errorMessage,
-                    'state_token' => null,
                 ]);
             } else {
-                $pendingConnection->delete();
+                $connection->delete();
             }
         }
 
@@ -380,7 +399,11 @@ class AuthorizationController extends Controller
             return null;
         }
 
+        // Trashed rows count: a cancelled attempt is exactly what the winner of
+        // the race in callback() has to land on. `state_token` is unique, so a
+        // trashed row still holds the index and this stays single-valued.
         return BankingConnection::query()
+            ->withoutGlobalScope(SoftDeletingScope::class)
             ->where('state_token', $stateToken)
             ->first();
     }

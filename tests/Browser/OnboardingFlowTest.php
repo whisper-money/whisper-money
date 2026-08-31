@@ -245,11 +245,14 @@ it('returns to the accounts step when bank authorization fails during onboarding
         'user_id' => $user->id,
         'aspsp_name' => 'Failing Bank',
         'aspsp_country' => 'ES',
+        'state_token' => 'onboarding-failure-token',
     ]);
 
     $this->actingAs($user);
 
-    $page = visit('/open-banking/callback?error=access_denied&error_description=Authentication+failed');
+    // The state token is what attributes the failure to this attempt: an error
+    // the callback cannot resolve deletes nothing.
+    $page = visit('/open-banking/callback?error=access_denied&error_description=Authentication+failed&state=onboarding-failure-token');
 
     $page->wait(1)
         ->assertPathIs('/onboarding')
