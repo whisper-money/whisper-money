@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { transactionSyncService } from '@/services/transaction-sync';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditTransactionDialog } from './edit-transaction-dialog';
@@ -36,6 +37,7 @@ vi.mock('@/services/transaction-sync', () => ({
     transactionSyncService: {
         create: vi.fn(),
         update: vi.fn(),
+        getById: vi.fn(),
     },
 }));
 
@@ -113,7 +115,7 @@ describe('EditTransactionDialog', () => {
         });
     });
 
-    it('shows counterparty names as read-only fields', () => {
+    it('shows counterparty names in the read-only details', () => {
         render(
             <EditTransactionDialog
                 transaction={{
@@ -149,9 +151,9 @@ describe('EditTransactionDialog', () => {
         );
 
         expect(screen.getByText('Creditor')).toBeInTheDocument();
-        expect(screen.getByDisplayValue('Amazon EU')).toBeDisabled();
+        expect(screen.getByText('Amazon EU')).toBeInTheDocument();
         expect(screen.getByText('Debtor')).toBeInTheDocument();
-        expect(screen.getByDisplayValue('Victor Falcon')).toBeDisabled();
+        expect(screen.getByText('Victor Falcon')).toBeInTheDocument();
     });
 
     const checkingAccount = {
@@ -265,7 +267,7 @@ describe('EditTransactionDialog', () => {
         );
 
         // Amount, date and description render as editable inputs, not read-only text.
-        expect(screen.getByPlaceholderText('25.00')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument();
         expect(
             screen.getByPlaceholderText('Transaction description'),
         ).toBeInTheDocument();
@@ -274,32 +276,30 @@ describe('EditTransactionDialog', () => {
         ).toBeInTheDocument();
     });
 
-    const importedTransaction = {
-        id: 'tx-imported',
-        user_id: 'user-1',
-        account_id: 'account-1',
-        category_id: null,
-        description: 'Card payment',
-        description_iv: null,
-        transaction_date: '2026-05-27',
-        amount: -1200,
-        currency_code: 'EUR',
-        notes: null,
-        notes_iv: null,
-        creditor_name: null,
-        debtor_name: null,
-        source: 'imported' as const,
-        created_at: '2026-05-27T00:00:00Z',
-        updated_at: '2026-05-27T00:00:00Z',
-        decryptedDescription: 'Card payment',
-        decryptedNotes: null,
-        label_ids: [],
-    };
-
     it('keeps amount and description read-only for an imported transaction but lets the date move', () => {
         render(
             <EditTransactionDialog
-                transaction={importedTransaction}
+                transaction={{
+                    id: 'tx-imported',
+                    user_id: 'user-1',
+                    account_id: 'account-1',
+                    category_id: null,
+                    description: 'Card payment',
+                    description_iv: null,
+                    transaction_date: '2026-05-27',
+                    amount: -1200,
+                    currency_code: 'EUR',
+                    notes: null,
+                    notes_iv: null,
+                    creditor_name: null,
+                    debtor_name: null,
+                    source: 'imported',
+                    created_at: '2026-05-27T00:00:00Z',
+                    updated_at: '2026-05-27T00:00:00Z',
+                    decryptedDescription: 'Card payment',
+                    decryptedNotes: null,
+                    label_ids: [],
+                }}
                 categories={[]}
                 accounts={[checkingAccount]}
                 banks={[]}
@@ -311,10 +311,12 @@ describe('EditTransactionDialog', () => {
             />,
         );
 
-        expect(screen.queryByPlaceholderText('25.00')).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('0.00')).not.toBeInTheDocument();
         expect(
             screen.queryByPlaceholderText('Transaction description'),
         ).not.toBeInTheDocument();
+
+        // The date still moves — it decides which month the row counts towards.
         expect(document.querySelector('input[type="date"]')).toHaveValue(
             '2026-05-27',
         );
@@ -323,116 +325,13 @@ describe('EditTransactionDialog', () => {
                 'The date decides which month and budget this transaction counts towards.',
             ),
         ).toBeInTheDocument();
-    });
 
-    it('shows the source date once the transaction has been moved', () => {
-        render(
-            <EditTransactionDialog
-                transaction={{
-                    ...importedTransaction,
-                    transaction_date: '2026-06-01',
-                    source_date: '2026-05-27',
-                }}
-                categories={[]}
-                accounts={[checkingAccount]}
-                banks={[]}
-                labels={[]}
-                open
-                onOpenChange={vi.fn()}
-                onSuccess={vi.fn()}
-                mode="edit"
-            />,
-        );
-
+        // The locked data shows up as a read-only details card instead.
+        expect(screen.getByText('Card payment')).toBeInTheDocument();
+        expect(screen.getByText('Imported from a file')).toBeInTheDocument();
         expect(
-            screen.getByTestId('original-transaction-date'),
-        ).toHaveTextContent('Original date: May 27');
-    });
-
-    it('shows the source date as soon as the field moves off it, before saving', () => {
-        render(
-            <EditTransactionDialog
-                transaction={importedTransaction}
-                categories={[]}
-                accounts={[checkingAccount]}
-                banks={[]}
-                labels={[]}
-                open
-                onOpenChange={vi.fn()}
-                onSuccess={vi.fn()}
-                mode="edit"
-            />,
-        );
-
-        // Nothing to point at while the field still sits on the source's day.
-        expect(
-            screen.queryByTestId('original-transaction-date'),
-        ).not.toBeInTheDocument();
-
-        const dateInput = document.querySelector(
-            'input[type="date"]',
-        ) as HTMLInputElement;
-        fireEvent.change(dateInput, { target: { value: '2026-06-01' } });
-
-        expect(
-            screen.getByTestId('original-transaction-date'),
-        ).toHaveTextContent('Original date: May 27');
-
-        // Moving it back onto the source's own day hides it again.
-        fireEvent.change(dateInput, { target: { value: '2026-05-27' } });
-
-        expect(
-            screen.queryByTestId('original-transaction-date'),
-        ).not.toBeInTheDocument();
-    });
-
-    it('never offers a source date on a manually created transaction', () => {
-        render(
-            <EditTransactionDialog
-                transaction={manualTransaction}
-                categories={[]}
-                accounts={[checkingAccount]}
-                banks={[]}
-                labels={[]}
-                open
-                onOpenChange={vi.fn()}
-                onSuccess={vi.fn()}
-                mode="edit"
-            />,
-        );
-
-        const dateInput = document.querySelector(
-            'input[type="date"]',
-        ) as HTMLInputElement;
-        fireEvent.change(dateInput, { target: { value: '2026-06-01' } });
-
-        expect(
-            screen.queryByTestId('original-transaction-date'),
-        ).not.toBeInTheDocument();
-    });
-
-    it('keeps the date locked on a part of a split', () => {
-        render(
-            <EditTransactionDialog
-                transaction={{
-                    ...importedTransaction,
-                    split_parent_id: 'tx-original',
-                }}
-                categories={[]}
-                accounts={[checkingAccount]}
-                banks={[]}
-                labels={[]}
-                open
-                onOpenChange={vi.fn()}
-                onSuccess={vi.fn()}
-                mode="edit"
-            />,
-        );
-
-        expect(
-            document.querySelector('input[type="date"]'),
-        ).not.toBeInTheDocument();
-        expect(screen.getByText('May 27')).toBeInTheDocument();
+            screen.getByText('These details cannot be edited.'),
+        ).toBeInTheDocument();
     });
 
     it('explains why the balance stays put on a connected account', () => {
@@ -530,6 +429,282 @@ describe('EditTransactionDialog', () => {
         expect(
             screen.queryByRole('button', { name: 'Delete' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('keeps description editable for a split part while the rest stays locked', () => {
+        render(
+            <EditTransactionDialog
+                transaction={{
+                    ...manualTransaction,
+                    id: 'tx-part',
+                    split_parent_id: 'tx-original',
+                }}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(
+            screen.getByPlaceholderText('Transaction description'),
+        ).toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('0.00')).not.toBeInTheDocument();
+        expect(
+            document.querySelector('input[type="date"]'),
+        ).not.toBeInTheDocument();
+        // The locked date shows up in the header and the details card instead.
+        expect(screen.getAllByText('May 27').length).toBeGreaterThan(0);
+        expect(
+            screen.getByText('Part of a split transaction'),
+        ).toBeInTheDocument();
+    });
+
+    const importedTransaction = {
+        id: 'tx-imported',
+        user_id: 'user-1',
+        account_id: 'account-1',
+        category_id: null,
+        description: 'Card payment',
+        description_iv: null,
+        transaction_date: '2026-05-27',
+        amount: -1200,
+        currency_code: 'EUR',
+        notes: null,
+        notes_iv: null,
+        creditor_name: null,
+        debtor_name: null,
+        source: 'imported' as const,
+        created_at: '2026-05-27T00:00:00Z',
+        updated_at: '2026-05-27T00:00:00Z',
+        decryptedDescription: 'Card payment',
+        decryptedNotes: null,
+        label_ids: [],
+    };
+
+    it('shows the source date once the transaction has been moved', () => {
+        render(
+            <EditTransactionDialog
+                transaction={{
+                    ...importedTransaction,
+                    transaction_date: '2026-06-01',
+                    source_date: '2026-05-27',
+                }}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(
+            screen.getByTestId('original-transaction-date'),
+        ).toHaveTextContent('Original date: May 27');
+    });
+
+    it('shows the source date as soon as the field moves off it, before saving', () => {
+        render(
+            <EditTransactionDialog
+                transaction={importedTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        // Nothing to point at while the field still sits on the source's day.
+        expect(
+            screen.queryByTestId('original-transaction-date'),
+        ).not.toBeInTheDocument();
+
+        const dateInput = document.querySelector(
+            'input[type="date"]',
+        ) as HTMLInputElement;
+        fireEvent.change(dateInput, { target: { value: '2026-06-01' } });
+
+        expect(
+            screen.getByTestId('original-transaction-date'),
+        ).toHaveTextContent('Original date: May 27');
+
+        // Moving it back onto the source's own day hides it again.
+        fireEvent.change(dateInput, { target: { value: '2026-05-27' } });
+
+        expect(
+            screen.queryByTestId('original-transaction-date'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('never offers a source date on a manually created transaction', () => {
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        const dateInput = document.querySelector(
+            'input[type="date"]',
+        ) as HTMLInputElement;
+        fireEvent.change(dateInput, { target: { value: '2026-06-01' } });
+
+        expect(
+            screen.queryByTestId('original-transaction-date'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('persists description edits on a split part', async () => {
+        vi.mocked(transactionSyncService.update).mockResolvedValue({} as never);
+
+        render(
+            <EditTransactionDialog
+                transaction={{
+                    ...manualTransaction,
+                    id: 'tx-part',
+                    split_parent_id: 'tx-original',
+                }}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        fireEvent.change(
+            screen.getByPlaceholderText('Transaction description'),
+            { target: { value: 'Groceries — my half' } },
+        );
+        fireEvent.click(screen.getByTestId('submit-transaction'));
+
+        await waitFor(() => {
+            expect(transactionSyncService.update).toHaveBeenCalledWith(
+                'tx-part',
+                expect.objectContaining({
+                    description: 'Groceries — my half',
+                }),
+                expect.anything(),
+            );
+        });
+    });
+
+    it('submits expenses as negative amounts by default', async () => {
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+                initialAccountId="account-1"
+            />,
+        );
+
+        fireEvent.change(
+            screen.getByPlaceholderText('Transaction description'),
+            { target: { value: 'Dinner' } },
+        );
+        const amountInput = screen.getByPlaceholderText('0.00');
+        fireEvent.change(amountInput, { target: { value: '25' } });
+        fireEvent.blur(amountInput);
+        fireEvent.click(screen.getByTestId('submit-transaction'));
+
+        await waitFor(() => {
+            expect(transactionSyncService.create).toHaveBeenCalledWith(
+                expect.objectContaining({ amount: -2500 }),
+                expect.anything(),
+            );
+        });
+    });
+
+    it('submits positive amounts when income is selected', async () => {
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+                initialAccountId="account-1"
+            />,
+        );
+
+        fireEvent.click(screen.getByTestId('transaction-type-income'));
+        fireEvent.change(
+            screen.getByPlaceholderText('Transaction description'),
+            { target: { value: 'Salary' } },
+        );
+        const amountInput = screen.getByPlaceholderText('0.00');
+        fireEvent.change(amountInput, { target: { value: '25' } });
+        fireEvent.blur(amountInput);
+        fireEvent.click(screen.getByTestId('submit-transaction'));
+
+        await waitFor(() => {
+            expect(transactionSyncService.create).toHaveBeenCalledWith(
+                expect.objectContaining({ amount: 2500 }),
+                expect.anything(),
+            );
+        });
+    });
+
+    it('shows the absolute amount with the expense toggle active when editing', () => {
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(screen.getByDisplayValue('12.00')).toBeInTheDocument();
+        expect(screen.getByTestId('transaction-type-expense')).toHaveAttribute(
+            'data-state',
+            'on',
+        );
     });
 
     it('hides the Delete button in create mode', () => {
