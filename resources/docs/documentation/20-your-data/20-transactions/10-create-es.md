@@ -6,18 +6,18 @@ Añade una transacción a mano cuando no ha llegado desde un archivo del banco n
 
 El botón **Transacción** de la página de transacciones lo abre. También se abre desde la página de una cuenta, con esa cuenta ya elegida.
 
-![El diálogo de crear transacción, con los campos de cuenta, fecha, descripción e importe rellenos y debajo los selectores de categoría y etiquetas](/docs/documentation/create-transaction-dialog.png)
+![El diálogo de crear transacción, con el selector de gasto o ingreso junto al importe arriba, los campos de descripción, fecha y cuenta debajo, y los selectores de categoría y etiquetas al final](/docs/documentation/create-transaction-dialog.png)
 
 ## Qué hay que rellenar
 
-Cuatro campos son obligatorios: **cuenta**, **fecha**, **descripción** e **importe**.
+Cuatro campos son obligatorios: **importe**, **descripción**, **fecha** y **cuenta**.
 
-- La **cuenta** decide a qué saldo pertenece la transacción, y su divisa.
-- La **fecha** decide en qué mes se informa la transacción.
+- El **importe** se escribe sin signo: el selector **Gasto / Ingresos** que tiene al lado decide si el dinero sale o entra.
 - La **descripción** es lo que reconocerás más tarde, y lo que leen las reglas de automatización.
-- El **importe** es negativo para el dinero que sale y positivo para el que entra.
+- La **fecha** decide en qué mes se informa la transacción.
+- La **cuenta** decide a qué saldo pertenece la transacción, y su divisa.
 
-**Categoría**, **etiquetas** y **notas** son opcionales y se pueden añadir después en cualquier momento.
+La **categoría** y las **etiquetas** son opcionales y se pueden añadir después en cualquier momento. Las notas esperan detrás del botón **Agregar nota** hasta que hagan falta.
 
 Los nombres de acreedor y deudor no forman parte de este diálogo. Solo existen en las transacciones para las que un banco los ha facilitado.
 
@@ -35,7 +35,7 @@ Una transacción creada a mano se compara con tus reglas de automatización como
 
 ### ¿Por qué el importe se guarda como número negativo?
 
-Porque el dinero que sale es un importe negativo en todo Whisper Money. Informes, presupuestos y flujo de caja dependen del signo.
+Porque el dinero que sale es un importe negativo en todo Whisper Money. Informes, presupuestos y flujo de caja dependen del signo. Nunca lo escribes tú: el selector **Gasto / Ingresos** del diálogo lo pone por ti.
 
 ### ¿Puedo crear una transacción en otra divisa?
 
