@@ -6,18 +6,18 @@ Add a transaction by hand when it did not arrive from a bank file or a connected
 
 The **Transaction** button on the transactions page opens it. It also opens from an account page, with that account already chosen.
 
-![The create transaction dialog, with the account, date, description and amount fields filled in and the category and labels pickers below them](/docs/documentation/create-transaction-dialog.png)
+![The create transaction dialog, with the expense and income toggle next to the amount at the top, the description, date and account fields below, and the category and labels pickers under them](/docs/documentation/create-transaction-dialog.png)
 
 ## What to fill in
 
-Four fields are required: **account**, **date**, **description** and **amount**.
+Four fields are required: **amount**, **description**, **date** and **account**.
 
-- **Account** decides which balance the transaction belongs to, and its currency.
-- **Date** decides which month the transaction is reported in.
+- **Amount** is typed without a sign: the **Expense / Income** toggle next to it decides whether the money goes out or comes in.
 - **Description** is what you will recognise later, and what automation rules read.
-- **Amount** is negative for money going out and positive for money coming in.
+- **Date** decides which month the transaction is reported in.
+- **Account** decides which balance the transaction belongs to, and its currency.
 
-**Category**, **labels** and **notes** are optional and can be added at any time afterwards.
+**Category** and **labels** are optional and can be added at any time afterwards. Notes sit behind an **Add note** button until you need them.
 
 Creditor and debtor names are not part of this dialog. They only exist on transactions a bank supplied them for.
 
@@ -35,7 +35,7 @@ A transaction created by hand is matched against your automation rules like any 
 
 ### Why is the amount saved as a negative number?
 
-Because money going out is a negative amount everywhere in Whisper Money. Reports, budgets and cashflow all rely on the sign.
+Because money going out is a negative amount everywhere in Whisper Money. Reports, budgets and cashflow all rely on the sign. You never type it yourself: the **Expense / Income** toggle in the dialog sets it for you.
 
 ### Can I create a transaction in a different currency?
 

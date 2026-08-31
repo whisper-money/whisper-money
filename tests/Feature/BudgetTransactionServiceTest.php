@@ -804,3 +804,38 @@ test('an archived budget tracking a label takes in no new transactions either', 
 
     expect(BudgetTransaction::where('transaction_id', $transaction->id)->count())->toBe(0);
 });
+
+test('assignTransaction matches the period on the last day of the month', function () {
+    // Regression: a Carbon binding serializes with a time ("Y-m-d H:i:s"), and
+    // on SQLite that string sorts after a stored date-only end_date, so a
+    // transaction dated on the period's own last day never matched its period.
+    $this->travelTo(now()->endOfMonth()->setTime(10, 0, 0));
+
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $budget = Budget::factory()->forCategories($category)->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -2500,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+
+    expect(BudgetTransaction::query()
+        ->where('budget_period_id', $period->id)
+        ->where('transaction_id', $transaction->id)
+        ->exists())->toBeTrue();
+
+    $this->travelBack();
+});

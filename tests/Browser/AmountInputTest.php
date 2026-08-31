@@ -84,9 +84,10 @@ it('can create a transaction with amount input', function () {
         ->wait(1)
         ->assertNoJavascriptErrors();
 
+    // The type toggle defaults to Expense, so a typed 123.45 stores negative.
     $this->assertDatabaseHas('transactions', [
         'user_id' => $user->id,
-        'amount' => 12345,
+        'amount' => -12345,
     ]);
 });
 
@@ -128,9 +129,10 @@ it('formats amount when pressing enter', function () {
         ->wait(1)
         ->assertNoJavascriptErrors();
 
+    // The type toggle defaults to Expense, so a typed 99.99 stores negative.
     $this->assertDatabaseHas('transactions', [
         'user_id' => $user->id,
-        'amount' => 9999,
+        'amount' => -9999,
     ]);
 });
 

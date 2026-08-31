@@ -117,9 +117,10 @@ it('can create a transaction', function () {
         ->wait(3)
         ->assertNoJavascriptErrors();
 
+    // The type toggle defaults to Expense, so a typed 50.00 stores negative.
     $this->assertDatabaseHas('transactions', [
         'user_id' => $user->id,
-        'amount' => 5000,
+        'amount' => -5000,
     ]);
 });
 

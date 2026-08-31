@@ -267,8 +267,11 @@ class BudgetTransactionService
                             });
                     });
             })
-            ->where('start_date', '<=', $transaction->transaction_date)
-            ->where('end_date', '>=', $transaction->transaction_date)
+            // Compared as plain dates: a Carbon binding serializes with a time
+            // ("Y-m-d H:i:s"), and on SQLite that string sorts after a stored
+            // date-only end_date — so the period's own last day never matched.
+            ->where('start_date', '<=', $transaction->transaction_date->toDateString())
+            ->where('end_date', '>=', $transaction->transaction_date->toDateString())
             ->with('budget.categories:id', 'budget.labels:id')
             ->get();
 
@@ -317,8 +320,9 @@ class BudgetTransactionService
                     ->where('user_id', $transaction->user_id)
                     ->where('is_catch_all', true);
             })
-            ->where('start_date', '<=', $transaction->transaction_date)
-            ->where('end_date', '>=', $transaction->transaction_date)
+            // Date-only comparison for the same reason as in trackedPeriodIds().
+            ->where('start_date', '<=', $transaction->transaction_date->toDateString())
+            ->where('end_date', '>=', $transaction->transaction_date->toDateString())
             ->pluck('id')
             ->all();
     }
