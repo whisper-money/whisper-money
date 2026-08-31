@@ -7,15 +7,19 @@ import { AccountsManagerDialog } from '@/components/dashboard/accounts-manager-d
 import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-card';
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
+import {
+    TopLabelsCard,
+    type LabelSpending,
+} from '@/components/dashboard/top-labels-card';
 import HeadingSmall from '@/components/heading-small';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import { Button } from '@/components/ui/button';
 import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
+    deriveAccountMetrics,
     type AccountWithMetrics,
     type NetWorthEvolutionData,
-    deriveAccountMetrics,
 } from '@/hooks/use-dashboard-data';
 import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
@@ -46,6 +50,7 @@ interface DashboardProps extends SharedData {
         has_children?: boolean;
         is_direct?: boolean;
     }>;
+    topLabels?: LabelSpending[];
     cashflowSummary?: {
         current: CashflowSummary;
         previous: CashflowSummary;
@@ -207,7 +212,12 @@ export default function Dashboard() {
 
     const refetch = useCallback(() => {
         router.reload({
-            only: ['netWorthEvolution', 'topCategories', 'cashflowSummary'],
+            only: [
+                'netWorthEvolution',
+                'topCategories',
+                'topLabels',
+                'cashflowSummary',
+            ],
         });
     }, []);
 
@@ -350,6 +360,13 @@ export default function Dashboard() {
                         }
                     >
                         <TopCategoriesCard categories={topCategories} />
+                    </Deferred>
+
+                    {/* No skeleton: most users have nothing labelled, and a
+                        placeholder for a card that then disappears reads as a
+                        glitch. */}
+                    <Deferred data="topLabels" fallback={null}>
+                        <TopLabelsCard labels={props.topLabels ?? []} />
                     </Deferred>
 
                     {props.features.cashflow && (
