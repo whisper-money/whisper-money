@@ -2,6 +2,7 @@ import { index as transactionsIndex } from '@/actions/App/Http/Controllers/Trans
 import { CategoryAnalysisButton } from '@/components/categories/category-analysis-button';
 import {
     CategoryBreakdownRow,
+    trendFrom,
     type CategoryBreakdownAdapter,
 } from '@/components/shared/category-breakdown-list';
 import { AmountDisplay } from '@/components/ui/amount-display';
@@ -131,17 +132,7 @@ export function BreakdownCard({
                       },
                   }).url
                 : null,
-        getTrend: (item) =>
-            item.previous_amount > 0
-                ? {
-                      change:
-                          ((item.amount - item.previous_amount) /
-                              item.previous_amount) *
-                          100,
-                      previousAmount: item.previous_amount,
-                      currentAmount: item.amount,
-                  }
-                : null,
+        getTrend: (item) => trendFrom(item.amount, item.previous_amount),
         canExpand: (item) =>
             Boolean(
                 item.has_children &&

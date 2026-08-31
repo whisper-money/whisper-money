@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
+use App\Services\LabelSpendingService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class DashboardController extends Controller
     public function __construct(
         private AccountMetricsService $accountMetricsService,
         private CategorySpendingService $categorySpendingService,
+        private LabelSpendingService $labelSpendingService,
         private CashflowSummaryService $summaries,
     ) {}
 
@@ -26,6 +28,7 @@ class DashboardController extends Controller
             'showEncryptionPrompt' => session('show_encryption_prompt', false),
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
+            'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
             'cashflowSummary' => Inertia::defer(fn () => $this->getCashflowSummary($request), 'dashboard'),
         ]);
     }
@@ -80,6 +83,16 @@ class DashboardController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    private function getTopLabels(Request $request): array
+    {
+        $now = Carbon::now();
+
+        return $this->labelSpendingService->topForPeriod(
+            $request->user()->id,
+            new PeriodComparator($now->copy()->subDays(30), $now),
+        );
     }
 
     private function getCashflowSummary(Request $request): array
