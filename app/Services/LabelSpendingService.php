@@ -59,7 +59,7 @@ class LabelSpendingService
      * A transaction counts towards every label attached to it, so the totals can
      * add up to more than the period's expenses.
      *
-     * @return Collection<string, array{id: string, name: string, color: string, amount: int}>
+     * @return Collection<string, array{id: string, name: string, color: string, amount: positive-int}>
      */
     private function forPeriod(string $userId, Carbon $from, Carbon $to): Collection
     {
@@ -83,14 +83,15 @@ class LabelSpendingService
             ->select('labels.id', 'labels.name', 'labels.color', DB::raw('sum('.Transaction::OWNED_AMOUNT_SQL.') as total_amount'))
             ->toBase()
             ->get()
-            ->map(fn ($row): array => [
-                'id' => $row->id,
-                'name' => $row->name,
-                'color' => $row->color,
-                'amount' => (int) -$row->total_amount,
+            ->mapWithKeys(fn ($row): array => [
+                (string) $row->id => [
+                    'id' => (string) $row->id,
+                    'name' => (string) $row->name,
+                    'color' => (string) $row->color,
+                    'amount' => (int) -$row->total_amount,
+                ],
             ])
-            ->filter(fn (array $label): bool => $label['amount'] > 0)
-            ->keyBy('id');
+            ->filter(fn (array $label): bool => $label['amount'] > 0);
     }
 
     /**
