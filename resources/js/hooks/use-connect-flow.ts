@@ -1,3 +1,4 @@
+import { useLocale } from '@/hooks/use-locale';
 import {
     alreadyConnectedBankNames,
     hasLiveConnectionForProvider,
@@ -17,26 +18,44 @@ import type {
 import { __ } from '@/utils/i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-export const CONNECT_COUNTRIES = [
-    { code: 'ES', name: 'Spain' },
-    { code: 'DE', name: 'Germany' },
-    { code: 'FR', name: 'France' },
-    { code: 'IT', name: 'Italy' },
-    { code: 'NL', name: 'Netherlands' },
-    { code: 'PT', name: 'Portugal' },
-    { code: 'BE', name: 'Belgium' },
-    { code: 'AT', name: 'Austria' },
-    { code: 'FI', name: 'Finland' },
-    { code: 'IE', name: 'Ireland' },
-    { code: 'LT', name: 'Lithuania' },
-    { code: 'LV', name: 'Latvia' },
-    { code: 'EE', name: 'Estonia' },
-    { code: 'SE', name: 'Sweden' },
-    { code: 'NO', name: 'Norway' },
-    { code: 'DK', name: 'Denmark' },
-    { code: 'PL', name: 'Poland' },
-    { code: 'GB', name: 'United Kingdom' },
+/** Countries we can connect banks in, most-used first. */
+export const CONNECT_COUNTRY_CODES = [
+    'ES',
+    'DE',
+    'FR',
+    'IT',
+    'NL',
+    'PT',
+    'BE',
+    'AT',
+    'FI',
+    'IE',
+    'LT',
+    'LV',
+    'EE',
+    'SE',
+    'NO',
+    'DK',
+    'PL',
+    'GB',
 ] as const;
+
+/**
+ * The connectable countries named in the user's locale. Intl owns the country
+ * names, so they never need a translation entry of their own.
+ */
+export function useConnectCountries(): { code: string; name: string }[] {
+    const locale = useLocale();
+
+    return useMemo(() => {
+        const names = new Intl.DisplayNames([locale], { type: 'region' });
+
+        return CONNECT_COUNTRY_CODES.map((code) => ({
+            code,
+            name: names.of(code) ?? code,
+        }));
+    }, [locale]);
+}
 
 export type ConnectStep = 'country' | 'bank' | 'confirm';
 

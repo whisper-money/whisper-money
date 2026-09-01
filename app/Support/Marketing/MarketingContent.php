@@ -40,7 +40,7 @@ final class MarketingContent
 
     /**
      * Countries the bank connect flow offers, with the name to print in each
-     * language. The codes mirror CONNECT_COUNTRIES in the frontend connect
+     * language. The codes mirror CONNECT_COUNTRY_CODES in the frontend connect
      * flow; a test fails if the two lists stop agreeing.
      */
     public const COUNTRIES = [

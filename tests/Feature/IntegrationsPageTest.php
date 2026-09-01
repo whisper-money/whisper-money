@@ -44,8 +44,8 @@ function connectCountryCodes(): array
 {
     $flow = file_get_contents(base_path('resources/js/hooks/use-connect-flow.ts'));
 
-    preg_match('/CONNECT_COUNTRIES = \[(.*?)\] as const;/s', (string) $flow, $block);
-    preg_match_all("/code: '([A-Z]{2})'/", $block[1] ?? '', $matches);
+    preg_match('/CONNECT_COUNTRY_CODES = \[(.*?)\] as const;/s', (string) $flow, $block);
+    preg_match_all("/^\s*'([A-Z]{2})',$/m", $block[1] ?? '', $matches);
 
     return $matches[1];
 }

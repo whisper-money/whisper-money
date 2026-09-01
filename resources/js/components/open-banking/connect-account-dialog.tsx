@@ -23,7 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CONNECT_COUNTRIES, useConnectFlow } from '@/hooks/use-connect-flow';
+import { useConnectCountries, useConnectFlow } from '@/hooks/use-connect-flow';
 import { ProviderCredentialFields } from '@/lib/connect-providers';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
@@ -65,6 +65,8 @@ export function ConnectAccountDialog({
         handleAuthorize,
         reset,
     } = useConnectFlow(connections);
+
+    const countries = useConnectCountries();
 
     const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(false);
 
@@ -113,12 +115,12 @@ export function ConnectAccountDialog({
                                         />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {CONNECT_COUNTRIES.map((c) => (
+                                        {countries.map((c) => (
                                             <SelectItem
                                                 key={c.code}
                                                 value={c.code}
                                             >
-                                                {__(c.name)}
+                                                {c.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
