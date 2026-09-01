@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategorizeTransactions;
 use App\Services\Ai\CategoryCatalog;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
@@ -145,6 +146,32 @@ it('drops the chunk, skips reporting and schedules a retry when the provider is 
     Queue::fake();
 
     TransactionCategorizationAgent::fake(fn () => throw ProviderOverloadedException::forProvider('gemini'));
+
+    $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    $transaction->refresh();
+
+    expect($outcomes)->toBe([])
+        ->and($transaction->category_id)->toBeNull();
+
+    Exceptions::assertNothingReported();
+    Queue::assertPushed(
+        RetryTransientAiCategorizationJob::class,
+        fn (RetryTransientAiCategorizationJob $job): bool => $job->user->is($user),
+    );
+});
+
+it('drops the chunk, skips reporting and schedules a retry when the provider cannot be reached', function () {
+    $user = User::factory()->create();
+    groceries($user);
+    $transaction = uncategorized($user);
+
+    Exceptions::fake();
+    Queue::fake();
+
+    TransactionCategorizationAgent::fake(fn () => throw new ConnectionException(
+        'cURL error 6: Could not resolve host: generativelanguage.googleapis.com',
+    ));
 
     $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
 
