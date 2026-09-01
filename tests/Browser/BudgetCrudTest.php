@@ -16,9 +16,11 @@ test('user can create a budget with category', function () {
     $page->wait(2); // Wait for page to fully load
 
     $page->assertSee('Planning')
-        ->waitForText('Create Budget', 10)
+        ->waitForText('Create', 10)
         ->wait(1) // Extra wait before clicking
-        ->click('Create Budget')
+        ->click('Create')
+        ->wait(1)
+        ->click('[role="menuitem"]:has-text("Budget")')
         ->wait(3) // Wait for dialog to open
         ->assertSee('Create Budget')
         ->wait(1) // Wait for form to be ready
@@ -134,9 +136,11 @@ test('budget creation validates required fields', function () {
     $page->wait(2); // Wait for page to fully load
 
     $page->assertSee('Planning')
-        ->waitForText('Create Budget', 10)
+        ->waitForText('Create', 10)
         ->wait(1) // Extra wait before clicking
-        ->click('Create Budget')
+        ->click('Create')
+        ->wait(1)
+        ->click('[role="menuitem"]:has-text("Budget")')
         ->wait(3) // Wait for dialog to open
         ->assertSee('Create Budget')
         ->wait(2) // Wait for form to be ready

@@ -56,7 +56,9 @@ test('user can open create budget dialog', function () {
     $page = $this->actingAs($user)->visit('/budgets');
 
     $page->waitForText('Planning', 10)
-        ->click('Create Budget')
+        ->click('Create')
+        ->wait(1)
+        ->click('[role="menuitem"]:has-text("Budget")')
         ->wait(1)
         ->assertSee('Create Budget')
         ->assertNoJavascriptErrors();

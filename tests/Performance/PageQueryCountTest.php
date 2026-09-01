@@ -63,7 +63,9 @@ test('transactions index page does not exceed query threshold', function () {
 });
 
 test('budgets index page does not exceed query threshold', function () {
-    assertMaxQueries(21, function () {
+    // Savings goals load unconditionally since the SavingsGoals flag was
+    // removed: the goals themselves plus their stats aggregate.
+    assertMaxQueries(23, function () {
         $this->get(route('budgets.index'))->assertOk();
     }, 'Budgets Index');
 });
