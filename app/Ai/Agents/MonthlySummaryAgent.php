@@ -3,6 +3,7 @@
 namespace App\Ai\Agents;
 
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Promptable;
 use Stringable;
 
 /**
@@ -17,6 +18,8 @@ use Stringable;
  */
 class MonthlySummaryAgent implements Agent
 {
+    use Promptable;
+
     /**
      * @param  string  $language  the language to answer in, spelled out
      * @param  string  $month  the closed month being reported, spelled out

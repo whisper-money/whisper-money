@@ -207,12 +207,12 @@ class CardPresenter
         $peak = max(1.0, max(array_map(fn (array $point): float => (float) $point['rate'], $history) ?: [1.0]));
         $lastIndex = count($history) - 1;
 
-        return array_values(array_map(fn (int $index): array => [
+        return array_map(fn (int $index): array => [
             'label' => $this->shortMonth($history[$index]['month'], $locale),
             'height' => (int) round(max(0.0, (float) $history[$index]['rate']) / $peak * 100),
             'current' => $index === $lastIndex,
             'recent' => $index >= $lastIndex - 3,
-        ], array_keys($history)));
+        ], array_keys($history));
     }
 
     /**
@@ -226,10 +226,10 @@ class CardPresenter
         $streak = (int) $summary->figure('streak_months', 0);
         $firstInStreak = count($series) - $streak;
 
-        return array_values(array_map(
+        return array_map(
             fn (int $index): array => [...$series[$index], 'in_streak' => $index >= $firstInStreak],
             array_keys($series),
-        ));
+        );
     }
 
     /**

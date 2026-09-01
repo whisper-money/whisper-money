@@ -426,7 +426,7 @@ class EmailPresenter
         $low = min($values);
         $span = max(1, max($values) - $low);
 
-        return array_values(array_map(fn (int $value): int => (int) round(($value - $low) / $span * 100), $values));
+        return array_map(fn (int $value): int => (int) round(($value - $low) / $span * 100), $values);
     }
 
     private function money(MonthlySummary $summary, int $amount): string

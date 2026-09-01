@@ -30,7 +30,7 @@ class DashboardController extends Controller
     {
         return Inertia::render('dashboard', [
             'showEncryptionPrompt' => session('show_encryption_prompt', false),
-            'monthlySummary' => $this->latestSummary($request),
+            'monthlySummary' => Inertia::defer(fn () => $this->latestSummary($request), 'dashboard'),
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
@@ -39,9 +39,11 @@ class DashboardController extends Controller
     }
 
     /**
-     * The newest sent summary, for the notice at the top of the dashboard. Two
-     * cheap queries and no chart data, so it is not deferred: the notice being
-     * late is worse than the notice being free.
+     * The newest sent summary, for the notice at the top of the dashboard.
+     *
+     * Deferred with the rest of the page's data: a notice is not worth two
+     * queries on the first paint, and it rides the follow-up request the
+     * dashboard already makes rather than adding one of its own.
      *
      * @return array<string, mixed>|null
      */

@@ -51,7 +51,9 @@ final class Money
 
         $formatted = $formatter->formatCurrency(self::toMajor($minorUnits, $currency), strtoupper($currency));
 
-        if ($formatted === false) {
+        // An unknown locale or currency leaves the failure on the formatter
+        // rather than in the return value, so that is where it has to be read.
+        if (intl_is_failure($formatter->getErrorCode())) {
             return self::format($minorUnits, $currency);
         }
 
