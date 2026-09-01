@@ -240,8 +240,8 @@ class EmailPresenter
             'viz' => 'bar',
             'data' => [
                 'segments' => [
-                    ['width' => (int) round((int) $invested['contributed'] / $value * 100), 'colour' => '#d4d4d8'],
-                    ['width' => max(0, (int) round($gain / $value * 100)), 'colour' => $gain > 0 ? '#059669' : '#dc2626'],
+                    ['width' => $this->barWidth((int) $invested['contributed'] / $value * 100), 'colour' => '#d4d4d8'],
+                    ['width' => $this->barWidth($gain / $value * 100), 'colour' => $gain > 0 ? '#059669' : '#dc2626'],
                 ],
                 'left' => __('Paid in'),
                 'right' => $this->money($summary, (int) $invested['value']),
@@ -427,6 +427,16 @@ class EmailPresenter
         $span = max(1, max($values) - $low);
 
         return array_map(fn (int $value): int => (int) round(($value - $low) / $span * 100), $values);
+    }
+
+    /**
+     * A segment width, as a percentage of the bar it sits in. Clamped because a
+     * ratio taken against a near-zero denominator is not a width: an account
+     * emptied to nothing once produced a "paid in" segment 349,899,800% wide.
+     */
+    private function barWidth(float $percent): int
+    {
+        return max(0, min(100, (int) round($percent)));
     }
 
     private function money(MonthlySummary $summary, int $amount): string

@@ -71,6 +71,8 @@ class SummaryBuilder
             $month->copy()->endOfMonth(),
         );
 
+        $cashflow = $this->cashflowSection($months, $month);
+
         return [
             'period' => $month->format('Y-m'),
             'currency' => $currency,
@@ -78,11 +80,11 @@ class SummaryBuilder
             'complete' => $complete,
             'has_history' => $this->readiness->hasHistoryBefore($user, $month),
             'net_worth' => $this->netWorthSection($user, $accounts, $lookup, $month, $currency),
-            'cashflow' => $this->cashflowSection($months, $month),
+            'cashflow' => $cashflow,
             'savings_rate_history' => $this->savingsRateHistory($months),
             'streak_months' => $this->streakMonths($months, $month, $user, $currency),
             'best_savings_rate_in_year' => $this->isBestSavingsRate($months, $month),
-            'categories' => $this->categoriesSection($user, $month),
+            'categories' => $this->categoriesSection($user, $month, $cashflow['expense']),
             'biggest_drop' => $this->biggestDrop($user, $month),
             'invested' => $this->investedSection($accounts, $lookup, $month, $currency),
             'budgets' => $this->budgetsSection($user, $month),
@@ -259,14 +261,28 @@ class SummaryBuilder
     }
 
     /**
+     * The three biggest categories, and what they took of the month.
+     *
+     * `$spent` is the month's whole expense side, not the sum of the categorised
+     * rows: {@see CategorySpendingService::forPeriod()} inner-joins `categories`
+     * and so cannot see a transaction that has none, while the cashflow screen
+     * shows those as an "Unknown Expense" row and counts them. Dividing by the
+     * categorised sum told a reader with three quarters of their month
+     * uncategorised that three categories took 97.9% of the 3,677.96 EUR they
+     * spent, on a month the screen beside it totalled at 15,291.43 EUR.
+     *
+     * The top three stay categories the reader named. An unknown bucket is not a
+     * finding worth a sentence — the uncategorised to-do at the foot of the
+     * email is where that belongs.
+     *
      * @return array<string, mixed>
      */
-    private function categoriesSection(User $user, Carbon $month): array
+    private function categoriesSection(User $user, Carbon $month, int $spent): array
     {
         $period = $this->periodFor($month);
         $current = $this->categorySpending->forPeriod($user->id, $period->from, $period->to);
         $previous = $this->previousSpending($user, $month);
-        $total = (int) $current->sum('amount');
+        $total = $spent;
 
         $top = $current->sortByDesc('amount')->take(3)->map(fn (array $item): array => [
             'name' => $item['category']?->name,
@@ -337,13 +353,21 @@ class SummaryBuilder
             }
 
             $invested = $lookup->getInvestedAmountAt($account->id, $end);
+            $balance = $lookup->getBalanceAt($account->id, $end);
 
-            if ($invested === null) {
+            // An emptied account still reports the last invested amount it ever
+            // had, because BalanceLookup carries the newest non-null one forward
+            // over the nulls that follow. Read together with a zero balance that
+            // says the reader lost every penny, when what they did was move the
+            // money out: one reader was going to be told their investments were
+            // 34,989.98 EUR down, the month after transferring exactly that to
+            // their current account.
+            if ($invested === null || $balance === 0) {
                 continue;
             }
 
             $contributed += $this->inUserCurrency($account, $invested, $end, $currency);
-            $value += $this->inUserCurrency($account, $lookup->getBalanceAt($account->id, $end), $end, $currency);
+            $value += $this->inUserCurrency($account, $balance, $end, $currency);
         }
 
         if ($contributed === 0) {

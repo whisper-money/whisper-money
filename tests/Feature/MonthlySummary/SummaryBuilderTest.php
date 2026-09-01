@@ -345,3 +345,54 @@ it('drops an archived account from net worth, as the dashboard chart does', func
 
     expect($payload['net_worth']['current'])->toBe(500000);
 });
+
+it('measures the top categories against everything spent, not just what was categorised', function (): void {
+    $user = summaryUser();
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Checking]);
+
+    monthlyTransaction($user, $account, 100000, CategoryType::Income);
+    monthlyTransaction($user, $account, -20000, CategoryType::Expense, 'Housing');
+
+    // Spending the category service cannot see, because it joins `categories`.
+    // The cashflow screen shows it as an "Unknown Expense" row and counts it, so
+    // a share taken over the categorised sum alone reads far too high.
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'currency_code' => 'EUR',
+        'amount' => -60000,
+        'transaction_date' => $this->month->copy()->addDays(4),
+    ]);
+
+    $payload = app(SummaryBuilder::class)->build($user, $this->month, complete: true);
+
+    expect($payload['categories']['total'])->toBe(80000)
+        ->and($payload['categories']['top'][0]['share'])->toBe(25.0)
+        ->and($payload['todos']['uncategorised']['count'])->toBe(1);
+});
+
+it('leaves an emptied account out of the investment figures', function (): void {
+    $user = summaryUser();
+    $end = $this->month->copy()->endOfMonth();
+
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Investment]);
+
+    // The invested amount stops being recorded once the money is moved out, and
+    // BalanceLookup carries the last non-null one forward over the nulls. Read
+    // against a zero balance it says the reader lost the lot.
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => $this->month->copy()->startOfMonth(),
+        'balance' => 500000,
+        'invested_amount' => 450000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => $this->month->copy()->addDays(10),
+        'balance' => 0,
+        'invested_amount' => null,
+    ]);
+
+    expect(app(SummaryBuilder::class)->build($user, $this->month, complete: true)['invested'])->toBeNull();
+});
