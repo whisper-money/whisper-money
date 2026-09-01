@@ -5,7 +5,6 @@ use App\Services\Ai\ReportSummarizer;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
 function summarize(bool $remember = true): ?string
 {
@@ -91,10 +90,10 @@ it('returns null and reports the failure when the provider fails', function () {
     Exceptions::assertReported(fn (RuntimeException $exception): bool => $exception->getMessage() === 'provider down');
 });
 
-it('logs a transient provider failure without reporting it', function () {
+it('logs a transient provider failure without reporting it', function (Closure $makeFailure) {
     Exceptions::fake();
     Log::spy();
-    ReportSummaryAgent::fake(fn () => throw ProviderOverloadedException::forProvider('gemini'));
+    ReportSummaryAgent::fake(fn () => throw $makeFailure());
 
     expect(summarize())->toBeNull();
 
@@ -102,4 +101,4 @@ it('logs a transient provider failure without reporting it', function () {
     Log::shouldHaveReceived('warning')
         ->withArgs(fn (string $message): bool => str_contains($message, 'provider transient failure'))
         ->once();
-});
+})->with('transient provider failures');

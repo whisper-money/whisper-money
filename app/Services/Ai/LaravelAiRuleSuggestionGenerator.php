@@ -4,6 +4,7 @@ namespace App\Services\Ai;
 
 use App\Ai\Agents\RuleSuggestionAgent;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Exceptions\FailoverableException;
@@ -29,9 +30,10 @@ class LaravelAiRuleSuggestionGenerator implements RuleSuggestionGenerator
                 foreach ($this->generateBatchWithRetry($batch, $categoryOptions) as $suggestion) {
                     $suggestions[] = $suggestion;
                 }
-            } catch (FailoverableException $exception) {
-                // An overloaded or rate-limited provider is an expected transient
-                // condition, not a bug (PHP-LARAVEL-44). Count it as a failure so
+            } catch (ConnectionException|FailoverableException $exception) {
+                // A provider that is overloaded, rate-limiting us or simply not
+                // reachable is an expected transient condition, not a bug
+                // (PHP-LARAVEL-44, PHP-LARAVEL-5K). Count it as a failure so
                 // an all-transient run still surfaces, but don't report the
                 // per-batch noise — a genuine total failure is still reported once
                 // by the run-level handler. Mirrors CategorizeTransactions.

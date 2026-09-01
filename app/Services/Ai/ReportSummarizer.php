@@ -3,6 +3,7 @@
 namespace App\Services\Ai;
 
 use App\Ai\Agents\ReportSummaryAgent;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -56,9 +57,10 @@ class ReportSummarizer
                 model: (string) config('ai_reports.model'),
                 timeout: (int) config('ai_reports.timeout'),
             );
-        } catch (FailoverableException $exception) {
-            // An overloaded or rate-limited provider is an expected transient
-            // condition, not a bug, so it stays out of the error reports.
+        } catch (ConnectionException|FailoverableException $exception) {
+            // A provider that is overloaded, rate-limiting us or simply not
+            // reachable is an expected transient condition, not a bug, so it
+            // stays out of the error reports.
             Log::warning('Report AI summary skipped: provider transient failure.', [
                 'report' => $reportKey,
                 'exception' => $exception->getMessage(),
