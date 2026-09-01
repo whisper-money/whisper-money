@@ -19,4 +19,26 @@ enum DripEmailType: string
     case BankNotice = 'bank_notice';
     case InactiveNoBank = 'inactive_no_bank';
     case TrialEnding = 'trial_ending';
+    case MonthlySummary = 'monthly_summary';
+    case MonthlySummaryReminder = 'monthly_summary_reminder';
+
+    /**
+     * Emails whose only job is to nudge the user back into the app. They share a
+     * cooldown so a manual-only user never gets two "update your data" messages
+     * in the same week; operational mail (banks, billing, verification) is
+     * deliberately absent and always goes out.
+     *
+     * @return list<self>
+     */
+    public static function nudges(): array
+    {
+        return [
+            self::OnboardingReminder,
+            self::ImportHelp,
+            self::PaywallFollowUp,
+            self::AiConsentFollowUp,
+            self::InactiveNoBank,
+            self::MonthlySummaryReminder,
+        ];
+    }
 }

@@ -361,6 +361,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(SavingsGoal::class);
     }
 
+    /** @return HasMany<MonthlySummary, $this> */
+    public function monthlySummaries(): HasMany
+    {
+        return $this->hasMany(MonthlySummary::class);
+    }
+
     /** @return HasMany<BankingConnection, $this> */
     public function bankingConnections(): HasMany
     {
@@ -608,6 +614,36 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function wantsInactiveNoBankEmail(): bool
     {
         return $this->setting->notify_on_inactive_no_bank ?? true;
+    }
+
+    /**
+     * The monthly report and the reminder that precedes it share one switch:
+     * nobody wants the nudge without the report. Opt-out, because it is a report
+     * about the user's own data rather than a campaign.
+     */
+    public function wantsMonthlySummaryEmail(): bool
+    {
+        return $this->setting->notify_monthly_summary ?? true;
+    }
+
+    /**
+     * Whether a nudge email reached this user recently enough that another one
+     * would read as pestering. `$except` leaves one type out, so an email never
+     * silences itself — its own cadence is governed by its own dedupe key.
+     *
+     * The manual-only user is the audience of almost every nudge we have, so
+     * without this the monthly reminder and `inactive_no_bank` would land in the
+     * same week saying the same thing. Operational mail (banks, billing,
+     * verification) is not in {@see DripEmailType::nudges()} and ignores this.
+     */
+    public function hasReceivedNudgeSince(Carbon $since, ?DripEmailType $except = null): bool
+    {
+        $types = array_column(DripEmailType::nudges(), 'value');
+
+        return $this->mailLogs()
+            ->whereIn('email_type', array_diff($types, [$except?->value]))
+            ->where('sent_at', '>=', $since)
+            ->exists();
     }
 
     public function routeNotificationForMail(?Notification $notification = null): ?string

@@ -5,6 +5,9 @@ import {
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
 import { AccountsManagerDialog } from '@/components/dashboard/accounts-manager-dialog';
 import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-card';
+import MonthlySummaryNotice, {
+    type MonthlySummaryNoticeData,
+} from '@/components/dashboard/monthly-summary-notice';
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
 import {
@@ -56,6 +59,7 @@ interface DashboardProps extends SharedData {
         previous: CashflowSummary;
     };
     openIntegrationRequests?: boolean;
+    monthlySummary?: MonthlySummaryNoticeData | null;
 }
 
 export default function Dashboard() {
@@ -282,6 +286,10 @@ export default function Dashboard() {
                     title={__('Dashboard')}
                     description={__('Overview of your financial health')}
                 />
+
+                {props.monthlySummary && (
+                    <MonthlySummaryNotice summary={props.monthlySummary} />
+                )}
 
                 <Deferred
                     data="netWorthEvolution"
