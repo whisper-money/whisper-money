@@ -3,7 +3,6 @@
 use App\Ai\Agents\RuleSuggestionAgent;
 use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
 use Illuminate\Support\Facades\Exceptions;
-use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
 it('returns the structured suggestions produced by the model', function () {
     RuleSuggestionAgent::fake([
@@ -139,14 +138,14 @@ it('keeps successful batches when one batch fails after retry', function () {
         ->and($suggestions[0]['match_token'])->toBe('okkey');
 });
 
-it('does not report an expected transient provider overload', function () {
+it('does not report an expected transient provider failure', function (Closure $makeFailure) {
     config()->set('ai_suggestions.group_batch_size', 1);
 
     Exceptions::fake();
 
-    RuleSuggestionAgent::fake(function (string $prompt) {
+    RuleSuggestionAgent::fake(function (string $prompt) use ($makeFailure) {
         if (str_contains($prompt, 'boomtoken')) {
-            throw ProviderOverloadedException::forProvider('gemini');
+            throw $makeFailure();
         }
 
         return ['suggestions' => [genSuggestion('okkey')]];
@@ -163,7 +162,7 @@ it('does not report an expected transient provider overload', function () {
         ->and($suggestions[0]['match_token'])->toBe('okkey');
 
     Exceptions::assertNothingReported();
-});
+})->with('transient provider failures');
 
 it('reports an unexpected batch failure', function () {
     config()->set('ai_suggestions.group_batch_size', 1);
