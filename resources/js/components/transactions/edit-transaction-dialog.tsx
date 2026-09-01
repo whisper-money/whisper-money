@@ -34,6 +34,7 @@ import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { canSplit } from '@/lib/transaction-splits';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type SharedData } from '@/types';
 import {
     filterTransactionalAccounts,
     type Account,
@@ -46,7 +47,7 @@ import { type DecryptedTransaction } from '@/types/transaction';
 import { formatCurrency, toMajorUnits } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
 import {
     FileText,
@@ -114,6 +115,8 @@ export function EditTransactionDialog({
     initialAccountId = null,
 }: EditTransactionDialogProps) {
     const locale = useLocale();
+    const userCurrencyCode =
+        usePage<SharedData>().props.auth.user.currency_code;
     const STORAGE_KEY_UPDATE_BALANCE =
         'whisper_money_update_balance_on_transaction';
 
@@ -284,7 +287,7 @@ export function EditTransactionDialog({
                 amount: toMajorUnits(
                     signedAmount,
                     accounts.find((acc) => acc.id === accountId)
-                        ?.currency_code ?? 'USD',
+                        ?.currency_code ?? userCurrencyCode,
                 ),
                 transaction_date: transactionDate,
                 account_id: accountId,
@@ -901,7 +904,7 @@ export function EditTransactionDialog({
                                                 }
                                                 currencyCode={
                                                     selectedAccount?.currency_code ||
-                                                    'USD'
+                                                    userCurrencyCode
                                                 }
                                                 disabled={isSubmitting}
                                                 required
@@ -970,12 +973,7 @@ export function EditTransactionDialog({
                                                                 account.id,
                                                             )}
                                                         >
-                                                            {decryptedAccountNames.get(
-                                                                account.id,
-                                                            ) ||
-                                                                __(
-                                                                    '[Loading...]',
-                                                                )}
+                                                            {`${decryptedAccountNames.get(account.id) || __('[Loading...]')} · ${account.currency_code}`}
                                                         </SelectItem>
                                                     ),
                                                 )}

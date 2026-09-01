@@ -41,6 +41,16 @@ vi.mock('@/services/transaction-sync', () => ({
     },
 }));
 
+vi.mock('@inertiajs/react', () => ({
+    router: {
+        visit: vi.fn(),
+        reload: vi.fn(),
+    },
+    usePage: () => ({
+        props: { auth: { user: { currency_code: 'EUR' } } },
+    }),
+}));
+
 vi.mock('sonner', () => ({
     toast: {
         success: vi.fn(),
@@ -230,6 +240,52 @@ describe('EditTransactionDialog', () => {
             'data-value',
             '',
         );
+    });
+
+    it('falls back to the profile currency while no account is selected', () => {
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+            />,
+        );
+
+        expect(screen.getByText('€')).toBeInTheDocument();
+        expect(screen.queryByText('$')).not.toBeInTheDocument();
+    });
+
+    it('shows each account currency in the account options', async () => {
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[
+                    checkingAccount,
+                    {
+                        ...checkingAccount,
+                        id: 'account-2',
+                        name: 'Savings',
+                        currency_code: 'PEN',
+                    },
+                ]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+            />,
+        );
+
+        expect(await screen.findByText('Checking · EUR')).toBeInTheDocument();
+        expect(screen.getByText('Savings · PEN')).toBeInTheDocument();
     });
 
     it('auto-selects the account matching initialAccountId (account page)', () => {
