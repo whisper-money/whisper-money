@@ -25,7 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CONNECT_COUNTRIES, useConnectFlow } from '@/hooks/use-connect-flow';
+import { useConnectCountries, useConnectFlow } from '@/hooks/use-connect-flow';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { ProviderCredentialFields } from '@/lib/connect-providers';
 import { cn } from '@/lib/utils';
@@ -69,6 +69,8 @@ export function ConnectAccountInline({
         clearBankSelection,
     } = useConnectFlow(connections);
 
+    const countries = useConnectCountries();
+
     const { trigger } = useWebHaptics();
 
     const handleBack = useCallback(() => {
@@ -104,9 +106,9 @@ export function ConnectAccountInline({
                             <SelectValue placeholder={__('Select country')} />
                         </SelectTrigger>
                         <SelectContent>
-                            {CONNECT_COUNTRIES.map((c) => (
+                            {countries.map((c) => (
                                 <SelectItem key={c.code} value={c.code}>
-                                    {__(c.name)}
+                                    {c.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>

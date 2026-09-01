@@ -10,7 +10,7 @@ globalThis.ResizeObserver ??= class {
 };
 
 vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: { features: {} } }),
+    usePage: () => ({ props: { features: {}, locale: 'es' } }),
 }));
 
 vi.mock('@/utils/i18n', () => ({
@@ -115,6 +115,17 @@ async function reachBankStep(
 describe('ConnectAccountDialog', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    it('names the countries in the active locale', () => {
+        render(<ConnectAccountDialog open onOpenChange={vi.fn()} />);
+
+        expect(
+            screen.getByRole('option', { name: 'España' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('option', { name: 'Spain' }),
+        ).not.toBeInTheDocument();
     });
 
     it('shows Interactive Brokers as a connectable provider', async () => {
