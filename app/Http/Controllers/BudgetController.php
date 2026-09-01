@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Features\SavingsGoals;
 use App\Http\Requests\ReorderPlanningItemsRequest;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
@@ -21,7 +20,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class BudgetController extends Controller
 {
@@ -51,12 +49,9 @@ class BudgetController extends Controller
             }])
             ->get();
 
-        $savingsGoalsEnabled = Feature::active(SavingsGoals::class);
-
         return Inertia::render('budgets/index', [
             'budgets' => $budgets,
-            'savingsGoals' => $savingsGoalsEnabled ? SavingsGoal::withStatsForUser($user) : [],
-            'savingsGoalsEnabled' => $savingsGoalsEnabled,
+            'savingsGoals' => SavingsGoal::withStatsForUser($user),
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }

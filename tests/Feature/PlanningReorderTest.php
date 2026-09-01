@@ -1,15 +1,12 @@
 <?php
 
-use App\Features\SavingsGoals;
 use App\Models\Budget;
 use App\Models\SavingsGoal;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     $this->user = User::factory()->onboarded()->create();
-    Feature::for($this->user)->activate(SavingsGoals::class);
     $this->actingAs($this->user);
 });
 

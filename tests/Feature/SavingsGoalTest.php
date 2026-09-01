@@ -2,7 +2,6 @@
 
 use App\Enums\AccountType;
 use App\Enums\LabelSource;
-use App\Features\SavingsGoals;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Label;
@@ -12,7 +11,6 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Laravel\Pennant\Feature;
 
 function onboardedSavingsUser(): User
 {
@@ -30,7 +28,6 @@ function savingsGoalAccount(User $user, AccountType $type = AccountType::Checkin
 
 test('creating a goal creates a linked hidden label with the same name', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $response = $this->actingAs($user)->post('/savings-goals', [
         'name' => 'New car',
@@ -55,7 +52,6 @@ test('creating a goal creates a linked hidden label with the same name', functio
 
 test('goal-backed labels are hidden from the labels settings screen', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     Label::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
     SavingsGoal::factory()->create(['user_id' => $user->id]);
@@ -179,7 +175,6 @@ test('the goals list applies the same sign rule per account type', function () {
 
 test('show exposes computed progress stats', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create([
         'user_id' => $user->id,
@@ -206,7 +201,6 @@ test('show exposes computed progress stats', function () {
 
 test('the goal page stats include the starting amount', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create([
         'user_id' => $user->id,
@@ -235,7 +229,6 @@ test('the goal page stats include the starting amount', function () {
 
 test('a goal can start from an amount already saved', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $this->actingAs($user)->post('/savings-goals', [
         'name' => 'House deposit',
@@ -269,7 +262,6 @@ test('the starting amount adds to the tagged transactions', function () {
 
 test('a goal with no starting amount defaults to zero', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $this->actingAs($user)->post('/savings-goals', [
         'name' => 'Rainy day',
@@ -281,7 +273,6 @@ test('a goal with no starting amount defaults to zero', function () {
 
 test('the starting amount can be adjusted later', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create([
         'user_id' => $user->id,
@@ -298,7 +289,6 @@ test('the starting amount can be adjusted later', function () {
 
 test('the starting amount cannot be negative', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $this->actingAs($user)->post('/savings-goals', [
         'name' => 'Negative',
@@ -331,7 +321,6 @@ test('the starting amount does not inflate the projected pace', function () {
 
 test('renaming the goal renames its label', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
 
@@ -368,7 +357,6 @@ test('the goals list adds the starting amount to its progress', function () {
 
 test('deleting the goal also removes its label', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
     $labelId = $goal->label_id;
@@ -381,7 +369,6 @@ test('deleting the goal also removes its label', function () {
 
 test('a goal name cannot collide with an existing label', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     Label::factory()->create(['user_id' => $user->id, 'name' => 'Coche']);
 
@@ -394,19 +381,9 @@ test('a goal name cannot collide with an existing label', function () {
     expect(SavingsGoal::where('user_id', $user->id)->count())->toBe(0);
 });
 
-test('routes are gated behind the feature flag', function () {
-    $user = onboardedSavingsUser();
-
-    $this->actingAs($user)->post('/savings-goals', [
-        'name' => 'Blocked',
-        'target_amount' => 100000,
-    ])->assertNotFound();
-});
-
 test('a user cannot view another users goal', function () {
     $owner = onboardedSavingsUser();
     $other = onboardedSavingsUser();
-    Feature::for($other)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $owner->id]);
 
@@ -459,7 +436,6 @@ test('effective start keeps creation date when no earlier contribution exists', 
 
 test('syncing transactions attaches the ticked ones and detaches the rest', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
     $account = savingsGoalAccount($user);
@@ -491,7 +467,6 @@ test('syncing transactions attaches the ticked ones and detaches the rest', func
 
 test('syncing transactions ignores ids belonging to someone else', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
     $stranger = User::factory()->create();
@@ -514,7 +489,6 @@ test('syncing transactions ignores ids belonging to someone else', function () {
 test('another user cannot sync transactions on a goal that is not theirs', function () {
     $owner = onboardedSavingsUser();
     $intruder = onboardedSavingsUser();
-    Feature::for($intruder)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $owner->id]);
 
@@ -525,7 +499,6 @@ test('another user cannot sync transactions on a goal that is not theirs', funct
 
 test('the goal page only loads recent transactions when asked for them', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
     $account = savingsGoalAccount($user);
@@ -550,7 +523,6 @@ test('the goal page only loads recent transactions when asked for them', functio
 
 test('the link dialog can widen the recent transactions window, up to a cap', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
     $account = savingsGoalAccount($user);
@@ -597,7 +569,6 @@ test('the link dialog can widen the recent transactions window, up to a cap', fu
 
 test('the goal label carries its source so the UI can mark it as a savings goal', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
 
@@ -608,7 +579,6 @@ test('the goal label carries its source so the UI can mark it as a savings goal'
 test('archiving a goal freezes its saved amount and removes its label', function () {
     Carbon::setTestNow('2026-03-10 09:00:00');
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create([
         'user_id' => $user->id,
@@ -642,7 +612,6 @@ test('archiving a goal freezes its saved amount and removes its label', function
 
 test('an archived goal does not move when a transaction is tagged afterwards', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
     $labelId = $goal->label_id;
@@ -665,7 +634,6 @@ test('an archived goal does not move when a transaction is tagged afterwards', f
 
 test('an archived goal still lists the contributions it had', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
     $account = savingsGoalAccount($user);
@@ -692,7 +660,6 @@ test('an archived goal still lists the contributions it had', function () {
 
 test('an archived goal cannot be edited or take on more transactions', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->archived(12345)->create([
         'user_id' => $user->id,
@@ -716,7 +683,6 @@ test('an archived goal cannot be edited or take on more transactions', function 
 
 test('an archived goal can still be deleted', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
 
     $goal = SavingsGoal::factory()->archived()->create(['user_id' => $user->id]);
 
@@ -729,7 +695,6 @@ test('an archived goal can still be deleted', function () {
 
 test('users cannot archive goals they do not own', function () {
     $user = onboardedSavingsUser();
-    Feature::for($user)->activate(SavingsGoals::class);
     $other = SavingsGoal::factory()->create();
 
     $this->actingAs($user)
@@ -737,13 +702,4 @@ test('users cannot archive goals they do not own', function () {
         ->assertForbidden();
 
     expect($other->fresh()->archived_at)->toBeNull();
-});
-
-test('archiving a goal is behind the feature flag like the rest of the surface', function () {
-    $user = onboardedSavingsUser();
-    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
-
-    $this->actingAs($user)
-        ->post("/savings-goals/{$goal->id}/archive")
-        ->assertNotFound();
 });

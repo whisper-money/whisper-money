@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\LabelColor;
 use App\Enums\LabelSource;
-use App\Features\SavingsGoals;
 use App\Http\Requests\StoreSavingsGoalRequest;
 use App\Http\Requests\SyncSavingsGoalTransactionsRequest;
 use App\Http\Requests\UpdateSavingsGoalRequest;
@@ -15,17 +14,14 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
 use App\Models\Transaction;
-use Closure;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
-class SavingsGoalController extends Controller implements HasMiddleware
+class SavingsGoalController extends Controller
 {
     use AuthorizesRequests;
 
@@ -47,22 +43,6 @@ class SavingsGoalController extends Controller implements HasMiddleware
      * @var list<string>
      */
     private const TRANSACTION_RELATIONS = ['account.bank', 'category', 'labels'];
-
-    /**
-     * Hide the whole savings-goals surface behind the rollout feature flag.
-     *
-     * @return array<int, Closure>
-     */
-    public static function middleware(): array
-    {
-        return [
-            function (Request $request, Closure $next): mixed {
-                abort_unless(Feature::active(SavingsGoals::class), 404);
-
-                return $next($request);
-            },
-        ];
-    }
 
     public function store(StoreSavingsGoalRequest $request): RedirectResponse
     {

@@ -105,7 +105,6 @@ function renderPage() {
         <BudgetsIndex
             budgets={[budget]}
             savingsGoals={[goal]}
-            savingsGoalsEnabled
             currencyCode="EUR"
         />,
     );
@@ -169,19 +168,6 @@ describe('BudgetsIndex filter', () => {
         expect(screen.queryByText('goal-card')).not.toBeInTheDocument();
     });
 
-    it('ignores the show param when savings goals are disabled', () => {
-        pageUrl = '/budgets?show=goals';
-        render(
-            <BudgetsIndex
-                budgets={[budget]}
-                savingsGoalsEnabled={false}
-                currencyCode="EUR"
-            />,
-        );
-
-        expect(screen.getByText('budget-card')).toBeInTheDocument();
-    });
-
     it('falls back to all when the active filter is deselected', () => {
         renderPage();
 
@@ -216,19 +202,6 @@ describe('BudgetsIndex create card', () => {
         fireEvent.click(screen.getByRole('radio', { name: 'Savings Goals' }));
         expect(screen.getByText('create-goal')).toBeInTheDocument();
     });
-
-    it('keeps the budget-only create card when savings goals are disabled', () => {
-        render(
-            <BudgetsIndex
-                budgets={[budget]}
-                savingsGoalsEnabled={false}
-                currencyCode="EUR"
-            />,
-        );
-
-        expect(screen.getByText('create-budget')).toBeInTheDocument();
-        expect(screen.queryByText(/create-either/)).not.toBeInTheDocument();
-    });
 });
 
 const archivedBudget = {
@@ -249,7 +222,6 @@ function renderWithArchived(
         <BudgetsIndex
             budgets={[budget, archivedBudget]}
             savingsGoals={[goal, archivedGoal]}
-            savingsGoalsEnabled
             currencyCode="EUR"
             {...props}
         />,
@@ -275,8 +247,8 @@ describe('BudgetsIndex archived section', () => {
         expect(screen.getByText('Old goal')).toBeInTheDocument();
     });
 
-    it('still shows archived budgets when savings goals are switched off', () => {
-        renderWithArchived({ savingsGoals: [], savingsGoalsEnabled: false });
+    it('still shows archived budgets when there are no savings goals', () => {
+        renderWithArchived({ savingsGoals: [] });
 
         fireEvent.click(screen.getByText('Archived (1)'));
 
@@ -337,7 +309,6 @@ describe('BudgetsIndex reordering', () => {
             <BudgetsIndex
                 budgets={[budget, secondBudget]}
                 savingsGoals={[goal]}
-                savingsGoalsEnabled
                 currencyCode="EUR"
             />,
         );
@@ -370,13 +341,7 @@ describe('BudgetsIndex reordering', () => {
         expect(screen.getByLabelText('Edit order')).toBeInTheDocument();
 
         cleanup();
-        render(
-            <BudgetsIndex
-                budgets={[budget]}
-                savingsGoalsEnabled={false}
-                currencyCode="EUR"
-            />,
-        );
+        render(<BudgetsIndex budgets={[budget]} currencyCode="EUR" />);
         expect(screen.queryByLabelText('Edit order')).not.toBeInTheDocument();
     });
 });
