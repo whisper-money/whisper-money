@@ -15,6 +15,9 @@ use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\IntegrationsController;
 use App\Http\Controllers\LoanDetailController;
+use App\Http\Controllers\MonthlySummaryController;
+use App\Http\Controllers\MonthlySummaryShareController;
+use App\Http\Controllers\MonthlySummaryUnsubscribeController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OpenBanking\AccountMappingController;
 use App\Http\Controllers\OpenBanking\AuthorizationController;
@@ -200,6 +203,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    // The monthly summaries a reader can look back at, and the cards they can
+    // share. Behind the same feature flag as the email that produces them.
+    Route::get('summaries', [MonthlySummaryController::class, 'index'])->name('monthly-summaries.index');
+    Route::get('summaries/{summary}', [MonthlySummaryController::class, 'show'])->name('monthly-summaries.show');
+    Route::get('summaries/{summary}/card/{card}/{format}', [MonthlySummaryController::class, 'card'])->name('monthly-summaries.card');
+    Route::post('summaries/{summary}/share', [MonthlySummaryController::class, 'share'])->name('monthly-summaries.share');
+    Route::delete('summaries/{summary}/share', [MonthlySummaryController::class, 'revoke'])->name('monthly-summaries.share.destroy');
     // Renders the dashboard with the integration-requests drawer opened on top.
     Route::get('integration-requests', [IntegrationRequestController::class, 'index'])->name('integration-requests.index');
     Route::get('cashflow', CashflowController::class)->name('cashflow');
@@ -278,3 +289,15 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 });
 
 require __DIR__.'/settings.php';
+
+// A shared card's public page. It exists only once the owner has asked for a
+// link, carries the picture and a route back to the product, and nothing else.
+Route::get('s/{token}', MonthlySummaryShareController::class)
+    ->where('token', '[A-Za-z0-9]{20,64}')
+    ->name('monthly-summaries.shared');
+
+// One-click unsubscribe from the monthly summary. GET for the footer link, POST
+// for RFC 8058 clients that unsubscribe from the mailbox without a browser.
+Route::match(['get', 'post'], 'unsubscribe/monthly-summary/{user}', MonthlySummaryUnsubscribeController::class)
+    ->middleware('signed')
+    ->name('monthly-summaries.unsubscribe');

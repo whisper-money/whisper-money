@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Features\MonthlySummaries;
 use App\Models\Account;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
 use App\Services\LabelSpendingService;
+use App\Services\MonthlySummary\EmailPresenter;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class DashboardController extends Controller
 {
@@ -20,17 +23,50 @@ class DashboardController extends Controller
         private CategorySpendingService $categorySpendingService,
         private LabelSpendingService $labelSpendingService,
         private CashflowSummaryService $summaries,
+        private EmailPresenter $presenter,
     ) {}
 
     public function __invoke(Request $request): Response
     {
         return Inertia::render('dashboard', [
             'showEncryptionPrompt' => session('show_encryption_prompt', false),
+            'monthlySummary' => $this->latestSummary($request),
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
             'cashflowSummary' => Inertia::defer(fn () => $this->getCashflowSummary($request), 'dashboard'),
         ]);
+    }
+
+    /**
+     * The newest sent summary, for the notice at the top of the dashboard. Two
+     * cheap queries and no chart data, so it is not deferred: the notice being
+     * late is worse than the notice being free.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function latestSummary(Request $request): ?array
+    {
+        if (! Feature::for($request->user())->active(MonthlySummaries::class)) {
+            return null;
+        }
+
+        $summary = $request->user()->monthlySummaries()
+            ->whereNotNull('sent_at')
+            ->orderByDesc('period')
+            ->first();
+
+        if ($summary === null) {
+            return null;
+        }
+
+        $locale = app()->getLocale();
+
+        return [
+            'id' => $summary->id,
+            'monthLabel' => $summary->periodStart()->locale($locale)->isoFormat('MMMM'),
+            'headline' => $this->presenter->present($summary, $locale)['headline'],
+        ];
     }
 
     private function getNetWorthEvolution(Request $request): array

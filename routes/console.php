@@ -25,3 +25,8 @@ Schedule::command('banking:health --email')->dailyAt('09:30')->timezone('Europe/
 Schedule::command('stats:daily-report')->dailyAt('09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:ai-cohort-report')->monthlyOn(1, '09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:subscription-funnel')->weekly()->mondays()->at('09:15')->timezone('Europe/Madrid');
+// Hourly through the window, not once on a fixed morning: over a thousand
+// onboarded users are in American timezones, where a Madrid 9am lands in the
+// middle of their night. Each pass sends to whoever it is 9am for, and the
+// command is a no-op outside the 3rd-to-10th window.
+Schedule::command('email:monthly-summary')->hourly();

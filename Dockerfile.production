@@ -55,6 +55,18 @@ COPY package.json bun.lock ./
 COPY scripts ./scripts
 RUN bun install --frozen-lockfile
 
+# Chromium for the shareable monthly-summary cards. They are a Blade view
+# photographed by headless Chromium, because the alternative was redrawing five
+# designs in three formats with GD and watching them drift from the design on the
+# first change. Playwright is already a dependency of the Pest browser suite, so
+# this is the browser the tests run on rather than a second stack.
+#
+# The binary lands in a shared path so the queue workers, which run as www-data,
+# can execute it.
+ENV PLAYWRIGHT_BROWSERS_PATH="/usr/local/playwright"
+RUN bunx playwright install --with-deps chromium \
+    && chmod -R a+rx /usr/local/playwright
+
 # Copy application files
 COPY . /app/.
 RUN composer dump-autoload --no-dev --optimize

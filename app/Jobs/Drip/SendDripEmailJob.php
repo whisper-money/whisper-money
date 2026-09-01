@@ -22,6 +22,11 @@ abstract class SendDripEmailJob implements ShouldQueue
         $this->onQueue('emails');
     }
 
+    /**
+     * Days a nudge email silences the other nudges for.
+     */
+    private const NUDGE_COOLDOWN_DAYS = 5;
+
     abstract protected function emailType(): DripEmailType;
 
     abstract protected function buildMail(): Mailable;
@@ -55,6 +60,10 @@ abstract class SendDripEmailJob implements ShouldQueue
             return;
         }
 
+        if ($this->isMutedByAnotherNudge()) {
+            return;
+        }
+
         if (! $this->shouldSend()) {
             return;
         }
@@ -67,6 +76,31 @@ abstract class SendDripEmailJob implements ShouldQueue
             'email_identifier' => $this->emailIdentifier(),
             'sent_at' => now(),
         ]);
+    }
+
+    /**
+     * Nudge emails share a cooldown, so a user never gets two "come back and
+     * update your data" messages in the same week.
+     *
+     * It matters most for the manual-only user, who is the audience of nearly
+     * every nudge we have: `inactive_no_bank` fires seven days after their last
+     * visit, and the monthly reminder fires on the 3rd, so they collide by
+     * design. Whichever arrives first wins and the other stands down until the
+     * next cycle. Operational mail is not a nudge and is unaffected.
+     *
+     * A nudge never silences itself: its own cadence is its own business, and it
+     * already has {@see emailIdentifier()} to stop it repeating.
+     */
+    private function isMutedByAnotherNudge(): bool
+    {
+        if (! in_array($this->emailType(), DripEmailType::nudges(), true)) {
+            return false;
+        }
+
+        return $this->user->hasReceivedNudgeSince(
+            now()->subDays(self::NUDGE_COOLDOWN_DAYS),
+            except: $this->emailType(),
+        );
     }
 
     private function hasAlreadyBeenSent(): bool

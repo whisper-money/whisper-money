@@ -44,6 +44,7 @@ interface BudgetRow {
 interface Props {
     notifyOnBankTransactionsSynced: boolean;
     notifyOnInactiveNoBank: boolean;
+    notifyMonthlySummary: boolean;
     budgetDefaults: Record<BudgetToggleKey, boolean>;
     budgets: BudgetRow[];
 }
@@ -77,10 +78,20 @@ const patchOptions = { preserveScroll: true, preserveState: true } as const;
 export default function Notifications({
     notifyOnBankTransactionsSynced,
     notifyOnInactiveNoBank,
+    notifyMonthlySummary,
     budgetDefaults,
     budgets,
 }: Props) {
     const emailToggles = [
+        {
+            id: 'notify-monthly-summary',
+            preferenceKey: 'monthly_summary',
+            checked: notifyMonthlySummary,
+            label: __('Monthly summary'),
+            description: __(
+                'A report of the month just closed, with what changed and a few things worth five minutes. Turning it off also stops the reminder that goes with it.',
+            ),
+        },
         {
             id: 'notify-on-bank-transactions-synced',
             preferenceKey: 'bank_transactions_synced',

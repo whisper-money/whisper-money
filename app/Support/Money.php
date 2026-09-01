@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Services\CurrencyOptions;
+use NumberFormatter;
 
 /**
  * Converts between a currency's minor units — the integers every money column
@@ -27,6 +28,34 @@ final class Money
         $decimals = self::decimals($currency);
 
         return $symbol.number_format(self::toMajor($minorUnits, $currency), $decimals);
+    }
+
+    /**
+     * The same amount as the app itself prints it, in the reader's locale: a
+     * Spanish reader gets "1.368,05 €", an English one "€1,368.05".
+     *
+     * {@see format()} is locale-blind and stays that way, because the emails
+     * that already call it are written around its output. Anything the user is
+     * meant to be able to reconcile against a screen in the product — the
+     * monthly summary — comes through here instead, mirroring the frontend's
+     * `formatCurrency`: Intl's rules, the currency's own decimals, and narrow
+     * no-break spaces so the symbol never wraps away from its number.
+     */
+    public static function formatIn(int $minorUnits, string $currency, string $locale): string
+    {
+        $decimals = self::decimals($currency);
+
+        $formatter = new NumberFormatter($locale, NumberFormatter::CURRENCY);
+        $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, $decimals);
+        $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, $decimals);
+
+        $formatted = $formatter->formatCurrency(self::toMajor($minorUnits, $currency), strtoupper($currency));
+
+        if ($formatted === false) {
+            return self::format($minorUnits, $currency);
+        }
+
+        return preg_replace('/\s/u', "\u{202F}", $formatted) ?? $formatted;
     }
 
     /**
