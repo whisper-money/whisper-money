@@ -19,7 +19,7 @@ class BankFactory extends Factory
     {
         return [
             'name' => fake()->company(),
-            'logo' => fake()->imageUrl(200, 200, 'business'),
+            'logo' => null,
             'user_id' => null,
         ];
     }

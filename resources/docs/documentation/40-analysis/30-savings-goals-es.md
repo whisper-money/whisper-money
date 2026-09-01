@@ -12,6 +12,8 @@ Un objetivo de ahorro es una cantidad a la que quieres llegar, y una forma de vi
 4. Vincula las transacciones que lo alimentan.
 5. Vuelve y comprueba si vas adelantado o atrasado.
 
+![Crear un objetivo de ahorro desde la pantalla de Planificación: ponerle nombre, fijar el objetivo, lo ya ahorrado y la fecha](/docs/documentation/savings-goal-create.mp4)
+
 ## Cómo cuenta un objetivo
 
 ```mermaid
@@ -50,9 +52,15 @@ medida que pides más. Si lo que buscas está más atrás, etiquétalo desde la 
 de transacciones: la etiqueta del objetivo está ahí como cualquier otra, y las
 acciones masivas pueden etiquetar un grupo entero de una vez.
 
+### Deja que lo haga una regla
+
 Una [regla de automatización](/documentation/automation-rules) también puede
 poner la etiqueta, que es lo que menos esfuerzo cuesta cuando la misma
-transferencia periódica alimenta el objetivo todos los meses.
+transferencia periódica alimenta el objetivo todos los meses. Una regla sobre la
+cuenta de ahorro archiva todo lo que entra en ella, el histórico incluido, y
+cada traspaso a partir de entonces llega ya contado.
+
+![Una regla de automatización que etiqueta con la etiqueta del objetivo todas las transacciones de la cuenta de ahorro, aplicada a las transacciones que ya estaban](/docs/documentation/savings-goal-automate.mp4)
 
 ## En qué sentido cuenta una transacción
 

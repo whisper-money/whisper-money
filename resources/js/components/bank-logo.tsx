@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Building2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface BankLogoProps {
     src?: string | null;
@@ -14,12 +15,18 @@ export function BankLogo({
     className,
     fallback = 'none',
 }: BankLogoProps) {
-    if (src) {
+    // A bank's logo is a third-party URL that can 404 or go offline (open
+    // banking CDNs rotate them), and a broken-image icon reads as a bug. Keying
+    // off the failed URL rather than a boolean resets it when src changes.
+    const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+    if (src && src !== failedSrc) {
         return (
             <img
                 src={src}
                 alt={name || ''}
                 className={cn('rounded-full object-contain', className)}
+                onError={() => setFailedSrc(src)}
             />
         );
     }

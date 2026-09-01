@@ -356,6 +356,12 @@ class PressDataset
             ['description' => 'Retirada efectivo cajero BBVA', 'amount_min' => -12000, 'amount_max' => -6000, 'category_name' => 'Cash withdrawal', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Aportación Indexa Capital', 'amount_min' => -30000, 'amount_max' => -30000, 'category_name' => 'Savings', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Traspaso a Ahorro Colchón', 'amount_min' => -25000, 'amount_max' => -15000, 'category_name' => 'Own account', 'frequency' => 'monthly', 'account' => 'Cuenta Nómina'],
+
+            // The savings account's own side of the story: the transfer landing
+            // in it and the interest it pays. Without these it holds a balance
+            // no transaction ever explains.
+            ['description' => 'Traspaso desde Cuenta Nómina', 'amount_min' => 15000, 'amount_max' => 25000, 'category_name' => 'Own account', 'frequency' => 'monthly', 'account' => 'Ahorro Colchón'],
+            ['description' => 'Intereses cuenta remunerada', 'amount_min' => 800, 'amount_max' => 2400, 'category_name' => 'Other incoming payments', 'frequency' => 'quarterly', 'account' => 'Ahorro Colchón'],
             ['description' => 'Multa DGT exceso velocidad', 'amount_min' => -10000, 'amount_max' => -10000, 'category_name' => 'Fines', 'frequency' => 'yearly', 'account' => 'Cuenta Nómina'],
             ['description' => 'Comisión mantenimiento BBVA', 'amount_min' => -1200, 'amount_max' => -1200, 'category_name' => 'Financial services and commission', 'frequency' => 'quarterly', 'account' => 'Cuenta Nómina'],
         ];
