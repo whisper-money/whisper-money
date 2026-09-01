@@ -10,10 +10,8 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategorizeTransactions;
 use App\Services\Ai\CategoryCatalog;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
 function leafIndex(CategoryCatalog $catalog, string $categoryId): int
 {
@@ -137,7 +135,7 @@ it('never sends client-side encrypted transactions to the model', function () {
         ->and($encrypted->category_id)->toBeNull();
 });
 
-it('drops the chunk, skips reporting and schedules a retry when the provider is transiently overloaded', function () {
+it('drops the chunk, skips reporting and schedules a retry on a transient provider failure', function (Closure $makeFailure) {
     $user = User::factory()->create();
     groceries($user);
     $transaction = uncategorized($user);
@@ -145,7 +143,7 @@ it('drops the chunk, skips reporting and schedules a retry when the provider is 
     Exceptions::fake();
     Queue::fake();
 
-    TransactionCategorizationAgent::fake(fn () => throw ProviderOverloadedException::forProvider('gemini'));
+    TransactionCategorizationAgent::fake(fn () => throw $makeFailure());
 
     $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
 
@@ -159,33 +157,7 @@ it('drops the chunk, skips reporting and schedules a retry when the provider is 
         RetryTransientAiCategorizationJob::class,
         fn (RetryTransientAiCategorizationJob $job): bool => $job->user->is($user),
     );
-});
-
-it('drops the chunk, skips reporting and schedules a retry when the provider cannot be reached', function () {
-    $user = User::factory()->create();
-    groceries($user);
-    $transaction = uncategorized($user);
-
-    Exceptions::fake();
-    Queue::fake();
-
-    TransactionCategorizationAgent::fake(fn () => throw new ConnectionException(
-        'cURL error 6: Could not resolve host: generativelanguage.googleapis.com',
-    ));
-
-    $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
-
-    $transaction->refresh();
-
-    expect($outcomes)->toBe([])
-        ->and($transaction->category_id)->toBeNull();
-
-    Exceptions::assertNothingReported();
-    Queue::assertPushed(
-        RetryTransientAiCategorizationJob::class,
-        fn (RetryTransientAiCategorizationJob $job): bool => $job->user->is($user),
-    );
-});
+})->with('transient provider failures');
 
 it('reports unexpected failures and does not schedule a retry so real bugs are not swallowed', function () {
     $user = User::factory()->create();
