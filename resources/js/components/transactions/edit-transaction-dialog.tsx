@@ -987,23 +987,30 @@ export function EditTransactionDialog({
                         ) : (
                             transaction && (
                                 <>
-                                    <div className="flex items-center gap-3">
-                                        {headerCategory ? (
-                                            <CategoryIcon
-                                                category={headerCategory}
-                                                className="p-2.5"
-                                                iconClassName="size-5 sm:size-5"
-                                            />
-                                        ) : (
-                                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                                <HelpCircle className="size-4 text-zinc-500" />
-                                            </div>
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                            <div className="truncate font-medium">
-                                                {description}
-                                            </div>
-                                            <div className="text-sm text-muted-foreground">
+                                    <div className="space-y-2">
+                                        {/* The concept is the one thing that
+                                            identifies the transaction, so it
+                                            gets the full width and wraps -
+                                            bank descriptions are long and an
+                                            ellipsis hid the useful half. */}
+                                        <div
+                                            className="font-medium break-words"
+                                            data-testid="transaction-header-description"
+                                        >
+                                            {description}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {headerCategory ? (
+                                                <CategoryIcon
+                                                    category={headerCategory}
+                                                    className="p-1.5"
+                                                />
+                                            ) : (
+                                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                                    <HelpCircle className="size-3.5 text-zinc-500" />
+                                                </div>
+                                            )}
+                                            <div className="min-w-0 flex-1 text-sm text-muted-foreground">
                                                 {formatTransactionDate(
                                                     transaction.transaction_date,
                                                     locale,
@@ -1012,9 +1019,9 @@ export function EditTransactionDialog({
                                                     ? ` · ${accountName}`
                                                     : ''}
                                             </div>
-                                        </div>
-                                        <div className="shrink-0 text-2xl font-semibold tabular-nums">
-                                            {formattedAmount}
+                                            <div className="shrink-0 text-2xl font-semibold tabular-nums">
+                                                {formattedAmount}
+                                            </div>
                                         </div>
                                     </div>
 
