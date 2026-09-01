@@ -17,9 +17,11 @@ test('catch-all toggle hides category and label selection', function () {
     $page->wait(2);
 
     $page->assertSee('Planning')
-        ->waitForText('Create Budget', 10)
+        ->waitForText('Create', 10)
         ->wait(1)
-        ->click('Create Budget')
+        ->click('Create')
+        ->wait(1)
+        ->click('[role="menuitem"]:has-text("Budget")')
         ->wait(3)
         ->assertSee('Create Budget')
         ->wait(1)
@@ -45,9 +47,11 @@ test('user can create a catch-all budget', function () {
     $page = $this->actingAs($user)->visit('/budgets');
     $page->wait(2);
 
-    $page->waitForText('Create Budget', 10)
+    $page->waitForText('Create', 10)
         ->wait(1)
-        ->click('Create Budget')
+        ->click('Create')
+        ->wait(1)
+        ->click('[role="menuitem"]:has-text("Budget")')
         ->wait(3)
         ->fill('name', 'Everything Else')
         ->wait(1)

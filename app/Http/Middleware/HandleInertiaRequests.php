@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
-use App\Features\SavingsGoals;
 use App\Features\SplitTransactions;
 use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
@@ -238,21 +237,18 @@ class HandleInertiaRequests extends Middleware
             return [
                 'cashflow' => true,
                 'calculateBalancesOnImport' => false,
-                'savingsGoals' => false,
                 'splitTransactions' => false,
             ];
         }
 
         $features = Feature::for($user)->values([
             CalculateBalancesOnImport::class,
-            SavingsGoals::class,
             SplitTransactions::class,
         ]);
 
         return [
             'cashflow' => true,
             'calculateBalancesOnImport' => $features[CalculateBalancesOnImport::class] !== false,
-            'savingsGoals' => $features[SavingsGoals::class] !== false,
             'splitTransactions' => $features[SplitTransactions::class] !== false,
         ];
     }
