@@ -56,7 +56,7 @@ class AnalysisWriter
             return null;
         }
 
-        $analysis = $this->generate($summary, $user);
+        $analysis = $this->draft($summary, $user);
 
         if ($analysis === null) {
             return null;
@@ -72,8 +72,12 @@ class AnalysisWriter
      * it is worth a few attempts. What it is never worth is delaying the report:
      * once the attempts are spent this returns null and the email goes without
      * the section.
+     *
+     * Nothing is written here: the caller decides whether the text is kept. That
+     * is what lets the preview command show a real analysis without leaving one
+     * on the summary the real send will read later in the month.
      */
-    private function generate(MonthlySummary $summary, User $user): ?string
+    public function draft(MonthlySummary $summary, User $user): ?string
     {
         $attempts = max(1, (int) config('ai_monthly_summary.attempts'));
 
