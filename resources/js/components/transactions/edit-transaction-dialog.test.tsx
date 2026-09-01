@@ -156,6 +156,48 @@ describe('EditTransactionDialog', () => {
         expect(screen.getByText('Victor Falcon')).toBeInTheDocument();
     });
 
+    it('shows the whole concept in the header instead of truncating it', () => {
+        const longDescription =
+            'Adeudo de Comunidad de Propietarios y Verificacion Pago Mensual Extraordinario';
+
+        render(
+            <EditTransactionDialog
+                transaction={{
+                    id: 'tx-1',
+                    user_id: 'user-1',
+                    account_id: 'account-1',
+                    category_id: null,
+                    description: longDescription,
+                    description_iv: null,
+                    transaction_date: '2026-05-27',
+                    amount: -1200,
+                    currency_code: 'EUR',
+                    notes: null,
+                    notes_iv: null,
+                    source: 'imported',
+                    created_at: '2026-05-27T00:00:00Z',
+                    updated_at: '2026-05-27T00:00:00Z',
+                    decryptedDescription: longDescription,
+                    decryptedNotes: null,
+                    label_ids: [],
+                }}
+                categories={[]}
+                accounts={[]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        const header = screen.getByTestId('transaction-header-description');
+
+        expect(header).toHaveTextContent(longDescription);
+        expect(header.className).not.toContain('truncate');
+    });
+
     const checkingAccount = {
         id: 'account-1',
         name: 'Checking',
