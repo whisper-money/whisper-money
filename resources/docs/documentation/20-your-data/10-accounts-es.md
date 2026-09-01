@@ -188,12 +188,37 @@ de esa vista; la cuenta sigue siendo seleccionable en todo lo demás.
 
 ## Cuentas compartidas
 
-Una cuenta puede registrar qué parte de ella es tuya. Una cuenta conjunta al
-50/50 aporta la mitad de cada importe a tus propias cifras, mientras la cuenta
-sigue mostrando el saldo real.
+Una cuenta puede registrar qué parte de ella es tuya. Úsalo para cuentas que de
+verdad compartes, como una cuenta doméstica común o un inmueble en copropiedad.
 
-Úsalo para cuentas que de verdad compartes, como una cuenta doméstica común o un
-inmueble en copropiedad.
+Abre **Editar cuenta** y rellena **Mi parte de esta cuenta (%)**. La parte va de
+1 a 100, y 100 significa que la cuenta es entera tuya. Si dejas el campo vacío,
+se mantiene la parte que la cuenta ya tenía.
+
+A partir de ahí, los ingresos y gastos solo cuentan en tus propias cifras en ese
+porcentaje. En una cuenta al 50/50, una compra del súper compartida cuenta como
+la mitad de lo que cobró el banco en:
+
+- Flujo de efectivo
+- Presupuestos
+- Gasto por etiqueta
+
+La cuenta en sí no cambia. Sigue mostrando el saldo real y el importe real de
+cada transacción, porque eso es lo que se movió de verdad. Dentro de un
+presupuesto, las transacciones que vienen de una cuenta con una parte inferior
+al 100 % aparecen marcadas, así ves cuáles cuentan solo en parte.
+
+El saldo se deja entero por defecto, así que cuenta completo en el patrimonio
+neto. Cuando la parte es inferior al 100 %, aparece una casilla debajo del campo:
+**Aplicarlo también al saldo, para que solo mi parte cuente en el patrimonio
+neto**. Márcala para algo como un piso del que tienes la mitad, donde solo la
+mitad del valor es realmente tuya.
+
+Cambiar la parte más adelante también reescribe lo que la cuenta ya ha gastado
+en tus presupuestos, incluidos los periodos pasados. Los presupuestos guardan lo
+que aportó cada transacción en el momento en que se asignó, así que se
+recalculan con la parte nueva. El flujo de efectivo y el patrimonio neto se
+calculan al leerlos, así que recogen la parte nueva por su cuenta.
 
 ## Preguntas frecuentes
 
@@ -214,3 +239,9 @@ El número importante de una propiedad es su valor estimado actual. Ese valor pu
 ### ¿Debería crear una cuenta o combinar varias?
 
 Crea cuentas separadas cuando el dinero esté separado en la vida real. Los informes serán más claros.
+
+### ¿Por qué han cambiado mis presupuestos pasados al editar la parte de una cuenta?
+
+Los presupuestos registran lo que aportó cada transacción en el momento en que se
+asignó, así que cambiar la parte reescribe esa aportación en todos los periodos,
+incluidos los cerrados. Así una cuenta al 50/50 se ve igual en enero que hoy.

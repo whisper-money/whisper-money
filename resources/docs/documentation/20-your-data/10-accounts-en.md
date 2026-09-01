@@ -187,12 +187,37 @@ removes it from that one view; the account stays selectable everywhere else.
 
 ## Shared accounts
 
-An account can record the share of it that is yours. A joint account held 50/50
-contributes half of every amount to your own figures, while the account still
-shows the real balance.
+An account can record the share of it that is yours. Use it for accounts you
+genuinely co-own, such as a shared household account or a property owned with
+someone else.
 
-Use it for accounts you genuinely co-own, such as a shared household account or
-a property owned with someone else.
+Open **Edit account** and fill in **My share of this account (%)**. The share
+goes from 1 to 100, and 100 means the whole account is yours. Leaving the field
+empty keeps the share the account already has.
+
+From then on, income and expenses only count towards your own figures by that
+percentage. On an account held 50/50, a shared grocery bill counts as half of
+what the bank charged in:
+
+- Cashflow
+- Budgets
+- Label spending
+
+The account itself is left alone. It keeps showing the real balance and the real
+amount of every transaction, because that is what actually moved. Inside a
+budget, entries coming from an account with a share below 100% are marked, so you
+can tell which ones only count in part.
+
+The balance stays whole by default, so all of it counts towards net worth. When
+the share is below 100%, a checkbox appears under the field: **Apply it to the
+balance too, so only my share counts towards net worth**. Tick it for something
+like a flat you own half of, where only half the value is really yours.
+
+Changing the share later also rewrites what the account has already spent in
+your budgets, past periods included. Budgets store what each transaction
+contributed at the moment it was assigned, so they are recalculated for the new
+share. Cashflow and net worth are worked out as you read them, so they pick up
+the new share on their own.
 
 ## FAQ
 
@@ -213,3 +238,10 @@ The important number for property is its estimated value today. That value can c
 ### Should I create one account or combine several?
 
 Create separate accounts when the money is stored separately in real life. Reports are clearer that way.
+
+### Why did my past budgets change after I edited the share of an account?
+
+Budgets record what each transaction contributed at the moment it was assigned,
+so changing the share rewrites that contribution in every period, closed ones
+included. It keeps a 50/50 account looking the same in January as it does
+today.
