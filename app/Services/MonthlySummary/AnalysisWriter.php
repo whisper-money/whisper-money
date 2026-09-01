@@ -6,6 +6,8 @@ use App\Ai\Agents\MonthlySummaryAgent;
 use App\Enums\PlanFeature;
 use App\Models\MonthlySummary;
 use App\Models\User;
+use App\Support\Figures;
+use App\Support\Money;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Enums\Lab;
@@ -108,7 +110,7 @@ class AnalysisWriter
             self::LANGUAGES[$locale] ?? self::LANGUAGES['en'],
             $summary->periodStart()->locale($locale)->isoFormat('MMMM YYYY'),
         ))->prompt(
-            $this->payloadFor($summary),
+            $this->payloadFor($summary, $locale),
             provider: Lab::from((string) config('ai_monthly_summary.provider')),
             model: (string) config('ai_monthly_summary.model'),
             timeout: (int) config('ai_monthly_summary.timeout'),
@@ -122,15 +124,88 @@ class AnalysisWriter
     }
 
     /**
-     * The month's frozen figures plus the previous months already inside them.
-     * Nothing is added here that is not already in the payload, which is what
-     * keeps the promise printed under the block true.
+     * Every money figure in the payload, by path. The payload stores minor units
+     * — 352000 is €3,520.00 — and a model has no way to know that: asked to
+     * describe the month it will faithfully report a hundred times the amount.
+     * So the amounts it receives are already formatted, and its instructions are
+     * to copy them rather than compute anything.
      */
-    private function payloadFor(MonthlySummary $summary): string
+    private const MONEY_PATHS = [
+        'net_worth.current', 'net_worth.previous', 'net_worth.diff',
+        'net_worth.history.*.value',
+        'cashflow.income', 'cashflow.expense', 'cashflow.net',
+        'cashflow.previous.income', 'cashflow.previous.expense', 'cashflow.previous.net',
+        'categories.total',
+        'categories.top.*.amount', 'categories.top.*.previous_amount',
+        'biggest_drop.amount', 'biggest_drop.previous_amount',
+        'invested.contributed', 'invested.value', 'invested.gain',
+        'budgets.overspent.*.over_by',
+        'goal.saved', 'goal.target', 'goal.monthly_pace',
+        'todos.uncategorised.amount',
+    ];
+
+    /**
+     * The same for percentages, so the analysis writes them the way the rest of
+     * the email does rather than as bare floats.
+     */
+    private const PERCENT_PATHS = [
+        'net_worth.diff_percent', 'net_worth.year_percent',
+        'cashflow.savings_rate', 'cashflow.previous.savings_rate', 'cashflow.expense_change_percent',
+        'savings_rate_history.*.rate',
+        'categories.top_share', 'categories.top.*.share', 'categories.top.*.change_percent',
+        'biggest_drop.change_percent',
+        'goal.percent',
+    ];
+
+    /**
+     * The month's frozen figures plus the previous months already inside them,
+     * with every amount and percentage rendered the way the reader will see them
+     * elsewhere in the email. Nothing is added that is not already in the
+     * payload, which is what keeps the promise printed under the block true.
+     */
+    private function payloadFor(MonthlySummary $summary, string $locale): string
     {
-        return (string) json_encode(
-            $summary->payload,
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
-        );
+        $payload = $summary->payload;
+        $currency = (string) ($payload['currency'] ?? 'EUR');
+
+        foreach (self::MONEY_PATHS as $path) {
+            $payload = $this->rewrite($payload, $path, fn (int|float $value): string => Money::formatIn((int) $value, $currency, $locale));
+        }
+
+        foreach (self::PERCENT_PATHS as $path) {
+            $payload = $this->rewrite($payload, $path, fn (int|float $value): string => Figures::percent((float) $value, $locale));
+        }
+
+        return (string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Rewrite one dotted path, wildcards included, leaving absent paths alone —
+     * most of them are absent on any given month.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  callable(int|float): string  $format
+     * @return array<string, mixed>
+     */
+    private function rewrite(array $payload, string $path, callable $format): array
+    {
+        $found = data_get($payload, $path);
+
+        // A wildcard path collects a list; a plain one returns the value itself.
+        $values = str_contains($path, '*') ? (is_array($found) ? $found : []) : [$found];
+
+        foreach ($values as $index => $value) {
+            if (! is_int($value) && ! is_float($value)) {
+                continue;
+            }
+
+            data_set(
+                $payload,
+                str_contains($path, '*') ? str_replace('*', (string) $index, $path) : $path,
+                $format($value),
+            );
+        }
+
+        return $payload;
     }
 }

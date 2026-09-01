@@ -89,23 +89,40 @@ it('will not show one reader another reader\'s month', function (): void {
         ->assertNotFound();
 });
 
-it('offers the newest summary on the dashboard', function (): void {
-    $user = readerWithSummary();
+/**
+ * The notice is a deferred prop, so it arrives on the dashboard's follow-up
+ * request rather than in the first response.
+ */
+function dashboardNotice(): ?array
+{
+    return test()->get(route('dashboard'), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Partial-Component' => 'dashboard',
+        'X-Inertia-Partial-Data' => 'monthlySummary',
+    ])->assertOk()->json('props.monthlySummary');
+}
 
-    $this->actingAs($user)
-        ->get('/dashboard')
-        ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('monthlySummary')
-            ->where('monthlySummary.monthLabel', now()->subMonth()->locale('en')->isoFormat('MMMM')));
+it('offers the newest summary on the dashboard', function (): void {
+    $this->actingAs(readerWithSummary())->withoutVite();
+
+    expect(dashboardNotice())
+        ->not->toBeNull()
+        ->and(dashboardNotice()['monthLabel'])->toBe(now()->subMonth()->locale('en')->isoFormat('MMMM'));
 });
 
 it('offers nothing on the dashboard while the feature is off', function (): void {
     Feature::define(MonthlySummaries::class, fn (): bool => false);
-    $user = readerWithSummary();
+    $this->actingAs(readerWithSummary())->withoutVite();
 
-    $this->actingAs($user)
-        ->get('/dashboard')
+    expect(dashboardNotice())->toBeNull();
+});
+
+it('does not run its queries on the first paint', function (): void {
+    // Deferred deliberately: a notice is not worth two queries before anything
+    // is on screen, and the dashboard has a query ceiling it has to stay under.
+    $this->actingAs(readerWithSummary())->withoutVite();
+
+    $this->get(route('dashboard'))
         ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('monthlySummary', null));
+        ->assertInertia(fn (AssertableInertia $page) => $page->missing('monthlySummary'));
 });

@@ -5,8 +5,10 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Category;
+use App\Models\MonthlySummary;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\Readiness;
 use App\Services\MonthlySummary\SummaryBuilder;
 
@@ -176,4 +178,28 @@ it('carries bank and account names for the analysis but no transaction descripti
 
     expect(implode(' | ', $payload['account_names']))->toContain('Salary account')
         ->and(json_encode($payload))->not->toContain('description');
+});
+
+it('hands the model amounts a person can read, not minor units', function (): void {
+    // The payload stores 352000 for €3,520.00. A model has no way to know that
+    // and will faithfully report a hundred times the amount, so what it receives
+    // is already formatted.
+    $user = summaryUser();
+    $summary = MonthlySummary::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+    ]);
+
+    $writer = app(AnalysisWriter::class);
+    $method = new ReflectionMethod($writer, 'payloadFor');
+    $payload = json_decode($method->invoke($writer, $summary, 'es'), true);
+
+    expect($payload['cashflow']['income'])->toBe("3.850,00\u{202F}€")
+        ->and($payload['cashflow']['savings_rate'])->toBe("35,5\u{202F}%")
+        ->and($payload['categories']['top'][0]['amount'])->toBe("890,00\u{202F}€")
+        ->and($payload['budgets']['overspent'][0]['over_by'])->toBe("82,40\u{202F}€")
+        ->and($payload['goal']['target'])->toBe("5.000,00\u{202F}€")
+        // Counts are not money and must survive untouched.
+        ->and($payload['budgets']['met'])->toBe(4)
+        ->and($payload['todos']['uncategorised']['count'])->toBe(12);
 });

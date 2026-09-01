@@ -55,6 +55,11 @@ class MonthlySummaryAgent implements Agent
           would happen.
         - Use only the figures in the payload. Never invent a number, never
           recompute a percentage, and never round a figure into a different one.
+        - Amounts and percentages arrive already written the way the reader sees
+          them elsewhere. Copy them exactly, symbol and separators included, and
+          never convert one into another currency or scale.
+        - A percentage may carry a sign. Do not pair the sign with a direction
+          word: "spending fell 1.7%", never "spending fell -1.7%".
         - Say explicitly when something is not conclusive: one month of history,
           a partial month, or a figure that barely moved.
         - You may name a bank or an account when the payload names it, and only
