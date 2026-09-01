@@ -112,6 +112,9 @@ class CategorizeTransactions
      * Transient covers both the provider answering badly (overload, rate limit)
      * and it not answering at all (DNS, connect timeout): neither is a bug, and
      * both leave the chunk's transactions uncategorized until the retry runs.
+     * The trade-off is that a provider which stays unreachable never reaches
+     * Sentry either — the warning below is the only trace, and the deferred
+     * retry gets one attempt (see {@see RetryTransientAiCategorizationJob}).
      *
      * @param  Collection<int, Transaction>  $transactions
      * @return list<array<string, mixed>>
