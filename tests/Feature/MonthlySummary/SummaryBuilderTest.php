@@ -4,7 +4,10 @@ use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\Budget;
+use App\Models\BudgetPeriod;
 use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\MonthlySummary;
 use App\Models\Transaction;
 use App\Models\User;
@@ -202,4 +205,143 @@ it('hands the model amounts a person can read, not minor units', function (): vo
         // Counts are not money and must survive untouched.
         ->and($payload['budgets']['met'])->toBe(4)
         ->and($payload['todos']['uncategorised']['count'])->toBe(12);
+});
+
+it('counts a streak that runs past the twelve months the payload carries', function (): void {
+    $user = summaryUser();
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Checking]);
+
+    $salary = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Income, 'name' => 'Salary']);
+    $rent = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense, 'name' => 'Rent']);
+
+    $book = function (Category $category, int $amount, Carbon\Carbon $month) use ($user, $account): void {
+        Transaction::factory()->plaintext()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+            'category_id' => $category->id,
+            'currency_code' => 'EUR',
+            'amount' => $amount,
+            'transaction_date' => $month->copy()->addDays(4),
+        ]);
+    };
+
+    // Fifteen months in the black. The payload only carries twelve, so a streak
+    // counted from it alone would stop at the edge of the window and report a
+    // number the reader can disprove by scrolling their own history.
+    foreach (range(0, 14) as $ago) {
+        $month = $this->month->copy()->subMonths($ago);
+        $book($salary, 300000, $month);
+        $book($rent, -100000, $month);
+    }
+
+    $red = $this->month->copy()->subMonths(15);
+    $book($salary, 100000, $red);
+    $book($rent, -300000, $red);
+
+    $payload = app(SummaryBuilder::class)->build($user, $this->month, complete: true);
+
+    expect($payload['streak_months'])->toBe(15);
+});
+
+it('counts budgets rather than budget periods', function (): void {
+    $user = summaryUser();
+
+    // A weekly budget has four or five periods inside a month. Counting those
+    // told a reader with one budget that they had four, and named it four times.
+    $budget = Budget::factory()->weekly()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+
+    foreach (range(0, 3) as $week) {
+        $start = $this->month->copy()->startOfMonth()->addWeeks($week);
+
+        BudgetPeriod::factory()->create([
+            'budget_id' => $budget->id,
+            'start_date' => $start,
+            'end_date' => $start->copy()->addDays(6),
+            'allocated_amount' => 5000,
+        ]);
+    }
+
+    $payload = app(SummaryBuilder::class)->build($user, $this->month, complete: true);
+
+    expect($payload['budgets']['total'])->toBe(1)
+        ->and($payload['budgets']['met'])->toBe(1);
+});
+
+it('judges only the budget periods that closed inside the month', function (): void {
+    $user = summaryUser();
+
+    // A yearly period is still running when the month closes: it cannot be met
+    // or missed yet, and its spend covers months this report is not about.
+    $yearly = Budget::factory()->yearly()->create(['user_id' => $user->id, 'name' => 'Insurance']);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $yearly->id,
+        'start_date' => $this->month->copy()->startOfYear(),
+        'end_date' => $this->month->copy()->endOfYear(),
+        'allocated_amount' => 100000,
+    ]);
+
+    $monthly = Budget::factory()->monthly()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $monthly->id,
+        'start_date' => $this->month->copy()->startOfMonth(),
+        'end_date' => $this->month->copy()->endOfMonth(),
+        'allocated_amount' => 50000,
+    ]);
+
+    $payload = app(SummaryBuilder::class)->build($user, $this->month, complete: true);
+
+    expect($payload['budgets']['total'])->toBe(1);
+});
+
+it('converts investment balances into the reader currency before adding them up', function (): void {
+    $user = summaryUser();
+    $end = $this->month->copy()->endOfMonth();
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'eur',
+        'date' => $end->toDateString(),
+        'rates' => ['usd' => 2.0],
+    ]);
+
+    // Balances are stored in the account's own currency. Added up raw, a $200
+    // gain on a dollar account reaches a euro reader as €200.
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'USD', 'type' => AccountType::Investment]);
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => $end,
+        'balance' => 120000,
+        'invested_amount' => 100000,
+    ]);
+
+    $payload = app(SummaryBuilder::class)->build($user, $this->month, complete: true);
+
+    // $1,200 and $1,000 at 2 USD per EUR: €600 held against €500 paid in.
+    expect($payload['invested']['value'])->toBe(60000)
+        ->and($payload['invested']['contributed'])->toBe(50000)
+        ->and($payload['invested']['gain'])->toBe(10000);
+});
+
+it('drops an archived account from net worth, as the dashboard chart does', function (): void {
+    $user = summaryUser();
+    $end = $this->month->copy()->endOfMonth();
+
+    $open = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Checking]);
+    $archived = Account::factory()->create([
+        'user_id' => $user->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking,
+        'archived_at' => $this->month->copy()->startOfMonth(),
+    ]);
+
+    foreach ([$open, $archived] as $account) {
+        AccountBalance::factory()->create([
+            'account_id' => $account->id,
+            'balance_date' => $end,
+            'balance' => 500000,
+        ]);
+    }
+
+    $payload = app(SummaryBuilder::class)->build($user, $this->month, complete: true);
+
+    expect($payload['net_worth']['current'])->toBe(500000);
 });

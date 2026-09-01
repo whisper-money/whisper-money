@@ -15,6 +15,7 @@ use App\Services\Ai\RuleSuggestionAvailability;
 use App\Services\BalanceLookup;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
+use App\Services\ExchangeRateService;
 use App\Services\NetWorthCalculator;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
@@ -51,6 +52,7 @@ class SummaryBuilder
         private CategorySpendingService $categorySpending,
         private Readiness $readiness,
         private RuleSuggestionAvailability $ruleSuggestions,
+        private ExchangeRateService $exchangeRates,
     ) {}
 
     /**
@@ -78,7 +80,7 @@ class SummaryBuilder
             'net_worth' => $this->netWorthSection($user, $accounts, $lookup, $month, $currency),
             'cashflow' => $this->cashflowSection($months, $month),
             'savings_rate_history' => $this->savingsRateHistory($months),
-            'streak_months' => $this->streakMonths($months, $month),
+            'streak_months' => $this->streakMonths($months, $month, $user, $currency),
             'best_savings_rate_in_year' => $this->isBestSavingsRate($months, $month),
             'categories' => $this->categoriesSection($user, $month),
             'biggest_drop' => $this->biggestDrop($user, $month),
@@ -191,14 +193,39 @@ class SummaryBuilder
      * out. It is the figure that takes months to earn, which is why it leads the
      * card ranking.
      *
+     * The payload's twelve-month window is not enough to count it. A reader
+     * whose whole window is in the black has a streak of at least thirteen, and
+     * reporting thirteen would be a number they can disprove — so once the count
+     * reaches the edge, older months are loaded a year at a time until one of
+     * them breaks the run or the reader's history runs out. Almost nobody pays
+     * for the extra query: it only fires on a streak that already spans the year.
+     *
      * @param  array<string, array<string, mixed>>  $months
      */
-    private function streakMonths(array $months, Carbon $month): int
+    private function streakMonths(array $months, Carbon $month, User $user, string $currency): int
     {
         $streak = 0;
         $cursor = $month->copy();
+        $loadedFrom = $month->copy()->subMonths(self::HISTORY_MONTHS)->startOfMonth();
 
-        while (isset($months[$cursor->format('Y-m')])) {
+        while (true) {
+            if (! isset($months[$cursor->format('Y-m')])) {
+                if (! $this->readiness->hasDataFor($user, $cursor)) {
+                    break;
+                }
+
+                $months = $this->cashflow->forMonths(
+                    $user->id,
+                    $currency,
+                    $loadedFrom->copy()->subMonths(self::HISTORY_MONTHS),
+                    $loadedFrom->copy()->subMonth()->endOfMonth(),
+                ) + $months;
+
+                $loadedFrom->subMonths(self::HISTORY_MONTHS);
+
+                continue;
+            }
+
             if ((int) ($months[$cursor->format('Y-m')]['net'] ?? 0) <= 0) {
                 break;
             }
@@ -305,7 +332,7 @@ class SummaryBuilder
         $value = 0;
 
         foreach ($accounts as $account) {
-            if (! $account->type->supportsInvestedAmount()) {
+            if (! $account->type->supportsInvestedAmount() || $account->isArchivedOn($end)) {
                 continue;
             }
 
@@ -315,8 +342,8 @@ class SummaryBuilder
                 continue;
             }
 
-            $contributed += $invested;
-            $value += $lookup->getBalanceAt($account->id, $end);
+            $contributed += $this->inUserCurrency($account, $invested, $end, $currency);
+            $value += $this->inUserCurrency($account, $lookup->getBalanceAt($account->id, $end), $end, $currency);
         }
 
         if ($contributed === 0) {
@@ -327,30 +354,62 @@ class SummaryBuilder
     }
 
     /**
+     * A balance in the reader's currency. Balances are stored in the account's
+     * own currency, so without this a BTC or USD account is added to euros as
+     * though the numbers were the same kind of thing — which is how a €6,954
+     * gain was about to be reported as €34,622.
+     */
+    private function inUserCurrency(Account $account, int $amount, Carbon $date, string $currency): int
+    {
+        return $this->exchangeRates->convert(
+            $account->currency_code,
+            $currency,
+            $amount,
+            $date->toDateString(),
+        );
+    }
+
+    /**
+     * How the reader's budgets went, judged only on the periods that a report
+     * about this month is entitled to judge.
+     *
+     * Two rules the naive overlap query got wrong. A period is only counted when
+     * it sits entirely inside the closed month: a yearly period is still running
+     * and cannot be "met" in August, and a weekly one straddling the 1st carries
+     * spending from the month either side — {@see BudgetPeriod::spentAmount()}
+     * sums the whole period, so an overlapping one drags foreign months in.
+     *
+     * And the count is of budgets, not periods. A weekly budget has four or five
+     * periods in a month; counting those told a reader with four budgets that
+     * they had met eleven of fourteen, and named the same budget three times.
+     *
      * @return array<string, mixed>
      */
     private function budgetsSection(User $user, Carbon $month): array
     {
         $periods = BudgetPeriod::query()
             ->whereIn('budget_id', Budget::query()->where('user_id', $user->id)->notArchived()->select('id'))
-            ->whereDate('start_date', '<=', $month->copy()->endOfMonth())
-            ->whereDate('end_date', '>=', $month->copy()->startOfMonth())
+            ->whereDate('start_date', '>=', $month->copy()->startOfMonth())
+            ->whereDate('end_date', '<=', $month->copy()->endOfMonth())
             ->with('budget:id,name')
             ->get();
 
         $overspent = [];
+        $budgets = $periods->groupBy('budget_id');
 
-        foreach ($periods as $period) {
-            $over = $period->spentAmount() - $period->allocated_amount;
+        foreach ($budgets as $budgetPeriods) {
+            $over = $budgetPeriods->sum(
+                fn (BudgetPeriod $period): int => max(0, $period->spentAmount() - $period->allocated_amount),
+            );
 
             if ($over > 0) {
-                $overspent[] = ['name' => $period->budget?->name, 'over_by' => $over];
+                $overspent[] = ['name' => $budgetPeriods->first()->budget?->name, 'over_by' => $over];
             }
         }
 
         return [
-            'total' => $periods->count(),
-            'met' => $periods->count() - count($overspent),
+            'total' => $budgets->count(),
+            'met' => $budgets->count() - count($overspent),
             'overspent' => $overspent,
         ];
     }

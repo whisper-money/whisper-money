@@ -19,7 +19,8 @@ use Illuminate\Support\Collection;
  * The chart the dashboard draws honours two per-user toggles (loans and real
  * estate), so this takes them too: pass the user's preferences and the total
  * matches what they see. Credit cards are excluded whatever the preferences say
- * — they are spending accounts, not wealth.
+ * — they are spending accounts, not wealth, and an account is dropped from the
+ * day it was archived, both matching what the chart draws.
  */
 class NetWorthCalculator
 {
@@ -54,7 +55,7 @@ class NetWorthCalculator
         $total = 0;
 
         foreach ($accounts as $account) {
-            if (! $this->counts($account, $excludedTypes)) {
+            if (! $this->counts($account, $excludedTypes, $date)) {
                 continue;
             }
 
@@ -67,10 +68,11 @@ class NetWorthCalculator
     /**
      * @param  list<AccountType>  $excludedTypes
      */
-    private function counts(Account $account, array $excludedTypes): bool
+    private function counts(Account $account, array $excludedTypes, Carbon $date): bool
     {
         return $account->type->countsInNetWorth()
-            && ! in_array($account->type, $excludedTypes, true);
+            && ! in_array($account->type, $excludedTypes, true)
+            && ! $account->isArchivedOn($date);
     }
 
     /**
