@@ -76,6 +76,26 @@ it('shows one month with its figures and every card it can produce', function ()
             ->where('shareUrl', null));
 });
 
+it('titles the month, because the label is read as one', function (): void {
+    // Spanish and French print month names in lower case, and this label is not
+    // read inside a sentence: it is the breadcrumb and the browser tab.
+    $this->travelTo('2026-03-10');
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'es']);
+    $summary = MonthlySummary::factory()->sent()->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get("/summaries/{$summary->id}")
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('report.monthLabel', 'Febrero 2026')
+            // The one that goes inside a sentence stays as the language writes it.
+            ->where('report.monthName', 'febrero'));
+});
+
 it('hides the screens entirely while the feature is off', function (): void {
     Feature::define(MonthlySummaries::class, fn (): bool => false);
     $user = readerWithSummary();
