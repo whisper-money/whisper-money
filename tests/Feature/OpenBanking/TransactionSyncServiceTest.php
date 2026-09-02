@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\TransactionDescriptionFormatter;
 use App\Services\Banking\TransactionSyncService;
+use App\Services\TransactionSplitter;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -1067,4 +1068,43 @@ test('sync waits for the booked copy of a purchase it first saw as pending', fun
     $stored = $account->transactions()->first();
     expect($stored->amount)->toBe(-1382);
     expect($stored->raw_data['status'])->toBe('BOOK');
+});
+
+test('sync does not re-create a transaction the user split', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $payload = [
+        'transaction_id' => 'txn-001',
+        'transaction_amount' => ['amount' => '53.40', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-05-12',
+        'creditor' => ['name' => 'Amazon'],
+        'remittance_information' => ['Order'],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->twice()
+        ->andReturn(['transactions' => [$payload], 'continuation_key' => null]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $service->sync($account, '2025-05-01', '2025-05-31');
+
+    $parent = $account->transactions()->sole();
+    app(TransactionSplitter::class)->split($parent, [
+        ['amount' => -3490],
+        ['amount' => -1850],
+    ]);
+
+    $created = $service->sync($account, '2025-05-01', '2025-05-31');
+
+    expect($created)->toBe(0);
+    expect(Transaction::withTrashed()->find($parent->id)->trashed())->toBeTrue();
+    expect($account->transactions()->pluck('amount')->sort()->values()->all())->toBe([-3490, -1850]);
 });

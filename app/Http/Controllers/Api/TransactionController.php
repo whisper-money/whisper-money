@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\BulkUpdateTransactionRequest;
 use App\Http\Requests\Api\CheckDuplicateTransactionsRequest;
 use App\Models\Transaction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -54,6 +55,13 @@ class TransactionController extends Controller
         $dates = array_map(fn (array $t): string => substr($t['transaction_date'], 0, 10), $incoming);
 
         $existing = $account->transactions()
+            // A split parent is soft-deleted but its money is still on the
+            // account, spread over its parts, so the row that produced it is
+            // already imported. Rows the user deleted on purpose stay invisible
+            // here and can be re-imported - as can a parent whose parts are all
+            // gone, since it has no live parts left to hold the money.
+            ->withTrashed()
+            ->where(fn (Builder $query) => $query->whereNull('deleted_at')->orWhereHas('splits'))
             ->whereBetween('transaction_date', [min($dates), max($dates)])
             ->get(['transaction_date', 'amount', 'description']);
 
