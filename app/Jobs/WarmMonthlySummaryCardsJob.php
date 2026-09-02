@@ -21,11 +21,13 @@ use Illuminate\Support\Traits\Localizable;
  * Chromium run per preview inside as many concurrent web requests as the browser
  * opens.
  *
- * Hence a job of its own, on a queue of its own. Inside the send, thirty
- * screenshots were thirty the next reader waited for, the emails worker being a
- * single process. On `default` they would instead sit on one of the two workers
- * that also categorise transactions and run automation rules, for minutes at a
- * time, once per reader in the timezone bucket. Neither queue should have to
+ * Hence a job of its own, on a queue of its own. A batch is quick when it goes
+ * well — eighteen cards measured at 2.3 seconds on a warm machine — but it is
+ * one Chromium launch and up to eight seconds of waiting on Google Fonts before
+ * the first screenshot, once per reader in the timezone bucket. Inside the send
+ * that was time the next reader waited for, the emails worker being a single
+ * process; on `default` it would land on one of the two workers that also
+ * categorise transactions and run automation rules. Neither queue should have to
  * care: the reader whose report this is has an email to open before any download
  * button matters.
  */
@@ -41,10 +43,12 @@ class WarmMonthlySummaryCardsJob implements ShouldQueue
     public int $tries = 1;
 
     /**
-     * The renderer gives a batch of thirty 60 + 10 × 30 = 360 seconds of its
-     * own, and a killed process is not an exception it can shrug off. Stays
-     * under the database queue's retry_after, and under the 600-second ceiling
-     * config/queue.php sets for any one job's timeout.
+     * Not how long a batch takes, but longer than the renderer's own ceiling:
+     * it allows a batch of thirty 60 + 10 × 30 = 360 seconds before abandoning
+     * it, and a job killed before that point leaves a dead process rather than
+     * an exception the renderer can shrug off. Stays under the database queue's
+     * retry_after, and under the 600-second ceiling config/queue.php sets for
+     * any one job's timeout.
      */
     public int $timeout = 600;
 

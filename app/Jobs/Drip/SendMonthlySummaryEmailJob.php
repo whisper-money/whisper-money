@@ -26,11 +26,12 @@ class SendMonthlySummaryEmailJob extends SendDripEmailJob
 
     /**
      * Long, because this job waits on the analysis the model writes and on the
-     * one card the message carries, which is allowed a cold Chromium start and a
-     * webfont fetch. Without it the worker's 60-second default would kill the
-     * send mid-render, and a killed process is not an exception the renderer can
-     * shrug off. The screen's other twenty-nine cards are drawn by
-     * {@see WarmMonthlySummaryCardsJob} and cost this job nothing.
+     * one card the message carries, which the renderer allows 70 seconds for: a
+     * cold Chromium start and a webfont fetch are not instant. Under the
+     * worker's 60-second default the send would be killed mid-render, and a
+     * killed process is not an exception the renderer can shrug off. The screen's
+     * other twenty-nine cards are drawn by {@see WarmMonthlySummaryCardsJob} and
+     * cost this job nothing.
      */
     public int $timeout = 300;
 
