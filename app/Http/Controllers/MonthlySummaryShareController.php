@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Enums\MonthlySummaryFormat;
+use App\Enums\MonthlySummaryTheme;
 use App\Models\MonthlySummary;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardRenderer;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Traits\Localizable;
 use Throwable;
 
 /**
@@ -21,6 +23,8 @@ use Throwable;
  */
 class MonthlySummaryShareController extends Controller
 {
+    use Localizable;
+
     public function __construct(
         private CardRenderer $renderer,
         private AnalysisWriter $analysis,
@@ -31,11 +35,21 @@ class MonthlySummaryShareController extends Controller
         $summary = MonthlySummary::query()->where('share_token', $token)->firstOrFail();
 
         try {
-            $imageUrl = $this->renderer->url(
-                $summary,
-                $summary->card,
-                MonthlySummaryFormat::default(),
-                $this->analysis->eligible($summary->user),
+            // Nobody is logged in here, so the request's locale is the
+            // visitor's language, not the owner's. Left at that, a French
+            // visitor to a Spanish reader's link mints a French cut of somebody
+            // else's card and unfurls that — one copy per language anyone
+            // happens to browse in. The card belongs to its owner, so it is
+            // drawn in the owner's.
+            $imageUrl = $this->withLocale(
+                $summary->user->preferredLocale(),
+                fn (): string => $this->renderer->url(
+                    $summary,
+                    $summary->card,
+                    MonthlySummaryFormat::default(),
+                    MonthlySummaryTheme::default(),
+                    $this->analysis->eligible($summary->user),
+                ),
             );
         } catch (Throwable $exception) {
             report($exception);

@@ -3,6 +3,8 @@
 namespace App\Services\MonthlySummary;
 
 use App\Enums\MonthlySummaryFormat;
+use App\Enums\MonthlySummaryTheme;
+use App\Jobs\WarmMonthlySummaryCardsJob;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use Carbon\Carbon;
@@ -77,13 +79,14 @@ class Summaries
     /**
      * Draw every card this month can show, and drop the months before it.
      *
-     * Called on the way out of a send rather than on a page view: fifteen
-     * pictures in one browser take seconds a queue worker has and a web request
-     * does not. The screen puts all five cards up as 4:5 previews, so left to
-     * the screen a first visit would start a Chromium run for each one it has
-     * not drawn yet, inside as many web requests as the browser opens; here
-     * they cost the one reader whose report this is, and by the time they open
-     * it the previews and the download buttons have nothing left to do.
+     * Called from a queued job rather than on a page view: thirty pictures in
+     * one browser take seconds a queue worker has and a web request does not.
+     * The screen puts all five cards up as 4:5 previews and lets the reader flip
+     * the lot between light and dark, so left to the screen a first visit would
+     * start a Chromium run for each one it has not drawn yet, inside as many web
+     * requests as the browser opens; drawn here, by the time the reader opens
+     * their report the previews and the download buttons have nothing left to
+     * do. {@see WarmMonthlySummaryCardsJob}
      *
      * The earlier months' pictures go at the same time: the disk is not an
      * archive, and an old report that does get opened draws them again. The
@@ -111,7 +114,13 @@ class Summaries
     public function primaryCardUrl(MonthlySummary $summary, bool $pro): ?string
     {
         try {
-            return $this->renderer->url($summary, $summary->card, MonthlySummaryFormat::default(), $pro);
+            return $this->renderer->url(
+                $summary,
+                $summary->card,
+                MonthlySummaryFormat::default(),
+                MonthlySummaryTheme::default(),
+                $pro,
+            );
         } catch (Throwable $exception) {
             report($exception);
 

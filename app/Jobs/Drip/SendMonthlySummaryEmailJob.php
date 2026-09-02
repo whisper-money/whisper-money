@@ -3,12 +3,15 @@
 namespace App\Jobs\Drip;
 
 use App\Enums\DripEmailType;
+use App\Jobs\WarmMonthlySummaryCardsJob;
 use App\Mail\Drip\MonthlySummaryEmail;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\Summaries;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Traits\Localizable;
 
 /**
  * Sends one frozen monthly summary.
@@ -19,12 +22,15 @@ use Illuminate\Mail\Mailable;
  */
 class SendMonthlySummaryEmailJob extends SendDripEmailJob
 {
+    use Localizable;
+
     /**
-     * Long, because this job draws a month's cards before it writes anything:
-     * fifteen of them, each allowed to wait on a webfont, plus the analysis the
-     * model writes. Without it the worker's 60-second default would kill the
-     * send mid-render — and a killed process is not an exception the renderer
-     * can shrug off. Stays well under the database queue's retry_after.
+     * Long, because this job waits on the analysis the model writes and on the
+     * one card the message carries, which is allowed a cold Chromium start and a
+     * webfont fetch. Without it the worker's 60-second default would kill the
+     * send mid-render, and a killed process is not an exception the renderer can
+     * shrug off. The screen's other twenty-nine cards are drawn by
+     * {@see WarmMonthlySummaryCardsJob} and cost this job nothing.
      */
     public int $timeout = 300;
 
@@ -52,23 +58,38 @@ class SendMonthlySummaryEmailJob extends SendDripEmailJob
         return $this->user->wantsMonthlySummaryEmail();
     }
 
+    /**
+     * The cards are drawn here, so they have to be drawn in the reader's
+     * language here too. `Mail::to($user)->send()` does switch the locale for a
+     * {@see HasLocalePreference} recipient, but this method is evaluated as the
+     * argument to that call — long before the mailer gets a say — so every card
+     * came out in the queue worker's English, whatever language the reader
+     * reads in.
+     */
     protected function buildMail(): Mailable
     {
-        $pro = app(AnalysisWriter::class)->eligible($this->user);
-        $summaries = app(Summaries::class);
+        return $this->withLocale($this->user->preferredLocale(), fn (): Mailable => $this->reportEmail());
+    }
 
-        // Every card, drawn now, while there is a browser and a queue worker to
-        // draw them with — and last month's thrown away.
-        $summaries->prepareCards($this->summary, $pro);
+    private function reportEmail(): Mailable
+    {
+        $pro = app(AnalysisWriter::class)->eligible($this->user);
 
         $mail = new MonthlySummaryEmail(
             $this->user,
             $this->summary,
             app(AnalysisWriter::class)->write($this->summary, $this->user),
-            $summaries->primaryCardUrl($this->summary, $pro),
+            // The one card the message carries, drawn here because the message
+            // cannot go out without it.
+            app(Summaries::class)->primaryCardUrl($this->summary, $pro),
             $pro,
             $this->spaceName(),
         );
+
+        // The screen's other twenty-nine, and last month's thrown away, on a job
+        // of their own: the reader has a message to read before any of the
+        // download buttons matter, and this worker has the next reader waiting.
+        WarmMonthlySummaryCardsJob::dispatch($this->summary, $pro);
 
         $this->summary->forceFill(['sent_at' => now()])->save();
 

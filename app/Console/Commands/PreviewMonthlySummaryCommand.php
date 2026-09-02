@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Traits\Localizable;
 use Throwable;
 
 /**
@@ -38,6 +39,8 @@ use Throwable;
  */
 class PreviewMonthlySummaryCommand extends Command
 {
+    use Localizable;
+
     protected $signature = 'email:monthly-summary-preview
         {email : Where to send the previews}
         {--source= : The account whose real figures to build from (defaults to the press account)}
@@ -140,9 +143,15 @@ class PreviewMonthlySummaryCommand extends Command
         // up front; a preview that drew only the one in the email would leave
         // the screen looking broken for exactly as long as it takes to blame
         // the wrong thing.
-        $summaries->prepareCards($summary, pro: true, dropEarlierMonths: false);
+        //
+        // In the reader's language, like the real send: the copy is baked into
+        // the picture, so a preview drawn in the console's locale would show an
+        // English card next to a Spanish email.
+        $cardUrl = $this->withLocale($user->preferredLocale(), function () use ($summaries, $summary): ?string {
+            $summaries->prepareCards($summary, pro: true, dropEarlierMonths: false);
 
-        $cardUrl = $summaries->primaryCardUrl($summary, true);
+            return $summaries->primaryCardUrl($summary, true);
+        });
 
         if ($cardUrl === null) {
             $this->warn('No card image: the renderer could not draw one, so the share block goes out without it.');

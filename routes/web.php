@@ -208,7 +208,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     // share. Behind the same feature flag as the email that produces them.
     Route::get('summaries', [MonthlySummaryController::class, 'index'])->name('monthly-summaries.index');
     Route::get('summaries/{summary}', [MonthlySummaryController::class, 'show'])->name('monthly-summaries.show');
-    Route::get('summaries/{summary}/card/{card}/{format}', [MonthlySummaryController::class, 'card'])->name('monthly-summaries.card');
+    Route::get('summaries/{summary}/card/{card}/{format}/{theme}', [MonthlySummaryController::class, 'card'])->name('monthly-summaries.card');
     Route::post('summaries/{summary}/share', [MonthlySummaryController::class, 'share'])->name('monthly-summaries.share');
     Route::delete('summaries/{summary}/share', [MonthlySummaryController::class, 'revoke'])->name('monthly-summaries.share.destroy');
     // Renders the dashboard with the integration-requests drawer opened on top.

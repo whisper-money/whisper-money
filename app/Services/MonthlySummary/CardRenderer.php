@@ -4,6 +4,7 @@ namespace App\Services\MonthlySummary;
 
 use App\Enums\MonthlySummaryCard;
 use App\Enums\MonthlySummaryFormat;
+use App\Enums\MonthlySummaryTheme;
 use App\Models\MonthlySummary;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +17,7 @@ use Throwable;
  *
  * The card is a Blade view rendered to a temporary HTML file and photographed by
  * headless Chromium — the same browser the Pest suite already installs — because
- * the alternative was redrawing fifteen designs in PHP with GD and watching them
+ * the alternative was redrawing thirty designs in PHP with GD and watching them
  * drift from the design on the first change.
  *
  * Every card the month can draw is rendered just before the email goes out, in
@@ -35,7 +36,7 @@ class CardRenderer
 
     /**
      * Added to the timeout for each card in the batch. Screenshots after the
-     * first are cheap — the browser is already up — but fifteen of them are not
+     * first are cheap — the browser is already up — but thirty of them are not
      * free either.
      */
     private const TIMEOUT_PER_CARD_SECONDS = 10;
@@ -45,12 +46,12 @@ class CardRenderer
     /**
      * The path on the public disk, rendering it first if it is not there yet.
      */
-    public function path(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, bool $pro): string
+    public function path(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme, bool $pro): string
     {
-        $path = $this->pathFor($summary, $card, $format, $pro);
+        $path = $this->pathFor($summary, $card, $format, $theme, $pro);
 
         if (! Storage::disk('public')->exists($path)) {
-            $this->render($summary, $card, $format, $pro, $path);
+            $this->render($summary, $card, $format, $theme, $pro, $path);
         }
 
         return $path;
@@ -59,9 +60,9 @@ class CardRenderer
     /**
      * The absolute URL the email and the public page reference.
      */
-    public function url(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, bool $pro): string
+    public function url(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme, bool $pro): string
     {
-        return Storage::disk('public')->url($this->path($summary, $card, $format, $pro));
+        return Storage::disk('public')->url($this->path($summary, $card, $format, $theme, $pro));
     }
 
     /**
@@ -86,13 +87,15 @@ class CardRenderer
 
         foreach ($cards as $card) {
             foreach (MonthlySummaryFormat::cases() as $format) {
-                $path = $this->pathFor($summary, $card, $format, $pro);
+                foreach (MonthlySummaryTheme::cases() as $theme) {
+                    $path = $this->pathFor($summary, $card, $format, $theme, $pro);
 
-                if (Storage::disk('public')->exists($path)) {
-                    continue;
+                    if (Storage::disk('public')->exists($path)) {
+                        continue;
+                    }
+
+                    $jobs[] = $this->job($summary, $card, $format, $theme, $pro, $path);
                 }
-
-                $jobs[] = $this->job($summary, $card, $format, $pro, $path);
             }
         }
 
@@ -119,14 +122,19 @@ class CardRenderer
     }
 
     /**
-     * The Pro badge is part of the picture, so it is part of the cache key: a
-     * user who upgrades gets a new file rather than yesterday's unbadged one.
+     * Everything that changes what comes out of the browser is part of the cache
+     * key. The Pro badge, so a user who upgrades gets a new file rather than
+     * yesterday's unbadged one. The theme, so the light and dark cuts of the same
+     * card do not overwrite each other. And the language — read from the app
+     * rather than passed in, exactly like {@see CardPresenter} reads it, so the
+     * key and the copy inside the picture cannot disagree.
      */
-    private function pathFor(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, bool $pro): string
+    private function pathFor(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme, bool $pro): string
     {
         $suffix = $pro ? '-pro' : '';
+        $locale = app()->getLocale();
 
-        return $this->directoryFor($summary->id)."/{$card->value}-{$format->value}{$suffix}.png";
+        return $this->directoryFor($summary->id)."/{$card->value}-{$format->value}-{$theme->value}-{$locale}{$suffix}.png";
     }
 
     private function directoryFor(string $summaryId): string
@@ -134,9 +142,9 @@ class CardRenderer
         return "monthly-summaries/{$summaryId}";
     }
 
-    private function render(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, bool $pro, string $path): void
+    private function render(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme, bool $pro, string $path): void
     {
-        $this->renderJobs([$this->job($summary, $card, $format, $pro, $path)]);
+        $this->renderJobs([$this->job($summary, $card, $format, $theme, $pro, $path)]);
     }
 
     /**
@@ -144,12 +152,12 @@ class CardRenderer
      *
      * @return array{path: string, html: string, png: string, width: int, height: int}
      */
-    private function job(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, bool $pro, string $path): array
+    private function job(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme, bool $pro, string $path): array
     {
         [$width, $height] = $format->dimensions();
 
         $htmlFile = tempnam(sys_get_temp_dir(), 'wm-card-').'.html';
-        file_put_contents($htmlFile, View::make('cards.monthly-summary', $this->presenter->viewData($summary, $card, $format, $pro))->render());
+        file_put_contents($htmlFile, View::make('cards.monthly-summary', $this->presenter->viewData($summary, $card, $format, $theme, $pro))->render());
 
         return [
             'path' => $path,
@@ -165,7 +173,7 @@ class CardRenderer
      *
      * A run that dies halfway still keeps the cards it managed to draw: the
      * missing ones are what the exception is about, and they cost one more
-     * render rather than fifteen.
+     * render rather than thirty.
      *
      * HOME is stated rather than inherited. Chromium puts its crash database
      * under $HOME, and without a writable one the crash handler exits before

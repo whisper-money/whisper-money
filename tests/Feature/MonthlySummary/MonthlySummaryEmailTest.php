@@ -3,6 +3,7 @@
 use App\Enums\DripEmailType;
 use App\Enums\MonthlySummaryCard;
 use App\Jobs\Drip\SendMonthlySummaryEmailJob;
+use App\Jobs\WarmMonthlySummaryCardsJob;
 use App\Mail\Drip\MonthlySummaryEmail;
 use App\Models\MonthlySummary;
 use App\Models\User;
@@ -10,7 +11,9 @@ use App\Models\UserMailLog;
 use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
+use App\Services\MonthlySummary\Summaries;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 
 /*
  * The report email itself: what it says, who sees the analysis, and how a reader
@@ -146,10 +149,24 @@ it('records the send once per month and space', function (): void {
     expect($summary->fresh()->sent_at)->not->toBeNull();
 });
 
-it('draws the rest of the screen\'s cards on the reader\'s own job', function (): void {
-    // Left to the screen, a first visit starts a Chromium run for each card it
-    // has not drawn yet, inside as many web requests as the browser opens.
+it('leaves the screen\'s other cards to a job of their own', function (): void {
+    // The emails worker is one process, so thirty screenshots inside the send
+    // are thirty the next reader waits for. Left to the screen instead, a first
+    // visit starts a Chromium run for each preview it has not drawn yet, inside
+    // as many web requests as the browser opens — hence a job.
     Mail::fake();
+    Queue::fake();
+    $summary = sentSummaryFor();
+
+    (new SendMonthlySummaryEmailJob($summary->user, $summary))->handle();
+
+    Queue::assertPushed(
+        WarmMonthlySummaryCardsJob::class,
+        fn (WarmMonthlySummaryCardsJob $job): bool => $job->summary->is($summary) && $job->pro === false,
+    );
+});
+
+it('hands that job the chosen card and every alternative', function (): void {
     $summary = sentSummaryFor();
     $alternatives = app(CardPicker::class)->alternatives($summary->payload, $summary->card);
 
@@ -157,8 +174,6 @@ it('draws the rest of the screen\'s cards on the reader\'s own job', function ()
 
     $drawn = [];
     $renderer = Mockery::mock(CardRenderer::class);
-    $renderer->shouldReceive('url')->andReturn('https://whisper.money/storage/card.png');
-    $renderer->shouldReceive('forget')->andReturnNull();
     $renderer->shouldReceive('forgetBefore')->andReturnNull();
     $renderer->shouldReceive('warm')->andReturnUsing(
         function (MonthlySummary $drawnFor, array $cards) use (&$drawn): void {
@@ -167,13 +182,62 @@ it('draws the rest of the screen\'s cards on the reader\'s own job', function ()
     );
     app()->instance(CardRenderer::class, $renderer);
 
-    (new SendMonthlySummaryEmailJob($summary->user, $summary))->handle();
+    (new WarmMonthlySummaryCardsJob($summary, pro: false))->handle(app(Summaries::class));
 
     // The chosen card and every alternative, handed over in one run.
     expect($drawn)->toBe([
         $summary->card->value,
         ...array_map(fn (MonthlySummaryCard $card): string => $card->value, $alternatives),
     ]);
+});
+
+it('draws the email\'s card in the reader\'s language, not the worker\'s', function (): void {
+    // buildMail() runs as the argument to Mail::to()->send(), so the mailer's
+    // own switch for a HasLocalePreference recipient comes too late for the
+    // picture: it used to come out in the worker's English.
+    Mail::fake();
+    Queue::fake();
+    app()->setLocale('en');
+    $summary = sentSummaryFor(User::factory()->onboarded()->create([
+        'currency_code' => 'EUR',
+        'locale' => 'es',
+    ]));
+
+    $drawnIn = null;
+    $renderer = Mockery::mock(CardRenderer::class);
+    $renderer->shouldReceive('url')->andReturnUsing(function () use (&$drawnIn): string {
+        $drawnIn = app()->getLocale();
+
+        return 'https://whisper.money/storage/card.png';
+    });
+    app()->instance(CardRenderer::class, $renderer);
+
+    (new SendMonthlySummaryEmailJob($summary->user, $summary))->handle();
+
+    expect($drawnIn)->toBe('es')
+        // And the worker is handed back the locale it came in with, so the next
+        // reader on the same process is not sent someone else's language.
+        ->and(app()->getLocale())->toBe('en');
+});
+
+it('draws the screen\'s cards in the reader\'s language too', function (): void {
+    app()->setLocale('en');
+    $summary = sentSummaryFor(User::factory()->onboarded()->create([
+        'currency_code' => 'EUR',
+        'locale' => 'es',
+    ]));
+
+    $drawnIn = null;
+    $renderer = Mockery::mock(CardRenderer::class);
+    $renderer->shouldReceive('forgetBefore')->andReturnNull();
+    $renderer->shouldReceive('warm')->andReturnUsing(function () use (&$drawnIn): void {
+        $drawnIn = app()->getLocale();
+    });
+    app()->instance(CardRenderer::class, $renderer);
+
+    (new WarmMonthlySummaryCardsJob($summary, pro: false))->handle(app(Summaries::class));
+
+    expect($drawnIn)->toBe('es')->and(app()->getLocale())->toBe('en');
 });
 
 it('does not send to a reader who turned the summary off', function (): void {
