@@ -3,6 +3,7 @@
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\TransactionSplitter;
 
 use function Pest\Laravel\actingAs;
 
@@ -138,4 +139,79 @@ it('validates the request payload', function () {
         'transactions.0.amount',
         'transactions.0.description',
     ]);
+});
+
+it('flags a row matching a split parent, so a re-import cannot double-count it', function () {
+    $parent = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-01-15',
+        'amount' => -5340,
+        'description' => 'Amazon',
+    ]);
+
+    app(TransactionSplitter::class)->split($parent, [
+        ['amount' => -3490],
+        ['amount' => -1850],
+    ]);
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            // The full amount the bank sent, which only the parent carries.
+            ['transaction_date' => '2026-01-15', 'amount' => -5340, 'description' => 'Amazon'],
+            // One part's own amount: the part is a live row holding that money,
+            // so it is already in the account too.
+            ['transaction_date' => '2026-01-15', 'amount' => -3490, 'description' => 'Amazon'],
+            ['transaction_date' => '2026-01-15', 'amount' => -900, 'description' => 'Amazon'],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [true, true, false]]);
+});
+
+it('lets a transaction the user deleted be imported again', function () {
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-01-15',
+        'amount' => 1234,
+        'description' => 'Coffee Shop',
+    ])->delete();
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-01-15', 'amount' => 1234, 'description' => 'Coffee Shop'],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [false]]);
+});
+
+it('stops flagging a split parent once its parts are gone too', function () {
+    $parent = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-01-15',
+        'amount' => -5340,
+        'description' => 'Amazon',
+    ]);
+
+    $parts = app(TransactionSplitter::class)->split($parent, [
+        ['amount' => -3490],
+        ['amount' => -1850],
+    ]);
+
+    // No live part is left holding the money, so the row is importable again.
+    $parts->each->delete();
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-01-15', 'amount' => -5340, 'description' => 'Amazon'],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [false]]);
 });
