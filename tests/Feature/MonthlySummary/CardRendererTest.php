@@ -27,6 +27,50 @@ function summaryToRender(): MonthlySummary
     ]);
 }
 
+/**
+ * Stand in for the render script, which is expected to leave a PNG behind at
+ * the path it was handed — the fourth argument of the command.
+ */
+function fakeRenderWritingAPng(): void
+{
+    Process::fake(function (PendingProcess $process) {
+        file_put_contents($process->command[3], 'png-bytes');
+
+        return Process::result();
+    });
+}
+
+it('stores the rendered card on the public disk and reuses it next time', function (): void {
+    Storage::fake('public');
+    fakeRenderWritingAPng();
+
+    $summary = summaryToRender();
+    $renderer = app(CardRenderer::class);
+
+    $path = $renderer->path($summary, MonthlySummaryCard::Streak, MonthlySummaryFormat::Story, pro: false);
+
+    expect(Storage::disk('public')->get($path))->toBe('png-bytes');
+    Process::assertRanTimes(fn (): bool => true, 1);
+
+    // Second ask: the file is already there, so nothing is rendered again.
+    expect($renderer->path($summary, MonthlySummaryCard::Streak, MonthlySummaryFormat::Story, pro: false))->toBe($path);
+    Process::assertRanTimes(fn (): bool => true, 1);
+});
+
+it('keeps the Pro badge out of the unbadged card by caching them apart', function (): void {
+    Storage::fake('public');
+    fakeRenderWritingAPng();
+
+    $summary = summaryToRender();
+    $renderer = app(CardRenderer::class);
+
+    $free = $renderer->path($summary, MonthlySummaryCard::Streak, MonthlySummaryFormat::Story, pro: false);
+    $pro = $renderer->path($summary, MonthlySummaryCard::Streak, MonthlySummaryFormat::Story, pro: true);
+
+    expect($pro)->not->toBe($free);
+    Process::assertRanTimes(fn (): bool => true, 2);
+});
+
 it('hands the browser a writable home directory whoever started the render', function (): void {
     Storage::fake('public');
     Process::fake();
