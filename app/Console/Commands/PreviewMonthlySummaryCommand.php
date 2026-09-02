@@ -135,6 +135,13 @@ class PreviewMonthlySummaryCommand extends Command
      */
     private function cases(User $user, MonthlySummary $summary, Summaries $summaries, Carbon $month, AnalysisWriter $writer): array
     {
+        // The email carries one card, but the report screen puts all of them up
+        // as previews and offers each format for download. A send draws the lot
+        // up front; a preview that drew only the one in the email would leave
+        // the screen looking broken for exactly as long as it takes to blame
+        // the wrong thing.
+        $summaries->prepareCards($summary, pro: true, dropEarlierMonths: false);
+
         $cardUrl = $summaries->primaryCardUrl($summary, true);
 
         if ($cardUrl === null) {

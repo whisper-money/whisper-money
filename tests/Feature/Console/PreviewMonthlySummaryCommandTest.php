@@ -19,7 +19,10 @@ use Illuminate\Support\Facades\Mail;
  */
 
 beforeEach(function (): void {
-    $this->mock(CardRenderer::class, fn ($mock) => $mock->shouldReceive('url')->andReturn('https://whisper.money/card.png'));
+    $this->mock(CardRenderer::class, function ($mock): void {
+        $mock->shouldReceive('url')->andReturn('https://whisper.money/card.png');
+        $mock->shouldReceive('warm');
+    });
 });
 
 function previewSource(): User
@@ -52,6 +55,25 @@ it('sends every state of the report in one go', function (): void {
 
     Mail::assertSentCount(6);
     Mail::assertSent(MonthlySummaryReminderEmail::class);
+});
+
+it('draws every card the report screen shows, and keeps the earlier months', function (): void {
+    // The email carries one card; the screen puts all of them up. A preview that
+    // drew only the one in the email left the screen looking broken. Nor may a
+    // look at a report cost a real reader the pictures of their older ones.
+    Mail::fake();
+
+    $this->mock(CardRenderer::class, function ($mock): void {
+        $mock->shouldReceive('url')->andReturn('https://whisper.money/card.png');
+        $mock->shouldReceive('warm')->once();
+        $mock->shouldNotReceive('forgetBefore');
+    });
+
+    $this->artisan('email:monthly-summary-preview', [
+        'email' => 'look@whisper.test',
+        '--source' => previewSource()->email,
+        '--type' => 'pro',
+    ])->assertSuccessful();
 });
 
 it('sends now rather than queueing, so the cases do not collapse into one', function (): void {
