@@ -24,7 +24,7 @@ enum MonthlySummaryFormat: string
 
     /**
      * The format that rides inside the email and backs the public page's
-     * og:image. It is the only one rendered up front.
+     * og:image.
      */
     public static function default(): self
     {

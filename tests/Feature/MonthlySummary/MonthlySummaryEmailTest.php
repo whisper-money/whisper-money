@@ -2,7 +2,6 @@
 
 use App\Enums\DripEmailType;
 use App\Enums\MonthlySummaryCard;
-use App\Enums\MonthlySummaryFormat;
 use App\Jobs\Drip\SendMonthlySummaryEmailJob;
 use App\Mail\Drip\MonthlySummaryEmail;
 use App\Models\MonthlySummary;
@@ -20,8 +19,10 @@ use Illuminate\Support\Facades\Mail;
 
 beforeEach(function (): void {
     // What is under test is what the email says, not Chromium: left real, every
-    // job test here starts a browser per card it draws.
+    // job test here draws a month's worth of cards.
     $this->mock(CardRenderer::class, function ($mock): void {
+        $mock->shouldReceive('warm')->andReturnNull();
+        $mock->shouldReceive('forgetBefore')->andReturnNull();
         $mock->shouldReceive('url')->andReturn('https://whisper.money/storage/card.png');
         $mock->shouldReceive('path')->andReturn('monthly-summaries/x/card.png');
         $mock->shouldReceive('forget')->andReturnNull();
@@ -158,22 +159,21 @@ it('draws the rest of the screen\'s cards on the reader\'s own job', function ()
     $renderer = Mockery::mock(CardRenderer::class);
     $renderer->shouldReceive('url')->andReturn('https://whisper.money/storage/card.png');
     $renderer->shouldReceive('forget')->andReturnNull();
-    $renderer->shouldReceive('path')->andReturnUsing(
-        function (MonthlySummary $drawnFor, MonthlySummaryCard $card, MonthlySummaryFormat $format) use (&$drawn): string {
-            $drawn[] = $card->value.':'.$format->value;
-
-            return 'monthly-summaries/x/card.png';
+    $renderer->shouldReceive('forgetBefore')->andReturnNull();
+    $renderer->shouldReceive('warm')->andReturnUsing(
+        function (MonthlySummary $drawnFor, array $cards) use (&$drawn): void {
+            $drawn = array_map(fn (MonthlySummaryCard $card): string => $card->value, $cards);
         }
     );
     app()->instance(CardRenderer::class, $renderer);
 
     (new SendMonthlySummaryEmailJob($summary->user, $summary))->handle();
 
-    // Only the 4:5 shape, because that is the only one the screen shows.
-    expect($drawn)->toBe(array_map(
-        fn (MonthlySummaryCard $card): string => $card->value.':feed',
-        $alternatives,
-    ));
+    // The chosen card and every alternative, handed over in one run.
+    expect($drawn)->toBe([
+        $summary->card->value,
+        ...array_map(fn (MonthlySummaryCard $card): string => $card->value, $alternatives),
+    ]);
 });
 
 it('does not send to a reader who turned the summary off', function (): void {
