@@ -150,7 +150,7 @@ export default function MonthlySummaryShow({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={report.monthLabel} />
 
-            <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4">
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-6 md:pt-16">
                 <div className="flex flex-col gap-2">
                     <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                         {report.monthLabel}
@@ -186,7 +186,7 @@ export default function MonthlySummaryShow({
                     <h2 className="text-sm font-semibold">
                         {__('Share your month')}
                     </h2>
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {cards.map((card) => (
                             <div
                                 key={card.card}
@@ -194,11 +194,6 @@ export default function MonthlySummaryShow({
                             >
                                 <span className="text-sm font-medium">
                                     {cardLabel(card.card)}
-                                    {card.chosen && (
-                                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                                            {__('picked for you')}
-                                        </span>
-                                    )}
                                 </span>
 
                                 <div
