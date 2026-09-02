@@ -75,6 +75,26 @@ class Summaries
     }
 
     /**
+     * Draw every card this month can show, and drop the months before it.
+     *
+     * Called on the way out of a send rather than on a page view: fifteen
+     * pictures in one browser take seconds a queue worker has and a web request
+     * does not, and by the time the reader opens their report the download
+     * buttons have nothing left to do. Last month's pictures go at the same
+     * time — that email has been read, and the disk is not an archive.
+     */
+    public function prepareCards(MonthlySummary $summary, bool $pro): void
+    {
+        $this->renderer->warm(
+            $summary,
+            [$summary->card, ...$this->picker->alternatives($summary->payload, $summary->card)],
+            $pro,
+        );
+
+        $this->renderer->forgetBefore($summary);
+    }
+
+    /**
      * Draw the card that rides inside the email. Failing to render must not cost
      * the reader their report, so the caller gets null and the email drops the
      * image rather than the whole send.

@@ -46,12 +46,17 @@ class SendMonthlySummaryEmailJob extends SendDripEmailJob
     protected function buildMail(): Mailable
     {
         $pro = app(AnalysisWriter::class)->eligible($this->user);
+        $summaries = app(Summaries::class);
+
+        // Every card, drawn now, while there is a browser and a queue worker to
+        // draw them with — and last month's thrown away.
+        $summaries->prepareCards($this->summary, $pro);
 
         $mail = new MonthlySummaryEmail(
             $this->user,
             $this->summary,
             app(AnalysisWriter::class)->write($this->summary, $this->user),
-            app(Summaries::class)->primaryCardUrl($this->summary, $pro),
+            $summaries->primaryCardUrl($this->summary, $pro),
             $pro,
             $this->spaceName(),
         );
