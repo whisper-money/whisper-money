@@ -22,6 +22,11 @@ use RuntimeException;
  * the one that rides inside the email and backs the public page's og:image. The
  * other two are rendered the first time somebody asks for them and then cached,
  * so nobody pays for twelve images a user will never open.
+ *
+ * Chromium needs a writable HOME to start, and it is started from two very
+ * different places — a queue worker for the feed card, a web request for the
+ * other two — so the requirement travels with the renderer rather than with
+ * whichever process manager happens to be calling it.
  */
 class CardRenderer
 {
@@ -102,14 +107,16 @@ class CardRenderer
 
     private function screenshot(string $htmlFile, string $pngFile, int $width, int $height): void
     {
-        $result = Process::timeout(self::TIMEOUT_SECONDS)->run([
-            (string) config('monthly_summary.node_binary'),
-            base_path('scripts/render-card.mjs'),
-            $htmlFile,
-            $pngFile,
-            (string) $width,
-            (string) $height,
-        ]);
+        $result = Process::timeout(self::TIMEOUT_SECONDS)
+            ->env(['HOME' => sys_get_temp_dir()])
+            ->run([
+                (string) config('monthly_summary.node_binary'),
+                base_path('scripts/render-card.mjs'),
+                $htmlFile,
+                $pngFile,
+                (string) $width,
+                (string) $height,
+            ]);
 
         if ($result->failed() || ! is_file($pngFile)) {
             throw new RuntimeException('Card render failed: '.trim($result->errorOutput() ?: $result->output()));
