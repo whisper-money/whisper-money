@@ -6,6 +6,7 @@ use App\Models\MonthlySummary;
 use App\Support\Figures;
 use App\Support\Money;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Turns a frozen summary into the sentences and micro-charts the email prints.
@@ -34,7 +35,10 @@ class EmailPresenter
 
         return [
             'monthName' => $month->copy()->locale($locale)->isoFormat('MMMM'),
-            'monthLabel' => $month->copy()->locale($locale)->isoFormat('MMMM YYYY'),
+            // A title, unlike `monthName`, which is read inside a sentence: it
+            // lands in the breadcrumb and the browser tab, and Spanish and French
+            // print their month names in lower case.
+            'monthLabel' => Str::ucfirst($month->copy()->locale($locale)->isoFormat('MMMM YYYY')),
             'headline' => $this->headline($summary, $locale, $month),
             'lede' => $this->lede($summary, $locale),
             'rows' => $this->rows($summary, $locale, $month),

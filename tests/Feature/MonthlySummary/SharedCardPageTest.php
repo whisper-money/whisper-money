@@ -4,6 +4,7 @@ use App\Enums\MonthlySummaryFormat;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Services\MonthlySummary\CardRenderer;
+use Illuminate\Support\Facades\Storage;
 
 /*
  * The public page a shared card unfurls from.
@@ -96,6 +97,28 @@ it('will not let one reader touch another reader\'s summary', function (): void 
     $this->actingAs($stranger)->get("/summaries/{$summary->id}/card/savings_rate/feed")->assertNotFound();
 
     expect($summary->fresh()->share_token)->toBeNull();
+});
+
+it('paints the card inside the screen and saves it on download', function (): void {
+    // The screen shows the 4:5 render as a preview, so one route has to be able
+    // to hand the browser a picture as well as a file to keep.
+    Storage::fake('public');
+    Storage::disk('public')->put('monthly-summaries/x/card.png', 'png-bytes');
+
+    $user = User::factory()->onboarded()->create();
+    $summary = summaryFor($user);
+
+    $preview = $this->actingAs($user)
+        ->get("/summaries/{$summary->id}/card/savings_rate/feed?preview=1")
+        ->assertOk();
+
+    expect($preview->headers->get('Content-Disposition'))->toStartWith('inline');
+    expect($preview->headers->get('Cache-Control'))->toContain('max-age=300');
+
+    $this->actingAs($user)
+        ->get("/summaries/{$summary->id}/card/savings_rate/feed")
+        ->assertOk()
+        ->assertDownload("whisper-money-{$summary->period}-savings_rate-feed.png");
 });
 
 it('refuses a card format or kind it does not have', function (): void {

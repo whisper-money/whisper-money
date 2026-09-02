@@ -5,7 +5,10 @@ import {
     show,
 } from '@/actions/App/Http/Controllers/MonthlySummaryController';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
@@ -24,7 +27,12 @@ import { useState } from 'react';
 type Row = { text: string };
 type Todo = { text: string; action: string };
 type CardFormat = { format: string; url: string };
-type CardOption = { card: string; chosen: boolean; formats: CardFormat[] };
+type CardOption = {
+    card: string;
+    chosen: boolean;
+    preview: string;
+    formats: CardFormat[];
+};
 
 interface Props {
     summary: { id: string; period: string; complete: boolean; shared: boolean };
@@ -56,6 +64,62 @@ function cardLabel(card: string): string {
     };
 
     return labels[card] ?? card;
+}
+
+/**
+ * The card as it will be posted, at the 4:5 the feeds want.
+ *
+ * The PNG is drawn on the server the first time anybody asks for it, so a
+ * preview can take a moment to arrive and can fail outright. Neither may leave a
+ * broken image sitting in the middle of the grid.
+ */
+function CardPreview({ label, src }: { label: string; src: string }) {
+    const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>(
+        'loading',
+    );
+    // A render that timed out usually works on the next go, and the browser
+    // holds on to the failure, so a retry needs a URL it has not seen.
+    const [attempt, setAttempt] = useState(0);
+
+    if (status === 'failed') {
+        return (
+            <div className="flex size-full flex-col items-center justify-center gap-2 p-4 text-center">
+                <p className="text-xs text-muted-foreground">
+                    {__('This picture could not be drawn.')}
+                </p>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                        setAttempt(attempt + 1);
+                        setStatus('loading');
+                    }}
+                >
+                    {__('Try again')}
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            {status === 'loading' && (
+                <Skeleton className="absolute inset-0 rounded-none" />
+            )}
+            <img
+                src={attempt === 0 ? src : `${src}&retry=${attempt}`}
+                alt={label}
+                loading="lazy"
+                decoding="async"
+                className={cn(
+                    'size-full object-cover transition-opacity',
+                    status === 'ready' ? 'opacity-100' : 'opacity-0',
+                )}
+                onLoad={() => setStatus('ready')}
+                onError={() => setStatus('failed')}
+            />
+        </>
+    );
 }
 
 export default function MonthlySummaryShow({
@@ -122,34 +186,51 @@ export default function MonthlySummaryShow({
                     <h2 className="text-sm font-semibold">
                         {__('Share your month')}
                     </h2>
-                    <div className="flex flex-col gap-3 rounded-lg border p-4">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                         {cards.map((card) => (
                             <div
                                 key={card.card}
-                                className="flex flex-wrap items-center gap-3"
+                                className="flex flex-col gap-2"
                             >
-                                <span className="flex-1 text-sm font-medium">
+                                <span className="text-sm font-medium">
                                     {cardLabel(card.card)}
                                     {card.chosen && (
-                                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                                             {__('picked for you')}
                                         </span>
                                     )}
                                 </span>
-                                {card.formats.map((format) => (
-                                    <Button
-                                        key={format.format}
-                                        variant="outline"
-                                        size="sm"
-                                        asChild
-                                    >
-                                        <a href={format.url}>
-                                            <DownloadIcon className="size-3.5" />
-                                            {FORMAT_LABELS[format.format] ??
-                                                format.format}
-                                        </a>
-                                    </Button>
-                                ))}
+
+                                <div
+                                    className={cn(
+                                        'relative aspect-[4/5] overflow-hidden rounded-md border bg-card',
+                                        card.chosen &&
+                                            'ring-2 ring-primary ring-offset-2 ring-offset-background',
+                                    )}
+                                >
+                                    <CardPreview
+                                        label={cardLabel(card.card)}
+                                        src={card.preview}
+                                    />
+                                </div>
+
+                                <ButtonGroup className="w-full">
+                                    {card.formats.map((format) => (
+                                        <Button
+                                            key={format.format}
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 flex-1 text-xs sm:h-8"
+                                            asChild
+                                        >
+                                            <a href={format.url}>
+                                                <DownloadIcon className="size-3.5" />
+                                                {FORMAT_LABELS[format.format] ??
+                                                    format.format}
+                                            </a>
+                                        </Button>
+                                    ))}
+                                </ButtonGroup>
                             </div>
                         ))}
                     </div>

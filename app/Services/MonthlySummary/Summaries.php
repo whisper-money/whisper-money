@@ -96,6 +96,31 @@ class Summaries
     }
 
     /**
+     * Draw the rest of the cards the summary screen shows.
+     *
+     * The screen puts all five up as 4:5 pictures, and the renderer starts a
+     * Chromium run for any it has not drawn yet. Left to the screen, a first
+     * visit would start four of them inside four web requests at once; here they
+     * cost the one reader whose report this is, on the job that already owns a
+     * cold Chromium start.
+     *
+     * Only the 4:5 shape: nothing shows the story or the wide one, so those are
+     * still drawn the first time somebody asks for one.
+     */
+    public function warmShareCards(MonthlySummary $summary, bool $pro): void
+    {
+        foreach ($this->picker->alternatives($summary->payload, $summary->card) as $card) {
+            try {
+                $this->renderer->path($summary, $card, MonthlySummaryFormat::default(), $pro);
+            } catch (Throwable $exception) {
+                // A picture nobody has asked for yet is not worth failing a send
+                // over; the screen draws it on demand if it comes to that.
+                report($exception);
+            }
+        }
+    }
+
+    /**
      * A summary that was frozen mid-month and never sent is refrozen once the
      * month completes. One that has already gone out never moves: the reader has
      * the old figures in their inbox.
