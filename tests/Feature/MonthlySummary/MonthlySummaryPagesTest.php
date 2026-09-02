@@ -71,6 +71,8 @@ it('shows one month with its figures and every card it can produce', function ()
             ->has('cards')
             ->where('cards.0.chosen', true)
             ->has('cards.0.formats', 3)
+            // Every card carries the picture the screen paints, not just the links.
+            ->where('cards.0.preview', fn (string $url): bool => str_contains($url, 'card/'.$summary->card->value.'/feed?preview=1'))
             ->where('shareUrl', null));
 });
 

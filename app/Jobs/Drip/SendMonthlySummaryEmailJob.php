@@ -58,6 +58,8 @@ class SendMonthlySummaryEmailJob extends SendDripEmailJob
 
         $this->summary->forceFill(['sent_at' => now()])->save();
 
+        app(Summaries::class)->warmShareCards($this->summary, $pro);
+
         return $mail;
     }
 

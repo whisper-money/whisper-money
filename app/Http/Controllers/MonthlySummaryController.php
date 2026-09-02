@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
@@ -67,8 +68,11 @@ class MonthlySummaryController extends Controller
     /**
      * Serve one card as a PNG. Rendered on first request and cached on the
      * public disk, so nobody pays for fifteen images a reader will never open.
+     *
+     * `?preview=1` paints the file instead of saving it: the screen shows the
+     * same 4:5 render it offers for download, so one route covers both.
      */
-    public function card(Request $request, MonthlySummary $summary, string $card, string $format)
+    public function card(Request $request, MonthlySummary $summary, string $card, string $format): StreamedResponse
     {
         abort_unless($summary->user_id === $request->user()->id, 404);
 
@@ -86,7 +90,16 @@ class MonthlySummaryController extends Controller
             abort(503);
         }
 
-        return Storage::disk('public')->download($path, $this->filename($summary, $cardType, $formatType));
+        $disk = Storage::disk('public');
+
+        if ($request->boolean('preview')) {
+            // Minutes, not days: `CardRenderer::forget()` exists so a redesign or
+            // a corrected figure replaces the picture, and a long-lived copy in
+            // the browser would outlive it.
+            return $disk->response($path, headers: ['Cache-Control' => 'private, max-age=300']);
+        }
+
+        return $disk->download($path, $this->filename($summary, $cardType, $formatType));
     }
 
     /**
@@ -128,8 +141,8 @@ class MonthlySummaryController extends Controller
     }
 
     /**
-     * The chosen card first, then the alternatives, each with the three formats
-     * it can be downloaded in.
+     * The chosen card first, then the alternatives, each with the picture the
+     * screen shows and the three formats it can be downloaded in.
      *
      * @return list<array<string, mixed>>
      */
@@ -140,6 +153,9 @@ class MonthlySummaryController extends Controller
         return array_map(fn (MonthlySummaryCard $card): array => [
             'card' => $card->value,
             'chosen' => $card === $summary->card,
+            'preview' => route('monthly-summaries.card', [
+                $summary, $card->value, MonthlySummaryFormat::default()->value, 'preview' => 1,
+            ]),
             'formats' => array_map(fn (MonthlySummaryFormat $format): array => [
                 'format' => $format->value,
                 'url' => route('monthly-summaries.card', [$summary, $card->value, $format->value]),

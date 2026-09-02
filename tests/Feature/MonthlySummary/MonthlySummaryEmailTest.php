@@ -1,11 +1,15 @@
 <?php
 
 use App\Enums\DripEmailType;
+use App\Enums\MonthlySummaryCard;
+use App\Enums\MonthlySummaryFormat;
 use App\Jobs\Drip\SendMonthlySummaryEmailJob;
 use App\Mail\Drip\MonthlySummaryEmail;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Models\UserMailLog;
+use App\Services\MonthlySummary\CardPicker;
+use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
 use Illuminate\Support\Facades\Mail;
 
@@ -13,6 +17,16 @@ use Illuminate\Support\Facades\Mail;
  * The report email itself: what it says, who sees the analysis, and how a reader
  * gets out of it.
  */
+
+beforeEach(function (): void {
+    // What is under test is what the email says, not Chromium: left real, every
+    // job test here starts a browser per card it draws.
+    $this->mock(CardRenderer::class, function ($mock): void {
+        $mock->shouldReceive('url')->andReturn('https://whisper.money/storage/card.png');
+        $mock->shouldReceive('path')->andReturn('monthly-summaries/x/card.png');
+        $mock->shouldReceive('forget')->andReturnNull();
+    });
+});
 
 /**
  * A summary belonging to a fresh reader, with every section filled.
@@ -129,6 +143,37 @@ it('records the send once per month and space', function (): void {
         ->count())->toBe(1);
 
     expect($summary->fresh()->sent_at)->not->toBeNull();
+});
+
+it('draws the rest of the screen\'s cards on the reader\'s own job', function (): void {
+    // Left to the screen, a first visit starts a Chromium run for each card it
+    // has not drawn yet, inside as many web requests as the browser opens.
+    Mail::fake();
+    $summary = sentSummaryFor();
+    $alternatives = app(CardPicker::class)->alternatives($summary->payload, $summary->card);
+
+    expect($alternatives)->not->toBeEmpty();
+
+    $drawn = [];
+    $renderer = Mockery::mock(CardRenderer::class);
+    $renderer->shouldReceive('url')->andReturn('https://whisper.money/storage/card.png');
+    $renderer->shouldReceive('forget')->andReturnNull();
+    $renderer->shouldReceive('path')->andReturnUsing(
+        function (MonthlySummary $drawnFor, MonthlySummaryCard $card, MonthlySummaryFormat $format) use (&$drawn): string {
+            $drawn[] = $card->value.':'.$format->value;
+
+            return 'monthly-summaries/x/card.png';
+        }
+    );
+    app()->instance(CardRenderer::class, $renderer);
+
+    (new SendMonthlySummaryEmailJob($summary->user, $summary))->handle();
+
+    // Only the 4:5 shape, because that is the only one the screen shows.
+    expect($drawn)->toBe(array_map(
+        fn (MonthlySummaryCard $card): string => $card->value.':feed',
+        $alternatives,
+    ));
 });
 
 it('does not send to a reader who turned the summary off', function (): void {
