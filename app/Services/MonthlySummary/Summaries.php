@@ -4,7 +4,6 @@ namespace App\Services\MonthlySummary;
 
 use App\Enums\MonthlySummaryFormat;
 use App\Enums\MonthlySummaryTheme;
-use App\Jobs\WarmMonthlySummaryCardsJob;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use Carbon\Carbon;
@@ -86,7 +85,8 @@ class Summaries
      * start a Chromium run for each one it has not drawn yet, inside as many web
      * requests as the browser opens; drawn here, by the time the reader opens
      * their report the previews and the download buttons have nothing left to
-     * do. {@see WarmMonthlySummaryCardsJob}
+     * do. The send hands this to WarmMonthlySummaryCardsJob; the preview command
+     * calls it inline, wanting the pictures before it returns.
      *
      * The earlier months' pictures go at the same time: the disk is not an
      * archive, and an old report that does get opened draws them again. The

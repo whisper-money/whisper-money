@@ -160,7 +160,8 @@ it('leaves the screen\'s other cards to a job of their own', function (): void {
 
     (new SendMonthlySummaryEmailJob($summary->user, $summary))->handle();
 
-    Queue::assertPushed(
+    Queue::assertPushedOn(
+        'cards',
         WarmMonthlySummaryCardsJob::class,
         fn (WarmMonthlySummaryCardsJob $job): bool => $job->summary->is($summary) && $job->pro === false,
     );

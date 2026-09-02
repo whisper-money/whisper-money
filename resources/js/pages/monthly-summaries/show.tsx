@@ -21,7 +21,7 @@ import {
     SparklesIcon,
     SunIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * One month's report, and the cards it can produce.
@@ -64,18 +64,16 @@ const FORMAT_LABELS: Record<string, string> = {
 };
 
 /**
- * Which theme to show the cards in first.
+ * Which theme to show the cards in.
  *
  * The reader's own choice — light, dark or whatever the OS says — is already
- * resolved onto the document by the time React mounts, so reading it back off
- * the class is both shorter and less wrong than working it out a second time
- * from the preference and a media query.
+ * resolved onto the document by the time React runs, so reading it back off the
+ * class is shorter and less wrong than working it out a second time from the
+ * preference and a media query. It has to be read after mount rather than as the
+ * initial state, because the page is server-rendered and the server cannot know
+ * what the OS says — the same reason use-appearance hydrates in an effect.
  */
-function initialCardTheme(): CardTheme {
-    if (typeof document === 'undefined') {
-        return 'light';
-    }
-
+function currentCardTheme(): CardTheme {
     return document.documentElement.classList.contains('dark')
         ? 'dark'
         : 'light';
@@ -157,7 +155,9 @@ export default function MonthlySummaryShow({
     shareUrl,
 }: Props) {
     const [copied, setCopied] = useState(false);
-    const [theme, setTheme] = useState<CardTheme>(initialCardTheme);
+    const [theme, setTheme] = useState<CardTheme>('light');
+
+    useEffect(() => setTheme(currentCardTheme()), []);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Summaries', href: index().url },

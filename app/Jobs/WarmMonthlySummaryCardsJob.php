@@ -21,10 +21,13 @@ use Illuminate\Support\Traits\Localizable;
  * Chromium run per preview inside as many concurrent web requests as the browser
  * opens.
  *
- * Hence a job of its own, on the default queue. The emails worker is a single
- * process, and thirty screenshots inside the send are thirty screenshots the
- * next reader waits for — while the one whose report it is has an email to open
- * before any download button matters.
+ * Hence a job of its own, on a queue of its own. Inside the send, thirty
+ * screenshots were thirty the next reader waited for, the emails worker being a
+ * single process. On `default` they would instead sit on one of the two workers
+ * that also categorise transactions and run automation rules, for minutes at a
+ * time, once per reader in the timezone bucket. Neither queue should have to
+ * care: the reader whose report this is has an email to open before any download
+ * button matters.
  */
 class WarmMonthlySummaryCardsJob implements ShouldQueue
 {
@@ -40,15 +43,17 @@ class WarmMonthlySummaryCardsJob implements ShouldQueue
     /**
      * The renderer gives a batch of thirty 60 + 10 × 30 = 360 seconds of its
      * own, and a killed process is not an exception it can shrug off. Stays
-     * under the database queue's retry_after, which config/queue.php pins at 600
-     * as the longest job timeout on the connection.
+     * under the database queue's retry_after, and under the 600-second ceiling
+     * config/queue.php sets for any one job's timeout.
      */
     public int $timeout = 600;
 
     public function __construct(
         public MonthlySummary $summary,
         public bool $pro,
-    ) {}
+    ) {
+        $this->onQueue('cards');
+    }
 
     public function handle(Summaries $summaries): void
     {
