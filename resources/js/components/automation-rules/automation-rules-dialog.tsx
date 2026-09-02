@@ -262,6 +262,7 @@ export function AutomationRulesDialog({
         columns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
+        getRowId: (row) => row.id,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
