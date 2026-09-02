@@ -17,6 +17,10 @@ import { type ReactNode } from 'react';
  * The bordered table the settings pages list their records in. Deliberately not
  * the virtualized DataTable: these lists are short, and each page renders its
  * own row component (they carry a per-row context menu).
+ *
+ * Tables rendered here must set `getRowId` to the record id. Row keys fall back
+ * to the row index otherwise, and because these lists reorder on rename, React
+ * would hand a mounted row (and the edit dialog inside it) a different record.
  */
 export function SettingsTable<TData>({
     table,

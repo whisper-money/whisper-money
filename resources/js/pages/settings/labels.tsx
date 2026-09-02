@@ -134,6 +134,7 @@ export default function Labels() {
         columns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
+        getRowId: (row) => row.id,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
