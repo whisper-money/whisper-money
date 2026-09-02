@@ -57,6 +57,16 @@ it('draws every card the month can show in a single browser run', function (): v
     expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(15);
 });
 
+it('gives chromium a writable home', function (): void {
+    // Without it the crash handler exits before the browser is usable, and
+    // php-fpm hands its workers none of the environment the image sets — so
+    // every card drawn inside a web request failed.
+    app(Summaries::class)->prepareCards(summaryToSend(User::factory()->onboarded()->create(), '2026-08'), pro: false);
+
+    Process::assertRan(fn (PendingProcess $process): bool => ranTheRenderer()($process)
+        && is_writable((string) ($process->environment['HOME'] ?? '')));
+});
+
 it('leaves an already rendered card alone', function (): void {
     $summary = summaryToSend(User::factory()->onboarded()->create(), '2026-08');
 

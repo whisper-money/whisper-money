@@ -167,6 +167,14 @@ class CardRenderer
      * missing ones are what the exception is about, and they cost one more
      * render rather than fifteen.
      *
+     * HOME is stated rather than inherited. Chromium puts its crash database
+     * under $HOME, and without a writable one the crash handler exits before
+     * the browser is usable — `chrome_crashpad_handler: --database is required`,
+     * then SIGTRAP. php-fpm does not hand its workers the environment the image
+     * sets, so setting it in the container only ever fixed the queue worker:
+     * every card drawn inside a web request still died. Set here, it holds
+     * whichever process is doing the drawing.
+     *
      * @param  list<array{path: string, html: string, png: string, width: int, height: int}>  $jobs
      */
     private function renderJobs(array $jobs): void
@@ -179,11 +187,13 @@ class CardRenderer
         file_put_contents($manifest, json_encode($jobs));
 
         try {
-            $result = Process::timeout(self::TIMEOUT_SECONDS + self::TIMEOUT_PER_CARD_SECONDS * count($jobs))->run([
-                (string) config('monthly_summary.node_binary'),
-                base_path('scripts/render-card.mjs'),
-                $manifest,
-            ]);
+            $result = Process::env(['HOME' => sys_get_temp_dir()])
+                ->timeout(self::TIMEOUT_SECONDS + self::TIMEOUT_PER_CARD_SECONDS * count($jobs))
+                ->run([
+                    (string) config('monthly_summary.node_binary'),
+                    base_path('scripts/render-card.mjs'),
+                    $manifest,
+                ]);
 
             $missing = 0;
 

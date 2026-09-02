@@ -86,9 +86,11 @@ class Summaries
      * it the previews and the download buttons have nothing left to do.
      *
      * The earlier months' pictures go at the same time: the disk is not an
-     * archive, and an old report that does get opened draws them again.
+     * archive, and an old report that does get opened draws them again. The
+     * preview command keeps them, being a way of looking at a report rather
+     * than a send, and nobody wants a look to cost a real reader their images.
      */
-    public function prepareCards(MonthlySummary $summary, bool $pro): void
+    public function prepareCards(MonthlySummary $summary, bool $pro, bool $dropEarlierMonths = true): void
     {
         $this->renderer->warm(
             $summary,
@@ -96,7 +98,9 @@ class Summaries
             $pro,
         );
 
-        $this->renderer->forgetBefore($summary);
+        if ($dropEarlierMonths) {
+            $this->renderer->forgetBefore($summary);
+        }
     }
 
     /**
