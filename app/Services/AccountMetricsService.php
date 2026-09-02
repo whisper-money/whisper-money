@@ -243,7 +243,7 @@ class AccountMetricsService
      */
     private function balanceAt(BalanceLookup $lookup, Account $account, Carbon $date): int
     {
-        if ($this->isArchivedOn($account, $date)) {
+        if ($account->isArchivedOn($date)) {
             return 0;
         }
 
@@ -256,16 +256,11 @@ class AccountMetricsService
      */
     private function investedAmountAt(BalanceLookup $lookup, Account $account, Carbon $date): ?int
     {
-        if ($this->isArchivedOn($account, $date)) {
+        if ($account->isArchivedOn($date)) {
             return null;
         }
 
         return $lookup->getInvestedAmountAt($account->id, $date);
-    }
-
-    private function isArchivedOn(Account $account, Carbon $date): bool
-    {
-        return $account->archived_at !== null && $date->gte($account->archived_at);
     }
 
     private function convertBalance(int $balance, string $sourceCurrency, string $targetCurrency, string $date): int

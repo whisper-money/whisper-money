@@ -28,6 +28,16 @@ class CardPicker
     private const NET_WORTH_THRESHOLD = 10.0;
 
     /**
+     * What the reader had to be worth a year ago for that growth to mean
+     * anything, in minor units. A percentage measured against nothing is not a
+     * result: one reader started the year on 25.45 EUR and closed August 1,593
+     * EUR in the red, having lost 92% of their net worth that month — and the
+     * ranking handed them a card reading "+4,848.7% more than I had twelve
+     * months ago" to post.
+     */
+    private const NET_WORTH_MEANINGFUL_BASE = 100000;
+
+    /**
      * @param  array<string, mixed>  $payload
      * @param  ?float  $previousGoalPercent  the same goal's percentage last month, if it was reported
      */
@@ -80,9 +90,25 @@ class CardPicker
             MonthlySummaryCard::Streak->value => (int) data_get($payload, 'streak_months', 0) >= self::STREAK_THRESHOLD,
             MonthlySummaryCard::SavingsRate->value => (bool) data_get($payload, 'best_savings_rate_in_year', false),
             MonthlySummaryCard::SavingsGoal->value => $this->goalIsNewsworthy($payload, $previousGoalPercent),
-            MonthlySummaryCard::NetWorth->value => (float) data_get($payload, 'net_worth.year_percent', 0) > self::NET_WORTH_THRESHOLD,
+            MonthlySummaryCard::NetWorth->value => $this->netWorthGrewMeaningfully($payload),
             MonthlySummaryCard::SpendingSplit->value => true,
         ];
+    }
+
+    /**
+     * Growth worth publishing has to be growth on something. A year measured
+     * from nearly nothing produces a percentage that says only that the reader
+     * used to have nothing, and the card says it in the first person.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function netWorthGrewMeaningfully(array $payload): bool
+    {
+        $history = (array) data_get($payload, 'net_worth.history', []);
+        $yearAgo = (int) ($history[0]['value'] ?? 0);
+
+        return (float) data_get($payload, 'net_worth.year_percent', 0) > self::NET_WORTH_THRESHOLD
+            && $yearAgo >= self::NET_WORTH_MEANINGFUL_BASE;
     }
 
     /**

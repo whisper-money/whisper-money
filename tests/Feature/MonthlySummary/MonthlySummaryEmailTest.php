@@ -6,6 +6,7 @@ use App\Mail\Drip\MonthlySummaryEmail;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Models\UserMailLog;
+use App\Services\MonthlySummary\EmailPresenter;
 use Illuminate\Support\Facades\Mail;
 
 /*
@@ -165,4 +166,27 @@ it('refuses an unsigned unsubscribe link', function (): void {
     $this->get("/unsubscribe/monthly-summary/{$user->id}")->assertForbidden();
 
     expect($user->fresh()->wantsMonthlySummaryEmail())->toBeTrue();
+});
+
+it('keeps a bar segment inside the bar it sits in', function (): void {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
+    $summary = MonthlySummary::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+    ]);
+
+    // A ratio against a near-zero denominator is not a width. This one rendered
+    // a segment 349,899,800% wide in a real reader's email.
+    $summary->forceFill(['payload' => [
+        ...$summary->payload,
+        'invested' => ['contributed' => 3498998, 'value' => 1, 'gain' => -3498997, 'currency' => 'EUR'],
+    ]])->save();
+
+    $rows = app(EmailPresenter::class)->present($summary->fresh(), 'en');
+    $invested = collect($rows['rows'])->firstWhere('viz', 'bar');
+    $widths = array_column(collect($rows['rows'])->pluck('data.segments')->flatten(1)->all(), 'width');
+
+    expect($invested)->not->toBeNull()
+        ->and(max($widths))->toBeLessThanOrEqual(100)
+        ->and(min($widths))->toBeGreaterThanOrEqual(0);
 });

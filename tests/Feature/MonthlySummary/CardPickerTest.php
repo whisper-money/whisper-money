@@ -24,7 +24,7 @@ function payload(array $overrides = []): array
         'best_savings_rate_in_year' => false,
         'cashflow' => ['income' => 300000, 'savings_rate' => 12.0],
         'categories' => ['total' => 200000, 'count' => 8, 'top_share' => 60.0],
-        'net_worth' => ['current' => 1000000, 'year_percent' => 2.0],
+        'net_worth' => ['current' => 1000000, 'year_percent' => 2.0, 'history' => [['month' => '2025-08', 'value' => 900000]]],
         'goal' => null,
     ], $overrides);
 }
@@ -115,4 +115,19 @@ it('leaves out alternatives with no data behind them', function (): void {
 
     expect($alternatives)->not->toContain(MonthlySummaryCard::SavingsGoal)
         ->and($alternatives)->not->toContain(MonthlySummaryCard::Streak);
+});
+
+it('will not celebrate a year measured from nearly nothing', function (): void {
+    // 25.45 EUR a year ago and 1,259.44 today is +4,848.7%, and it says only
+    // that the reader used to have nothing. One real account earned that card
+    // for a month it closed 1,593 EUR in the red.
+    $picked = app(CardPicker::class)->pick(payload([
+        'net_worth' => [
+            'current' => 125944,
+            'year_percent' => 4848.7,
+            'history' => [['month' => '2025-08', 'value' => 2545]],
+        ],
+    ]));
+
+    expect($picked)->toBe(MonthlySummaryCard::SpendingSplit);
 });

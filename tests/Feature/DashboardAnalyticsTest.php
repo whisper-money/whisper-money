@@ -1753,3 +1753,37 @@ test('unarchiving an account puts its transactions back into the totals', functi
         ->assertOk()
         ->assertJsonPath('current', 14000);
 });
+
+test('net worth drops an archived account, matching the chart beside it', function () {
+    $open = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'currency_code' => 'USD',
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $open->id,
+        'balance_date' => now(),
+        'balance' => 500000,
+    ]);
+
+    // The evolution chart zeroes an archived account from the day it was
+    // archived. The card sitting above it read the balance straight through, so
+    // the two contradicted each other on the same screen — and the monthly
+    // summary, which shares this calculator, quoted the card's version.
+    $archived = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'currency_code' => 'USD',
+        'archived_at' => now()->subMonths(2),
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $archived->id,
+        'balance_date' => now(),
+        'balance' => 900000,
+    ]);
+
+    $this->getJson('/api/dashboard/net-worth?'.http_build_query([
+        'from' => now()->subDays(29)->toDateString(),
+        'to' => now()->toDateString(),
+    ]))->assertOk()->assertJson(['current' => 500000]);
+});

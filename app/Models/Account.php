@@ -117,6 +117,18 @@ class Account extends Model
     }
 
     /**
+     * Whether the account was already archived on that date. An archived
+     * account contributes nothing from then on, so every figure built from a
+     * balance history has to ask this rather than read the balance straight
+     * through — the dashboard chart and the monthly summary both do, and their
+     * totals only agree because they agree on this.
+     */
+    public function isArchivedOn(Carbon $date): bool
+    {
+        return $this->archived_at !== null && $date->gte($this->archived_at);
+    }
+
+    /**
      * The owner's share of an amount held in this account, in the same minor
      * units. A shared account (say 50% with a partner) only contributes that
      * slice of every transaction to the user's own figures.
