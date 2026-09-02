@@ -19,6 +19,15 @@ use Illuminate\Mail\Mailable;
  */
 class SendMonthlySummaryEmailJob extends SendDripEmailJob
 {
+    /**
+     * Long, because this job draws a month's cards before it writes anything:
+     * fifteen of them, each allowed to wait on a webfont, plus the analysis the
+     * model writes. Without it the worker's 60-second default would kill the
+     * send mid-render — and a killed process is not an exception the renderer
+     * can shrug off. Stays well under the database queue's retry_after.
+     */
+    public int $timeout = 300;
+
     public function __construct(User $user, public MonthlySummary $summary)
     {
         parent::__construct($user);
@@ -62,8 +71,6 @@ class SendMonthlySummaryEmailJob extends SendDripEmailJob
         );
 
         $this->summary->forceFill(['sent_at' => now()])->save();
-
-        app(Summaries::class)->warmShareCards($this->summary, $pro);
 
         return $mail;
     }

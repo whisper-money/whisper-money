@@ -104,14 +104,15 @@ class CardRenderer
     }
 
     /**
-     * Throw away the cards of the months before this one. They were rendered for
-     * an email that has already been read; a reader who browses back to an old
-     * report gets them drawn again on the spot.
+     * Throw away the cards of the months before this one, for this reader and
+     * this space. A reader who browses back to an old report gets them drawn
+     * again on the spot.
      */
     public function forgetBefore(MonthlySummary $summary): void
     {
         MonthlySummary::query()
             ->where('user_id', $summary->user_id)
+            ->where('space_id', $summary->space_id)
             ->where('period', '<', $summary->period)
             ->pluck('id')
             ->each(fn (string $id) => Storage::disk('public')->deleteDirectory($this->directoryFor($id)));

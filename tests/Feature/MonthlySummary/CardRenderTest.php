@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\MonthlySummary;
+use App\Models\Space;
 use App\Models\User;
 use App\Services\MonthlySummary\Summaries;
 use Illuminate\Process\PendingProcess;
@@ -37,11 +38,11 @@ function ranTheRenderer(): callable
     return fn (PendingProcess $process): bool => in_array(base_path('scripts/render-card.mjs'), $process->command, true);
 }
 
-function summaryToSend(User $user, string $period): MonthlySummary
+function summaryToSend(User $user, string $period, ?Space $space = null): MonthlySummary
 {
     return MonthlySummary::factory()->create([
         'user_id' => $user->id,
-        'space_id' => $user->activeSpace()->id,
+        'space_id' => ($space ?? $user->activeSpace())->id,
         'period' => $period,
     ]);
 }
@@ -70,13 +71,16 @@ it('throws away the cards of the months before', function (): void {
     $previous = summaryToSend($user, '2026-07');
     $current = summaryToSend($user, '2026-08');
     $other = summaryToSend(User::factory()->onboarded()->create(), '2026-07');
+    $otherSpace = summaryToSend($user, '2026-07', Space::factory()->create());
 
-    Storage::disk('public')->put("monthly-summaries/{$previous->id}/streak-feed.png", 'png');
-    Storage::disk('public')->put("monthly-summaries/{$other->id}/streak-feed.png", 'png');
+    foreach ([$previous, $other, $otherSpace] as $summary) {
+        Storage::disk('public')->put("monthly-summaries/{$summary->id}/streak-feed.png", 'png');
+    }
 
     app(Summaries::class)->prepareCards($current, pro: false);
 
     expect(Storage::disk('public')->exists("monthly-summaries/{$previous->id}/streak-feed.png"))->toBeFalse()
         ->and(Storage::disk('public')->exists("monthly-summaries/{$other->id}/streak-feed.png"))->toBeTrue()
+        ->and(Storage::disk('public')->exists("monthly-summaries/{$otherSpace->id}/streak-feed.png"))->toBeTrue()
         ->and(Storage::disk('public')->files("monthly-summaries/{$current->id}"))->toHaveCount(15);
 });

@@ -79,9 +79,14 @@ class Summaries
      *
      * Called on the way out of a send rather than on a page view: fifteen
      * pictures in one browser take seconds a queue worker has and a web request
-     * does not, and by the time the reader opens their report the download
-     * buttons have nothing left to do. Last month's pictures go at the same
-     * time — that email has been read, and the disk is not an archive.
+     * does not. The screen puts all five cards up as 4:5 previews, so left to
+     * the screen a first visit would start a Chromium run for each one it has
+     * not drawn yet, inside as many web requests as the browser opens; here
+     * they cost the one reader whose report this is, and by the time they open
+     * it the previews and the download buttons have nothing left to do.
+     *
+     * The earlier months' pictures go at the same time: the disk is not an
+     * archive, and an old report that does get opened draws them again.
      */
     public function prepareCards(MonthlySummary $summary, bool $pro): void
     {
@@ -112,31 +117,6 @@ class Summaries
             ]);
 
             return null;
-        }
-    }
-
-    /**
-     * Draw the rest of the cards the summary screen shows.
-     *
-     * The screen puts all five up as 4:5 pictures, and the renderer starts a
-     * Chromium run for any it has not drawn yet. Left to the screen, a first
-     * visit would start four of them inside four web requests at once; here they
-     * cost the one reader whose report this is, on the job that already owns a
-     * cold Chromium start.
-     *
-     * Only the 4:5 shape: nothing shows the story or the wide one, so those are
-     * still drawn the first time somebody asks for one.
-     */
-    public function warmShareCards(MonthlySummary $summary, bool $pro): void
-    {
-        foreach ($this->picker->alternatives($summary->payload, $summary->card) as $card) {
-            try {
-                $this->renderer->path($summary, $card, MonthlySummaryFormat::default(), $pro);
-            } catch (Throwable $exception) {
-                // A picture nobody has asked for yet is not worth failing a send
-                // over; the screen draws it on demand if it comes to that.
-                report($exception);
-            }
         }
     }
 
