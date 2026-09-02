@@ -1,9 +1,10 @@
 {{--
-    One template for every shareable card: five kinds by three formats.
+    One template for every shareable card: five kinds by three formats by two
+    themes.
 
-    Kept as a single parameterised view on purpose. Fifteen near-identical files
+    Kept as a single parameterised view on purpose. Thirty near-identical files
     would trip the duplication check that gates the merge, and a change to the
-    footer lockup would then have to be made fifteen times.
+    footer lockup would then have to be made thirty times.
 
     Not a single absolute amount appears here. Percentages, streaks and counts
     are what a person shares without thinking twice; their net worth is not, and
@@ -11,7 +12,7 @@
 --}}
 @php
     [$width, $height] = $format->dimensions();
-    $dark = $format === \App\Enums\MonthlySummaryFormat::Story;
+    $dark = $theme->isDark();
     $wide = $format === \App\Enums\MonthlySummaryFormat::Wide;
 
     // One scale factor drives the whole type ramp, so the 16:9 card is the same

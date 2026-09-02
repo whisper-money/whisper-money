@@ -70,9 +70,13 @@ it('shows one month with its figures and every card it can produce', function ()
             ->has('report.rows')
             ->has('cards')
             ->where('cards.0.chosen', true)
-            ->has('cards.0.formats', 3)
+            // Both themes, so the screen's light/dark switch flips every preview
+            // and every download link without a round trip.
+            ->has('cards.0.themes.light.formats', 3)
+            ->has('cards.0.themes.dark.formats', 3)
             // Every card carries the picture the screen paints, not just the links.
-            ->where('cards.0.preview', fn (string $url): bool => str_contains($url, 'card/'.$summary->card->value.'/feed?preview=1'))
+            ->where('cards.0.themes.light.preview', fn (string $url): bool => str_contains($url, 'card/'.$summary->card->value.'/feed/light?preview=1'))
+            ->where('cards.0.themes.dark.preview', fn (string $url): bool => str_contains($url, 'card/'.$summary->card->value.'/feed/dark?preview=1'))
             ->where('shareUrl', null));
 });
 

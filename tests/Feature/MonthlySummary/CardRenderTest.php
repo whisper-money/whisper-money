@@ -14,15 +14,21 @@ use Illuminate\Support\Facades\Storage;
  * Chromium is faked — writing a file where each job asked for its PNG — because
  * what is under test is that one run draws every card the month can show, and
  * that the months before it stop taking up room.
+ *
+ * The HTML each job was drawn from is kept as it goes past, which is where the
+ * copy inside a card can be read without decoding a picture.
  */
 
 beforeEach(function (): void {
     Storage::fake('public');
 
+    $this->drawnHtml = [];
+
     Process::fake(function (PendingProcess $process) {
         $manifest = json_decode((string) file_get_contents((string) last($process->command)), true);
 
         foreach ($manifest as $job) {
+            $this->drawnHtml[$job['path']] = (string) file_get_contents($job['html']);
             file_put_contents($job['png'], 'png');
         }
 
@@ -52,9 +58,63 @@ it('draws every card the month can show in a single browser run', function (): v
 
     app(Summaries::class)->prepareCards($summary, pro: false);
 
-    // Five cards the full payload can draw, in three formats, one Chromium.
+    // Five cards the full payload can draw, in three formats, light and dark,
+    // one Chromium.
     Process::assertRanTimes(ranTheRenderer(), 1);
-    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(15);
+    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(30);
+});
+
+it('keeps the theme and the language in the name of the file it caches', function (): void {
+    // Neither used to be in the key, so the dark cut overwrote the light one and
+    // a Spanish reader was served whichever language happened to be drawn first.
+    $summary = summaryToSend(User::factory()->onboarded()->create(), '2026-08');
+
+    app(Summaries::class)->prepareCards($summary, pro: false);
+
+    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))
+        ->toContain("monthly-summaries/{$summary->id}/savings_rate-feed-light-en.png")
+        ->toContain("monthly-summaries/{$summary->id}/savings_rate-feed-dark-en.png");
+});
+
+it('draws a second set for a second language rather than reusing the first', function (): void {
+    $summary = summaryToSend(User::factory()->onboarded()->create(), '2026-08');
+
+    app(Summaries::class)->prepareCards($summary, pro: false);
+    app()->setLocale('es');
+    app(Summaries::class)->prepareCards($summary, pro: false);
+
+    Process::assertRanTimes(ranTheRenderer(), 2);
+    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(60)
+        ->toContain("monthly-summaries/{$summary->id}/savings_rate-feed-light-es.png");
+});
+
+it('writes the card in the language the app is speaking', function (): void {
+    app()->setLocale('es');
+    $summary = summaryToSend(User::factory()->onboarded()->create(), '2026-08');
+
+    app(Summaries::class)->prepareCards($summary, pro: false);
+
+    expect($this->drawnHtml["monthly-summaries/{$summary->id}/savings_rate-feed-light-es.png"])
+        ->toContain('Tasa de ahorro')
+        ->toContain('lang="es"')
+        ->not->toContain('Savings rate');
+});
+
+it('flips the spending split\'s shades so the biggest slice is visible on a dark card', function (): void {
+    // The ramp is a fixed monochrome scale. Left at its light values, the block
+    // for the largest category is the dark card's own background colour.
+    $summary = summaryToSend(User::factory()->onboarded()->create(), '2026-08');
+
+    app(Summaries::class)->prepareCards($summary, pro: false);
+
+    // #d4d4d8 belongs to the dark ramp alone and #52525b to the light one, so
+    // each card proves it used its own scale and not the other's.
+    expect($this->drawnHtml["monthly-summaries/{$summary->id}/spending_split-feed-light-en.png"])
+        ->toContain('#52525b')
+        ->not->toContain('#d4d4d8')
+        ->and($this->drawnHtml["monthly-summaries/{$summary->id}/spending_split-feed-dark-en.png"])
+        ->toContain('#d4d4d8')
+        ->not->toContain('#52525b');
 });
 
 it('gives chromium a writable home', function (): void {
@@ -84,13 +144,13 @@ it('throws away the cards of the months before', function (): void {
     $otherSpace = summaryToSend($user, '2026-07', Space::factory()->create());
 
     foreach ([$previous, $other, $otherSpace] as $summary) {
-        Storage::disk('public')->put("monthly-summaries/{$summary->id}/streak-feed.png", 'png');
+        Storage::disk('public')->put("monthly-summaries/{$summary->id}/streak-feed-light-en.png", 'png');
     }
 
     app(Summaries::class)->prepareCards($current, pro: false);
 
-    expect(Storage::disk('public')->exists("monthly-summaries/{$previous->id}/streak-feed.png"))->toBeFalse()
-        ->and(Storage::disk('public')->exists("monthly-summaries/{$other->id}/streak-feed.png"))->toBeTrue()
-        ->and(Storage::disk('public')->exists("monthly-summaries/{$otherSpace->id}/streak-feed.png"))->toBeTrue()
-        ->and(Storage::disk('public')->files("monthly-summaries/{$current->id}"))->toHaveCount(15);
+    expect(Storage::disk('public')->exists("monthly-summaries/{$previous->id}/streak-feed-light-en.png"))->toBeFalse()
+        ->and(Storage::disk('public')->exists("monthly-summaries/{$other->id}/streak-feed-light-en.png"))->toBeTrue()
+        ->and(Storage::disk('public')->exists("monthly-summaries/{$otherSpace->id}/streak-feed-light-en.png"))->toBeTrue()
+        ->and(Storage::disk('public')->files("monthly-summaries/{$current->id}"))->toHaveCount(30);
 });

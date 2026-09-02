@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\MonthlySummaryFormat;
+use App\Enums\MonthlySummaryTheme;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Services\MonthlySummary\CardRenderer;
@@ -94,7 +95,7 @@ it('will not let one reader touch another reader\'s summary', function (): void 
     $stranger = User::factory()->onboarded()->create();
 
     $this->actingAs($stranger)->post("/summaries/{$summary->id}/share")->assertNotFound();
-    $this->actingAs($stranger)->get("/summaries/{$summary->id}/card/savings_rate/feed")->assertNotFound();
+    $this->actingAs($stranger)->get("/summaries/{$summary->id}/card/savings_rate/feed/light")->assertNotFound();
 
     expect($summary->fresh()->share_token)->toBeNull();
 });
@@ -109,24 +110,40 @@ it('paints the card inside the screen and saves it on download', function (): vo
     $summary = summaryFor($user);
 
     $preview = $this->actingAs($user)
-        ->get("/summaries/{$summary->id}/card/savings_rate/feed?preview=1")
+        ->get("/summaries/{$summary->id}/card/savings_rate/feed/light?preview=1")
         ->assertOk();
 
     expect($preview->headers->get('Content-Disposition'))->toStartWith('inline');
     expect($preview->headers->get('Cache-Control'))->toContain('max-age=300');
 
     $this->actingAs($user)
-        ->get("/summaries/{$summary->id}/card/savings_rate/feed")
+        ->get("/summaries/{$summary->id}/card/savings_rate/feed/light")
         ->assertOk()
-        ->assertDownload("whisper-money-{$summary->period}-savings_rate-feed.png");
+        ->assertDownload("whisper-money-{$summary->period}-savings_rate-feed-light.png");
 });
 
-it('refuses a card format or kind it does not have', function (): void {
+it('offers both themes of the same card, each under its own name', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('monthly-summaries/x/card.png', 'png-bytes');
+
     $user = User::factory()->onboarded()->create();
     $summary = summaryFor($user);
 
-    $this->actingAs($user)->get("/summaries/{$summary->id}/card/savings_rate/billboard")->assertNotFound();
-    $this->actingAs($user)->get("/summaries/{$summary->id}/card/vibes/feed")->assertNotFound();
+    foreach (MonthlySummaryTheme::cases() as $theme) {
+        $this->actingAs($user)
+            ->get("/summaries/{$summary->id}/card/savings_rate/story/{$theme->value}")
+            ->assertOk()
+            ->assertDownload("whisper-money-{$summary->period}-savings_rate-story-{$theme->value}.png");
+    }
+});
+
+it('refuses a card format, theme or kind it does not have', function (): void {
+    $user = User::factory()->onboarded()->create();
+    $summary = summaryFor($user);
+
+    $this->actingAs($user)->get("/summaries/{$summary->id}/card/savings_rate/billboard/light")->assertNotFound();
+    $this->actingAs($user)->get("/summaries/{$summary->id}/card/savings_rate/feed/sepia")->assertNotFound();
+    $this->actingAs($user)->get("/summaries/{$summary->id}/card/vibes/feed/light")->assertNotFound();
 });
 
 it('refuses a card the month has no figures for', function (): void {
@@ -139,7 +156,28 @@ it('refuses a card the month has no figures for', function (): void {
         'payload' => ['currency' => 'EUR', 'has_history' => true, 'goal' => null],
     ]);
 
-    $this->actingAs($user)->get("/summaries/{$summary->id}/card/savings_goal/feed")->assertNotFound();
+    $this->actingAs($user)->get("/summaries/{$summary->id}/card/savings_goal/feed/light")->assertNotFound();
+});
+
+it('draws the card in the owner\'s language, whatever the visitor reads in', function (): void {
+    // The page is public, so the request locale is the visitor's. Left at that,
+    // a French visitor mints a French cut of somebody else's card and unfurls
+    // that — one copy per language anyone happens to browse in.
+    $owner = User::factory()->onboarded()->create(['locale' => 'es']);
+    $token = summaryFor($owner)->mintShareToken();
+
+    $drawnIn = null;
+    $this->mock(CardRenderer::class, function ($mock) use (&$drawnIn): void {
+        $mock->shouldReceive('url')->andReturnUsing(function () use (&$drawnIn): string {
+            $drawnIn = app()->getLocale();
+
+            return 'https://whisper.money/storage/card.png';
+        });
+    });
+
+    $this->withHeader('Accept-Language', 'fr')->get("/s/{$token}")->assertOk();
+
+    expect($drawnIn)->toBe('es');
 });
 
 it('names every format the card can be downloaded in', function (): void {

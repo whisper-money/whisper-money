@@ -4,6 +4,7 @@ namespace App\Services\MonthlySummary;
 
 use App\Enums\MonthlySummaryCard;
 use App\Enums\MonthlySummaryFormat;
+use App\Enums\MonthlySummaryTheme;
 use App\Models\MonthlySummary;
 use App\Support\Figures;
 use Carbon\Carbon;
@@ -19,10 +20,17 @@ use Carbon\Carbon;
 class CardPresenter
 {
     /**
-     * Shades used for the spending split, darkest first, matching the app's
-     * monochrome chart palette.
+     * Shades used for the spending split, in the order the ranking reads,
+     * matching the app's monochrome chart palette.
+     *
+     * The ramp has to flip with the theme rather than live in the template: on a
+     * dark card the light ramp's first block is the background colour, so the
+     * biggest category of the month came out invisible.
      */
-    private const SPLIT_SHADES = ['#18181b', '#52525b', '#a1a1aa', '#e4e4e7'];
+    private const SPLIT_SHADES = [
+        MonthlySummaryTheme::Light->value => ['#18181b', '#52525b', '#a1a1aa', '#e4e4e7'],
+        MonthlySummaryTheme::Dark->value => ['#fafafa', '#d4d4d8', '#71717a', '#3f3f46'],
+    ];
 
     /**
      * Viewbox width the net worth path is drawn into.
@@ -32,7 +40,7 @@ class CardPresenter
     /**
      * @return array<string, mixed>
      */
-    public function viewData(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, bool $pro): array
+    public function viewData(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme, bool $pro): array
     {
         $locale = app()->getLocale();
         $month = $summary->periodStart();
@@ -41,22 +49,23 @@ class CardPresenter
             'summary' => $summary,
             'card' => $card,
             'format' => $format,
+            'theme' => $theme,
             'pro' => $pro,
             'monthLabel' => $this->monthLabel($month, $locale),
             'heroSize' => $card === MonthlySummaryCard::Streak ? 340 : 268,
-            ...$this->contentFor($card, $summary, $locale, $month),
+            ...$this->contentFor($card, $summary, $theme, $locale, $month),
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function contentFor(MonthlySummaryCard $card, MonthlySummary $summary, string $locale, Carbon $month): array
+    private function contentFor(MonthlySummaryCard $card, MonthlySummary $summary, MonthlySummaryTheme $theme, string $locale, Carbon $month): array
     {
         return match ($card) {
             MonthlySummaryCard::SavingsRate => $this->savingsRate($summary, $locale, $month),
             MonthlySummaryCard::Streak => $this->streak($summary, $locale, $month),
-            MonthlySummaryCard::SpendingSplit => $this->spendingSplit($summary, $locale, $month),
+            MonthlySummaryCard::SpendingSplit => $this->spendingSplit($summary, $theme, $locale, $month),
             MonthlySummaryCard::NetWorth => $this->netWorth($summary, $locale, $month),
             MonthlySummaryCard::SavingsGoal => $this->savingsGoal($summary, $locale),
         };
@@ -106,7 +115,7 @@ class CardPresenter
     /**
      * @return array<string, mixed>
      */
-    private function spendingSplit(MonthlySummary $summary, string $locale, Carbon $month): array
+    private function spendingSplit(MonthlySummary $summary, MonthlySummaryTheme $theme, string $locale, Carbon $month): array
     {
         return [
             'kicker' => __('Where it went'),
@@ -115,7 +124,7 @@ class CardPresenter
                 'month' => $this->monthName($month, $locale),
             ]),
             'viz' => 'viz-split',
-            'rows' => $this->splitRows($summary, $locale),
+            'rows' => $this->splitRows($summary, $theme, $locale),
             'chips' => [
                 __('<strong>:count categories</strong> in total', [
                     'count' => Figures::count((int) $summary->figure('categories.count', 0), $locale),
@@ -235,8 +244,9 @@ class CardPresenter
     /**
      * @return list<array<string, mixed>>
      */
-    private function splitRows(MonthlySummary $summary, string $locale): array
+    private function splitRows(MonthlySummary $summary, MonthlySummaryTheme $theme, string $locale): array
     {
+        $shades = self::SPLIT_SHADES[$theme->value];
         $top = (array) $summary->figure('categories.top', []);
         $rows = [];
 
@@ -245,7 +255,7 @@ class CardPresenter
                 'name' => $category['name'],
                 'share' => (float) $category['share'],
                 'label' => Figures::percent((float) $category['share'], $locale),
-                'colour' => self::SPLIT_SHADES[$index] ?? self::SPLIT_SHADES[2],
+                'colour' => $shades[$index] ?? $shades[2],
             ];
         }
 
@@ -256,7 +266,7 @@ class CardPresenter
                 'name' => __('Everything else'),
                 'share' => $rest,
                 'label' => Figures::percent($rest, $locale),
-                'colour' => self::SPLIT_SHADES[3],
+                'colour' => $shades[3],
             ];
         }
 
