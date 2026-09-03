@@ -85,6 +85,7 @@ interface AccountFormProps {
     hiddenAccountTypes?: AccountType[];
     availableLoanAccounts?: Account[];
     usePrimaryCurrenciesOnly?: boolean;
+    bankClearable?: boolean;
     onChange: (data: AccountFormData) => void;
     errors?: Record<string, string>;
 }
@@ -121,6 +122,7 @@ export function AccountForm({
     hiddenAccountTypes = [],
     availableLoanAccounts = [],
     usePrimaryCurrenciesOnly = false,
+    bankClearable = true,
     onChange,
     errors = {},
 }: AccountFormProps) {
@@ -357,6 +359,7 @@ export function AccountForm({
                                         initialValues?.bank ?? undefined
                                     }
                                     onCreateCustomBank={handleCreateCustomBank}
+                                    clearable={bankClearable}
                                 />
                             </>
                         )}

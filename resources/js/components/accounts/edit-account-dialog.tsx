@@ -343,6 +343,7 @@ export function EditAccountDialog({
                         <>
                             <AccountForm
                                 initialValues={initialValues}
+                                bankClearable={!account.banking_connection_id}
                                 onChange={handleFormChange}
                                 errors={errors}
                             />

@@ -26,6 +26,7 @@ interface BankComboboxProps {
     onValueChange: (value: string | null) => void;
     defaultBank?: Bank;
     onCreateCustomBank?: (searchQuery: string) => void;
+    clearable?: boolean;
 }
 
 const bankCache = new Map<string, Bank[]>();
@@ -35,6 +36,7 @@ export function BankCombobox({
     onValueChange,
     defaultBank,
     onCreateCustomBank,
+    clearable = true,
 }: BankComboboxProps) {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -150,16 +152,19 @@ export function BankCombobox({
                                   ? __('Type at least 3 characters to search')
                                   : __('No bank found.')}
                         </CommandEmpty>
-                        {selectedBank && (
-                            <CommandGroup>
-                                <CommandItem
-                                    value="no-bank"
-                                    onSelect={() => handleSelect(null)}
-                                >
-                                    <X className="mr-2 h-4 w-4" />
-                                    <span>{__('No bank')}</span>
-                                </CommandItem>
-                            </CommandGroup>
+                        {clearable && selectedBank && (
+                            <>
+                                <CommandGroup>
+                                    <CommandItem
+                                        value="no-bank"
+                                        onSelect={() => handleSelect(null)}
+                                    >
+                                        <X className="mr-2 h-4 w-4" />
+                                        <span>{__('No bank')}</span>
+                                    </CommandItem>
+                                </CommandGroup>
+                                <CommandSeparator />
+                            </>
                         )}
                         <CommandGroup>
                             {banks.map((bank) => (

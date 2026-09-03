@@ -428,6 +428,39 @@ it('can edit an existing account via dropdown menu', function () {
         ->assertNoJavascriptErrors();
 });
 
+it('can clear the bank of an existing account via the edit dialog', function () {
+    $user = User::factory()->onboarded()->create();
+    Bank::factory()->create(['name' => 'Clear Bank', 'logo' => null]);
+
+    actingAs($user);
+
+    $page = visit('/settings/accounts');
+
+    createAccountViaUI($page, 'Wallet', 'Clear Bank', 'Checking', 'EUR');
+
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+
+    $page->assertSee('Bank accounts')
+        ->click('button[aria-label="Open menu"]')
+        ->wait(0.5)
+        ->click('Edit')
+        ->wait(1)
+        ->assertSee('Edit Account')
+        ->click('[data-testid="bank-select"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("No bank")')
+        ->wait(0.3)
+        ->click('button[type="submit"]:has-text("Update")')
+        ->wait(2)
+        ->assertNoJavascriptErrors();
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'name' => 'Wallet',
+        'bank_id' => null,
+    ]);
+});
+
 it('can delete an account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Delete Bank', 'logo' => null]);
