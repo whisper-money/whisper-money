@@ -11,9 +11,11 @@ use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\Summaries;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Traits\Localizable;
+use Laravel\Ai\Exceptions\FailoverableException;
 use Throwable;
 
 /**
@@ -198,7 +200,15 @@ class PreviewMonthlySummaryCommand extends Command
         return function () use (&$drafted, &$text, $user, $summary, $writer): string {
             if (! $drafted) {
                 $drafted = true;
-                $text = $writer->draft($summary, $user);
+
+                try {
+                    $text = $writer->draft($summary, $user);
+                } catch (ConnectionException|FailoverableException) {
+                    // A real send holds itself back and comes back later; a
+                    // preview has nowhere to come back to, and a stack trace
+                    // would say less than the warning below.
+                    $text = null;
+                }
 
                 if ($text === null) {
                     $this->warn('The model wrote nothing: falling back to the sample text.');
