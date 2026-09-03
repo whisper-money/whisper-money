@@ -212,6 +212,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('summaries/{summary}/card/{card}/{format}/{theme}', [MonthlySummaryController::class, 'card'])->name('monthly-summaries.card');
     Route::post('summaries/{summary}/share', [MonthlySummaryController::class, 'share'])->name('monthly-summaries.share');
     Route::delete('summaries/{summary}/share', [MonthlySummaryController::class, 'revoke'])->name('monthly-summaries.share.destroy');
+    Route::post('summaries/{summary}/dismiss', [MonthlySummaryController::class, 'dismiss'])->name('monthly-summaries.dismiss');
     // Renders the dashboard with the integration-requests drawer opened on top.
     Route::get('integration-requests', [IntegrationRequestController::class, 'index'])->name('integration-requests.index');
     Route::get('cashflow', CashflowController::class)->name('cashflow');
