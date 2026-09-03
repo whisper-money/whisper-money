@@ -85,6 +85,7 @@ interface AccountFormProps {
     hiddenAccountTypes?: AccountType[];
     availableLoanAccounts?: Account[];
     usePrimaryCurrenciesOnly?: boolean;
+    bankClearable?: boolean;
     onChange: (data: AccountFormData) => void;
     errors?: Record<string, string>;
 }
@@ -121,6 +122,7 @@ export function AccountForm({
     hiddenAccountTypes = [],
     availableLoanAccounts = [],
     usePrimaryCurrenciesOnly = false,
+    bankClearable = true,
     onChange,
     errors = {},
 }: AccountFormProps) {
@@ -333,7 +335,7 @@ export function AccountForm({
 
             {!isRealEstate && (
                 <div className="space-y-2">
-                    <Label htmlFor="bank_id">{__('Bank')}</Label>
+                    <Label htmlFor="bank_id">{__('Bank (optional)')}</Label>
                     <div className="mt-1">
                         {isCreatingCustomBank ? (
                             <CustomBankForm
@@ -357,10 +359,18 @@ export function AccountForm({
                                         initialValues?.bank ?? undefined
                                     }
                                     onCreateCustomBank={handleCreateCustomBank}
+                                    clearable={bankClearable}
                                 />
                             </>
                         )}
                     </div>
+                    {!isCreatingCustomBank && (
+                        <p className="pl-1 text-xs text-muted-foreground">
+                            {__(
+                                'Leave empty for cash or any account without a bank.',
+                            )}
+                        </p>
+                    )}
                 </div>
             )}
 
