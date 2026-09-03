@@ -58,7 +58,7 @@ export default function MonthlySummaryNotice({
     };
 
     return (
-        <div className="flex flex-wrap items-center gap-4 rounded-lg border border-l-4 border-l-primary bg-muted/40 p-4">
+        <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-muted/40 p-4">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                     {__('Your :month summary is ready', {
