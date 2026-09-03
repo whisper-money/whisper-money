@@ -165,6 +165,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe/checkout', [SubscriptionController::class, 'checkout'])->name('subscribe.checkout');
     Route::get('subscribe/success', [SubscriptionController::class, 'success'])->name('subscribe.success');
     Route::get('subscribe/cancel', [SubscriptionController::class, 'cancel'])->name('subscribe.cancel');
+    Route::post('subscribe/free-plan', [SubscriptionController::class, 'chooseFreePlan'])->name('subscribe.free-plan');
 
     Route::middleware(['onboarded'])->group(function () {
         Route::get('onboarding', [OnboardingController::class, 'index'])->name('onboarding');

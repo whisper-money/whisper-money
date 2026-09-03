@@ -1,5 +1,7 @@
 <?php
 
+use App\Contracts\BankingProviderInterface;
+use App\Enums\BankingConnectionStatus;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Account;
 use App\Models\BankingConnection;
@@ -663,4 +665,140 @@ test('checkout skips trial days when configured to zero', function () {
     $this->actingAs($user);
 
     $this->get(route('subscribe.checkout', ['plan' => 'monthly']))->assertRedirect();
+});
+
+test('the free plan door stays shut for the first hours after onboarding', function () {
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHour()]);
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('canUseFreePlan', false)
+            ->where('canEscapeToFreePlan', false)
+        );
+});
+
+test('the free plan door opens once the delay after onboarding has passed', function () {
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHours(4)]);
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('canEscapeToFreePlan', true));
+});
+
+test('a user who never finished onboarding is not offered the free plan door', function () {
+    $user = User::factory()->notOnboarded()->create();
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('canEscapeToFreePlan', false));
+
+    $this->post(route('subscribe.free-plan'))->assertForbidden();
+});
+
+test('choosing the free plan disconnects every bank and revokes ai consent', function () {
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('revokeSession')->twice();
+    $this->app->instance(BankingProviderInterface::class, $provider);
+
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHours(4)]);
+    $user->recordAiConsent();
+
+    $connections = BankingConnection::factory()->count(2)->for($user)->create();
+    $account = Account::factory()->for($user)->create([
+        'banking_connection_id' => $connections->first()->id,
+        'currency_code' => 'EUR',
+    ]);
+    Transaction::factory()->count(3)->for($user)->for($account)->create();
+
+    $this->actingAs($user);
+
+    $this->post(route('subscribe.free-plan'))->assertRedirect(route('dashboard'));
+
+    expect($user->fresh()->bankingConnections()->exists())->toBeFalse();
+    expect($user->fresh()->hasActiveAiConsent())->toBeFalse();
+    expect($user->fresh()->paywall_seen_at)->not->toBeNull();
+
+    // The paid features stop, the data does not go anywhere.
+    expect($account->fresh()->banking_connection_id)->toBeNull();
+    expect($user->transactions()->count())->toBe(3);
+    expect($user->accounts()->count())->toBe(1);
+
+    $connections->each(function (BankingConnection $connection): void {
+        expect(BankingConnection::withTrashed()->find($connection->id))
+            ->status->toBe(BankingConnectionStatus::Revoked)
+            ->deleted_at->not->toBeNull();
+    });
+});
+
+test('choosing the free plan lets the user past the paywall middleware', function () {
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('revokeSession')->once();
+    $this->app->instance(BankingProviderInterface::class, $provider);
+
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHours(4)]);
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->post(route('subscribe.free-plan'))->assertRedirect(route('dashboard'));
+
+    // Without `paywall_seen_at` being stamped by the endpoint this bounces
+    // straight back to the paywall the user just left.
+    $this->get(route('dashboard'))->assertOk();
+});
+
+test('the free plan endpoint refuses to run while the delay is still on', function () {
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHour()]);
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->post(route('subscribe.free-plan'))->assertForbidden();
+
+    expect($user->fresh()->bankingConnections()->exists())->toBeTrue();
+});
+
+test('guests cannot choose the free plan', function () {
+    $this->post(route('subscribe.free-plan'))->assertRedirect(route('register'));
+});
+
+test('a subscriber cannot choose the free plan', function () {
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHours(4)]);
+    BankingConnection::factory()->for($user)->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_free_plan_guard_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $this->actingAs($user);
+
+    $this->post(route('subscribe.free-plan'))->assertForbidden();
+
+    expect($user->fresh()->bankingConnections()->exists())->toBeTrue();
+});
+
+test('the free plan endpoint is off when subscriptions are disabled', function () {
+    config(['subscriptions.enabled' => false]);
+
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHours(4)]);
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->post(route('subscribe.free-plan'))->assertForbidden();
+
+    expect($user->fresh()->bankingConnections()->exists())->toBeTrue();
 });

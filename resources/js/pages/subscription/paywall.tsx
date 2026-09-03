@@ -8,16 +8,27 @@ import {
 import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
 import { SupportDialog } from '@/components/support-dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import SubscriptionLayout from '@/layouts/subscription-layout';
 import { captureEvent } from '@/lib/posthog';
 import { dashboard } from '@/routes';
 import { index as connectionsIndex } from '@/routes/settings/connections';
-import { checkout } from '@/routes/subscribe';
+import { checkout, freePlan } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Landmark, LifeBuoy, Plug, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface PaywallStats {
     accountsCount: number;
@@ -28,6 +39,13 @@ interface PaywallStats {
 interface PaywallPageProps extends SharedData {
     stats: PaywallStats;
     canUseFreePlan: boolean;
+    /**
+     * Whether the delay after onboarding has run out, so the gates that have
+     * something to disconnect may offer the free plan. Decided on the server —
+     * the cut-off time never reaches the browser, because a user who is shown a
+     * countdown is being told to wait rather than to choose a plan.
+     */
+    canEscapeToFreePlan: boolean;
     canManageConnectionsForFreePlan: boolean;
 }
 
@@ -45,17 +63,24 @@ export default function Paywall() {
         pricing,
         stats,
         canUseFreePlan,
+        canEscapeToFreePlan,
         canManageConnectionsForFreePlan,
     } = usePage<PaywallPageProps>().props;
 
     const [selectedPlan, setSelectedPlan] = useState(pricing.defaultPlan);
     const [supportOpen, setSupportOpen] = useState(false);
+    const [freePlanOpen, setFreePlanOpen] = useState(false);
 
     const gate: PaywallGate = canManageConnectionsForFreePlan
         ? 'former-subscriber'
         : canUseFreePlan
           ? 'soft'
           : 'hard';
+
+    // The gates that have something to disconnect, once the delay after
+    // onboarding is up. Derived once so the button and the confirmation it
+    // opens cannot drift apart.
+    const freeDoorOpen = gate !== 'soft' && canEscapeToFreePlan;
 
     // This is the highest-leverage screen in the product and it carried no
     // instrumentation at all, so moving the escape hatch to first paint would
@@ -83,6 +108,11 @@ export default function Paywall() {
     const continueFree = () => {
         captureEvent('paywall_free_plan_chosen');
         router.visit(dashboard().url);
+    };
+
+    const openFreePlanConfirmation = () => {
+        captureEvent('paywall_free_plan_confirm_opened', { gate });
+        setFreePlanOpen(true);
     };
 
     return (
@@ -116,11 +146,17 @@ export default function Paywall() {
                             })}
                         />
 
-                        {/* The way out is here from the first paint. A timed
-                            reveal hides the only exit a hard-gated user has,
-                            and on the soft gate it hides a choice they are
-                            entitled to make — the filled-versus-muted
-                            hierarchy already says which one is the offer. */}
+                        {/* On the soft gate the way out is here from the
+                            first paint: there is nothing to disconnect and
+                            nothing to warn about, so a timed reveal would only
+                            hide a choice the user is entitled to make. The
+                            other two gates are asking the user to give up the
+                            bank they just connected, which is a consequence
+                            that has to be explained rather than offered in
+                            passing — so the door waits out the delay after
+                            onboarding, leaving room to choose a plan first.
+                            The wait itself is never named on screen: the button
+                            is simply there or it is not. */}
                         {gate === 'soft' ? (
                             <StepButton
                                 text={__('Continue with the free plan')}
@@ -128,12 +164,22 @@ export default function Paywall() {
                                 onClick={continueFree}
                             />
                         ) : (
-                            <StepButton
-                                text={__('Need help?')}
-                                variant="ghost"
-                                icon={LifeBuoy}
-                                onClick={() => setSupportOpen(true)}
-                            />
+                            <>
+                                {freeDoorOpen && (
+                                    <StepButton
+                                        text={__('Continue with the free plan')}
+                                        variant="ghost"
+                                        onClick={openFreePlanConfirmation}
+                                    />
+                                )}
+
+                                <StepButton
+                                    text={__('Need help?')}
+                                    variant="ghost"
+                                    icon={LifeBuoy}
+                                    onClick={() => setSupportOpen(true)}
+                                />
+                            </>
                         )}
                     </>
                 }
@@ -147,7 +193,11 @@ export default function Paywall() {
                     onSelect={setSelectedPlan}
                 />
 
-                {gate === 'former-subscriber' && (
+                {/* The manual route through Settings is the way out only
+                    while the confirmed one is still held back: two ways to
+                    reach the same free plan, on the same screen, is a choice
+                    the user has no way to make. */}
+                {gate === 'former-subscriber' && !freeDoorOpen && (
                     <div>
                         <StepSectionLabel>{__('Or go free')}</StepSectionLabel>
                         <StepList>
@@ -177,7 +227,111 @@ export default function Paywall() {
                     user={auth.user}
                 />
             )}
+
+            {freeDoorOpen && (
+                <FreePlanDialog
+                    open={freePlanOpen}
+                    onOpenChange={setFreePlanOpen}
+                    onConfirm={() =>
+                        captureEvent('paywall_free_plan_confirmed', { gate })
+                    }
+                />
+            )}
         </SubscriptionLayout>
+    );
+}
+
+/**
+ * The confirmation behind the way down to the free plan. It names the three
+ * paid features that switch off — the same three the screen sells above — and
+ * says outright that the imported data stays, because "we disconnect your
+ * banks" reads as "we delete my transactions" to most people.
+ */
+function FreePlanDialog({
+    open,
+    onOpenChange,
+    onConfirm,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    /** Fired as the request goes out, so the choice can be measured. */
+    onConfirm: () => void;
+}) {
+    const [isLeaving, setIsLeaving] = useState(false);
+
+    const chooseFreePlan = () => {
+        onConfirm();
+        setIsLeaving(true);
+
+        // The server redirects to the dashboard on success, so there is nothing
+        // to do here but report a refusal — a rejected request that left the
+        // dialog sitting there would read as "it worked".
+        router.post(
+            freePlan.url(),
+            {},
+            {
+                onError: () =>
+                    toast.error(
+                        __(
+                            'We could not move you to the free plan. Try again.',
+                        ),
+                    ),
+                onFinish: () => setIsLeaving(false),
+            },
+        );
+    };
+
+    return (
+        <AlertDialog open={open} onOpenChange={onOpenChange}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>
+                        {__('Continue with the free plan?')}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {__(
+                            'The free plan does not include the paid features, so they are switched off:',
+                        )}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>
+                        {__(
+                            'Connected banks are disconnected and stop syncing.',
+                        )}
+                    </li>
+                    <li>{__('AI suggestions are switched off.')}</li>
+                    <li>
+                        {__('The AI assistant loses access to your finances.')}
+                    </li>
+                    <li className="font-medium text-foreground">
+                        {__(
+                            'Your accounts and every transaction already imported stay. You can start a plan again whenever you want.',
+                        )}
+                    </li>
+                </ul>
+
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isLeaving}>
+                        {__('Cancel')}
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={(event) => {
+                            // Without this the dialog closes before the request
+                            // goes out, taking the pending state with it.
+                            event.preventDefault();
+                            chooseFreePlan();
+                        }}
+                        disabled={isLeaving}
+                    >
+                        {isLeaving
+                            ? __('Disconnecting...')
+                            : __('Disconnect and continue')}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }
 

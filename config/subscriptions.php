@@ -17,6 +17,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Free Plan Escape Delay
+    |--------------------------------------------------------------------------
+    |
+    | How long the paywall stays shut for a user who finished onboarding with a
+    | bank connected or AI switched on: until this many hours have passed the
+    | only way forward is picking a plan. After that the paywall also offers to
+    | drop them to the free plan, which disconnects their banks and revokes
+    | their AI consent. The delay is what keeps a brand new user from being
+    | invited to throw away what they just connected. Set it to 0 to offer the
+    | free plan straight away.
+    |
+    */
+
+    'free_plan_escape_delay_hours' => (int) env('SUBSCRIPTIONS_FREE_PLAN_ESCAPE_DELAY_HOURS', 3),
+
+    /*
+    |--------------------------------------------------------------------------
     | Price Experiment
     |--------------------------------------------------------------------------
     |
