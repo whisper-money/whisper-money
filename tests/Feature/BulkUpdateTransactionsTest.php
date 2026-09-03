@@ -15,6 +15,13 @@ beforeEach(function () {
     $this->category = Category::factory()->create(['user_id' => $this->user->id]);
 });
 
+it('rejects a filter date that is not a plain Y-m-d date', function () {
+    $this->actingAs($this->user)->patchJson('/transactions/bulk', [
+        'filters' => ['date_from' => '275752-07-04'],
+        'category_id' => $this->category->id,
+    ])->assertJsonValidationErrors('filters.date_from');
+});
+
 it('can bulk update transactions by IDs', function () {
     $transactions = Transaction::factory()
         ->count(3)

@@ -16,8 +16,8 @@ class UpdateSavedFilterRequest extends FormRequest
     {
         return [
             'filters' => ['required', 'array'],
-            'filters.date_from' => ['nullable', 'date'],
-            'filters.date_to' => ['nullable', 'date'],
+            'filters.date_from' => ['nullable', 'date_format:Y-m-d'],
+            'filters.date_to' => ['nullable', 'date_format:Y-m-d'],
             'filters.amount_min' => ['nullable', 'numeric'],
             'filters.amount_max' => ['nullable', 'numeric'],
             'filters.category_ids' => ['nullable', 'array'],

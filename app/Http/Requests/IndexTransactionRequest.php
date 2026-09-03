@@ -29,8 +29,8 @@ class IndexTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date_from' => ['nullable', 'date'],
-            'date_to' => ['nullable', 'date'],
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d'],
             'amount_min' => ['nullable', 'numeric'],
             'amount_max' => ['nullable', 'numeric'],
             'category_ids' => ['nullable', 'array'],

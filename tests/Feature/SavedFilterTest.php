@@ -132,6 +132,22 @@ test('stores a saved filter for the current user', function () {
     ]);
 });
 
+test('rejects a filter date that is not a plain Y-m-d date', function () {
+    // A saved filter is replayed through the same client-side date-fns `format()`
+    // call as the URL filters, so a date only strtotime() can read crashes the
+    // page on load rather than at the point it was stored.
+    $this->postJson('/api/saved-filters', [
+        'name' => 'Loose date',
+        'filters' => ['date_from' => '275752-07-04'],
+    ])->assertJsonValidationErrors('filters.date_from');
+
+    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}", [
+        'filters' => ['date_to' => '2026-06-15T00:00:00Z'],
+    ])->assertJsonValidationErrors('filters.date_to');
+});
+
 test('name is required and unique per user', function () {
     SavedFilter::factory()->create(['user_id' => $this->user->id, 'name' => 'Duplicate']);
 
