@@ -92,6 +92,30 @@ it('can create a new account without a bank', function () {
     ]);
 });
 
+it('clears the bank when updating an account with a null bank_id', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    $response = $this->patch(route('accounts.update', $account), [
+        'name' => 'Cash',
+        'bank_id' => null,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Others->value,
+    ]);
+
+    $response->assertRedirect(route('accounts.index'));
+    assertDatabaseHas('accounts', [
+        'id' => $account->id,
+        'bank_id' => null,
+        'name' => 'Cash',
+        'type' => AccountType::Others->value,
+    ]);
+});
+
 it('validates required fields when creating account', function () {
     actingAs($this->user);
 

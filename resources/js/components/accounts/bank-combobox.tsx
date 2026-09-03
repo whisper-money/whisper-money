@@ -18,7 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { type Bank } from '@/types/account';
 import { __ } from '@/utils/i18n';
-import { Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface BankComboboxProps {
@@ -26,6 +26,7 @@ interface BankComboboxProps {
     onValueChange: (value: string | null) => void;
     defaultBank?: Bank;
     onCreateCustomBank?: (searchQuery: string) => void;
+    clearable?: boolean;
 }
 
 const bankCache = new Map<string, Bank[]>();
@@ -35,6 +36,7 @@ export function BankCombobox({
     onValueChange,
     defaultBank,
     onCreateCustomBank,
+    clearable = true,
 }: BankComboboxProps) {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -93,9 +95,15 @@ export function BankCombobox({
         return () => clearTimeout(debounceTimer);
     }, [searchQuery, searchBanks]);
 
-    const handleSelect = (bank: Bank) => {
+    useEffect(() => {
+        if (value === null) {
+            setSelectedBank(null);
+        }
+    }, [value]);
+
+    const handleSelect = (bank: Bank | null) => {
         setSelectedBank(bank);
-        onValueChange(bank.id);
+        onValueChange(bank?.id ?? null);
         setOpen(false);
     };
 
@@ -144,6 +152,20 @@ export function BankCombobox({
                                   ? __('Type at least 3 characters to search')
                                   : __('No bank found.')}
                         </CommandEmpty>
+                        {clearable && selectedBank && (
+                            <>
+                                <CommandGroup>
+                                    <CommandItem
+                                        value="no-bank"
+                                        onSelect={() => handleSelect(null)}
+                                    >
+                                        <X className="mr-2 h-4 w-4" />
+                                        <span>{__('No bank')}</span>
+                                    </CommandItem>
+                                </CommandGroup>
+                                <CommandSeparator />
+                            </>
+                        )}
                         <CommandGroup>
                             {banks.map((bank) => (
                                 <CommandItem

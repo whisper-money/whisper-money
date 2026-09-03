@@ -158,6 +158,46 @@ it('can create a new bank account', function () {
     ]);
 });
 
+it('can create a manual account without a bank', function () {
+    $user = User::factory()->onboarded()->create();
+
+    actingAs($user);
+
+    $page = visit('/settings/accounts');
+
+    $page->assertSee('Bank accounts')
+        ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
+        ->wait(0.5)
+        ->assertSee('Bank (optional)')
+        ->fill('#display_name', 'Cash')
+        ->click('button[name="type"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Checking")')
+        ->wait(0.3)
+        ->click('button[name="currency_code"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("EUR")')
+        ->wait(0.3)
+        ->click('[data-testid="submit-account"]')
+        ->wait(2)
+        ->assertNoJavascriptErrors();
+
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+
+    $page->assertSee('Cash')
+        ->assertNoJavascriptErrors();
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'bank_id' => null,
+        'name' => 'Cash',
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+});
+
 it('can create a loan account with balance and loan details', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Mortgage Bank', 'logo' => null]);
@@ -386,6 +426,39 @@ it('can edit an existing account via dropdown menu', function () {
 
     $page->assertSee('Updated Account Name')
         ->assertNoJavascriptErrors();
+});
+
+it('can clear the bank of an existing account via the edit dialog', function () {
+    $user = User::factory()->onboarded()->create();
+    Bank::factory()->create(['name' => 'Clear Bank', 'logo' => null]);
+
+    actingAs($user);
+
+    $page = visit('/settings/accounts');
+
+    createAccountViaUI($page, 'Wallet', 'Clear Bank', 'Checking', 'EUR');
+
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+
+    $page->assertSee('Bank accounts')
+        ->click('button[aria-label="Open menu"]')
+        ->wait(0.5)
+        ->click('Edit')
+        ->wait(1)
+        ->assertSee('Edit Account')
+        ->click('[data-testid="bank-select"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("No bank")')
+        ->wait(0.3)
+        ->click('button[type="submit"]:has-text("Update")')
+        ->wait(2)
+        ->assertNoJavascriptErrors();
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'name' => 'Wallet',
+        'bank_id' => null,
+    ]);
 });
 
 it('can delete an account via dropdown menu', function () {
