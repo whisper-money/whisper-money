@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\UpsellSource;
+use App\Http\Requests\ChooseFreePlanRequest;
+use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserLead;
 use App\Services\Subscriptions\PriceExperiment;
@@ -36,10 +39,40 @@ class SubscriptionController extends Controller
         return Inertia::render('subscription/paywall', [
             'stats' => $this->getUserStats($user),
             'canUseFreePlan' => $canUseFreePlan,
+            'canEscapeToFreePlan' => $user->canEscapeToFreePlan(),
             'canManageConnectionsForFreePlan' => $user->isOnboarded()
                 && $hasBankConnections
                 && $user->hasCanceledSubscription(),
         ]);
+    }
+
+    /**
+     * Take the user down to the free plan by giving up what the paid plan
+     * gates: every banking connection is disconnected and the AI consent is
+     * revoked, which is the whole of `App\Enums\PlanFeature`.
+     *
+     * Accounts, balances and transactions already imported are kept — the same
+     * terms as disconnecting by hand from Settings, only the syncing stops.
+     *
+     * `paywall_seen_at` is stamped here because `index()` only stamps it for
+     * users who already qualified for the free plan; without it the middleware
+     * would bounce this user straight back to the paywall they just left.
+     */
+    public function chooseFreePlan(
+        ChooseFreePlanRequest $request,
+        DisconnectBankingConnection $disconnectBankingConnection,
+    ): RedirectResponse {
+        /** @var User $user */
+        $user = $request->user();
+
+        $user->bankingConnections->each(
+            fn (BankingConnection $connection) => $disconnectBankingConnection->handle($connection, deleteAccounts: false),
+        );
+
+        $user->revokeAiConsent();
+        $user->update(['paywall_seen_at' => now()]);
+
+        return redirect()->route('dashboard');
     }
 
     /**

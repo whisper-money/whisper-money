@@ -2430,5 +2430,14 @@
     "Monthly summary": "Bilan mensuel",
     "A report of the month just closed, with what changed and a few things worth five minutes. Turning it off also stops the reminder that goes with it.": "Un bilan du mois qui vient de se clore, avec ce qui a changé et quelques points qui valent cinq minutes. Le désactiver désactive aussi le rappel qui l'accompagne.",
     ":count months in a row in the black, and the best of them.": ":count mois d'affilée dans le vert, et le meilleur de tous.",
-    ":count months in a row in the black.": ":count mois d'affilée dans le vert."
+    ":count months in a row in the black.": ":count mois d'affilée dans le vert.",
+    "Continue with the free plan": "Continuer avec le forfait gratuit",
+    "Continue with the free plan?": "Continuer avec le forfait gratuit ?",
+    "The free plan does not include the paid features, so they are switched off:": "Le forfait gratuit n’inclut pas les fonctionnalités payantes, elles sont donc désactivées :",
+    "Connected banks are disconnected and stop syncing.": "Les banques connectées sont déconnectées et cessent de se synchroniser.",
+    "AI suggestions are switched off.": "Les suggestions IA sont désactivées.",
+    "The AI assistant loses access to your finances.": "L’assistant IA perd l’accès à vos finances.",
+    "Your accounts and every transaction already imported stay. You can start a plan again whenever you want.": "Vos comptes et toutes les transactions déjà importées restent. Vous pouvez souscrire un forfait à nouveau quand vous le souhaitez.",
+    "Disconnect and continue": "Déconnecter et continuer",
+    "We could not move you to the free plan. Try again.": "Nous n’avons pas pu vous basculer sur le forfait gratuit. Réessayez."
 }
