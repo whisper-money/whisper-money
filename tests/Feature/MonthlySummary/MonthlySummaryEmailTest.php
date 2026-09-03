@@ -1,5 +1,6 @@
 <?php
 
+use App\Ai\Agents\MonthlySummaryAgent;
 use App\Enums\DripEmailType;
 use App\Enums\MonthlySummaryCard;
 use App\Jobs\Drip\SendMonthlySummaryEmailJob;
@@ -12,8 +13,11 @@ use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
 use App\Services\MonthlySummary\Summaries;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
 
 /*
  * The report email itself: what it says, who sees the analysis, and how a reader
@@ -21,6 +25,9 @@ use Illuminate\Support\Facades\Queue;
  */
 
 beforeEach(function (): void {
+    // The analysis backs off between attempts; no test here is about waiting.
+    Sleep::fake();
+
     // What is under test is what the email says, not Chromium: left real, every
     // job test here draws a month's worth of cards.
     $this->mock(CardRenderer::class, function ($mock): void {
@@ -96,6 +103,22 @@ it('points a paying reader at the AI setting instead of at the paywall', functio
     $rendered = (new MonthlySummaryEmail($summary->user, $summary))->render();
 
     expect($rendered)->toContain('Turn AI on in Settings')->not->toContain('See Pro');
+});
+
+it('says the analysis could not be written rather than selling Pro to someone who has it', function (): void {
+    // A provider outage leaves a consenting reader with no analysis, which used
+    // to fall into the locked block above: it pitches the plan they already pay
+    // for and its button sends them to switch on a setting that is already on.
+    config(['subscriptions.enabled' => true]);
+    $summary = sentSummaryFor();
+
+    $rendered = (new MonthlySummaryEmail($summary->user, $summary, pro: true))->render();
+
+    expect($rendered)
+        ->toContain('We could not write your analysis this month')
+        ->not->toContain('Pro tells you where from')
+        ->not->toContain('Turn AI on in Settings')
+        ->not->toContain('See Pro');
 });
 
 it('says so when the month was reported incomplete', function (): void {
@@ -239,6 +262,44 @@ it('draws the screen\'s cards in the reader\'s language too', function (): void 
     (new WarmMonthlySummaryCardsJob($summary, pro: false))->handle(app(Summaries::class));
 
     expect($drawnIn)->toBe('es')->and(app()->getLocale())->toBe('en');
+});
+
+it('spends every attempt on a provider that never answers, and sends the report regardless', function (): void {
+    // The report has always gone out without the section - a read timeout was
+    // caught as an unexpected bug, reported, and the remaining attempts thrown
+    // away (PHP-LARAVEL-5Q). What the reader lost was the analysis itself, to a
+    // single blip that a second attempt would usually have got past.
+    config(['subscriptions.enabled' => false, 'ai_monthly_summary.attempts' => 2]);
+    Mail::fake();
+    Queue::fake();
+    Exceptions::fake();
+
+    $summary = sentSummaryFor();
+    $summary->user->recordAiConsent();
+
+    $attempts = 0;
+    MonthlySummaryAgent::fake(function () use (&$attempts): never {
+        $attempts++;
+
+        throw new ConnectionException(
+            'cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received',
+        );
+    });
+
+    (new SendMonthlySummaryEmailJob($summary->user->fresh(), $summary))->handle();
+
+    // Sent, addressed to a reader the email knows is entitled - which is what
+    // keeps the paywall block out of it - and with no analysis.
+    Mail::assertQueued(
+        MonthlySummaryEmail::class,
+        fn (MonthlySummaryEmail $mail): bool => $mail->analysis === null && $mail->pro,
+    );
+
+    expect($attempts)->toBe(2)
+        ->and($summary->fresh()->sent_at)->not->toBeNull()
+        ->and(UserMailLog::where('user_id', $summary->user_id)
+            ->where('email_type', DripEmailType::MonthlySummary)
+            ->exists())->toBeTrue();
 });
 
 it('does not send to a reader who turned the summary off', function (): void {
