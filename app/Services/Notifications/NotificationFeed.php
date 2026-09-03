@@ -34,13 +34,28 @@ class NotificationFeed
     /**
      * The badge and the latest rows, shared with every page.
      *
+     * One query, not two: this runs on every render of every screen, so the
+     * unread count rides along as a column on the rows rather than costing a
+     * second round trip. With no rows there is nothing unread either, so the
+     * empty case needs no query at all.
+     *
      * @return array{unread: int, recent: list<array<string, mixed>>}
      */
     public function forBell(User $user): array
     {
+        $rows = $user->notifications()
+            ->select('notifications.*')
+            ->selectSub(
+                $user->unreadNotifications()->getQuery()->selectRaw('count(*)'),
+                'unread_total',
+            )
+            ->latest()
+            ->limit(self::RECENT)
+            ->get();
+
         return [
-            'unread' => $user->unreadNotifications()->count(),
-            'recent' => $this->present($user->notifications()->latest()->limit(self::RECENT)->get()),
+            'unread' => (int) ($rows->first()->unread_total ?? 0),
+            'recent' => $this->present($rows),
         ];
     }
 
