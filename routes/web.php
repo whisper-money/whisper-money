@@ -178,9 +178,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // on purpose: the bell is drawn wherever the app shell is, settings
         // included, so a reader without a subscription can still open a row —
         // and meets the paywall on the page it points to, not on the way there.
-        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        // Named `list`/`read` rather than `index`/`show`: the settings screen
+        // for email preferences already owns `notifications.index`, the same way
+        // `accounts.list` here sits beside settings' `accounts.index`.
+        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.list');
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
-        Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
+        Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.read');
     });
 
     // Accessible during onboarding for transaction import and categorization

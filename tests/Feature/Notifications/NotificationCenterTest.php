@@ -108,7 +108,7 @@ it('keeps the bell six rows deep and counts the rest in the badge', function ():
 });
 
 it('answers outside the paywall, because the bell is drawn outside it too', function (): void {
-    foreach (['notifications.index', 'notifications.show', 'notifications.read-all'] as $name) {
+    foreach (['notifications.list', 'notifications.read', 'notifications.read-all'] as $name) {
         expect(Route::getRoutes()->getByName($name)->gatherMiddleware())
             ->toContain('onboarded')
             ->not->toContain('subscribed');
@@ -120,7 +120,7 @@ it('lists everything on its own page', function (): void {
     ringBell($user, $summary);
 
     $this->actingAs($user)
-        ->get(route('notifications.index'))
+        ->get(route('notifications.list'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('notifications/index')
@@ -134,7 +134,7 @@ it('opening a row marks it read, puts the notice away and lands on the report', 
     $row = $user->notifications()->first();
 
     $this->actingAs($user)
-        ->get(route('notifications.show', $row->id))
+        ->get(route('notifications.read', $row->id))
         ->assertRedirect(route('monthly-summaries.show', $summary));
 
     expect($row->fresh()->read_at)->not->toBeNull()
@@ -178,7 +178,7 @@ it('will not open another reader\'s row', function (): void {
     $row = $user->notifications()->first();
 
     $this->actingAs(User::factory()->onboarded()->create())
-        ->get(route('notifications.show', $row->id))
+        ->get(route('notifications.read', $row->id))
         ->assertNotFound();
 
     expect($row->fresh()->read_at)->toBeNull();
@@ -189,9 +189,9 @@ it('stays out of the way when switched off', function (): void {
     [$user, $summary] = readerWithReport();
     ringBell($user, $summary);
 
-    $this->actingAs($user)->get(route('notifications.index'))->assertNotFound();
+    $this->actingAs($user)->get(route('notifications.list'))->assertNotFound();
     $this->actingAs($user)->post(route('notifications.read-all'))->assertNotFound();
-    $this->actingAs($user)->get(route('notifications.show', $user->notifications()->first()->id))->assertNotFound();
+    $this->actingAs($user)->get(route('notifications.read', $user->notifications()->first()->id))->assertNotFound();
 
     $this->actingAs($user)
         ->get(route('dashboard'))

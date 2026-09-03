@@ -41,7 +41,7 @@ class NotificationController extends Controller
         // checked, so another reader's row is never even loaded.
         $row = $request->user()->notifications()->findOrFail($notification);
 
-        return redirect($this->feed->open($row) ?? route('notifications.index'));
+        return redirect($this->feed->open($row) ?? route('notifications.list'));
     }
 
     /**
