@@ -2830,5 +2830,12 @@
     "Monthly summary": "Resumen mensual",
     "A report of the month just closed, with what changed and a few things worth five minutes. Turning it off also stops the reminder that goes with it.": "Un informe del mes que acaba de cerrar, con lo que ha cambiado y unas cuantas cosas que merecen cinco minutos. Al desactivarlo también se desactiva el recordatorio que lo acompaña.",
     ":count months in a row in the black, and the best of them.": ":count meses seguidos en positivo, y el mejor de todos.",
-    ":count months in a row in the black.": ":count meses seguidos en positivo."
+    ":count months in a row in the black.": ":count meses seguidos en positivo.",
+    "Your :provider connection expires soon": "Tu conexión con :provider caduca pronto",
+    "Renew your :provider connection": "Renueva tu conexión con :provider",
+    "Banks only let us sync for a limited time, and the permission you gave us for :provider runs out on :date. Once it does, new transactions stop arriving until you renew it.": "Los bancos solo nos dejan sincronizar durante un tiempo limitado, y el permiso que nos diste para :provider caduca el :date. Cuando lo haga, dejarán de llegar movimientos nuevos hasta que lo renueves.",
+    "You can renew it right now, before it runs out, and nothing will stop syncing. It takes the same two minutes as connecting the bank did.": "Puedes renovarlo ahora mismo, antes de que caduque, y no se interrumpirá la sincronización. Se tarda los mismos dos minutos que al conectar el banco.",
+    "Renew Connection": "Renovar conexión",
+    "Expiring soon": "Caduca pronto",
+    "Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.": "Tu banco solo concede acceso durante un tiempo limitado, y este permiso caduca en breve. Renuévalo ahora y tus movimientos seguirán llegando sin interrupciones."
 }

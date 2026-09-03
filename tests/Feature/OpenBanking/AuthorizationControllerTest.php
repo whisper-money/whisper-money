@@ -192,6 +192,33 @@ test('callback with error during reconnect preserves existing connection', funct
     expect($connection->error_message)->toBe('User denied access');
 });
 
+test('callback with error during an early renewal leaves the working connection alone', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->addDays(3),
+        'state_token' => 'state-token-renewal-abandoned',
+    ]);
+
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access&state=state-token-renewal-abandoned');
+
+    $response->assertSessionHas('error', 'User denied access');
+
+    // The consent it already holds is untouched, so backing out of the bank's
+    // screen must not cost the user a connection that syncs fine.
+    $connection->refresh();
+    expect($connection->trashed())->toBeFalse();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->error_message)->toBeNull();
+});
+
 test('callback with error and nothing pending still reports the error', function () {
     $user = User::factory()->onboarded()->create();
 
@@ -451,17 +478,52 @@ test('reauthorize returns 422 for non-EnableBanking connections', function () {
     $response->assertJson(['error' => 'Only EnableBanking connections can be re-authorized.']);
 });
 
-test('reauthorize returns 422 for active connections', function () {
+test('reauthorize returns 422 for connections that are neither active, errored nor expired', function (BankingConnectionStatus $status) {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
-        'status' => BankingConnectionStatus::Active,
+        'status' => $status,
+        'valid_until' => now()->addDays(90),
     ]);
 
     $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
 
     $response->assertUnprocessable();
-    $response->assertJson(['error' => 'Only connections with an error or expired status can be re-authorized.']);
+    $response->assertJson(['error' => 'Only active, error or expired connections can be re-authorized.']);
+})->with([
+    BankingConnectionStatus::Pending,
+    BankingConnectionStatus::AwaitingMapping,
+    BankingConnectionStatus::Revoked,
+]);
+
+test('reauthorize renews a healthy active connection so the consent never lapses', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->addDays(3),
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->once()
+        ->andReturn([
+            'url' => 'https://bank.example.com/reauthorize',
+            'authorization_id' => 'renewed-auth-id',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertOk();
+    $response->assertJson(['redirect_url' => 'https://bank.example.com/reauthorize']);
+
+    // Active throughout, so syncing carries on with the consent it still has
+    // while the user is off at their bank.
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->authorization_id)->toBe('renewed-auth-id');
 });
 
 test('reauthorize starts new authorization and sets connection to pending for error connections', function () {
@@ -624,6 +686,56 @@ test('callback with existing accounts updates session without creating new accou
 
     // No duplicate accounts should have been created
     $this->assertDatabaseCount('accounts', 1);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
+});
+
+test('an early renewal pushes the consent window out without the connection ever breaking', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->addDays(3),
+        'state_token' => 'state-token-early-renewal',
+    ]);
+
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-account-renewed',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'renewed-session',
+            'accounts' => [
+                [
+                    'uid' => 'ext-account-renewed',
+                    'currency' => 'EUR',
+                    'name' => 'Renewed Account',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+            ],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)
+        ->get('/open-banking/callback?code=test-code&state=state-token-early-renewal');
+
+    $response->assertSessionHas('success', 'Bank account reconnected successfully.');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->session_id)->toBe('renewed-session');
+    expect($connection->valid_until->isAfter(now()->addDays(80)))->toBeTrue();
+    expect($connection->isExpiringSoon())->toBeFalse();
 
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });

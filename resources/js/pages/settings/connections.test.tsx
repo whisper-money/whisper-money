@@ -131,6 +131,47 @@ describe('ConnectionsPage', () => {
         ).toHaveLength(2);
     });
 
+    it('offers an early renewal on a consent that is about to run out', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        valid_until: new Date(
+                            Date.now() + 3 * 24 * 60 * 60 * 1000,
+                        ).toISOString(),
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText(/expiring soon/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/only grants access for a limited time/i),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /reconnect/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('says nothing about expiry while the consent still has months to run', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        valid_until: new Date(
+                            Date.now() + 90 * 24 * 60 * 60 * 1000,
+                        ).toISOString(),
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.queryByText(/expiring soon/i)).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /reconnect/i }),
+        ).not.toBeInTheDocument();
+    });
+
     it('polls and spins while a first sync is genuinely running', () => {
         render(
             <ConnectionsPage

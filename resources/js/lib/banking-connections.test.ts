@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     alreadyConnectedBankNames,
     hasLiveConnectionForProvider,
+    isExpiringSoon,
 } from './banking-connections';
 
 function connection(
@@ -78,5 +79,55 @@ describe('hasLiveConnectionForProvider', () => {
         expect(hasLiveConnectionForProvider(connections, 'coinbase')).toBe(
             false,
         );
+    });
+});
+
+describe('isExpiringSoon', () => {
+    const inDays = (days: number) =>
+        new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+    it('is true inside the last week of the consent window', () => {
+        expect(isExpiringSoon(connection({ valid_until: inDays(1) }))).toBe(
+            true,
+        );
+        expect(isExpiringSoon(connection({ valid_until: inDays(6.9) }))).toBe(
+            true,
+        );
+    });
+
+    it('is false while the consent still has more than a week to run', () => {
+        expect(isExpiringSoon(connection({ valid_until: inDays(7.1) }))).toBe(
+            false,
+        );
+        expect(isExpiringSoon(connection({ valid_until: inDays(90) }))).toBe(
+            false,
+        );
+    });
+
+    it('is false once the consent has lapsed - that is expired, not expiring', () => {
+        expect(isExpiringSoon(connection({ valid_until: inDays(-1) }))).toBe(
+            false,
+        );
+        expect(
+            isExpiringSoon(
+                connection({ status: 'expired', valid_until: inDays(-1) }),
+            ),
+        ).toBe(false);
+    });
+
+    it('is false for connections that carry no consent at all', () => {
+        expect(
+            isExpiringSoon(
+                connection({ provider: 'binance', valid_until: null }),
+            ),
+        ).toBe(false);
+    });
+
+    it('is false for a connection that is not active', () => {
+        expect(
+            isExpiringSoon(
+                connection({ status: 'error', valid_until: inDays(2) }),
+            ),
+        ).toBe(false);
     });
 });
