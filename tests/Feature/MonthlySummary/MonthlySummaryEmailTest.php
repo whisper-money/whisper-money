@@ -1,5 +1,6 @@
 <?php
 
+use App\Ai\Agents\MonthlySummaryAgent;
 use App\Enums\DripEmailType;
 use App\Enums\MonthlySummaryCard;
 use App\Jobs\Drip\SendMonthlySummaryEmailJob;
@@ -12,6 +13,8 @@ use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
 use App\Services\MonthlySummary\Summaries;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
@@ -255,6 +258,44 @@ it('draws the screen\'s cards in the reader\'s language too', function (): void 
     (new WarmMonthlySummaryCardsJob($summary, pro: false))->handle(app(Summaries::class));
 
     expect($drawnIn)->toBe('es')->and(app()->getLocale())->toBe('en');
+});
+
+it('spends every attempt on a provider that never answers, and sends the report regardless', function (): void {
+    // The report has always gone out without the section - a read timeout was
+    // caught as an unexpected bug, reported, and the remaining attempts thrown
+    // away (PHP-LARAVEL-5Q). What the reader lost was the analysis itself, to a
+    // single blip that a second attempt would usually have got past.
+    config(['subscriptions.enabled' => false, 'ai_monthly_summary.attempts' => 2]);
+    Mail::fake();
+    Queue::fake();
+    Exceptions::fake();
+
+    $summary = sentSummaryFor();
+    $summary->user->recordAiConsent();
+
+    $attempts = 0;
+    MonthlySummaryAgent::fake(function () use (&$attempts): never {
+        $attempts++;
+
+        throw new ConnectionException(
+            'cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received',
+        );
+    });
+
+    (new SendMonthlySummaryEmailJob($summary->user->fresh(), $summary))->handle();
+
+    // Sent, addressed to a reader the email knows is entitled - which is what
+    // keeps the paywall block out of it - and with no analysis.
+    Mail::assertQueued(
+        MonthlySummaryEmail::class,
+        fn (MonthlySummaryEmail $mail): bool => $mail->analysis === null && $mail->pro,
+    );
+
+    expect($attempts)->toBe(2)
+        ->and($summary->fresh()->sent_at)->not->toBeNull()
+        ->and(UserMailLog::where('user_id', $summary->user_id)
+            ->where('email_type', DripEmailType::MonthlySummary)
+            ->exists())->toBeTrue();
 });
 
 it('does not send to a reader who turned the summary off', function (): void {
