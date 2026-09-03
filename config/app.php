@@ -123,6 +123,12 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+     * The single account allowed into /admin. Unset means nobody is an admin:
+     * User::isAdmin() fails closed rather than matching an empty email.
+     */
+    'admin_email' => env('ADMIN_EMAIL'),
+
     'demo' => [
         'enabled' => env('DEMO_ENABLED', true),
         'email' => env('DEMO_EMAIL', 'demo@whisper.money'),
