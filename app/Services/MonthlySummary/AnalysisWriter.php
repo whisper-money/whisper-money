@@ -110,10 +110,9 @@ class AnalysisWriter
 
         // One hiccup is expected and stays in the logs. Every attempt failing is
         // an outage that just cost a paying reader their month, and a provider
-        // that is never reachable would otherwise be invisible here.
-        if ($lastTransient !== null) {
-            report($lastTransient);
-        }
+        // that is never reachable would otherwise be invisible here. Getting
+        // here means the last attempt was one of those failures.
+        report($lastTransient);
 
         return null;
     }
