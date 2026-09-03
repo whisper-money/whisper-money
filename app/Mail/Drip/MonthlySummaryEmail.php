@@ -83,6 +83,7 @@ class MonthlySummaryEmail extends DripMail
                 'incompleteNotice' => $this->incompleteNotice(),
                 'spaceName' => $this->spaceName,
                 'analysis' => $this->analysis,
+                'pro' => $this->pro,
                 'lockedPitch' => $this->lockedPitch(),
                 'lockedAction' => $this->lockedAction(),
                 'lockedUrl' => $this->lockedUrl(),

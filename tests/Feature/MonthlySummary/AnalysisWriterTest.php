@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\MonthlySummary\AnalysisWriter;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 /*
  * The analysis is worth a few attempts: a provider hiccup costs a paying reader
@@ -13,6 +14,11 @@ use Illuminate\Support\Facades\Log;
  * so one that did not answer at all - a 30s timeout reaching Gemini - burned the
  * month on the first try and was filed as a bug (PHP-LARAVEL-5Q).
  */
+
+beforeEach(function (): void {
+    // Every case here exhausts the attempts, and the backoff between them grows.
+    Sleep::fake();
+});
 
 function readerAwaitingAnalysis(): array
 {

@@ -50,10 +50,12 @@ pest()->browser()->timeout(15000);
 | Transient AI provider failures
 |--------------------------------------------------------------------------
 |
-| The two ways an AI provider fails with nobody having a bug to fix: it answers
-| badly (overloaded, rate-limiting us) or it does not answer at all (DNS, connect
-| timeout). Every service that prompts a provider has to treat the two the same
-| way, so they assert against one shared list rather than each keeping its own.
+| The ways an AI provider fails with nobody having a bug to fix: it answers badly
+| (overloaded, rate-limiting us), it cannot be reached at all (DNS, connect
+| timeout), or it accepts the request and then never answers - the 30s read
+| timeout that cost readers their monthly analysis in PHP-LARAVEL-5Q. Every
+| service that prompts a provider has to treat all of them the same way, so they
+| assert against one shared list rather than each keeping its own.
 |
 */
 
@@ -61,6 +63,9 @@ dataset('transient provider failures', [
     'provider overloaded' => fn (): Throwable => ProviderOverloadedException::forProvider('gemini'),
     'provider unreachable' => fn (): Throwable => new ConnectionException(
         'cURL error 6: Could not resolve host: generativelanguage.googleapis.com',
+    ),
+    'provider timed out' => fn (): Throwable => new ConnectionException(
+        'cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received',
     ),
 ]);
 

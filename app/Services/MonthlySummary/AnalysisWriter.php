@@ -10,6 +10,7 @@ use App\Support\Figures;
 use App\Support\Money;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Exceptions\FailoverableException;
@@ -98,7 +99,7 @@ class AnalysisWriter
                     'exception' => $exception->getMessage(),
                 ]);
 
-                usleep($attempt * 500_000);
+                Sleep::for($attempt * 500)->milliseconds();
             } catch (Throwable $exception) {
                 // A misconfigured provider or an SDK change is a real bug worth
                 // reporting, and retrying it would only waste the window.
