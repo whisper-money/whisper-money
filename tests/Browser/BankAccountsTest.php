@@ -158,6 +158,46 @@ it('can create a new bank account', function () {
     ]);
 });
 
+it('can create a manual account without a bank', function () {
+    $user = User::factory()->onboarded()->create();
+
+    actingAs($user);
+
+    $page = visit('/settings/accounts');
+
+    $page->assertSee('Bank accounts')
+        ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
+        ->wait(0.5)
+        ->assertSee('Bank (optional)')
+        ->fill('#display_name', 'Cash')
+        ->click('button[name="type"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Checking")')
+        ->wait(0.3)
+        ->click('button[name="currency_code"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("EUR")')
+        ->wait(0.3)
+        ->click('[data-testid="submit-account"]')
+        ->wait(2)
+        ->assertNoJavascriptErrors();
+
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+
+    $page->assertSee('Cash')
+        ->assertNoJavascriptErrors();
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'bank_id' => null,
+        'name' => 'Cash',
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+});
+
 it('can create a loan account with balance and loan details', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Mortgage Bank', 'logo' => null]);

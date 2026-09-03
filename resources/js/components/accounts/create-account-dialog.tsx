@@ -147,12 +147,7 @@ export function CreateAccountDialog({
                         throw new Error('Failed to create bank');
                     }
                     finalBankId = createdBankId;
-                } else {
-                    if (!bankId) {
-                        alert('Please select a bank.');
-                        setIsSubmitting(false);
-                        return;
-                    }
+                } else if (bankId) {
                     finalBankId = String(bankId);
                 }
             }

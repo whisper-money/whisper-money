@@ -192,13 +192,7 @@ export function StepCreateAccount({
                     }
 
                     finalBankId = createdBankId;
-                } else {
-                    if (!bankId) {
-                        setError(__('Please select a bank.'));
-                        setIsSubmitting(false);
-                        return;
-                    }
-
+                } else if (bankId) {
                     finalBankId = String(bankId);
                 }
             }
@@ -355,14 +349,14 @@ export function StepCreateAccount({
             ? createdAccounts.map((account) => ({
                   id: account.id,
                   name: account.name,
-                  bankName: account.bankName ?? __('Bank'),
+                  bankName: account.bankName ?? __('No bank'),
                   bankLogo: account.bankLogo ?? null,
                   meta: `${formatAccountType(account.type)} \u00b7 ${account.currencyCode}`,
               }))
             : existingAccounts.map((account) => ({
                   id: account.id,
                   name: account.name || __('Account'),
-                  bankName: account.bank?.name ?? __('Bank'),
+                  bankName: account.bank?.name ?? __('No bank'),
                   bankLogo: account.bank?.logo ?? null,
                   meta: `${formatAccountType(account.type)} \u00b7 ${account.currency_code}`,
               }));

@@ -241,12 +241,7 @@ export function EditAccountDialog({
                         throw new Error('Failed to create bank');
                     }
                     finalBankId = createdBankId;
-                } else {
-                    if (!bankId) {
-                        alert('Please select a bank.');
-                        setIsSubmitting(false);
-                        return;
-                    }
+                } else if (bankId) {
                     finalBankId = String(bankId);
                 }
             }
@@ -255,7 +250,7 @@ export function EditAccountDialog({
                 update.url(account.id),
                 {
                     name: displayName,
-                    ...(finalBankId ? { bank_id: finalBankId } : {}),
+                    bank_id: finalBankId,
                     type: type,
                     currency_code: currencyCode,
                     ownership_percentage: sharePercentage,

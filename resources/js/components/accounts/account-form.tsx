@@ -333,7 +333,7 @@ export function AccountForm({
 
             {!isRealEstate && (
                 <div className="space-y-2">
-                    <Label htmlFor="bank_id">{__('Bank')}</Label>
+                    <Label htmlFor="bank_id">{__('Bank (optional)')}</Label>
                     <div className="mt-1">
                         {isCreatingCustomBank ? (
                             <CustomBankForm
@@ -361,6 +361,13 @@ export function AccountForm({
                             </>
                         )}
                     </div>
+                    {!isCreatingCustomBank && (
+                        <p className="pl-1 text-xs text-muted-foreground">
+                            {__(
+                                'Leave empty for cash or any account without a bank.',
+                            )}
+                        </p>
+                    )}
                 </div>
             )}
 
