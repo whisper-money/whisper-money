@@ -451,17 +451,50 @@ test('reauthorize returns 422 for non-EnableBanking connections', function () {
     $response->assertJson(['error' => 'Only EnableBanking connections can be re-authorized.']);
 });
 
-test('reauthorize returns 422 for active connections', function () {
+test('reauthorize returns 422 for connections that are neither active, errored nor expired', function (BankingConnectionStatus $status) {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
-        'status' => BankingConnectionStatus::Active,
+        'status' => $status,
+        'valid_until' => now()->addDays(90),
     ]);
 
     $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
 
     $response->assertUnprocessable();
-    $response->assertJson(['error' => 'Only connections with an error or expired status can be re-authorized.']);
+    $response->assertJson(['error' => 'Only active, error or expired connections can be re-authorized.']);
+})->with([
+    BankingConnectionStatus::Pending,
+    BankingConnectionStatus::AwaitingMapping,
+    BankingConnectionStatus::Revoked,
+]);
+
+test('reauthorize renews a healthy active connection so the consent never lapses', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->addDays(3),
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->once()
+        ->andReturn([
+            'url' => 'https://bank.example.com/reauthorize',
+            'authorization_id' => 'renewed-auth-id',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertOk();
+    $response->assertJson(['redirect_url' => 'https://bank.example.com/reauthorize']);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Pending);
+    expect($connection->authorization_id)->toBe('renewed-auth-id');
 });
 
 test('reauthorize starts new authorization and sets connection to pending for error connections', function () {

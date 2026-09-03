@@ -135,8 +135,17 @@ class AuthorizationController extends Controller
             return ['error' => 'Only EnableBanking connections can be re-authorized.'];
         }
 
-        if ($connection->status !== BankingConnectionStatus::Error && ! $connection->isExpired()) {
-            return ['error' => 'Only connections with an error or expired status can be re-authorized.'];
+        // Active is in here so the user can renew a healthy consent before it
+        // lapses: the alternative is a few days of broken syncing at the end of
+        // every window. Which day the offer appears is the UI's and the warning
+        // email's business, not this gate's.
+        $renewable = $connection->isExpired() || in_array($connection->status, [
+            BankingConnectionStatus::Active,
+            BankingConnectionStatus::Error,
+        ], true);
+
+        if (! $renewable) {
+            return ['error' => 'Only active, error or expired connections can be re-authorized.'];
         }
 
         $redirectUrl = config('services.enablebanking.redirect_url');

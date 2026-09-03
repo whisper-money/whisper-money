@@ -36,6 +36,13 @@ class BankingConnection extends Model
     /** @use HasFactory<BankingConnectionFactory> */
     use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
+    /**
+     * How many days before `valid_until` the consent counts as expiring soon:
+     * the window in which we warn the user by email and offer an early renewal,
+     * so a consent never lapses into days of broken syncing.
+     */
+    public const EXPIRY_WARNING_DAYS = 7;
+
     protected $fillable = [
         'user_id',
         'space_id',
@@ -213,6 +220,18 @@ class BankingConnection extends Model
     {
         return $this->status === BankingConnectionStatus::Expired
             || ($this->valid_until && $this->valid_until->isPast());
+    }
+
+    /**
+     * Whether the consent is close enough to running out that the user should
+     * renew it now, before syncing breaks. Only EnableBanking connections carry
+     * a `valid_until`, so nothing else is ever expiring soon.
+     */
+    public function isExpiringSoon(): bool
+    {
+        return $this->valid_until !== null
+            && ! $this->isExpired()
+            && $this->valid_until->isBefore(now()->addDays(self::EXPIRY_WARNING_DAYS));
     }
 
     public function isRateLimited(): bool
