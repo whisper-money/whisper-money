@@ -6,8 +6,8 @@ use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Jobs\Drip\SendConnectionExpiringEmailJob;
 use App\Models\BankingConnection;
+use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class SendConnectionExpiringEmailsCommand extends Command
@@ -39,7 +39,11 @@ class SendConnectionExpiringEmailsCommand extends Command
             ->where('status', BankingConnectionStatus::Active)
             ->where('valid_until', '>', now())
             ->where('valid_until', '<', now()->addDays(BankingConnection::EXPIRY_WARNING_DAYS))
-            ->whereHas('user', fn (Builder $query) => $query->excludingSharedAccounts())
+            // Doing double duty: the subquery drops the demo and press accounts,
+            // whose mail nobody reads, and its own global scope drops deleted
+            // users, whose connection would otherwise reach a job with no
+            // recipient to hand the mail to.
+            ->whereIn('user_id', User::query()->excludingSharedAccounts()->select('id'))
             ->with('user')
             ->chunkById(100, function (Collection $connections) use (&$queued): void {
                 foreach ($connections as $connection) {
