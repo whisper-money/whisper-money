@@ -74,6 +74,22 @@ test('filter by date range', function () {
     );
 });
 
+test('rejects a date filter that is not a plain Y-m-d date', function (string $date) {
+    // `date` accepted all of these - it defers to strtotime(), which reads
+    // "275752-07-04" as a 2052 date and "yesterday" as a date at all - so the raw
+    // string reached both the SQL and the Inertia props, where the client handed
+    // it to date-fns `format()` and the page died mid-render. The UI only ever
+    // sends the output of a `date` input, so nothing legitimate is turned away.
+    actingAs($this->user)
+        ->get(route('transactions.index', ['date_from' => $date]))
+        ->assertSessionHasErrors('date_from');
+})->with([
+    '275752-07-04',
+    '01/06/2025',
+    '2025-06-15T00:00:00Z',
+    'yesterday',
+]);
+
 test('filter by amount range', function () {
     Transaction::factory()->plaintext()->create([
         'user_id' => $this->user->id,
