@@ -37,7 +37,8 @@ class SendConnectionExpiringEmailsCommand extends Command
         BankingConnection::query()
             ->where('provider', BankingProvider::EnableBanking)
             ->where('status', BankingConnectionStatus::Active)
-            ->whereBetween('valid_until', [now(), now()->addDays(BankingConnection::EXPIRY_WARNING_DAYS)])
+            ->where('valid_until', '>', now())
+            ->where('valid_until', '<', now()->addDays(BankingConnection::EXPIRY_WARNING_DAYS))
             ->whereHas('user', fn (Builder $query) => $query->excludingSharedAccounts())
             ->with('user')
             ->chunkById(100, function (Collection $connections) use (&$queued): void {

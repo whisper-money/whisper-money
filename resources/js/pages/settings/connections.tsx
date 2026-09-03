@@ -47,11 +47,23 @@ import {
     Unplug,
     Wallet,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface Props {
     connections: BankingConnection[];
+}
+
+/** The amber "nothing is broken, but do something" notice under a card. */
+function AmberNotice({ children }: { children: ReactNode }) {
+    return (
+        <Alert className="mt-3 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+            <Clock />
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+                {children}
+            </AlertDescription>
+        </Alert>
+    );
 }
 
 /** The same button in the card header, the expiry notice and the error box. */
@@ -451,50 +463,43 @@ export default function ConnectionsPage({ connections }: Props) {
                                             )}
                                         </div>
                                         {isWaitingForBank(connection) && (
-                                            <Alert className="mt-3 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                                                <Clock />
-                                                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                                            <AmberNotice>
+                                                <p>
+                                                    {__(
+                                                        'Your bank limits how often we can fetch your data. We will retry automatically.',
+                                                    )}
+                                                </p>
+                                                {connection.next_sync_attempt_at && (
                                                     <p>
-                                                        {__(
-                                                            'Your bank limits how often we can fetch your data. We will retry automatically.',
+                                                        {__('Next attempt')}:{' '}
+                                                        {formatDate(
+                                                            connection.next_sync_attempt_at,
                                                         )}
                                                     </p>
-                                                    {connection.next_sync_attempt_at && (
-                                                        <p>
-                                                            {__('Next attempt')}
-                                                            :{' '}
-                                                            {formatDate(
-                                                                connection.next_sync_attempt_at,
-                                                            )}
-                                                        </p>
-                                                    )}
-                                                </AlertDescription>
-                                            </Alert>
+                                                )}
+                                            </AmberNotice>
                                         )}
                                         {isExpiringSoon(connection) && (
-                                            <Alert className="mt-3 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                                                <Clock />
-                                                <AlertDescription className="text-amber-700 dark:text-amber-300">
-                                                    <p>
-                                                        {__(
-                                                            'Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.',
-                                                        )}
-                                                    </p>
-                                                    <ReconnectButton
-                                                        variant="secondary"
-                                                        className="h-7 text-xs"
-                                                        reconnecting={
-                                                            reconnectingId ===
-                                                            connection.id
-                                                        }
-                                                        onClick={() =>
-                                                            handleReconnect(
-                                                                connection,
-                                                            )
-                                                        }
-                                                    />
-                                                </AlertDescription>
-                                            </Alert>
+                                            <AmberNotice>
+                                                <p>
+                                                    {__(
+                                                        'Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.',
+                                                    )}
+                                                </p>
+                                                <ReconnectButton
+                                                    variant="secondary"
+                                                    className="h-7 text-xs"
+                                                    reconnecting={
+                                                        reconnectingId ===
+                                                        connection.id
+                                                    }
+                                                    onClick={() =>
+                                                        handleReconnect(
+                                                            connection,
+                                                        )
+                                                    }
+                                                />
+                                            </AmberNotice>
                                         )}
                                         {connection.status === 'error' && (
                                             <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">

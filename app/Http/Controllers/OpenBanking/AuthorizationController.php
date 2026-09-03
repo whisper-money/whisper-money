@@ -139,10 +139,9 @@ class AuthorizationController extends Controller
         // lapses: the alternative is a few days of broken syncing at the end of
         // every window. Which day the offer appears is the UI's and the warning
         // email's business, not this gate's.
-        $renewable = $connection->isExpired() || in_array($connection->status, [
-            BankingConnectionStatus::Active,
-            BankingConnectionStatus::Error,
-        ], true);
+        $renewable = $connection->isActive()
+            || $connection->isExpired()
+            || $connection->status === BankingConnectionStatus::Error;
 
         if (! $renewable) {
             return ['error' => 'Only active, error or expired connections can be re-authorized.'];
@@ -161,7 +160,14 @@ class AuthorizationController extends Controller
         $connection->update([
             'authorization_id' => $result['authorization_id'],
             'state_token' => $stateToken,
-            'status' => BankingConnectionStatus::Pending,
+            // A healthy connection stays Active through an early renewal. Its
+            // current consent still works, so syncing carries on while the user
+            // is at the bank, and abandoning the flow there leaves a working
+            // connection working. Only an unusable one has nothing to lose by
+            // going Pending.
+            'status' => $connection->isActive()
+                ? BankingConnectionStatus::Active
+                : BankingConnectionStatus::Pending,
             'error_message' => null,
         ]);
 
@@ -350,7 +356,13 @@ class AuthorizationController extends Controller
             'connection_id' => $connection?->id,
         ]);
 
-        if ($connection) {
+        // An Active connection can only be here because the user started an
+        // early renewal and did not finish it. Backing out of the bank's screen
+        // is a perfectly reasonable thing to do, and the consent the connection
+        // already holds is untouched, so it keeps syncing as if nothing had
+        // happened. Only a connection that was already unusable is recorded as
+        // failed - or dropped, when there is nothing behind it yet.
+        if ($connection && ! $connection->isActive()) {
             if ($connection->accounts()->exists()) {
                 $connection->update([
                     'status' => BankingConnectionStatus::Error,
