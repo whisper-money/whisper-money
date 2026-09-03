@@ -178,6 +178,18 @@ test('the result of a run is handed back to the page', function () {
         ->assertInertia(fn ($page) => $page->where('result.output', 'Done.'));
 });
 
+test('a run leaves the process execution limit where it found it', function () {
+    // set_time_limit() is process-wide. Left raised, it follows the worker into
+    // whatever test runs next and kills it there, which is how CI found this.
+    $before = ini_get('max_execution_time');
+
+    Artisan::partialMock()->shouldReceive('call')->once()->andReturn(0);
+
+    $this->actingAs(admin())->post('/admin/run', ['command' => 'resend:sync']);
+
+    expect(ini_get('max_execution_time'))->toBe($before);
+});
+
 test('every curated command exists in the artisan registry', function () {
     $registered = array_keys(Artisan::all());
 

@@ -58,10 +58,11 @@ class AdminController extends Controller
     ];
 
     /**
-     * Seconds a run may take before PHP kills the request. A backstop, not a
-     * graceful one: the timeout is fatal and uncatchable, so an admin who trips
-     * it gets a dead request rather than the partial output below. Keeping the
-     * curated list to commands that finish in seconds is the real protection.
+     * Seconds a run may take, raised for the request and put back afterwards.
+     * A backstop, not a graceful one: PHP's timeout is fatal and uncatchable,
+     * so an admin who trips it gets a dead request rather than the partial
+     * output below. Keeping the curated list to commands that finish in
+     * seconds is the real protection.
      */
     private const RUN_TIMEOUT_SECONDS = 60;
 
@@ -99,8 +100,6 @@ class AdminController extends Controller
 
     public function run(RunAdminCommandRequest $request): RedirectResponse
     {
-        set_time_limit(self::RUN_TIMEOUT_SECONDS);
-
         // `--no-interaction` on every run: nothing here can answer a prompt, so a
         // command that confirms takes its default instead of waiting on STDIN.
         // It is part of the line that runs, so it is part of the line we echo.
@@ -112,6 +111,13 @@ class AdminController extends Controller
         $output = new BufferedOutput;
         $startedAt = microtime(true);
 
+        // set_time_limit() is process-wide, not request-wide, so the budget has
+        // to go back where it was: a worker that keeps the process alive (the
+        // test runner, Octane) would otherwise inherit this one and die later,
+        // somewhere unrelated.
+        $previousLimit = (int) ini_get('max_execution_time');
+        set_time_limit(self::RUN_TIMEOUT_SECONDS);
+
         try {
             $exitCode = Artisan::call($command, [], $output);
         } catch (Throwable $e) {
@@ -120,6 +126,8 @@ class AdminController extends Controller
             // failed run instead of losing both to a 500 page.
             $exitCode = 1;
             $output->writeln($e->getMessage());
+        } finally {
+            set_time_limit($previousLimit);
         }
 
         return back()->with('commandResult', [
