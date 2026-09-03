@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -86,6 +87,26 @@ test('arguments cannot smuggle in a second command', function () {
         ->assertInvalid('arguments');
 });
 
+test('the arguments the curated commands actually need are accepted', function (string $command, string $arguments) {
+    Artisan::partialMock()
+        ->shouldReceive('call')
+        ->once()
+        ->with("{$command} {$arguments} --no-interaction", [], Mockery::type(BufferedOutput::class))
+        ->andReturn(0);
+
+    $this->actingAs(admin())
+        ->post('/admin/run', ['command' => $command, 'arguments' => $arguments])
+        ->assertValid();
+})->with([
+    // A bank name is two words and needs its quotes.
+    ['banking:notify-outage', '"Banco Mediolanum" --country=ES --force'],
+    ['banking:notify-users', '"Trade Republic" resources/notices/my-notice --dry-run'],
+    // A feature is a class name and needs its backslashes; a rollout is a percentage.
+    ['feature:enable', 'App\\Features\\SplitTransactions 25%'],
+    ['user:delete', 'someone@whisper.money'],
+    ['stats:mcp-usage', '--days=7 --top=5'],
+]);
+
 test('a command that takes no arguments refuses them, so demo:reset cannot be aimed at a real account', function () {
     Artisan::partialMock()->shouldNotReceive('call');
 
@@ -101,7 +122,7 @@ test('a command that takes no arguments still runs when none are given', functio
     Artisan::partialMock()
         ->shouldReceive('call')
         ->once()
-        ->with('demo:reset', [], Mockery::type(BufferedOutput::class))
+        ->with('demo:reset --no-interaction', [], Mockery::type(BufferedOutput::class))
         ->andReturn(0);
 
     $this->actingAs(admin())
@@ -114,7 +135,7 @@ test('an allowed command runs and its output and exit code come back', function 
     Artisan::partialMock()
         ->shouldReceive('call')
         ->once()
-        ->with('banking:health --history-days=3', [], Mockery::type(BufferedOutput::class))
+        ->with('banking:health --history-days=3 --no-interaction', [], Mockery::type(BufferedOutput::class))
         ->andReturnUsing(function (string $command, array $parameters, BufferedOutput $output): int {
             $output->writeln('Every bank is fine.');
 
@@ -127,7 +148,7 @@ test('an allowed command runs and its output and exit code come back', function 
             'arguments' => '--history-days=3',
         ])
         ->assertRedirect()
-        ->assertSessionHas('commandResult', fn (array $result) => $result['command'] === 'banking:health --history-days=3'
+        ->assertSessionHas('commandResult', fn (array $result) => $result['command'] === 'banking:health --history-days=3 --no-interaction'
             && $result['exit_code'] === 0
             && str_contains($result['output'], 'Every bank is fine.'));
 });
@@ -155,6 +176,14 @@ test('the result of a run is handed back to the page', function () {
         ->withSession(['commandResult' => ['command' => 'resend:sync', 'exit_code' => 0, 'output' => 'Done.', 'duration_ms' => 12, 'ran_at' => now()->toIso8601String()]])
         ->get('/admin')
         ->assertInertia(fn ($page) => $page->where('result.output', 'Done.'));
+});
+
+test('every curated command exists in the artisan registry', function () {
+    $registered = array_keys(Artisan::all());
+
+    foreach (array_keys(AdminController::allowedCommands()) as $line) {
+        expect($registered)->toContain(explode(' ', $line)[0]);
+    }
 });
 
 test('a non-admin cannot run a command either', function () {

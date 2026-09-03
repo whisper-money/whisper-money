@@ -168,7 +168,7 @@ function CommandRunner({
                 {({ errors, processing }) => (
                     <>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="space-y-2 sm:w-80">
+                            <div className="flex flex-col gap-2 sm:w-80">
                                 <Label htmlFor="command">{__('Command')}</Label>
                                 <Select
                                     name="command"
@@ -209,7 +209,7 @@ function CommandRunner({
                                 </Select>
                             </div>
 
-                            <div className="space-y-2 sm:max-w-md sm:flex-1">
+                            <div className="flex flex-col gap-2 sm:max-w-md sm:flex-1">
                                 <Label htmlFor="arguments">
                                     {__('Arguments')}{' '}
                                     <span className="font-normal text-muted-foreground">

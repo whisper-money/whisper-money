@@ -28,8 +28,11 @@ class AdminController extends Controller
         'Diagnostics' => [
             'banking:health' => true,
             'banks:check-logos' => false,
-            'stats:daily-report --no-discord' => true,
+            'stats:daily-report --no-discord' => false,
+            'stats:ai-cohort-report --no-discord' => true,
             'stats:mcp-usage' => true,
+            'stats:stuck-cohort-report --no-discord' => false,
+            'stats:subscription-funnel --no-discord' => true,
         ],
         'Maintenance' => [
             'budgets:generate-periods' => false,
@@ -38,6 +41,19 @@ class AdminController extends Controller
             // names and force-deletes that account's real data first.
             'demo:reset' => false,
             'email:monthly-summary-preview' => true,
+        ],
+        'Feature flags' => [
+            'feature:enable' => true,
+            'feature:disable' => true,
+        ],
+        'Bank notices' => [
+            'banking:notify-connect-failure' => true,
+            'banking:notify-outage' => true,
+            'banking:notify-users' => true,
+        ],
+        'Users' => [
+            'user:delete' => true,
+            'ai:delete-consent' => true,
         ],
     ];
 
@@ -85,7 +101,14 @@ class AdminController extends Controller
     {
         set_time_limit(self::RUN_TIMEOUT_SECONDS);
 
-        $command = trim($request->validated('command').' '.($request->validated('arguments') ?? ''));
+        // `--no-interaction` on every run: nothing here can answer a prompt, so a
+        // command that confirms takes its default instead of waiting on STDIN.
+        // It is part of the line that runs, so it is part of the line we echo.
+        $command = trim(implode(' ', array_filter([
+            $request->validated('command'),
+            $request->validated('arguments') ?? '',
+            '--no-interaction',
+        ])));
         $output = new BufferedOutput;
         $startedAt = microtime(true);
 
