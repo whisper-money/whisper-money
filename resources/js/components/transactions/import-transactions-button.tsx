@@ -53,13 +53,16 @@ export function ImportTransactionsButton() {
                     <TooltipTrigger asChild>
                         <Button
                             variant="ghost"
-                            className={`h-9 ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
+                            // Icon only below `sm`: the mobile header also holds the
+                            // lock, the bell and the account, and the label was the
+                            // one thing there that was not an icon.
+                            className={`h-9 w-9 px-0 has-[>svg]:px-0 sm:w-auto sm:px-4 sm:has-[>svg]:px-3 ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
                             onClick={handleOpenDrawer}
                             disabled={loading}
                             aria-label={__('Import transactions')}
                         >
                             <Upload className="h-5 w-5" />
-                            <span className="">
+                            <span className="hidden sm:inline">
                                 {loading ? __('Loading...') : __('Import')}
                             </span>
                         </Button>

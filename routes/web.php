@@ -18,6 +18,7 @@ use App\Http\Controllers\LoanDetailController;
 use App\Http\Controllers\MonthlySummaryController;
 use App\Http\Controllers\MonthlySummaryShareController;
 use App\Http\Controllers\MonthlySummaryUnsubscribeController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OpenBanking\AccountMappingController;
 use App\Http\Controllers\OpenBanking\AuthorizationController;
@@ -171,6 +172,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('onboarding', [OnboardingController::class, 'index'])->name('onboarding');
         Route::get('onboarding/sync-status', [OnboardingController::class, 'syncStatus'])->name('onboarding.sync-status');
         Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+
+        // The bell: what happened in the account, newest first. Opening a row
+        // marks it read and lands on whatever it announced. Outside the paywall
+        // on purpose: the bell is drawn wherever the app shell is, settings
+        // included, so a reader without a subscription can still open a row —
+        // and meets the paywall on the page it points to, not on the way there.
+        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+        Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
     });
 
     // Accessible during onboarding for transaction import and categorization

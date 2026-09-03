@@ -1,5 +1,6 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { EncryptionKeyButton } from '@/components/encryption-key-button';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { ImportTransactionsButton } from '@/components/transactions/import-transactions-button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -49,15 +50,18 @@ export function AppSidebarHeader({
                         <>
                             <Separator
                                 orientation="vertical"
-                                className="data-[orientation=vertical]:h-6"
+                                className="hidden data-[orientation=vertical]:h-6 sm:block"
                             />
                             <EncryptionKeyButton />
                         </>
                     )}
+                    {/* Tools on the left, the account on the right: the bell and
+                        the avatar read as a pair. */}
                     <Separator
                         orientation="vertical"
                         className="data-[orientation=vertical]:h-6 sm:hidden"
                     />
+                    <NotificationBell className="sm:hidden" />
                     <NavUser className="sm:hidden" />
                 </div>
             </div>

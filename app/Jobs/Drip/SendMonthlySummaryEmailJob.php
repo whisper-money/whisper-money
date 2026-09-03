@@ -7,6 +7,7 @@ use App\Jobs\WarmMonthlySummaryCardsJob;
 use App\Mail\Drip\MonthlySummaryEmail;
 use App\Models\MonthlySummary;
 use App\Models\User;
+use App\Notifications\MonthlySummaryReady;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\Summaries;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -91,6 +92,18 @@ class SendMonthlySummaryEmailJob extends SendDripEmailJob
         // of their own: the reader has a message to read before any of the
         // download buttons matter, and this worker has the next reader waiting.
         WarmMonthlySummaryCardsJob::dispatch($this->summary, $pro);
+
+        // The bell rings once per report, however often the send is retried. The
+        // row itself is the record: `sent_at` is written after this point, so a
+        // job that died in between would ring again if it were the guard.
+        $alreadyRung = $this->user->notifications()
+            ->where('type', MonthlySummaryReady::class)
+            ->where('data->summary_id', $this->summary->id)
+            ->exists();
+
+        if (! $alreadyRung) {
+            $this->user->notify(new MonthlySummaryReady($this->summary));
+        }
 
         $this->summary->forceFill(['sent_at' => now()])->save();
 

@@ -62,6 +62,25 @@ export interface SubscriptionPaymentIssueNotification {
     action_url: string;
 }
 
+export type NotificationKind = 'monthly_summary' | 'other';
+
+/** One row in the bell, already worded for the reader's language. */
+export interface NotificationItem {
+    id: UUID;
+    kind: NotificationKind;
+    title: string;
+    body: string | null;
+    /** Where opening the row lands. Null when the row is only informational. */
+    url: string | null;
+    read_at: string | null;
+    created_at: string;
+}
+
+export interface NotificationsBell {
+    unread: number;
+    recent: NotificationItem[];
+}
+
 export interface Flash {
     success: string | null;
     error: string | null;
@@ -87,6 +106,8 @@ export interface SharedData {
     pricing: PricingConfig;
     sidebarOpen: boolean;
     features: Features;
+    /** Null for guests, during onboarding and while the bell is switched off. */
+    notifications: NotificationsBell | null;
     expiredBankingConnections: ExpiredBankingConnectionNotification[];
     hasEncryptedAccounts: boolean;
     hasEncryptedTransactions: boolean;

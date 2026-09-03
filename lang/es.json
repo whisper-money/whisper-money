@@ -2812,5 +2812,12 @@
     "Monthly summary": "Resumen mensual",
     "A report of the month just closed, with what changed and a few things worth five minutes. Turning it off also stops the reminder that goes with it.": "Un informe del mes que acaba de cerrar, con lo que ha cambiado y unas cuantas cosas que merecen cinco minutos. Al desactivarlo también se desactiva el recordatorio que lo acompaña.",
     ":count months in a row in the black, and the best of them.": ":count meses seguidos en positivo, y el mejor de todos.",
-    ":count months in a row in the black.": ":count meses seguidos en positivo."
+    ":count months in a row in the black.": ":count meses seguidos en positivo.",
+    "Mark all as read": "Marcar todo como leído",
+    "View all notifications": "Ver todas las notificaciones",
+    "Unread": "Sin leer",
+    "Notification": "Notificación",
+    ":count unread notifications": ":count notificaciones sin leer",
+    "Everything that happened in your account, newest first.": "Todo lo que ha pasado en tu cuenta, lo más reciente primero.",
+    "Nothing here yet. Updates about your money show up here as they happen.": "Aún no hay nada. Las novedades sobre tu dinero aparecerán aquí según ocurran."
 }
