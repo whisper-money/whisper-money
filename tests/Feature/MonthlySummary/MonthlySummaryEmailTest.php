@@ -98,6 +98,22 @@ it('points a paying reader at the AI setting instead of at the paywall', functio
     expect($rendered)->toContain('Turn AI on in Settings')->not->toContain('See Pro');
 });
 
+it('says the analysis could not be written rather than selling Pro to someone who has it', function (): void {
+    // A provider outage leaves a consenting reader with no analysis, which used
+    // to fall into the locked block above: it pitches the plan they already pay
+    // for and its button sends them to switch on a setting that is already on.
+    config(['subscriptions.enabled' => true]);
+    $summary = sentSummaryFor();
+
+    $rendered = (new MonthlySummaryEmail($summary->user, $summary, pro: true))->render();
+
+    expect($rendered)
+        ->toContain('We could not write your analysis this month')
+        ->not->toContain('Pro tells you where from')
+        ->not->toContain('Turn AI on in Settings')
+        ->not->toContain('See Pro');
+});
+
 it('says so when the month was reported incomplete', function (): void {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
     $summary = MonthlySummary::factory()->create([
