@@ -8,6 +8,7 @@ use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Support\Figures;
 use App\Support\Money;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Enums\Lab;
@@ -84,9 +85,10 @@ class AnalysisWriter
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             try {
                 return $this->promptOnce($summary, $user);
-            } catch (FailoverableException $exception) {
-                // Overloaded or rate-limited is expected, not a bug. Back off and
-                // try again; only give up once the attempts run out.
+            } catch (ConnectionException|FailoverableException $exception) {
+                // Overloaded, rate-limited or simply not answering in time is
+                // expected, not a bug. Back off and try again; only give up once
+                // the attempts run out.
                 Log::warning('Monthly summary analysis attempt failed.', [
                     'summary_id' => $summary->id,
                     'attempt' => $attempt,
