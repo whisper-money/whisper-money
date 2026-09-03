@@ -152,3 +152,70 @@ it('does not run its queries on the first paint', function (): void {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->missing('monthlySummary'));
 });
+
+it('shows one notice at most, for the newest month, however many are waiting', function (): void {
+    $user = readerWithSummary();
+    MonthlySummary::factory()->sent()->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+        'period' => now()->subMonths(2)->format('Y-m'),
+    ]);
+
+    $this->actingAs($user)->withoutVite();
+
+    expect(dashboardNotice()['monthLabel'])->toBe(now()->subMonth()->locale('en')->isoFormat('MMMM'));
+});
+
+it('puts the notice away for good once dismissed', function (): void {
+    $user = readerWithSummary();
+    $summary = $user->monthlySummaries()->first();
+
+    $this->actingAs($user)->withoutVite();
+    $this->post("/summaries/{$summary->id}/dismiss")->assertNoContent();
+
+    expect($summary->fresh()->dismissed_at)->not->toBeNull()
+        ->and(dashboardNotice())->toBeNull();
+});
+
+it('does not fall back to an older month once the newest is dismissed', function (): void {
+    // "Your February summary is ready" in April reads as a bug, not a reminder.
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
+    $space = $user->activeSpace()->id;
+    MonthlySummary::factory()->sent()->dismissed()->create(['user_id' => $user->id, 'space_id' => $space]);
+    MonthlySummary::factory()->sent()->create([
+        'user_id' => $user->id,
+        'space_id' => $space,
+        'period' => now()->subMonths(2)->format('Y-m'),
+    ]);
+
+    $this->actingAs($user)->withoutVite();
+
+    expect(dashboardNotice())->toBeNull();
+});
+
+it('will not let one reader dismiss another reader\'s notice', function (): void {
+    $summary = MonthlySummary::query()->where('user_id', readerWithSummary()->id)->first();
+
+    $this->actingAs(User::factory()->onboarded()->create())
+        ->post("/summaries/{$summary->id}/dismiss")
+        ->assertNotFound();
+
+    expect($summary->fresh()->dismissed_at)->toBeNull();
+});
+
+it('offers the next month again after the previous one was dismissed', function (): void {
+    // The dismissal belongs to one summary, not to the reader: closing August
+    // must not silence September.
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
+    $space = $user->activeSpace()->id;
+    MonthlySummary::factory()->sent()->dismissed()->create([
+        'user_id' => $user->id,
+        'space_id' => $space,
+        'period' => now()->subMonths(2)->format('Y-m'),
+    ]);
+    MonthlySummary::factory()->sent()->create(['user_id' => $user->id, 'space_id' => $space]);
+
+    $this->actingAs($user)->withoutVite();
+
+    expect(dashboardNotice()['monthLabel'])->toBe(now()->subMonth()->locale('en')->isoFormat('MMMM'));
+});
