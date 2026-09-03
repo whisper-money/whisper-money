@@ -1,10 +1,17 @@
 import { show } from '@/actions/App/Http/Controllers/NotificationController';
+import { AchievementFigure } from '@/components/achievements/achievement-figure';
+import { Medal } from '@/components/achievements/medal';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { type NotificationItem, type NotificationKind } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
-import { BellIcon, FileTextIcon, type LucideIcon } from 'lucide-react';
+import {
+    BellIcon,
+    FileTextIcon,
+    SparklesIcon,
+    type LucideIcon,
+} from 'lucide-react';
 import { type ReactNode } from 'react';
 
 /**
@@ -90,15 +97,24 @@ const KINDS: Record<
     { label: () => string; icon: LucideIcon }
 > = {
     monthly_summary: { label: () => __('Monthly summary'), icon: FileTextIcon },
+    achievement: { label: () => __('Achievement'), icon: SparklesIcon },
+    achievements_welcome: {
+        label: () => __('Achievements'),
+        icon: SparklesIcon,
+    },
     other: { label: () => __('Notification'), icon: BellIcon },
 };
 
 /**
- * Square tile with a document for a report, so it reads apart at a glance from
- * the round medal an achievement will get.
+ * A round medal for an achievement and a square tile for everything else, so
+ * the two kinds of row read apart before a word of them is read.
  */
-function NotificationGlyph({ kind }: { kind: NotificationKind }): ReactNode {
-    const Icon = KINDS[kind].icon;
+function NotificationGlyph({ item }: { item: NotificationItem }): ReactNode {
+    if (item.kind === 'achievement' && item.rarity) {
+        return <Medal rarity={item.rarity} icon={item.icon} size={32} />;
+    }
+
+    const Icon = KINDS[item.kind].icon;
 
     return (
         <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-card">
@@ -130,7 +146,7 @@ export function NotificationRow({
             )}
         >
             <div className="pt-0.5">
-                <NotificationGlyph kind={item.kind} />
+                <NotificationGlyph item={item} />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
@@ -143,6 +159,12 @@ export function NotificationRow({
                     )}
                 >
                     {item.title}
+                    {item.figure && (
+                        <>
+                            {' '}
+                            <AchievementFigure figure={item.figure} />
+                        </>
+                    )}
                 </span>
                 {item.body && (
                     <span className="text-xs text-pretty text-muted-foreground">

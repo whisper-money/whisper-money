@@ -11,11 +11,13 @@ import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
+import { index as progress } from '@/routes/achievements';
 import { edit as editAppearance } from '@/routes/appearance';
 import { type SharedData, type User } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
+    Award,
     Eye,
     EyeOff,
     Landmark,
@@ -55,6 +57,23 @@ export function UserMenuContent({
                     <UserInfo user={user} showEmail={true} />
                 </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {/* Where the medals live. Not in the main navigation: it is
+                something to look back at, not somewhere to work. */}
+            <DropdownMenuGroup>
+                <DropdownMenuItem asChild>
+                    <Link
+                        className="block w-full"
+                        href={progress()}
+                        as="button"
+                        prefetch
+                        onClick={cleanup}
+                    >
+                        <Award className="mr-2" />
+                        {__('Progress')}
+                    </Link>
+                </DropdownMenuItem>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                 <DropdownMenuItem

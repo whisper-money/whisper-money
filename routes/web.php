@@ -2,6 +2,7 @@
 
 use App\Features\SplitTransactions;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\AgentDocsController;
 use App\Http\Controllers\Ai\AiConsentController;
 use App\Http\Controllers\Ai\CategorizationController;
@@ -12,12 +13,12 @@ use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\ComparisonController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentationController;
+use App\Http\Controllers\EmailUnsubscribeController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\IntegrationsController;
 use App\Http\Controllers\LoanDetailController;
 use App\Http\Controllers\MonthlySummaryController;
 use App\Http\Controllers\MonthlySummaryShareController;
-use App\Http\Controllers\MonthlySummaryUnsubscribeController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OpenBanking\AccountMappingController;
@@ -181,6 +182,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Named `list`/`read` rather than `index`/`show`: the settings screen
         // for email preferences already owns `notifications.index`, the same way
         // `accounts.list` here sits beside settings' `accounts.index`.
+        // Outside the paywall, like the bell: both are reached from chrome that
+        // is drawn on every screen, settings included.
+        Route::get('progress', [AchievementController::class, 'index'])->name('achievements.index');
+
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.list');
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.read');
@@ -311,8 +316,15 @@ Route::get('s/{token}', MonthlySummaryShareController::class)
     ->where('token', '[A-Za-z0-9]{20,64}')
     ->name('monthly-summaries.shared');
 
-// One-click unsubscribe from the monthly summary. GET for the footer link, POST
-// for RFC 8058 clients that unsubscribe from the mailbox without a browser.
-Route::match(['get', 'post'], 'unsubscribe/monthly-summary/{user}', MonthlySummaryUnsubscribeController::class)
+// One-click unsubscribe. GET for the footer link, POST for RFC 8058 clients
+// that unsubscribe from the mailbox without a browser. Which preference the
+// link switches off is fixed by the route, never read from the query string.
+Route::match(['get', 'post'], 'unsubscribe/monthly-summary/{user}', EmailUnsubscribeController::class)
+    ->defaults('preference', 'monthly_summary')
     ->middleware('signed')
     ->name('monthly-summaries.unsubscribe');
+
+Route::match(['get', 'post'], 'unsubscribe/achievements/{user}', EmailUnsubscribeController::class)
+    ->defaults('preference', 'achievements')
+    ->middleware('signed')
+    ->name('achievements.unsubscribe');

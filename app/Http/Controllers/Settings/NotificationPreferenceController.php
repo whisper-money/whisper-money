@@ -27,6 +27,7 @@ class NotificationPreferenceController extends Controller
         'bank_transactions_synced' => 'notify_on_bank_transactions_synced',
         'inactive_no_bank' => 'notify_on_inactive_no_bank',
         'monthly_summary' => 'notify_monthly_summary',
+        'achievements' => 'notify_achievements',
         'budget_new_transaction' => 'budget_notify_on_new_transaction',
         'budget_close_to_limit' => 'budget_notify_on_close_to_limit',
         'budget_over_limit' => 'budget_notify_on_over_limit',
@@ -41,6 +42,7 @@ class NotificationPreferenceController extends Controller
             'notifyOnBankTransactionsSynced' => $user->wantsBankTransactionsSyncedEmail(),
             'notifyOnInactiveNoBank' => $user->wantsInactiveNoBankEmail(),
             'notifyMonthlySummary' => $user->wantsMonthlySummaryEmail(),
+            'notifyAchievements' => $user->wantsAchievementsEmail(),
             'budgetDefaults' => [
                 'notify_on_new_transaction' => (bool) ($setting->budget_notify_on_new_transaction ?? false),
                 'notify_on_close_to_limit' => (bool) ($setting->budget_notify_on_close_to_limit ?? true),

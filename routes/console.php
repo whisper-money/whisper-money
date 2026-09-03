@@ -8,6 +8,11 @@ Schedule::command('budgets:generate-periods')->daily();
 // the press round still lands on current data. It also provisions the account on
 // its first run, so no manual step is needed after a deploy.
 Schedule::command('demo:reset --press')->dailyAt('04:00')->timezone('Europe/Madrid');
+// After the demo reset at 04:00, so a freshly seeded demo account has its
+// medals by the time anybody opens it. Everyone else is swept in the same pass:
+// a milestone is about a closed month or a month-end balance, so once a day is
+// as often as the answer can change.
+Schedule::command('achievements:sweep')->dailyAt('04:30')->timezone('Europe/Madrid');
 Schedule::command('banking:sync')->everySixHours();
 Schedule::command('banks:check-logos')->weekly();
 // Connectors move in and out of beta at the provider, so the flag stored on

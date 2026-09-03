@@ -383,6 +383,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(SavingsGoal::class);
     }
 
+    /** @return HasMany<Achievement, $this> */
+    public function achievements(): HasMany
+    {
+        return $this->hasMany(Achievement::class);
+    }
+
     /** @return HasMany<MonthlySummary, $this> */
     public function monthlySummaries(): HasMany
     {
@@ -646,6 +652,15 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function wantsMonthlySummaryEmail(): bool
     {
         return $this->setting->notify_monthly_summary ?? true;
+    }
+
+    /**
+     * The one email a day the medals can produce. The rows in the bell are the
+     * record of what happened and stay whatever this says.
+     */
+    public function wantsAchievementsEmail(): bool
+    {
+        return $this->setting->notify_achievements ?? true;
     }
 
     /**

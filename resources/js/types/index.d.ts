@@ -62,7 +62,47 @@ export interface SubscriptionPaymentIssueNotification {
     action_url: string;
 }
 
-export type NotificationKind = 'monthly_summary' | 'other';
+export type AchievementRarity = 'common' | 'uncommon' | 'rare' | 'epic';
+
+/**
+ * A medal's number, as data rather than as a sentence: an amount has to be
+ * written by `AmountDisplay` so privacy mode can blank it.
+ */
+export interface AchievementFigureValue {
+    type: 'money' | 'percent' | 'months' | 'count';
+    value: number;
+    currency: string | null;
+}
+
+/** One medal on the progress screen. A locked one carries only its tier. */
+export interface AchievementMedal {
+    key: string;
+    rarity: AchievementRarity;
+    /** Share of evaluated members holding it, or null below the floor. */
+    share: number | null;
+    locked: boolean;
+    name: string | null;
+    icon: string | null;
+    /** The milestone it stands for. */
+    figure: AchievementFigureValue | null;
+    /** What was actually reached on the day. */
+    reached: AchievementFigureValue | null;
+    achieved_on: string | null;
+}
+
+export interface AchievementTrack {
+    key: string;
+    label: string;
+    note: string | null;
+    unlocked: number;
+    medals: AchievementMedal[];
+}
+
+export type NotificationKind =
+    | 'monthly_summary'
+    | 'achievement'
+    | 'achievements_welcome'
+    | 'other';
 
 /** One row in the bell, already worded for the reader's language. */
 export interface NotificationItem {
@@ -74,6 +114,11 @@ export interface NotificationItem {
     url: string | null;
     read_at: string | null;
     created_at: string;
+    /** Set on an achievement row: the milestone, for the client to write. */
+    figure: AchievementFigureValue | null;
+    /** Set on an achievement row, so the bell can draw the right medal. */
+    rarity: AchievementRarity | null;
+    icon: string | null;
 }
 
 export interface NotificationsBell {
