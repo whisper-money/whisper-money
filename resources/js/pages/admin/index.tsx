@@ -356,8 +356,11 @@ function UserList({ users }: { users: Paginated<AdminUser> }) {
 
             <div className="flex items-center justify-between gap-4">
                 <span className="text-sm text-muted-foreground">
-                    {__('Showing')} {users.from ?? 0}–{users.to ?? 0} {__('of')}{' '}
-                    {users.total.toLocaleString()}
+                    {__('Showing :from–:to of :total', {
+                        from: users.from ?? 0,
+                        to: users.to ?? 0,
+                        total: users.total.toLocaleString(),
+                    })}
                 </span>
                 <div className="flex gap-2">
                     <PageLink
