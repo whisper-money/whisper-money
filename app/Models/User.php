@@ -143,7 +143,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         }
 
         return $this->onboarded_at
-            ->addHours((int) config('subscriptions.free_plan_escape_delay_hours'))
+            ->addHours(config('subscriptions.free_plan_escape_delay_hours'))
             ->isPast();
     }
 

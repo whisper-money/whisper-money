@@ -771,3 +771,34 @@ test('the free plan endpoint refuses to run while the delay is still on', functi
 test('guests cannot choose the free plan', function () {
     $this->post(route('subscribe.free-plan'))->assertRedirect(route('register'));
 });
+
+test('a subscriber cannot choose the free plan', function () {
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHours(4)]);
+    BankingConnection::factory()->for($user)->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_free_plan_guard_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $this->actingAs($user);
+
+    $this->post(route('subscribe.free-plan'))->assertForbidden();
+
+    expect($user->fresh()->bankingConnections()->exists())->toBeTrue();
+});
+
+test('the free plan endpoint is off when subscriptions are disabled', function () {
+    config(['subscriptions.enabled' => false]);
+
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subHours(4)]);
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->post(route('subscribe.free-plan'))->assertForbidden();
+
+    expect($user->fresh()->bankingConnections()->exists())->toBeTrue();
+});

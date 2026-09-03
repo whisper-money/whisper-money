@@ -8,15 +8,21 @@ use Illuminate\Foundation\Http\FormRequest;
 class ChooseFreePlanRequest extends FormRequest
 {
     /**
-     * The delay after onboarding is enforced here and not only by hiding the
-     * button: the paywall is the screen people poke at when they are stuck.
+     * This is the paywall's exit, so it is only for someone the paywall is
+     * actually holding: not a subscriber, not a self-hosted instance with
+     * `subscriptions.enabled` off, and not before the delay after onboarding
+     * is up. That last one is enforced here and not only by hiding the button,
+     * because the paywall is the screen people poke at when they are stuck.
      */
     public function authorize(): bool
     {
         /** @var ?User $user */
         $user = $this->user();
 
-        return (bool) $user?->canEscapeToFreePlan();
+        return config('subscriptions.enabled')
+            && $user !== null
+            && ! $user->hasProPlan()
+            && $user->canEscapeToFreePlan();
     }
 
     /**

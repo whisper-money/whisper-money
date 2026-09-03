@@ -142,7 +142,7 @@ describe('Paywall', () => {
 
         expect(
             await screen.findByText(
-                'Your connected banks are disconnected and stop syncing.',
+                'Connected banks are disconnected and stop syncing.',
             ),
         ).toBeInTheDocument();
         expect(
@@ -274,5 +274,11 @@ describe('Paywall', () => {
             'paywall_free_plan_confirm_opened',
             { gate: 'former-subscriber' },
         );
+
+        // The manual trip to Settings is not offered alongside the confirmed
+        // route: one way out per screen.
+        expect(
+            screen.queryByText('Disconnect your banks'),
+        ).not.toBeInTheDocument();
     });
 });

@@ -77,6 +77,11 @@ export default function Paywall() {
           ? 'soft'
           : 'hard';
 
+    // The gates that have something to disconnect, once the delay after
+    // onboarding is up. Derived once so the button and the confirmation it
+    // opens cannot drift apart.
+    const freeDoorOpen = gate !== 'soft' && canEscapeToFreePlan;
+
     // This is the highest-leverage screen in the product and it carried no
     // instrumentation at all, so moving the escape hatch to first paint would
     // have shipped unmeasurable. `paywall_seen_at` is stamped on view, so it
@@ -160,7 +165,7 @@ export default function Paywall() {
                             />
                         ) : (
                             <>
-                                {canEscapeToFreePlan && (
+                                {freeDoorOpen && (
                                     <StepButton
                                         text={__('Continue with the free plan')}
                                         variant="ghost"
@@ -188,7 +193,11 @@ export default function Paywall() {
                     onSelect={setSelectedPlan}
                 />
 
-                {gate === 'former-subscriber' && (
+                {/* The manual route through Settings is the way out only
+                    while the confirmed one is still held back: two ways to
+                    reach the same free plan, on the same screen, is a choice
+                    the user has no way to make. */}
+                {gate === 'former-subscriber' && !freeDoorOpen && (
                     <div>
                         <StepSectionLabel>{__('Or go free')}</StepSectionLabel>
                         <StepList>
@@ -219,7 +228,7 @@ export default function Paywall() {
                 />
             )}
 
-            {gate !== 'soft' && canEscapeToFreePlan && (
+            {freeDoorOpen && (
                 <FreePlanDialog
                     open={freePlanOpen}
                     onOpenChange={setFreePlanOpen}
@@ -281,7 +290,7 @@ function FreePlanDialog({
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                         {__(
-                            'The free plan does not include the paid features, so we switch all three off:',
+                            'The free plan does not include the paid features, so they are switched off:',
                         )}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -289,12 +298,12 @@ function FreePlanDialog({
                 <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
                     <li>
                         {__(
-                            'Your connected banks are disconnected and stop syncing.',
+                            'Connected banks are disconnected and stop syncing.',
                         )}
                     </li>
                     <li>{__('AI suggestions are switched off.')}</li>
                     <li>
-                        {__('Your AI assistant loses access to your finances.')}
+                        {__('The AI assistant loses access to your finances.')}
                     </li>
                     <li className="font-medium text-foreground">
                         {__(
