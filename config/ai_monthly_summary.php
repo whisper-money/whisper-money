@@ -26,8 +26,9 @@ return [
     |
     | Provider failures are almost always transient, and a paying user losing
     | their analysis to a 200 ms hiccup is a bad trade — so a few attempts with
-    | a growing pause. What never happens is the report waiting: once the
-    | attempts are spent, it goes out without the section.
+    | a growing pause. These are the attempts inside one send; a send that spends
+    | them all against an unreachable model holds the report and comes back
+    | later, and only gives up on the section once its own retries are spent.
     |
     */
 
