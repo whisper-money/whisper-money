@@ -53,6 +53,31 @@ it('spends every attempt on a transient provider failure before giving up', func
     Exceptions::assertReportedCount(1);
 })->with('transient provider failures');
 
+it('recovers when a later attempt gets through', function (Closure $makeFailure): void {
+    config()->set('ai_monthly_summary.attempts', 3);
+
+    Exceptions::fake();
+
+    $calls = 0;
+    MonthlySummaryAgent::fake(function () use (&$calls, $makeFailure) {
+        $calls++;
+
+        if ($calls === 1) {
+            throw $makeFailure();
+        }
+
+        return 'A steady month: you saved more than you spent.';
+    });
+
+    [$summary, $user] = readerAwaitingAnalysis();
+
+    expect(app(AnalysisWriter::class)->draft($summary, $user))
+        ->toBe('A steady month: you saved more than you spent.')
+        ->and($calls)->toBe(2);
+
+    Exceptions::assertNothingReported();
+})->with('transient provider failures');
+
 it('reports an unexpected failure once and does not burn the remaining attempts', function (): void {
     config()->set('ai_monthly_summary.attempts', 3);
 
