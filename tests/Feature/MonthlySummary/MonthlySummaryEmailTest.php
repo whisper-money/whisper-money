@@ -17,6 +17,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
 
 /*
  * The report email itself: what it says, who sees the analysis, and how a reader
@@ -24,6 +25,9 @@ use Illuminate\Support\Facades\Queue;
  */
 
 beforeEach(function (): void {
+    // The analysis backs off between attempts; no test here is about waiting.
+    Sleep::fake();
+
     // What is under test is what the email says, not Chromium: left real, every
     // job test here draws a month's worth of cards.
     $this->mock(CardRenderer::class, function ($mock): void {
