@@ -2474,5 +2474,7 @@
     "Uncommon": "Peu commun",
     "Unlocked": "Débloqués",
     "of :total": "sur :total",
-    "Progress": "Progression"
+    "Progress": "Progression",
+    "1 month": "1 mois",
+    "{1}1 month|[2,*]:count months": "{1}1 mois|[2,*]:count mois"
 }

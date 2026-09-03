@@ -115,7 +115,7 @@ class AchievementsEmail extends DripMail
             $figure === null => null,
             $figure['currency'] !== null => Money::formatIn((int) $figure['value'], $figure['currency'], $locale),
             $figure['type'] === 'percent' => Figures::percent((float) $figure['value'], $locale, decimals: 0),
-            $figure['type'] === 'months' => __(':count months', ['count' => (int) $figure['value']]),
+            $figure['type'] === 'months' => trans_choice('{1}1 month|[2,*]:count months', (int) $figure['value'], ['count' => (int) $figure['value']]),
             default => Figures::count((int) $figure['value'], $locale),
         };
     }

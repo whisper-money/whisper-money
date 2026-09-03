@@ -3,7 +3,10 @@ import {
     AchievementCell,
     monthLabel,
 } from '@/components/achievements/achievement-cell';
-import { AchievementFigure } from '@/components/achievements/achievement-figure';
+import {
+    AchievementFigure,
+    monthsLabel,
+} from '@/components/achievements/achievement-figure';
 import { Medal } from '@/components/achievements/medal';
 import { RarityTag } from '@/components/achievements/rarity-tag';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -90,9 +93,7 @@ function Overview({ overview }: Pick<Props, 'overview'>) {
                 </span>
                 <span className="text-lg leading-6 font-semibold tabular-nums">
                     {overview.streak
-                        ? __(':count months', {
-                              count: overview.streak.months,
-                          })
+                        ? monthsLabel(overview.streak.months)
                         : '—'}
                 </span>
                 <span className="text-xs text-muted-foreground">

@@ -2879,5 +2879,7 @@
     "Turn achievement emails off": "Desactivar los correos de logros",
     "{1}We went through your history: one was already yours.|[2,*]We went through your history: :count were already yours.": "{1}Hemos repasado tu historial: uno ya era tuyo.|[2,*]Hemos repasado tu historial: :count ya eran tuyos.",
     "{1}You unlocked an achievement|[2,*]You unlocked :count achievements": "{1}Has desbloqueado un logro|[2,*]Has desbloqueado :count logros",
-    "{1}Your money crossed a line worth marking.|[2,*]Your money crossed a few lines worth marking.": "{1}Tu dinero ha cruzado una línea que merece marcarse.|[2,*]Tu dinero ha cruzado unas cuantas líneas que merecen marcarse."
+    "{1}Your money crossed a line worth marking.|[2,*]Your money crossed a few lines worth marking.": "{1}Tu dinero ha cruzado una línea que merece marcarse.|[2,*]Tu dinero ha cruzado unas cuantas líneas que merecen marcarse.",
+    "1 month": "1 mes",
+    "{1}1 month|[2,*]:count months": "{1}1 mes|[2,*]:count meses"
 }
