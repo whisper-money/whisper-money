@@ -3,7 +3,6 @@
 use App\Enums\BankingConnectionStatus;
 use App\Enums\CategoryType;
 use App\Enums\DripEmailType;
-use App\Features\MonthlySummaries;
 use App\Jobs\Drip\SendMonthlySummaryEmailJob;
 use App\Jobs\Drip\SendMonthlySummaryReminderEmailJob;
 use App\Models\Account;
@@ -13,7 +12,6 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserMailLog;
 use Illuminate\Support\Facades\Bus;
-use Laravel\Pennant\Feature;
 
 /*
  * The send window.
@@ -23,10 +21,6 @@ use Laravel\Pennant\Feature;
  * hour is local to the reader, not Madrid; and a month that is still moving is
  * not reported until it stops, except on the last day, when it goes out anyway.
  */
-
-beforeEach(function (): void {
-    Feature::define(MonthlySummaries::class, fn (): bool => true);
-});
 
 /**
  * Move the clock to a given day of the current month at 09:00 in Madrid, which
@@ -212,17 +206,6 @@ it('skips readers who turned the summary off', function (): void {
     $user = readerWithClosedMonth();
     withActivityInTheNewMonth($user);
     $user->setting()->updateOrCreate(['user_id' => $user->id], ['notify_monthly_summary' => false]);
-
-    $this->artisan('email:monthly-summary')->assertSuccessful();
-
-    assertNoSummaryMail();
-});
-
-it('skips readers the feature is not on for', function (): void {
-    Bus::fake();
-    Feature::define(MonthlySummaries::class, fn (): bool => false);
-    travelToWindowDay(3);
-    withActivityInTheNewMonth(readerWithClosedMonth());
 
     $this->artisan('email:monthly-summary')->assertSuccessful();
 

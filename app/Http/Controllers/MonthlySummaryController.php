@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\MonthlySummaryCard;
 use App\Enums\MonthlySummaryFormat;
 use App\Enums\MonthlySummaryTheme;
-use App\Features\MonthlySummaries;
 use App\Models\MonthlySummary;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardPicker;
@@ -16,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -38,8 +36,6 @@ class MonthlySummaryController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless(Feature::active(MonthlySummaries::class), 404);
-
         $summaries = $request->user()->monthlySummaries()
             ->whereNotNull('sent_at')
             ->orderByDesc('period')
@@ -52,7 +48,6 @@ class MonthlySummaryController extends Controller
 
     public function show(Request $request, MonthlySummary $summary): Response
     {
-        abort_unless(Feature::active(MonthlySummaries::class), 404);
         abort_unless($summary->user_id === $request->user()->id, 404);
 
         $pro = $this->analysis->eligible($request->user());

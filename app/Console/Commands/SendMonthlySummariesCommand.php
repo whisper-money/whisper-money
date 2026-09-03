@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Enums\DripEmailType;
-use App\Features\MonthlySummaries;
 use App\Jobs\Drip\SendMonthlySummaryEmailJob;
 use App\Jobs\Drip\SendMonthlySummaryReminderEmailJob;
 use App\Models\User;
@@ -13,7 +12,6 @@ use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Laravel\Pennant\Feature;
 
 /**
  * Queues the monthly report, and the nudge for whoever is not ready for one.
@@ -147,7 +145,7 @@ class SendMonthlySummariesCommand extends Command
      */
     private function process(User $user, string $timezone): bool
     {
-        if (! Feature::for($user)->active(MonthlySummaries::class) || ! $user->wantsMonthlySummaryEmail()) {
+        if (! $user->wantsMonthlySummaryEmail()) {
             return false;
         }
 
