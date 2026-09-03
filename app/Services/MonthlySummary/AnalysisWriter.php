@@ -45,8 +45,10 @@ class AnalysisWriter
 
     /**
      * Write the analysis onto the summary, unless it already has one or the user
-     * is not entitled to it. Returns the text, or null when there is none — the
-     * report goes out either way.
+     * is not entitled to it. Returns the text, or null when there is none.
+     *
+     * @throws ConnectionException|FailoverableException when the model could not
+     *                                                   be reached at all
      */
     public function write(MonthlySummary $summary, User $user): ?string
     {
@@ -71,13 +73,17 @@ class AnalysisWriter
 
     /**
      * A provider hiccup costs a paying user their analysis for a whole month, so
-     * it is worth a few attempts. What it is never worth is delaying the report:
-     * once the attempts are spent this returns null and the email goes without
-     * the section.
+     * it is worth a few attempts. Once they are spent the last failure is handed
+     * back rather than swallowed: only the caller knows whether there is another
+     * pass coming, and a send that comes back in half an hour would otherwise
+     * file one Sentry event per pass.
      *
      * Nothing is written here: the caller decides whether the text is kept. That
      * is what lets the preview command show a real analysis without leaving one
      * on the summary the real send will read later in the month.
+     *
+     * @throws ConnectionException|FailoverableException when the model could not
+     *                                                   be reached at all
      */
     public function draft(MonthlySummary $summary, User $user): ?string
     {
@@ -110,12 +116,10 @@ class AnalysisWriter
         }
 
         // One hiccup is expected and stays in the logs. Every attempt failing is
-        // an outage that just cost a paying reader their month, and a provider
-        // that is never reachable would otherwise be invisible here. Getting
-        // here means the last attempt was one of those failures.
-        report($lastTransient);
-
-        return null;
+        // an outage, and what that is worth is not this method's call: the send
+        // holds the report and comes back, and reports it only once it has run
+        // out of passes of its own.
+        throw $lastTransient;
     }
 
     private function promptOnce(MonthlySummary $summary, User $user): ?string

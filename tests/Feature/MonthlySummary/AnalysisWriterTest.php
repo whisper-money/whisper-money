@@ -13,6 +13,10 @@ use Illuminate\Support\Sleep;
  * their whole month. The retry only ever covered a provider that answered badly,
  * so one that did not answer at all - a 30s timeout reaching Gemini - burned the
  * month on the first try and was filed as a bug (PHP-LARAVEL-5Q).
+ *
+ * Spending the attempts is all this does. Whether an unreachable model is worth
+ * holding the report back for belongs to the caller, so the failure is handed
+ * back rather than filed here.
  */
 
 beforeEach(function (): void {
@@ -32,31 +36,35 @@ function readerAwaitingAnalysis(): array
     return [$summary, $user];
 }
 
-it('spends every attempt on a transient provider failure before giving up', function (Closure $makeFailure): void {
+it('spends every attempt on a transient provider failure before handing it back', function (Closure $makeFailure): void {
     config()->set('ai_monthly_summary.attempts', 2);
 
     Exceptions::fake();
     Log::spy();
 
+    $failure = $makeFailure();
+
     $calls = 0;
-    MonthlySummaryAgent::fake(function () use (&$calls, $makeFailure) {
+    MonthlySummaryAgent::fake(function () use (&$calls, $failure) {
         $calls++;
 
-        throw $makeFailure();
+        throw $failure;
     });
 
     [$summary, $user] = readerAwaitingAnalysis();
 
-    expect(app(AnalysisWriter::class)->draft($summary, $user))->toBeNull()
-        ->and($calls)->toBe(2);
+    expect(fn (): ?string => app(AnalysisWriter::class)->draft($summary, $user))
+        ->toThrow($failure::class);
+
+    expect($calls)->toBe(2);
 
     Log::shouldHaveReceived('warning')
         ->withArgs(fn (string $message): bool => $message === 'Monthly summary analysis attempt failed.')
         ->twice();
 
-    // Quiet per attempt, but a run that never got through is an outage the logs
-    // alone would bury.
-    Exceptions::assertReportedCount(1);
+    // Not filed here: the send holds the report and comes back, and one outage
+    // would otherwise be one Sentry event per pass per reader.
+    Exceptions::assertNothingReported();
 })->with('transient provider failures');
 
 it('recovers when a later attempt gets through', function (Closure $makeFailure): void {

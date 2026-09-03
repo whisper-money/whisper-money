@@ -13,11 +13,13 @@ use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
 use App\Services\MonthlySummary\Summaries;
+use Illuminate\Contracts\Queue\Job;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Sleep;
+use Mockery\MockInterface;
 
 /*
  * The report email itself: what it says, who sees the analysis, and how a reader
@@ -264,29 +266,84 @@ it('draws the screen\'s cards in the reader\'s language too', function (): void 
     expect($drawnIn)->toBe('es')->and(app()->getLocale())->toBe('en');
 });
 
-it('spends every attempt on a provider that never answers, and sends the report regardless', function (): void {
-    // The report has always gone out without the section - a read timeout was
-    // caught as an unexpected bug, reported, and the remaining attempts thrown
-    // away (PHP-LARAVEL-5Q). What the reader lost was the analysis itself, to a
-    // single blip that a second attempt would usually have got past.
+/**
+ * A reader entitled to an analysis, and a model that never answers: the 30s
+ * Gemini timeout that cost 13 of 97 Pro readers their analysis on the first real
+ * send (PHP-LARAVEL-5Q). Billing off makes everyone Pro, so consent is the only
+ * gate left to grant.
+ */
+function readerOwedAnAnalysis(): MonthlySummary
+{
     config(['subscriptions.enabled' => false, 'ai_monthly_summary.attempts' => 2]);
-    Mail::fake();
-    Queue::fake();
-    Exceptions::fake();
 
     $summary = sentSummaryFor();
     $summary->user->recordAiConsent();
 
-    $attempts = 0;
-    MonthlySummaryAgent::fake(function () use (&$attempts): never {
-        $attempts++;
+    MonthlySummaryAgent::fake(fn (): never => throw new ConnectionException(
+        'cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received',
+    ));
 
-        throw new ConnectionException(
-            'cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received',
-        );
-    });
+    return $summary;
+}
 
-    (new SendMonthlySummaryEmailJob($summary->user->fresh(), $summary))->handle();
+/**
+ * The job as the worker runs it. `attempts()` and `release()` mean nothing
+ * without a queue job attached, and the decision to hold the report reads both.
+ *
+ * @return array{0: SendMonthlySummaryEmailJob, 1: MockInterface}
+ */
+function summaryJobOnAttempt(MonthlySummary $summary, int $attempt): array
+{
+    $job = new SendMonthlySummaryEmailJob($summary->user->fresh(), $summary);
+
+    $queueJob = Mockery::mock(Job::class);
+    $queueJob->shouldReceive('attempts')->andReturn($attempt);
+    $job->setJob($queueJob);
+
+    return [$job, $queueJob];
+}
+
+it('holds the report rather than handing a paying reader an analysis-less one', function (): void {
+    // The analysis has to reach them in the email, not only on the screen, so a
+    // provider wobble postpones the send instead of spending the month's one
+    // report on a summary with the section missing.
+    Mail::fake();
+    Queue::fake();
+    Exceptions::fake();
+
+    $summary = readerOwedAnAnalysis();
+    [$job, $queueJob] = summaryJobOnAttempt($summary, 1);
+    $queueJob->shouldReceive('release')->once();
+
+    $job->handle();
+
+    Mail::assertNothingQueued();
+
+    expect($summary->fresh()->sent_at)->toBeNull()
+        ->and(UserMailLog::where('user_id', $summary->user_id)
+            ->where('email_type', DripEmailType::MonthlySummary)
+            ->exists())->toBeFalse();
+
+    // Nothing filed while there are passes left, or one outage would be five
+    // Sentry events per reader.
+    Exceptions::assertNothingReported();
+});
+
+it('sends the report without the analysis once the retries are spent', function (): void {
+    // The last permitted attempt must send: another release would exhaust the
+    // job and drop it in failed_jobs, and the reader would get no report at all
+    // - strictly worse than one carrying the honest "we could not write it".
+    Mail::fake();
+    Queue::fake();
+    Exceptions::fake();
+
+    $summary = readerOwedAnAnalysis();
+    [$job, $queueJob] = summaryJobOnAttempt($summary, 5);
+    $queueJob->shouldNotReceive('release');
+
+    expect($job->tries)->toBe(5);
+
+    $job->handle();
 
     // Sent, addressed to a reader the email knows is entitled - which is what
     // keeps the paywall block out of it - and with no analysis.
@@ -295,11 +352,13 @@ it('spends every attempt on a provider that never answers, and sends the report 
         fn (MonthlySummaryEmail $mail): bool => $mail->analysis === null && $mail->pro,
     );
 
-    expect($attempts)->toBe(2)
-        ->and($summary->fresh()->sent_at)->not->toBeNull()
+    expect($summary->fresh()->sent_at)->not->toBeNull()
         ->and(UserMailLog::where('user_id', $summary->user_id)
             ->where('email_type', DripEmailType::MonthlySummary)
             ->exists())->toBeTrue();
+
+    // One event for a reader who really did lose the analysis.
+    Exceptions::assertReportedCount(1);
 });
 
 it('does not send to a reader who turned the summary off', function (): void {
