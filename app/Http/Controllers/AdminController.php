@@ -15,40 +15,46 @@ class AdminController extends Controller
 {
     /**
      * The only commands /admin will run, grouped the way the page lists them.
-     * Each entry is the command line itself, so one that would otherwise post to
-     * Discord is pinned here to its console-only form.
+     * The key is the command line itself, so one that would otherwise post to
+     * Discord is pinned here to its console-only form. The value says whether
+     * the free-text arguments field may add anything to it: `false` is for the
+     * commands whose options can do damage, and for the ones that take none.
      *
      * Keep this to commands that finish in seconds: the request waits for them.
      *
-     * @var array<string, array<int, string>>
+     * @var array<string, array<string, bool>>
      */
     private const COMMANDS = [
         'Diagnostics' => [
-            'banking:health',
-            'banks:check-logos',
-            'stats:daily-report --no-discord',
-            'stats:mcp-usage',
+            'banking:health' => true,
+            'banks:check-logos' => false,
+            'stats:daily-report --no-discord' => true,
+            'stats:mcp-usage' => true,
         ],
         'Maintenance' => [
-            'budgets:generate-periods',
-            'resend:sync',
-            'demo:reset',
-            'email:monthly-summary-preview',
+            'budgets:generate-periods' => false,
+            'resend:sync' => false,
+            // No arguments: `--email=` points the reseed at any account it
+            // names and force-deletes that account's real data first.
+            'demo:reset' => false,
+            'email:monthly-summary-preview' => true,
         ],
     ];
 
     /**
-     * Seconds a run may take before PHP stops it, so a command that turns out to
-     * be slower than expected cannot hold the request open indefinitely.
+     * Seconds a run may take before PHP kills the request. A backstop, not a
+     * graceful one: the timeout is fatal and uncatchable, so an admin who trips
+     * it gets a dead request rather than the partial output below. Keeping the
+     * curated list to commands that finish in seconds is the real protection.
      */
     private const RUN_TIMEOUT_SECONDS = 60;
 
     private const USERS_PER_PAGE = 25;
 
     /**
-     * Every allowed command line, flattened for validation and for the select.
+     * Every allowed command line, mapped to whether it takes arguments.
      *
-     * @return array<int, string>
+     * @return array<string, bool>
      */
     public static function allowedCommands(): array
     {

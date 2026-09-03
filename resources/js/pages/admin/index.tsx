@@ -1,6 +1,7 @@
 import { index, run } from '@/actions/App/Http/Controllers/AdminController';
 import Heading from '@/components/heading';
 import HeadingSmall from '@/components/heading-small';
+import InputError from '@/components/input-error';
 import { SettingsTable } from '@/components/shared/settings-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,7 @@ import {
     getCoreRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNowStrict } from 'date-fns';
 import { Check, Copy, Play } from 'lucide-react';
 import { useState } from 'react';
 
@@ -57,9 +58,11 @@ type Paginated<T> = {
     next_page_url: string | null;
 };
 
+/** Group label to its command lines, each mapped to whether it takes arguments. */
+type CommandGroups = Record<string, Record<string, boolean>>;
+
 interface Props {
-    /** Group label to the command lines it offers, exactly as the runner allows. */
-    commands: Record<string, string[]>;
+    commands: CommandGroups;
     users: Paginated<AdminUser>;
     result: CommandResult | null;
 }
@@ -140,10 +143,14 @@ function CommandRunner({
     commands,
     result,
 }: {
-    commands: Record<string, string[]>;
+    commands: CommandGroups;
     result: CommandResult | null;
 }) {
-    const firstCommand = Object.values(commands)[0]?.[0];
+    const takesArguments: Record<string, boolean> = Object.assign(
+        {},
+        ...Object.values(commands),
+    );
+    const [command, setCommand] = useState(Object.keys(takesArguments)[0]);
 
     return (
         <section>
@@ -158,14 +165,15 @@ function CommandRunner({
                 className="mt-4"
                 data-test="run-command-form"
             >
-                {({ processing }) => (
+                {({ errors, processing }) => (
                     <>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                             <div className="space-y-2 sm:w-80">
                                 <Label htmlFor="command">{__('Command')}</Label>
                                 <Select
                                     name="command"
-                                    defaultValue={firstCommand}
+                                    value={command}
+                                    onValueChange={setCommand}
                                     required
                                 >
                                     <SelectTrigger
@@ -178,18 +186,22 @@ function CommandRunner({
                                         {Object.entries(commands).map(
                                             ([group, lines]) => (
                                                 <SelectGroup key={group}>
+                                                    {/* Server-side group name;
+                                                        not a translatable key. */}
                                                     <SelectLabel>
-                                                        {__(group)}
+                                                        {group}
                                                     </SelectLabel>
-                                                    {lines.map((line) => (
-                                                        <SelectItem
-                                                            key={line}
-                                                            value={line}
-                                                            className="font-mono"
-                                                        >
-                                                            {line}
-                                                        </SelectItem>
-                                                    ))}
+                                                    {Object.keys(lines).map(
+                                                        (line) => (
+                                                            <SelectItem
+                                                                key={line}
+                                                                value={line}
+                                                                className="font-mono"
+                                                            >
+                                                                {line}
+                                                            </SelectItem>
+                                                        ),
+                                                    )}
                                                 </SelectGroup>
                                             ),
                                         )}
@@ -208,7 +220,12 @@ function CommandRunner({
                                     id="arguments"
                                     name="arguments"
                                     className={CONTROL_HEIGHT}
-                                    placeholder="--history-days=7"
+                                    placeholder={
+                                        takesArguments[command]
+                                            ? '--history-days=7'
+                                            : __('This command takes none')
+                                    }
+                                    disabled={!takesArguments[command]}
                                 />
                             </div>
 
@@ -221,6 +238,11 @@ function CommandRunner({
                                 {processing ? __('Running…') : __('Run')}
                             </Button>
                         </div>
+
+                        <InputError
+                            className="mt-2"
+                            message={errors.command ?? errors.arguments}
+                        />
 
                         {result && <CommandOutput result={result} />}
                     </>
@@ -276,7 +298,7 @@ const userColumns: ColumnDef<AdminUser>[] = [
         cell: ({ row }) => (
             <span className="text-sm whitespace-nowrap text-muted-foreground">
                 {row.original.last_active_at
-                    ? formatDistanceToNow(
+                    ? formatDistanceToNowStrict(
                           new Date(row.original.last_active_at),
                           { addSuffix: true },
                       )
@@ -285,6 +307,33 @@ const userColumns: ColumnDef<AdminUser>[] = [
         ),
     },
 ];
+
+/** 44px tap targets on a phone, `size="sm"` from `sm` up. */
+const PAGER_HEIGHT = 'h-11 sm:h-8';
+
+/** One end of the pager: a link while there is a page there, a dead button when not. */
+function PageLink({ href, label }: { href: string | null; label: string }) {
+    if (!href) {
+        return (
+            <Button
+                variant="outline"
+                size="sm"
+                className={PAGER_HEIGHT}
+                disabled
+            >
+                {label}
+            </Button>
+        );
+    }
+
+    return (
+        <Button variant="outline" size="sm" className={PAGER_HEIGHT} asChild>
+            <Link href={href} preserveScroll>
+                {label}
+            </Link>
+        </Button>
+    );
+}
 
 function UserList({ users }: { users: Paginated<AdminUser> }) {
     const table = useReactTable({
@@ -311,34 +360,11 @@ function UserList({ users }: { users: Paginated<AdminUser> }) {
                     {users.total.toLocaleString()}
                 </span>
                 <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        asChild={!!users.prev_page_url}
-                        disabled={!users.prev_page_url}
-                    >
-                        {users.prev_page_url ? (
-                            <Link href={users.prev_page_url} preserveScroll>
-                                {__('Previous')}
-                            </Link>
-                        ) : (
-                            <span>{__('Previous')}</span>
-                        )}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        asChild={!!users.next_page_url}
-                        disabled={!users.next_page_url}
-                    >
-                        {users.next_page_url ? (
-                            <Link href={users.next_page_url} preserveScroll>
-                                {__('Next')}
-                            </Link>
-                        ) : (
-                            <span>{__('Next')}</span>
-                        )}
-                    </Button>
+                    <PageLink
+                        href={users.prev_page_url}
+                        label={__('Previous')}
+                    />
+                    <PageLink href={users.next_page_url} label={__('Next')} />
                 </div>
             </div>
         </section>

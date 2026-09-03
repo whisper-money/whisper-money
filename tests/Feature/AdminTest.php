@@ -86,6 +86,30 @@ test('arguments cannot smuggle in a second command', function () {
         ->assertInvalid('arguments');
 });
 
+test('a command that takes no arguments refuses them, so demo:reset cannot be aimed at a real account', function () {
+    Artisan::partialMock()->shouldNotReceive('call');
+
+    $this->actingAs(admin())
+        ->post('/admin/run', [
+            'command' => 'demo:reset',
+            'arguments' => '--email=victim@whisper.test',
+        ])
+        ->assertInvalid('arguments');
+});
+
+test('a command that takes no arguments still runs when none are given', function () {
+    Artisan::partialMock()
+        ->shouldReceive('call')
+        ->once()
+        ->with('demo:reset', [], Mockery::type(BufferedOutput::class))
+        ->andReturn(0);
+
+    $this->actingAs(admin())
+        ->post('/admin/run', ['command' => 'demo:reset', 'arguments' => ''])
+        ->assertValid()
+        ->assertRedirect();
+});
+
 test('an allowed command runs and its output and exit code come back', function () {
     Artisan::partialMock()
         ->shouldReceive('call')
