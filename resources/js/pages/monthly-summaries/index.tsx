@@ -2,6 +2,7 @@ import {
     index,
     show,
 } from '@/actions/App/Http/Controllers/MonthlySummaryController';
+import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
@@ -46,7 +47,7 @@ function monthLabel(period: string, locale: string): string {
 }
 
 export default function MonthlySummariesIndex({ summaries }: Props) {
-    const locale = document.documentElement.lang || 'en';
+    const locale = useLocale();
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
