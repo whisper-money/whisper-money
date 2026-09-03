@@ -45,6 +45,10 @@ class DashboardController extends Controller
      * queries on the first paint, and it rides the follow-up request the
      * dashboard already makes rather than adding one of its own.
      *
+     * One notice at most, and only for the newest month. Dismissing it hides
+     * the notice entirely rather than surfacing an older undismissed month:
+     * "your February summary is ready" in April reads as a bug, not a reminder.
+     *
      * @return array<string, mixed>|null
      */
     private function latestSummary(Request $request): ?array
@@ -58,7 +62,7 @@ class DashboardController extends Controller
             ->orderByDesc('period')
             ->first();
 
-        if ($summary === null) {
+        if ($summary === null || $summary->dismissed_at !== null) {
             return null;
         }
 

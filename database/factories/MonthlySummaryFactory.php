@@ -38,6 +38,11 @@ class MonthlySummaryFactory extends Factory
         return $this->state(fn (): array => ['share_token' => str()->random(48), 'shared_at' => now()]);
     }
 
+    public function dismissed(): self
+    {
+        return $this->state(fn (): array => ['dismissed_at' => now()]);
+    }
+
     /**
      * A payload with every section filled, so a test that renders the email or a
      * card exercises all the rows rather than the empty-state path.

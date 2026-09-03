@@ -13,6 +13,7 @@ use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -124,6 +125,20 @@ class MonthlySummaryController extends Controller
         $summary->revokeShareToken();
 
         return back();
+    }
+
+    /**
+     * Put the dashboard notice away. Answers with no content on purpose: the
+     * dashboard hides the banner locally, and a redirect would make Inertia
+     * reload every deferred prop on the page just to hide one row.
+     */
+    public function dismiss(Request $request, MonthlySummary $summary): HttpResponse
+    {
+        abort_unless($summary->user_id === $request->user()->id, 404);
+
+        $summary->dismiss();
+
+        return response()->noContent();
     }
 
     /**

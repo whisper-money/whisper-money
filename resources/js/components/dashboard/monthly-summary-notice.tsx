@@ -1,7 +1,10 @@
-import { show } from '@/actions/App/Http/Controllers/MonthlySummaryController';
+import {
+    dismiss,
+    show,
+} from '@/actions/App/Http/Controllers/MonthlySummaryController';
 import { Button } from '@/components/ui/button';
 import { __ } from '@/utils/i18n';
-import { Link } from '@inertiajs/react';
+import { Link, useHttp } from '@inertiajs/react';
 import { XIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -12,9 +15,11 @@ import { useState } from 'react';
  * gets the report, and the card that goes with it. It appears when the summary
  * exists rather than on a fixed day, because the send window spans eight days.
  *
- * Dismissal is remembered per browser rather than server-side. It is a monthly
- * notice, so "I closed it on this device" is as much memory as it needs, and it
- * costs no column and no request.
+ * Dismissal is stored on the summary itself, so closing it once puts it away on
+ * every device and across logins. The banner disappears the moment it is clicked
+ * and the request goes out on its own: a full Inertia visit would reload every
+ * deferred prop on the dashboard just to hide one row. Should the request fail,
+ * the notice is back on the next load, which is harmless.
  */
 export type MonthlySummaryNoticeData = {
     id: string;
@@ -22,40 +27,17 @@ export type MonthlySummaryNoticeData = {
     headline: string;
 };
 
-const STORAGE_PREFIX = 'monthly-summary-dismissed:';
-
-function alreadyDismissed(id: string): boolean {
-    try {
-        return localStorage.getItem(STORAGE_PREFIX + id) !== null;
-    } catch {
-        // A private window or blocked site data: showing the notice again beats
-        // crashing the dashboard over it.
-        return false;
-    }
-}
-
 export default function MonthlySummaryNotice({
     summary,
 }: {
     summary: MonthlySummaryNoticeData;
 }) {
-    const [dismissed, setDismissed] = useState(() =>
-        alreadyDismissed(summary.id),
-    );
+    const [dismissed, setDismissed] = useState(false);
+    const { post } = useHttp();
 
     if (dismissed) {
         return null;
     }
-
-    const dismiss = () => {
-        try {
-            localStorage.setItem(STORAGE_PREFIX + summary.id, '1');
-        } catch {
-            // Nothing to do: it will show again next load, which is harmless.
-        }
-
-        setDismissed(true);
-    };
 
     return (
         <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-muted/40 p-4">
@@ -73,7 +55,10 @@ export default function MonthlySummaryNotice({
             <Button
                 size="icon"
                 variant="ghost"
-                onClick={dismiss}
+                onClick={() => {
+                    setDismissed(true);
+                    post(dismiss(summary.id).url);
+                }}
                 aria-label={__('Dismiss')}
             >
                 <XIcon className="size-4" />

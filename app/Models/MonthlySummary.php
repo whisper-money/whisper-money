@@ -28,6 +28,7 @@ use Illuminate\Support\Str;
  * @property ?string $share_token
  * @property ?Carbon $shared_at
  * @property ?Carbon $sent_at
+ * @property ?Carbon $dismissed_at
  */
 class MonthlySummary extends Model
 {
@@ -62,6 +63,7 @@ class MonthlySummary extends Model
             'ai_generated_at' => 'datetime',
             'shared_at' => 'datetime',
             'sent_at' => 'datetime',
+            'dismissed_at' => 'datetime',
         ];
     }
 
@@ -115,5 +117,14 @@ class MonthlySummary extends Model
     public function revokeShareToken(): void
     {
         $this->forceFill(['share_token' => null, 'shared_at' => null])->save();
+    }
+
+    /**
+     * Put the dashboard notice away. Kept on the summary rather than in the
+     * browser, so it stays away on every device and across logins.
+     */
+    public function dismiss(): void
+    {
+        $this->forceFill(['dismissed_at' => now()])->save();
     }
 }
