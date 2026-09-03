@@ -5,6 +5,7 @@ use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Services\MonthlySummary\AnalysisWriter;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Log;
 
 /*
  * The analysis is worth a few attempts: a provider hiccup costs a paying reader
@@ -25,10 +26,11 @@ function readerAwaitingAnalysis(): array
     return [$summary, $user];
 }
 
-it('spends its attempts on a transient provider failure instead of reporting it', function (Closure $makeFailure): void {
+it('spends every attempt on a transient provider failure before giving up', function (Closure $makeFailure): void {
     config()->set('ai_monthly_summary.attempts', 2);
 
     Exceptions::fake();
+    Log::spy();
 
     $calls = 0;
     MonthlySummaryAgent::fake(function () use (&$calls, $makeFailure) {
@@ -42,7 +44,13 @@ it('spends its attempts on a transient provider failure instead of reporting it'
     expect(app(AnalysisWriter::class)->draft($summary, $user))->toBeNull()
         ->and($calls)->toBe(2);
 
-    Exceptions::assertNothingReported();
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message): bool => $message === 'Monthly summary analysis attempt failed.')
+        ->twice();
+
+    // Quiet per attempt, but a run that never got through is an outage the logs
+    // alone would bury.
+    Exceptions::assertReportedCount(1);
 })->with('transient provider failures');
 
 it('reports an unexpected failure once and does not burn the remaining attempts', function (): void {

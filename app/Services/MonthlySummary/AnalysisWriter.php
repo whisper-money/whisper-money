@@ -81,6 +81,7 @@ class AnalysisWriter
     public function draft(MonthlySummary $summary, User $user): ?string
     {
         $attempts = max(1, (int) config('ai_monthly_summary.attempts'));
+        $lastTransient = null;
 
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             try {
@@ -89,6 +90,8 @@ class AnalysisWriter
                 // Overloaded, rate-limited or simply not answering in time is
                 // expected, not a bug. Back off and try again; only give up once
                 // the attempts run out.
+                $lastTransient = $exception;
+
                 Log::warning('Monthly summary analysis attempt failed.', [
                     'summary_id' => $summary->id,
                     'attempt' => $attempt,
@@ -103,6 +106,13 @@ class AnalysisWriter
 
                 return null;
             }
+        }
+
+        // One hiccup is expected and stays in the logs. Every attempt failing is
+        // an outage that just cost a paying reader their month, and a provider
+        // that is never reachable would otherwise be invisible here.
+        if ($lastTransient !== null) {
+            report($lastTransient);
         }
 
         return null;
