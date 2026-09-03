@@ -171,7 +171,7 @@ test('a user cannot exceed the monthly action limit', function () {
 });
 
 test('the admin bypasses the monthly limit and their requests are auto-approved', function () {
-    config(['mail.admin_email' => 'admin@whisper.test']);
+    config(['app.admin_email' => 'admin@whisper.test']);
     $admin = User::factory()->create(['email' => 'admin@whisper.test']);
     IntegrationRequest::factory()->count(5)->create(['user_id' => $admin->id]);
 

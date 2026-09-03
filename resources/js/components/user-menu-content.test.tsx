@@ -1,7 +1,7 @@
 import { type User } from '@/types';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserMenuContent } from './user-menu-content';
 
 vi.mock('@/components/ui/dropdown-menu', () => ({
@@ -47,7 +47,8 @@ vi.mock('@inertiajs/react', () => ({
         ...props
     }: {
         children: ReactNode;
-        href: string;
+        // Wayfinder hands `Link` a route object; only the raw <a> links are strings.
+        href: string | { url: string };
         as?: string;
         prefetch?: boolean;
     }) => {
@@ -55,7 +56,7 @@ vi.mock('@inertiajs/react', () => ({
         delete props.prefetch;
 
         return (
-            <a href={href} {...props}>
+            <a href={typeof href === 'string' ? href : href.url} {...props}>
                 {children}
             </a>
         );
@@ -66,9 +67,17 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         props: {
             version: 'test-version',
+            auth: { isAdmin },
         },
     }),
 }));
+
+/** Flipped per test: the Admin item is the one thing the menu gates on it. */
+let isAdmin = false;
+
+beforeEach(() => {
+    isAdmin = false;
+});
 
 const user: User = {
     id: '0194d20b-2b25-7000-8000-000000000001',
@@ -136,5 +145,33 @@ describe('UserMenuContent', () => {
         fireEvent.click(screen.getByText('Support'));
 
         expect(onOpenSupport).toHaveBeenCalledOnce();
+    });
+
+    it('hides the admin link from everyone but the admin', () => {
+        render(
+            <UserMenuContent
+                user={user}
+                onOpenSupport={vi.fn()}
+                onOpenIntegrationRequests={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByText('Admin')).toBeNull();
+    });
+
+    it('links the admin to /admin', () => {
+        isAdmin = true;
+
+        render(
+            <UserMenuContent
+                user={user}
+                onOpenSupport={vi.fn()}
+                onOpenIntegrationRequests={vi.fn()}
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: /admin/i }).getAttribute('href'),
+        ).toBe('/admin');
     });
 });
