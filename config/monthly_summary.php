@@ -4,24 +4,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Rollout
-    |--------------------------------------------------------------------------
-    |
-    | Whether the feature resolves on for a reader who has never been resolved
-    | before. Off, so the report stays invisible until someone deliberately
-    | turns it on: the switch lives here rather than in the code so the rollout
-    | is a variable in Coolify, not a deploy.
-    |
-    | Pennant stores the resolved value per reader, so turning this on only
-    | reaches readers with no stored row. See App\Features\MonthlySummaries for
-    | the command that has to run alongside it.
-    |
-    */
-
-    'enabled' => (bool) env('MONTHLY_SUMMARIES_ENABLED', false),
-
-    /*
-    |--------------------------------------------------------------------------
     | Send window
     |--------------------------------------------------------------------------
     |

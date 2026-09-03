@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Features\MonthlySummaries;
 use App\Models\Account;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
@@ -14,7 +13,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class DashboardController extends Controller
 {
@@ -53,10 +51,6 @@ class DashboardController extends Controller
      */
     private function latestSummary(Request $request): ?array
     {
-        if (! Feature::for($request->user())->active(MonthlySummaries::class)) {
-            return null;
-        }
-
         $summary = $request->user()->monthlySummaries()
             ->whereNotNull('sent_at')
             ->orderByDesc('period')

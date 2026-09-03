@@ -1,11 +1,9 @@
 <?php
 
-use App\Features\MonthlySummaries;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Services\MonthlySummary\CardRenderer;
 use Inertia\Testing\AssertableInertia;
-use Laravel\Pennant\Feature;
 
 /*
  * The history screen and the dashboard notice.
@@ -16,8 +14,6 @@ use Laravel\Pennant\Feature;
  */
 
 beforeEach(function (): void {
-    Feature::define(MonthlySummaries::class, fn (): bool => true);
-
     $this->mock(CardRenderer::class, function ($mock): void {
         $mock->shouldReceive('url')->andReturn('https://whisper.money/storage/card.png');
         $mock->shouldReceive('forget')->andReturnNull();
@@ -100,13 +96,6 @@ it('titles the month, because the label is read as one', function (): void {
             ->where('report.monthName', 'febrero'));
 });
 
-it('hides the screens entirely while the feature is off', function (): void {
-    Feature::define(MonthlySummaries::class, fn (): bool => false);
-    $user = readerWithSummary();
-
-    $this->actingAs($user)->get('/summaries')->assertNotFound();
-});
-
 it('will not show one reader another reader\'s month', function (): void {
     $summary = MonthlySummary::query()->where('user_id', readerWithSummary()->id)->first();
 
@@ -134,13 +123,6 @@ it('offers the newest summary on the dashboard', function (): void {
     expect(dashboardNotice())
         ->not->toBeNull()
         ->and(dashboardNotice()['monthLabel'])->toBe(now()->subMonth()->locale('en')->isoFormat('MMMM'));
-});
-
-it('offers nothing on the dashboard while the feature is off', function (): void {
-    Feature::define(MonthlySummaries::class, fn (): bool => false);
-    $this->actingAs(readerWithSummary())->withoutVite();
-
-    expect(dashboardNotice())->toBeNull();
 });
 
 it('does not run its queries on the first paint', function (): void {
