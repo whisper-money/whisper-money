@@ -5,8 +5,8 @@ import ReactDOMServer from 'react-dom/server';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
+import { seedPageState } from './lib/page-state';
 import type { SharedData } from './types';
-import { setCurrencyDecimals } from './utils/currency';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -34,9 +34,9 @@ createServer((page) =>
                 (initialPageProps?.hasEncryptionSetup as boolean) ?? false;
 
             // Without this the server-rendered pass falls back to the CLDR
-            // scale, which disagrees with the client on BTC and would swap the
-            // amount on hydration.
-            setCurrencyDecimals(initialPageProps?.currencies?.decimals);
+            // scale and to the untranslated keys, both of which disagree with
+            // the client and would swap the text on hydration.
+            seedPageState(initialPageProps);
 
             return (
                 <EncryptionKeyProvider hasEncryptionSetup={hasEncryptionSetup}>

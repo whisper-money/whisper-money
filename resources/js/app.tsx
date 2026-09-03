@@ -29,6 +29,7 @@ import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
 import { installDeferredPropsRecovery } from './lib/deferred-props-recovery';
 import { installFailedNavigationToast } from './lib/failed-navigation-toast';
 import { leavePage } from './lib/leave-page';
+import { seedPageState } from './lib/page-state';
 import { initializePostHog } from './lib/posthog';
 import {
     isBrowserExtensionNoise,
@@ -42,8 +43,7 @@ import {
 import { installSessionExpiryRecovery } from './lib/session-expiry-recovery';
 import { trackUnattendedRequests } from './lib/unattended-requests';
 import type { ExpiredBankingConnectionNotification, SharedData } from './types';
-import { setCurrencyDecimals } from './utils/currency';
-import { __, setTranslations } from './utils/i18n';
+import { __ } from './utils/i18n';
 
 installChunkLoadRecovery();
 installDeferredPropsRecovery();
@@ -238,24 +238,15 @@ createInertiaApp({
             }
         };
 
-        // Initialize translations from server-rendered page data
-        setTranslations(
-            (initialPageProps?.translations as Record<string, string>) ?? {},
-        );
+        // Translations and the currency scale, both read before the first
+        // paint. Seeded from the server-rendered page data, then kept in sync on
+        // every Inertia navigation.
+        seedPageState(initialPageProps);
 
-        // How many decimals each currency's minor unit has. Every amount is
-        // divided by this before rendering, so it has to be in place before the
-        // first paint.
-        setCurrencyDecimals(initialPageProps?.currencies?.decimals);
-
-        // Keep translations in sync on every Inertia navigation
         router.on('navigate', (event) => {
             const pageProps = event.detail.page.props as unknown as SharedData;
-            setTranslations(
-                (pageProps?.translations as Record<string, string>) ?? {},
-            );
-            setCurrencyDecimals(pageProps?.currencies?.decimals);
 
+            seedPageState(pageProps);
             void syncUserTimezone(pageProps);
         });
 
