@@ -75,20 +75,22 @@ test('filter by date range', function () {
 });
 
 test('rejects a date filter that is not a plain Y-m-d date', function (string $date) {
-    // `date` accepted all of these - it defers to strtotime(), which reads
-    // "275752-07-04" as a date in 2052 and accepts "yesterday" as a date at all -
-    // so the raw string reached both the SQL and the Inertia props, where the
-    // client handed it to date-fns `format()` and the page died mid-render. The UI
-    // only ever sends the output of a `date` input, so nothing legitimate is
-    // turned away.
+    // `date` accepts every one of these - it only asks strtotime() to parse the
+    // string and checkdate() to like the pieces, so "275752-07-04" is a date in
+    // year 275752 and "01/06/2025" is whichever of June and January PHP feels
+    // like. The raw string then reached both the SQL and the Inertia props, where
+    // the client handed it to date-fns `format()` and the page died mid-render.
+    // The UI only ever sends the output of a `date` input, so nothing legitimate
+    // is turned away.
     actingAs($this->user)
         ->get(route('transactions.index', ['date_from' => $date]))
         ->assertSessionHasErrors('date_from');
 })->with([
     '275752-07-04',
     '01/06/2025',
+    '15-06-2026',
+    '2026-6-5',
     '2025-06-15T00:00:00Z',
-    'yesterday',
 ]);
 
 test('filter by amount range', function () {
