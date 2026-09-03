@@ -5,9 +5,11 @@ import Paywall from './paywall';
 
 const mocks = vi.hoisted(() => ({
     visit: vi.fn(),
+    post: vi.fn(),
     captureEvent: vi.fn(),
     props: {
         canUseFreePlan: false,
+        canEscapeToFreePlan: false,
         canManageConnectionsForFreePlan: false,
         stats: {
             accountsCount: 3,
@@ -30,7 +32,7 @@ vi.mock('@/contexts/privacy-mode-context', () => ({
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
-    router: { visit: mocks.visit },
+    router: { visit: mocks.visit, post: mocks.post },
     usePage: () => ({
         props: {
             auth: { user: { id: '1', name: 'Ada', email: 'ada@example.test' } },
@@ -45,6 +47,7 @@ describe('Paywall', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.props.canUseFreePlan = false;
+        mocks.props.canEscapeToFreePlan = false;
         mocks.props.canManageConnectionsForFreePlan = false;
         mocks.props.stats = {
             accountsCount: 3,
@@ -102,7 +105,7 @@ describe('Paywall', () => {
         expect(screen.queryByText(/are already here/)).not.toBeInTheDocument();
     });
 
-    it('offers support and no free door on a hard gate', () => {
+    it('offers support and no free door while the hard gate still holds', () => {
         render(<Paywall />);
 
         expect(
@@ -111,6 +114,72 @@ describe('Paywall', () => {
         expect(
             screen.queryByText('Continue with the free plan'),
         ).not.toBeInTheDocument();
+    });
+
+    it('opens the free door on a hard gate once the delay has passed', async () => {
+        mocks.props.canEscapeToFreePlan = true;
+
+        render(<Paywall />);
+
+        // Support stays reachable: giving up the banks is not the only thing a
+        // stuck user might want.
+        expect(
+            screen.getByRole('button', { name: /Need help\?/ }),
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Continue with the free plan',
+            }),
+        );
+
+        // Nothing leaves until the consequences have been read and confirmed.
+        expect(mocks.post).not.toHaveBeenCalled();
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'paywall_free_plan_confirm_opened',
+            { gate: 'hard' },
+        );
+
+        expect(
+            await screen.findByText(
+                'Your connected banks are disconnected and stop syncing.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/every transaction already imported stay/),
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Disconnect and continue' }),
+        );
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'paywall_free_plan_confirmed',
+            { gate: 'hard' },
+        );
+        expect(mocks.post).toHaveBeenCalledWith(
+            '/subscribe/free-plan',
+            {},
+            expect.anything(),
+        );
+    });
+
+    it('never puts the confirmation in front of a soft gate', () => {
+        mocks.props.canUseFreePlan = true;
+        mocks.props.canEscapeToFreePlan = true;
+
+        render(<Paywall />);
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Continue with the free plan',
+            }),
+        );
+
+        // Nothing to disconnect, so nothing to confirm.
+        expect(mocks.visit).toHaveBeenCalledWith('/dashboard');
+        expect(mocks.post).not.toHaveBeenCalled();
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     });
 
     it('offers the free door immediately on a soft gate, with no timer', () => {
@@ -187,5 +256,23 @@ describe('Paywall', () => {
         expect(screen.getByText('Disconnect your banks')).toBeInTheDocument();
         // A former subscriber is not sold the product again.
         expect(screen.queryByText('Your AI assistant')).not.toBeInTheDocument();
+    });
+
+    it('offers the free door to a former subscriber as well', () => {
+        mocks.props.canManageConnectionsForFreePlan = true;
+        mocks.props.canEscapeToFreePlan = true;
+
+        render(<Paywall />);
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Continue with the free plan',
+            }),
+        );
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'paywall_free_plan_confirm_opened',
+            { gate: 'former-subscriber' },
+        );
     });
 });

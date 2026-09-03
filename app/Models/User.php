@@ -126,6 +126,27 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->paywall_seen_at !== null;
     }
 
+    /**
+     * Whether the paywall may offer the way down to the free plan, which
+     * disconnects the user's banks and revokes their AI consent.
+     *
+     * Held back for the first few hours after onboarding (see
+     * `subscriptions.free_plan_escape_delay_hours`), so a user who has just
+     * finished connecting a bank gets to choose a plan before being invited to
+     * throw that away. Without an `onboarded_at` there is no window to be past
+     * — a half-onboarded user reaching the paywall is not offered the door.
+     */
+    public function canEscapeToFreePlan(): bool
+    {
+        if ($this->onboarded_at === null) {
+            return false;
+        }
+
+        return $this->onboarded_at
+            ->addHours((int) config('subscriptions.free_plan_escape_delay_hours'))
+            ->isPast();
+    }
+
     /** @return HasOne<UserSetting, $this> */
     public function setting(): HasOne
     {
