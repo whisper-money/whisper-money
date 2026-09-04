@@ -79,10 +79,10 @@ it('sends every medal in the catalog, earned or not', function (): void {
         ->assertInertia(function (AssertableInertia $page): void {
             $page->component('achievements/index')
                 ->where('overview.unlocked', 2)
-                ->where('overview.total', 50)
-                ->has('tracks', 11);
+                ->where('overview.total', 59)
+                ->has('tracks', 13);
 
-            expect(medalsIn($page->toArray()['props']))->toHaveCount(50);
+            expect(medalsIn($page->toArray()['props']))->toHaveCount(59);
         });
 });
 
@@ -179,7 +179,7 @@ it('tells the account menu how far through the medals a reader is', function ():
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('achievements.unlocked', 2)
-            ->where('achievements.total', 50));
+            ->where('achievements.total', 59));
 });
 
 it('says nothing about medals to a reader the feature is off for', function (): void {

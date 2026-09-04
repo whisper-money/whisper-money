@@ -11,6 +11,16 @@ export function monthsLabel(count: number): string {
     return count === 1 ? __('1 month') : __(':count months', { count });
 }
 
+/** The same, for a run of weeks. */
+export function weeksLabel(count: number): string {
+    return count === 1 ? __('1 week') : __(':count weeks', { count });
+}
+
+/** The same, for a run of days. */
+export function daysLabel(count: number): string {
+    return count === 1 ? __('1 day') : __(':count days', { count });
+}
+
 /**
  * A medal's number.
  *
@@ -51,7 +61,11 @@ export function AchievementFigure({
             ? `${figure.value}%`
             : figure.type === 'months'
               ? monthsLabel(figure.value)
-              : figure.value.toLocaleString();
+              : figure.type === 'weeks'
+                ? weeksLabel(figure.value)
+                : figure.type === 'days'
+                  ? daysLabel(figure.value)
+                  : figure.value.toLocaleString();
 
     return <span className={cn('tabular-nums', className)}>{label}</span>;
 }

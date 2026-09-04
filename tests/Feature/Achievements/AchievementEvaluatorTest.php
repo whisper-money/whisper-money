@@ -17,9 +17,9 @@ use App\Services\Achievements\Unlock;
  * @param  array<string, int>  $extra
  * @return array<string, Unlock>
  */
-function evaluate(array $months, array $extra = []): array
+function evaluate(array $months, array $extra = [], array $attributes = []): array
 {
-    $user = User::factory()->make(['currency_code' => 'EUR']);
+    $user = User::factory()->make(['currency_code' => 'EUR', 'longest_visit_streak' => 0, 'longest_visit_week_streak' => 0, ...$attributes]);
 
     $history = new History(
         currency: 'EUR',
@@ -36,6 +36,38 @@ function evaluate(array $months, array $extra = []): array
 
     return app(Evaluator::class)->for($user);
 }
+
+it('unlocks the visit streaks the longest run has passed, dated to the last visit', function (): void {
+    $unlocks = evaluate([], attributes: [
+        'longest_visit_streak' => 30,
+        'last_active_at' => '2026-09-20 08:00:00',
+    ]);
+
+    expect(array_keys($unlocks))->toBe(['visits.1', 'visits.2', 'visits.3'])
+        ->and($unlocks['visits.3']->attributes())
+        ->toMatchArray(['achieved_on' => '2026-09-20', 'value' => 30]);
+});
+
+it('unlocks the weekly visit streaks off their own run', function (): void {
+    $unlocks = evaluate([], attributes: [
+        'longest_visit_streak' => 1,
+        'longest_visit_week_streak' => 12,
+        'last_active_at' => '2026-09-20 08:00:00',
+    ]);
+
+    expect(array_keys($unlocks))->toBe(['visit_weeks.1', 'visit_weeks.2'])
+        ->and($unlocks['visit_weeks.2']->attributes())
+        ->toMatchArray(['achieved_on' => '2026-09-20', 'value' => 12]);
+});
+
+it('leaves the visit streaks alone until the first run is long enough', function (): void {
+    $unlocks = evaluate([], attributes: [
+        'longest_visit_streak' => 2,
+        'last_active_at' => '2026-09-20 08:00:00',
+    ]);
+
+    expect($unlocks)->toBe([]);
+});
 
 /**
  * @param  array<string, int|float>  $values

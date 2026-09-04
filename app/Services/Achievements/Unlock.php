@@ -16,6 +16,7 @@ final readonly class Unlock
         private ?int $value = null,
         private ?float $percent = null,
         private ?string $currency = null,
+        private ?string $on = null,
     ) {}
 
     /**
@@ -32,6 +33,15 @@ final readonly class Unlock
     public static function count(string $month, int $count): self
     {
         return new self($month, value: $count);
+    }
+
+    /**
+     * A run of days or weeks visiting, dated to the day itself rather than to
+     * the month: a run that ended on the 20th did not happen on the 1st.
+     */
+    public static function run(string $date, int $length): self
+    {
+        return new self(substr($date, 0, 7), value: $length, on: $date);
     }
 
     public static function rate(string $month, float $percent): self
@@ -54,7 +64,7 @@ final readonly class Unlock
     public function attributes(): array
     {
         return [
-            'achieved_on' => $this->month.'-01',
+            'achieved_on' => $this->on ?? $this->month.'-01',
             'value' => $this->value,
             'percent' => $this->percent,
             'currency_code' => $this->currency,

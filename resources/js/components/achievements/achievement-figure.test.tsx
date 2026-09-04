@@ -38,7 +38,7 @@ describe('AchievementFigure', () => {
         expect(screen.getByText(/20,000,000/)).toBeInTheDocument();
     });
 
-    it('writes a rate, a run of months and a plain count', () => {
+    it('writes a rate, a run of months, weeks or days, and a plain count', () => {
         const { rerender } = render(
             <AchievementFigure
                 figure={{ type: 'percent', value: 50, currency: null }}
@@ -52,6 +52,27 @@ describe('AchievementFigure', () => {
             />,
         );
         expect(screen.getByText('6 months')).toBeInTheDocument();
+
+        rerender(
+            <AchievementFigure
+                figure={{ type: 'weeks', value: 12, currency: null }}
+            />,
+        );
+        expect(screen.getByText('12 weeks')).toBeInTheDocument();
+
+        rerender(
+            <AchievementFigure
+                figure={{ type: 'days', value: 30, currency: null }}
+            />,
+        );
+        expect(screen.getByText('30 days')).toBeInTheDocument();
+
+        rerender(
+            <AchievementFigure
+                figure={{ type: 'days', value: 1, currency: null }}
+            />,
+        );
+        expect(screen.getByText('1 day')).toBeInTheDocument();
 
         rerender(
             <AchievementFigure

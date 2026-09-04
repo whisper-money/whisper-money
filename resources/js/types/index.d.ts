@@ -75,7 +75,7 @@ export type AchievementRarity = 'common' | 'uncommon' | 'rare' | 'epic';
  * written by `AmountDisplay` so privacy mode can blank it.
  */
 export interface AchievementFigureValue {
-    type: 'money' | 'percent' | 'months' | 'count';
+    type: 'money' | 'percent' | 'months' | 'weeks' | 'days' | 'count';
     value: number;
     currency: string | null;
 }

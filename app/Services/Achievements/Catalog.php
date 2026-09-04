@@ -7,10 +7,10 @@ use App\Enums\AchievementRarity as Rarity;
 use Illuminate\Support\Collection;
 
 /**
- * The 46 medals, in the order the progress screen draws them.
+ * The 59 medals, in the order the progress screen draws them.
  *
- * Eleven tracks, each a ladder read left to right: the empty slots to the right
- * of what a reader has are the road ahead, not a list of failures. Keys are
+ * Thirteen tracks, each a ladder read left to right: the empty slots to the
+ * right of what a reader has are the road ahead, not a list of failures. Keys are
  * `track.position`, so a medal keeps its identity when a threshold moves or a
  * name is reworded, and a money medal means the same rung for every currency.
  *
@@ -55,6 +55,8 @@ class Catalog
     public function tracks(): array
     {
         return [
+            'visits' => __('Visit streaks'),
+            'visit_weeks' => __('Weekly visits'),
             'transactions' => __('Transactions'),
             'categorized' => __('Fully categorized'),
             'hygiene' => __('Data hygiene'),
@@ -75,6 +77,21 @@ class Catalog
     private function definitions(): array
     {
         return [
+            // Days in a row opening the app, counted forward from the day the
+            // reader first shows up: there is no log of past visits to read.
+            new Definition('visits.1', 'visits', 1, Rarity::Common, Figure::Days, 'calendar-days', __('Visit streak'), 3),
+            new Definition('visits.2', 'visits', 2, Rarity::Common, Figure::Days, 'calendar-days', __('Visit streak'), 7),
+            new Definition('visits.3', 'visits', 3, Rarity::Uncommon, Figure::Days, 'calendar-days', __('Visit streak'), 30),
+            new Definition('visits.4', 'visits', 4, Rarity::Rare, Figure::Days, 'calendar-days', __('Visit streak'), 100),
+            new Definition('visits.5', 'visits', 5, Rarity::Epic, Figure::Days, 'calendar-days', __('Visit streak'), 365),
+
+            // The same run, counted in weeks: showing up once a week for a
+            // year is a habit too, and one a daily run never records.
+            new Definition('visit_weeks.1', 'visit_weeks', 1, Rarity::Common, Figure::Weeks, 'calendar-range', __('Weekly visit streak'), 4),
+            new Definition('visit_weeks.2', 'visit_weeks', 2, Rarity::Uncommon, Figure::Weeks, 'calendar-range', __('Weekly visit streak'), 12),
+            new Definition('visit_weeks.3', 'visit_weeks', 3, Rarity::Rare, Figure::Weeks, 'calendar-range', __('Weekly visit streak'), 26),
+            new Definition('visit_weeks.4', 'visit_weeks', 4, Rarity::Epic, Figure::Weeks, 'calendar-range', __('Weekly visit streak'), 52),
+
             // Transactions recorded: the first one, then the count.
             new Definition('transactions.1', 'transactions', 1, Rarity::Common, Figure::None, 'plus', __('First transaction')),
             new Definition('transactions.2', 'transactions', 2, Rarity::Common, Figure::Count, 'receipt', __('Transactions recorded'), 50),

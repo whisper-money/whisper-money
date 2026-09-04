@@ -31,12 +31,17 @@ class Evaluator
     public function for(User $user): array
     {
         $history = $this->builder->for($user);
+        $visits = $this->visits($user);
 
+        // Visits are the one thing that does not need a history: somebody who
+        // has recorded nothing yet is still showing up, and that is the streak
+        // worth telling them about first.
         if ($history->isEmpty()) {
-            return [];
+            return $visits;
         }
 
         return array_merge(
+            $visits,
             $this->transactions($history),
             $this->categorized($history),
             $this->hygiene($history),
@@ -293,6 +298,48 @@ class Evaluator
                 if (! isset($unlocks[$key]) && $run >= $this->threshold($key)) {
                     $unlocks[$key] = Unlock::count($month, $run);
                 }
+            }
+        }
+
+        return $unlocks;
+    }
+
+    /**
+     * Days, and weeks, in a row opening the app, read off the runs the
+     * middleware keeps.
+     *
+     * @return array<string, Unlock>
+     */
+    private function visits(User $user): array
+    {
+        $on = $user->last_active_at?->toDateString();
+
+        return array_merge(
+            $this->visitRun('visits', (int) $user->longest_visit_streak, $on),
+            $this->visitRun('visit_weeks', (int) $user->longest_visit_week_streak, $on),
+        );
+    }
+
+    /**
+     * The longest run rather than the current one, because the sweep is nightly
+     * and a run that peaked and broke between two of them still happened. Dated
+     * to the last visit, which is the day the run reached its length.
+     *
+     * @return array<string, Unlock>
+     */
+    private function visitRun(string $track, int $best, ?string $on): array
+    {
+        if ($best < 1 || $on === null) {
+            return [];
+        }
+
+        $unlocks = [];
+
+        foreach ($this->catalog->tiers($track) as $tier) {
+            $key = "{$track}.{$tier}";
+
+            if ($best >= $this->threshold($key)) {
+                $unlocks[$key] = Unlock::run($on, $best);
             }
         }
 
