@@ -2,8 +2,8 @@
 
 namespace App\Services\MonthlySummary;
 
-use App\Enums\MonthlySummaryFormat;
-use App\Enums\MonthlySummaryTheme;
+use App\Enums\CardFormat;
+use App\Enums\CardTheme;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use Carbon\Carbon;
@@ -117,8 +117,8 @@ class Summaries
             return $this->renderer->url(
                 $summary,
                 $summary->card,
-                MonthlySummaryFormat::default(),
-                MonthlySummaryTheme::default(),
+                CardFormat::default(),
+                CardTheme::default(),
                 $pro,
             );
         } catch (Throwable $exception) {

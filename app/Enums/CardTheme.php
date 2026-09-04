@@ -7,7 +7,7 @@ namespace App\Enums;
  * what the public page unfurls; the report screen offers both, because a card
  * posted into a dark feed reads better dark.
  */
-enum MonthlySummaryTheme: string
+enum CardTheme: string
 {
     case Light = 'light';
     case Dark = 'dark';

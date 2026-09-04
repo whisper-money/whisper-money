@@ -22,6 +22,7 @@ enum DripEmailType: string
     case TrialEnding = 'trial_ending';
     case MonthlySummary = 'monthly_summary';
     case MonthlySummaryReminder = 'monthly_summary_reminder';
+    case AchievementsUnlocked = 'achievements_unlocked';
 
     /**
      * Emails whose only job is to nudge the user back into the app. They share a

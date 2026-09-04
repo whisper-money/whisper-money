@@ -2,9 +2,9 @@
 
 namespace App\Services\MonthlySummary;
 
+use App\Enums\CardFormat;
+use App\Enums\CardTheme;
 use App\Enums\MonthlySummaryCard;
-use App\Enums\MonthlySummaryFormat;
-use App\Enums\MonthlySummaryTheme;
 use App\Models\MonthlySummary;
 use App\Support\Figures;
 use Carbon\Carbon;
@@ -28,8 +28,8 @@ class CardPresenter
      * biggest category of the month came out invisible.
      */
     private const SPLIT_SHADES = [
-        MonthlySummaryTheme::Light->value => ['#18181b', '#52525b', '#a1a1aa', '#e4e4e7'],
-        MonthlySummaryTheme::Dark->value => ['#fafafa', '#d4d4d8', '#71717a', '#3f3f46'],
+        CardTheme::Light->value => ['#18181b', '#52525b', '#a1a1aa', '#e4e4e7'],
+        CardTheme::Dark->value => ['#fafafa', '#d4d4d8', '#71717a', '#3f3f46'],
     ];
 
     /**
@@ -40,7 +40,7 @@ class CardPresenter
     /**
      * @return array<string, mixed>
      */
-    public function viewData(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme, bool $pro): array
+    public function viewData(MonthlySummary $summary, MonthlySummaryCard $card, CardFormat $format, CardTheme $theme, bool $pro): array
     {
         $locale = app()->getLocale();
         $month = $summary->periodStart();
@@ -60,7 +60,7 @@ class CardPresenter
     /**
      * @return array<string, mixed>
      */
-    private function contentFor(MonthlySummaryCard $card, MonthlySummary $summary, MonthlySummaryTheme $theme, string $locale, Carbon $month): array
+    private function contentFor(MonthlySummaryCard $card, MonthlySummary $summary, CardTheme $theme, string $locale, Carbon $month): array
     {
         return match ($card) {
             MonthlySummaryCard::SavingsRate => $this->savingsRate($summary, $locale, $month),
@@ -115,7 +115,7 @@ class CardPresenter
     /**
      * @return array<string, mixed>
      */
-    private function spendingSplit(MonthlySummary $summary, MonthlySummaryTheme $theme, string $locale, Carbon $month): array
+    private function spendingSplit(MonthlySummary $summary, CardTheme $theme, string $locale, Carbon $month): array
     {
         return [
             'kicker' => __('Where it went'),
@@ -244,7 +244,7 @@ class CardPresenter
     /**
      * @return list<array<string, mixed>>
      */
-    private function splitRows(MonthlySummary $summary, MonthlySummaryTheme $theme, string $locale): array
+    private function splitRows(MonthlySummary $summary, CardTheme $theme, string $locale): array
     {
         $shades = self::SPLIT_SHADES[$theme->value];
         $top = (array) $summary->figure('categories.top', []);

@@ -4,24 +4,16 @@ import {
     share,
     show,
 } from '@/actions/App/Http/Controllers/MonthlySummaryController';
+import { ShareSummaryCardDialog } from '@/components/summaries/share-summary-card-dialog';
 import { Button } from '@/components/ui/button';
-import { ButtonGroup } from '@/components/ui/button-group';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
-import {
-    CheckIcon,
-    CopyIcon,
-    DownloadIcon,
-    MoonIcon,
-    SparklesIcon,
-    SunIcon,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CheckIcon, CopyIcon, Share2Icon, SparklesIcon } from 'lucide-react';
+import { useState } from 'react';
 
 /**
  * One month's report, and the cards it can produce.
@@ -34,14 +26,7 @@ import { useEffect, useState } from 'react';
  */
 type Row = { text: string };
 type Todo = { text: string; action: string };
-type CardFormat = { format: string; url: string };
-type CardTheme = 'light' | 'dark';
-type CardLinks = { preview: string; formats: CardFormat[] };
-type CardOption = {
-    card: string;
-    chosen: boolean;
-    themes: Record<CardTheme, CardLinks>;
-};
+type CardOption = { card: string; chosen: boolean; preview: string };
 
 interface Props {
     summary: { id: string; period: string; complete: boolean; shared: boolean };
@@ -55,28 +40,6 @@ interface Props {
     analysis: string | null;
     cards: CardOption[];
     shareUrl: string | null;
-}
-
-const FORMAT_LABELS: Record<string, string> = {
-    feed: '4:5',
-    story: '9:16',
-    wide: '16:9',
-};
-
-/**
- * Which theme to show the cards in.
- *
- * The reader's own choice — light, dark or whatever the OS says — is already
- * resolved onto the document by the time React runs, so reading it back off the
- * class is shorter and less wrong than working it out a second time from the
- * preference and a media query. It has to be read after mount rather than as the
- * initial state, because the page is server-rendered and the server cannot know
- * what the OS says — the same reason use-appearance hydrates in an effect.
- */
-function currentCardTheme(): CardTheme {
-    return document.documentElement.classList.contains('dark')
-        ? 'dark'
-        : 'light';
 }
 
 function cardLabel(card: string): string {
@@ -155,9 +118,6 @@ export default function MonthlySummaryShow({
     shareUrl,
 }: Props) {
     const [copied, setCopied] = useState(false);
-    const [theme, setTheme] = useState<CardTheme>('light');
-
-    useEffect(() => setTheme(currentCardTheme()), []);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Summaries', href: index().url },
@@ -211,39 +171,14 @@ export default function MonthlySummaryShow({
                 )}
 
                 <div className="flex flex-col gap-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="text-sm font-semibold">
-                            {__('Share your month')}
-                        </h2>
-                        {/* One switch for the whole section: every preview and
-                            every download link follows it. */}
-                        <ToggleGroup
-                            type="single"
-                            value={theme}
-                            onValueChange={(picked) => {
-                                if (picked) {
-                                    setTheme(picked as CardTheme);
-                                }
-                            }}
-                            variant="outline"
-                            size="sm"
-                        >
-                            <ToggleGroupItem
-                                value="light"
-                                className="cursor-pointer gap-1.5 px-2.5 text-xs aria-checked:bg-primary/10"
-                            >
-                                <SunIcon className="size-3.5" />
-                                {__('Light')}
-                            </ToggleGroupItem>
-                            <ToggleGroupItem
-                                value="dark"
-                                className="cursor-pointer gap-1.5 px-2.5 text-xs aria-checked:bg-primary/10"
-                            >
-                                <MoonIcon className="size-3.5" />
-                                {__('Dark')}
-                            </ToggleGroupItem>
-                        </ToggleGroup>
-                    </div>
+                    <h2 className="text-sm font-semibold">
+                        {__('Share your month')}
+                    </h2>
+
+                    {/* The grid answers one question — which card to post — so
+                        each tile is a thumbnail and a button. Shape, skin and
+                        the two ways out live in the dialog, the same one the
+                        progress screen opens for a medal. */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {cards.map((card) => (
                             <div
@@ -261,36 +196,27 @@ export default function MonthlySummaryShow({
                                             'ring-2 ring-primary ring-offset-2 ring-offset-background',
                                     )}
                                 >
-                                    {/* Keyed by theme so switching starts the
-                                        other picture over the skeleton rather
-                                        than on top of the one it replaces. */}
                                     <CardPreview
-                                        key={theme}
                                         label={cardLabel(card.card)}
-                                        src={card.themes[theme].preview}
+                                        src={card.preview}
                                     />
                                 </div>
 
-                                <ButtonGroup className="w-full">
-                                    {card.themes[theme].formats.map(
-                                        (format) => (
-                                            <Button
-                                                key={format.format}
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-9 flex-1 text-xs sm:h-8"
-                                                asChild
-                                            >
-                                                <a href={format.url}>
-                                                    <DownloadIcon className="size-3.5" />
-                                                    {FORMAT_LABELS[
-                                                        format.format
-                                                    ] ?? format.format}
-                                                </a>
-                                            </Button>
-                                        ),
-                                    )}
-                                </ButtonGroup>
+                                <ShareSummaryCardDialog
+                                    summaryId={summary.id}
+                                    period={summary.period}
+                                    card={card.card}
+                                    label={cardLabel(card.card)}
+                                >
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 w-full cursor-pointer text-xs sm:h-8"
+                                    >
+                                        <Share2Icon className="size-3.5" />
+                                        {__('Share')}
+                                    </Button>
+                                </ShareSummaryCardDialog>
                             </div>
                         ))}
                     </div>

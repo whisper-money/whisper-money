@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CardFormat;
+use App\Enums\CardTheme;
 use App\Enums\MonthlySummaryCard;
-use App\Enums\MonthlySummaryFormat;
-use App\Enums\MonthlySummaryTheme;
 use App\Models\MonthlySummary;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardPicker;
@@ -79,9 +79,13 @@ class MonthlySummaryController extends Controller
         abort_unless($summary->user_id === $request->user()->id, 404);
 
         $cardType = MonthlySummaryCard::tryFrom($card);
-        $formatType = MonthlySummaryFormat::tryFrom($format);
-        $themeType = MonthlySummaryTheme::tryFrom($theme);
-        abort_if($cardType === null || $formatType === null || $themeType === null, 404);
+        $formatType = CardFormat::tryFrom($format);
+        $themeType = CardTheme::tryFrom($theme);
+        abort_if($cardType === null || $themeType === null, 404);
+        // Only the shapes the screen offers. Wide is drawn by nothing now, so
+        // serving it would mean starting Chromium for a picture no button asks
+        // for — see CardFormat::shareable().
+        abort_unless($formatType !== null && in_array($formatType, CardFormat::shareable(), strict: true), 404);
 
         // A month with no savings goal has no savings-goal card, whatever the URL says.
         abort_unless($this->picker->canDraw($cardType, $summary->payload), 404);
@@ -159,11 +163,15 @@ class MonthlySummaryController extends Controller
     }
 
     /**
-     * The chosen card first, then the alternatives, each in both themes: the
-     * screen carries one light/dark switch for the whole section and flips every
-     * preview and every download link with it, without a round trip.
+     * The chosen card first, then the alternatives, each with the one picture the
+     * grid paints.
      *
-     * @return list<array<string, mixed>>
+     * Only a thumbnail: the shape, the skin and the two buttons all live in the
+     * share dialog now, which builds its own URLs off the same route, so there is
+     * nothing here for the screen to pick from. The grid's job is choosing WHICH
+     * card to post, and that is what a thumbnail answers.
+     *
+     * @return list<array{card: string, chosen: bool, preview: string}>
      */
     private function cardOptions(MonthlySummary $summary): array
     {
@@ -172,34 +180,13 @@ class MonthlySummaryController extends Controller
         return array_map(fn (MonthlySummaryCard $card): array => [
             'card' => $card->value,
             'chosen' => $card === $summary->card,
-            'themes' => collect(MonthlySummaryTheme::cases())
-                ->mapWithKeys(fn (MonthlySummaryTheme $theme): array => [
-                    $theme->value => $this->cardLinks($summary, $card, $theme),
-                ])
-                ->all(),
+            'preview' => route('monthly-summaries.card', [
+                $summary, $card->value, CardFormat::default()->value, CardTheme::default()->value, 'preview' => 1,
+            ]),
         ], $cards);
     }
 
-    /**
-     * The picture the screen paints and the three files it offers, for one card
-     * in one theme.
-     *
-     * @return array{preview: string, formats: list<array{format: string, url: string}>}
-     */
-    private function cardLinks(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryTheme $theme): array
-    {
-        return [
-            'preview' => route('monthly-summaries.card', [
-                $summary, $card->value, MonthlySummaryFormat::default()->value, $theme->value, 'preview' => 1,
-            ]),
-            'formats' => array_map(fn (MonthlySummaryFormat $format): array => [
-                'format' => $format->value,
-                'url' => route('monthly-summaries.card', [$summary, $card->value, $format->value, $theme->value]),
-            ], MonthlySummaryFormat::cases()),
-        ];
-    }
-
-    private function filename(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme): string
+    private function filename(MonthlySummary $summary, MonthlySummaryCard $card, CardFormat $format, CardTheme $theme): string
     {
         return "whisper-money-{$summary->period}-{$card->value}-{$format->value}-{$theme->value}.png";
     }

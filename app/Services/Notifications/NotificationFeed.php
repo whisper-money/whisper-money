@@ -4,7 +4,11 @@ namespace App\Services\Notifications;
 
 use App\Models\MonthlySummary;
 use App\Models\User;
+use App\Notifications\AchievementsWelcome;
+use App\Notifications\AchievementUnlocked;
 use App\Notifications\MonthlySummaryReady;
+use App\Services\Achievements\Catalog;
+use App\Services\Achievements\Presenter;
 use Carbon\Carbon;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
@@ -20,14 +24,19 @@ use Illuminate\Support\Collection;
  */
 class NotificationFeed
 {
+    public function __construct(
+        private Catalog $catalog,
+        private Presenter $presenter,
+    ) {}
+
     /**
      * Rows the bell shows before pointing at the full page.
      */
     private const RECENT = 6;
 
     /**
-     * ponytail: the page shows the latest 50 rows in one go; paginate the day
-     * someone actually scrolls past them.
+     * The page shows this many rows in one go. No pagination until somebody
+     * actually scrolls past them.
      */
     private const PAGE = 50;
 
@@ -152,8 +161,13 @@ class NotificationFeed
             'id' => $notification->id,
             'read_at' => $notification->read_at?->toIso8601String(),
             'created_at' => $notification->created_at?->toIso8601String(),
+            'figure' => null,
+            'rarity' => null,
+            'icon' => null,
             ...match ($notification->type) {
                 MonthlySummaryReady::class => $this->monthlySummaryRow($notification->data),
+                AchievementUnlocked::class => $this->achievementRow($notification->data),
+                AchievementsWelcome::class => $this->welcomeRow($notification->data),
                 default => [
                     'kind' => 'other',
                     'title' => class_basename($notification->type),
@@ -184,6 +198,67 @@ class NotificationFeed
             'title' => __('Your :month summary is ready', ['month' => $month]),
             'body' => $data['headline'] ?? null,
             'url' => route('monthly-summaries.show', $data['summary_id']),
+        ];
+    }
+
+    /**
+     * The medal's name and its tier are read from the catalog rather than from
+     * the row, so a reworded medal reads its new wording everywhere. The figure
+     * travels as a number for the client to write: an amount printed here would
+     * sit in the clear through privacy mode.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{kind: string, title: string, body: ?string, url: string, rarity: ?string, icon: ?string, figure: ?array<string, mixed>}
+     */
+    private function achievementRow(array $data): array
+    {
+        $definition = $this->catalog->find((string) ($data['key'] ?? ''));
+
+        if ($definition === null) {
+            // A medal that has left the catalog: the row it wrote stays, and
+            // says only that something was unlocked.
+            return [
+                'kind' => 'achievement',
+                'title' => __('Achievement unlocked'),
+                'body' => null,
+                'rarity' => null,
+                'icon' => null,
+                'url' => route('achievements.index'),
+                'figure' => null,
+            ];
+        }
+
+        return [
+            'kind' => 'achievement',
+            'title' => $definition->name,
+            'body' => $definition->rarity->label(),
+            'rarity' => $definition->rarity->value,
+            'icon' => $definition->icon,
+            'url' => route('achievements.index'),
+            'figure' => $this->presenter->milestone(
+                $definition,
+                (string) ($data['currency_code'] ?? config('achievements.fallback_currency')),
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{kind: string, title: string, body: ?string, url: string}
+     */
+    private function welcomeRow(array $data): array
+    {
+        $count = (int) ($data['count'] ?? 0);
+
+        return [
+            'kind' => 'achievements_welcome',
+            'title' => __('Achievements are here'),
+            'body' => trans_choice(
+                '{1}We went through your history: one was already yours.|[2,*]We went through your history: :count were already yours.',
+                $count,
+                ['count' => $count],
+            ),
+            'url' => route('achievements.index'),
         ];
     }
 }
