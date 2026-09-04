@@ -1,5 +1,6 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { EncryptionKeyButton } from '@/components/encryption-key-button';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { ImportTransactionsButton } from '@/components/transactions/import-transactions-button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -36,10 +37,10 @@ export function AppSidebarHeader({
                 className="mx-auto flex w-full max-w-page items-center justify-between gap-2 px-5 sm:px-6"
                 data-testid="page-header"
             >
-                <div className="flex items-center gap-2 sm:hidden">
+                <div className="flex items-center gap-2 md:hidden">
                     {mobileLeading ?? <AppLogo mobile />}
                 </div>
-                <div className="hidden items-center gap-2 sm:flex">
+                <div className="hidden items-center gap-2 md:flex">
                     <SidebarTrigger className="-ml-1" />
                     <Breadcrumbs breadcrumbs={breadcrumbs} />
                 </div>
@@ -49,16 +50,24 @@ export function AppSidebarHeader({
                         <>
                             <Separator
                                 orientation="vertical"
-                                className="data-[orientation=vertical]:h-6"
+                                className="hidden data-[orientation=vertical]:h-6 sm:block"
                             />
                             <EncryptionKeyButton />
                         </>
                     )}
+                    {/* Tools on the left, the account on the right: the bell and
+                        the avatar read as a pair.
+
+                        Hidden at `md`, not at `sm`, because that is where the
+                        sidebar takes over (`hidden md:block` in `ui/sidebar`).
+                        Switching at `sm` left a 640-767px window with no bell
+                        and no account menu anywhere on the screen. */}
                     <Separator
                         orientation="vertical"
-                        className="data-[orientation=vertical]:h-6 sm:hidden"
+                        className="data-[orientation=vertical]:h-6 md:hidden"
                     />
-                    <NavUser className="sm:hidden" />
+                    <NotificationBell className="md:hidden" />
+                    <NavUser className="md:hidden" />
                 </div>
             </div>
         </header>
