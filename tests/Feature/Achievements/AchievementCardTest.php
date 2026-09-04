@@ -196,6 +196,32 @@ it('never writes the share of members on the card', function (): void {
         ->not->toContain('%');
 });
 
+it('draws a fresh picture when the reader changes language', function (): void {
+    $user = medalOwner();
+    earned($user, 'streaks.2');
+
+    $ask = fn () => test()->actingAs($user)->get(route('achievements.card', [
+        'medal' => 'streaks.2', 'format' => 'feed', 'theme' => 'light',
+    ]))->assertOk();
+
+    // The reader's own setting, not `app()->setLocale()`: `SetLocale` runs on
+    // every web request and reads it off the user, so it has the last word.
+    $user->update(['locale' => 'en']);
+    $ask();
+
+    $user->update(['locale' => 'es']);
+    $ask();
+
+    // Two languages, two files: the copy is baked into the picture, so one
+    // cannot stand in for the other. The URL is the same either way, which is
+    // why the share dialog also puts the language in it — a browser cache does
+    // not know the difference.
+    expect(Storage::disk(CardRenderer::DISK)->allFiles())->toHaveCount(2);
+    expect(collect(test()->drawnHtml)->keys()->implode(' '))
+        ->toContain('-en.png')
+        ->toContain('-es.png');
+});
+
 it('draws each cut once and serves the rest off the disk', function (): void {
     $user = medalOwner();
     earned($user, 'streaks.2');

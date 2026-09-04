@@ -82,12 +82,23 @@ describe('ShareMedalDialog', () => {
         const save = screen.getByRole('link', { name: /Save the picture/ });
         expect(save).toHaveAttribute(
             'href',
-            '/progress/medal/monthly_saving.4/feed/light?amount=1',
+            '/progress/medal/monthly_saving.4/feed/light?amount=1&lang=en-US',
         );
         expect(save).toHaveAttribute(
             'download',
             'whisper-money-monthly_saving-4-feed-light.png',
         );
+    });
+
+    it('puts the language in the URL so a switch is not answered from cache', () => {
+        // The server draws in the reader's language whatever the URL says, but
+        // without the language in it the URL is identical in every language and
+        // the browser hands back the copy it already has.
+        open(medal());
+
+        expect(
+            screen.getByRole('link', { name: /Save the picture/ }),
+        ).toHaveAttribute('href', expect.stringContaining('lang=en-US'));
     });
 
     it('asks the server to leave the amount out once the switch is on', () => {
@@ -101,7 +112,7 @@ describe('ShareMedalDialog', () => {
             screen.getByRole('link', { name: /Save the picture/ }),
         ).toHaveAttribute(
             'href',
-            '/progress/medal/monthly_saving.4/feed/light?amount=0',
+            '/progress/medal/monthly_saving.4/feed/light?amount=0&lang=en-US',
         );
     });
 });

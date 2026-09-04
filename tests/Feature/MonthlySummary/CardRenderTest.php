@@ -58,10 +58,10 @@ it('draws every card the month can show in a single browser run', function (): v
 
     app(Summaries::class)->prepareCards($summary, pro: false);
 
-    // Five cards the full payload can draw, in three formats, light and dark,
-    // one Chromium.
+    // Five cards the full payload can draw, in the two shapes a screen offers,
+    // light and dark, one Chromium: 5 x 2 x 2.
     Process::assertRanTimes(ranTheRenderer(), 1);
-    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(30);
+    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(20);
 });
 
 it('keeps the theme and the language in the name of the file it caches', function (): void {
@@ -84,7 +84,7 @@ it('draws a second set for a second language rather than reusing the first', fun
     app(Summaries::class)->prepareCards($summary, pro: false);
 
     Process::assertRanTimes(ranTheRenderer(), 2);
-    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(60)
+    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(40)
         ->toContain("monthly-summaries/{$summary->id}/savings_rate-feed-light-es.png");
 });
 
@@ -157,5 +157,5 @@ it('throws away the cards of the months before', function (): void {
     expect(Storage::disk('public')->exists("monthly-summaries/{$previous->id}/streak-feed-light-en.png"))->toBeFalse()
         ->and(Storage::disk('public')->exists("monthly-summaries/{$other->id}/streak-feed-light-en.png"))->toBeTrue()
         ->and(Storage::disk('public')->exists("monthly-summaries/{$otherSpace->id}/streak-feed-light-en.png"))->toBeTrue()
-        ->and(Storage::disk('public')->files("monthly-summaries/{$current->id}"))->toHaveCount(30);
+        ->and(Storage::disk('public')->files("monthly-summaries/{$current->id}"))->toHaveCount(20);
 });

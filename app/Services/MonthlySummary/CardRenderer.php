@@ -75,7 +75,7 @@ class CardRenderer
         $jobs = [];
 
         foreach ($cards as $card) {
-            foreach (CardFormat::cases() as $format) {
+            foreach (CardFormat::shareable() as $format) {
                 foreach (CardTheme::cases() as $theme) {
                     $path = $this->pathFor($summary, $card, $format, $theme, $pro);
 

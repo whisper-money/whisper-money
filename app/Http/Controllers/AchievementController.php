@@ -67,7 +67,7 @@ class AchievementController extends Controller
         $theme = CardTheme::tryFrom($theme);
 
         abort_if($definition === null || $theme === null, 404);
-        abort_unless($format !== null && in_array($format, CardFormat::forAchievements(), strict: true), 404);
+        abort_unless($format !== null && in_array($format, CardFormat::shareable(), strict: true), 404);
 
         $achievement = Achievement::query()
             ->where('user_id', $request->user()->id)

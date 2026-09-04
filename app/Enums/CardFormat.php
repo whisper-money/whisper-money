@@ -32,13 +32,20 @@ enum CardFormat: string
     }
 
     /**
-     * The shapes an achievement medal is offered in: the 4:5 a feed wants and
-     * the 9:16 a story wants. Wide is a link-preview shape, and the medal card
-     * is a centred column that has nothing to do in it, so it is not drawn.
+     * The shapes a reader is offered: the 4:5 a feed wants and the 9:16 a story
+     * wants. Both share screens draw from this, so neither can drift into
+     * offering something the other does not.
+     *
+     * Wide is not among them. It was only ever a third download button on the
+     * summary screen — nothing unfurls it, because the email and the public
+     * page's og:image both use {@see default()} — so no route serves it and
+     * nothing renders it any more. The case and the 16:9 branch in
+     * `cards.monthly-summary` are dead weight kept for one commit; strip them
+     * once nobody misses the shape.
      *
      * @return list<self>
      */
-    public static function forAchievements(): array
+    public static function shareable(): array
     {
         return [self::Feed, self::Story];
     }
