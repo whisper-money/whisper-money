@@ -10,6 +10,7 @@ use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\CurrencyOptions;
+use App\Services\Notifications\NotificationFeed;
 use App\Services\Subscriptions\PriceExperiment;
 use Closure;
 use Illuminate\Foundation\Inspiring;
@@ -19,7 +20,10 @@ use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
-    public function __construct(private CurrencyOptions $currencyOptions) {}
+    public function __construct(
+        private CurrencyOptions $currencyOptions,
+        private NotificationFeed $notifications,
+    ) {}
 
     /**
      * The root template that's loaded on the first page visit.
@@ -106,6 +110,7 @@ class HandleInertiaRequests extends Middleware
             'includeRealEstateInNetWorthChart' => $user?->setting->include_real_estate_in_net_worth_chart ?? true,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => $this->resolveFeatureFlags(),
+            'notifications' => fn (): ?array => $this->notificationsFor($user),
             ...$this->userCollectionProps($user),
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
             'hasEncryptionSetup' => $user?->encryption_salt !== null,
@@ -121,6 +126,22 @@ class HandleInertiaRequests extends Middleware
                 'decimals' => $this->currencyOptions->decimalsMap(),
             ],
         ];
+    }
+
+    /**
+     * The bell's badge and its latest rows. Null for guests and for readers
+     * still onboarding, so the frontend has one thing to check before drawing
+     * it.
+     *
+     * @return array{unread: int, recent: list<array<string, mixed>>}|null
+     */
+    private function notificationsFor(?User $user): ?array
+    {
+        if ($user === null || ! $user->isOnboarded()) {
+            return null;
+        }
+
+        return $this->notifications->forBell($user);
     }
 
     /**

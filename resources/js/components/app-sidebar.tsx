@@ -1,6 +1,7 @@
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import {
     Sidebar,
     SidebarContent,
@@ -9,6 +10,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { cn, resolveUrl } from '@/lib/utils';
@@ -30,6 +32,7 @@ export function AppSidebar() {
         [page.props.features, page.props.locale],
     );
     const { trigger } = useWebHaptics();
+    const collapsed = useSidebar().state === 'collapsed';
 
     return (
         <>
@@ -81,7 +84,15 @@ export function AppSidebar() {
                     {footerNavItems.length > 0 && (
                         <NavFooter items={footerNavItems} className="mt-auto" />
                     )}
-                    <NavUser />
+                    {/* The bell sits beside the account; on the icon rail it
+                        stacks above the avatar and its panel opens sideways. */}
+                    <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col-reverse">
+                        <NavUser className="min-w-0 flex-1" />
+                        <NotificationBell
+                            side={collapsed ? 'right' : 'top'}
+                            align={collapsed ? 'end' : 'start'}
+                        />
+                    </div>
                 </SidebarFooter>
             </Sidebar>
         </>

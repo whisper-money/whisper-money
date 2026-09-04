@@ -4,7 +4,7 @@ import {
 } from '@/actions/App/Http/Controllers/MonthlySummaryController';
 import { Button } from '@/components/ui/button';
 import { __ } from '@/utils/i18n';
-import { Link, useHttp } from '@inertiajs/react';
+import { Link, router, useHttp } from '@inertiajs/react';
 import { XIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -19,7 +19,9 @@ import { useState } from 'react';
  * every device and across logins. The banner disappears the moment it is clicked
  * and the request goes out on its own: a full Inertia visit would reload every
  * deferred prop on the dashboard just to hide one row. Should the request fail,
- * the notice is back on the next load, which is harmless.
+ * the notice is back on the next load, which is harmless. Once it has gone
+ * through, the bell is refreshed on its own: dismissing the notice reads its
+ * row there too, and a badge that still counts it would contradict the click.
  */
 export type MonthlySummaryNoticeData = {
     id: string;
@@ -57,7 +59,10 @@ export default function MonthlySummaryNotice({
                 variant="ghost"
                 onClick={() => {
                     setDismissed(true);
-                    post(dismiss(summary.id).url);
+                    post(dismiss(summary.id).url, {
+                        onSuccess: () =>
+                            router.reload({ only: ['notifications'] }),
+                    });
                 }}
                 aria-label={__('Dismiss')}
             >

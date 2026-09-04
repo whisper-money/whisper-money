@@ -2837,5 +2837,12 @@
     "You can renew it right now, before it runs out, and nothing will stop syncing. It takes the same two minutes as connecting the bank did.": "Puedes renovarlo ahora mismo, antes de que caduque, y no se interrumpirá la sincronización. Se tarda los mismos dos minutos que al conectar el banco.",
     "Renew Connection": "Renovar conexión",
     "Expiring soon": "Caduca pronto",
-    "Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.": "Tu banco solo concede acceso durante un tiempo limitado, y este permiso caduca en breve. Renuévalo ahora y tus movimientos seguirán llegando sin interrupciones."
+    "Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.": "Tu banco solo concede acceso durante un tiempo limitado, y este permiso caduca en breve. Renuévalo ahora y tus movimientos seguirán llegando sin interrupciones.",
+    "Mark all as read": "Marcar todo como leído",
+    "View all notifications": "Ver todas las notificaciones",
+    "Unread": "Sin leer",
+    "Notification": "Notificación",
+    ":count unread notifications": ":count notificaciones sin leer",
+    "Everything that happened in your account, newest first.": "Todo lo que ha pasado en tu cuenta, lo más reciente primero.",
+    "Nothing here yet. Updates about your money show up here as they happen.": "Aún no hay nada. Las novedades sobre tu dinero aparecerán aquí según ocurran."
 }

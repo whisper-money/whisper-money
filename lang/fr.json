@@ -2441,5 +2441,12 @@
     "The AI assistant loses access to your finances.": "L’assistant IA perd l’accès à vos finances.",
     "Your accounts and every transaction already imported stay. You can start a plan again whenever you want.": "Vos comptes et toutes les transactions déjà importées restent. Vous pouvez souscrire un forfait à nouveau quand vous le souhaitez.",
     "Disconnect and continue": "Déconnecter et continuer",
-    "We could not move you to the free plan. Try again.": "Nous n’avons pas pu vous basculer sur le forfait gratuit. Réessayez."
+    "We could not move you to the free plan. Try again.": "Nous n’avons pas pu vous basculer sur le forfait gratuit. Réessayez.",
+    "Mark all as read": "Tout marquer comme lu",
+    "View all notifications": "Voir toutes les notifications",
+    "Unread": "Non lu",
+    "Notification": "Notification",
+    ":count unread notifications": ":count notifications non lues",
+    "Everything that happened in your account, newest first.": "Tout ce qui s’est passé sur votre compte, du plus récent au plus ancien.",
+    "Nothing here yet. Updates about your money show up here as they happen.": "Rien pour l’instant. Les nouveautés sur votre argent apparaîtront ici au fil du temps."
 }

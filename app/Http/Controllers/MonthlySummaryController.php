@@ -10,6 +10,7 @@ use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
+use App\Services\Notifications\NotificationFeed;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -33,6 +34,7 @@ class MonthlySummaryController extends Controller
         private CardRenderer $renderer,
         private EmailPresenter $presenter,
         private AnalysisWriter $analysis,
+        private NotificationFeed $notifications,
     ) {}
 
     public function index(Request $request): Response
@@ -50,6 +52,9 @@ class MonthlySummaryController extends Controller
     public function show(Request $request, MonthlySummary $summary): Response
     {
         abort_unless($summary->user_id === $request->user()->id, 404);
+
+        // Reading the report is reading its row in the bell, whichever way in.
+        $this->notifications->markReadForSummary($summary);
 
         $pro = $this->analysis->eligible($request->user());
 
@@ -132,6 +137,7 @@ class MonthlySummaryController extends Controller
         abort_unless($summary->user_id === $request->user()->id, 404);
 
         $summary->dismiss();
+        $this->notifications->markReadForSummary($summary);
 
         return response()->noContent();
     }
