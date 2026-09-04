@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardRenderer;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Mail;
 
 /*
@@ -178,6 +179,25 @@ it('never asks the model for a case that carries no analysis', function (): void
     ])->assertSuccessful();
 
     Mail::assertSentCount(1);
+});
+
+it('falls back to the sample text when the model cannot be reached', function (): void {
+    // A real send holds the report and comes back for an unreachable model, so
+    // `draft()` hands the failure back rather than returning null. A preview has
+    // nowhere to come back to: it says so and shows the sample.
+    Mail::fake();
+    $this->mock(AnalysisWriter::class, fn ($mock) => $mock->shouldReceive('draft')->andThrow(
+        new ConnectionException('cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received'),
+    ));
+
+    $this->artisan('email:monthly-summary-preview', [
+        'email' => 'look@whisper.test',
+        '--source' => previewSource()->email,
+        '--type' => 'pro',
+        '--ai' => true,
+    ])->assertSuccessful();
+
+    Mail::assertSent(MonthlySummaryEmail::class, fn (MonthlySummaryEmail $mail): bool => str_contains((string) $mail->analysis, '[TEXTO DE MUESTRA]'));
 });
 
 it('falls back to the sample text when the model gives up', function (): void {

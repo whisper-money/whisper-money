@@ -3,6 +3,7 @@
 use App\Http\Middleware\AssignPriceExperimentArm;
 use App\Http\Middleware\BlockSharedAccountActions;
 use App\Http\Middleware\EnsureOnboardingComplete;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -58,6 +59,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'admin' => EnsureUserIsAdmin::class,
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => EnsureOnboardingComplete::class,
             'block-demo' => BlockSharedAccountActions::class.':demo',

@@ -1,3 +1,4 @@
+import { index as adminIndex } from '@/actions/App/Http/Controllers/AdminController';
 import DiscordIcon from '@/components/icons/DiscordIcon';
 import {
     DropdownMenuGroup,
@@ -29,6 +30,7 @@ import {
     MessageSquare,
     Monitor,
     Settings,
+    Shield,
 } from 'lucide-react';
 
 interface UserMenuContentProps {
@@ -44,7 +46,7 @@ export function UserMenuContent({
 }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const { isPrivacyModeEnabled, togglePrivacyMode } = usePrivacyMode();
-    const { version, achievements } = usePage<SharedData>().props;
+    const { auth, version, achievements } = usePage<SharedData>().props;
 
     const handleLogout = () => {
         clearKey();
@@ -141,6 +143,19 @@ export function UserMenuContent({
                         {__('Settings')}
                     </Link>
                 </DropdownMenuItem>
+                {auth.isAdmin && (
+                    <DropdownMenuItem asChild>
+                        <Link
+                            className="block w-full"
+                            href={adminIndex()}
+                            as="button"
+                            onClick={cleanup}
+                        >
+                            <Shield className="mr-2" />
+                            {__('Admin')}
+                        </Link>
+                    </DropdownMenuItem>
+                )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

@@ -3,6 +3,7 @@
 use App\Features\SplitTransactions;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AchievementController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AgentDocsController;
 use App\Http\Controllers\Ai\AiConsentController;
 use App\Http\Controllers\Ai\CategorizationController;
@@ -313,6 +314,13 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::put('savings-goals/{savingsGoal}/transactions', [SavingsGoalController::class, 'syncTransactions'])->name('savings-goals.transactions.sync');
     Route::delete('savings-goals/{savingsGoal}', [SavingsGoalController::class, 'destroy'])->name('savings-goals.destroy');
     Route::post('savings-goals/{savingsGoal}/archive', [SavingsGoalController::class, 'archive'])->name('savings-goals.archive');
+});
+
+// Internal tools, for the ADMIN_EMAIL account only. Deliberately outside
+// `onboarded` and `subscribed`: neither says anything about being an admin.
+Route::middleware(['auth', 'verified', 'admin'])->group(function () {
+    Route::get('admin', [AdminController::class, 'index'])->name('admin.index');
+    Route::post('admin/run', [AdminController::class, 'run'])->name('admin.run');
 });
 
 require __DIR__.'/settings.php';

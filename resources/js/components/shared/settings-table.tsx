@@ -13,6 +13,31 @@ import {
 } from '@tanstack/react-table';
 import { type ReactNode } from 'react';
 
+/** Per-column styling, the same shape the virtualized DataTable reads. */
+interface ColumnMeta {
+    cellClassName?: string;
+}
+
+function cellClassName(meta: unknown): string | undefined {
+    return (meta as ColumnMeta | undefined)?.cellClassName;
+}
+
+/** The row a table gets when it has no per-row context menu of its own. */
+function PlainRow<TData>({ row }: { row: Row<TData> }) {
+    return (
+        <TableRow>
+            {row.getVisibleCells().map((cell) => (
+                <TableCell
+                    key={cell.id}
+                    className={cellClassName(cell.column.columnDef.meta)}
+                >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+            ))}
+        </TableRow>
+    );
+}
+
 /**
  * The bordered table the settings pages list their records in. Deliberately not
  * the virtualized DataTable: these lists are short, and each page renders its
@@ -25,11 +50,11 @@ import { type ReactNode } from 'react';
 export function SettingsTable<TData>({
     table,
     emptyMessage,
-    renderRow,
+    renderRow = (row) => <PlainRow key={row.id} row={row} />,
 }: {
     table: TableType<TData>;
     emptyMessage: string;
-    renderRow: (row: Row<TData>) => ReactNode;
+    renderRow?: (row: Row<TData>) => ReactNode;
 }) {
     const rows = table.getRowModel().rows;
 
@@ -41,7 +66,12 @@ export function SettingsTable<TData>({
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
-                                <TableHead key={header.id}>
+                                <TableHead
+                                    key={header.id}
+                                    className={cellClassName(
+                                        header.column.columnDef.meta,
+                                    )}
+                                >
                                     {header.isPlaceholder
                                         ? null
                                         : flexRender(
