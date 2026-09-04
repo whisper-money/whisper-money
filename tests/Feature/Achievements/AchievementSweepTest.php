@@ -193,8 +193,14 @@ it('only sweeps a reader the feature is on for', function (): void {
 });
 
 it('records nothing when a foreign balance cannot be converted', function (): void {
-    // No rate for the day, and the API cannot be reached for one either.
-    Http::fake(['cdn.jsdelivr.net/*' => Http::response([], 500)]);
+    // No rate for the day, and neither the CDN nor the mirror behind it can be
+    // reached for one. Both hosts, because an unfaked URL is fetched for real:
+    // faking only the CDN left the test asking the network for a BTC rate and
+    // passing wherever that request happened to fail.
+    Http::fake([
+        'cdn.jsdelivr.net/*' => Http::response([], 500),
+        'currency-api.pages.dev/*' => Http::response([], 500),
+    ]);
 
     $user = reader();
     recordMonth($user, now()->subMonths(3)->format('Y-m'), 300000, 150000);
