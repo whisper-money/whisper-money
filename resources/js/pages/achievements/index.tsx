@@ -8,6 +8,8 @@ import {
 } from '@/components/achievements/achievement-figure';
 import { Medal } from '@/components/achievements/medal';
 import { RarityTag } from '@/components/achievements/rarity-tag';
+import { ShareMedalDialog } from '@/components/achievements/share-medal-dialog';
+import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
@@ -19,6 +21,7 @@ import {
 } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
+import { Share2Icon } from 'lucide-react';
 import { useState } from 'react';
 
 /**
@@ -233,6 +236,18 @@ function Timeline({ tracks }: { tracks: AchievementTrack[] }) {
                                                 locale,
                                             )}
                                         </span>
+                                        <ShareMedalDialog medal={medal}>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={__(
+                                                    'Share this medal',
+                                                )}
+                                                className="size-8 cursor-pointer text-muted-foreground"
+                                            >
+                                                <Share2Icon className="size-4" />
+                                            </Button>
+                                        </ShareMedalDialog>
                                     </div>
                                 </div>
                             ))}

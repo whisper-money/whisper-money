@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CardFormat;
+use App\Enums\CardTheme;
 use App\Enums\MonthlySummaryCard;
-use App\Enums\MonthlySummaryFormat;
-use App\Enums\MonthlySummaryTheme;
 use App\Models\MonthlySummary;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardPicker;
@@ -79,8 +79,8 @@ class MonthlySummaryController extends Controller
         abort_unless($summary->user_id === $request->user()->id, 404);
 
         $cardType = MonthlySummaryCard::tryFrom($card);
-        $formatType = MonthlySummaryFormat::tryFrom($format);
-        $themeType = MonthlySummaryTheme::tryFrom($theme);
+        $formatType = CardFormat::tryFrom($format);
+        $themeType = CardTheme::tryFrom($theme);
         abort_if($cardType === null || $formatType === null || $themeType === null, 404);
 
         // A month with no savings goal has no savings-goal card, whatever the URL says.
@@ -172,8 +172,8 @@ class MonthlySummaryController extends Controller
         return array_map(fn (MonthlySummaryCard $card): array => [
             'card' => $card->value,
             'chosen' => $card === $summary->card,
-            'themes' => collect(MonthlySummaryTheme::cases())
-                ->mapWithKeys(fn (MonthlySummaryTheme $theme): array => [
+            'themes' => collect(CardTheme::cases())
+                ->mapWithKeys(fn (CardTheme $theme): array => [
                     $theme->value => $this->cardLinks($summary, $card, $theme),
                 ])
                 ->all(),
@@ -186,20 +186,20 @@ class MonthlySummaryController extends Controller
      *
      * @return array{preview: string, formats: list<array{format: string, url: string}>}
      */
-    private function cardLinks(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryTheme $theme): array
+    private function cardLinks(MonthlySummary $summary, MonthlySummaryCard $card, CardTheme $theme): array
     {
         return [
             'preview' => route('monthly-summaries.card', [
-                $summary, $card->value, MonthlySummaryFormat::default()->value, $theme->value, 'preview' => 1,
+                $summary, $card->value, CardFormat::default()->value, $theme->value, 'preview' => 1,
             ]),
-            'formats' => array_map(fn (MonthlySummaryFormat $format): array => [
+            'formats' => array_map(fn (CardFormat $format): array => [
                 'format' => $format->value,
                 'url' => route('monthly-summaries.card', [$summary, $card->value, $format->value, $theme->value]),
-            ], MonthlySummaryFormat::cases()),
+            ], CardFormat::cases()),
         ];
     }
 
-    private function filename(MonthlySummary $summary, MonthlySummaryCard $card, MonthlySummaryFormat $format, MonthlySummaryTheme $theme): string
+    private function filename(MonthlySummary $summary, MonthlySummaryCard $card, CardFormat $format, CardTheme $theme): string
     {
         return "whisper-money-{$summary->period}-{$card->value}-{$format->value}-{$theme->value}.png";
     }

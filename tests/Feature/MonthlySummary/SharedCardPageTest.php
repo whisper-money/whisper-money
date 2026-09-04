@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\MonthlySummaryFormat;
-use App\Enums\MonthlySummaryTheme;
+use App\Enums\CardFormat;
+use App\Enums\CardTheme;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Services\MonthlySummary\CardRenderer;
@@ -129,7 +129,7 @@ it('offers both themes of the same card, each under its own name', function (): 
     $user = User::factory()->onboarded()->create();
     $summary = summaryFor($user);
 
-    foreach (MonthlySummaryTheme::cases() as $theme) {
+    foreach (CardTheme::cases() as $theme) {
         $this->actingAs($user)
             ->get("/summaries/{$summary->id}/card/savings_rate/story/{$theme->value}")
             ->assertOk()
@@ -181,6 +181,6 @@ it('draws the card in the owner\'s language, whatever the visitor reads in', fun
 });
 
 it('names every format the card can be downloaded in', function (): void {
-    expect(array_map(fn (MonthlySummaryFormat $format): array => $format->dimensions(), MonthlySummaryFormat::cases()))
+    expect(array_map(fn (CardFormat $format): array => $format->dimensions(), CardFormat::cases()))
         ->toBe([[1080, 1350], [1080, 1920], [1200, 675]]);
 });

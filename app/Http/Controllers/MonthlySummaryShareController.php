@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\MonthlySummaryFormat;
-use App\Enums\MonthlySummaryTheme;
+use App\Enums\CardFormat;
+use App\Enums\CardTheme;
 use App\Models\MonthlySummary;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardRenderer;
@@ -46,8 +46,8 @@ class MonthlySummaryShareController extends Controller
                 fn (): string => $this->renderer->url(
                     $summary,
                     $summary->card,
-                    MonthlySummaryFormat::default(),
-                    MonthlySummaryTheme::default(),
+                    CardFormat::default(),
+                    CardTheme::default(),
                     $this->analysis->eligible($summary->user),
                 ),
             );

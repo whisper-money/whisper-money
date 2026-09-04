@@ -1,10 +1,13 @@
 import { AchievementFigure } from '@/components/achievements/achievement-figure';
 import { EPIC_EDGE, Medal } from '@/components/achievements/medal';
 import { RarityTag } from '@/components/achievements/rarity-tag';
+import { ShareMedalDialog } from '@/components/achievements/share-medal-dialog';
+import { Button } from '@/components/ui/button';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { type AchievementMedal } from '@/types';
 import { __ } from '@/utils/i18n';
+import { Share2Icon } from 'lucide-react';
 
 /**
  * One medal in a track.
@@ -41,11 +44,29 @@ export function AchievementCell({ medal }: { medal: AchievementMedal }) {
                     : undefined
             }
         >
-            <Medal
-                rarity={medal.rarity}
-                icon={medal.icon}
-                locked={medal.locked}
-            />
+            <div className="flex items-start justify-between gap-1">
+                <Medal
+                    rarity={medal.rarity}
+                    icon={medal.icon}
+                    locked={medal.locked}
+                />
+
+                {/* Always drawn rather than revealed on hover: the phone is
+                    where a medal actually gets posted, and there is no hover
+                    there to reveal it with. */}
+                {!medal.locked && (
+                    <ShareMedalDialog medal={medal}>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={__('Share this medal')}
+                            className="-mt-1 -mr-1 size-7 cursor-pointer text-muted-foreground"
+                        >
+                            <Share2Icon className="size-3.5" />
+                        </Button>
+                    </ShareMedalDialog>
+                )}
+            </div>
 
             <div className="flex flex-1 flex-col gap-px">
                 {medal.locked ? (

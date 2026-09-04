@@ -40,10 +40,16 @@ final class Money
      * monthly summary — comes through here instead, mirroring the frontend's
      * `formatCurrency`: Intl's rules, the currency's own decimals, and narrow
      * no-break spaces so the symbol never wraps away from its number.
+     *
+     * `$decimals` overrides the currency's own scale, for the callers whose
+     * number is a round milestone rather than a reconcilable amount — an
+     * achievement card says "2.000 €", not "2.000,00 €". Both Intl bounds move
+     * together: a minimum left at the currency's scale asks for two decimals
+     * and at most none, which it refuses outright.
      */
-    public static function formatIn(int $minorUnits, string $currency, string $locale): string
+    public static function formatIn(int $minorUnits, string $currency, string $locale, ?int $decimals = null): string
     {
-        $decimals = self::decimals($currency);
+        $decimals ??= self::decimals($currency);
 
         $formatter = new NumberFormatter($locale, NumberFormatter::CURRENCY);
         $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, $decimals);

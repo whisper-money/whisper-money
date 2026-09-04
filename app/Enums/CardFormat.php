@@ -6,7 +6,7 @@ namespace App\Enums;
  * The three shapes every card is rendered in. Pixel sizes are the ones the
  * networks expect, and the card template lays itself out from them.
  */
-enum MonthlySummaryFormat: string
+enum CardFormat: string
 {
     case Feed = 'feed';
     case Story = 'story';
@@ -29,5 +29,17 @@ enum MonthlySummaryFormat: string
     public static function default(): self
     {
         return self::Feed;
+    }
+
+    /**
+     * The shapes an achievement medal is offered in: the 4:5 a feed wants and
+     * the 9:16 a story wants. Wide is a link-preview shape, and the medal card
+     * is a centred column that has nothing to do in it, so it is not drawn.
+     *
+     * @return list<self>
+     */
+    public static function forAchievements(): array
+    {
+        return [self::Feed, self::Story];
     }
 }

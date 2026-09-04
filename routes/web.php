@@ -186,6 +186,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // is drawn on every screen, settings included.
         Route::get('progress', [AchievementController::class, 'index'])->name('achievements.index');
 
+        // One earned medal as a shareable PNG, in the shape and skin the reader
+        // picked. `?preview=1` paints it instead of saving it, which is also
+        // what warms the render before the share sheet opens.
+        Route::get('progress/medal/{medal}/{format}/{theme}', [AchievementController::class, 'card'])
+            ->where('medal', '[a-z_]+\.[0-9]+')
+            ->name('achievements.card');
+
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.list');
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.read');

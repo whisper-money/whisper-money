@@ -3,6 +3,8 @@ import { type AchievementRarity } from '@/types';
 import {
     ArrowUpRightIcon,
     CalendarCheckIcon,
+    CalendarDaysIcon,
+    CalendarRangeIcon,
     ChartLineIcon,
     CircleCheckIcon,
     CoinsIcon,
@@ -47,6 +49,8 @@ import { useId } from 'react';
 const ICONS: Record<string, LucideIcon> = {
     'arrow-up-right': ArrowUpRightIcon,
     'calendar-check': CalendarCheckIcon,
+    'calendar-days': CalendarDaysIcon,
+    'calendar-range': CalendarRangeIcon,
     'chart-line': ChartLineIcon,
     'circle-check': CircleCheckIcon,
     coins: CoinsIcon,
@@ -135,7 +139,11 @@ const OBSIDIAN: Metal = {
     bezel: GOLD,
 };
 
-const METALS: Record<AchievementRarity, Metal> = {
+/**
+ * Exported for `medal-palette.test.ts`, which holds this table against the copy
+ * `App\Enums\AchievementRarity` keeps for the shareable card.
+ */
+export const METALS: Record<AchievementRarity, Metal> = {
     common: COPPER,
     uncommon: STEEL,
     rare: GOLD,
