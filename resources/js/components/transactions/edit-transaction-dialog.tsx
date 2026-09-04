@@ -28,6 +28,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
 import { decrypt, importKey } from '@/lib/crypto';
+import { fetchJson } from '@/lib/fetch-json';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
@@ -39,12 +40,14 @@ import {
     filterTransactionalAccounts,
     type Account,
     type Bank,
+    type CurrencyCode,
+    type CurrencyOption,
 } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
-import { formatCurrency, toMajorUnits } from '@/utils/currency';
+import { formatCurrency, toMajorUnits, toMinorUnits } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
@@ -97,6 +100,55 @@ function formatTransactionDate(date: string, locale: string): string {
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
+/**
+ * An amount converted to the account's currency at the transaction's own date,
+ * the same date every total in the app converts at.
+ *
+ * Null whenever there is nothing to show: the two currencies match, the amount
+ * is still empty, the request failed (offline), or the server has no rate for
+ * that day. A figure that could not be converted is never rendered as one.
+ */
+function useConvertedAmount(
+    amountInMinorUnits: number,
+    from: CurrencyCode,
+    to: CurrencyCode | undefined,
+    date: string,
+): number | null {
+    const [converted, setConverted] = useState<number | null>(null);
+
+    useEffect(() => {
+        setConverted(null);
+
+        if (!to || from === to || amountInMinorUnits === 0 || !date) {
+            return;
+        }
+
+        let cancelled = false;
+        const params = new URLSearchParams({
+            from,
+            to,
+            date,
+            amount: String(amountInMinorUnits),
+        });
+
+        fetchJson<{ amount: number | null }>(`/api/exchange-rate?${params}`)
+            .then((json) => {
+                if (!cancelled) {
+                    setConverted(json.amount);
+                }
+            })
+            .catch(() => {
+                // Offline or a rate we could not reach: the original alone.
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [amountInMinorUnits, from, to, date]);
+
+    return converted;
+}
+
 export function EditTransactionDialog({
     transaction,
     categories,
@@ -115,8 +167,8 @@ export function EditTransactionDialog({
     initialAccountId = null,
 }: EditTransactionDialogProps) {
     const locale = useLocale();
-    const userCurrencyCode =
-        usePage<SharedData>().props.auth.user.currency_code;
+    const { auth, currencies } = usePage<SharedData>().props;
+    const userCurrencyCode = auth.user.currency_code;
     const STORAGE_KEY_UPDATE_BALANCE =
         'whisper_money_update_balance_on_transaction';
 
@@ -129,6 +181,8 @@ export function EditTransactionDialog({
     >('expense');
     const [showNotes, setShowNotes] = useState(false);
     const [accountId, setAccountId] = useState<string>('');
+    const [currencyCode, setCurrencyCode] =
+        useState<CurrencyCode>(userCurrencyCode);
     const [categoryId, setCategoryId] = useState<string>('null');
     const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [notes, setNotes] = useState('');
@@ -176,6 +230,7 @@ export function EditTransactionDialog({
             setUnsignedAmount(Math.abs(transaction.amount));
             setTransactionType(transaction.amount > 0 ? 'income' : 'expense');
             setAccountId(transaction.account_id);
+            setCurrencyCode(transaction.currency_code);
             setCategoryId(transaction.category_id || 'null');
             setSelectedLabelIds(
                 transaction.label_ids ||
@@ -196,11 +251,12 @@ export function EditTransactionDialog({
                 (account) => account.id === initialAccountId,
             );
             setAccountId(initialAccount?.id ?? '');
+            setCurrencyCode(initialAccount?.currency_code ?? userCurrencyCode);
             setCategoryId('null');
             setSelectedLabelIds([]);
             setNotes('');
         }
-    }, [mode, transaction, open, accounts, initialAccountId]);
+    }, [mode, transaction, open, accounts, initialAccountId, userCurrencyCode]);
 
     useEffect(() => {
         if (!open) return;
@@ -337,6 +393,34 @@ export function EditTransactionDialog({
         };
     }
 
+    /**
+     * Keep the amount the user typed at face value when the scale changes:
+     * 10.50 EUR becomes 10.50 BTC, not 0.00001050 of one.
+     */
+    function handleCurrencyChange(nextCurrencyCode: CurrencyCode) {
+        setUnsignedAmount((current) =>
+            toMinorUnits(toMajorUnits(current, currencyCode), nextCurrencyCode),
+        );
+        setCurrencyCode(nextCurrencyCode);
+    }
+
+    /**
+     * The currency follows the account: picking an account is the clearest
+     * statement of what the transaction is in, so it wins over an earlier pick
+     * in the currency field. Changing only the currency afterwards keeps it.
+     */
+    function handleAccountChange(nextAccountId: string) {
+        setAccountId(nextAccountId);
+
+        const nextCurrencyCode = accounts.find(
+            (account) => account.id === nextAccountId,
+        )?.currency_code;
+
+        if (nextCurrencyCode) {
+            handleCurrencyChange(nextCurrencyCode);
+        }
+    }
+
     function handleUpdateBalanceChange(checked: boolean) {
         setUpdateAccountBalance(checked);
         writeStoredValue(STORAGE_KEY_UPDATE_BALANCE, String(checked));
@@ -410,7 +494,7 @@ export function EditTransactionDialog({
                         description_iv: finalDescriptionIv,
                         transaction_date: transactionDate,
                         amount: signedAmount,
-                        currency_code: selectedAccount.currency_code,
+                        currency_code: currencyCode,
                         notes: encryptedNotes,
                         notes_iv: notesIv,
                         creditor_name: null,
@@ -505,8 +589,6 @@ export function EditTransactionDialog({
                 const editedAccount = accounts.find(
                     (acc) => acc.id === accountId,
                 );
-                const editedCurrencyCode =
-                    editedAccount?.currency_code ?? transaction.currency_code;
 
                 if (canEditDate) {
                     updateData.transaction_date = transactionDate;
@@ -521,7 +603,7 @@ export function EditTransactionDialog({
                 if (canEditAllFields) {
                     updateData.amount = signedAmount;
                     updateData.account_id = accountId;
-                    updateData.currency_code = editedCurrencyCode;
+                    updateData.currency_code = currencyCode;
                 }
 
                 const result = await transactionSyncService.update(
@@ -581,7 +663,7 @@ export function EditTransactionDialog({
                         ? {
                               amount: signedAmount,
                               account_id: accountId,
-                              currency_code: editedCurrencyCode,
+                              currency_code: currencyCode,
                               account: editedAccount ?? transaction.account,
                               bank: editedAccount?.bank?.id
                                   ? banks.find(
@@ -659,6 +741,15 @@ export function EditTransactionDialog({
             ? [...transactionalAccounts, selectedAccount]
             : transactionalAccounts;
 
+    // A transaction can hold a currency the picker no longer offers - an imported
+    // row, a code since retired - and it stays selectable so the field never
+    // reads as empty.
+    const currencyOptions: CurrencyOption[] = currencies.accounts.some(
+        (currency) => currency.code === currencyCode,
+    )
+        ? currencies.accounts
+        : [...currencies.accounts, { code: currencyCode, name: currencyCode }];
+
     // The date the source gave this row: the stored one once it has been moved,
     // otherwise the day it still sits on. Manual rows have no source to compare
     // against - the user picked every date they ever had.
@@ -696,6 +787,23 @@ export function EditTransactionDialog({
         ? formatCurrency(transaction.amount, transaction.currency_code, locale)
         : '';
 
+    // The editable branch mirrors the input, which is unsigned - the toggle owns
+    // the sign - while the read-only one mirrors the signed amount it prints.
+    const convertedAmount = useConvertedAmount(
+        canEditAllFields ? unsignedAmount : (transaction?.amount ?? 0),
+        currencyCode,
+        selectedAccount?.currency_code,
+        transactionDate,
+    );
+    const formattedConvertedAmount =
+        convertedAmount === null || !selectedAccount
+            ? null
+            : formatCurrency(
+                  convertedAmount,
+                  selectedAccount.currency_code,
+                  locale,
+              );
+
     const detailRows = transaction
         ? [
               transaction.creditor_name
@@ -719,6 +827,12 @@ export function EditTransactionDialog({
                         value: transaction.bank?.name
                             ? `${accountName} · ${transaction.bank.name}`
                             : accountName,
+                    }
+                  : null,
+              formattedConvertedAmount
+                  ? {
+                        label: __('In account currency'),
+                        value: formattedConvertedAmount,
                     }
                   : null,
           ].filter((row): row is { label: string; value: string } => !!row)
@@ -902,16 +1016,26 @@ export function EditTransactionDialog({
                                                         Math.abs(cents),
                                                     )
                                                 }
-                                                currencyCode={
-                                                    selectedAccount?.currency_code ||
-                                                    userCurrencyCode
-                                                }
+                                                currencyCode={currencyCode}
                                                 disabled={isSubmitting}
                                                 required
                                                 className="h-11 text-right text-xl font-semibold tabular-nums md:text-xl"
                                             />
                                         </div>
                                     </div>
+                                    {formattedConvertedAmount && (
+                                        <p
+                                            className="text-sm text-muted-foreground"
+                                            data-testid="converted-amount"
+                                        >
+                                            {__(
+                                                '≈ :amount in the account currency',
+                                                {
+                                                    amount: formattedConvertedAmount,
+                                                },
+                                            )}
+                                        </p>
+                                    )}
                                     {selectedAccount?.banking_connection_id ? (
                                         <p className="text-sm text-muted-foreground">
                                             {__(
@@ -951,7 +1075,7 @@ export function EditTransactionDialog({
                                         </FormLabel>
                                         <Select
                                             value={accountId}
-                                            onValueChange={setAccountId}
+                                            onValueChange={handleAccountChange}
                                             disabled={isSubmitting}
                                         >
                                             <SelectTrigger
@@ -974,6 +1098,42 @@ export function EditTransactionDialog({
                                                             )}
                                                         >
                                                             {`${decryptedAccountNames.get(account.id) || __('[Loading...]')} · ${account.currency_code}`}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <FormLabel htmlFor="currency">
+                                            {__('Currency')}
+                                        </FormLabel>
+                                        <Select
+                                            name="currency_code"
+                                            value={currencyCode}
+                                            onValueChange={handleCurrencyChange}
+                                            disabled={isSubmitting}
+                                        >
+                                            <SelectTrigger
+                                                id="currency"
+                                                data-testid="currency-select"
+                                            >
+                                                <SelectValue
+                                                    placeholder={__(
+                                                        'Select currency',
+                                                    )}
+                                                />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {currencyOptions.map(
+                                                    (currency) => (
+                                                        <SelectItem
+                                                            key={currency.code}
+                                                            value={
+                                                                currency.code
+                                                            }
+                                                        >
+                                                            {`${currency.code} - ${currency.name}`}
                                                         </SelectItem>
                                                     ),
                                                 )}
