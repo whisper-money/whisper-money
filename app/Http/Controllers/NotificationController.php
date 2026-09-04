@@ -22,8 +22,6 @@ class NotificationController extends Controller
 
     public function index(Request $request): Response
     {
-        $this->abortUnlessEnabled();
-
         return Inertia::render('notifications/index', [
             'notifications' => $this->feed->page($request->user()),
         ]);
@@ -35,8 +33,6 @@ class NotificationController extends Controller
      */
     public function show(Request $request, string $notification): RedirectResponse
     {
-        $this->abortUnlessEnabled();
-
         // Found through the reader's own relation rather than bound and then
         // checked, so another reader's row is never even loaded.
         $row = $request->user()->notifications()->findOrFail($notification);
@@ -51,19 +47,8 @@ class NotificationController extends Controller
      */
     public function readAll(Request $request): HttpResponse
     {
-        $this->abortUnlessEnabled();
-
         $this->feed->markAllRead($request->user());
 
         return response()->noContent();
-    }
-
-    /**
-     * The kill switch covers the whole surface, not just the page: with the bell
-     * gone, nothing should answer at its addresses either.
-     */
-    private function abortUnlessEnabled(): void
-    {
-        abort_unless(config('notifications.enabled'), 404);
     }
 }

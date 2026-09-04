@@ -42,7 +42,7 @@ interface BudgetRow {
 }
 
 interface Props {
-    notifyAchievements: boolean;
+    notifyAchievements: boolean | null;
     notifyOnBankTransactionsSynced: boolean;
     notifyOnInactiveNoBank: boolean;
     notifyMonthlySummary: boolean;
@@ -94,15 +94,20 @@ export default function Notifications({
                 'A report of the month just closed, with what changed and a few things worth five minutes. Turning it off also stops the reminder that goes with it.',
             ),
         },
-        {
-            id: 'notify-achievements',
-            preferenceKey: 'achievements',
-            checked: notifyAchievements,
-            label: __('Achievements'),
-            description: __(
-                'One email a day when you unlock something, however many you unlock. They always show up in the app either way.',
-            ),
-        },
+        // Null while the medals are switched off: nothing would send this email.
+        ...(notifyAchievements === null
+            ? []
+            : [
+                  {
+                      id: 'notify-achievements',
+                      preferenceKey: 'achievements',
+                      checked: notifyAchievements,
+                      label: __('Achievements'),
+                      description: __(
+                          'One email a day when you unlock something, however many you unlock. They always show up in the app either way.',
+                      ),
+                  },
+              ]),
         {
             id: 'notify-on-bank-transactions-synced',
             preferenceKey: 'bank_transactions_synced',

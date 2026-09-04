@@ -188,20 +188,6 @@ it('will not open another reader\'s row', function (): void {
     expect($row->fresh()->read_at)->toBeNull();
 });
 
-it('stays out of the way when switched off', function (): void {
-    config()->set('notifications.enabled', false);
-    [$user, $summary] = readerWithReport();
-    ringBell($user, $summary);
-
-    $this->actingAs($user)->get(route('notifications.list'))->assertNotFound();
-    $this->actingAs($user)->post(route('notifications.read-all'))->assertNotFound();
-    $this->actingAs($user)->get(route('notifications.read', $user->notifications()->first()->id))->assertNotFound();
-
-    $this->actingAs($user)
-        ->get(route('dashboard'))
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('notifications', null));
-});
-
 it('shows guests and readers still onboarding no bell', function (): void {
     $this->actingAs(User::factory()->notOnboarded()->create())
         ->get(route('onboarding'))
