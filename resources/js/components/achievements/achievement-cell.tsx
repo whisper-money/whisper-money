@@ -1,5 +1,5 @@
 import { AchievementFigure } from '@/components/achievements/achievement-figure';
-import { Medal } from '@/components/achievements/medal';
+import { EPIC_EDGE, Medal } from '@/components/achievements/medal';
 import { RarityTag } from '@/components/achievements/rarity-tag';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
@@ -13,9 +13,9 @@ import { __ } from '@/utils/i18n';
  * happened. Still to come, it is a silhouette with three question marks: the
  * server does not send its name, so there is nothing here to read ahead.
  *
- * The two read apart without colour: an earned cell is filled and bordered,
- * an empty one is dashed and transparent, and the epic tier alone gets a solid
- * foreground border.
+ * The two read apart without colour: an earned cell is filled and bordered, an
+ * empty one is dashed and transparent. The epic tier alone gets a border of its
+ * own, struck in the gold of the crown its medal wears.
  */
 export function monthLabel(date: string, locale: string): string {
     const [year, month] = date.split('-').map(Number);
@@ -34,8 +34,12 @@ export function AchievementCell({ medal }: { medal: AchievementMedal }) {
             className={cn(
                 'flex w-32 shrink-0 flex-col gap-2 rounded-lg border p-2.5',
                 medal.locked ? 'min-h-24 border-dashed' : 'min-h-31 bg-card',
-                !medal.locked && medal.rarity === 'epic' && 'border-foreground',
             )}
+            style={
+                !medal.locked && medal.rarity === 'epic'
+                    ? { borderColor: EPIC_EDGE }
+                    : undefined
+            }
         >
             <Medal
                 rarity={medal.rarity}

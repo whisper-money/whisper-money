@@ -70,7 +70,8 @@ class Evaluator
             $unlocks['transactions.1'] = Unlock::event($firstMonth);
         }
 
-        foreach ([2, 3, 4] as $tier) {
+        // Every rung but the first, which is the transaction itself.
+        foreach (array_slice($this->catalog->tiers('transactions'), 1) as $tier) {
             $crossing = $this->firstCrossing($running, (float) $this->threshold("transactions.{$tier}"));
 
             if ($crossing !== null) {
@@ -95,7 +96,7 @@ class Evaluator
         foreach ($history->transactions as $month => $count) {
             $run = $count > 0 && ($history->uncategorized[$month] ?? 0) === 0 ? $run + 1 : 0;
 
-            foreach ([1, 2, 3, 4] as $tier) {
+            foreach ($this->catalog->tiers('categorized') as $tier) {
                 $key = "categorized.{$tier}";
 
                 if (! isset($unlocks[$key]) && $run >= $this->threshold($key)) {
@@ -206,7 +207,7 @@ class Evaluator
         $unlocks = [];
         $rates = $history->series('savings_rate');
 
-        foreach ([1, 2, 3, 4] as $tier) {
+        foreach ($this->catalog->tiers('savings_rate') as $tier) {
             $key = "savings_rate.{$tier}";
             $crossing = $this->firstCrossing($rates, (float) $this->threshold($key));
 
@@ -232,7 +233,8 @@ class Evaluator
             $unlocks['safety.1'] = Unlock::event($paidOff);
         }
 
-        foreach ([2, 3] as $tier) {
+        // The first is the loan; the rest are months of cover.
+        foreach (array_slice($this->catalog->tiers('safety'), 1) as $tier) {
             $key = "safety.{$tier}";
             $covered = $this->firstMonthCovering($history, (int) $this->threshold($key));
 
@@ -285,7 +287,7 @@ class Evaluator
 
             $run = $net > 0 ? $run + 1 : 0;
 
-            foreach ([1, 2, 3, 4] as $tier) {
+            foreach ($this->catalog->tiers('streaks') as $tier) {
                 $key = "streaks.{$tier}";
 
                 if (! isset($unlocks[$key]) && $run >= $this->threshold($key)) {

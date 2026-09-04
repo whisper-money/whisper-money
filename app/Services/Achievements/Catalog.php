@@ -32,6 +32,22 @@ class Catalog
     }
 
     /**
+     * The rungs of one track, in order. Read rather than written down at the
+     * call site, so adding a rung to the catalog is the whole change.
+     *
+     * @return list<int>
+     */
+    public function tiers(string $track): array
+    {
+        return $this->all()
+            ->filter(fn (Definition $definition): bool => $definition->track === $track)
+            ->map(fn (Definition $definition): int => $definition->tier)
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /**
      * Track labels, in display order.
      *
      * @return array<string, string>
@@ -64,12 +80,16 @@ class Catalog
             new Definition('transactions.2', 'transactions', 2, Rarity::Common, Figure::Count, 'receipt', __('Transactions recorded'), 50),
             new Definition('transactions.3', 'transactions', 3, Rarity::Uncommon, Figure::Count, 'receipt', __('Transactions recorded'), 250),
             new Definition('transactions.4', 'transactions', 4, Rarity::Rare, Figure::Count, 'receipt', __('Transactions recorded'), 1000),
+            new Definition('transactions.5', 'transactions', 5, Rarity::Rare, Figure::Count, 'receipt', __('Transactions recorded'), 2000),
+            new Definition('transactions.6', 'transactions', 6, Rarity::Epic, Figure::Count, 'receipt', __('Transactions recorded'), 5000),
+            new Definition('transactions.7', 'transactions', 7, Rarity::Epic, Figure::Count, 'receipt', __('Transactions recorded'), 10000),
 
             // Closed months in a row with nothing left uncategorized.
             new Definition('categorized.1', 'categorized', 1, Rarity::Common, Figure::Months, 'tags', __('Fully categorized'), 1),
             new Definition('categorized.2', 'categorized', 2, Rarity::Uncommon, Figure::Months, 'tags', __('Fully categorized'), 3),
             new Definition('categorized.3', 'categorized', 3, Rarity::Uncommon, Figure::Months, 'tags', __('Fully categorized'), 6),
             new Definition('categorized.4', 'categorized', 4, Rarity::Rare, Figure::Months, 'tags', __('Fully categorized'), 12),
+            new Definition('categorized.5', 'categorized', 5, Rarity::Epic, Figure::Months, 'tags', __('Fully categorized'), 24),
 
             // Data hygiene: one-off events, dated when they happened.
             new Definition('hygiene.1', 'hygiene', 1, Rarity::Common, Figure::None, 'calendar-check', __('First closed month')),

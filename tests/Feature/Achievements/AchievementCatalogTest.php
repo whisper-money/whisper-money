@@ -10,11 +10,20 @@ use App\Services\Achievements\Ladders;
  * is addressed by forever.
  */
 
-it('holds forty-six medals, each with a key of its own', function (): void {
+it('holds fifty medals, each with a key of its own', function (): void {
     $all = app(Catalog::class)->all();
 
-    expect($all)->toHaveCount(46)
-        ->and($all->keys()->unique())->toHaveCount(46);
+    expect($all)->toHaveCount(50)
+        ->and($all->keys()->unique())->toHaveCount(50);
+});
+
+it('reads a track\'s rungs off the catalog, so adding one is a single edit', function (): void {
+    $catalog = app(Catalog::class);
+
+    expect($catalog->tiers('transactions'))->toBe([1, 2, 3, 4, 5, 6, 7])
+        ->and($catalog->tiers('categorized'))->toBe([1, 2, 3, 4, 5])
+        ->and($catalog->tiers('net_worth'))->toBe([1, 2, 3, 4, 5, 6, 7])
+        ->and($catalog->tiers('nothing-of-the-sort'))->toBe([]);
 });
 
 it('gives every medal a track the screen knows how to draw', function (): void {
