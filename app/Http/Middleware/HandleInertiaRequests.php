@@ -129,15 +129,15 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * The bell's badge and its latest rows. Null for guests, for readers still
-     * onboarding and while the bell is switched off, so the frontend has one
-     * thing to check before drawing it.
+     * The bell's badge and its latest rows. Null for guests and for readers
+     * still onboarding, so the frontend has one thing to check before drawing
+     * it.
      *
      * @return array{unread: int, recent: list<array<string, mixed>>}|null
      */
     private function notificationsFor(?User $user): ?array
     {
-        if ($user === null || ! $user->isOnboarded() || ! config('notifications.enabled')) {
+        if ($user === null || ! $user->isOnboarded()) {
             return null;
         }
 
