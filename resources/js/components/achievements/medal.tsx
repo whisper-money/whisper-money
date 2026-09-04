@@ -185,13 +185,7 @@ function MetalDefs({ id, metal }: { id: string; metal: Metal }) {
                 <stop offset="0.78" stopColor={metal.shadow} />
                 <stop offset="1" stopColor={metal.bounce} />
             </linearGradient>
-            <linearGradient
-                id={`${id}-bevel`}
-                x1="0.2"
-                y1="0"
-                x2="0.78"
-                y2="1"
-            >
+            <linearGradient id={`${id}-bevel`} x1="0.2" y1="0" x2="0.78" y2="1">
                 <stop offset="0" stopColor="#fff" stopOpacity="0.6" />
                 <stop offset="0.4" stopColor="#fff" stopOpacity="0" />
                 <stop offset="0.62" stopColor="#000" stopOpacity="0" />
@@ -208,6 +202,11 @@ function MetalDefs({ id, metal }: { id: string; metal: Metal }) {
 /**
  * The pictogram, stamped rather than painted: a lit copy sits a fraction of a
  * pixel below the ink, which is the whole trick behind an engraved edge.
+ *
+ * Both copies are centred with the `translate` property written out in full,
+ * never with Tailwind's `-translate-x-1/2`: those utilities compile to
+ * `translate` too, so a `translate` of our own silently drops the half-width
+ * they were holding and the lit copy slides off sideways.
  */
 function Engraving({
     Icon,
@@ -221,19 +220,23 @@ function Engraving({
     const lit =
         metal === OBSIDIAN ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.62)';
     const offset = Math.max(0.4, size / 26);
-    const box = { width: size, height: size };
+    const box = {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        width: size,
+        height: size,
+    } as const;
 
     return (
         <>
             <Icon
-                className="absolute top-1/2 left-1/2 -translate-x-1/2"
-                style={{ ...box, translate: `0 calc(-50% + ${offset}px)` }}
+                style={{ ...box, translate: `-50% calc(-50% + ${offset}px)` }}
                 color={lit}
                 aria-hidden
             />
             <Icon
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={box}
+                style={{ ...box, translate: '-50% -50%' }}
                 color={metal.ink}
                 aria-hidden
             />

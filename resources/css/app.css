@@ -147,8 +147,8 @@
     --border: oklch(0.325 0 0);
     --input: oklch(0.41 0 0);
     --ring: oklch(0.439 0 0);
-    --medal-copper: oklch(0.76 0.10 48);
-    --medal-steel: oklch(0.80 0.012 252);
+    --medal-copper: oklch(0.76 0.1 48);
+    --medal-steel: oklch(0.8 0.012 252);
     --medal-gold: oklch(0.84 0.13 90);
     --medal-obsidian: oklch(0.84 0.13 90);
     --chart-1: var(--color-zinc-200);
