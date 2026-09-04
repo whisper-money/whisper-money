@@ -750,6 +750,35 @@ export function EditTransactionDialog({
         ? currencies.accounts
         : [...currencies.accounts, { code: currencyCode, name: currencyCode }];
 
+    // Sits inside the amount field, so the label the field already carries is
+    // its label too - hence the aria-label rather than a <FormLabel> of its own.
+    const currencyPicker = (
+        <Select
+            name="currency_code"
+            value={currencyCode}
+            onValueChange={handleCurrencyChange}
+            disabled={isSubmitting}
+        >
+            <SelectTrigger
+                id="currency"
+                aria-label={__('Currency')}
+                data-testid="currency-select"
+                className="h-7 w-full gap-1 rounded-md px-2 text-xs font-medium shadow-none"
+            >
+                <SelectValue placeholder={__('Select currency')}>
+                    {currencyCode}
+                </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+                {currencyOptions.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                        {`${currency.code} - ${currency.name}`}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+
     // The date the source gave this row: the stored one once it has been moved,
     // otherwise the day it still sits on. Manual rows have no source to compare
     // against - the user picked every date they ever had.
@@ -1017,6 +1046,7 @@ export function EditTransactionDialog({
                                                     )
                                                 }
                                                 currencyCode={currencyCode}
+                                                currencySlot={currencyPicker}
                                                 disabled={isSubmitting}
                                                 required
                                                 className="h-11 text-right text-xl font-semibold tabular-nums md:text-xl"
@@ -1098,42 +1128,6 @@ export function EditTransactionDialog({
                                                             )}
                                                         >
                                                             {`${decryptedAccountNames.get(account.id) || __('[Loading...]')} · ${account.currency_code}`}
-                                                        </SelectItem>
-                                                    ),
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <FormLabel htmlFor="currency">
-                                            {__('Currency')}
-                                        </FormLabel>
-                                        <Select
-                                            name="currency_code"
-                                            value={currencyCode}
-                                            onValueChange={handleCurrencyChange}
-                                            disabled={isSubmitting}
-                                        >
-                                            <SelectTrigger
-                                                id="currency"
-                                                data-testid="currency-select"
-                                            >
-                                                <SelectValue
-                                                    placeholder={__(
-                                                        'Select currency',
-                                                    )}
-                                                />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {currencyOptions.map(
-                                                    (currency) => (
-                                                        <SelectItem
-                                                            key={currency.code}
-                                                            value={
-                                                                currency.code
-                                                            }
-                                                        >
-                                                            {`${currency.code} - ${currency.name}`}
                                                         </SelectItem>
                                                     ),
                                                 )}

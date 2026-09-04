@@ -108,9 +108,13 @@ vi.mock('@/components/ui/select', () => ({
         value: string;
         children: React.ReactNode;
     }) => <div data-select-value={value}>{children}</div>,
-    SelectValue: ({ placeholder }: { placeholder?: string }) => (
-        <span>{placeholder}</span>
-    ),
+    SelectValue: ({
+        placeholder,
+        children,
+    }: {
+        placeholder?: string;
+        children?: React.ReactNode;
+    }) => <span>{children ?? placeholder}</span>,
 }));
 
 vi.mock('@/components/ui/dialog', () => ({
@@ -286,8 +290,11 @@ describe('EditTransactionDialog', () => {
             />,
         );
 
-        expect(screen.getByText('€')).toBeInTheDocument();
-        expect(screen.queryByText('$')).not.toBeInTheDocument();
+        expect(screen.getByText('EUR')).toBeInTheDocument();
+        expect(screen.getByTestId('currency_code-value')).toHaveAttribute(
+            'data-value',
+            'EUR',
+        );
     });
 
     it('shows each account currency in the account options', async () => {
@@ -854,7 +861,7 @@ describe('EditTransactionDialog', () => {
             'data-value',
             'USD',
         );
-        expect(screen.getByText('$')).toBeInTheDocument();
+        expect(screen.getByText('USD')).toBeInTheDocument();
     });
 
     it('stores the picked currency rather than the account one', async () => {
