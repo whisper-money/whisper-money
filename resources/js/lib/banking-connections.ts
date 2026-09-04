@@ -76,6 +76,32 @@ export function isWaitingForBank(connection: BankingConnection): boolean {
 }
 
 /**
+ * How many days before `valid_until` a consent counts as expiring soon. Mirrors
+ * `BankingConnection::EXPIRY_WARNING_DAYS`, which drives the warning email.
+ */
+const EXPIRY_WARNING_DAYS = 7;
+
+/**
+ * Whether the consent is close enough to running out that the user should renew
+ * it now, while syncing still works. Only EnableBanking connections carry a
+ * `valid_until`, so nothing else is ever expiring soon; an already-lapsed one is
+ * expired, not expiring.
+ */
+export function isExpiringSoon(connection: BankingConnection): boolean {
+    if (connection.status !== 'active' || !connection.valid_until) {
+        return false;
+    }
+
+    const msUntilExpiry =
+        new Date(connection.valid_until).getTime() - Date.now();
+
+    return (
+        msUntilExpiry > 0 &&
+        msUntilExpiry < EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000
+    );
+}
+
+/**
  * Whether the user may spend an access call on demand. Computed server-side from
  * the backoff, which is the enforcing side too; the flag is only present on the
  * connections page payload.

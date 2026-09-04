@@ -88,6 +88,7 @@ class HandleInertiaRequests extends Middleware
                 'hasProPlan' => $user?->hasProPlan() ?? false,
                 'isDemoAccount' => $user?->isRestrictedDemoAccount() ?? false,
                 'isSharedAccount' => $user?->isRestrictedSharedAccount() ?? false,
+                'isAdmin' => $user?->isAdmin() ?? false,
             ],
             'subscriptionPaymentIssue' => $user?->hasPastDueSubscription() ? [
                 'status' => 'past_due',

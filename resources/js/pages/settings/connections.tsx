@@ -25,6 +25,7 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import {
     canSyncManually,
+    isExpiringSoon,
     isFirstSyncRunning,
     isWaitingForBank,
 } from '@/lib/banking-connections';
@@ -46,11 +47,53 @@ import {
     Unplug,
     Wallet,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface Props {
     connections: BankingConnection[];
+}
+
+/** The amber "nothing is broken, but do something" notice under a card. */
+function AmberNotice({ children }: { children: ReactNode }) {
+    return (
+        <Alert className="mt-3 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+            <Clock />
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+                {children}
+            </AlertDescription>
+        </Alert>
+    );
+}
+
+/** The same button in the card header, the expiry notice and the error box. */
+function ReconnectButton({
+    reconnecting,
+    onClick,
+    variant,
+    className,
+}: {
+    reconnecting: boolean;
+    onClick: () => void;
+    variant?: 'default' | 'secondary';
+    className?: string;
+}) {
+    return (
+        <Button
+            size="sm"
+            variant={variant}
+            className={className}
+            disabled={reconnecting}
+            onClick={onClick}
+        >
+            {reconnecting ? (
+                <Spinner className="mr-1.5 size-3" />
+            ) : (
+                <RotateCcw className="mr-1.5 h-3 w-3" />
+            )}
+            {__('Reconnect')}
+        </Button>
+    );
 }
 
 export default function ConnectionsPage({ connections }: Props) {
@@ -158,6 +201,7 @@ export default function ConnectionsPage({ connections }: Props) {
         return (
             connection.provider === 'enablebanking' &&
             (connection.status === 'expired' ||
+                isExpiringSoon(connection) ||
                 isEnableBankingAuthError(connection))
         );
     }
@@ -246,9 +290,8 @@ export default function ConnectionsPage({ connections }: Props) {
                                             />
                                             {connection.status === 'expired' &&
                                                 canReconnect(connection) && (
-                                                    <Button
-                                                        size="sm"
-                                                        disabled={
+                                                    <ReconnectButton
+                                                        reconnecting={
                                                             reconnectingId ===
                                                             connection.id
                                                         }
@@ -257,15 +300,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                 connection,
                                                             )
                                                         }
-                                                    >
-                                                        {reconnectingId ===
-                                                        connection.id ? (
-                                                            <Spinner className="mr-1.5 size-3" />
-                                                        ) : (
-                                                            <RotateCcw className="mr-1.5 h-3 w-3" />
-                                                        )}
-                                                        {__('Reconnect')}
-                                                    </Button>
+                                                    />
                                                 )}
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -428,25 +463,43 @@ export default function ConnectionsPage({ connections }: Props) {
                                             )}
                                         </div>
                                         {isWaitingForBank(connection) && (
-                                            <Alert className="mt-3 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                                                <Clock />
-                                                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                                            <AmberNotice>
+                                                <p>
+                                                    {__(
+                                                        'Your bank limits how often we can fetch your data. We will retry automatically.',
+                                                    )}
+                                                </p>
+                                                {connection.next_sync_attempt_at && (
                                                     <p>
-                                                        {__(
-                                                            'Your bank limits how often we can fetch your data. We will retry automatically.',
+                                                        {__('Next attempt')}:{' '}
+                                                        {formatDate(
+                                                            connection.next_sync_attempt_at,
                                                         )}
                                                     </p>
-                                                    {connection.next_sync_attempt_at && (
-                                                        <p>
-                                                            {__('Next attempt')}
-                                                            :{' '}
-                                                            {formatDate(
-                                                                connection.next_sync_attempt_at,
-                                                            )}
-                                                        </p>
+                                                )}
+                                            </AmberNotice>
+                                        )}
+                                        {isExpiringSoon(connection) && (
+                                            <AmberNotice>
+                                                <p>
+                                                    {__(
+                                                        'Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.',
                                                     )}
-                                                </AlertDescription>
-                                            </Alert>
+                                                </p>
+                                                <ReconnectButton
+                                                    variant="secondary"
+                                                    className="h-7 text-xs"
+                                                    reconnecting={
+                                                        reconnectingId ===
+                                                        connection.id
+                                                    }
+                                                    onClick={() =>
+                                                        handleReconnect(
+                                                            connection,
+                                                        )
+                                                    }
+                                                />
+                                            </AmberNotice>
                                         )}
                                         {connection.status === 'error' && (
                                             <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
@@ -489,11 +542,10 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             {isEnableBankingAuthError(
                                                                 connection,
                                                             ) ? (
-                                                                <Button
+                                                                <ReconnectButton
                                                                     variant="secondary"
-                                                                    size="sm"
                                                                     className="h-7 text-xs"
-                                                                    disabled={
+                                                                    reconnecting={
                                                                         reconnectingId ===
                                                                         connection.id
                                                                     }
@@ -502,17 +554,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                             connection,
                                                                         )
                                                                     }
-                                                                >
-                                                                    {reconnectingId ===
-                                                                    connection.id ? (
-                                                                        <Spinner className="mr-1.5 size-3" />
-                                                                    ) : (
-                                                                        <RotateCcw className="mr-1.5 h-3 w-3" />
-                                                                    )}
-                                                                    {__(
-                                                                        'Reconnect',
-                                                                    )}
-                                                                </Button>
+                                                                />
                                                             ) : (
                                                                 <Button
                                                                     variant="secondary"

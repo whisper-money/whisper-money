@@ -593,9 +593,17 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $query->whereNotIn($query->qualifyColumn('email'), self::sharedAccountEmails());
     }
 
+    /**
+     * The ADMIN_EMAIL account: the only one that can open /admin, and the only
+     * one whose integration requests are approved on the spot. Fails closed,
+     * so with ADMIN_EMAIL unset nobody is an admin - not even a user whose own
+     * email is empty.
+     */
     public function isAdmin(): bool
     {
-        return $this->email === config('mail.admin_email');
+        $adminEmail = config('app.admin_email');
+
+        return filled($adminEmail) && $this->email === $adminEmail;
     }
 
     public function preferredLocale(): string

@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { isWaitingForBank } from '@/lib/banking-connections';
+import { isExpiringSoon, isWaitingForBank } from '@/lib/banking-connections';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 
@@ -58,6 +58,14 @@ export function ConnectionStatusBadge({
         return (
             <Badge variant="secondary" className={AMBER_BADGE}>
                 {__('Waiting for the bank')}
+            </Badge>
+        );
+    }
+
+    if (isExpiringSoon(connection)) {
+        return (
+            <Badge variant="secondary" className={AMBER_BADGE}>
+                {__('Expiring soon')}
             </Badge>
         );
     }

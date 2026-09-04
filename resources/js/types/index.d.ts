@@ -12,6 +12,8 @@ export interface Auth {
     isDemoAccount: boolean;
     /** The demo or the press account: public credentials, shared data. */
     isSharedAccount: boolean;
+    /** The single ADMIN_EMAIL account, the only one that can open /admin. */
+    isAdmin: boolean;
 }
 
 export interface BreadcrumbItem {
