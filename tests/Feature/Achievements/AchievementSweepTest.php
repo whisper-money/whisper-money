@@ -191,3 +191,26 @@ it('only sweeps a reader the feature is on for', function (): void {
 
     expect(Achievement::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
 });
+
+it('records nothing when a foreign balance cannot be converted', function (): void {
+    // No rate for the day, and the API cannot be reached for one either.
+    Http::fake(['cdn.jsdelivr.net/*' => Http::response([], 500)]);
+
+    $user = reader();
+    recordMonth($user, now()->subMonths(3)->format('Y-m'), 300000, 150000);
+
+    // A second account holding money in a currency the ladder is not in.
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+        'currency_code' => 'BTC',
+    ]);
+
+    // A milestone dated from a half-converted history would be wrong forever,
+    // so the sweep reports the reader and moves on rather than guessing.
+    $this->artisan('achievements:sweep', ['--user' => $user->email])
+        ->expectsOutputToContain('Skipped')
+        ->assertSuccessful();
+
+    expect($user->achievements()->count())->toBe(0);
+});

@@ -8,9 +8,11 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BalanceLookup;
 use App\Services\CashflowSummaryService;
+use App\Services\ExchangeRateService;
 use App\Services\NetWorthCalculator;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use RuntimeException;
 
 /**
  * Reads one user's whole past into a {@see History}.
@@ -27,6 +29,7 @@ class HistoryBuilder
     public function __construct(
         private CashflowSummaryService $cashflow,
         private NetWorthCalculator $netWorth,
+        private ExchangeRateService $rates,
         private Ladders $ladders,
     ) {}
 
@@ -46,6 +49,8 @@ class HistoryBuilder
         $counts = $this->transactionCounts($user, $first, $last);
         $goal = $this->goalReached($user);
 
+        $this->ensureRates($accounts, $currency, array_keys($months));
+
         return new History(
             currency: $currency,
             months: $months,
@@ -56,6 +61,55 @@ class HistoryBuilder
             events: $this->events($user, $accounts, $lookup, array_keys($months), $goal),
             goalReachedAmount: $goal['amount'] ?? null,
         );
+    }
+
+    /**
+     * Refuse to read a history whose money cannot all be converted.
+     *
+     * An account in another currency is worth what the rate on the day says,
+     * and {@see ExchangeRateService::convert()} answers a missing rate by
+     * logging and handing back the amount unconverted — right for a chart that
+     * redraws tomorrow, wrong here. A medal is written once and never revoked,
+     * so a rate that failed to arrive would leave a milestone dated to the
+     * wrong month, or awarded on a figure nobody ever had, permanently.
+     *
+     * Better to record nothing today: the sweep runs again tomorrow, and the
+     * command reports the reader it skipped.
+     *
+     * @param  Collection<int, Account>  $accounts
+     * @param  list<string>  $months
+     */
+    private function ensureRates(Collection $accounts, string $currency, array $months): void
+    {
+        $foreign = $accounts
+            ->pluck('currency_code')
+            ->map(fn (string $code): string => strtolower($code))
+            ->unique()
+            ->reject(fn (string $code): bool => $code === strtolower($currency))
+            ->values();
+
+        if ($foreign->isEmpty()) {
+            return;
+        }
+
+        $dates = array_map(fn (string $month): string => $this->endOf($month)->toDateString(), $months);
+
+        // One query for every month end before asking for them one at a time.
+        $this->rates->preloadRates($currency, $dates);
+
+        foreach ($dates as $date) {
+            $rates = $this->rates->getRates($currency, $date);
+
+            $missing = $foreign->reject(
+                fn (string $code): bool => isset($rates[$code]) && (float) $rates[$code] !== 0.0,
+            );
+
+            if ($missing->isNotEmpty()) {
+                throw new RuntimeException(
+                    "No exchange rate for {$missing->implode(', ')} against {$currency} on {$date}.",
+                );
+            }
+        }
     }
 
     private function firstMonth(User $user): ?Carbon
