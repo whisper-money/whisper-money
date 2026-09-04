@@ -118,13 +118,18 @@ it('flips the spending split\'s shades so the biggest slice is visible on a dark
 });
 
 it('gives chromium a writable home', function (): void {
-    // Without it the crash handler exits before the browser is usable, and
+    // Without one the crash handler exits before the browser is usable, and
     // php-fpm hands its workers none of the environment the image sets — so
     // every card drawn inside a web request failed.
+    //
+    // What matters is that the home the subprocess ends up with is writable,
+    // not that it was overridden: HOME is also where Playwright looks for the
+    // browser it installed, so it is left alone whenever the inherited one can
+    // already do the job. `Cards/CardBrowserTest` covers both branches.
     app(Summaries::class)->prepareCards(summaryToSend(User::factory()->onboarded()->create(), '2026-08'), pro: false);
 
     Process::assertRan(fn (PendingProcess $process): bool => ranTheRenderer()($process)
-        && is_writable((string) ($process->environment['HOME'] ?? '')));
+        && is_writable((string) ($process->environment['HOME'] ?? getenv('HOME'))));
 });
 
 it('leaves an already rendered card alone', function (): void {

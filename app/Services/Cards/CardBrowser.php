@@ -64,14 +64,6 @@ class CardBrowser
      * missing ones are what the exception is about, and they cost one more
      * render rather than thirty.
      *
-     * HOME is stated rather than inherited. Chromium puts its crash database
-     * under $HOME, and without a writable one the crash handler exits before
-     * the browser is usable — `chrome_crashpad_handler: --database is required`,
-     * then SIGTRAP. php-fpm does not hand its workers the environment the image
-     * sets, so setting it in the container only ever fixed the queue worker:
-     * every card drawn inside a web request still died. Set here, it holds
-     * whichever process is doing the drawing.
-     *
      * @param  list<array{disk: string, path: string, html: string, png: string, width: int, height: int}>  $pages
      */
     public function shoot(array $pages): void
@@ -84,7 +76,7 @@ class CardBrowser
         file_put_contents($manifest, json_encode($pages));
 
         try {
-            $result = Process::env(['HOME' => sys_get_temp_dir()])
+            $result = Process::env($this->environment())
                 ->timeout(self::TIMEOUT_SECONDS + self::TIMEOUT_PER_CARD_SECONDS * count($pages))
                 ->run([
                     (string) config('monthly_summary.node_binary'),
@@ -115,5 +107,39 @@ class CardBrowser
                 @unlink($page['png']);
             }
         }
+    }
+
+    /**
+     * What the render subprocess is given on top of what it inherits.
+     *
+     * Chromium keeps its crash database under $HOME, and without a writable one
+     * the crash handler exits before the browser is usable —
+     * `chrome_crashpad_handler: --database is required`, then SIGTRAP. php-fpm
+     * does not hand its workers the environment the image sets, so fixing it in
+     * the container only ever fixed the queue worker: every card drawn inside a
+     * web request still died.
+     *
+     * But HOME is also where Playwright looks for the browsers it installed, so
+     * moving it unconditionally hides them from itself — which is why this never
+     * worked on a developer's machine, where nothing sets
+     * PLAYWRIGHT_BROWSERS_PATH and the real HOME is the only place the browser
+     * exists. Production pins that variable in the image, so there the override
+     * was harmless and the bug stayed invisible.
+     *
+     * So: only move HOME when the one we have cannot do the job. A writable HOME
+     * is exactly what the crash handler needs and exactly what Playwright needs
+     * left alone.
+     *
+     * @return array<string, string>
+     */
+    private function environment(): array
+    {
+        $home = (string) getenv('HOME');
+
+        if ($home !== '' && is_writable($home)) {
+            return [];
+        }
+
+        return ['HOME' => sys_get_temp_dir()];
     }
 }
