@@ -58,10 +58,10 @@ it('draws every card the month can show in a single browser run', function (): v
 
     app(Summaries::class)->prepareCards($summary, pro: false);
 
-    // Five cards the full payload can draw, in three formats, light and dark,
-    // one Chromium.
+    // Five cards the full payload can draw, in the two shapes a screen offers,
+    // light and dark, one Chromium: 5 x 2 x 2.
     Process::assertRanTimes(ranTheRenderer(), 1);
-    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(30);
+    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(20);
 });
 
 it('keeps the theme and the language in the name of the file it caches', function (): void {
@@ -84,7 +84,7 @@ it('draws a second set for a second language rather than reusing the first', fun
     app(Summaries::class)->prepareCards($summary, pro: false);
 
     Process::assertRanTimes(ranTheRenderer(), 2);
-    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(60)
+    expect(Storage::disk('public')->files("monthly-summaries/{$summary->id}"))->toHaveCount(40)
         ->toContain("monthly-summaries/{$summary->id}/savings_rate-feed-light-es.png");
 });
 
@@ -118,13 +118,18 @@ it('flips the spending split\'s shades so the biggest slice is visible on a dark
 });
 
 it('gives chromium a writable home', function (): void {
-    // Without it the crash handler exits before the browser is usable, and
+    // Without one the crash handler exits before the browser is usable, and
     // php-fpm hands its workers none of the environment the image sets — so
     // every card drawn inside a web request failed.
+    //
+    // What matters is that the home the subprocess ends up with is writable,
+    // not that it was overridden: HOME is also where Playwright looks for the
+    // browser it installed, so it is left alone whenever the inherited one can
+    // already do the job. `Cards/CardBrowserTest` covers both branches.
     app(Summaries::class)->prepareCards(summaryToSend(User::factory()->onboarded()->create(), '2026-08'), pro: false);
 
     Process::assertRan(fn (PendingProcess $process): bool => ranTheRenderer()($process)
-        && is_writable((string) ($process->environment['HOME'] ?? '')));
+        && is_writable((string) ($process->environment['HOME'] ?? getenv('HOME'))));
 });
 
 it('leaves an already rendered card alone', function (): void {
@@ -152,5 +157,5 @@ it('throws away the cards of the months before', function (): void {
     expect(Storage::disk('public')->exists("monthly-summaries/{$previous->id}/streak-feed-light-en.png"))->toBeFalse()
         ->and(Storage::disk('public')->exists("monthly-summaries/{$other->id}/streak-feed-light-en.png"))->toBeTrue()
         ->and(Storage::disk('public')->exists("monthly-summaries/{$otherSpace->id}/streak-feed-light-en.png"))->toBeTrue()
-        ->and(Storage::disk('public')->files("monthly-summaries/{$current->id}"))->toHaveCount(30);
+        ->and(Storage::disk('public')->files("monthly-summaries/{$current->id}"))->toHaveCount(20);
 });

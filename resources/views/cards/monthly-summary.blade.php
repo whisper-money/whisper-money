@@ -13,7 +13,7 @@
 @php
     [$width, $height] = $format->dimensions();
     $dark = $theme->isDark();
-    $wide = $format === \App\Enums\MonthlySummaryFormat::Wide;
+    $wide = $format === \App\Enums\CardFormat::Wide;
 
     // One scale factor drives the whole type ramp, so the 16:9 card is the same
     // design at 3/4 size rather than a second layout to maintain.
@@ -129,7 +129,7 @@
         .rank-pct { font-size: {{ round(31 * $s) }}px; font-weight: 700; letter-spacing: -0.02em; }
         .body { display: flex; flex-direction: column; }
         .body-viz { min-width: 0; }
-        @if ($format === \App\Enums\MonthlySummaryFormat::Story)
+        @if ($format === \App\Enums\CardFormat::Story)
             /* Nearly twice as tall as the feed card, so the figure is centred
                rather than stranded halfway down a field of background. */
             .body { flex-grow: 1; justify-content: center; }

@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>{{ __('Monthly summary turned off') }}</title>
+    <title>{{ $title }}</title>
     <style>
         :root { color-scheme: light; }
         body {
@@ -20,8 +20,8 @@
     </style>
 </head>
 <body>
-    <h1>{{ __('Monthly summary turned off') }}</h1>
-    <p>{{ __('You will not get the monthly report or its reminder again. Everything else stays as it was.') }}</p>
+    <h1>{{ $title }}</h1>
+    <p>{{ $body }}</p>
     <p><a href="{{ route('notifications.index') }}">{{ __('Change your email preferences') }}</a></p>
 </body>
 </html>

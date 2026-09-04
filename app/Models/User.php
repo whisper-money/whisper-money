@@ -37,6 +37,11 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $last_active_at
  * @property ?Carbon $transactions_last_visited_at
  * @property ?Carbon $ai_consent_prompt_dismissed_at
+ * @property int $achievements_count
+ * @property int $visit_streak
+ * @property int $longest_visit_streak
+ * @property int $visit_week_streak
+ * @property int $longest_visit_week_streak
  * @property ?Carbon $onboarded_at
  * @property ?string $price_arm
  * @property ?string $signup_plan
@@ -383,6 +388,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(SavingsGoal::class);
     }
 
+    /** @return HasMany<Achievement, $this> */
+    public function achievements(): HasMany
+    {
+        return $this->hasMany(Achievement::class);
+    }
+
     /** @return HasMany<MonthlySummary, $this> */
     public function monthlySummaries(): HasMany
     {
@@ -654,6 +665,15 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function wantsMonthlySummaryEmail(): bool
     {
         return $this->setting->notify_monthly_summary ?? true;
+    }
+
+    /**
+     * The one email a day the medals can produce. The rows in the bell are the
+     * record of what happened and stay whatever this says.
+     */
+    public function wantsAchievementsEmail(): bool
+    {
+        return $this->setting->notify_achievements ?? true;
     }
 
     /**

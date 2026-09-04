@@ -1,7 +1,14 @@
 <?php
 
+use App\Features\Achievements;
 use App\Models\User;
 use App\Models\UserSetting;
+use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Pennant\Feature;
+
+beforeEach(function () {
+    config()->set('inertia.ssr.enabled', false);
+});
 
 test('notification preferences can be updated', function () {
     $user = User::factory()->create();
@@ -132,4 +139,20 @@ test('budget notification defaults can be updated', function () {
     expect($setting->budget_notify_on_new_transaction)->toBeTrue()
         ->and($setting->budget_notify_on_close_to_limit)->toBeTrue()
         ->and($setting->budget_notify_on_over_limit)->toBeTrue();
+});
+
+test('the achievements email toggle is hidden while the medals are off', function () {
+    $user = User::factory()->create();
+
+    Feature::for($user)->deactivate(Achievements::class);
+
+    $this->actingAs($user)
+        ->get(route('notifications.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('notifyAchievements', null));
+
+    Feature::for($user)->activate(Achievements::class);
+
+    $this->actingAs($user)
+        ->get(route('notifications.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('notifyAchievements', true));
 });

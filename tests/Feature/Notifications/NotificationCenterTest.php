@@ -16,6 +16,10 @@ use Inertia\Testing\AssertableInertia;
  */
 
 beforeEach(function (): void {
+    // See AchievementScreenTest: these are about props, not about a
+    // server-side render, and SSR would post them to a dev server.
+    config()->set('inertia.ssr.enabled', false);
+
     // The bell is about rows, not pictures.
     $this->mock(CardRenderer::class, function ($mock): void {
         $mock->shouldReceive('warm')->andReturnNull();

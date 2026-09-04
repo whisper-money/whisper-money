@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Services\MonthlySummary\CardRenderer;
@@ -14,6 +15,14 @@ use Inertia\Testing\AssertableInertia;
  */
 
 beforeEach(function (): void {
+    // These assertions are about the props a screen is handed, never about the
+    // HTML a server-side render would produce. Left on, Inertia posts every page
+    // to its SSR gateway — the running dev server, in development — and the
+    // suite's stray-request guard fails the test for a reason that has nothing
+    // to do with the screen. CI has no dev server, so this only ever went red on
+    // a developer's machine.
+    config()->set('inertia.ssr.enabled', false);
+
     $this->mock(CardRenderer::class, function ($mock): void {
         $mock->shouldReceive('url')->andReturn('https://whisper.money/storage/card.png');
         $mock->shouldReceive('forget')->andReturnNull();
@@ -66,13 +75,11 @@ it('shows one month with its figures and every card it can produce', function ()
             ->has('report.rows')
             ->has('cards')
             ->where('cards.0.chosen', true)
-            // Both themes, so the screen's light/dark switch flips every preview
-            // and every download link without a round trip.
-            ->has('cards.0.themes.light.formats', 3)
-            ->has('cards.0.themes.dark.formats', 3)
-            // Every card carries the picture the screen paints, not just the links.
-            ->where('cards.0.themes.light.preview', fn (string $url): bool => str_contains($url, 'card/'.$summary->card->value.'/feed/light?preview=1'))
-            ->where('cards.0.themes.dark.preview', fn (string $url): bool => str_contains($url, 'card/'.$summary->card->value.'/feed/dark?preview=1'))
+            // One thumbnail per card and nothing else: the grid only answers
+            // which card to post, and the share dialog builds every URL it needs
+            // off the same route.
+            ->where('cards.0.preview', fn (string $url): bool => str_contains($url, 'card/'.$summary->card->value.'/feed/light?preview=1'))
+            ->missing('cards.0.themes')
             ->where('shareUrl', null));
 });
 
@@ -108,10 +115,27 @@ it('will not show one reader another reader\'s month', function (): void {
  * The notice is a deferred prop, so it arrives on the dashboard's follow-up
  * request rather than in the first response.
  */
+/**
+ * The asset version the app will answer with, so a partial reload is not turned
+ * into a hard visit.
+ *
+ * Inertia answers a GET whose `X-Inertia-Version` does not match with 409 and a
+ * location to visit properly. The version is a hash of `public/build/manifest.json`
+ * when there is one and an empty string when there is not — so a test that sends
+ * no version only passes on a checkout nobody has ever built, which is a
+ * difference between two developers' machines and not something these
+ * assertions are about.
+ */
+function inertiaVersion(): string
+{
+    return (string) app(HandleInertiaRequests::class)->version(request());
+}
+
 function dashboardNotice(): ?array
 {
     return test()->get(route('dashboard'), [
         'X-Inertia' => 'true',
+        'X-Inertia-Version' => inertiaVersion(),
         'X-Inertia-Partial-Component' => 'dashboard',
         'X-Inertia-Partial-Data' => 'monthlySummary',
     ])->assertOk()->json('props.monthlySummary');

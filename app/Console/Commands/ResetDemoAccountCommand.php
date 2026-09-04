@@ -245,6 +245,8 @@ class ResetDemoAccountCommand extends Command
         $user->setting()->updateOrCreate([], [
             'notify_on_bank_transactions_synced' => false,
             'notify_on_inactive_no_bank' => false,
+            'notify_monthly_summary' => false,
+            'notify_achievements' => false,
             'budget_notify_on_new_transaction' => false,
             'budget_notify_on_close_to_limit' => false,
             'budget_notify_on_over_limit' => false,

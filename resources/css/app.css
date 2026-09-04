@@ -108,6 +108,14 @@
     --spent: var(--color-zinc-800);
     --allocated: var(--color-zinc-200);
     --spent-prev: var(--color-zinc-400);
+
+    /* Achievement tiers, as the metal each one is struck in: the medal itself
+       needs no theme (metal is metal), but the tier label sits on paper. */
+    --medal-copper: oklch(0.48 0.11 40);
+    --medal-steel: oklch(0.46 0.014 255);
+    --medal-gold: oklch(0.52 0.12 72);
+    --medal-obsidian: oklch(0.45 0.075 74);
+
     --radius: 0.625rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
@@ -139,6 +147,10 @@
     --border: oklch(0.325 0 0);
     --input: oklch(0.41 0 0);
     --ring: oklch(0.439 0 0);
+    --medal-copper: oklch(0.76 0.1 48);
+    --medal-steel: oklch(0.8 0.012 252);
+    --medal-gold: oklch(0.84 0.13 90);
+    --medal-obsidian: oklch(0.84 0.13 90);
     --chart-1: var(--color-zinc-200);
     --chart-2: var(--color-zinc-300);
     --chart-3: var(--color-zinc-400);
