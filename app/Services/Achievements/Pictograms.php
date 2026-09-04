@@ -51,6 +51,8 @@ class Pictograms
      * The icon names a card can draw, so a test can hold the catalog to them.
      *
      * @return list<string>
+     *
+     * @api Consumed by the test suite, which static analysis does not scan.
      */
     public function names(): array
     {
