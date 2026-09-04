@@ -214,3 +214,19 @@ it('records nothing when a foreign balance cannot be converted', function (): vo
 
     expect($user->achievements()->count())->toBe(0);
 });
+
+it('keeps the account menu count in step, even on a sweep that awards nothing', function (): void {
+    $user = reader();
+    recordMonth($user, now()->subMonths(4)->format('Y-m'), 300000, 150000);
+
+    $awarded = app(Awarder::class)->sweep($user)->count();
+
+    expect($user->fresh()->achievements_count)->toBe($awarded);
+
+    // A row removed by hand is corrected by the next pass rather than leaving
+    // the badge claiming a medal that is gone.
+    $user->achievements()->latest('achieved_on')->limit(1)->get()->each->delete();
+    app(Awarder::class)->sweep($user);
+
+    expect($user->fresh()->achievements_count)->toBe($user->achievements()->count());
+});

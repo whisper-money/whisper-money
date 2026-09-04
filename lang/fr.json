@@ -2476,5 +2476,6 @@
     "of :total": "sur :total",
     "Progress": "Progression",
     "1 month": "1 mois",
-    "{1}1 month|[2,*]:count months": "{1}1 mois|[2,*]:count mois"
+    "{1}1 month|[2,*]:count months": "{1}1 mois|[2,*]:count mois",
+    "Every milestone your money has crossed, dated when it actually happened.": "Chaque jalon franchi par votre argent, daté du moment où il s’est vraiment produit."
 }

@@ -2881,5 +2881,6 @@
     "{1}You unlocked an achievement|[2,*]You unlocked :count achievements": "{1}Has desbloqueado un logro|[2,*]Has desbloqueado :count logros",
     "{1}Your money crossed a line worth marking.|[2,*]Your money crossed a few lines worth marking.": "{1}Tu dinero ha cruzado una línea que merece marcarse.|[2,*]Tu dinero ha cruzado unas cuantas líneas que merecen marcarse.",
     "1 month": "1 mes",
-    "{1}1 month|[2,*]:count months": "{1}1 mes|[2,*]:count meses"
+    "{1}1 month|[2,*]:count months": "{1}1 mes|[2,*]:count meses",
+    "Every milestone your money has crossed, dated when it actually happened.": "Cada hito que ha cruzado tu dinero, con la fecha en que ocurrió de verdad."
 }

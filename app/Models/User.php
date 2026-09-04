@@ -37,6 +37,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $last_active_at
  * @property ?Carbon $transactions_last_visited_at
  * @property ?Carbon $ai_consent_prompt_dismissed_at
+ * @property int $achievements_count
  * @property ?Carbon $onboarded_at
  * @property ?string $price_arm
  * @property ?string $signup_plan

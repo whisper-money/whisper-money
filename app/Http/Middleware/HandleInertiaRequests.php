@@ -4,11 +4,13 @@ namespace App\Http\Middleware;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Features\Achievements;
 use App\Features\CalculateBalancesOnImport;
 use App\Features\SplitTransactions;
 use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Models\User;
+use App\Services\Achievements\Catalog;
 use App\Services\CurrencyOptions;
 use App\Services\Notifications\NotificationFeed;
 use App\Services\Subscriptions\PriceExperiment;
@@ -23,6 +25,7 @@ class HandleInertiaRequests extends Middleware
     public function __construct(
         private CurrencyOptions $currencyOptions,
         private NotificationFeed $notifications,
+        private Catalog $catalog,
     ) {}
 
     /**
@@ -110,6 +113,7 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => $this->resolveFeatureFlags(),
             'notifications' => fn (): ?array => $this->notificationsFor($user),
+            'achievements' => fn (): ?array => $this->achievementsFor($user),
             ...$this->userCollectionProps($user),
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
             'hasEncryptionSetup' => $user?->encryption_salt !== null,
@@ -124,6 +128,27 @@ class HandleInertiaRequests extends Middleware
                 // still has to render at the right scale.
                 'decimals' => $this->currencyOptions->decimalsMap(),
             ],
+        ];
+    }
+
+    /**
+     * How far through the medals the reader is, for the account menu.
+     *
+     * Read off the user's own row rather than counted, because this is drawn on
+     * every screen and the figure moves once a day: the nightly sweep keeps
+     * `achievements_count` in step. Null unless the feature is on for them.
+     *
+     * @return array{unlocked: int, total: int}|null
+     */
+    private function achievementsFor(?User $user): ?array
+    {
+        if ($user === null || ! Feature::for($user)->active(Achievements::class)) {
+            return null;
+        }
+
+        return [
+            'unlocked' => (int) $user->achievements_count,
+            'total' => $this->catalog->all()->count(),
         ];
     }
 
@@ -262,7 +287,10 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
+        // Achievements rides along so the account menu's count can check it
+        // without a second resolve.
         $features = Feature::for($user)->values([
+            Achievements::class,
             CalculateBalancesOnImport::class,
             SplitTransactions::class,
         ]);

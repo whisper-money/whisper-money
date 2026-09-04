@@ -30,6 +30,11 @@ class Awarder
         $backfill = ! $user->achievements()->exists();
         $recorded = $this->record($user);
 
+        // Rewritten on every pass, not only when something was awarded: the
+        // account menu reads this instead of counting on every page render, and
+        // a row deleted by hand should not leave the badge wrong forever.
+        $user->forceFill(['achievements_count' => $user->achievements()->count()])->saveQuietly();
+
         if ($recorded->isEmpty() || ! $notify) {
             return $recorded;
         }

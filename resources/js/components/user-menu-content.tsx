@@ -13,6 +13,7 @@ import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
 import { index as progress } from '@/routes/achievements';
 import { edit as editAppearance } from '@/routes/appearance';
+import { index as monthlySummaries } from '@/routes/monthly-summaries';
 import { type SharedData, type User } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
@@ -20,6 +21,7 @@ import {
     Award,
     Eye,
     EyeOff,
+    FileText,
     Landmark,
     LifeBuoy,
     LogOut,
@@ -42,7 +44,7 @@ export function UserMenuContent({
 }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const { isPrivacyModeEnabled, togglePrivacyMode } = usePrivacyMode();
-    const { version } = usePage<SharedData>().props;
+    const { version, achievements } = usePage<SharedData>().props;
 
     const handleLogout = () => {
         clearKey();
@@ -58,19 +60,41 @@ export function UserMenuContent({
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* Where the medals live. Not in the main navigation: it is
-                something to look back at, not somewhere to work. */}
+            {/* What already happened: the medals, and the months we closed.
+                Not in the main navigation — this is something to look back at,
+                not somewhere to work. */}
             <DropdownMenuGroup>
+                {achievements && (
+                    <DropdownMenuItem asChild>
+                        <Link
+                            className="block w-full"
+                            href={progress()}
+                            as="button"
+                            prefetch
+                            onClick={cleanup}
+                        >
+                            <Award className="mr-2" />
+                            {/* A bare label like every other item: wrapping it
+                                in a growing span let the button's inherited
+                                `text-align: center` push the text off the icon.
+                                The count is pushed right instead. */}
+                            {__('Progress')}
+                            <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                                {achievements.unlocked} / {achievements.total}
+                            </span>
+                        </Link>
+                    </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full"
-                        href={progress()}
+                        href={monthlySummaries()}
                         as="button"
                         prefetch
                         onClick={cleanup}
                     >
-                        <Award className="mr-2" />
-                        {__('Progress')}
+                        <FileText className="mr-2" />
+                        {__('Monthly summaries')}
                     </Link>
                 </DropdownMenuItem>
             </DropdownMenuGroup>

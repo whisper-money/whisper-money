@@ -1,4 +1,3 @@
-import { index as summariesIndex } from '@/actions/App/Http/Controllers/MonthlySummaryController';
 import {
     AchievementCell,
     monthLabel,
@@ -9,7 +8,6 @@ import {
 } from '@/components/achievements/achievement-figure';
 import { Medal } from '@/components/achievements/medal';
 import { RarityTag } from '@/components/achievements/rarity-tag';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
@@ -20,8 +18,7 @@ import {
     type BreadcrumbItem,
 } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Deferred, Head, Link } from '@inertiajs/react';
-import { ChevronRightIcon } from 'lucide-react';
+import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 
 /**
@@ -38,15 +35,6 @@ import { useState } from 'react';
  * they really happened, which is the point of reconstructing the history at all:
  * this is not a grid of today, it is a financial life spread over years.
  */
-type SummaryRow = {
-    id: string;
-    period: string;
-    savings_rate: number | null;
-    complete: boolean;
-    shared: boolean;
-    unread: boolean;
-};
-
 interface Props {
     currency: string;
     overview: {
@@ -56,7 +44,6 @@ interface Props {
         latest: { name: string | null; achieved_on: string } | null;
     };
     tracks: AchievementTrack[];
-    summaries?: SummaryRow[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -257,58 +244,7 @@ function Timeline({ tracks }: { tracks: AchievementTrack[] }) {
     );
 }
 
-function Summaries({ summaries }: { summaries: SummaryRow[] }) {
-    const locale = useLocale();
-
-    if (summaries.length === 0) {
-        return (
-            <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                {__(
-                    'Nothing here yet. Your first summary arrives a few days after your first full month.',
-                )}
-            </p>
-        );
-    }
-
-    return (
-        <ul className="divide-y rounded-lg border">
-            {summaries.map((summary) => (
-                <li key={summary.id}>
-                    <Link
-                        href={`/summaries/${summary.id}`}
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent"
-                    >
-                        <div className="flex flex-1 flex-col gap-0.5">
-                            <span className="flex items-center gap-2 font-medium capitalize">
-                                {monthLabel(`${summary.period}-01`, locale)}
-                                {summary.unread && (
-                                    <span className="size-1.5 rounded-full bg-foreground" />
-                                )}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                                {summary.savings_rate === null
-                                    ? __('Summary')
-                                    : __(':rate% saved', {
-                                          rate: summary.savings_rate,
-                                      })}
-                                {!summary.complete &&
-                                    ` · ${__('partial month')}`}
-                                {summary.shared && ` · ${__('shared')}`}
-                            </span>
-                        </div>
-                        <ChevronRightIcon className="size-4 text-muted-foreground" />
-                    </Link>
-                </li>
-            ))}
-        </ul>
-    );
-}
-
-export default function AchievementsIndex({
-    overview,
-    tracks,
-    summaries,
-}: Props) {
+export default function AchievementsIndex({ overview, tracks }: Props) {
     const [view, setView] = useState<'tracks' | 'timeline'>('tracks');
 
     return (
@@ -322,7 +258,7 @@ export default function AchievementsIndex({
                     </h1>
                     <p className="text-sm text-pretty text-muted-foreground">
                         {__(
-                            'Every milestone your money has crossed, dated when it actually happened, and the months we have closed.',
+                            'Every milestone your money has crossed, dated when it actually happened.',
                         )}
                     </p>
                 </div>
@@ -370,27 +306,6 @@ export default function AchievementsIndex({
                     ) : (
                         <Timeline tracks={tracks} />
                     )}
-                </div>
-
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between gap-3">
-                        <h2 className="text-lg font-semibold">
-                            {__('Monthly summaries')}
-                        </h2>
-                        <Link
-                            href={summariesIndex().url}
-                            className="text-[13px] font-medium hover:underline"
-                        >
-                            {__('All summaries')}
-                        </Link>
-                    </div>
-
-                    <Deferred
-                        data="summaries"
-                        fallback={<Skeleton className="h-40 rounded-lg" />}
-                    >
-                        <Summaries summaries={summaries ?? []} />
-                    </Deferred>
                 </div>
             </div>
         </AppLayout>

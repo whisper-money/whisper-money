@@ -19,6 +19,12 @@ use Laravel\Pennant\Feature;
 beforeEach(function (): void {
     Cache::flush();
     config()->set('achievements.enabled', true);
+    // These assertions are about the props the screen is handed, never about
+    // the HTML a server-side render would produce. Left on, Inertia posts every
+    // page to its SSR gateway — the running dev server, in development — and
+    // the suite's stray-request guard fails the test for a reason that has
+    // nothing to do with the screen.
+    config()->set('inertia.ssr.enabled', false);
 });
 
 /**
@@ -161,4 +167,27 @@ it('greets a reader with nothing yet without pretending they have something', fu
             ->where('overview.unlocked', 0)
             ->where('overview.latest', null)
             ->where('overview.streak', null));
+});
+
+it('tells the account menu how far through the medals a reader is', function (): void {
+    $user = readerWithMedals();
+    // The badge reads the counter the sweep keeps, not a count on every render.
+    $user->forceFill(['achievements_count' => $user->achievements()->count()])->saveQuietly();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('achievements.unlocked', 2)
+            ->where('achievements.total', 46));
+});
+
+it('says nothing about medals to a reader the feature is off for', function (): void {
+    config()->set('achievements.enabled', false);
+    Feature::purge(Achievements::class);
+
+    $this->actingAs(readerWithMedals())
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('achievements', null));
 });
