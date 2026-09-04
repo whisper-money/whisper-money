@@ -193,6 +193,11 @@ it('only sweeps a reader the feature is on for', function (): void {
 });
 
 it('records nothing when a foreign balance cannot be converted', function (): void {
+    // The command is the subject here, and it walks past a reader the medals
+    // are off for without a word, so the flag has to be on for the skip to be
+    // the thing under test rather than the flag.
+    config()->set('achievements.enabled', true);
+
     // No rate for the day, and neither the CDN nor the mirror behind it can be
     // reached for one. Both hosts, because an unfaked URL is fetched for real:
     // faking only the CDN left the test asking the network for a BTC rate and
