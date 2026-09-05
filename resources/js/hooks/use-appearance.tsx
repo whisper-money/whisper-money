@@ -40,6 +40,25 @@ const setCookie = (name: string, value: string, days = 365) => {
     document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
 };
 
+/** Hex mirrors of --background in resources/css/app.css. */
+const THEME_COLORS = { light: '#ffffff', dark: '#1c1c1c' } as const;
+
+/**
+ * Keeps the PWA status bar on the app's theme. The server renders a
+ * prefers-color-scheme pair only for "system"; once the theme is resolved here a
+ * single unscoped meta is what the browser should read.
+ */
+const applyThemeColor = (isDark: boolean) => {
+    document
+        .querySelectorAll('meta[name="theme-color"]')
+        .forEach((meta) => meta.remove());
+
+    const meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    meta.content = isDark ? THEME_COLORS.dark : THEME_COLORS.light;
+    document.head.appendChild(meta);
+};
+
 const applyTheme = (appearance: Appearance) => {
     if (typeof document === 'undefined') return;
 
@@ -48,6 +67,7 @@ const applyTheme = (appearance: Appearance) => {
 
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+    applyThemeColor(isDark);
 };
 
 const mediaQuery = () => {
