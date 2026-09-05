@@ -2767,7 +2767,10 @@ export default function Welcome({
         }
 
         return (
-            window.matchMedia('(display-mode: standalone)').matches ||
+            // Android applies fullscreen, iOS falls back to standalone.
+            window.matchMedia(
+                '(display-mode: fullscreen), (display-mode: standalone)',
+            ).matches ||
             ('standalone' in navigator &&
                 (navigator as Navigator & { standalone: boolean }).standalone)
         );
