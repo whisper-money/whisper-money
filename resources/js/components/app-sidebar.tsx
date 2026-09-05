@@ -86,7 +86,7 @@ export function AppSidebar() {
                     )}
                     {/* The bell sits beside the account; on the icon rail it
                         stacks above the avatar and its panel opens sideways. */}
-                    <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col-reverse">
+                    <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col-reverse group-data-[collapsible=icon]:gap-2">
                         <NavUser className="min-w-0 flex-1" />
                         <NotificationBell
                             side={collapsed ? 'right' : 'top'}
