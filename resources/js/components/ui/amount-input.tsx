@@ -211,8 +211,12 @@ const evaluateMathExpression = (
 /** Breathing room between the symbol and the number it labels. */
 const SYMBOL_GAP = '0.75rem';
 
-/** Room for a three-letter code and its chevron, and the inset it sits at. */
-const SLOT_WIDTH = '3.75rem';
+/**
+ * The slot sizes itself to the control inside it; this is only the room the
+ * number keeps clear of it, held above what a three-letter ISO code and its
+ * chevron can occupy so the two never collide.
+ */
+const SLOT_RESERVE = '4.5rem';
 const SLOT_INSET = '0.35rem';
 
 const resolveMinorUnits = (input: string, currencyCode: string): number =>
@@ -314,7 +318,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
         // The slot takes the symbol's place, so the number is padded off the
         // control rather than off a symbol that is no longer drawn.
         const padding = currencySlot
-            ? { paddingLeft: `calc(${SLOT_INSET} + ${SLOT_WIDTH} + ${SYMBOL_GAP})` }
+            ? { paddingLeft: `calc(${SLOT_INSET} + ${SLOT_RESERVE} + ${SYMBOL_GAP})` }
             : symbolPosition === 'prefix'
               ? { paddingLeft: symbolRoom }
               : { paddingRight: symbolRoom };
@@ -324,7 +328,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                 {currencySlot && (
                     <div
                         className="-translate-y-1/2 absolute top-1/2 z-10 flex items-center"
-                        style={{ left: SLOT_INSET, width: SLOT_WIDTH }}
+                        style={{ left: SLOT_INSET }}
                     >
                         {currencySlot}
                     </div>

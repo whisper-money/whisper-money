@@ -763,7 +763,7 @@ export function EditTransactionDialog({
                 id="currency"
                 aria-label={__('Currency')}
                 data-testid="currency-select"
-                className="h-7 w-full gap-1 rounded-md px-2 text-xs font-medium shadow-none"
+                className="h-7 w-fit gap-1 rounded-md px-2 text-xs font-medium shadow-none"
             >
                 <SelectValue placeholder={__('Select currency')}>
                     {currencyCode}
