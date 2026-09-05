@@ -5,12 +5,19 @@
     $appearance = $appearance ?? 'system';
     $lightBackground = '#ffffff';
     $darkBackground = '#1c1c1c';
+
+    // Android tints the system bars — the bottom navigation bar included — from
+    // the page's colour scheme, so it has to be declared for the theme the app
+    // renders, not the one the phone is on.
+    $colorScheme = in_array($appearance, ['light', 'dark'], true) ? $appearance : 'light dark';
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" translate="no" @class(['notranslate', 'dark' => $appearance === 'dark'])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        {{-- Before any stylesheet, so the system bars are already right at first paint. --}}
+        <meta name="color-scheme" content="{{ $colorScheme }}">
         @if ($appearance === 'system')
             <meta name="theme-color" content="{{ $lightBackground }}" media="(prefers-color-scheme: light)">
             <meta name="theme-color" content="{{ $darkBackground }}" media="(prefers-color-scheme: dark)">
