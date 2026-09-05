@@ -31,6 +31,12 @@ interface AmountInputProps {
      * unlocks when the numbers add up — where waiting for blur reads as broken.
      */
     commitOnChange?: boolean;
+    /**
+     * A control to sit inside the field where the currency symbol would go,
+     * for the amounts whose currency the user picks rather than reads. Sized
+     * for an ISO 4217 code, which is always three letters.
+     */
+    currencySlot?: React.ReactNode;
 }
 
 const getCurrencyInfo = (
@@ -205,6 +211,14 @@ const evaluateMathExpression = (
 /** Breathing room between the symbol and the number it labels. */
 const SYMBOL_GAP = '0.75rem';
 
+/**
+ * The slot sizes itself to the control inside it; this is only the room the
+ * number keeps clear of it, held above what a three-letter ISO code and its
+ * chevron can occupy so the two never collide.
+ */
+const SLOT_RESERVE = '4.5rem';
+const SLOT_INSET = '0.35rem';
+
 const resolveMinorUnits = (input: string, currencyCode: string): number =>
     evaluateMathExpression(input, currencyCode) ??
     parseInputValue(input, currencyCode);
@@ -222,6 +236,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             className = '',
             allowNegative = false,
             commitOnChange = false,
+            currencySlot,
         },
         ref,
     ) => {
@@ -300,9 +315,25 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             symbolPosition === 'prefix' && allowNegative ? '2.5rem' : '0.75rem';
         const symbolRoom = `calc(${symbolInset} + ${currencySymbol.length}ch + ${SYMBOL_GAP})`;
 
+        // The slot takes the symbol's place, so the number is padded off the
+        // control rather than off a symbol that is no longer drawn.
+        const padding = currencySlot
+            ? { paddingLeft: `calc(${SLOT_INSET} + ${SLOT_RESERVE} + ${SYMBOL_GAP})` }
+            : symbolPosition === 'prefix'
+              ? { paddingLeft: symbolRoom }
+              : { paddingRight: symbolRoom };
+
         return (
             <div className="relative">
-                {symbolPosition === 'prefix' && (
+                {currencySlot && (
+                    <div
+                        className="-translate-y-1/2 absolute top-1/2 z-10 flex items-center"
+                        style={{ left: SLOT_INSET }}
+                    >
+                        {currencySlot}
+                    </div>
+                )}
+                {!currencySlot && symbolPosition === 'prefix' && (
                     <span
                         className="-translate-y-1/2 absolute top-1/2 text-muted-foreground text-sm"
                         style={{ left: symbolInset }}
@@ -325,16 +356,15 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     required={required}
                     className={cn([
                         'bg-background',
-                        allowNegative && symbolPosition === 'suffix' && 'pl-11',
+                        allowNegative &&
+                            !currencySlot &&
+                            symbolPosition === 'suffix' &&
+                            'pl-11',
                         className,
                     ])}
-                    style={
-                        symbolPosition === 'prefix'
-                            ? { paddingLeft: symbolRoom }
-                            : { paddingRight: symbolRoom }
-                    }
+                    style={padding}
                 />
-                {symbolPosition === 'suffix' && (
+                {!currencySlot && symbolPosition === 'suffix' && (
                     <span
                         className="-translate-y-1/2 absolute top-1/2 text-muted-foreground text-sm"
                         style={{ right: symbolInset }}

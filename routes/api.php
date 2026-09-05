@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AccountImportConfigController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\CategoryMonthlyBreakdownController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
+use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\ImportDataController;
 use App\Http\Controllers\Api\SavedFilterController;
 use App\Http\Controllers\Api\TransactionAnalysisController;
@@ -31,6 +32,9 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     Route::post('transactions/check-duplicates', [TransactionController::class, 'checkDuplicates'])->name('api.transactions.check-duplicates');
     Route::get('transactions/analysis', [TransactionAnalysisController::class, 'summary'])->name('api.transactions.analysis');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('api.transactions.bulk-update');
+
+    // One amount converted between two currencies, for the transaction modal
+    Route::get('exchange-rate', ExchangeRateController::class)->name('api.exchange-rate');
 
     // Category analysis
     Route::get('categories/{category}/monthly-breakdown', CategoryMonthlyBreakdownController::class)->name('api.categories.monthly-breakdown');

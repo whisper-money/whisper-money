@@ -2924,5 +2924,7 @@
     "The medal, its name and its tier still show. The figure does not.": "Se siguen viendo la medalla, su nombre y su nivel. La cifra no.",
     "Save the picture": "Guardar la imagen",
     "Sharing…": "Compartiendo…",
-    "That could not be shared. You can save it instead.": "No se ha podido compartir. Puedes guardar la imagen en su lugar."
+    "That could not be shared. You can save it instead.": "No se ha podido compartir. Puedes guardar la imagen en su lugar.",
+    "In account currency": "En la moneda de la cuenta",
+    "≈ :amount in the account currency": "≈ :amount en la moneda de la cuenta"
 }

@@ -23,7 +23,7 @@ class UpdateTransaction extends WriteTool
         return [
             'transaction_id' => $schema->string()->description('Id of the manually-created transaction to edit.')->required(),
             'description' => $schema->string()->description('New description.'),
-            'amount' => $schema->integer()->description('New signed amount in the account currency\'s minor units.'),
+            'amount' => $schema->integer()->description('New signed amount, in the minor units of the transaction\'s own currency.'),
             'transaction_date' => $schema->string()->description('New transaction date, YYYY-MM-DD.'),
             'currency_code' => $schema->string()->description('New ISO 4217 currency code (3 letters).'),
             'account_id' => $schema->string()->description('Move the transaction to another account.'),
@@ -93,7 +93,7 @@ class UpdateTransaction extends WriteTool
 
         $balanceUpdated = false;
 
-        if ($request->boolean('update_balance') && $transaction->wasChanged(['amount', 'transaction_date', 'account_id'])) {
+        if ($request->boolean('update_balance') && $transaction->wasChanged(ManualBalanceAdjuster::BALANCE_AFFECTING_ATTRIBUTES)) {
             $adjuster = app(ManualBalanceAdjuster::class);
             // Either side no-ops on a connected account, so moving a transaction
             // onto one still unwinds the manual account it came from.

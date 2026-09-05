@@ -61,6 +61,29 @@ class ExchangeRateService
     }
 
     /**
+     * The same conversion as {@see convert()}, but null when that day holds no
+     * rate for the pair.
+     *
+     * `convert()` answers a missing rate with the amount rescaled but
+     * unconverted, which is the right call for a total that must still add up.
+     * Callers that either show the figure or write it to a money column need
+     * the difference: an unconverted amount printed as a conversion is a lie,
+     * and stored as one it is a wrong balance.
+     */
+    public function convertOrNull(string $source, string $target, int $amountInMinorUnits, string $date): ?int
+    {
+        if (strcasecmp($source, $target) === 0) {
+            return $amountInMinorUnits;
+        }
+
+        if (empty($this->getRates($target, $date)[strtolower($source)])) {
+            return null;
+        }
+
+        return $this->convert($source, $target, $amountInMinorUnits, $date);
+    }
+
+    /**
      * Get all exchange rates for a base currency on a given date.
      *
      * Checks the DB cache first, then fetches from the external API

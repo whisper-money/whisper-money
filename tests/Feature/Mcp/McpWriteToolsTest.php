@@ -123,8 +123,8 @@ it('edits a manual transaction', function () {
 
 it('moves a transaction onto a connected account, unwinding only the manual side', function () {
     $user = User::factory()->create();
-    $manualAccount = Account::factory()->create(['user_id' => $user->id]);
-    $connectedAccount = Account::factory()->connected()->create(['user_id' => $user->id]);
+    $manualAccount = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $connectedAccount = Account::factory()->connected()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
 
     $manualAccount->balances()->create(['balance_date' => '2026-01-15', 'balance' => 9_000]);
     $connectedAccount->balances()->create(['balance_date' => '2026-01-15', 'balance' => 50_000]);
@@ -134,6 +134,7 @@ it('moves a transaction onto a connected account, unwinding only the manual side
         'account_id' => $manualAccount->id,
         'transaction_date' => '2026-01-15',
         'amount' => -1_000,
+        'currency_code' => 'EUR',
     ]);
 
     callWriteTool($user, UpdateTransaction::class, [

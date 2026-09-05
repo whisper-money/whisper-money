@@ -23,7 +23,7 @@ class CreateTransaction extends WriteTool
         return [
             'account_id' => $schema->string()->description('Id of the account to add the transaction to.')->required(),
             'description' => $schema->string()->description('Human-readable description.')->required(),
-            'amount' => $schema->integer()->description('Signed amount in the account currency\'s minor units. Negative = expense, positive = income.')->required(),
+            'amount' => $schema->integer()->description('Signed amount in the minor units of currency_code, which defaults to the account currency. Negative = expense, positive = income.')->required(),
             'transaction_date' => $schema->string()->description('Transaction date, YYYY-MM-DD.')->required(),
             'currency_code' => $schema->string()->description('ISO 4217 currency code (3 letters). Defaults to the account currency.'),
             'category_id' => $schema->string()->description('Optional category id to assign.'),
