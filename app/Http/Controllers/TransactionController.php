@@ -227,21 +227,9 @@ class TransactionController extends Controller
         $hasLabelUpdate = $request->has('label_ids');
         unset($data['label_ids']);
 
-        $learnedRule = null;
-
-        // A user-set category overrides any AI assignment: learn the correction as
-        // a forward-looking rule, log/self-heal as needed, and reset provenance.
-        if ($request->has('category_id')) {
-            $newCategoryId = $data['category_id'] ?? null;
-
-            if ($newCategoryId !== $transaction->category_id) {
-                $learnedRule = app(CategoryOverrideHandler::class)->record($transaction, $newCategoryId);
-
-                $data['category_source'] = $newCategoryId === null ? null : CategorySource::Manual->value;
-                $data['ai_confidence'] = null;
-                $data['categorized_by_rule_id'] = null;
-            }
-        }
+        $learnedRule = $request->has('category_id')
+            ? $this->recordCategoryOverride($transaction, $data)
+            : null;
 
         // Snapshot the pre-edit account/date/amount before filling, so a manual
         // account balance can be moved off the old values if the edit changes them.
@@ -252,31 +240,16 @@ class TransactionController extends Controller
             $transaction->fill($data);
         }
 
-        // Sync labels if provided
-        if ($hasLabelUpdate) {
-            $transaction->labels()->sync($labelIds ?? []);
-            // Reload labels so the event listener has fresh data
-            $transaction->load('labels');
-        }
+        $this->saveWithLabels($transaction, $labelIds, $hasLabelUpdate);
 
-        // Save to fire the updated event if there are any changes
-        // We need to save even if just labels changed (isDirty won't detect pivot changes)
-        if ($transaction->isDirty() || $hasLabelUpdate) {
-            // Touch the model to ensure it's marked as changed for the event
-            if (! $transaction->isDirty() && $hasLabelUpdate) {
-                $transaction->touch();
-            }
-            $transaction->save();
-        }
-
-        // Move the manual account balance to match an edited amount/date/account:
-        // strip the pre-edit contribution (exactly as a deletion would) and apply
-        // the new one (exactly as a creation would), both cascading forward.
-        // ponytail: like create/delete, this trusts the opt-in flag and keeps no
+        // Move the manual account balance to match an edited amount/date/account/
+        // currency: strip the pre-edit contribution (exactly as a deletion would)
+        // and apply the new one (exactly as a creation would), both cascading
+        // forward. Like create/delete, this trusts the opt-in flag and keeps no
         // record of whether creation adjusted the balance, so mixing the flag
         // across create and edit can drift; a transaction-derived balance would
         // remove that trust. Connected accounts are skipped inside the adjuster.
-        if ($request->boolean('update_balance') && $transaction->wasChanged(['amount', 'transaction_date', 'account_id'])) {
+        if ($request->boolean('update_balance') && $transaction->wasChanged(ManualBalanceAdjuster::BALANCE_AFFECTING_ATTRIBUTES)) {
             $balanceAdjuster->reverseDeletedTransaction($originalSnapshot);
             $balanceAdjuster->applyCreatedTransaction($transaction->load('account'));
         }
@@ -289,6 +262,53 @@ class TransactionController extends Controller
                 'category_id' => $learnedRule->action_category_id,
             ],
         ]);
+    }
+
+    /**
+     * Persist the edit, labels included.
+     *
+     * A pivot change leaves the model itself clean, so labels-only edits are
+     * touched into dirtiness on purpose: the `updated` event is what the
+     * listeners downstream run on, and they have to see the new labels.
+     *
+     * @param  list<string>|null  $labelIds
+     */
+    private function saveWithLabels(Transaction $transaction, ?array $labelIds, bool $hasLabelUpdate): void
+    {
+        if ($hasLabelUpdate) {
+            $transaction->labels()->sync($labelIds ?? []);
+            // Reload labels so the event listener has fresh data
+            $transaction->load('labels');
+        }
+
+        if ($transaction->isDirty() || $hasLabelUpdate) {
+            if (! $transaction->isDirty()) {
+                $transaction->touch();
+            }
+            $transaction->save();
+        }
+    }
+
+    /**
+     * A user-set category overrides any AI assignment: learn the correction as a
+     * forward-looking rule, log/self-heal as needed, and reset the provenance
+     * columns on `$data` so the save carries them.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function recordCategoryOverride(Transaction $transaction, array &$data): ?AutomationRule
+    {
+        $newCategoryId = $data['category_id'] ?? null;
+
+        if ($newCategoryId === $transaction->category_id) {
+            return null;
+        }
+
+        $data['category_source'] = $newCategoryId === null ? null : CategorySource::Manual->value;
+        $data['ai_confidence'] = null;
+        $data['categorized_by_rule_id'] = null;
+
+        return app(CategoryOverrideHandler::class)->record($transaction, $newCategoryId);
     }
 
     public function destroy(Request $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse

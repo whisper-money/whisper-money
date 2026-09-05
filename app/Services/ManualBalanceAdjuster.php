@@ -4,9 +4,22 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\Log;
 
 class ManualBalanceAdjuster
 {
+    /**
+     * The attributes whose edit moves what a transaction contributes to its
+     * account's balance. The currency belongs here with the amount: the
+     * snapshots are held in the account's own currency, so 2500 USD and
+     * 2500 EUR shift them by different numbers.
+     *
+     * @var list<string>
+     */
+    public const BALANCE_AFFECTING_ATTRIBUTES = ['amount', 'transaction_date', 'account_id', 'currency_code'];
+
+    public function __construct(private ExchangeRateService $exchangeRateService) {}
+
     /**
      * Reverse a deleted transaction's effect on its manual account's balances.
      *
@@ -24,10 +37,16 @@ class ManualBalanceAdjuster
             return false;
         }
 
+        $amount = $this->amountInAccountCurrency($transaction, $account);
+
+        if ($amount === null) {
+            return false;
+        }
+
         $this->shiftBalancesFrom(
             $account,
             $transaction->transaction_date->toDateString(),
-            -$transaction->amount,
+            -$amount,
         );
 
         return true;
@@ -51,6 +70,12 @@ class ManualBalanceAdjuster
             return false;
         }
 
+        $amount = $this->amountInAccountCurrency($transaction, $account);
+
+        if ($amount === null) {
+            return false;
+        }
+
         $transactionDate = $transaction->transaction_date->toDateString();
 
         $account->balances()->firstOrCreate(
@@ -58,9 +83,46 @@ class ManualBalanceAdjuster
             ['balance' => $this->carriedForwardBalance($account, $transactionDate)],
         );
 
-        $this->shiftBalancesFrom($account, $transactionDate, $transaction->amount);
+        $this->shiftBalancesFrom($account, $transactionDate, $amount);
 
         return true;
+    }
+
+    /**
+     * The transaction amount as the account holds it, or null when that day
+     * holds no rate to convert it with.
+     *
+     * Balance snapshots are kept in the account's own currency, so a
+     * transaction in another one — the picker in the manual form, a mapped
+     * currency column in an import — has to be converted before it shifts them.
+     * Both directions read the same date's rate, so applying and reversing
+     * cancel out exactly.
+     *
+     * With no rate the balance is left alone rather than shifted by the
+     * unconverted number, which would be a wrong figure written into a money
+     * column with nothing on screen to say so. The caller reports the balance
+     * as untouched, and the warning is the trace worth having.
+     */
+    private function amountInAccountCurrency(Transaction $transaction, Account $account): ?int
+    {
+        $amount = $this->exchangeRateService->convertOrNull(
+            $transaction->currency_code ?: $account->currency_code,
+            $account->currency_code,
+            $transaction->amount,
+            $transaction->transaction_date->toDateString(),
+        );
+
+        if ($amount === null) {
+            Log::warning('Balance left untouched: no rate to convert the transaction with', [
+                'transaction_id' => $transaction->id,
+                'account_id' => $account->id,
+                'source' => $transaction->currency_code,
+                'target' => $account->currency_code,
+                'date' => $transaction->transaction_date->toDateString(),
+            ]);
+        }
+
+        return $amount;
     }
 
     /**
