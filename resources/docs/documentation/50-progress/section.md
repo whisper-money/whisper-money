@@ -1,0 +1,2 @@
+- en: Progress
+- es: Progreso
