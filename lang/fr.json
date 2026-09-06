@@ -2479,5 +2479,7 @@
     "{1}1 month|[2,*]:count months": "{1}1 mois|[2,*]:count mois",
     "Every milestone your money has crossed, dated when it actually happened.": "Chaque jalon franchi par votre argent, daté du moment où il s’est vraiment produit.",
     "In account currency": "Dans la devise du compte",
-    "≈ :amount in the account currency": "≈ :amount dans la devise du compte"
+    "≈ :amount in the account currency": "≈ :amount dans la devise du compte",
+    "Unlocks tonight": "Se débloque cette nuit",
+    ":now of :goal": ":now sur :goal"
 }
