@@ -204,12 +204,13 @@ it('says nothing about medals to a reader the feature is off for', function (): 
 });
 
 /**
- * One transaction in a closed month, with or without a category on it.
+ * Transactions in one month, with or without a category on them. Month zero is
+ * the one in progress.
  *
  * Reuses one account and one category per reader, so a run of months is a run
  * of rows rather than a tree of factories.
  */
-function recordIn(User $user, int $monthsAgo, bool $categorized = true): void
+function recordIn(User $user, int $monthsAgo, bool $categorized = true, int $count = 1): void
 {
     $space = $user->activeSpace();
 
@@ -224,7 +225,7 @@ function recordIn(User $user, int $monthsAgo, bool $categorized = true): void
         ['space_id' => $space->id, 'type' => CategoryType::Expense],
     );
 
-    Transaction::factory()->create([
+    Transaction::factory()->count($count)->create([
         'user_id' => $user->id,
         'space_id' => $space->id,
         'account_id' => $account->id,
@@ -327,7 +328,7 @@ it('says a medal unlocks tonight once the reader is already past it', function (
     expect($medal['progress'])->toBe(['now' => 35, 'goal' => 30, 'unlocking' => true]);
 });
 
-it('counts the transactions a reader has recorded', function (): void {
+it('counts the transactions a reader recorded in closed months', function (): void {
     $user = readerWithMedals();
     recordIn($user, 1);
     recordIn($user, 2);
@@ -335,6 +336,35 @@ it('counts the transactions a reader has recorded', function (): void {
     $medal = medalsIn(progressProps($user))->firstWhere('key', 'transactions.2');
 
     expect($medal['progress'])->toBe(['now' => 2, 'goal' => 50, 'unlocking' => false]);
+});
+
+it('leaves the bar at nothing while a reader has only recorded in the month in progress', function (): void {
+    $user = readerWithMedals();
+    recordIn($user, 0, count: 3);
+
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'transactions.2');
+
+    // The sweep reads up to the last closed month, so nothing recorded this
+    // month is anywhere near the medal yet. The bar says so.
+    expect($medal['progress'])->toBe(['now' => 0, 'goal' => 50, 'unlocking' => false]);
+});
+
+it('waits for the closed months to cross the threshold before promising the medal tonight', function (): void {
+    $user = readerWithMedals();
+    recordIn($user, 1, count: 49);
+    // Enough this month to carry a live count well past fifty, which is
+    // exactly the promise that would be a lie until the month closes.
+    recordIn($user, 0, count: 10);
+
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'transactions.2');
+
+    expect($medal['progress'])->toBe(['now' => 49, 'goal' => 50, 'unlocking' => false]);
+
+    recordIn($user, 1);
+
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'transactions.2');
+
+    expect($medal['progress'])->toBe(['now' => 50, 'goal' => 50, 'unlocking' => true]);
 });
 
 it('counts the closed months in a row that were left fully categorized', function (): void {
