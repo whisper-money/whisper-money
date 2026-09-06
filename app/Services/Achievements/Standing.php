@@ -6,6 +6,7 @@ use App\Models\MonthlySummary;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use stdClass;
 
 /**
  * Where a reader stands right now, per track.
@@ -56,7 +57,7 @@ class Standing
      * today's transactions would fill the bar, and promise the medal tonight,
      * up to a month before either is true.
      *
-     * @return Collection<string, object>
+     * @return Collection<int|string, stdClass>
      */
     private function closedMonths(User $user): Collection
     {
@@ -83,7 +84,7 @@ class Standing
      * broken run has to be rebuilt from scratch to earn anything. A month with
      * nothing recorded in it breaks the run, exactly as it does for the sweep.
      *
-     * @param  Collection<string, object>  $months
+     * @param  Collection<int|string, stdClass>  $months
      */
     private function categorizedRun(Collection $months): int
     {
