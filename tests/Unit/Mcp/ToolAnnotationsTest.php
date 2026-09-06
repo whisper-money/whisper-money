@@ -18,6 +18,7 @@ $readOnly = [
     'list_budgets',
     'list_automation_rules',
     'list_spaces',
+    'list_achievements',
 ];
 
 $destructive = [

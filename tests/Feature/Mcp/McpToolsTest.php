@@ -1,19 +1,23 @@
 <?php
 
+use App\Features\Achievements;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\ListAchievements;
 use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\SearchTransactions;
 use App\Models\Account;
+use App\Models\Achievement;
 use App\Models\AutomationRule;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use Laravel\Pennant\Feature;
 
 it('blocks read tools when subscriptions are enabled and the user has no paid plan', function () {
     config(['subscriptions.enabled' => true]);
@@ -264,4 +268,68 @@ it('never exposes another user\'s automation rules', function () {
         ->tool(ListAutomationRules::class)
         ->assertOk()
         ->assertDontSee('Secret Rule');
+});
+
+/*
+ * Medals. The tool hands over the same payload the progress screen renders, so
+ * a medal still to come stays a silhouette here too.
+ */
+
+function medalist(string ...$keys): User
+{
+    $user = User::factory()->create(['currency_code' => 'EUR', 'locale' => 'en']);
+
+    foreach ($keys as $key) {
+        Achievement::factory()->key($key)->create([
+            'user_id' => $user->id,
+            'space_id' => $user->activeSpace()->id,
+        ]);
+    }
+
+    return $user;
+}
+
+it('lists the medals a reader has earned alongside the ones still to come', function () {
+    config()->set('achievements.enabled', true);
+
+    WhisperMoneyServer::actingAs(medalist('transactions.1', 'net_worth.1'))
+        ->tool(ListAchievements::class)
+        ->assertOk()
+        ->assertSee(['First transaction', '"unlocked":2', '"total":59']);
+});
+
+it('names the next rung of a track and keeps the ones past it to itself', function () {
+    config()->set('achievements.enabled', true);
+
+    WhisperMoneyServer::actingAs(medalist('transactions.1'))
+        ->tool(ListAchievements::class)
+        ->assertOk()
+        // transactions.2 is the rung to aim at, so it arrives named and with a
+        // bar to fill. safety.2 sits behind safety.1 and stays a silhouette.
+        ->assertSee(['"state":"next"', 'Transactions recorded', '"goal":50'])
+        ->assertSee('"state":"locked","name":null,"icon":null,"figure":null')
+        ->assertDontSee('Emergency fund');
+});
+
+it('never exposes another user\'s medals', function () {
+    config()->set('achievements.enabled', true);
+    medalist('transactions.1');
+
+    WhisperMoneyServer::actingAs(User::factory()->create())
+        ->tool(ListAchievements::class)
+        ->assertOk()
+        // Not a name: the first rung of every track is revealed to everybody,
+        // so what must not appear is a medal anyone actually holds.
+        ->assertSee('"unlocked":0')
+        ->assertDontSee('"state":"earned"');
+});
+
+it('says nothing about medals while the feature is off', function () {
+    config()->set('achievements.enabled', false);
+    Feature::purge(Achievements::class);
+
+    WhisperMoneyServer::actingAs(medalist('transactions.1'))
+        ->tool(ListAchievements::class)
+        ->assertHasErrors()
+        ->assertDontSee('First transaction');
 });
