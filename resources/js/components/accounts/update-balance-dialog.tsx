@@ -2,6 +2,7 @@ import {
     index,
     store,
 } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { SyncedBalanceNotice } from '@/components/accounts/synced-balance-notice';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
@@ -197,6 +198,8 @@ export function UpdateBalanceDialog({
                         </p>
                     )}
                 </DialogHeader>
+
+                <SyncedBalanceNotice account={account} />
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">

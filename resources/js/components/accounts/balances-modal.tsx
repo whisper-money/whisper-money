@@ -3,6 +3,7 @@ import {
     index,
     store,
 } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { SyncedBalanceNotice } from '@/components/accounts/synced-balance-notice';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -253,6 +254,8 @@ export function BalancesModal({
                                   )}
                         </DialogDescription>
                     </DialogHeader>
+
+                    <SyncedBalanceNotice account={account} />
 
                     <div
                         className="overflow-hidden rounded-md border"
