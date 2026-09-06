@@ -370,3 +370,24 @@ it('reads the saving streak off the last report, like the overview does', functi
     // already behind the reader and waiting on tonight's sweep.
     expect($medal['progress'])->toBe(['now' => 5, 'goal' => 3, 'unlocking' => true]);
 });
+
+it('reveals one medal on a track whose rungs are events rather than a ladder', function (): void {
+    $user = readerWithMedals(0);
+
+    // Data hygiene is not really a ladder: connecting a bank, writing a rule
+    // and setting a budget happen in whatever order a reader does them, so a
+    // later rung can be earned while an earlier one is not. The track still
+    // reveals exactly one, and every rung keeps the state it has earned —
+    // which is how the screen already drew this before anything was revealed.
+    collect(['hygiene.1', 'hygiene.4', 'hygiene.5'])
+        ->each(fn (string $key) => Achievement::factory()->key($key)->create([
+            'user_id' => $user->id,
+            'space_id' => $user->activeSpace()->id,
+        ]));
+
+    $track = collect(progressProps($user)['tracks'])->firstWhere('key', 'hygiene');
+
+    expect(collect($track['medals'])->pluck('state')->all())
+        ->toBe(['earned', 'next', 'locked', 'earned', 'earned', 'locked'])
+        ->and($track['unlocked'])->toBe(3);
+});

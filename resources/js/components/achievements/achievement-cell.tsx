@@ -84,8 +84,10 @@ function MedalProgress({ progress }: { progress: AchievementProgress }) {
                 {progress.unlocking
                     ? __('Unlocks tonight')
                     : __(':now of :goal', {
-                          now: progress.now,
-                          goal: progress.goal,
+                          // Written like the figure above it rather than as a
+                          // bare integer: "4,321 of 10,000", not "4321 of 10000".
+                          now: progress.now.toLocaleString(),
+                          goal: progress.goal.toLocaleString(),
                       })}
             </span>
         </div>
@@ -95,14 +97,16 @@ function MedalProgress({ progress }: { progress: AchievementProgress }) {
 export function AchievementCell({ medal }: { medal: AchievementMedal }) {
     const locale = useLocale();
     const earned = medal.state === 'earned';
+    const next = medal.state === 'next';
+    const locked = medal.state === 'locked';
 
     return (
         <div
             className={cn(
                 'flex w-32 shrink-0 flex-col gap-2 rounded-lg border p-2.5',
                 earned && 'min-h-31 bg-card',
-                medal.state === 'next' && 'min-h-31 border-dashed',
-                medal.state === 'locked' && 'min-h-24 border-dashed',
+                next && 'min-h-31 border-dashed',
+                locked && 'min-h-24 border-dashed',
             )}
             style={
                 earned && medal.rarity === 'epic'
@@ -114,15 +118,11 @@ export function AchievementCell({ medal }: { medal: AchievementMedal }) {
                 <Medal
                     rarity={medal.rarity}
                     icon={medal.icon}
-                    locked={medal.state === 'locked'}
+                    locked={locked}
                     // Struck but not yet won: the real medal, turned down, so
                     // its shape and pictogram still read as "not yet" rather
                     // than as a failure.
-                    className={
-                        medal.state === 'next'
-                            ? 'opacity-50 grayscale-[0.7]'
-                            : undefined
-                    }
+                    className={next ? 'opacity-50 grayscale-[0.7]' : undefined}
                 />
 
                 {/* Always drawn rather than revealed on hover: the phone is
@@ -143,7 +143,7 @@ export function AchievementCell({ medal }: { medal: AchievementMedal }) {
             </div>
 
             <div className="flex flex-1 flex-col gap-px">
-                {medal.state === 'locked' ? (
+                {locked ? (
                     <span className="font-mono text-sm font-semibold tracking-widest text-muted-foreground">
                         ???
                     </span>

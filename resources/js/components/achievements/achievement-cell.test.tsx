@@ -74,6 +74,20 @@ describe('AchievementCell', () => {
         });
     });
 
+    it('writes a count the way the figure above it is written', () => {
+        render(
+            <AchievementCell
+                medal={medal({
+                    ...next,
+                    figure: { type: 'count', value: 10000, currency: null },
+                    progress: { now: 4321, goal: 10000, unlocking: false },
+                })}
+            />,
+        );
+
+        expect(screen.getByText('4,321 of 10,000')).toBeInTheDocument();
+    });
+
     it('fills the bar and names the sweep once the reader is already past the goal', () => {
         const { container } = render(
             <AchievementCell

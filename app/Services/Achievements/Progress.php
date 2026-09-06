@@ -135,7 +135,7 @@ class Progress
                     'key' => $track,
                     'label' => $label,
                     'note' => $this->note($track),
-                    'unlocked' => count(array_filter($medals, fn (array $medal): bool => $medal['state'] === 'earned')),
+                    'unlocked' => $definitions->filter(fn (Definition $definition): bool => $earned->has($definition->key))->count(),
                     'medals' => $medals,
                 ];
             })
