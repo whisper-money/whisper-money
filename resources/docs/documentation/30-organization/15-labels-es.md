@@ -12,7 +12,7 @@ Tira de una categoría cuando quieras que la transacción aterrice en algún sit
 
 ## Cómo se gestionan
 
-Las etiquetas viven en **Ajustes → Etiquetas**. Cada una tiene un nombre y un color, y la lista se puede filtrar por nombre cuando ya hay suficientes para necesitarlo.
+Las etiquetas viven en **Configuración → Etiquetas**. Cada una tiene un nombre y un color, y la lista se puede filtrar por nombre cuando ya hay suficientes para necesitarlo.
 
 ![La pantalla de ajustes de etiquetas, con cada etiqueta y su distintivo de color junto a un botón para crear una nueva](/docs/documentation/labels-settings.png)
 
