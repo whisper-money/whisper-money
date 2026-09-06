@@ -19,6 +19,7 @@ use App\Mcp\Tools\GetCashflow;
 use App\Mcp\Tools\GetNetWorth;
 use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\ListAchievements;
 use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
@@ -78,6 +79,19 @@ data.
   and everything set on them. A part cannot be split again, deleted on its own,
   or have its amount, date or account changed; categorizing and labelling it
   works as usual.
+- A medal (an "achievement") records a milestone the user reached: a visit or
+  saving streak, a net-worth or savings-rate level, transactions logged, data
+  kept tidy. `list_achievements` returns the whole catalog grouped into tracks,
+  earned or not, and a medal is never revoked once earned even if the streak or
+  balance behind it falls. Each one carries a `state`: `earned`, `next` for the
+  single rung the user is working towards on that track, or `locked`. A `locked`
+  medal is deliberately a silhouette — `name`, `icon` and `figure` all null — so
+  do not guess what it is or what it would take; only the `next` one is named.
+  On the tracks whose figure is cheap to read, `next` also carries `progress`
+  with `now`, `goal` and `unlocking`, the last true once the user is already
+  past the goal but the medal is still waiting on the nightly sweep.
+  `overview.streak` is the live saving streak instead, which can break, and is
+  not itself a medal.
 - To find recurring charges (subscriptions), use `search_transactions` and group
   the results by merchant and cadence yourself.
 
@@ -109,6 +123,7 @@ class WhisperMoneyServer extends Server
         ListBudgets::class,
         ListAutomationRules::class,
         ListSpaces::class,
+        ListAchievements::class,
 
         // Write
         CreateTransaction::class,

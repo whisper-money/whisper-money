@@ -4,7 +4,7 @@
   "app_info": {
     "display_name": "Whisper Money",
     "subtitle": "Chat with your own finances",
-    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, cashflow and net worth and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, split a transaction that covered several things into parts with their own categories, record balances for manual accounts, and manage budgets, categories, labels and automation rules — including running an automation rule over the transactions you already have, after previewing what it would match.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
+    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, cashflow, net worth and the milestone medals you have earned along the way, and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, split a transaction that covered several things into parts with their own categories, record balances for manual accounts, and manage budgets, categories, labels and automation rules — including running an automation rule over the transactions you already have, after previewing what it would match.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
     "category": "FINANCE"
   },
   "tools": {
@@ -85,6 +85,14 @@
       "justifications": {
         "read_only_justification": "Lists the personal and shared spaces the user is a member of, so later calls can target the right one. It writes nothing.",
         "open_world_justification": "Lists only the spaces the authenticated user already belongs to, inside Whisper Money, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "list_achievements": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Lists the user's own milestone medals, which ones are unlocked and which are still to come. It writes nothing.",
+        "open_world_justification": "Reads only the medals earned inside the authenticated user's own Whisper Money account, a closed system.",
         "destructive_justification": "Read-only, so nothing can be changed or lost."
       }
     },
