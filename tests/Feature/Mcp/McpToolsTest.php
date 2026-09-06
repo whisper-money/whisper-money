@@ -298,14 +298,17 @@ it('lists the medals a reader has earned alongside the ones still to come', func
         ->assertSee(['First transaction', '"unlocked":2', '"total":59']);
 });
 
-it('keeps the name of a medal still to come to itself', function () {
+it('names the next rung of a track and keeps the ones past it to itself', function () {
     config()->set('achievements.enabled', true);
 
     WhisperMoneyServer::actingAs(medalist('transactions.1'))
         ->tool(ListAchievements::class)
         ->assertOk()
-        ->assertSee('"locked":true,"name":null,"icon":null,"figure":null')
-        ->assertDontSee('Loan paid off');
+        // transactions.2 is the rung to aim at, so it arrives named and with a
+        // bar to fill. safety.2 sits behind safety.1 and stays a silhouette.
+        ->assertSee(['"state":"next"', 'Transactions recorded', '"goal":50'])
+        ->assertSee('"state":"locked","name":null,"icon":null,"figure":null')
+        ->assertDontSee('Emergency fund');
 });
 
 it('never exposes another user\'s medals', function () {
@@ -315,8 +318,10 @@ it('never exposes another user\'s medals', function () {
     WhisperMoneyServer::actingAs(User::factory()->create())
         ->tool(ListAchievements::class)
         ->assertOk()
+        // Not a name: the first rung of every track is revealed to everybody,
+        // so what must not appear is a medal anyone actually holds.
         ->assertSee('"unlocked":0')
-        ->assertDontSee('First transaction');
+        ->assertDontSee('"state":"earned"');
 });
 
 it('says nothing about medals while the feature is off', function () {

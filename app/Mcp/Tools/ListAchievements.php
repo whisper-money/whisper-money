@@ -19,7 +19,7 @@ use Laravel\Pennant\Feature;
  * than a catalog that quietly lacks the word.
  */
 #[IsReadOnly]
-#[Description('List the medals the user has earned and the ones still to come, grouped into tracks, with the unlocked count and the saving streak in progress. A locked medal comes back without a name.')]
+#[Description('List the user\'s medals: the ones earned, the next rung to aim at on each track with how far along they are, and the ones beyond it, which stay nameless. Plus the unlocked count and saving streak.')]
 class ListAchievements extends McpTool
 {
     /**
@@ -36,9 +36,9 @@ class ListAchievements extends McpTool
             return Response::error('Achievements are not enabled for this account.');
         }
 
-        // The progress screen's payload, handed over untouched: a locked medal
-        // is a silhouette there, and naming it here would read out what the
-        // screen deliberately keeps back.
+        // The progress screen's payload, handed over untouched, so what the
+        // screen reveals and what an assistant can say stay the same thing: the
+        // next rung named, everything past it a silhouette.
         return $this->json(app(Progress::class)->for($user));
     }
 }
