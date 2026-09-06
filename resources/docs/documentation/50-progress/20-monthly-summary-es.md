@@ -42,12 +42,11 @@ en la pantalla de [flujo de efectivo](/documentation/cashflow).
 
 ## Cuándo llega
 
-El informe sale el día 3, a las nueve de la mañana de donde estés, y no el día
-
-1. El día 1 un mes suele estar todavía moviéndose: un banco sincroniza de
-   madrugada, y los saldos de préstamos e inmuebles se asientan justo al cambiar de
-   mes. Informar antes de que todo eso aterrice es informar de cifras que luego
-   cambian.
+El informe sale el día 3, a las nueve de la mañana de donde estés, y no nada más
+cerrar el mes. Un mes recién cerrado suele estar todavía moviéndose: un banco
+sincroniza de madrugada, y los saldos de préstamos e inmuebles se asientan justo
+al cambiar de mes. Informar antes de que todo eso aterrice es informar de cifras
+que luego cambian.
 
 Si tu mes no está listo —no ha pasado nada en el mes nuevo, ni por parte de un
 banco ni por la tuya— recibes un recordatorio corto en su lugar, y se reintenta
@@ -131,10 +130,10 @@ El panel muestra un aviso cuando hay un informe nuevo esperando.
 
 ## Desactivar el correo
 
-En **Ajustes → Notificaciones**, el interruptor de **Resumen mensual** corta el
-correo del informe y el recordatorio que lo acompaña. Cada mensaje lleva también
-un enlace para darse de baja que hace lo mismo. Los informes se siguen
-escribiendo y se quedan en la aplicación en cualquier caso.
+En **Configuración → Notificaciones**, el interruptor de **Resumen mensual**
+corta el correo del informe y el recordatorio que lo acompaña. Cada mensaje
+lleva también un enlace para darse de baja que hace lo mismo. Los informes se
+siguen escribiendo y se quedan en la aplicación en cualquier caso.
 
 ## Preguntas frecuentes
 
@@ -142,8 +141,8 @@ escribiendo y se quedan en la aplicación en cualquier caso.
 
 Los motivos probables, por orden: el mes no tenía nada dentro, no había pasado
 nada en el mes nuevo a fecha del día 10, o el correo está desactivado en
-**Ajustes → Notificaciones**. Haya hecho lo que haya hecho el correo, todo lo
-que se haya escrito está en **Resúmenes mensuales**.
+**Configuración → Notificaciones**. Haya hecho lo que haya hecho el correo,
+todo lo que se haya escrito está en **Resúmenes mensuales**.
 
 ### ¿Por qué el informe no coincide con lo que veo ahora en la aplicación?
 

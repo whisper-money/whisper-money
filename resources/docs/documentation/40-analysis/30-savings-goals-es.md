@@ -220,7 +220,7 @@ contribuir a más de un objetivo.
 ### ¿La etiqueta del objetivo aparece en mis ajustes de etiquetas?
 
 No. Pertenece al objetivo y se gestiona desde ahí, así que se queda fuera de la
-lista de Ajustes → Etiquetas.
+lista de Configuración → Etiquetas.
 
 ### ¿Puedo reabrir un objetivo archivado?
 

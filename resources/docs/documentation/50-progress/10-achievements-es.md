@@ -142,8 +142,8 @@ desbloquear veinte medallas en un segundo. Veinte líneas serían una avalancha
 que nadie lee, así que ese relleno inicial es silencioso y una sola línea de
 bienvenida cuenta cómo fue.
 
-El correo se puede desactivar en **Ajustes → Notificaciones**. Las líneas dentro
-de la aplicación siguen llegando igual.
+El correo se puede desactivar en **Configuración → Notificaciones**. Las
+líneas dentro de la aplicación siguen llegando igual.
 
 ## Preguntas frecuentes
 
@@ -176,8 +176,8 @@ No. Una vez concedida, se queda concedida.
 
 ### ¿Puedo dejar de recibir los correos?
 
-Sí, en **Ajustes → Notificaciones**. Seguirás viendo todas las medallas dentro
-de la aplicación.
+Sí, en **Configuración → Notificaciones**. Seguirás viendo todas las medallas
+dentro de la aplicación.
 
 ### No encuentro Progreso en el menú de mi cuenta.
 
