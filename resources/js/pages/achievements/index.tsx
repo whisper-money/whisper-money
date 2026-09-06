@@ -1,6 +1,7 @@
 import {
     AchievementCell,
     monthLabel,
+    ProgressBar,
 } from '@/components/achievements/achievement-cell';
 import {
     AchievementFigure,
@@ -69,12 +70,7 @@ function Overview({ overview }: Pick<Props, 'overview'>) {
                         {__('of :total', { total: overview.total })}
                     </span>
                 </span>
-                <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${percent}%` }}
-                    />
-                </div>
+                <ProgressBar percent={percent} className="mt-0.5" />
             </div>
 
             <div className="flex flex-col gap-1.5 border-b p-4 sm:border-r sm:border-b-0">

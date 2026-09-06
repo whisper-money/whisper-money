@@ -22,12 +22,13 @@ function medal(overrides: Partial<AchievementMedal> = {}): AchievementMedal {
         key: 'monthly_saving.4',
         rarity: 'epic',
         share: 4,
-        locked: false,
+        state: 'earned',
         name: 'Saved in a month',
         icon: 'piggy-bank',
         figure: { type: 'money', value: 500000, currency: 'EUR' },
         reached: null,
         achieved_on: '2025-03-01',
+        progress: null,
         ...overrides,
     } as AchievementMedal;
 }

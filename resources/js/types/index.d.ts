@@ -82,20 +82,39 @@ export interface AchievementFigureValue {
     currency: string | null;
 }
 
+/**
+ * Where a medal stands: earned, the next rung of its track — named, so there is
+ * something to aim at — or still a silhouette carrying only its tier.
+ */
+export type AchievementState = 'earned' | 'next' | 'locked';
+
+/**
+ * How far along the next medal of a track is. Only the tracks whose current
+ * figure is cheap to read get one; the money ones arrive without.
+ */
+export interface AchievementProgress {
+    now: number;
+    goal: number;
+    /** Already past the goal, waiting on the nightly sweep. */
+    unlocking: boolean;
+}
+
 /** One medal on the progress screen. A locked one carries only its tier. */
 export interface AchievementMedal {
     key: string;
     rarity: AchievementRarity;
     /** Share of evaluated members holding it, or null below the floor. */
     share: number | null;
-    locked: boolean;
+    state: AchievementState;
     name: string | null;
     icon: string | null;
     /** The milestone it stands for. */
     figure: AchievementFigureValue | null;
-    /** What was actually reached on the day. */
+    /** What was actually reached on the day. Never set on the next one. */
     reached: AchievementFigureValue | null;
     achieved_on: string | null;
+    /** Only ever set on the next medal of a track, and not on all of those. */
+    progress: AchievementProgress | null;
 }
 
 export interface AchievementTrack {
