@@ -2481,5 +2481,12 @@
     "In account currency": "Dans la devise du compte",
     "≈ :amount in the account currency": "≈ :amount dans la devise du compte",
     "Unlocks tonight": "Se débloque cette nuit",
-    ":now of :goal": ":now sur :goal"
+    ":now of :goal": ":now sur :goal",
+    "What you unlocked in :month": "Ce que vous avez débloqué en :month",
+    "What you can unlock next": "Ce que vous pouvez débloquer ensuite",
+    ":name, :milestone.": ":name, :milestone.",
+    ":name, :milestone. :remaining to go.": ":name, :milestone. Il vous reste :remaining.",
+    "See all your medals": "Voir toutes vos médailles",
+    "{1}1 day|[2,*]:count days": "{1}1 jour|[2,*]:count jours",
+    "{1}1 week|[2,*]:count weeks": "{1}1 semaine|[2,*]:count semaines"
 }

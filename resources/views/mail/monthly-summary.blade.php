@@ -80,6 +80,10 @@
                 @endforeach
             </div>
 
+            @if ($achievements !== null)
+                @include('mail.summary.achievements')
+            @endif
+
             @if (count($todos) > 0)
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:34px 0 14px;"><tr>
                     <td align="left" style="font-size:15px;font-weight:700;color:{{ $ink }};letter-spacing:-0.01em;">{{ trans_choice('One thing to close :month|:count things to close :month', count($todos), ['count' => count($todos), 'month' => $monthName]) }}</td>
