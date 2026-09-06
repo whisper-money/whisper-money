@@ -1,7 +1,12 @@
 <?php
 
+use App\Enums\CategoryType;
 use App\Features\Achievements;
+use App\Models\Account;
 use App\Models\Achievement;
+use App\Models\Category;
+use App\Models\MonthlySummary;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -12,8 +17,14 @@ use Laravel\Pennant\Feature;
  * The progress screen.
  *
  * Every medal is sent, earned or not, because the empty slots are the road
- * ahead. What a locked one is called is not sent: a silhouette that leaks its
- * own name through the network tab is not a silhouette.
+ * ahead. What a locked one is called is still not sent: a silhouette that leaks
+ * its own name through the network tab is not a silhouette.
+ *
+ * The next rung of each track is the deliberate exception. Thirteen identical
+ * silhouettes say nothing about what there is to chase, so exactly one medal
+ * per ladder — the first nobody has earned — arrives named, with the figure to
+ * reach and, where the current figure is cheap to read, how far along the reader
+ * already is. Everything past it stays three question marks.
  */
 
 beforeEach(function (): void {
@@ -86,10 +97,10 @@ it('sends every medal in the catalog, earned or not', function (): void {
         });
 });
 
-it('keeps the name of a medal still to come to itself', function (): void {
+it('keeps the name of a medal past the next one to itself', function (): void {
     $user = readerWithMedals(1);
 
-    $locked = medalsIn(progressProps($user))->filter(fn (array $medal): bool => $medal['locked']);
+    $locked = medalsIn(progressProps($user))->where('state', 'locked');
 
     expect($locked)->not->toBeEmpty();
 
@@ -190,4 +201,172 @@ it('says nothing about medals to a reader the feature is off for', function (): 
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('achievements', null));
+});
+
+/**
+ * One transaction in a closed month, with or without a category on it.
+ *
+ * Reuses one account and one category per reader, so a run of months is a run
+ * of rows rather than a tree of factories.
+ */
+function recordIn(User $user, int $monthsAgo, bool $categorized = true): void
+{
+    $space = $user->activeSpace();
+
+    $account = $user->accounts()->first() ?? Account::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => $space->id,
+        'currency_code' => 'EUR',
+    ]);
+
+    $category = Category::query()->firstOrCreate(
+        ['user_id' => $user->id, 'name' => 'Groceries'],
+        ['space_id' => $space->id, 'type' => CategoryType::Expense],
+    );
+
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => $space->id,
+        'account_id' => $account->id,
+        'category_id' => $categorized ? $category->id : null,
+        // The first of the month, then four days in: subtracting whole months
+        // from a 31st slides into the wrong one.
+        'transaction_date' => now()->startOfMonth()->subMonths($monthsAgo)->addDays(4),
+        'currency_code' => 'EUR',
+    ]);
+}
+
+it('reveals the next medal of a track, and nothing past it', function (): void {
+    $user = readerWithMedals();
+
+    $medals = medalsIn(progressProps($user))->keyBy('key');
+
+    expect($medals['net_worth.2']['state'])->toBe('next')
+        ->and($medals['net_worth.2']['name'])->toBe('Net worth')
+        ->and($medals['net_worth.2']['icon'])->toBe('landmark')
+        ->and($medals['net_worth.2']['figure'])->toBe(['type' => 'money', 'value' => 2500000, 'currency' => 'EUR'])
+        // Nothing has happened for it yet: no figure reached, no date.
+        ->and($medals['net_worth.2']['reached'])->toBeNull()
+        ->and($medals['net_worth.2']['achieved_on'])->toBeNull()
+        // The rung after it is still a silhouette.
+        ->and($medals['net_worth.3']['state'])->toBe('locked')
+        ->and($medals['net_worth.3']['name'])->toBeNull()
+        ->and($medals['net_worth.3']['figure'])->toBeNull();
+});
+
+it('opens with the first rung of all thirteen tracks for a reader who has nothing', function (): void {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
+
+    $next = medalsIn(progressProps($user))->where('state', 'next');
+
+    expect($next->pluck('key')->all())->toBe([
+        'visits.1', 'visit_weeks.1', 'transactions.1', 'categorized.1', 'hygiene.1',
+        'monthly_saving.1', 'monthly_investing.1', 'yearly_saving.1', 'net_worth.1',
+        'safety.1', 'streaks.1', 'savings_rate.1', 'momentum.1',
+    ]);
+
+    $next->each(fn (array $medal) => expect($medal['name'])->toBeString());
+});
+
+it('has nothing left to reveal on a track that is finished', function (): void {
+    $user = readerWithMedals(0);
+
+    collect(['visit_weeks.1', 'visit_weeks.2', 'visit_weeks.3', 'visit_weeks.4'])
+        ->each(fn (string $key) => Achievement::factory()->key($key)->create([
+            'user_id' => $user->id,
+            'space_id' => $user->activeSpace()->id,
+        ]));
+
+    $track = collect(progressProps($user)['tracks'])->firstWhere('key', 'visit_weeks');
+
+    expect(collect($track['medals'])->pluck('state')->unique()->all())->toBe(['earned']);
+});
+
+it('puts a figure under the next medal only where reading it is cheap', function (): void {
+    $user = readerWithMedals();
+
+    $next = medalsIn(progressProps($user))->where('state', 'next');
+
+    // The five tracks a column, a count or the last report can answer. The
+    // eight money ones would need the whole history built on every render.
+    expect($next->filter(fn (array $medal): bool => $medal['progress'] !== null)->pluck('key')->all())
+        ->toBe(['visits.1', 'visit_weeks.1', 'transactions.2', 'categorized.1', 'streaks.1']);
+});
+
+it('leaves the first transaction without a bar, because it is an event and not a count', function (): void {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
+
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'transactions.1');
+
+    expect($medal['state'])->toBe('next')
+        ->and($medal['figure'])->toBeNull()
+        ->and($medal['progress'])->toBeNull();
+});
+
+it('measures a visit streak by the longest run, which is what the medal is awarded on', function (): void {
+    $user = readerWithMedals(0);
+    $user->forceFill(['visit_streak' => 1, 'longest_visit_streak' => 2])->saveQuietly();
+
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'visits.1');
+
+    expect($medal['progress'])->toBe(['now' => 2, 'goal' => 3, 'unlocking' => false]);
+});
+
+it('says a medal unlocks tonight once the reader is already past it', function (): void {
+    $user = readerWithMedals(0);
+    $user->forceFill(['longest_visit_streak' => 35])->saveQuietly();
+
+    collect(['visits.1', 'visits.2'])->each(fn (string $key) => Achievement::factory()->key($key)->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+    ]));
+
+    // Thirty days crossed today, with the sweep that awards it still hours off.
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'visits.3');
+
+    expect($medal['progress'])->toBe(['now' => 35, 'goal' => 30, 'unlocking' => true]);
+});
+
+it('counts the transactions a reader has recorded', function (): void {
+    $user = readerWithMedals();
+    recordIn($user, 1);
+    recordIn($user, 2);
+
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'transactions.2');
+
+    expect($medal['progress'])->toBe(['now' => 2, 'goal' => 50, 'unlocking' => false]);
+});
+
+it('counts the closed months in a row that were left fully categorized', function (): void {
+    $user = readerWithMedals(0);
+    Achievement::factory()->key('categorized.1')->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+    ]);
+
+    // Two closed months in a row, and one before them with something left
+    // uncategorized: the run the next medal needs is the one still going, and a
+    // broken one has to be rebuilt from scratch, so the earlier months do not
+    // count towards it.
+    recordIn($user, 3, categorized: false);
+    collect([2, 1])->each(fn (int $ago) => recordIn($user, $ago));
+
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'categorized.2');
+
+    expect($medal['state'])->toBe('next')
+        ->and($medal['progress'])->toBe(['now' => 2, 'goal' => 3, 'unlocking' => false]);
+});
+
+it('reads the saving streak off the last report, like the overview does', function (): void {
+    $user = readerWithMedals(0);
+    MonthlySummary::factory()->sent()->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+    ]);
+
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'streaks.1');
+
+    // The factory's payload reports a five-month streak, so the first rung is
+    // already behind the reader and waiting on tonight's sweep.
+    expect($medal['progress'])->toBe(['now' => 5, 'goal' => 3, 'unlocking' => true]);
 });
