@@ -34,3 +34,8 @@ yarn-error.log
 .pint.cache
 /.playwright-mcp
 /build
+
+# Written by DocumentationImagesTest and deleted again when it finishes: on
+# disk only while the suite runs, so an interrupted run cannot leave it behind
+# for the next `git add` to sweep up.
+/tests/.documentation-images/
