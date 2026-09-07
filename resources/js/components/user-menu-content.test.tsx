@@ -92,6 +92,23 @@ const user: User = {
 };
 
 describe('UserMenuContent', () => {
+    it('opens the documentation in a new tab', () => {
+        render(
+            <UserMenuContent
+                user={user}
+                onOpenSupport={vi.fn()}
+                onOpenIntegrationRequests={vi.fn()}
+            />,
+        );
+
+        const documentation = screen.getByRole('link', {
+            name: /documentation/i,
+        });
+
+        expect(documentation.getAttribute('href')).toBe('/documentation');
+        expect(documentation.getAttribute('target')).toBe('_blank');
+    });
+
     it('shows community above feedback in the user dropdown', () => {
         render(
             <UserMenuContent
