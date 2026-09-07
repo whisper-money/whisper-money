@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -39,8 +39,13 @@ vi.mock('@/components/accounts/archive-account-dialog', () => ({
     ArchiveAccountDialog: () => null,
 }));
 
+const balancesModal = vi.fn();
+
 vi.mock('@/components/accounts/balances-modal', () => ({
-    BalancesModal: () => null,
+    BalancesModal: (props: Record<string, unknown>) => {
+        balancesModal(props);
+        return null;
+    },
 }));
 
 vi.mock('@/components/accounts/edit-account-dialog', () => ({
@@ -51,12 +56,22 @@ vi.mock('@/components/accounts/edit-loan-detail-dialog', () => ({
     EditLoanDetailDialog: () => null,
 }));
 
+const importBalancesDrawer = vi.fn();
+
 vi.mock('@/components/accounts/import-balances-drawer', () => ({
-    ImportBalancesDrawer: () => null,
+    ImportBalancesDrawer: (props: Record<string, unknown>) => {
+        importBalancesDrawer(props);
+        return null;
+    },
 }));
 
+const updateBalanceDialog = vi.fn();
+
 vi.mock('@/components/accounts/update-balance-dialog', () => ({
-    UpdateBalanceDialog: () => null,
+    UpdateBalanceDialog: (props: Record<string, unknown>) => {
+        updateBalanceDialog(props);
+        return null;
+    },
 }));
 
 const editTransactionDialog = vi.fn();
@@ -94,6 +109,11 @@ const baseAccount = {
     linked_at: null,
 };
 
+const connectedAccount = {
+    ...baseAccount,
+    banking_connection_id: 'connection-1',
+};
+
 const renderPage = (account = baseAccount) =>
     render(
         <AccountShow
@@ -105,6 +125,15 @@ const renderPage = (account = baseAccount) =>
             automationRules={[]}
         />,
     );
+
+function openMoreOptionsMenu() {
+    fireEvent.pointerDown(screen.getByLabelText('More options'), {
+        button: 0,
+        ctrlKey: false,
+    });
+
+    return screen.findByRole('menu');
+}
 
 describe('AccountShow', () => {
     it('opens create transaction dialog for disconnected transactional accounts', () => {
@@ -135,10 +164,7 @@ describe('AccountShow', () => {
     });
 
     it('opens create transaction dialog for connected transactional accounts', () => {
-        renderPage({
-            ...baseAccount,
-            banking_connection_id: 'connection-1',
-        });
+        renderPage(connectedAccount);
 
         fireEvent.click(
             screen.getByRole('button', { name: 'Add transaction' }),
@@ -151,6 +177,65 @@ describe('AccountShow', () => {
                 mode: 'create',
             }),
         );
+    });
+
+    it('opens the update balance dialog for connected accounts', () => {
+        renderPage(connectedAccount);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Update balance' }));
+
+        expect(updateBalanceDialog).toHaveBeenLastCalledWith(
+            expect.objectContaining({ open: true, account: connectedAccount }),
+        );
+    });
+
+    it('opens the import balances drawer for connected accounts', () => {
+        renderPage(connectedAccount);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Import balances' }),
+        );
+
+        expect(importBalancesDrawer).toHaveBeenLastCalledWith(
+            expect.objectContaining({ open: true, accountId: 'account-1' }),
+        );
+    });
+
+    it('opens the balance history for connected accounts', async () => {
+        renderPage(connectedAccount);
+
+        const menu = await openMoreOptionsMenu();
+        fireEvent.click(within(menu).getByText('See balances'));
+
+        expect(balancesModal).toHaveBeenLastCalledWith(
+            expect.objectContaining({ open: true, account: connectedAccount }),
+        );
+    });
+
+    it('names the balance actions after what the account holds', () => {
+        renderPage({ ...connectedAccount, type: 'loan' });
+
+        expect(
+            screen.getByRole('button', { name: 'Update owed amount' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Import owed amounts' }),
+        ).toBeInTheDocument();
+    });
+
+    it('offers both sets of balance actions on a connected property with a loan', () => {
+        renderPage({
+            ...connectedAccount,
+            type: 'real_estate',
+            linked_loan_account: { ...baseAccount, id: 'loan-1', type: 'loan' },
+        });
+
+        expect(
+            screen.getByRole('button', { name: 'Update market value' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Update owed amount' }),
+        ).toBeInTheDocument();
     });
 
     it('hides transaction action for non-transactional accounts', () => {

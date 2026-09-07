@@ -1,6 +1,6 @@
 # Editar saldos
 
-Corrige el historial de saldos de una cuenta que llevas a mano: cambia una cifra, arregla una fecha o borra un registro que no debería estar.
+Corrige el historial de saldos de una cuenta: cambia una cifra, arregla una fecha o borra un registro que no debería estar.
 
 ## Dos formas de entrar
 
@@ -12,7 +12,7 @@ Corrige el historial de saldos de una cuenta que llevas a mano: cambia una cifra
 
 Las dos se nombran según lo que guarda la cuenta: _valores de mercado_ en una cuenta de inmueble, _importe pendiente_ en un préstamo.
 
-Una cuenta conectada no tiene ninguna de las dos. Sus saldos llegan del banco en cada sincronización, así que aquí no hay nada que corregir: arréglalo en el banco, o la siguiente sincronización lo devuelve a como estaba.
+Una cuenta conectada tiene las dos. Cualquier fecha anterior es tuya para corregirla, y una sincronización no la toca. Hoy es del banco: cada sincronización vuelve a escribir el saldo de hoy, y el de cualquier fecha posterior cuando llegue ese día, así que ahí una corrección solo dura hasta la siguiente.
 
 ## Editar un registro
 
@@ -36,4 +36,4 @@ Revisa las demás cuentas. Una cuenta a la que nunca le has dado un saldo no tie
 
 ### ¿Puedo editar saldos que vienen de un banco?
 
-No. Esas cuentas no ofrecen la opción, porque la siguiente sincronización sobrescribiría la edición.
+Sí. En cualquier fecha anterior a hoy la corrección se queda. En la de hoy, y en una fecha que aún está por llegar, la siguiente sincronización la sobrescribe: eso arréglalo en el banco.

@@ -8,7 +8,7 @@ An account you keep by hand has no balance history until you give it one. Enteri
 
 Balances are separate from transactions: [importing transactions](/documentation/transactions/import) does not set balances unless the file happens to carry a running balance column.
 
-A connected account does not offer this. Its balances come from the bank on every sync, and anything imported here would be overwritten.
+A connected account offers this too. Importing is how its history reaches back past the day you connected it, since a bank sends little of what came before. Dates from today on are the exception: every sync writes today's balance again, and any later date once that day arrives, so those rows get replaced.
 
 ## Where to find it
 

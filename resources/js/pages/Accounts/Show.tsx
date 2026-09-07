@@ -182,9 +182,8 @@ export default function AccountShow({
     const loanDetail = account.loan_detail;
     const linkedLoanAccount = account.linked_loan_account;
     const hasLinkedLoan = isRealEstate && !!linkedLoanAccount;
-    // Connected accounts accept manual transactions too (a sync only inserts
-    // rows it has not seen, so they survive); only their balances are the
-    // bank's to own.
+    // Connected accounts accept manual transactions too: a sync only inserts
+    // rows it has not seen, so they survive.
     const canCreateTransaction = isTransactionalAccount(account);
 
     const archiveMenuItem = isArchived ? (
@@ -263,38 +262,7 @@ export default function AccountShow({
                         )}
                     </div>
 
-                    {isConnected && !hasLinkedLoan ? (
-                        <div className="flex flex-wrap gap-2">
-                            {addTransactionButton}
-                            <ButtonGroup>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setEditOpen(true)}
-                                >
-                                    {__('Edit account')}
-                                </Button>
-                                <MoreOptionsMenu>
-                                    {archiveMenuItem}
-                                </MoreOptionsMenu>
-                            </ButtonGroup>
-                        </div>
-                    ) : isConnected && hasLinkedLoan ? (
-                        <ButtonGroup>
-                            <Button
-                                variant="outline"
-                                onClick={() => setEditOpen(true)}
-                            >
-                                {__('Edit account')}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setEditLoanDialogOpen(true)}
-                            >
-                                {__('Edit loan details')}
-                            </Button>
-                            <MoreOptionsMenu>{archiveMenuItem}</MoreOptionsMenu>
-                        </ButtonGroup>
-                    ) : !isConnected && hasLinkedLoan ? (
+                    {hasLinkedLoan ? (
                         <ButtonGroup>
                             <ButtonGroup>
                                 <Button
@@ -382,11 +350,7 @@ export default function AccountShow({
                 <AccountBalanceChart
                     account={account}
                     refreshKey={chartRefreshKey}
-                    onBalanceClick={
-                        isConnected
-                            ? undefined
-                            : () => setUpdateBalanceOpen(true)
-                    }
+                    onBalanceClick={() => setUpdateBalanceOpen(true)}
                     onDataLoaded={handleChartDataLoaded}
                 />
 
