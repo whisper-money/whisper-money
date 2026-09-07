@@ -10,7 +10,8 @@ import { AchievementCell } from './achievement-cell';
  * send its name, so the cell has nothing to leak. The next one of its track is
  * the exception: named, with the figure to reach and, where the server can say
  * cheaply, how far along the reader is. What separates it from an earned medal
- * is that there is nothing to share yet and nothing to date.
+ * is that there is nothing to share yet, nothing to date, no fill under it and
+ * no check on its medal.
  */
 
 vi.mock('@inertiajs/react', () => ({
@@ -56,6 +57,31 @@ describe('AchievementCell', () => {
         expect(screen.queryByText('???')).toBeNull();
         // Nothing has happened yet, so there is nothing to post.
         expect(screen.queryByLabelText('Share this medal')).toBeNull();
+    });
+
+    it('fills an earned cell and strikes a check on its medal', () => {
+        const { container } = render(
+            <AchievementCell
+                medal={medal({
+                    state: 'earned',
+                    name: 'Visit streak',
+                    achieved_on: '2024-03',
+                })}
+            />,
+        );
+
+        // The one signal a reader cannot miss at arm's length: white on white
+        // is what the fill and the check are here to fix.
+        expect(container.firstElementChild).toHaveClass('bg-muted');
+        expect(container.querySelector('.bg-foreground')).toBeInTheDocument();
+    });
+
+    it('leaves the next cell unfilled and unchecked', () => {
+        const { container } = render(<AchievementCell medal={medal(next)} />);
+
+        expect(container.firstElementChild).not.toHaveClass('bg-muted');
+        expect(container.firstElementChild).toHaveClass('border-dashed');
+        expect(container.querySelector('.bg-foreground')).toBeNull();
     });
 
     it('fills the bar to how far along the reader is', () => {
