@@ -14,12 +14,14 @@ import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
 import { index as progress } from '@/routes/achievements';
 import { edit as editAppearance } from '@/routes/appearance';
+import documentation from '@/routes/documentation';
 import { index as monthlySummaries } from '@/routes/monthly-summaries';
 import { type SharedData, type User } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     Award,
+    BookOpen,
     Eye,
     EyeOff,
     FileText,
@@ -159,6 +161,18 @@ export function UserMenuContent({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+                <DropdownMenuItem asChild>
+                    <a
+                        className="block w-full cursor-pointer"
+                        href={documentation.index.url()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={cleanup}
+                    >
+                        <BookOpen className="mr-2" />
+                        {__('Documentation')}
+                    </a>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                     <a
                         className="block w-full cursor-pointer"
