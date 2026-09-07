@@ -120,8 +120,8 @@ Un presupuesto puede avisarte cuando necesita atención:
 - Cuando se acerca a su límite.
 - Cuando se pasa.
 
-Llegan por correo y se configuran por presupuesto en Ajustes → Notificaciones,
-donde también puedes decidir con qué empiezan los presupuestos nuevos. Así puedes
+Llegan por correo y se configuran por presupuesto en Configuración →
+Notificaciones, donde también puedes decidir con qué empiezan los presupuestos nuevos. Así puedes
 vigilar los dos que importan y dejar el resto en silencio.
 
 ## Errores comunes
