@@ -426,9 +426,10 @@ const ChartTooltipContent = React.forwardRef<
         const hasLiabilities =
             typeof liabilitiesTotal === 'number' && liabilitiesTotal > 0;
 
-        // Every row filtered out and no liability row to fall back on: an empty
-        // box reads as broken, so draw nothing at all.
-        if (itemPayload.length === 0 && !hasLiabilities) {
+        // The filter left no rows and there is no liability row to fall back
+        // on: an empty box reads as broken, so draw nothing at all. Gated on
+        // the same opt-in, so no other chart can reach it.
+        if (hideZeroValues && itemPayload.length === 0 && !hasLiabilities) {
             return null;
         }
 
