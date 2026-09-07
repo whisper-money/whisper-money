@@ -73,6 +73,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { consoleDebug } from '@/lib/debug';
 import { captureEvent } from '@/lib/posthog';
+import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type SharedData } from '@/types';
@@ -940,22 +941,8 @@ export function TransactionList({
                 label_ids: labelIds,
             });
 
-            const selectedLabels = labels.filter((label) =>
-                labelIds.includes(label.id),
-            );
-
             setTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (!selectedIds.includes(transaction.id.toString())) {
-                        return transaction;
-                    }
-
-                    return {
-                        ...transaction,
-                        label_ids: labelIds,
-                        labels: selectedLabels,
-                    };
-                }),
+                applyBulkLabels(previous, selectedIds, labelIds, labels),
             );
 
             setRowSelection({});
