@@ -13,6 +13,10 @@ El Conector de IA permite que un asistente que ya usas, Claude o ChatGPT, lea tu
    abre.
 5. Pregúntale algo: «¿cuánto me he gastado este mes en la compra?»
 
+En ChatGPT puedes saltarte la URL y conectar Whisper Money desde su directorio
+de apps. Los dos caminos están descritos más abajo, con el motivo por el que
+podrías preferir uno.
+
 Haz esta parte en un ordenador. Iniciar sesión y aprobar funciona bien en el
 navegador de un ordenador, pero suele fallar en el navegador interno del móvil.
 Una vez conectado, hablar con Whisper Money desde el móvil funciona con
@@ -167,8 +171,32 @@ nunca ve tu contraseña.
 
 ## Conectar ChatGPT
 
+Hay dos formas de entrar. Son alternativas, no pasos, así que elige una.
+
+### Desde el directorio de apps de ChatGPT
+
+Whisper Money es una app aprobada en ChatGPT, así que este es el camino corto y
+no necesita el modo desarrollador.
+
+1. Busca Whisper Money en el directorio de apps de ChatGPT y conéctala ahí.
+2. Inicia sesión y aprueba la conexión en la pantalla de Whisper Money que se
+   abre.
+
+Si no te aparece en el directorio, usa el conector personalizado de abajo. Ese
+no depende del listado.
+
+### Como conector personalizado
+
+Este es el que hay que usar si quieres todo lo que el conector puede hacer hoy.
+
+El listado aprobado se actualiza despacio. Una herramienta que ya funciona aquí
+puede tardar semanas en aparecer en él, así que los dos caminos no siempre
+ofrecen lo mismo: un conector personalizado apunta directamente a nuestro
+servidor y tiene siempre la versión actual, mientras que el listado del
+directorio es simplemente el más cómodo.
+
 1. Activa el modo desarrollador: **Ajustes → Seguridad e inicio de sesión → Modo
-   desarrollador**. Los conectores personalizados solo existen con él activado.
+   desarrollador**.
 2. En **Plugins**, haz clic en el botón **+** de arriba a la derecha.
 3. Ponle un nombre y pega la misma URL que termina en `/mcp/oauth`.
 4. Aprueba la conexión en la pantalla de Whisper Money que se abre.

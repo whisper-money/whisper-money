@@ -12,6 +12,9 @@ The AI Connector lets an assistant you already use, Claude or ChatGPT, read your
 4. Sign in and approve the connection on the Whisper Money screen that opens.
 5. Ask it something: "how much did I spend on groceries last month?"
 
+On ChatGPT you can skip the URL and connect Whisper Money from its app directory
+instead. Both paths are described below, along with why you might prefer one.
+
 Do this part on a computer. Signing in and approving works fine in a desktop
 browser but usually breaks in a phone's in-app browser. Once it is connected,
 chatting with Whisper Money from your phone works as usual.
@@ -162,8 +165,29 @@ your password.
 
 ## Connect ChatGPT
 
+There are two ways in. They are alternatives rather than steps, so pick one.
+
+### From ChatGPT's app directory
+
+Whisper Money is an approved app in ChatGPT, so this is the short path and needs
+no developer mode.
+
+1. Find Whisper Money in ChatGPT's app directory and connect it there.
+2. Sign in and approve the connection on the Whisper Money screen that opens.
+
+If it does not turn up in the directory for you, use the custom connector below
+instead. It does not depend on the listing.
+
+### As a custom connector
+
+This is the one to use if you want everything the connector can do today.
+
+The approved listing updates slowly. A tool that already works here can take
+weeks to appear in it, so the two paths do not always offer the same thing: a
+custom connector points straight at our server and always has the current
+version, while the directory listing is simply the more convenient one.
+
 1. Turn on developer mode: **Settings → Security and login → Developer mode**.
-   Custom connectors only exist with it on.
 2. In **Plugins**, click the **+** button in the top right.
 3. Give it a name and paste the same URL ending in `/mcp/oauth`.
 4. Approve the connection on the Whisper Money screen that opens.
