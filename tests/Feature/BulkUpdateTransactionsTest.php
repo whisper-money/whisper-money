@@ -271,6 +271,29 @@ it('bulk update replaces labels instead of merging them', function () {
     }
 });
 
+it('bulk update with an empty label list detaches every label', function () {
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+    ]);
+
+    $transaction->labels()->attach($label->id);
+
+    // An empty `label_ids` is the "Remove all labels" bulk action, so it has to
+    // reach `sync([])` instead of being skipped as an empty value.
+    $response = $this->actingAs($this->user)->patchJson('/transactions/bulk', [
+        'transaction_ids' => [$transaction->id],
+        'label_ids' => [],
+    ]);
+
+    $response->assertSuccessful();
+    $response->assertJson(['count' => 1]);
+
+    expect($transaction->fresh()->labels)->toBeEmpty();
+});
+
 it('can update all transactions when no filters or IDs are provided', function () {
     Transaction::factory()
         ->count(3)
