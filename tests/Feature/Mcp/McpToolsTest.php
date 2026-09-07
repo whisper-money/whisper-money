@@ -54,6 +54,22 @@ it('searches transactions scoped to the user\'s space', function () {
         ->assertSee('Blue Bottle Coffee');
 });
 
+it('returns the notes of a transaction so they can be read back', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'description' => 'Hardware store',
+        'notes' => 'Shelves for the office',
+    ]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(SearchTransactions::class, ['query' => 'Hardware store'])
+        ->assertOk()
+        ->assertSee('Shelves for the office');
+});
+
 it('filters transactions by label id', function () {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
