@@ -2489,5 +2489,6 @@
     ":name, :milestone. :remaining to go.": ":name, :milestone. Il vous reste :remaining.",
     "See all your medals": "Voir toutes vos médailles",
     "{1}1 day|[2,*]:count days": "{1}1 jour|[2,*]:count jours",
-    "{1}1 week|[2,*]:count weeks": "{1}1 semaine|[2,*]:count semaines"
+    "{1}1 week|[2,*]:count weeks": "{1}1 semaine|[2,*]:count semaines",
+    "+:count to come": "+:count à venir"
 }
