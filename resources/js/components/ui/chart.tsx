@@ -259,6 +259,32 @@ interface ChartTooltipContentProps {
     displayCurrency?: string;
     /** When set, tooltip shows liability rows and net-worth total instead of simple sum. */
     netWorthMode?: NetWorthMode;
+    /**
+     * Drops the rows whose value at the hovered point is exactly zero. Off by
+     * default, so every other chart keeps listing them.
+     */
+    hideZeroValues?: boolean;
+}
+
+/**
+ * The value a tooltip row shows. In net-worth mode the rendered series is
+ * scaled to fit the bar, so the row reads the unscaled original stored
+ * alongside it in the data point.
+ */
+function getTooltipItemValue(
+    item: TooltipPayloadItem,
+    netWorthMode?: NetWorthMode,
+): number | string | undefined {
+    if (!netWorthMode) {
+        return item.value;
+    }
+
+    const accountId = String(item.dataKey || item.name || '');
+
+    return (
+        (item.payload?.[`${accountId}_display`] as number | undefined) ??
+        item.value
+    );
 }
 
 function formatCurrencyWithCode(
@@ -290,6 +316,7 @@ const ChartTooltipContent = React.forwardRef<
             accountCurrencies,
             displayCurrency,
             netWorthMode,
+            hideZeroValues,
             coordinate,
         },
         ref,
@@ -381,9 +408,17 @@ const ChartTooltipContent = React.forwardRef<
 
         // The synthetic deficit series is rendering-only; the negative net
         // worth already shows in the total row, so drop it from the item list.
-        const itemPayload = netWorthMode?.deficitKey
+        const seriesPayload = netWorthMode?.deficitKey
             ? payload.filter((item) => item.dataKey !== netWorthMode.deficitKey)
             : payload;
+
+        // An account holding nothing at the hovered point carries no
+        // information; its row only pushes the ones that do out of sight.
+        const itemPayload = hideZeroValues
+            ? seriesPayload.filter(
+                  (item) => getTooltipItemValue(item, netWorthMode) !== 0,
+              )
+            : seriesPayload;
 
         const nestLabel = itemPayload.length === 1 && indicator !== 'dot';
         const hasMultipleCurrencies =
@@ -412,11 +447,10 @@ const ChartTooltipContent = React.forwardRef<
                                 item.dataKey || item.name || '',
                             );
 
-                            // In net worth mode, use the original unscaled
-                            // value stored in the data point for display.
-                            const displayValue = netWorthMode
-                                ? ((item.payload?.[`${accountId}_display`] as number | undefined) ?? item.value)
-                                : item.value;
+                            const displayValue = getTooltipItemValue(
+                                item,
+                                netWorthMode,
+                            );
 
                             return (
                                 <div
