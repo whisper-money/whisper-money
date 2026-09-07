@@ -16,6 +16,15 @@ class BalanceSyncService
     /** Balance types in preference order */
     private const PREFERRED_BALANCE_TYPES = ['CLBD', 'ITAV', 'ITBD', 'OPBD', 'XPCD'];
 
+    /**
+     * The transaction sources the backwards walk in
+     * {@see self::calculateHistoricalBalances()} subtracts. A row of any other
+     * source cannot move what that walk produces.
+     *
+     * @var list<TransactionSource>
+     */
+    public const WALKED_SOURCES = [TransactionSource::EnableBanking, TransactionSource::Imported];
+
     public function __construct(
         private BankingProviderInterface $provider,
     ) {}
@@ -97,7 +106,7 @@ class BalanceSyncService
         $bankDate = 'COALESCE(source_date, transaction_date)';
 
         $dailyTotals = $account->transactions()
-            ->whereIn('source', [TransactionSource::EnableBanking, TransactionSource::Imported])
+            ->whereIn('source', self::WALKED_SOURCES)
             ->whereRaw("{$bankDate} <= ?", [$referenceBalance->balance_date->toDateString()])
             ->selectRaw("{$bankDate} as bank_date, SUM(amount) as daily_total")
             ->groupByRaw($bankDate)
@@ -130,6 +139,8 @@ class BalanceSyncService
         }
 
         if ($rows !== []) {
+            // `derived` is left out of the update list on purpose: every row this
+            // can collide with was skipped above unless the walk already owned it.
             AccountBalance::upsert($rows, ['account_id', 'balance_date'], ['balance', 'updated_at']);
         }
 

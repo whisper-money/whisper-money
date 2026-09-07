@@ -100,6 +100,18 @@ test('storing a transaction on an account with no balance history queues nothing
     Queue::assertNotPushed(RecalculateHistoricalBalancesJob::class);
 });
 
+test('storing a hand-entered transaction queues nothing', function () {
+    Queue::fake();
+
+    [$user, $account] = connectedAccountWithBalanceHistory();
+
+    // The walk never subtracts a hand-entered row, so it cannot change what the
+    // walk would produce.
+    postTransaction($user, $account, ['source' => 'manually_created']);
+
+    Queue::assertNotPushed(RecalculateHistoricalBalancesJob::class);
+});
+
 test('storing a transaction on a manual account queues nothing', function () {
     Queue::fake();
 

@@ -16,6 +16,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Services\Ai\CategoryOverrideHandler;
+use App\Services\Banking\BalanceSyncService;
 use App\Services\ManualBalanceAdjuster;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -226,15 +227,19 @@ class TransactionController extends Controller
      * transaction lands on a day that history already covers.
      *
      * Those balances are walked backwards from the bank's latest figure, so a
-     * row dated inside the walked range changes every earlier day. The import
-     * flow posts one row at a time; the job is unique per account, so an import
-     * of several months collapses into a single run.
+     * row dated inside the walked range changes every earlier day. In practice
+     * that means an import: the flow posts one row at a time, and the job is
+     * unique per account, so months of rows collapse into a single run.
      */
     private function recalculateBalanceHistoryIfBackdated(Transaction $transaction): void
     {
         $account = $transaction->account;
 
         if ($account === null || ! $account->isConnected()) {
+            return;
+        }
+
+        if (! in_array($transaction->source, BalanceSyncService::WALKED_SOURCES, true)) {
             return;
         }
 
