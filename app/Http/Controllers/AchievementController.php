@@ -86,6 +86,7 @@ class AchievementController extends Controller
                 $format,
                 $theme,
                 $amount,
+                $request->user()->hasProPlan(),
             );
         } catch (Throwable $exception) {
             report($exception);

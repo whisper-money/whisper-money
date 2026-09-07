@@ -37,9 +37,9 @@ beforeEach(function (): void {
 /**
  * @param  list<string>  $keys
  */
-function announcement(array $keys): AchievementsEmail
+function announcement(array $keys, ?User $user = null): AchievementsEmail
 {
-    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
+    $user ??= User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
 
     $medals = collect($keys)->map(fn (string $key): Achievement => Achievement::factory()->create([
         'user_id' => $user->id,
@@ -60,6 +60,35 @@ it('carries a picture of every medal it announces', function (): void {
     expect(Storage::disk(CardRenderer::DISK)->allFiles())
         ->toHaveCount(2)
         ->each->toContain('-feed-light-en');
+});
+
+it('warms the very file the share dialog will serve a Pro reader', function (): void {
+    config()->set('subscriptions.enabled', true);
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR', 'locale' => 'en']);
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $assertDrawn = fn (int $times) => Process::assertRanTimes(fn (PendingProcess $process): bool => in_array(
+        base_path('scripts/render-card.mjs'), $process->command, true,
+    ), $times);
+
+    announcement(['streaks.2'], $user)->render();
+
+    $assertDrawn(1);
+
+    test()->actingAs($user->unsetRelation('subscriptions'))
+        ->get(route('achievements.card', ['medal' => 'streaks.2', 'format' => 'feed', 'theme' => 'light']))
+        ->assertOk();
+
+    // Still one: the email and the dialog read the badge off the same flag, so
+    // they name the same file and the dialog gets the picture the email already
+    // drew. Disagree on it and the medal is drawn twice, once wrong.
+    $assertDrawn(1);
 });
 
 it('links to the progress screen', function (): void {
