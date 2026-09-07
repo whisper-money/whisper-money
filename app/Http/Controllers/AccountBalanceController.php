@@ -43,6 +43,9 @@ class AccountBalanceController extends Controller
             ],
             [
                 'balance' => $validated['balance'],
+                // The user's own figure, so the backwards balance walk stops
+                // treating this day as its own to recalculate.
+                'derived' => false,
                 ...array_key_exists('invested_amount', $validated)
                     ? ['invested_amount' => $validated['invested_amount']]
                     : [],
@@ -71,6 +74,9 @@ class AccountBalanceController extends Controller
             ],
             [
                 'balance' => $validated['balance'],
+                // The user's own figure, so the backwards balance walk stops
+                // treating this day as its own to recalculate.
+                'derived' => false,
                 ...array_key_exists('invested_amount', $validated)
                     ? ['invested_amount' => $validated['invested_amount']]
                     : [],

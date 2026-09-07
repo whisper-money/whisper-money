@@ -22,6 +22,7 @@ class AccountBalance extends Model
         'balance_date',
         'balance',
         'invested_amount',
+        'derived',
     ];
 
     protected function casts(): array
@@ -30,6 +31,7 @@ class AccountBalance extends Model
             'balance_date' => 'date',
             'balance' => 'integer',
             'invested_amount' => 'integer',
+            'derived' => 'boolean',
         ];
     }
 
