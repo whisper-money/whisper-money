@@ -149,18 +149,133 @@ it('moves a transaction onto a connected account, unwinding only the manual side
     expect($connectedAccount->balances()->where('balance_date', '2026-01-15')->value('balance'))->toBe(50_000);
 });
 
-it('refuses to edit an imported transaction', function () {
+it('refuses to edit a core field of an imported transaction, naming the field', function () {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $transaction = Transaction::factory()->imported()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
+        'description' => 'Untouched',
     ]);
 
     callWriteTool($user, UpdateTransaction::class, [
         'transaction_id' => $transaction->id,
         'description' => 'Hacked',
-    ])->assertHasErrors(['manually-created']);
+        'amount' => -1,
+    ])->assertHasErrors(['manually-created'])->assertSee('description, amount');
+
+    expect($transaction->fresh()->description)->toBe('Untouched');
+});
+
+it('writes notes on a bank-synced transaction and returns them', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->connected()->create(['user_id' => $user->id]);
+    $transaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'notes' => null,
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'notes' => 'Migrated from the old spreadsheet',
+    ])->assertOk()->assertSee('Migrated from the old spreadsheet');
+
+    expect($transaction->fresh()->notes)->toBe('Migrated from the old spreadsheet');
+    // notes_iv belongs to the client-side encryption being migrated away, so a
+    // plain-text note must never claim to be encrypted.
+    expect($transaction->fresh()->notes_iv)->toBeNull();
+});
+
+it('writes notes on an imported transaction and clears them again', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $transaction = Transaction::factory()->imported()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'notes' => null,
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'notes' => 'Reimbursed by work',
+    ])->assertOk();
+
+    expect($transaction->fresh()->notes)->toBe('Reimbursed by work');
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'notes' => null,
+    ])->assertOk();
+
+    expect($transaction->fresh()->notes)->toBeNull();
+});
+
+it('retires the legacy notes iv when it overwrites the notes', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $transaction = Transaction::factory()->imported()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'notes' => 'k5rXcipherPQ==',
+        'notes_iv' => 'YWJjZGVmZ2hpamts',
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'notes' => 'Rewritten in the clear',
+    ])->assertOk();
+
+    // A stale iv would have the browser decrypt plain text and show the note
+    // as broken, so it has to go along with the ciphertext it described.
+    expect($transaction->fresh()->notes)->toBe('Rewritten in the clear');
+    expect($transaction->fresh()->notes_iv)->toBeNull();
+});
+
+it('writes notes on one part of a split', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $original = Transaction::factory()->imported()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -5000,
+    ]);
+    $part = Transaction::factory()->imported()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'split_parent_id' => $original->id,
+        'amount' => -3000,
+        'notes' => null,
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $part->id,
+        'notes' => 'The camera, not the lens',
+    ])->assertOk()->assertSee('The camera, not the lens');
+
+    expect($part->fresh()->notes)->toBe('The camera, not the lens');
+    expect($part->fresh()->amount)->toBe(-3000);
+});
+
+it('leaves the balance alone when only the notes change', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $account->balances()->create(['balance_date' => '2026-01-15', 'balance' => 9_000]);
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-01-15',
+        'amount' => -1_000,
+        'currency_code' => 'EUR',
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'notes' => 'Just an annotation',
+        'update_balance' => true,
+    ])->assertOk()->assertSee('"balance_updated":false');
+
+    expect($account->balances()->where('balance_date', '2026-01-15')->value('balance'))->toBe(9_000);
 });
 
 it('deletes a manual transaction', function () {

@@ -4,7 +4,7 @@
   "app_info": {
     "display_name": "Whisper Money",
     "subtitle": "Chat with your own finances",
-    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, cashflow, net worth and the milestone medals you have earned along the way, and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, split a transaction that covered several things into parts with their own categories, record balances for manual accounts, and manage budgets, categories, labels and automation rules — including running an automation rule over the transactions you already have, after previewing what it would match.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
+    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, cashflow, net worth and the milestone medals you have earned along the way, and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, split a transaction that covered several things into parts with their own categories, record balances for manual accounts, and manage budgets, categories, labels and automation rules — including running an automation rule over the transactions you already have, after previewing what it would match.\n\nYour synced bank data is protected: a transaction imported from a bank connection can be categorized, labelled, split and annotated with notes, but its description, amount, date and account stay locked, it can never be deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
     "category": "FINANCE"
   },
   "tools": {
@@ -107,9 +107,9 @@
     "update_transaction": {
       "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
       "justifications": {
-        "read_only_justification": "Writes: it edits the fields of an existing manual transaction in the user's own account.",
+        "read_only_justification": "Writes: it edits the fields of an existing transaction in the user's own account.",
         "open_world_justification": "Edits a bookkeeping row inside the user's own Whisper Money account, a closed system. No external system is affected.",
-        "destructive_justification": "Reversible: field values can be edited back at any time, and bank-imported transactions are rejected outright so synced data cannot be rewritten."
+        "destructive_justification": "Reversible: field values can be edited back at any time, and a bank-imported transaction only accepts its notes and category, so the data the sync owns cannot be rewritten."
       }
     },
     "delete_transaction": {
@@ -305,10 +305,10 @@
   ],
   "negative_test_cases": [
     {
-      "description": "Bank-connected data is protected. Editing or deleting a transaction imported from a bank connection must be refused by the server, and the model should explain why instead of retrying.",
+      "description": "Bank-connected data is protected. Rewriting the amount, description, date or account of a transaction imported from a bank connection must be refused by the server, and the model should explain why instead of retrying.",
       "user_prompt": "Change the amount of that Amazon charge from my bank account to 10 euros.",
       "tools_triggered": "search_transactions, update_transaction",
-      "expected_output": "The server rejects the write because bank-imported transactions are read-only, and the model explains that only manual transactions can be edited, offering to recategorize or label it instead."
+      "expected_output": "The server rejects the write because the amount of a bank-imported transaction is locked, and the model explains that only manual transactions can have their amount changed, offering to recategorize, label or add a note to it instead."
     },
     {
       "description": "Wide, irreversible deletion must not be executed on a vague instruction. delete_transaction is destructive and single-target, so the model must stop and confirm rather than looping over the user's history.",
