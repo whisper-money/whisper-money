@@ -420,6 +420,18 @@ const ChartTooltipContent = React.forwardRef<
               )
             : seriesPayload;
 
+        const liabilitiesTotal = netWorthMode
+            ? (payload[0]?.payload?.__liabilities_total as number | undefined)
+            : undefined;
+        const hasLiabilities =
+            typeof liabilitiesTotal === 'number' && liabilitiesTotal > 0;
+
+        // Every row filtered out and no liability row to fall back on: an empty
+        // box reads as broken, so draw nothing at all.
+        if (itemPayload.length === 0 && !hasLiabilities) {
+            return null;
+        }
+
         const nestLabel = itemPayload.length === 1 && indicator !== 'dot';
         const hasMultipleCurrencies =
             currencyTotals && currencyTotals.length > 1;
@@ -525,16 +537,12 @@ const ChartTooltipContent = React.forwardRef<
                         },
                     )}
                     {(() => {
-                        const liabilitiesTotal = netWorthMode
-                            ? (payload[0]?.payload?.__liabilities_total as number | undefined)
-                            : undefined;
                         const liabilitiesJson = netWorthMode
                             ? (payload[0]?.payload?.__liabilities as string | undefined)
                             : undefined;
                         const liabilities: Array<{ name: string; amount: number }> = liabilitiesJson
                             ? (JSON.parse(liabilitiesJson) as Array<{ name: string; amount: number }>)
                             : [];
-                        const hasLiabilities = typeof liabilitiesTotal === 'number' && liabilitiesTotal > 0;
                         const showTotalSection = itemPayload.length > 1 || hasLiabilities;
 
                         if (!showTotalSection) return null;

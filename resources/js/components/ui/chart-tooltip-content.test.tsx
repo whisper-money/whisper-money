@@ -108,6 +108,17 @@ describe('ChartTooltipContent zero rows', () => {
         expect(totalRow()).toBe(before);
     });
 
+    it('draws no tooltip at all when nothing is left to show', () => {
+        const { baseElement } = renderTooltip({
+            hideZeroValues: true,
+            payload: [item('checking', 0), item('savings', 0)],
+        });
+
+        expect(screen.queryByText('Checking')).not.toBeInTheDocument();
+        expect(screen.queryByText('Total')).not.toBeInTheDocument();
+        expect(baseElement.textContent).toBe('');
+    });
+
     // Net worth mode scales the asset series to fit the bar, and a month with a
     // negative net worth scales every one of them to 0. The rows must survive:
     // the balance they show is the unscaled `_display` value.
