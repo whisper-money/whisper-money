@@ -15,6 +15,17 @@ width: 100% !important;
 .footer {
 width: 100% !important;
 }
+
+/* One medal per row, and the gutter that separated the columns becomes the
+   gap under each card. */
+.medals, .medals > tbody, .medals > tbody > tr, .medals > tbody > tr > td {
+display: block !important;
+width: 100% !important;
+}
+
+.medal-cell {
+padding: 0 0 16px !important;
+}
 }
 
 @media only screen and (max-width: 500px) {

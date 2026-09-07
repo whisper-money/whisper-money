@@ -14,11 +14,7 @@
 
 {{ trans_choice('{1}Your money crossed a line worth marking.|[2,*]Your money crossed a few lines worth marking.', count($lines)) }}
 
-@foreach ($lines as $line)
-@if ($line['card'] !== null)
-<x-mail::medal :cid="$line['card']" :alt="$line['name']" />
-@endif
-@endforeach
+<x-mail::medal :lines="$lines" />
 
 @foreach ($lines as $line)
 - **{{ $line['name'] }}{{ $line['milestone'] ? ' '.$line['milestone'] : '' }}** — {{ $line['rarity'] }}

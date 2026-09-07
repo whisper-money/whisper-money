@@ -91,6 +91,35 @@ it('warms the very file the share dialog will serve a Pro reader', function (): 
     $assertDrawn(1);
 });
 
+/**
+ * The medal grid on its own, so a count of rows or cells is a count of medals
+ * rather than of the layout the Markdown mail wraps them in.
+ */
+function medalGrid(string $html): string
+{
+    preg_match('/<table class="medals".*?<\/table>/s', $html, $matches);
+
+    return $matches[0] ?? '';
+}
+
+it('lays the medals out two to a row, every card the same width', function (): void {
+    $grid = medalGrid(announcement(['visits.1', 'visits.2', 'visits.3'])->render());
+
+    // Every card in a cell of the same width: a column that has to hold a
+    // gutter as well as a card is a narrower column, and the card inside it is
+    // the one the client scales down. The third medal starts a second row at
+    // that same width rather than stretching across.
+    expect(substr_count($grid, 'width: 50%'))->toBe(3)
+        ->and(substr_count($grid, '<tr>'))->toBe(2);
+});
+
+it('centres a lone medal rather than leaving half a row empty', function (): void {
+    $grid = medalGrid(announcement(['visits.1'])->render());
+
+    expect($grid)->toContain('align="center"')
+        ->and($grid)->not->toContain('width: 50%');
+});
+
 it('links to the progress screen', function (): void {
     announcement(['streaks.2'])->assertSeeInHtml('utm_content=progress', escape: false);
 });
@@ -134,6 +163,10 @@ it('goes out without the pictures when the browser cannot draw them', function (
 
     $mail->assertDontSeeInHtml('cid:', escape: false);
     $mail->assertSeeInText('Saving streak');
+
+    // And no grid where the pictures would have gone: an empty table is a
+    // pocket of air the reader has to scroll past for nothing.
+    expect(medalGrid($mail->render()))->toBe('');
 
     Exceptions::assertReported(RuntimeException::class);
 });
