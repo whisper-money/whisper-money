@@ -38,6 +38,8 @@ export interface StackedAreaChartProps<T extends Record<string, unknown>> {
     showLegend?: boolean;
     minBarWidth?: number;
     netWorthMode?: NetWorthMode;
+    /** Hides the tooltip rows worth exactly zero at the hovered point. */
+    hideZeroValues?: boolean;
 }
 
 export function StackedAreaChart<T extends Record<string, unknown>>({
@@ -53,6 +55,7 @@ export function StackedAreaChart<T extends Record<string, unknown>>({
     showLegend = true,
     minBarWidth = 20,
     netWorthMode,
+    hideZeroValues,
 }: StackedAreaChartProps<T>) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -135,6 +138,7 @@ export function StackedAreaChart<T extends Record<string, unknown>>({
                                 accountCurrencies={accountCurrencies}
                                 displayCurrency={displayCurrency}
                                 netWorthMode={netWorthMode}
+                                hideZeroValues={hideZeroValues}
                             />
                         }
                     />
