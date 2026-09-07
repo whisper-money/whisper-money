@@ -5,6 +5,8 @@ namespace App\Services\Achievements;
 use App\Models\MonthlySummary;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Collection;
+use stdClass;
 
 /**
  * Where a reader stands right now, per track.
@@ -27,14 +29,18 @@ class Standing
      */
     public function for(User $user, ?MonthlySummary $report): array
     {
+        // One grouped query answers both transaction tracks, so the count and
+        // the run can never disagree about which months they read.
+        $months = $this->closedMonths($user);
+
         return [
             // The longest run rather than the current one, because that is what
             // the medal is awarded on: a bar reading the live streak would fall
             // back on a broken run without the medal moving any further away.
             'visits' => (int) $user->longest_visit_streak,
             'visit_weeks' => (int) $user->longest_visit_week_streak,
-            'transactions' => $user->transactions()->count(),
-            'categorized' => $this->categorizedRun($user),
+            'transactions' => (int) $months->sum('total'),
+            'categorized' => $this->categorizedRun($months),
             // Read off the last report rather than recomputed, like the live
             // streak in the overview, so the two cannot disagree.
             'streaks' => (int) ($report?->figure('streak_months') ?? 0),
@@ -42,17 +48,20 @@ class Standing
     }
 
     /**
-     * Closed months in a row, ending with the last one, in which everything
-     * recorded got a category.
+     * What a reader recorded in each closed month, and how much of it was left
+     * without a category, keyed by month.
      *
-     * Counted backwards from the last closed month rather than forwards from
-     * the first: the run the next medal needs is the one still going, and a
-     * broken run has to be rebuilt from scratch to earn anything. A month with
-     * nothing recorded in it breaks the run, exactly as it does for the sweep.
+     * The month in progress is left out, for the same reason the visit bar
+     * reads the longest run: the medal is awarded on what the nightly sweep
+     * sees, and {@see HistoryBuilder} stops at the last closed month. Counting
+     * today's transactions would fill the bar, and promise the medal tonight,
+     * up to a month before either is true.
+     *
+     * @return Collection<int|string, stdClass>
      */
-    private function categorizedRun(User $user): int
+    private function closedMonths(User $user): Collection
     {
-        $months = Transaction::query()
+        return Transaction::query()
             ->where('user_id', $user->id)
             ->where('transaction_date', '<', now()->startOfMonth())
             ->selectRaw("date_format(transaction_date, '%Y-%m') as period")
@@ -64,7 +73,21 @@ class Standing
             ->toBase()
             ->get()
             ->keyBy('period');
+    }
 
+    /**
+     * Closed months in a row, ending with the last one, in which everything
+     * recorded got a category.
+     *
+     * Counted backwards from the last closed month rather than forwards from
+     * the first: the run the next medal needs is the one still going, and a
+     * broken run has to be rebuilt from scratch to earn anything. A month with
+     * nothing recorded in it breaks the run, exactly as it does for the sweep.
+     *
+     * @param  Collection<int|string, stdClass>  $months
+     */
+    private function categorizedRun(Collection $months): int
+    {
         $month = now()->subMonth()->startOfMonth();
         $run = 0;
 
