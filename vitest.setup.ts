@@ -34,6 +34,22 @@ if (typeof window !== 'undefined') {
     if (!('PointerEvent' in window)) {
         window.PointerEvent = MouseEvent as unknown as typeof window.PointerEvent;
     }
+
+    /**
+     * Same story for the two APIs cmdk needs: jsdom implements neither, so any
+     * `Command` list (the label combobox, the command palette) throws when it
+     * mounts on `ResizeObserver`, then again on `scrollIntoView` as soon as it
+     * moves the selection.
+     */
+    if (!('ResizeObserver' in window)) {
+        globalThis.ResizeObserver = class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        };
+    }
+
+    Element.prototype.scrollIntoView ??= () => {};
 }
 
 beforeEach(() => {

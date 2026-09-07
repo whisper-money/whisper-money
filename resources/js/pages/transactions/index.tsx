@@ -91,6 +91,7 @@ import { consoleDebug } from '@/lib/debug';
 import { reloadPage } from '@/lib/leave-page';
 import { isNewSince } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
+import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
@@ -1330,42 +1331,12 @@ export default function Transactions({
                 setIsSelectingAll(false);
                 refreshTransactions();
             } else {
-                const selectedLabels = labels.filter((l) =>
-                    labelIds.includes(l.id),
-                );
-
                 await transactionSyncService.updateMany(selectedIds, {
                     label_ids: labelIds,
                 });
 
                 setAllTransactions((previous) =>
-                    previous.map((transaction) => {
-                        if (selectedIds.includes(transaction.id.toString())) {
-                            if (labelIds.length === 0) {
-                                return {
-                                    ...transaction,
-                                    labels: [],
-                                };
-                            }
-
-                            const existingLabels = transaction.labels || [];
-                            const mergedLabels = [
-                                ...existingLabels,
-                                ...selectedLabels.filter(
-                                    (l) =>
-                                        !existingLabels.some(
-                                            (el) => el.id === l.id,
-                                        ),
-                                ),
-                            ];
-
-                            return {
-                                ...transaction,
-                                labels: mergedLabels,
-                            };
-                        }
-                        return transaction;
-                    }),
+                    applyBulkLabels(previous, selectedIds, labelIds, labels),
                 );
 
                 toast.success(
