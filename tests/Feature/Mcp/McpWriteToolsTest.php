@@ -211,25 +211,51 @@ it('writes notes on an imported transaction and clears them again', function () 
     expect($transaction->fresh()->notes)->toBeNull();
 });
 
-it('retires the legacy notes iv when it overwrites the notes', function () {
+it('retires the legacy iv of every field it overwrites in the clear', function () {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
-    $transaction = Transaction::factory()->imported()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
+        'description' => 'B2l0ZXh0cGQ9',
+        'description_iv' => 'MTIzNDU2Nzg5MGFi',
         'notes' => 'k5rXcipherPQ==',
         'notes_iv' => 'YWJjZGVmZ2hpamts',
     ]);
 
     callWriteTool($user, UpdateTransaction::class, [
         'transaction_id' => $transaction->id,
-        'notes' => 'Rewritten in the clear',
+        'description' => 'Rewritten in the clear',
+        'notes' => 'So are the notes',
     ])->assertOk();
 
-    // A stale iv would have the browser decrypt plain text and show the note
-    // as broken, so it has to go along with the ciphertext it described.
-    expect($transaction->fresh()->notes)->toBe('Rewritten in the clear');
-    expect($transaction->fresh()->notes_iv)->toBeNull();
+    // A stale iv would have the browser decrypt plain text and render the
+    // field as broken, so it goes along with the ciphertext it described.
+    $transaction = $transaction->fresh();
+
+    expect($transaction->description)->toBe('Rewritten in the clear');
+    expect($transaction->description_iv)->toBeNull();
+    expect($transaction->notes)->toBe('So are the notes');
+    expect($transaction->notes_iv)->toBeNull();
+});
+
+it('leaves the iv of a field it did not touch alone', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'description' => 'B2l0ZXh0cGQ9',
+        'description_iv' => 'MTIzNDU2Nzg5MGFi',
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'notes' => 'Only the notes change',
+    ])->assertOk();
+
+    // The description is still ciphertext, so the browser still needs its iv.
+    expect($transaction->fresh()->description_iv)->toBe('MTIzNDU2Nzg5MGFi');
 });
 
 it('writes notes on one part of a split', function () {
