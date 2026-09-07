@@ -26,6 +26,17 @@ class AccountBalanceFactory extends Factory
     }
 
     /**
+     * Indicate that the balance was produced by the backwards balance walk,
+     * which makes it the walk's to overwrite on a later run.
+     */
+    public function derived(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'derived' => true,
+        ]);
+    }
+
+    /**
      * Indicate that the balance has an invested amount.
      */
     public function withInvestedAmount(?int $investedAmount = null): static

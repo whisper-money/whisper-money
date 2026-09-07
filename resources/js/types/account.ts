@@ -63,6 +63,7 @@ export interface AccountBalance {
     balance_date: string;
     balance: number;
     invested_amount: number | null;
+    derived: boolean;
     created_at: string;
     updated_at: string;
 }

@@ -8,6 +8,7 @@ use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Jobs\ReassignTransactionsToBudgets;
+use App\Jobs\RecalculateHistoricalBalancesJob;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Bank;
@@ -213,9 +214,39 @@ class TransactionController extends Controller
             $balanceAdjuster->applyCreatedTransaction($transaction);
         }
 
+        $this->recalculateBalanceHistoryIfBackdated($transaction);
+
         return response()->json([
             'data' => $transaction->load('labels'),
         ], 201);
+    }
+
+    /**
+     * Queue a rebuild of a connected account's derived balance history when a
+     * transaction lands on a day that history already covers.
+     *
+     * Those balances are walked backwards from the bank's latest figure, so a
+     * row dated inside the walked range changes every earlier day. The import
+     * flow posts one row at a time; the job is unique per account, so an import
+     * of several months collapses into a single run.
+     */
+    private function recalculateBalanceHistoryIfBackdated(Transaction $transaction): void
+    {
+        $account = $transaction->account;
+
+        if ($account === null || ! $account->isConnected()) {
+            return;
+        }
+
+        $newestBalance = $account->balances()
+            ->orderByDesc('balance_date')
+            ->first();
+
+        if ($newestBalance === null || ! $transaction->transaction_date->lt($newestBalance->balance_date)) {
+            return;
+        }
+
+        RecalculateHistoricalBalancesJob::dispatch($account);
     }
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
