@@ -90,11 +90,15 @@ class SummaryBuilder
             'budgets' => $this->budgetsSection($user, $month),
             'goal' => $this->goalSection($user, $month),
             'todos' => $this->todosSection($user, $month),
-            'account_names' => $this->accountNames($accounts),
+            'account_names' => $this->accountNames($accounts, $month),
         ];
     }
 
     /**
+     * Every account, archived ones included. Each caller decides its own as-of
+     * date — scoping the query instead would erase an account from a month it
+     * legitimately belonged to.
+     *
      * @return Collection<int, Account>
      */
     private function accountsOf(User $user): Collection
@@ -588,12 +592,20 @@ class SummaryBuilder
      * Bank and account names, for the AI analysis only. Transaction descriptions
      * and merchants deliberately never leave the account.
      *
+     * An account archived by the end of the month is left out: the analysis is
+     * allowed to name anything in this list, and a reader who archived an
+     * account does not expect to read about it. As-of the month, not today, so
+     * a month the account was still live keeps naming it.
+     *
      * @param  Collection<int, Account>  $accounts
      * @return list<string>
      */
-    private function accountNames(Collection $accounts): array
+    private function accountNames(Collection $accounts, Carbon $month): array
     {
+        $end = $month->copy()->endOfMonth();
+
         return $accounts
+            ->reject(fn (Account $account): bool => $account->isArchivedOn($end))
             ->map(fn (Account $account): string => trim(($account->bank?->name ? $account->bank->name.' · ' : '').$account->name))
             ->values()
             ->all();
