@@ -1,6 +1,6 @@
 ---
 name: whisper-money-docs
-description: Read Whisper Money's product documentation before answering how the app works — how accounts, transactions, imports, categories, labels, automation rules, cashflow or budgets behave, what a feature does or does not do, pricing, privacy and which banks connect. Use when the user asks a "how does Whisper Money…" or "can Whisper Money…" question instead of answering from memory.
+description: Read Whisper Money's product documentation before answering how the app works — how accounts, transactions, imports, categories, labels, automation rules, cashflow or budgets behave, what a feature does or does not do, how to connect an AI assistant to it, pricing, privacy and which banks connect. Use when the user asks a "how does Whisper Money…" or "can Whisper Money…" question instead of answering from memory.
 ---
 
 # Whisper Money documentation
@@ -30,6 +30,9 @@ Individual pages follow `https://whisper.money/documentation/{slug}.md`:
 | Cashflow | `cashflow` |
 | Budgets | `budgets` |
 | Savings goals | `savings-goals` |
+| Achievements, medals | `achievements` |
+| Monthly summary | `monthly-summary` |
+| AI Connector, MCP, connecting Claude or ChatGPT | `ai-connector` |
 
 Add `?lang=es` for Spanish: `https://whisper.money/documentation/budgets.md?lang=es`.
 

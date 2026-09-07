@@ -56,7 +56,9 @@ import {
     MonitorSmartphone,
     RefreshCw,
     ShieldAlert,
+    Store,
     Trash2,
+    type LucideIcon,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -83,6 +85,30 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 function formatDate(value: string | null): string {
     return value ? new Date(value).toLocaleString() : __('Never');
+}
+
+/**
+ * An aside inside the "How to connect" card: a bold lead followed by the
+ * detail, next to an icon.
+ */
+function CardNote({
+    icon: Icon,
+    title,
+    children,
+}: {
+    icon: LucideIcon;
+    title: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className="flex gap-3 rounded-md border bg-muted/50 p-3 text-sm">
+            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <p className="text-muted-foreground">
+                <span className="font-medium text-foreground">{title}.</span>{' '}
+                {children}
+            </p>
+        </div>
+    );
 }
 
 type ConnectorApp = 'claude' | 'chatgpt';
@@ -161,7 +187,7 @@ export default function Mcp() {
             label: __('ChatGPT'),
             steps: [
                 __(
-                    'Turn on developer mode: Settings → Security and login → Developer mode. Custom connectors are only available with it on.',
+                    'Turn on developer mode: Settings → Security and login → Developer mode.',
                 ),
                 __('In Plugins, click the + button in the top right.'),
                 <>
@@ -263,17 +289,14 @@ export default function Mcp() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="flex gap-3 rounded-md border bg-muted/50 p-3 text-sm">
-                                <MonitorSmartphone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                                <p className="text-muted-foreground">
-                                    <span className="font-medium text-foreground">
-                                        {__('Set this up on a computer')}.
-                                    </span>{' '}
-                                    {__(
-                                        "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude or ChatGPT on your phone as usual.",
-                                    )}
-                                </p>
-                            </div>
+                            <CardNote
+                                icon={MonitorSmartphone}
+                                title={__('Set this up on a computer')}
+                            >
+                                {__(
+                                    "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude or ChatGPT on your phone as usual.",
+                                )}
+                            </CardNote>
 
                             <ToggleGroup
                                 type="single"
@@ -296,6 +319,19 @@ export default function Mcp() {
                                     </ToggleGroupItem>
                                 ))}
                             </ToggleGroup>
+
+                            {connector === 'chatgpt' && (
+                                <CardNote
+                                    icon={Store}
+                                    title={__(
+                                        "Whisper Money is in ChatGPT's app directory",
+                                    )}
+                                >
+                                    {__(
+                                        'You can connect it from there in a click, with no developer mode. Doing it by hand below is still worth the extra step: the listed version lags behind, and a tool that already works here can take weeks to reach it.',
+                                    )}
+                                </CardNote>
+                            )}
 
                             <ol className="list-decimal space-y-3 pl-5 text-sm text-muted-foreground marker:font-medium marker:text-foreground">
                                 {connectors[connector].steps.map(
