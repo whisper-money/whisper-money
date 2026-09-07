@@ -111,6 +111,19 @@
             padding-top: 40px;
             border-top: 2px solid {{ $rule }};
         }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: {{ $dark ? '#fafafa' : '#18181b' }};
+            color: {{ $dark ? '#18181b' : '#ffffff' }};
+            border-radius: 999px;
+            padding: 13px 24px 13px 20px;
+            font-size: 23px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
         .lockup { display: flex; align-items: center; gap: 15px; }
         .lockup span { font-size: 38px; font-weight: 600; letter-spacing: -0.02em; }
         @if ($story)
@@ -143,7 +156,15 @@
     </div>
 
     <div class="foot">
-        <span></span>
+        @if ($pro)
+            <span class="badge mono">
+                @include('cards.partials.icon-sparkle', ['size' => 26, 'colour' => $dark ? '#18181b' : '#ffffff'])
+                {{ __('Pro member') }}
+            </span>
+        @else
+            <span></span>
+        @endif
+
         <span class="lockup">
             @include('cards.partials.icon-bird', ['size' => 42, 'colour' => $ink])
             <span class="mono">whisper.money</span>

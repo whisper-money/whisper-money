@@ -33,6 +33,7 @@ class CardPresenter
      *                        Medals whose figure is a rate, a run of months or
      *                        a count ignore this: those are safe to post, and
      *                        the summary cards have shown them from the start.
+     * @param  bool  $pro  Whether the footer carries the Pro member badge.
      * @return array<string, mixed>
      */
     public function viewData(
@@ -42,6 +43,7 @@ class CardPresenter
         CardFormat $format,
         CardTheme $theme,
         bool $amount,
+        bool $pro,
     ): array {
         $locale = app()->getLocale();
         $metal = $definition->rarity->metal();
@@ -50,6 +52,7 @@ class CardPresenter
         return [
             'format' => $format,
             'theme' => $theme,
+            'pro' => $pro,
             'rarity' => $definition->rarity,
             'glyph' => $this->pictograms->path($definition->icon),
             'track' => $this->catalog->tracks()[$definition->track] ?? $definition->track,
