@@ -6,8 +6,6 @@ use App\Models\Achievement;
 use App\Models\User;
 use App\Services\Achievements\Catalog;
 use App\Services\Achievements\Presenter;
-use App\Support\Figures;
-use App\Support\Money;
 use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
@@ -97,26 +95,12 @@ class AchievementsEmail extends DripMail
 
                 return [
                     'name' => $definition->name,
-                    'milestone' => $this->write($presenter->milestone($definition, $this->user->currency_code), $locale),
+                    'milestone' => $presenter->write($presenter->milestone($definition, $this->user->currency_code), $locale),
                     'rarity' => $definition->rarity->label(),
                 ];
             })
             ->filter()
             ->values()
             ->all();
-    }
-
-    /**
-     * @param  array{type: string, value: int|float, currency: ?string}|null  $figure
-     */
-    private function write(?array $figure, string $locale): ?string
-    {
-        return match (true) {
-            $figure === null => null,
-            $figure['currency'] !== null => Money::formatIn((int) $figure['value'], $figure['currency'], $locale),
-            $figure['type'] === 'percent' => Figures::percent((float) $figure['value'], $locale, decimals: 0),
-            $figure['type'] === 'months' => trans_choice('{1}1 month|[2,*]:count months', (int) $figure['value'], ['count' => (int) $figure['value']]),
-            default => Figures::count((int) $figure['value'], $locale),
-        };
     }
 }

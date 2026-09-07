@@ -109,15 +109,15 @@ class Progress
     private function tracks(Collection $earned, string $currency, array $shares, array $standing): array
     {
         $byTrack = $this->catalog->all()->groupBy(fn (Definition $definition): string => $definition->track);
+        $nextByTrack = $this->catalog->next($earned);
 
         return collect($this->catalog->tracks())
-            ->map(function (string $label, string $track) use ($byTrack, $earned, $currency, $shares, $standing): array {
+            ->map(function (string $label, string $track) use ($byTrack, $nextByTrack, $earned, $currency, $shares, $standing): array {
                 /** @var Collection<int, Definition> $definitions */
                 $definitions = $byTrack->get($track, collect());
 
-                // The catalog is already in tier order, so the first rung that
-                // is not earned is the one to aim at. A finished track has none.
-                $next = $definitions->first(fn (Definition $definition): bool => ! $earned->has($definition->key))?->key;
+                // The rung to aim at, or none at all on a finished track.
+                $next = $nextByTrack->get($track)?->key;
 
                 $medals = $definitions
                     ->map(fn (Definition $definition): array => $this->medal(

@@ -5,6 +5,7 @@ namespace App\Mail\Drip;
 use App\Enums\MonthlySummaryCard;
 use App\Models\MonthlySummary;
 use App\Models\User;
+use App\Services\MonthlySummary\AchievementsSection;
 use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\EmailPresenter;
 use App\Support\Figures;
@@ -16,8 +17,13 @@ use Illuminate\Support\Facades\URL;
  * The monthly report.
  *
  * A view rather than a Markdown mail, because the design is a report and not a
- * letter. Everything it prints comes from the frozen summary, so re-sending or
- * previewing it can never produce different figures than the reader was given.
+ * letter. Every figure about the month comes from the frozen summary, so
+ * re-sending or previewing it can never produce different figures than the
+ * reader was given.
+ *
+ * The medals block is the one thing read live: how far off the next one is is a
+ * distance of today, and a resend a fortnight later should say today's. See
+ * {@see AchievementsSection}.
  */
 class MonthlySummaryEmail extends DripMail
 {
@@ -96,6 +102,8 @@ class MonthlySummaryEmail extends DripMail
                 'preferencesUrl' => $this->withUtm(route('notifications.index'), 'preferences'),
                 'unsubscribeUrl' => $this->unsubscribeUrl(),
                 'todos' => $this->todosWithUrls($report['todos']),
+                'achievements' => app(AchievementsSection::class)->for($this->user, $this->summary, app()->getLocale()),
+                'achievementsUrl' => $this->withUtm(route('achievements.index'), 'achievements'),
             ],
         );
     }

@@ -6,6 +6,7 @@ use App\Enums\CardFormat;
 use App\Enums\CardTheme;
 use App\Enums\MonthlySummaryCard;
 use App\Models\MonthlySummary;
+use App\Services\MonthlySummary\AchievementsSection;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\CardRenderer;
@@ -34,6 +35,7 @@ class MonthlySummaryController extends Controller
         private CardRenderer $renderer,
         private EmailPresenter $presenter,
         private AnalysisWriter $analysis,
+        private AchievementsSection $achievements,
         private NotificationFeed $notifications,
     ) {}
 
@@ -62,6 +64,7 @@ class MonthlySummaryController extends Controller
             'summary' => $this->listRow($summary),
             'report' => $this->presenter->present($summary, app()->getLocale(), $pro),
             'analysis' => $summary->ai_analysis,
+            'achievements' => $this->achievements->for($request->user(), $summary, app()->getLocale()),
             'cards' => $this->cardOptions($summary),
             'shareUrl' => $summary->share_token === null ? null : route('monthly-summaries.shared', $summary->share_token),
         ]);

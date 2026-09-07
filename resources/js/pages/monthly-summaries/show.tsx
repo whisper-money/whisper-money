@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
+import { index as progress } from '@/routes/achievements';
 import { type BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { CheckIcon, CopyIcon, Share2Icon, SparklesIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -26,6 +27,7 @@ import { useState } from 'react';
  */
 type Row = { text: string };
 type Todo = { text: string; action: string };
+type AchievementGroup = { title: string; lines: string[] };
 type CardOption = { card: string; chosen: boolean; preview: string };
 
 interface Props {
@@ -38,6 +40,9 @@ interface Props {
         todos: Todo[];
     };
     analysis: string | null;
+    // Null when the medals are off for this reader, or when the month earned
+    // nothing and nothing is close enough to name a distance to.
+    achievements: AchievementGroup[] | null;
     cards: CardOption[];
     shareUrl: string | null;
 }
@@ -114,6 +119,7 @@ export default function MonthlySummaryShow({
     summary,
     report,
     analysis,
+    achievements,
     cards,
     shareUrl,
 }: Props) {
@@ -284,6 +290,30 @@ export default function MonthlySummaryShow({
                         ))}
                     </ul>
                 </div>
+
+                {achievements?.map((group) => (
+                    <div key={group.title} className="flex flex-col gap-4">
+                        <h2 className="text-sm font-semibold">{group.title}</h2>
+                        <ul className="divide-y rounded-lg border">
+                            {group.lines.map((line, index) => (
+                                <li
+                                    key={index}
+                                    className="p-4 text-sm leading-relaxed text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground"
+                                    dangerouslySetInnerHTML={{ __html: line }}
+                                />
+                            ))}
+                        </ul>
+                    </div>
+                ))}
+
+                {achievements !== null && (
+                    <Link
+                        href={progress().url}
+                        className="text-sm font-medium underline underline-offset-4"
+                    >
+                        {__('See all your medals')}
+                    </Link>
+                )}
 
                 {report.todos.length > 0 && (
                     <div className="flex flex-col gap-4">

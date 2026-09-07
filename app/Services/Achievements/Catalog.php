@@ -48,6 +48,27 @@ class Catalog
     }
 
     /**
+     * The rung of each track that is next to fall: the first one nobody has
+     * earned. A finished track is absent.
+     *
+     * The catalog is written in tier order, so "first not earned" is the whole
+     * rule — and it is a rule two screens read, the progress page and the
+     * monthly report, which is why it is written down once here.
+     *
+     * @param  Collection<string, mixed>  $earned  anything keyed by medal key
+     * @return Collection<string, Definition> keyed by track
+     */
+    public function next(Collection $earned): Collection
+    {
+        return $this->all()
+            ->groupBy(fn (Definition $definition): string => $definition->track)
+            ->map(fn (Collection $definitions): ?Definition => $definitions->first(
+                fn (Definition $definition): bool => ! $earned->has($definition->key),
+            ))
+            ->filter();
+    }
+
+    /**
      * Track labels, in display order.
      *
      * @return array<string, string>
