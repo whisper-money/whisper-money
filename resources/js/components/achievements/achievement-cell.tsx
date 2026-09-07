@@ -7,7 +7,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { type AchievementMedal, type AchievementProgress } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Share2Icon } from 'lucide-react';
+import { CheckIcon, Share2Icon } from 'lucide-react';
 
 /**
  * One medal in a track.
@@ -20,13 +20,20 @@ import { Share2Icon } from 'lucide-react';
  * figure to reach — a ladder of identical question marks says nothing about
  * what there is to chase. It is drawn as a medal turned down rather than as one
  * won: the same dashed, transparent slot, with the real medallion dimmed inside
- * it. Nothing labels it "next", because in every track there is exactly one
- * cell with something in it between the earned ones and the question marks, and
- * the position already says so.
+ * it. Nothing labels it "next", because it is the one named cell of its track
+ * that no check and no date has caught up with, sitting where the earned ones
+ * stop, and the position already says so.
  *
- * The states read apart without colour: an earned cell is filled and bordered,
- * the other two are dashed and transparent. The epic tier alone gets a border
- * of its own, struck in the gold of the crown its medal wears.
+ * The states read apart without colour, and none of the three leans on a label
+ * to say which it is. An earned cell is filled, solidly bordered, and its medal
+ * wears a struck check; the other two sit transparent on the page inside a
+ * dashed edge, told apart by whether there is anything written in them. The
+ * epic tier alone gets a border of its own, struck in the gold of the crown its
+ * medal wears.
+ *
+ * The fill has to be `bg-muted` rather than `bg-card`: `--card` and
+ * `--background` are the same colour in both themes, so a "filled" cell drawn
+ * in card white is white on white.
  */
 export function monthLabel(date: string, locale: string): string {
     const [year, month] = date.split('-').map(Number);
@@ -103,10 +110,10 @@ export function AchievementCell({ medal }: { medal: AchievementMedal }) {
     return (
         <div
             className={cn(
-                'flex w-32 shrink-0 flex-col gap-2 rounded-lg border p-2.5',
-                earned && 'min-h-31 bg-card',
-                next && 'min-h-31 border-dashed',
-                locked && 'min-h-24 border-dashed',
+                'flex w-37 shrink-0 flex-col gap-2 rounded-lg border p-3',
+                earned && 'min-h-40 bg-muted',
+                next && 'min-h-40 border-dashed border-ring',
+                locked && 'min-h-32 border-dashed border-ring',
             )}
             style={
                 earned && medal.rarity === 'epic'
@@ -115,15 +122,32 @@ export function AchievementCell({ medal }: { medal: AchievementMedal }) {
             }
         >
             <div className="flex items-start justify-between gap-1">
-                <Medal
-                    rarity={medal.rarity}
-                    icon={medal.icon}
-                    locked={locked}
-                    // Struck but not yet won: the real medal, turned down, so
-                    // its shape and pictogram still read as "not yet" rather
-                    // than as a failure.
-                    className={next ? 'opacity-50 grayscale-[0.7]' : undefined}
-                />
+                <span className="relative inline-flex">
+                    <Medal
+                        rarity={medal.rarity}
+                        icon={medal.icon}
+                        locked={locked}
+                        size={56}
+                        // Struck but not yet won: the real medal, turned down,
+                        // so its shape and pictogram still read as "not yet"
+                        // rather than as a failure.
+                        className={
+                            next ? 'opacity-50 grayscale-[0.7]' : undefined
+                        }
+                    />
+
+                    {/* The ring is the cell's own fill, not a colour of its
+                        own, so the badge reads as punched out of the card and
+                        never as a dot floating over the metal. */}
+                    {earned && (
+                        <span className="absolute -right-0.5 -bottom-0.5 inline-flex size-[17px] items-center justify-center rounded-full bg-foreground ring-2 ring-muted">
+                            <CheckIcon
+                                className="size-2.5 text-background"
+                                strokeWidth={3.5}
+                            />
+                        </span>
+                    )}
+                </span>
 
                 {/* Always drawn rather than revealed on hover: the phone is
                     where a medal actually gets posted, and there is no hover

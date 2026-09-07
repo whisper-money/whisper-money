@@ -1,5 +1,4 @@
 import {
-    AchievementCell,
     monthLabel,
     ProgressBar,
 } from '@/components/achievements/achievement-cell';
@@ -10,6 +9,7 @@ import {
 import { Medal } from '@/components/achievements/medal';
 import { RarityTag } from '@/components/achievements/rarity-tag';
 import { ShareMedalDialog } from '@/components/achievements/share-medal-dialog';
+import { TrackMedals } from '@/components/achievements/track-medals';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLocale } from '@/hooks/use-locale';
@@ -29,11 +29,12 @@ import { useState } from 'react';
  * Progress: every milestone the reader's money has crossed, and the months we
  * have closed.
  *
- * Forty-six medals, most of them still to come for most people, is a wall of
- * failure if it is drawn as a grid. So it is drawn as eleven ladders instead:
+ * Fifty-nine medals, most of them still to come for most people, is a wall of
+ * failure if it is drawn as a grid. So it is drawn as thirteen ladders instead:
  * each track runs from its smallest rung to its largest, what has been earned
- * sits on the left and what is still to come trails off to the right. The empty
- * slots read as the road ahead, which is what they are.
+ * sits on the left and the next rung follows it. What is further out than that
+ * is folded into one slot at the end of the row, which reads as the road ahead
+ * rather than as a list of everything not done yet.
  *
  * Two ways in. Tracks is the ladder; Timeline is the same medals dated by when
  * they really happened, which is the point of reconstructing the history at all:
@@ -138,14 +139,7 @@ function Tracks({ tracks }: { tracks: AchievementTrack[] }) {
                     {/* Sideways on a phone: the ladder keeps its direction
                         rather than wrapping into an unreadable block. */}
                     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
-                        <div className="flex gap-2 sm:flex-wrap">
-                            {track.medals.map((medal) => (
-                                <AchievementCell
-                                    key={medal.key}
-                                    medal={medal}
-                                />
-                            ))}
-                        </div>
+                        <TrackMedals medals={track.medals} />
                     </div>
                 </div>
             ))}
@@ -207,7 +201,7 @@ function Timeline({ tracks }: { tracks: AchievementTrack[] }) {
                                     <Medal
                                         rarity={medal.rarity}
                                         icon={medal.icon}
-                                        size={32}
+                                        size={44}
                                     />
                                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                                         <span className="flex flex-wrap items-baseline gap-x-1.5 text-sm font-medium">

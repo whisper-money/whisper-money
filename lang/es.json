@@ -2936,5 +2936,6 @@
     ":name, :milestone. :remaining to go.": ":name, :milestone. A :remaining de conseguirlo.",
     "See all your medals": "Ver todas tus medallas",
     "{1}1 day|[2,*]:count days": "{1}1 día|[2,*]:count días",
-    "{1}1 week|[2,*]:count weeks": "{1}1 semana|[2,*]:count semanas"
+    "{1}1 week|[2,*]:count weeks": "{1}1 semana|[2,*]:count semanas",
+    "+:count to come": "+:count por llegar"
 }
