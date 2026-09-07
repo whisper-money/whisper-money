@@ -16,6 +16,15 @@ class BalanceSyncService
     /** Balance types in preference order */
     private const PREFERRED_BALANCE_TYPES = ['CLBD', 'ITAV', 'ITBD', 'OPBD', 'XPCD'];
 
+    /**
+     * The transaction sources the backwards walk in
+     * {@see self::calculateHistoricalBalances()} subtracts. A row of any other
+     * source cannot move what that walk produces.
+     *
+     * @var list<TransactionSource>
+     */
+    public const WALKED_SOURCES = [TransactionSource::EnableBanking, TransactionSource::Imported];
+
     public function __construct(
         private BankingProviderInterface $provider,
     ) {}
@@ -47,7 +56,7 @@ class BalanceSyncService
 
         $account->balances()->updateOrCreate(
             ['balance_date' => $date],
-            ['balance' => $amount],
+            ['balance' => $amount, 'derived' => false],
         );
 
         Log::info('Synced balance', [
@@ -72,21 +81,32 @@ class BalanceSyncService
             return;
         }
 
-        $existingDates = $account->balances()
+        // Only the rows this walk wrote itself are its to correct. Everything
+        // else is somebody's word on what the balance was that day - the bank's,
+        // or the user's through the balance editor - and stays put. Rows written
+        // before the `derived` column existed carry its false default, so they
+        // count as somebody's too: their author is unknowable and overwriting
+        // one on a guess is worse than leaving a stale figure alone.
+        $protectedDates = $account->balances()
+            ->where('derived', false)
             ->pluck('balance_date')
             ->map(fn (mixed $date) => $date instanceof Carbon ? $date->toDateString() : (string) $date)
             ->flip()
             ->all();
 
-        // The reference balance comes from the bank, so it only reflects rows the
-        // bank itself reported. Walking back through a hand-entered or imported
-        // row would subtract money the bank never counted. A row the user moved
-        // to another day counts on the day the bank gave it, for the same reason:
-        // the bank's balance was reached on the bank's timeline.
+        // The reference balance comes from the bank, so the walk may only subtract
+        // movements that balance already counted. Rows the bank sent are in, and so
+        // are rows the user imported: when the bank's transaction list has a hole
+        // but its balance does not, the imported rows are the only thing that
+        // explains how the balance moved across those days, and subtracting them
+        // makes the walk more correct rather than less. Hand-entered rows stay out
+        // - nothing says the bank ever counted one. A row the user moved to another
+        // day counts on the day the bank gave it, for the same reason: the bank's
+        // balance was reached on the bank's timeline.
         $bankDate = 'COALESCE(source_date, transaction_date)';
 
         $dailyTotals = $account->transactions()
-            ->where('source', TransactionSource::EnableBanking)
+            ->whereIn('source', self::WALKED_SOURCES)
             ->whereRaw("{$bankDate} <= ?", [$referenceBalance->balance_date->toDateString()])
             ->selectRaw("{$bankDate} as bank_date, SUM(amount) as daily_total")
             ->groupByRaw($bankDate)
@@ -103,12 +123,13 @@ class BalanceSyncService
         $rows = [];
 
         foreach ($dailyTotals as $date => $sum) {
-            if ($date < $referenceDate && ! isset($existingDates[$date])) {
+            if ($date < $referenceDate && ! isset($protectedDates[$date])) {
                 $rows[] = [
                     'id' => (string) Str::uuid(),
                     'account_id' => $account->id,
                     'balance_date' => $date,
                     'balance' => $runningBalance,
+                    'derived' => true,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
@@ -118,6 +139,8 @@ class BalanceSyncService
         }
 
         if ($rows !== []) {
+            // `derived` is left out of the update list on purpose: every row this
+            // can collide with was skipped above unless the walk already owned it.
             AccountBalance::upsert($rows, ['account_id', 'balance_date'], ['balance', 'updated_at']);
         }
 
