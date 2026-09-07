@@ -183,6 +183,28 @@ it('carries bank and account names for the analysis but no transaction descripti
         ->and(json_encode($payload))->not->toContain('description');
 });
 
+it('leaves an archived account out of the names the analysis may use', function (): void {
+    // As-of the month, not today: a month that closed before the archiving
+    // still belonged to the account, so it keeps its name there.
+    $user = summaryUser();
+    $live = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'name' => 'Salary account', 'type' => AccountType::Checking]);
+    $archivedBefore = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'name' => 'Old savings', 'type' => AccountType::Savings, 'archived_at' => $this->month->copy()->subMonths(2)]);
+    $archivedDuring = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'name' => 'Closed mid month', 'type' => AccountType::Savings, 'archived_at' => $this->month->copy()->addDays(10)]);
+    $archivedAfter = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'name' => 'Archived later', 'type' => AccountType::Savings, 'archived_at' => $this->month->copy()->addMonths(1)]);
+    $archivedOnLastDay = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'name' => 'Closed on the last day', 'type' => AccountType::Savings, 'archived_at' => $this->month->copy()->endOfMonth()]);
+
+    monthlyTransaction($user, $live, -1000, CategoryType::Expense, 'Housing');
+
+    $payload = app(SummaryBuilder::class)->build($user, $this->month, complete: true);
+    $names = implode(' | ', $payload['account_names']);
+
+    expect($names)->toContain($live->name)
+        ->and($names)->toContain($archivedAfter->name)
+        ->and($names)->not->toContain($archivedBefore->name)
+        ->and($names)->not->toContain($archivedDuring->name)
+        ->and($names)->not->toContain($archivedOnLastDay->name);
+});
+
 it('hands the model amounts a person can read, not minor units', function (): void {
     // The payload stores 352000 for €3,520.00. A model has no way to know that
     // and will faithfully report a hundred times the amount, so what it receives
