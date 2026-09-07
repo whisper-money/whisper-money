@@ -56,6 +56,25 @@ function earned(User $user, string $key, array $attributes = []): Achievement
     ]);
 }
 
+/**
+ * A reader on the paid plan.
+ *
+ * `subscriptions.enabled` is off for the whole suite and `hasProPlan()` reads
+ * true when it is, so every badge test has to turn billing on first —
+ * otherwise a free reader is indistinguishable from a paying one.
+ */
+function goPro(User $user): User
+{
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    return $user->unsetRelation('subscriptions');
+}
+
 /** The HTML the one card in this test was drawn from. */
 function drawnCard(): string
 {
@@ -196,6 +215,55 @@ it('never writes the share of members on the card', function (): void {
         ->not->toContain('%');
 });
 
+it('badges the card of a reader on the paid plan', function (): void {
+    config()->set('subscriptions.enabled', true);
+    $user = goPro(medalOwner());
+    earned($user, 'streaks.2');
+
+    test()->actingAs($user)
+        ->get(route('achievements.card', ['medal' => 'streaks.2', 'format' => 'feed', 'theme' => 'light']))
+        ->assertOk();
+
+    expect(drawnCardText())->toContain('Pro member');
+});
+
+it('leaves the badge off a free reader\'s card', function (): void {
+    config()->set('subscriptions.enabled', true);
+    $user = medalOwner();
+    earned($user, 'streaks.2');
+
+    test()->actingAs($user)
+        ->get(route('achievements.card', ['medal' => 'streaks.2', 'format' => 'feed', 'theme' => 'light']))
+        ->assertOk();
+
+    expect(drawnCardText())->not->toContain('Pro member');
+});
+
+it('draws the badged and the unbadged cut as two different files', function (): void {
+    config()->set('subscriptions.enabled', true);
+    $user = medalOwner();
+    earned($user, 'streaks.2');
+
+    $ask = fn () => test()->actingAs($user)->get(route('achievements.card', [
+        'medal' => 'streaks.2', 'format' => 'feed', 'theme' => 'light',
+    ]))->assertOk();
+
+    $ask();
+
+    goPro($user);
+    $ask();
+
+    // Upgrading has to redraw: without the badge in the key the reader would be
+    // served the unbadged picture that is already sitting on the disk.
+    Process::assertRanTimes(fn (PendingProcess $process): bool => in_array(
+        base_path('scripts/render-card.mjs'), $process->command, true,
+    ), 2);
+
+    expect(collect(test()->drawnHtml)->keys()->filter(
+        fn (string $path): bool => str_ends_with($path, '-pro.png'),
+    ))->toHaveCount(1);
+});
+
 it('draws a fresh picture when the reader changes language', function (): void {
     $user = medalOwner();
     earned($user, 'streaks.2');
@@ -218,8 +286,8 @@ it('draws a fresh picture when the reader changes language', function (): void {
     // not know the difference.
     expect(Storage::disk(CardRenderer::DISK)->allFiles())->toHaveCount(2);
     expect(collect(test()->drawnHtml)->keys()->implode(' '))
-        ->toContain('-en.png')
-        ->toContain('-es.png');
+        ->toContain('-light-en')
+        ->toContain('-light-es');
 });
 
 it('draws each cut once and serves the rest off the disk', function (): void {

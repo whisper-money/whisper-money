@@ -60,8 +60,9 @@ class CardRenderer
         CardFormat $format,
         CardTheme $theme,
         bool $amount,
+        bool $pro,
     ): string {
-        $path = $this->pathFor($achievement, $format, $theme, $amount);
+        $path = $this->pathFor($achievement, $format, $theme, $amount, $pro);
 
         if (! Storage::disk(self::DISK)->exists($path)) {
             [$width, $height] = $format->dimensions();
@@ -77,6 +78,7 @@ class CardRenderer
                         $format,
                         $theme,
                         $amount,
+                        $pro,
                     ))->render(),
                     $width,
                     $height,
@@ -93,14 +95,22 @@ class CardRenderer
      * language, read from the app exactly as {@see CardPresenter} reads it, so
      * the key and the copy inside the picture cannot disagree; and whether the
      * amount is on it, because that is the reader's choice and the two versions
-     * are different pictures. {@see DESIGN} sits above all of it, which is what
-     * a medal's own content never needing to be invalidated buys: a row is
-     * written once and never revoked, so only the design can go stale.
+     * are different pictures. And the Pro badge, so a reader who upgrades gets a
+     * new file rather than yesterday's unbadged one. {@see DESIGN} sits above
+     * all of it, which is what a medal's own content never needing to be
+     * invalidated buys: a row is written once and never revoked, so only the
+     * design can go stale.
+     *
+     * Adding the badge did NOT need a {@see DESIGN} bump: `-pro` is itself a
+     * complete invalidation. A Pro reader's file gains the suffix, so the old
+     * unbadged PNG is no longer named, and a free reader's card comes out
+     * byte-identical to before. Bumping would have redrawn every medal for
+     * everybody for nothing.
      */
-    private function pathFor(Achievement $achievement, CardFormat $format, CardTheme $theme, bool $amount): string
+    private function pathFor(Achievement $achievement, CardFormat $format, CardTheme $theme, bool $amount, bool $pro): string
     {
         $locale = app()->getLocale();
-        $suffix = $amount ? '' : '-plain';
+        $suffix = ($amount ? '' : '-plain').($pro ? '-pro' : '');
 
         return $this->directoryFor($achievement->user_id)."/{$achievement->key}-{$format->value}-{$theme->value}-{$locale}{$suffix}.png";
     }

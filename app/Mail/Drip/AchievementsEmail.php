@@ -138,6 +138,7 @@ class AchievementsEmail extends DripMail
                         CardFormat::default(),
                         CardTheme::default(),
                         amount: true,
+                        pro: $this->user->hasProPlan(),
                     )];
                 } catch (Throwable $exception) {
                     report($exception);
