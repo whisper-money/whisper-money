@@ -77,8 +77,8 @@ data.
   `split_parent_id` shared with its siblings; pass any one of them to
   `merge_transaction_splits` to put the original back, which deletes the parts
   and everything set on them. A part cannot be split again, deleted on its own,
-  or have its amount, date or account changed; categorizing and labelling it
-  works as usual.
+  or have its amount, date or account changed; categorizing, labelling and
+  editing its notes works as usual.
 - A medal (an "achievement") records a milestone the user reached: a visit or
   saving streak, a net-worth or savings-rate level, transactions logged, data
   kept tidy. `list_achievements` returns the whole catalog grouped into tracks,
@@ -102,9 +102,12 @@ budgets, categories, labels and automation rules) require a read & write token;
 a read-only token can analyse data but never change it.
 Manual transactions can be created on any account, bank-connected ones included
 — a sync never removes them.
-Bank/imported transactions themselves are protected: only manually-created ones
-can be edited or deleted, though you can categorize, label and split any
-transaction.
+Bank/imported transactions keep their core fields protected: only a
+manually-created one can change its description, amount, date, currency,
+account or counterparty names, and only a manually-created one can be deleted.
+Their notes and category are not locked — `update_transaction` writes those on
+any transaction, split parts included — and labelling and splitting work on any
+transaction too.
 Balances can only be recorded on non-connected accounts, since a connected
 account's balances come from the bank and would be overwritten.
 MARKDOWN)]
