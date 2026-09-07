@@ -1,6 +1,6 @@
 # Edit balances
 
-Correct the balance history of an account you keep by hand: change a figure, fix a date, or delete a record that should not be there.
+Correct the balance history of an account: change a figure, fix a date, or delete a record that should not be there.
 
 ## Two ways in
 
@@ -12,7 +12,7 @@ Correct the balance history of an account you keep by hand: change a figure, fix
 
 Both are named after what the account holds: _market values_ on a real estate account, _owed amount_ on a loan.
 
-A connected account has neither. Its balances arrive from the bank on every sync, so there is nothing here to correct — fix it at the bank, or the next sync puts it back.
+A connected account has both. Every earlier date is yours to correct, and a sync never touches it. Today is the bank's: every sync writes today's balance again, and any later date once that day arrives, so an edit there only lasts until the next sync.
 
 ## Editing a record
 
@@ -36,4 +36,4 @@ Check the other accounts. An account you have never given a balance to has nothi
 
 ### Can I edit balances that came from a bank?
 
-No. Those accounts do not offer the option, because the next sync would overwrite the edit.
+Yes. On any date before today the edit stays. On today's, and on a date still to come, the next sync overwrites it — fix that one at the bank instead.

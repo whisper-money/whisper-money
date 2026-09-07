@@ -8,7 +8,7 @@ Una cuenta que llevas a mano no tiene historial de saldos hasta que se lo das. I
 
 Los saldos son independientes de las transacciones: [importar transacciones](/documentation/transactions/import) no fija saldos, salvo que el archivo lleve por casualidad una columna de saldo acumulado.
 
-Una cuenta conectada no ofrece esto. Sus saldos vienen del banco en cada sincronización, y lo que se importara aquí quedaría sobrescrito.
+Una cuenta conectada también ofrece esto. Importar es la forma de que su historial llegue más atrás del día en que la conectaste, porque un banco manda poco de lo anterior. Las fechas de hoy en adelante son la excepción: cada sincronización vuelve a escribir el saldo de hoy, y el de cualquier fecha posterior cuando llegue ese día, así que esas filas se reemplazan.
 
 ## Dónde está
 
