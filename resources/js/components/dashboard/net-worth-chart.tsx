@@ -639,6 +639,7 @@ export function NetWorthChart({
                                       }
                                     : undefined
                             }
+                            hideZeroValues
                         />
                     ) : (
                         <StackedBarChart
@@ -662,6 +663,7 @@ export function NetWorthChart({
                                       }
                                     : undefined
                             }
+                            hideZeroValues
                         />
                     ))}
                 {chartViews.currentView === 'mom' && (
