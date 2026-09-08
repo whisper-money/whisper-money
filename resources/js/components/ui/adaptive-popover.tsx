@@ -18,6 +18,20 @@ export type PopoverSide = ComponentProps<typeof PopoverContent>['side'];
 export type PopoverAlign = ComponentProps<typeof PopoverContent>['align'];
 
 /**
+ * Above the toaster, which sonner pins at 999999999.
+ *
+ * A panel is opened on purpose and closes on its own; a toast is ambient, and
+ * the categorize prompt in particular never leaves until it is answered. Left at
+ * the `z-50` these primitives ship with, that prompt paints straight over the
+ * streak panel and the bell — the reader opens a panel and reads a toast.
+ *
+ * On the phone this also puts the drawer over the toast rather than under it,
+ * which is the whole point: the drawer owns the bottom of the screen, and that
+ * is exactly where the toast sits.
+ */
+const ABOVE_TOASTS = 'z-[1000000000]';
+
+/**
  * A panel hung off a button in the chrome: a popover on desktop, a bottom
  * drawer on the phone, where a popover would fight the thumb.
  *
@@ -58,7 +72,7 @@ export function AdaptivePopover({
         return (
             <Drawer open={open} onOpenChange={onOpenChange}>
                 <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-                <DrawerContent>
+                <DrawerContent className={ABOVE_TOASTS}>
                     <DrawerHeader className="sr-only">
                         <DrawerTitle>{title}</DrawerTitle>
                     </DrawerHeader>
@@ -76,7 +90,11 @@ export function AdaptivePopover({
             <PopoverContent
                 side={side}
                 align={align}
-                className={cn('w-[360px] overflow-hidden p-0', className)}
+                className={cn(
+                    'w-[360px] overflow-hidden p-0',
+                    ABOVE_TOASTS,
+                    className,
+                )}
                 // Hovering is not asking to be moved: pulling focus into the
                 // panel the moment the pointer grazes the trigger steals the
                 // keyboard from whatever the reader was doing.
