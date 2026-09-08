@@ -1,3 +1,4 @@
+import { StreakChip } from '@/components/achievements/streak-chip';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { EncryptionKeyButton } from '@/components/encryption-key-button';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -45,6 +46,7 @@ export function AppSidebarHeader({
                     <Breadcrumbs breadcrumbs={breadcrumbs} />
                 </div>
                 <div className="flex items-center gap-2">
+                    <StreakChip />
                     <ImportTransactionsButton />
                     {showEncryptionButton && (
                         <>

@@ -1,26 +1,18 @@
 import { index } from '@/actions/App/Http/Controllers/NotificationController';
 import { NotificationList } from '@/components/notifications/notification-list';
 import { useMarkAllRead } from '@/components/notifications/use-mark-all-read';
+import {
+    AdaptivePopover,
+    type PopoverAlign,
+    type PopoverSide,
+} from '@/components/ui/adaptive-popover';
 import { Button } from '@/components/ui/button';
-import {
-    Drawer,
-    DrawerContent,
-    DrawerHeader,
-    DrawerTitle,
-    DrawerTrigger,
-} from '@/components/ui/drawer';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { type NotificationItem, type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import { BellIcon, CheckCheckIcon } from 'lucide-react';
-import { type ComponentProps, useState } from 'react';
+import { useState } from 'react';
 
 /**
  * The bell next to the account: a badge with the unread count and a panel with
@@ -41,11 +33,10 @@ export function NotificationBell({
     align = 'end',
 }: {
     className?: string;
-    side?: ComponentProps<typeof PopoverContent>['side'];
-    align?: ComponentProps<typeof PopoverContent>['align'];
+    side?: PopoverSide;
+    align?: PopoverAlign;
 }) {
     const { notifications } = usePage<SharedData>().props;
-    const isMobile = useIsMobile();
     const [open, setOpen] = useState(false);
     const { items, unread, markAllRead } = useMarkAllRead(
         notifications?.recent ?? NO_ROWS,
@@ -117,30 +108,16 @@ export function NotificationBell({
         </>
     );
 
-    if (isMobile) {
-        return (
-            <Drawer open={open} onOpenChange={setOpen}>
-                <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-                <DrawerContent>
-                    <DrawerHeader className="sr-only">
-                        <DrawerTitle>{__('Notifications')}</DrawerTitle>
-                    </DrawerHeader>
-                    <div className="overflow-y-auto pb-3">{panel}</div>
-                </DrawerContent>
-            </Drawer>
-        );
-    }
-
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-            <PopoverContent
-                side={side}
-                align={align}
-                className="w-[360px] overflow-hidden p-0"
-            >
-                {panel}
-            </PopoverContent>
-        </Popover>
+        <AdaptivePopover
+            open={open}
+            onOpenChange={setOpen}
+            trigger={trigger}
+            title={__('Notifications')}
+            side={side}
+            align={align}
+        >
+            {panel}
+        </AdaptivePopover>
     );
 }

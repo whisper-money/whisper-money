@@ -71,6 +71,16 @@ export function ProgressBar({
 }
 
 /**
+ * How full the bar is. Shared with the streak pill's ring, which fills on the
+ * same rule so the two cannot show different fractions of the same medal.
+ */
+export function progressPercent(progress: AchievementProgress): number {
+    return progress.unlocking
+        ? 100
+        : Math.round((progress.now / progress.goal) * 100);
+}
+
+/**
  * How far along the next medal is, for the tracks that can say.
  *
  * Past the goal with the medal still locked is the everyday case rather than an
@@ -79,14 +89,23 @@ export function ProgressBar({
  * lands instead of showing a count that reads as wrong either way it is
  * written.
  */
-function MedalProgress({ progress }: { progress: AchievementProgress }) {
-    const percent = progress.unlocking
-        ? 100
-        : Math.round((progress.now / progress.goal) * 100);
-
+export function MedalProgress({
+    progress,
+    goalLabel,
+    className,
+}: {
+    progress: AchievementProgress;
+    /**
+     * The goal written with its unit — "2 of 3 months" — for the surfaces that
+     * do not already print the figure above the bar. Defaults to the bare
+     * number, which is what the cell wants.
+     */
+    goalLabel?: string;
+    className?: string;
+}) {
     return (
-        <div className="mt-1.5 flex flex-col gap-[3px]">
-            <ProgressBar percent={percent} />
+        <div className={cn('mt-1.5 flex flex-col gap-[3px]', className)}>
+            <ProgressBar percent={progressPercent(progress)} />
             <span className="text-[11px] leading-[14px] text-muted-foreground tabular-nums">
                 {progress.unlocking
                     ? __('Unlocks tonight')
@@ -94,7 +113,7 @@ function MedalProgress({ progress }: { progress: AchievementProgress }) {
                           // Written like the figure above it rather than as a
                           // bare integer: "4,321 of 10,000", not "4321 of 10000".
                           now: progress.now.toLocaleString(),
-                          goal: progress.goal.toLocaleString(),
+                          goal: goalLabel ?? progress.goal.toLocaleString(),
                       })}
             </span>
         </div>

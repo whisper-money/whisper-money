@@ -48,6 +48,16 @@ class Standing
     }
 
     /**
+     * The categorized run on its own, for the caller that wants that one track
+     * and none of the others: the toast that asks a reader to clear the month
+     * in progress draws the bar of the medal that run feeds.
+     */
+    public function categorized(User $user): int
+    {
+        return $this->categorizedRun($this->closedMonths($user));
+    }
+
+    /**
      * What a reader recorded in each closed month, and how much of it was left
      * without a category, keyed by month.
      *

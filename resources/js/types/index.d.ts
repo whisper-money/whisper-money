@@ -117,6 +117,39 @@ export interface AchievementMedal {
     progress: AchievementProgress | null;
 }
 
+/**
+ * The next rung of one track, as the header panel and the categorize prompt
+ * draw it: enough to put a medal, a name and a bar on the screen, and nothing
+ * the progress screen needs on top of that.
+ */
+export interface ChallengeMedal {
+    track: string;
+    rarity: AchievementRarity;
+    icon: string;
+    name: string;
+    figure: AchievementFigureValue | null;
+    progress: AchievementProgress | null;
+}
+
+/**
+ * The two medals the chrome puts in front of the reader on every screen.
+ *
+ * `visit_streak` is the run as it stands today — what the pill counts, because
+ * a number with nothing to lose is not a streak. The bars under the medals are
+ * measured on the longest run instead, the way the progress screen measures
+ * them, so the two screens cannot disagree.
+ */
+export interface Challenges {
+    visit_streak: number;
+    /** `visits` then `visit_weeks`. A finished track is absent. */
+    medals: ChallengeMedal[];
+    /** Null when there is nothing to categorize, or the prompt is snoozed. */
+    uncategorized: {
+        count: number;
+        medal: ChallengeMedal | null;
+    } | null;
+}
+
 export interface AchievementTrack {
     key: string;
     label: string;
@@ -182,6 +215,8 @@ export interface SharedData {
     notifications: NotificationsBell | null;
     /** Null unless the achievements feature is on for this reader. */
     achievements: AchievementsProgress | null;
+    /** Null unless the achievements feature is on for this reader. */
+    challenges: Challenges | null;
     expiredBankingConnections: ExpiredBankingConnectionNotification[];
     hasEncryptedAccounts: boolean;
     hasEncryptedTransactions: boolean;

@@ -44,6 +44,33 @@ class Presenter
     }
 
     /**
+     * How far along the reader is towards a medal: where they stand today
+     * against the figure it asks for.
+     *
+     * Null when either half is missing — the first transaction is an event
+     * rather than a count, and the money tracks have no figure a page render
+     * can read — because there is then nothing to draw a bar against.
+     *
+     * @param  array{type: string, value: int|float, currency: ?string}|null  $figure
+     * @return array{now: int, goal: int|float, unlocking: bool}|null
+     */
+    public function progress(?array $figure, ?int $now): ?array
+    {
+        if ($now === null || $figure === null) {
+            return null;
+        }
+
+        return [
+            'now' => $now,
+            'goal' => $figure['value'],
+            // The sweep runs at night, so a reader crossing a threshold today
+            // stands past it with the medal still locked. Say that, rather than
+            // trim the figure back to the goal and call it done.
+            'unlocking' => $now >= $figure['value'],
+        ];
+    }
+
+    /**
      * What the reader actually reached, as it was on the day. Which column the
      * row filled says how to read it.
      *

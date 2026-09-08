@@ -19,6 +19,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast, Toaster } from 'sonner';
 import { update as updateTimezone } from './actions/App/Http/Controllers/Settings/TimezoneController';
+import { UncategorizedToast } from './components/achievements/uncategorized-toast';
 import { AppErrorBoundary } from './components/app-error-boundary';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
@@ -212,6 +213,7 @@ createInertiaApp({
             (initialPageProps?.expiredBankingConnections as
                 | ExpiredBankingConnectionNotification[]
                 | undefined) ?? [];
+        const initialChallenges = initialPageProps?.challenges ?? null;
 
         const syncUserTimezone = async (pageProps?: Partial<SharedData>) => {
             const user = pageProps?.auth?.user ?? null;
@@ -271,6 +273,9 @@ createInertiaApp({
                                     initialExpiredConnections={
                                         initialExpiredConnections
                                     }
+                                />
+                                <UncategorizedToast
+                                    initialChallenges={initialChallenges}
                                 />
                                 <AppToaster />
                             </SyncProvider>
