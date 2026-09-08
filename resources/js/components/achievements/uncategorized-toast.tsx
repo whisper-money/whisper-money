@@ -113,11 +113,21 @@ function show(challenges: Challenges | null | undefined): void {
 
     const prompt = challenges.uncategorized;
 
-    toast.custom(() => <UncategorizedToastBody prompt={prompt} />, {
-        id: TOAST_ID,
-        duration: Infinity,
-        dismissible: false,
-    });
+    // Published a tick late, on purpose. Sonner hands a new toast straight to
+    // whoever is subscribed and keeps no backlog, and `<Toaster/>` subscribes
+    // from an effect of its own — so a toast raised while the shell is still
+    // mounting is broadcast to nobody and lost, silently and for good, because
+    // the latch above has already been thrown. Sibling effects flush in the
+    // order the components appear, which would make this work or not depending
+    // on where in `app.tsx` this one sits; a microtask runs after the whole
+    // flush instead, so the position stops mattering.
+    queueMicrotask(() =>
+        toast.custom(() => <UncategorizedToastBody prompt={prompt} />, {
+            id: TOAST_ID,
+            duration: Infinity,
+            dismissible: false,
+        }),
+    );
 }
 
 /**
