@@ -168,35 +168,9 @@ class Progress
             'figure' => $figure,
             'reached' => $earned === null ? null : $this->presenter->reached($earned),
             'achieved_on' => $earned?->achieved_on->toDateString(),
-            'progress' => $next ? $this->progress($definition, $figure, $standing) : null,
-        ];
-    }
-
-    /**
-     * How far along the reader is towards the next medal, for the tracks whose
-     * figure {@see Standing} can read without building a history.
-     *
-     * @param  array{type: string, value: int|float, currency: ?string}|null  $figure
-     * @param  array<string, int>  $standing
-     * @return array{now: int, goal: int|float, unlocking: bool}|null
-     */
-    private function progress(Definition $definition, ?array $figure, array $standing): ?array
-    {
-        $now = $standing[$definition->track] ?? null;
-
-        // No figure means no number to reach — the first transaction is an
-        // event, not a count — and so nothing to draw a bar against.
-        if ($now === null || $figure === null) {
-            return null;
-        }
-
-        return [
-            'now' => $now,
-            'goal' => $figure['value'],
-            // The sweep runs at night, so a reader crossing a threshold today
-            // stands past it with the medal still locked. Say that, rather than
-            // trim the figure back to the goal and call it done.
-            'unlocking' => $now >= $figure['value'],
+            // Only for the tracks whose figure {@see Standing} can read without
+            // building a history; the rest arrive without a bar.
+            'progress' => $next ? $this->presenter->progress($figure, $standing[$definition->track] ?? null) : null,
         ];
     }
 

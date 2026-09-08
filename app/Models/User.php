@@ -37,6 +37,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $last_active_at
  * @property ?Carbon $transactions_last_visited_at
  * @property ?Carbon $ai_consent_prompt_dismissed_at
+ * @property ?Carbon $uncategorized_prompt_snoozed_until
  * @property int $achievements_count
  * @property int $visit_streak
  * @property int $longest_visit_streak
@@ -107,6 +108,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'last_active_at' => 'datetime',
             'transactions_last_visited_at' => 'datetime',
             'ai_consent_prompt_dismissed_at' => 'datetime',
+            'uncategorized_prompt_snoozed_until' => 'datetime',
         ];
     }
 

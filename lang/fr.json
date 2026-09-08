@@ -2494,5 +2494,12 @@
     "See all your medals": "Voir toutes vos médailles",
     "{1}1 day|[2,*]:count days": "{1}1 jour|[2,*]:count jours",
     "{1}1 week|[2,*]:count weeks": "{1}1 semaine|[2,*]:count semaines",
-    "+:count to come": "+:count à venir"
+    "+:count to come": "+:count à venir",
+    "Current visit streak": "Série de visites en cours",
+    "The medals below count your best run: :days": "Les médailles ci-dessous comptent ta meilleure série : :days",
+    "View all progress": "Voir toute la progression",
+    "Visit streak: :days": "Série de visites : :days",
+    ":count uncategorized transactions": ":count transactions sans catégorie",
+    "A month with everything categorized is a month you can actually read.": "Un mois entièrement catégorisé est un mois vraiment lisible.",
+    "Not now": "Pas maintenant"
 }

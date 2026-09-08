@@ -22,11 +22,12 @@ use Throwable;
  * The progress screen: every medal a reader has earned, and every one still to
  * come.
  *
- * Reached from the account menu rather than the main navigation, because it is
- * something to look back at rather than somewhere to work. The monthly
- * summaries sit beside it in that menu on their own screen: both are records of
- * what already happened, but a report is read once and a medal is collected,
- * and stacking them made one page answer two questions.
+ * Reached from the account menu rather than the main navigation, and from the
+ * streak pill in the header: that one puts the two live challenges on every
+ * screen and lands here for everything else. The monthly summaries sit beside
+ * it in that menu on their own screen: both are records of what already
+ * happened, but a report is read once and a medal is collected, and stacking
+ * them made one page answer two questions.
  */
 class AchievementController extends Controller
 {

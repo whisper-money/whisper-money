@@ -41,6 +41,7 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransactionSplitController;
+use App\Http\Controllers\UncategorizedPromptController;
 use App\Models\Bank;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\IntegrationsPage;
@@ -193,6 +194,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('progress/medal/{medal}/{format}/{theme}', [AchievementController::class, 'card'])
             ->where('medal', '[a-z_]+\.[0-9]+')
             ->name('achievements.card');
+
+        // "Not now" on the categorize prompt. Beside the progress screen and
+        // outside the paywall for the same reason the bell is: the prompt is
+        // drawn wherever the app shell is, so silencing it has to be too.
+        Route::post('progress/uncategorized/snooze', UncategorizedPromptController::class)
+            ->name('achievements.uncategorized.snooze');
 
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.list');
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
