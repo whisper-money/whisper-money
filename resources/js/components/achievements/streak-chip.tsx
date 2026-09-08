@@ -17,7 +17,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { ArrowRightIcon, FlameIcon } from 'lucide-react';
 import { useState } from 'react';
 
-/**
+/*
  * The visit streak, in the header, on every screen.
  *
  * The number is the run as it stands today, not the longest one ever: a streak
@@ -37,6 +37,7 @@ import { useState } from 'react';
  *
  * Not drawn at all without a live run, or with the feature switched off.
  */
+
 const RING_RADIUS = 10;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 

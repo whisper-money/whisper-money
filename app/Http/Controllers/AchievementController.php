@@ -23,11 +23,11 @@ use Throwable;
  * come.
  *
  * Reached from the account menu rather than the main navigation, and from the
- * streak pill in the header, which puts the two live challenges on every screen
- * and lands here for the rest. The monthly
- * summaries sit beside it in that menu on their own screen: both are records of
- * what already happened, but a report is read once and a medal is collected,
- * and stacking them made one page answer two questions.
+ * streak pill in the header: that one puts the two live challenges on every
+ * screen and lands here for everything else. The monthly summaries sit beside
+ * it in that menu on their own screen: both are records of what already
+ * happened, but a report is read once and a medal is collected, and stacking
+ * them made one page answer two questions.
  */
 class AchievementController extends Controller
 {
