@@ -65,8 +65,11 @@ export function UserMenuContent({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {/* What already happened: the medals, and the months we closed.
-                Not in the main navigation — this is something to look back at,
-                not somewhere to work. */}
+                Still out of the main navigation, but no longer only somewhere
+                to look back at: the streak pill in the header now hangs the two
+                live challenges off this same screen, and its footer lands here.
+                This entry is the full record; the pill is the bit worth chasing
+                today. */}
             <DropdownMenuGroup>
                 {achievements && (
                     <DropdownMenuItem asChild>

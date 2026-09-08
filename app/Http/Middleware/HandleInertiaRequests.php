@@ -11,6 +11,7 @@ use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\Achievements\Catalog;
+use App\Services\Achievements\Challenges;
 use App\Services\CurrencyOptions;
 use App\Services\Notifications\NotificationFeed;
 use App\Services\Subscriptions\PriceExperiment;
@@ -26,6 +27,7 @@ class HandleInertiaRequests extends Middleware
         private CurrencyOptions $currencyOptions,
         private NotificationFeed $notifications,
         private Catalog $catalog,
+        private Challenges $challenges,
     ) {}
 
     /**
@@ -115,6 +117,7 @@ class HandleInertiaRequests extends Middleware
             'features' => $this->resolveFeatureFlags(),
             'notifications' => fn (): ?array => $this->notificationsFor($user),
             'achievements' => fn (): ?array => $this->achievementsFor($user),
+            'challenges' => fn (): ?array => $this->challengesFor($user),
             ...$this->userCollectionProps($user),
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
             'hasEncryptionSetup' => $user?->encryption_salt !== null,
@@ -151,6 +154,22 @@ class HandleInertiaRequests extends Middleware
             'unlocked' => (int) $user->achievements_count,
             'total' => $this->catalog->all()->count(),
         ];
+    }
+
+    /**
+     * The two medals the chrome puts in front of the reader rather than waiting
+     * to be looked up: the visit streak in the header, and what is left to
+     * categorize this month. Null unless the feature is on for them.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function challengesFor(?User $user): ?array
+    {
+        if ($user === null || ! Feature::for($user)->active(Achievements::class)) {
+            return null;
+        }
+
+        return $this->challenges->for($user);
     }
 
     /**
