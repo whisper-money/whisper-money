@@ -20,20 +20,6 @@ use App\Models\User;
  */
 class Challenges
 {
-    /**
-     * The tracks the header panel draws, in the order it draws them, each with
-     * the column its bar is measured against.
-     *
-     * The longest run rather than the live one, exactly as {@see Standing} does
-     * it and for the same reason: the medal is awarded on the peak, so a bar
-     * reading the live streak would fall back without the medal moving any
-     * further away. The number on the pill is the live one — see the frontend.
-     */
-    private const VISIT_TRACKS = [
-        'visits' => 'longest_visit_streak',
-        'visit_weeks' => 'longest_visit_week_streak',
-    ];
-
     public function __construct(
         private Catalog $catalog,
         private Presenter $presenter,
@@ -53,15 +39,15 @@ class Challenges
 
         return [
             'visit_streak' => (int) $user->visit_streak,
-            'medals' => collect(self::VISIT_TRACKS)
-                ->map(fn (string $column, string $track): ?array => $this->medal(
-                    $user,
-                    $next->get($track),
-                    (int) $user->{$column},
-                ))
-                ->filter()
-                ->values()
-                ->all(),
+            // Both bars read the longest run rather than the live one, exactly
+            // as {@see Standing} does and for the same reason: the medal is
+            // awarded on the peak, so a bar following the live streak would
+            // fall back without the medal moving any further away. Only the
+            // number on the pill is the live run.
+            'medals' => collect([
+                $this->medal($user, $next->get('visits'), (int) $user->longest_visit_streak),
+                $this->medal($user, $next->get('visit_weeks'), (int) $user->longest_visit_week_streak),
+            ])->filter()->values()->all(),
             'uncategorized' => $this->uncategorized($user, $next->get('categorized')),
         ];
     }

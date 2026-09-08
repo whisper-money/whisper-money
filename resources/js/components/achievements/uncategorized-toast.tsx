@@ -6,6 +6,7 @@ import { type Challenges, type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, router } from '@inertiajs/react';
 import axios from 'axios';
+import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { TagsIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -25,10 +26,23 @@ const TOAST_ID = 'uncategorized-transactions';
 
 let shown = false;
 
-/** Straight to the pile it is asking about, filtered to exactly that. */
-const categorizeHref = transactionsIndex({
-    query: { category_ids: 'uncategorized' },
-}).url;
+/**
+ * Straight to the pile it is asking about, and to nothing else: the count is
+ * the month in progress, so the list has to be the month in progress too. An
+ * unbounded "uncategorized" filter would open on a longer list than the number
+ * the reader just clicked.
+ */
+function categorizeHref(): string {
+    const today = new Date();
+
+    return transactionsIndex({
+        query: {
+            category_ids: 'uncategorized',
+            date_from: format(startOfMonth(today), 'yyyy-MM-dd'),
+            date_to: format(endOfMonth(today), 'yyyy-MM-dd'),
+        },
+    }).url;
+}
 
 function UncategorizedToastBody({
     prompt,
@@ -65,7 +79,7 @@ function UncategorizedToastBody({
 
                 <div className="mt-2 flex items-center gap-2">
                     <Link
-                        href={categorizeHref}
+                        href={categorizeHref()}
                         onClick={() => toast.dismiss(TOAST_ID)}
                         className="inline-flex h-[26px] items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
                     >

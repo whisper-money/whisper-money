@@ -100,7 +100,11 @@ describe('StreakChip', () => {
         const { container } = draw(
             chip({
                 visit_streak: 5,
-                medals: [medal({ progress: { now: 12, goal: 30, unlocking: false } })],
+                medals: [
+                    medal({
+                        progress: { now: 12, goal: 30, unlocking: false },
+                    }),
+                ],
             }),
         );
 
@@ -114,7 +118,9 @@ describe('StreakChip', () => {
         const { container } = draw(
             chip({
                 visit_streak: 31,
-                medals: [medal({ progress: { now: 31, goal: 30, unlocking: true } })],
+                medals: [
+                    medal({ progress: { now: 31, goal: 30, unlocking: true } }),
+                ],
             }),
         );
 
