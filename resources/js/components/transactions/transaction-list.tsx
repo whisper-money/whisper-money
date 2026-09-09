@@ -3,7 +3,7 @@ import { reloadPage } from '@/lib/leave-page';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
 import { __ } from '@/utils/i18n';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -76,7 +76,6 @@ import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -135,7 +134,6 @@ interface TransactionRowProps {
     onDelete: (transaction: DecryptedTransaction) => void;
     onSplit: (transaction: DecryptedTransaction) => void;
     onUnsplit: (transaction: DecryptedTransaction) => void;
-    splitsEnabled: boolean;
 }
 
 function TransactionRowComponent({
@@ -147,7 +145,6 @@ function TransactionRowComponent({
     onDelete,
     onSplit,
     onUnsplit,
-    splitsEnabled,
 }: TransactionRowProps) {
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -213,7 +210,6 @@ function TransactionRowComponent({
                 <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                 {getTransactionRowActions({
                     transaction,
-                    splitsEnabled,
                     onEdit,
                     onReEvaluateRules,
                     onDelete,
@@ -318,7 +314,6 @@ export function TransactionList({
     hiddenLabelId,
 }: TransactionListProps) {
     const locale = useLocale();
-    const { features } = usePage<SharedData>().props;
     const [labels, setLabels] = useState<Label[]>(() => initialLabels ?? []);
 
     useEffect(() => {
@@ -791,7 +786,6 @@ export function TransactionList({
             onReEvaluateRules: handleReEvaluateRules,
             onSplit: setSplitTransaction,
             onUnsplit: setUnsplitTransaction,
-            splitsEnabled: features.splitTransactions,
             isDateHidden: columnVisibility.transaction_date === false,
             hiddenLabelId,
         });
@@ -816,7 +810,6 @@ export function TransactionList({
         handleReEvaluateRules,
         hideColumns,
         columnVisibility,
-        features.splitTransactions,
         hiddenLabelId,
     ]);
 
@@ -1046,11 +1039,10 @@ export function TransactionList({
                     onDelete={setDeleteTransaction}
                     onSplit={setSplitTransaction}
                     onUnsplit={setUnsplitTransaction}
-                    splitsEnabled={features.splitTransactions}
                 />
             );
         },
-        [handleReEvaluateRules, features.splitTransactions],
+        [handleReEvaluateRules],
     );
 
     return (
@@ -1162,9 +1154,7 @@ export function TransactionList({
                 onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
                 onDelete={setDeleteTransaction}
-                onSplit={
-                    features.splitTransactions ? setSplitTransaction : undefined
-                }
+                onSplit={setSplitTransaction}
                 mode="edit"
             />
 
