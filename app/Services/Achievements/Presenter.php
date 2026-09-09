@@ -65,7 +65,10 @@ class Presenter
             'goal' => $figure['value'],
             // The sweep runs at night, so a reader crossing a threshold today
             // stands past it with the medal still locked. Say that, rather than
-            // trim the figure back to the goal and call it done.
+            // trim the figure back to the goal and call it done. Visit medals
+            // are the exception: {@see Awarder::awardVisitRuns()} settles those
+            // on the request that earns them, so they are past this almost as
+            // soon as they reach it.
             'unlocking' => $now >= $figure['value'],
         ];
     }

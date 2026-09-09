@@ -19,6 +19,15 @@ use Illuminate\Support\Collection;
 class Catalog
 {
     /**
+     * The tracks a visit run feeds, which are the only ones awarded off a
+     * column rather than off a history — and so the only ones that can be
+     * settled the moment the run reaches the rung.
+     *
+     * @var list<string>
+     */
+    public const VISIT_TRACKS = ['visits', 'visit_weeks'];
+
+    /**
      * @return Collection<string, Definition> keyed by medal key
      */
     public function all(): Collection

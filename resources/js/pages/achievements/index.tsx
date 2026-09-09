@@ -301,7 +301,7 @@ export default function AchievementsIndex({ overview, tracks }: Props) {
                     {overview.unlocked === 0 && (
                         <p className="mx-auto max-w-160 rounded-lg border border-dashed px-8 py-7 text-center text-sm text-pretty text-muted-foreground">
                             {__(
-                                'Nothing unlocked yet. Achievements are checked once a day: the first ones land as soon as you record a transaction or connect a bank, and anything you crossed before today unlocks with its real date.',
+                                'Nothing unlocked yet. Visit streaks unlock the moment you earn them; the rest are checked once a day, and anything you crossed before today unlocks with its real date.',
                             )}
                         </p>
                     )}

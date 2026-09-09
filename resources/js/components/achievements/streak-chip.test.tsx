@@ -39,6 +39,7 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 
 function medal(overrides: Partial<ChallengeMedal> = {}): ChallengeMedal {
     return {
+        key: 'visits.3',
         track: 'visits',
         rarity: 'uncommon',
         icon: 'calendar-days',
@@ -63,6 +64,7 @@ function chip(challenges: Partial<Challenges> = {}): Challenges {
     return {
         visit_streak: 12,
         medals: [medal()],
+        unlocked: null,
         uncategorized: null,
         ...challenges,
     };

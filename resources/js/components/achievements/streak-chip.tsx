@@ -9,7 +9,7 @@ import {
 import { Medal } from '@/components/achievements/medal';
 import { AdaptivePopover } from '@/components/ui/adaptive-popover';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
+import { readOwnedValue, writeOwnedValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
 import { index as progressScreen } from '@/routes/achievements';
 import { type ChallengeMedal, type SharedData } from '@/types';
@@ -31,8 +31,10 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
  * Three states, and the pill has to read as itself in all three:
  *
  * 1. Mid-run: a ring filling towards the next rung.
- * 2. Standing on the rung with the medal still locked — the sweep runs at night
- *    — so the real medal takes the ring's place and the pill fills in.
+ * 2. Standing on the rung with the medal still locked, so the real medal takes
+ *    the ring's place. Rare now that a visit medal is awarded on the request
+ *    that earns it: what is left is the reader the sweep has never been
+ *    through, whose first pass is the one that reads a whole life.
  * 3. Past the last rung: nothing left to aim at, so the ring is simply full and
  *    the number keeps climbing.
  *
@@ -129,8 +131,8 @@ function StreakRing({
  * Nothing on the server says "the streak advanced": `TrackLastActiveAt` carries
  * the run forward silently and the shared props only ever state today's number.
  * So the last number the reader saw is remembered here, on the device, keyed by
- * user the way the onboarding resume point is — one browser is shared by more
- * than one account often enough to matter.
+ * user — see `readOwnedValue`, which is why another account's number reads as
+ * nothing rather than as a rise.
  *
  * Per device on purpose: opening the app on the phone after the laptop replays
  * the moment. That is the right side to err on for something that only ever
@@ -181,14 +183,10 @@ function useStreakRaised(userId: string, streak: number | null): boolean {
 
         recorded.current = streak;
 
-        const [owner, seen] = (readStoredValue(STREAK_SEEN_KEY) ?? '').split(
-            ':',
-        );
+        const seen = readOwnedValue(STREAK_SEEN_KEY, userId);
 
-        // `Number(undefined)` is NaN and every comparison against it is false,
-        // which is exactly the "nothing stored yet" answer we want.
-        setRaised(owner === userId && streak > Number(seen));
-        writeStoredValue(STREAK_SEEN_KEY, `${userId}:${streak}`);
+        setRaised(seen !== null && streak > Number(seen));
+        writeOwnedValue(STREAK_SEEN_KEY, userId, String(streak));
     }, [userId, streak]);
 
     return raised;

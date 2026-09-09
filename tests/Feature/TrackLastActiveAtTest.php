@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\Achievement;
 use App\Models\User;
+use App\Notifications\AchievementUnlocked;
+use Illuminate\Support\Facades\Notification;
 
 beforeEach(function (): void {
     // These assertions are about what the middleware wrote, never about the
@@ -150,4 +153,104 @@ test('another day of the same week leaves the weekly streak where it is', functi
 
     expect($user->fresh()->visit_week_streak)->toBe(5)
         ->and($user->fresh()->visit_streak)->toBe(1);
+});
+
+/*
+ * The medal a run reaches is settled here, on the request that moves the run,
+ * rather than by the nightly sweep. Everything else still waits for the sweep:
+ * a closed month cannot be judged mid-month.
+ */
+
+/**
+ * A reader the sweep has already been through, which is what the visit award
+ * asks for: their first pass is the one that reads a whole life and announces
+ * itself with a single welcome row.
+ */
+function sweptReader(array $attributes = []): User
+{
+    config()->set('achievements.enabled', true);
+
+    $user = User::factory()->onboarded()->create($attributes);
+
+    Achievement::factory()->key('transactions.1')->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+    ]);
+
+    return $user;
+}
+
+test('a run reaching a rung is awarded on the request that reaches it', function () {
+    Notification::fake();
+
+    // Two days behind, so today's visit is the third in a row.
+    $user = sweptReader([
+        'last_active_at' => now()->subDay(),
+        'visit_streak' => 2,
+        'longest_visit_streak' => 2,
+    ]);
+
+    $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    expect($user->achievements()->pluck('key')->all())->toContain('visits.1');
+    Notification::assertSentTo($user, AchievementUnlocked::class);
+});
+
+test('the medal is on the shelf before the page that earned it is drawn', function () {
+    // The whole point of doing this before the response rather than after it:
+    // the props the header is drawn with are the ones that carry the medal.
+    $user = sweptReader([
+        'last_active_at' => now()->subDay(),
+        'visit_streak' => 2,
+        'longest_visit_streak' => 2,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('challenges.visit_streak', 3)
+            ->where('challenges.unlocked.key', 'visits.1'));
+});
+
+test('a reader the sweep has never been through is left to it', function () {
+    Notification::fake();
+    config()->set('achievements.enabled', true);
+
+    // No medals at all: the first sweep reads their whole life and says so in
+    // one row, and taking the first medal here would turn that into a pile.
+    $user = User::factory()->onboarded()->create([
+        'last_active_at' => now()->subDay(),
+        'visit_streak' => 2,
+        'longest_visit_streak' => 2,
+    ]);
+
+    $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    expect($user->achievements()->count())->toBe(0);
+    Notification::assertNothingSent();
+});
+
+test('a run that has not moved is not awarded again', function () {
+    Notification::fake();
+
+    // Already past the three-day rung and already holding it: a second visit
+    // the same day, in a week already counted, has nothing new to say.
+    $user = sweptReader([
+        'last_active_at' => now()->subHour(),
+        'visit_streak' => 9,
+        'longest_visit_streak' => 9,
+        'visit_week_streak' => 3,
+        'longest_visit_week_streak' => 3,
+    ]);
+
+    Achievement::factory()->key('visits.1')->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+    ]);
+
+    $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    expect($user->achievements()->where('key', 'visits.1')->count())->toBe(1);
+    Notification::assertNothingSent();
 });

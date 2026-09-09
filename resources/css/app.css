@@ -540,6 +540,90 @@
             animation: none !important;
         }
     }
+
+    /*
+     * A medal being struck, for the toast that announces one.
+     *
+     * Visit medals land on the request that earns them rather than overnight,
+     * so there is a moment to mark: the medal turns into place, a sweep of
+     * light crosses it and the warmth behind it flares out once. It plays a
+     * single time and the toast is gone ten seconds later.
+     */
+    @keyframes medal-strike {
+        0% {
+            transform: perspective(400px) rotateY(-180deg) scale(0.4);
+            opacity: 0;
+        }
+        45% {
+            transform: perspective(400px) rotateY(0deg) scale(1.25);
+            opacity: 1;
+        }
+        70% {
+            transform: perspective(400px) rotateY(0deg) scale(0.94);
+        }
+        100% {
+            transform: none;
+        }
+    }
+
+    @keyframes medal-shine {
+        0%,
+        14% {
+            opacity: 0;
+            transform: translateX(-150%) skewX(-18deg);
+        }
+        45% {
+            opacity: 1;
+        }
+        78%,
+        100% {
+            opacity: 0;
+            transform: translateX(150%) skewX(-18deg);
+        }
+    }
+
+    @keyframes medal-burst {
+        0% {
+            opacity: 0;
+            transform: scale(0.4);
+        }
+        35% {
+            opacity: 0.8;
+            transform: scale(1.55);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(2.2);
+        }
+    }
+
+    .medal-strike {
+        animation: medal-strike 0.85s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+    }
+
+    .medal-shine {
+        animation: medal-shine 1.4s ease-in-out 0.25s both;
+    }
+
+    .medal-burst {
+        animation: medal-burst 1.1s ease-out both;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        /* The medal still arrives, it just stops performing: `both` would
+           otherwise leave the burst frozen on its last frame, invisible, and
+           the medal frozen on its first, turned edge-on and gone. */
+        .medal-strike,
+        .medal-shine,
+        .medal-burst {
+            animation: none !important;
+        }
+
+        .medal-shine,
+        .medal-burst {
+            display: none;
+        }
+    }
 }
 
 /*
