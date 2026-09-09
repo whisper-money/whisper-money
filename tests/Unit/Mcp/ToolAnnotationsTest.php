@@ -53,7 +53,7 @@ it('declares all three MCP hints on every tool', function () use ($readOnly, $de
     /** @var array<int, class-string<Tool>> $tools */
     $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
 
-    expect($tools)->toHaveCount(count($readOnly) + 21);
+    expect($tools)->toHaveCount(count($readOnly) + 23);
 
     foreach ($tools as $class) {
         $tool = new $class;

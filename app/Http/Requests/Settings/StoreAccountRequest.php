@@ -5,7 +5,6 @@ namespace App\Http\Requests\Settings;
 use App\Enums\AccountType;
 use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
-use App\Models\Account;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -59,35 +58,7 @@ class StoreAccountRequest extends FormRequest
         $isLoan = $this->input('type') === AccountType::Loan->value;
 
         if ($isLoan) {
-            $rules = array_merge($rules, $this->loanDetailRules(), [
-                'linked_real_estate_account_id' => [
-                    'nullable',
-                    'string',
-                    $this->userOwnedAccountOfType(AccountType::RealEstate),
-                    function (string $attribute, mixed $value, \Closure $fail): void {
-                        if (! is_string($value)) {
-                            return;
-                        }
-
-                        $account = Account::query()
-                            ->whereKey($value)
-                            ->where('user_id', $this->user()->id)
-                            ->where('type', AccountType::RealEstate->value)
-                            ->with('realEstateDetail')
-                            ->first();
-
-                        if (! $account?->realEstateDetail) {
-                            $fail(__('The selected property cannot be linked.'));
-
-                            return;
-                        }
-
-                        if ($account->realEstateDetail->linked_loan_account_id !== null) {
-                            $fail(__('The selected property is already linked to a loan.'));
-                        }
-                    },
-                ],
-            ]);
+            $rules = array_merge($rules, $this->loanDetailRules(), $this->linkedRealEstateAccountRules());
         }
 
         return $rules;

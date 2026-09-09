@@ -4,6 +4,8 @@ namespace App\Http\Requests\Concerns;
 
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
+use App\Models\Account;
+use Closure;
 use Illuminate\Validation\Rule;
 
 trait ValidatesAccountDetailRules
@@ -59,6 +61,46 @@ trait ValidatesAccountDetailRules
             // ancient loan start date OOMs the balance generator (PHP-LARAVEL-49).
             'loan_start_date' => ['nullable', 'date', 'after_or_equal:1900-01-01'],
             'original_amount' => ['nullable', 'integer', 'min:0'],
+        ];
+    }
+
+    /**
+     * Rules for the property a loan is the mortgage of: it has to be one of the
+     * user's real estate accounts, it has to have a detail row to hang the link
+     * off, and it cannot already be answering to another loan.
+     *
+     * @return array<string, array<mixed>>
+     */
+    protected function linkedRealEstateAccountRules(): array
+    {
+        return [
+            'linked_real_estate_account_id' => [
+                'nullable',
+                'string',
+                $this->userOwnedAccountOfType(AccountType::RealEstate),
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (! is_string($value)) {
+                        return;
+                    }
+
+                    $account = Account::query()
+                        ->whereKey($value)
+                        ->where('user_id', $this->user()->id)
+                        ->where('type', AccountType::RealEstate->value)
+                        ->with('realEstateDetail')
+                        ->first();
+
+                    if (! $account?->realEstateDetail) {
+                        $fail(__('The selected property cannot be linked.'));
+
+                        return;
+                    }
+
+                    if ($account->realEstateDetail->linked_loan_account_id !== null) {
+                        $fail(__('The selected property is already linked to a loan.'));
+                    }
+                },
+            ],
         ];
     }
 }
