@@ -13,11 +13,6 @@ export interface TransactionRowAction {
 
 interface TransactionRowActionsOptions {
     transaction: DecryptedTransaction;
-    /**
-     * Whether splitting is offered at all. Merging back is listed regardless, so
-     * a part is never a dead end.
-     */
-    splitsEnabled: boolean;
     onEdit: (transaction: DecryptedTransaction) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
@@ -31,7 +26,6 @@ interface TransactionRowActionsOptions {
  */
 export function getTransactionRowActions({
     transaction,
-    splitsEnabled,
     onEdit,
     onReEvaluateRules,
     onDelete,
@@ -46,7 +40,7 @@ export function getTransactionRowActions({
         },
     ];
 
-    if (splitsEnabled && canSplit(transaction)) {
+    if (canSplit(transaction)) {
         actions.push({
             id: 'split',
             label: __('Split'),

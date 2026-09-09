@@ -49,8 +49,6 @@ interface CreateColumnsOptions {
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
     onSplit: (transaction: DecryptedTransaction) => void;
     onUnsplit: (transaction: DecryptedTransaction) => void;
-    /** Whether splitting is offered. Merging back is offered either way. */
-    splitsEnabled?: boolean;
     isDateHidden?: boolean;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
@@ -71,7 +69,6 @@ export function createTransactionColumns({
     onReEvaluateRules,
     onSplit,
     onUnsplit,
-    splitsEnabled = false,
     isDateHidden = false,
     categorizingIds,
     hiddenLabelId,
@@ -403,7 +400,6 @@ export function createTransactionColumns({
                                 </DropdownMenuLabel>
                                 {getTransactionRowActions({
                                     transaction,
-                                    splitsEnabled,
                                     onEdit,
                                     onReEvaluateRules,
                                     onDelete,
