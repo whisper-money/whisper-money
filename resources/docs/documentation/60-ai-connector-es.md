@@ -66,12 +66,13 @@ Prueba:
 <div class="card">
 ### Cuentas y saldos
 
-Lista tus cuentas con sus saldos, y registra un saldo nuevo en una cuenta de las
-que llevas por valor.
+Lista tus cuentas con sus saldos, crea cuentas manuales nuevas, edita las que ya
+tienes y registra un saldo nuevo en una cuenta de las que llevas por valor.
 
 Prueba:
 
 - «¿Qué cuentas tengo y cuánto hay en cada una?»
+- «Créame una cuenta de ahorro con 3.000 euros.»
 - «Mi cuenta del bróker está hoy en 12.400.»
 
 </div>
@@ -248,8 +249,9 @@ crearlo:
 
 - **Solo lectura** puede buscar, analizar e informar, y no puede modificar nada
   nunca.
-- **Lectura y escritura** puede además crear, editar y eliminar transacciones,
-  categorías, etiquetas, presupuestos y reglas de automatización.
+- **Lectura y escritura** puede además crear y editar cuentas, y crear, editar
+  y eliminar transacciones, categorías, etiquetas, presupuestos y reglas de
+  automatización.
 
 Un token se muestra una sola vez, al crearlo, así que cópialo en un lugar seguro
 en ese momento. La página guarda el nombre, el nivel de acceso y las fechas de
@@ -286,6 +288,11 @@ confianza. Son las reglas que sigue la propia app:
 - **Los saldos solo se pueden registrar en cuentas que no estén conectadas a un
   banco.** El saldo de una cuenta conectada viene del banco, y una cifra escrita
   a mano la sobrescribiría la siguiente sincronización.
+- **De una cuenta conectada al banco solo se pueden cambiar el nombre y el
+  porcentaje de propiedad.** El tipo, la divisa y el banco vienen de la
+  conexión, y una cuenta conectada tampoco se puede crear desde aquí: esas las
+  conectas tú en la app. En un espacio compartido, además, cada cuenta solo la
+  puede editar quien la creó.
 - **El periodo de un presupuesto, su día de inicio, el arrastre y las categorías
   que sigue quedan fijos al crearlo.** Para cambiar cualquiera de esas cosas hay
   que eliminar el presupuesto y crearlo de nuevo.

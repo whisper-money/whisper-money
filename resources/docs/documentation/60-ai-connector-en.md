@@ -61,12 +61,13 @@ Try:
 <div class="card">
 ### Accounts and balances
 
-List your accounts with their balances, and record a new balance on an account
-you track by value.
+List your accounts with their balances, create new manual accounts, edit the
+ones you have, and record a new balance on an account you track by value.
 
 Try:
 
 - "Which accounts do I have, and what is in them?"
+- "Create a savings account with 3,000 euros in it."
 - "My broker account is at 12,400 today."
 
 </div>
@@ -235,8 +236,8 @@ A token is a password for one connection. Two things to choose when you create
 one:
 
 - **Read only** can search, analyse and report, and can never change anything.
-- **Read & write** can also create, edit and delete transactions, categories,
-  labels, budgets and automation rules.
+- **Read & write** can also create and edit accounts, and create, edit and
+  delete transactions, categories, labels, budgets and automation rules.
 
 A token is shown once, when you create it, so copy it somewhere safe right then.
 The page keeps the name, the access level, and the dates it was created and last
@@ -269,6 +270,11 @@ are the rules the app itself follows:
 - **Balances can only be recorded on accounts that are not connected to a
   bank.** A connected account's balance comes from the bank, and a figure
   written by hand would be overwritten by the next sync.
+- **On a bank-connected account only the name and the ownership share can be
+  changed.** The type, the currency and the bank come from the connection, and a
+  connected account cannot be created from here either: you connect those
+  yourself in the app. In a shared space, an account can only be edited by
+  whoever created it.
 - **A budget's period, start day, rollover and tracked categories are fixed
   once it is created.** To change any of those, the budget has to be deleted
   and created again.
