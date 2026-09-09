@@ -1222,7 +1222,7 @@ it('creates a loan with its details and backfills the balance history', function
     Queue::fake();
 
     $user = User::factory()->create();
-    Account::factory()->create(['user_id' => $user->id]);
+    Account::factory()->create(['user_id' => $user->id, 'type' => 'checking']);
 
     callWriteTool($user, CreateAccount::class, [
         'name' => 'Mortgage',
@@ -1252,7 +1252,7 @@ it('creates a property with its details and backfills the value history', functi
     Queue::fake();
 
     $user = User::factory()->create();
-    Account::factory()->create(['user_id' => $user->id]);
+    Account::factory()->create(['user_id' => $user->id, 'type' => 'checking']);
 
     callWriteTool($user, CreateAccount::class, [
         'name' => 'The flat',
