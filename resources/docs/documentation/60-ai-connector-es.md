@@ -41,8 +41,8 @@ la práctica:
 - Tú decides cuándo existe la conexión. No hay nada conectado hasta que lo
   conectas, y quitarlo corta el acceso al instante.
 
-Whisper Money expone 32 de esas preguntas y acciones, llamadas herramientas: 11
-que leen tus datos y 21 que los modifican. El asistente elige las que necesita
+Whisper Money expone 34 de esas preguntas y acciones, llamadas herramientas: 11
+que leen tus datos y 23 que los modifican. El asistente elige las que necesita
 por su cuenta; tú escribes en lenguaje normal.
 
 ## Qué le puedes pedir
@@ -66,12 +66,13 @@ Prueba:
 <div class="card">
 ### Cuentas y saldos
 
-Lista tus cuentas con sus saldos, y registra un saldo nuevo en una cuenta de las
-que llevas por valor.
+Lista tus cuentas con sus saldos, crea cuentas manuales nuevas, edita las que ya
+tienes y registra un saldo nuevo en una cuenta de las que llevas por valor.
 
 Prueba:
 
 - «¿Qué cuentas tengo y cuánto hay en cada una?»
+- «Créame una cuenta de ahorro con 3.000 euros.»
 - «Mi cuenta del bróker está hoy en 12.400.»
 
 </div>
@@ -189,17 +190,41 @@ no depende del listado.
 
 Este es el que hay que usar si quieres todo lo que el conector puede hacer hoy.
 
-El listado aprobado se actualiza despacio. Una herramienta que ya funciona aquí
-puede tardar semanas en aparecer en él, así que los dos caminos no siempre
-ofrecen lo mismo: un conector personalizado apunta directamente a nuestro
-servidor y tiene siempre la versión actual, mientras que el listado del
-directorio es simplemente el más cómodo.
+El listado del directorio va unas 2-3 semanas por detrás del conector
+personalizado, porque cada actualización tiene que pasar por la revisión de
+OpenAI antes de publicarse. Los dos caminos no siempre ofrecen lo mismo: un
+conector personalizado apunta directamente a nuestro servidor y tiene siempre la
+versión actual, mientras que el listado del directorio es simplemente el más
+cómodo.
 
 1. Activa el modo desarrollador: **Ajustes → Seguridad e inicio de sesión → Modo
    desarrollador**.
 2. En **Plugins**, haz clic en el botón **+** de arriba a la derecha.
 3. Ponle un nombre y pega la misma URL que termina en `/mcp/oauth`.
 4. Aprueba la conexión en la pantalla de Whisper Money que se abre.
+
+### Actualizar un conector personalizado
+
+Un conector personalizado en modo desarrollador se queda con la lista de
+herramientas que vio el día que lo añadiste. Cuando publicamos una herramienta
+nueva no aparece por su cuenta: tienes que pedirle a ChatGPT que vuelva a leer
+la lista.
+
+1. Abre en ChatGPT la página del conector que añadiste y haz clic en el botón
+   **...** que hay al lado de **Probar en el chat**, arriba a la derecha. Se
+   abren los ajustes del conector. También llegas al mismo panel desde
+   **Ajustes → Complementos**, eligiéndolo en la lista.
+2. Baja por el panel, más allá de los esquemas de las herramientas, hasta la
+   sección **Información**.
+3. Haz clic en **Actualizar**, al lado del título. La lista se vuelve a leer de
+   nuestro servidor y las herramientas nuevas aparecen arriba.
+
+Esa misma sección es donde compruebas a qué estás conectado: la URL, el nombre
+de la versión (`dev mode`) y la fecha en que se hizo la conexión. Si tienes
+conectada también la app del directorio, el nombre de la versión es lo que te
+permite distinguirlas.
+
+![Actualizar un conector personalizado en ChatGPT: abrir sus ajustes desde el botón de puntos de la página del conector, bajar hasta la sección Información y pulsar Actualizar](/docs/documentation/chatgpt-refresh-connector.mp4)
 
 ## Conectar Claude Code
 
@@ -224,8 +249,9 @@ crearlo:
 
 - **Solo lectura** puede buscar, analizar e informar, y no puede modificar nada
   nunca.
-- **Lectura y escritura** puede además crear, editar y eliminar transacciones,
-  categorías, etiquetas, presupuestos y reglas de automatización.
+- **Lectura y escritura** puede además crear y editar cuentas, y crear, editar
+  y eliminar transacciones, categorías, etiquetas, presupuestos y reglas de
+  automatización.
 
 Un token se muestra una sola vez, al crearlo, así que cópialo en un lugar seguro
 en ese momento. La página guarda el nombre, el nivel de acceso y las fechas de
@@ -262,6 +288,11 @@ confianza. Son las reglas que sigue la propia app:
 - **Los saldos solo se pueden registrar en cuentas que no estén conectadas a un
   banco.** El saldo de una cuenta conectada viene del banco, y una cifra escrita
   a mano la sobrescribiría la siguiente sincronización.
+- **De una cuenta conectada al banco solo se pueden cambiar el nombre y el
+  porcentaje de propiedad.** El tipo, la divisa y el banco vienen de la
+  conexión, y una cuenta conectada tampoco se puede crear desde aquí: esas las
+  conectas tú en la app. En un espacio compartido, además, cada cuenta solo la
+  puede editar quien la creó.
 - **El periodo de un presupuesto, su día de inicio, el arrastre y las categorías
   que sigue quedan fijos al crearlo.** Para cambiar cualquiera de esas cosas hay
   que eliminar el presupuesto y crearlo de nuevo.
