@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Settings;
 
-use App\Features\Achievements;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateBudgetNotificationPreferencesRequest;
 use App\Http\Requests\Settings\UpdateNotificationPreferencesRequest;
@@ -12,7 +11,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class NotificationPreferenceController extends Controller
 {
@@ -44,11 +42,7 @@ class NotificationPreferenceController extends Controller
             'notifyOnBankTransactionsSynced' => $user->wantsBankTransactionsSyncedEmail(),
             'notifyOnInactiveNoBank' => $user->wantsInactiveNoBankEmail(),
             'notifyMonthlySummary' => $user->wantsMonthlySummaryEmail(),
-            // Null while the medals are off, so the page leaves out a toggle
-            // for an email nothing would ever send.
-            'notifyAchievements' => Feature::active(Achievements::class)
-                ? $user->wantsAchievementsEmail()
-                : null,
+            'notifyAchievements' => $user->wantsAchievementsEmail(),
             'budgetDefaults' => [
                 'notify_on_new_transaction' => (bool) ($setting->budget_notify_on_new_transaction ?? false),
                 'notify_on_close_to_limit' => (bool) ($setting->budget_notify_on_close_to_limit ?? true),

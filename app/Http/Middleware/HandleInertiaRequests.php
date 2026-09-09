@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
-use App\Features\Achievements;
 use App\Features\CalculateBalancesOnImport;
 use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
@@ -139,13 +138,13 @@ class HandleInertiaRequests extends Middleware
      *
      * Read off the user's own row rather than counted, because this is drawn on
      * every screen and the figure moves once a day: the nightly sweep keeps
-     * `achievements_count` in step. Null unless the feature is on for them.
+     * `achievements_count` in step. Null for guests.
      *
      * @return array{unlocked: int, total: int}|null
      */
     private function achievementsFor(?User $user): ?array
     {
-        if ($user === null || ! Feature::for($user)->active(Achievements::class)) {
+        if ($user === null) {
             return null;
         }
 
@@ -158,13 +157,13 @@ class HandleInertiaRequests extends Middleware
     /**
      * The two medals the chrome puts in front of the reader rather than waiting
      * to be looked up: the visit streak in the header, and what is left to
-     * categorize this month. Null unless the feature is on for them.
+     * categorize this month. Null for guests.
      *
      * @return array<string, mixed>|null
      */
     private function challengesFor(?User $user): ?array
     {
-        if ($user === null || ! Feature::for($user)->active(Achievements::class)) {
+        if ($user === null) {
             return null;
         }
 
@@ -305,16 +304,9 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
-        // Achievements rides along so the account menu's count can check it
-        // without a second resolve.
-        $features = Feature::for($user)->values([
-            Achievements::class,
-            CalculateBalancesOnImport::class,
-        ]);
-
         return [
             'cashflow' => true,
-            'calculateBalancesOnImport' => $features[CalculateBalancesOnImport::class] !== false,
+            'calculateBalancesOnImport' => Feature::for($user)->active(CalculateBalancesOnImport::class),
         ];
     }
 

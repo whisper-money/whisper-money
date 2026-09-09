@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\CategoryType;
-use App\Features\Achievements;
 use App\Models\Account;
 use App\Models\Achievement;
 use App\Models\Category;
@@ -11,7 +10,6 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia;
-use Laravel\Pennant\Feature;
 
 /*
  * The progress screen.
@@ -29,7 +27,6 @@ use Laravel\Pennant\Feature;
 
 beforeEach(function (): void {
     Cache::flush();
-    config()->set('achievements.enabled', true);
     // These assertions are about the props the screen is handed, never about
     // the HTML a server-side render would produce. Left on, Inertia posts every
     // page to its SSR gateway — the running dev server, in development — and
@@ -159,15 +156,6 @@ it('shows the real share once the floor is cleared', function (): void {
         ->and($medals->firstWhere('key', 'net_worth.1')['share'])->toEqual(50);
 });
 
-it('is not there while the feature is off', function (): void {
-    config()->set('achievements.enabled', false);
-    Feature::purge(Achievements::class);
-
-    $this->actingAs(readerWithMedals())
-        ->get(route('achievements.index'))
-        ->assertNotFound();
-});
-
 it('greets a reader with nothing yet without pretending they have something', function (): void {
     $user = User::factory()->onboarded()->create();
 
@@ -191,16 +179,6 @@ it('tells the account menu how far through the medals a reader is', function ():
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('achievements.unlocked', 2)
             ->where('achievements.total', 59));
-});
-
-it('says nothing about medals to a reader the feature is off for', function (): void {
-    config()->set('achievements.enabled', false);
-    Feature::purge(Achievements::class);
-
-    $this->actingAs(readerWithMedals())
-        ->get(route('dashboard'))
-        ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('achievements', null));
 });
 
 /**

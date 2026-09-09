@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\CardFormat;
 use App\Enums\CardTheme;
-use App\Features\Achievements;
 use App\Models\Achievement;
 use App\Services\Achievements\CardRenderer;
 use App\Services\Achievements\Catalog;
@@ -14,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -40,8 +38,6 @@ class AchievementController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless(Feature::active(Achievements::class), 404);
-
         $user = $request->user();
 
         return Inertia::render('achievements/index', $this->progress->for($user));
@@ -61,8 +57,6 @@ class AchievementController extends Controller
      */
     public function card(Request $request, string $medal, string $format, string $theme): StreamedResponse
     {
-        abort_unless(Feature::active(Achievements::class), 404);
-
         $definition = $this->catalog->find($medal);
         $format = CardFormat::tryFrom($format);
         $theme = CardTheme::tryFrom($theme);

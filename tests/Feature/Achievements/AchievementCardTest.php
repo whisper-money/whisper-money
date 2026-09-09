@@ -25,7 +25,6 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function (): void {
     Cache::flush();
     Storage::fake(CardRenderer::DISK);
-    config()->set('achievements.enabled', true);
 
     $this->drawnHtml = [];
 
@@ -372,14 +371,4 @@ it('keeps the picture off any disk the web serves without asking who is asking',
     // reader's amount by default. The private disk has no URL to hold.
     expect(CardRenderer::DISK)->not->toBe('public');
     expect(Storage::disk(CardRenderer::DISK)->allFiles())->not->toBeEmpty();
-});
-
-it('is closed while the feature is off', function (): void {
-    $user = medalOwner();
-    earned($user, 'streaks.2');
-    config()->set('achievements.enabled', false);
-
-    test()->actingAs($user)
-        ->get(route('achievements.card', ['medal' => 'streaks.2', 'format' => 'feed', 'theme' => 'light']))
-        ->assertNotFound();
 });

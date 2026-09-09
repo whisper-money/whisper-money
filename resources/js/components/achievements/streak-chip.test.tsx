@@ -98,7 +98,7 @@ beforeEach(() => {
 });
 
 describe('StreakChip', () => {
-    it('is not drawn at all with the feature switched off', () => {
+    it('is not drawn at all with nothing handed to it', () => {
         const { container } = draw(null);
 
         expect(container).toBeEmptyDOMElement();

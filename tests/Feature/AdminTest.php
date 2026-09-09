@@ -102,7 +102,7 @@ test('the arguments the curated commands actually need are accepted', function (
     ['banking:notify-outage', '"Banco Mediolanum" --country=ES --force'],
     ['banking:notify-users', '"Trade Republic" resources/notices/my-notice --dry-run'],
     // A feature is a class name and needs its backslashes; a rollout is a percentage.
-    ['feature:enable', 'App\\Features\\Achievements 25%'],
+    ['feature:enable', 'App\\Features\\CalculateBalancesOnImport 25%'],
     ['user:delete', 'someone@whisper.money'],
     ['stats:mcp-usage', '--days=7 --top=5'],
 ]);

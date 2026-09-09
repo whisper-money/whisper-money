@@ -2,13 +2,11 @@
 
 namespace App\Console\Commands;
 
-use App\Features\Achievements;
 use App\Models\User;
 use App\Services\Achievements\Awarder;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Laravel\Pennant\Feature;
 use Throwable;
 
 /**
@@ -54,10 +52,6 @@ class SweepAchievementsCommand extends Command
 
     private function sweep(User $user): int
     {
-        if (! Feature::for($user)->active(Achievements::class)) {
-            return 0;
-        }
-
         try {
             return $this->awarder->sweep($user, notify: ! $this->option('quiet-notifications'))->count();
         } catch (Throwable $exception) {

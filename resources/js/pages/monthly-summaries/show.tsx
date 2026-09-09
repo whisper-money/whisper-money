@@ -40,8 +40,8 @@ interface Props {
         todos: Todo[];
     };
     analysis: string | null;
-    // Null when the medals are off for this reader, or when the month earned
-    // nothing and nothing is close enough to name a distance to.
+    // Null when the month earned nothing and nothing is close enough to name a
+    // distance to.
     achievements: AchievementGroup[] | null;
     cards: CardOption[];
     shareUrl: string | null;

@@ -223,9 +223,9 @@ export interface SharedData {
     features: Features;
     /** Null for guests, during onboarding and while the bell is switched off. */
     notifications: NotificationsBell | null;
-    /** Null unless the achievements feature is on for this reader. */
+    /** Null for guests. */
     achievements: AchievementsProgress | null;
-    /** Null unless the achievements feature is on for this reader. */
+    /** Null for guests. */
     challenges: Challenges | null;
     expiredBankingConnections: ExpiredBankingConnectionNotification[];
     hasEncryptedAccounts: boolean;

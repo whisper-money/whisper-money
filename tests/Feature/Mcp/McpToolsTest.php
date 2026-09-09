@@ -1,6 +1,5 @@
 <?php
 
-use App\Features\Achievements;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\ListAccounts;
 use App\Mcp\Tools\ListAchievements;
@@ -17,7 +16,6 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 it('blocks read tools when subscriptions are enabled and the user has no paid plan', function () {
     config(['subscriptions.enabled' => true]);
@@ -306,8 +304,6 @@ function medalist(string ...$keys): User
 }
 
 it('lists the medals a reader has earned alongside the ones still to come', function () {
-    config()->set('achievements.enabled', true);
-
     WhisperMoneyServer::actingAs(medalist('transactions.1', 'net_worth.1'))
         ->tool(ListAchievements::class)
         ->assertOk()
@@ -315,8 +311,6 @@ it('lists the medals a reader has earned alongside the ones still to come', func
 });
 
 it('names the next rung of a track and keeps the ones past it to itself', function () {
-    config()->set('achievements.enabled', true);
-
     WhisperMoneyServer::actingAs(medalist('transactions.1'))
         ->tool(ListAchievements::class)
         ->assertOk()
@@ -328,7 +322,6 @@ it('names the next rung of a track and keeps the ones past it to itself', functi
 });
 
 it('never exposes another user\'s medals', function () {
-    config()->set('achievements.enabled', true);
     medalist('transactions.1');
 
     WhisperMoneyServer::actingAs(User::factory()->create())
@@ -338,14 +331,4 @@ it('never exposes another user\'s medals', function () {
         // so what must not appear is a medal anyone actually holds.
         ->assertSee('"unlocked":0')
         ->assertDontSee('"state":"earned"');
-});
-
-it('says nothing about medals while the feature is off', function () {
-    config()->set('achievements.enabled', false);
-    Feature::purge(Achievements::class);
-
-    WhisperMoneyServer::actingAs(medalist('transactions.1'))
-        ->tool(ListAchievements::class)
-        ->assertHasErrors()
-        ->assertDontSee('First transaction');
 });

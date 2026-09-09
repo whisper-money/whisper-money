@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Storage;
 
 beforeEach(function (): void {
     Storage::fake(CardRenderer::DISK);
-    config()->set('achievements.enabled', true);
 
     Process::fake(function (PendingProcess $process) {
         $manifest = json_decode((string) file_get_contents((string) last($process->command)), true);

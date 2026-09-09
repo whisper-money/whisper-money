@@ -38,7 +38,7 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
  * 3. Past the last rung: nothing left to aim at, so the ring is simply full and
  *    the number keeps climbing.
  *
- * Not drawn at all without a live run, or with the feature switched off.
+ * Not drawn at all without a live run, or with nothing handed to it.
  *
  * The skin is warm — fill, border, ring and number all come from the
  * `--streak-*` tokens — and the flame is alive: it flickers over a halo that

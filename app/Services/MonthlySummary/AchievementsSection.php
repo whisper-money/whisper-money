@@ -2,7 +2,6 @@
 
 namespace App\Services\MonthlySummary;
 
-use App\Features\Achievements;
 use App\Models\Achievement;
 use App\Models\MonthlySummary;
 use App\Models\User;
@@ -12,7 +11,6 @@ use App\Services\Achievements\Ladders;
 use App\Services\Achievements\Presenter;
 use App\Services\Achievements\Standing;
 use Illuminate\Support\Collection;
-use Laravel\Pennant\Feature;
 
 /**
  * The medals half of the monthly report: what the month earned, and what is
@@ -43,15 +41,11 @@ class AchievementsSection
     ) {}
 
     /**
-     * @return list<array{title: string, lines: list<string>}>|null null when the
-     *                                                              feature is off for this reader, or when there is nothing to say
+     * @return list<array{title: string, lines: list<string>}>|null null when there
+     *                                                              is nothing to say
      */
     public function for(User $user, MonthlySummary $summary, string $locale): ?array
     {
-        if (! Feature::for($user)->active(Achievements::class)) {
-            return null;
-        }
-
         $earned = $user->achievements()->orderBy('key')->get()->keyBy('key');
         $currency = $this->ladders->currencyFor($user->currency_code);
 
