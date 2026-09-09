@@ -19,6 +19,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast, Toaster } from 'sonner';
 import { update as updateTimezone } from './actions/App/Http/Controllers/Settings/TimezoneController';
+import { MedalUnlockedToast } from './components/achievements/medal-unlocked-toast';
 import { UncategorizedToast } from './components/achievements/uncategorized-toast';
 import { AppErrorBoundary } from './components/app-error-boundary';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
@@ -276,6 +277,10 @@ createInertiaApp({
                                 />
                                 <UncategorizedToast
                                     initialChallenges={initialChallenges}
+                                />
+                                <MedalUnlockedToast
+                                    initialChallenges={initialChallenges}
+                                    userId={initialUser?.id}
                                 />
                                 <AppToaster />
                             </SyncProvider>

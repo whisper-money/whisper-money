@@ -30,7 +30,7 @@ vi.mock('axios', () => ({
 }));
 
 function challenges(uncategorized: Challenges['uncategorized']): Challenges {
-    return { visit_streak: 3, medals: [], uncategorized };
+    return { visit_streak: 3, medals: [], unlocked: null, uncategorized };
 }
 
 /**
@@ -59,6 +59,7 @@ describe('UncategorizedToast', () => {
             challenges({
                 count: 4,
                 medal: {
+                    key: 'categorized.4',
                     track: 'categorized',
                     rarity: 'epic',
                     icon: 'tags',

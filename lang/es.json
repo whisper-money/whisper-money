@@ -2860,7 +2860,7 @@
     "Every milestone your money has crossed, dated when it actually happened, and the months we have closed.": "Cada hito que ha cruzado tu dinero, con la fecha en que ocurrió de verdad, y los meses que hemos cerrado.",
     "Latest": "Lo último",
     "Nothing unlocked yet.": "Aún no has desbloqueado nada.",
-    "Nothing unlocked yet. Achievements are checked once a day: the first ones land as soon as you record a transaction or connect a bank, and anything you crossed before today unlocks with its real date.": "Aún no has desbloqueado nada. Los logros se revisan una vez al día: los primeros llegan en cuanto registres un movimiento o conectes un banco, y todo lo que ya cruzaste antes de hoy se desbloquea con su fecha real.",
+    "Nothing unlocked yet. Visit streaks unlock the moment you earn them; the rest are checked once a day, and anything you crossed before today unlocks with its real date.": "Aún no has desbloqueado nada. Las rachas de visitas se desbloquean en el momento en que las consigues; el resto se revisa una vez al día, y todo lo que ya cruzaste antes de hoy se desbloquea con su fecha real.",
     "Nothing yet": "Nada todavía",
     "One email a day when you unlock something, however many you unlock. They always show up in the app either way.": "Un correo al día cuando desbloqueas algo, por muchos que desbloquees. En la app aparecen igualmente.",
     "Rare": "Raro",
@@ -2945,5 +2945,7 @@
     "Visit streak: :days": "Racha de visitas: :days",
     ":count uncategorized transactions": ":count movimientos sin categorizar",
     "A month with everything categorized is a month you can actually read.": "Un mes con todo categorizado es un mes que puedes leer de verdad.",
-    "Not now": "Ahora no"
+    "Not now": "Ahora no",
+    "Medal unlocked": "Medalla desbloqueada",
+    "See it": "Verla"
 }

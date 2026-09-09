@@ -3,6 +3,7 @@
 namespace App\Services\Achievements;
 
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 /**
  * The two medals the app puts in front of the reader instead of waiting to be
@@ -30,12 +31,16 @@ class Challenges
      * @return array{
      *     visit_streak: int,
      *     medals: list<array<string, mixed>>,
+     *     unlocked: array<string, mixed>|null,
      *     uncategorized: array{count: int, medal: array<string, mixed>|null}|null,
      * }
      */
     public function for(User $user): array
     {
-        $next = $this->catalog->next($user->achievements()->pluck('key')->flip());
+        // Oldest first, which is the one read that answers both questions
+        // below: what is next to fall, and which visit medal landed last.
+        $earned = $user->achievements()->orderBy('created_at')->orderBy('id')->pluck('key');
+        $next = $this->catalog->next($earned->flip());
 
         return [
             'visit_streak' => (int) $user->visit_streak,
@@ -48,8 +53,35 @@ class Challenges
                 $this->medal($user, $next->get('visits'), (int) $user->longest_visit_streak),
                 $this->medal($user, $next->get('visit_weeks'), (int) $user->longest_visit_week_streak),
             ])->filter()->values()->all(),
+            // No progress bar on this one: it is on the shelf, and the reader
+            // is being told so rather than shown how far off it is.
+            'unlocked' => $this->medal($user, $this->lastVisitMedal($earned), null),
             'uncategorized' => $this->uncategorized($user, $next->get('categorized')),
         ];
+    }
+
+    /**
+     * The visit medal that landed most recently, or null for a reader with
+     * none yet.
+     *
+     * In the order the rows were written rather than the order the catalog
+     * lists them: `visits` is written above `visit_weeks`, so a reader who
+     * takes a third day after their first full week would otherwise be told
+     * about the week all over again.
+     *
+     * @param  Collection<int, string>  $earned  medal keys, oldest first
+     */
+    private function lastVisitMedal(Collection $earned): ?Definition
+    {
+        $definitions = $this->catalog->all();
+
+        $key = $earned->last(fn (string $key): bool => in_array(
+            $definitions->get($key)?->track,
+            Catalog::VISIT_TRACKS,
+            true,
+        ));
+
+        return $key === null ? null : $definitions->get($key);
     }
 
     /**
@@ -68,6 +100,7 @@ class Challenges
         $figure = $this->presenter->milestone($definition, (string) $user->currency_code);
 
         return [
+            'key' => $definition->key,
             'track' => $definition->track,
             'rarity' => $definition->rarity->value,
             'icon' => $definition->icon,

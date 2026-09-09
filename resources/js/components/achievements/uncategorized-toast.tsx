@@ -1,14 +1,14 @@
 import { MedalProgress } from '@/components/achievements/achievement-cell';
 import { monthsLabel } from '@/components/achievements/achievement-figure';
+import { useChallengesToast } from '@/components/achievements/use-challenges-toast';
 import { snooze } from '@/routes/achievements/uncategorized';
 import { index as transactionsIndex } from '@/routes/transactions';
-import { type Challenges, type SharedData } from '@/types';
+import { type Challenges } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Link, router } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import axios from 'axios';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { TagsIcon } from 'lucide-react';
-import { useEffect } from 'react';
 import { toast } from 'sonner';
 
 /**
@@ -141,15 +141,7 @@ export function UncategorizedToast({
 }: {
     initialChallenges: Challenges | null;
 }) {
-    useEffect(() => {
-        show(initialChallenges);
-
-        return router.on('navigate', (event) => {
-            const pageProps = event.detail.page.props as unknown as SharedData;
-
-            show(pageProps.challenges);
-        });
-    }, [initialChallenges]);
+    useChallengesToast(initialChallenges, show);
 
     return null;
 }

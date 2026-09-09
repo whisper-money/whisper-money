@@ -95,7 +95,11 @@ export type AchievementState = 'earned' | 'next' | 'locked';
 export interface AchievementProgress {
     now: number;
     goal: number;
-    /** Already past the goal, waiting on the nightly sweep. */
+    /**
+     * Already past the goal with the medal not recorded yet. Visit medals are
+     * settled on the request that earns them, so this is the nightly sweep's
+     * tracks — and, for visits, only a reader it has never run for.
+     */
     unlocking: boolean;
 }
 
@@ -123,6 +127,8 @@ export interface AchievementMedal {
  * the progress screen needs on top of that.
  */
 export interface ChallengeMedal {
+    /** The catalog key, e.g. `visits.3`. Stable across renames and rethresholds. */
+    key: string;
     track: string;
     rarity: AchievementRarity;
     icon: string;
@@ -143,6 +149,12 @@ export interface Challenges {
     visit_streak: number;
     /** `visits` then `visit_weeks`. A finished track is absent. */
     medals: ChallengeMedal[];
+    /**
+     * The visit medal that landed most recently, with no progress bar: it is on
+     * the shelf. Null for a reader holding none. Visit medals are awarded on the
+     * request that earns them, so this is how the shell knows to say so.
+     */
+    unlocked: ChallengeMedal | null;
     /** Null when there is nothing to categorize, or the prompt is snoozed. */
     uncategorized: {
         count: number;

@@ -31,7 +31,7 @@ class Evaluator
     public function for(User $user): array
     {
         $history = $this->builder->for($user);
-        $visits = $this->visits($user);
+        $visits = $this->visitRuns($user);
 
         // Visits are the one thing that does not need a history: somebody who
         // has recorded nothing yet is still showing up, and that is the streak
@@ -308,9 +308,13 @@ class Evaluator
      * Days, and weeks, in a row opening the app, read off the runs the
      * middleware keeps.
      *
+     * Public because these are the one family the nightly sweep is not needed
+     * for: they read two columns rather than a history, so {@see Awarder} can
+     * settle them on the request that moves the run.
+     *
      * @return array<string, Unlock>
      */
-    private function visits(User $user): array
+    public function visitRuns(User $user): array
     {
         $on = $user->last_active_at?->toDateString();
 
