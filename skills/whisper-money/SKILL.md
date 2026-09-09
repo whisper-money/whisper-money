@@ -40,6 +40,15 @@ the sample before calling it again with `dry_run: false`.
 up to the original and share its sign. The parts replace it everywhere; to undo
 it, `merge_transaction_splits` with any part.
 
+**"Add my savings account / my mortgage / my flat"** — `create_account` with
+the type, a currency and, if the user knows it, today's `balance`. A `loan` or a
+`real_estate` account is worth doing properly in one call: pass
+`annual_interest_rate`, `loan_term_months` and `original_amount` (or
+`purchase_price` and `purchase_date`), and with a balance the monthly history in
+between is generated for the chart. Link a mortgage to the property it pays for
+with `linked_real_estate_account_id`. Renaming, retyping or reweighing an
+account later is `update_account`, which touches only the fields you pass.
+
 **"Am I overspending?"** — `list_budgets` already reports allocated, spent and
 remaining for the period in progress. Say `current_period: null` means no
 period covers today, and treat `spent_amount` as provisional while
@@ -59,6 +68,16 @@ creating, because changing them later means deleting and recreating the budget.
   the user ends up with the charge twice.
 - Balances (`create_balance`) work on manual accounts only; a connected
   account's balances come from the bank.
+- Bank-connected accounts cannot be created: only the user can, in the app,
+  through the bank's consent flow. Offer that instead of building a manual
+  lookalike, which would never sync. On one that already exists,
+  `update_account` takes the name and the ownership fields and refuses the
+  currency, the bank and any type without a transaction ledger.
+- Neither account tool archives, hides or deletes. Archiving in particular also
+  revokes the bank connection, so it stays in the app where the user can see
+  what they are agreeing to.
+- `list_accounts` shows every account in a shared space, but only the owner can
+  edit one — `update_account` refuses a housemate's account.
 - Ask first before anything that destroys data: `delete_budget` (takes the
   spending history with it), `merge_transaction_splits` (loses the categories,
   labels and notes on every part), `delete_category` with
