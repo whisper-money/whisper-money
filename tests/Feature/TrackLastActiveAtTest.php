@@ -168,8 +168,6 @@ test('another day of the same week leaves the weekly streak where it is', functi
  */
 function sweptReader(array $attributes = []): User
 {
-    config()->set('achievements.enabled', true);
-
     $user = User::factory()->onboarded()->create($attributes);
 
     Achievement::factory()->key('transactions.1')->create([
@@ -215,7 +213,6 @@ test('the medal is on the shelf before the page that earned it is drawn', functi
 
 test('a reader the sweep has never been through is left to it', function () {
     Notification::fake();
-    config()->set('achievements.enabled', true);
 
     // No medals at all: the first sweep reads their whole life and says so in
     // one row, and taking the first medal here would turn that into a pile.

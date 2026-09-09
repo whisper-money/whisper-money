@@ -25,7 +25,6 @@ beforeEach(function (): void {
     // Protected on the TestCase, so it has to be switched off from here rather
     // than from the helper below.
     $this->withoutVite();
-    config()->set('achievements.enabled', true);
     // Same reason as the progress screen's own suite: left on, Inertia posts
     // every page to its SSR gateway and the stray-request guard fails the test
     // for something that has nothing to do with the props.
@@ -106,12 +105,6 @@ function recordFor(User $user, int $count, int $monthsAgo, bool $categorized = f
         'currency_code' => 'EUR',
     ]);
 }
-
-it('sends nothing at all with the feature switched off', function (): void {
-    config()->set('achievements.enabled', false);
-
-    expect(challengesFor(challenged()))->toBeNull();
-});
 
 it('counts the run as it stands today, and measures the medal on the longest one', function (): void {
     // Twelve days once, five days now: the pill has to say five — there is
@@ -225,12 +218,4 @@ it('asks again once the snooze has run out', function (): void {
     recordFor($user, 2, monthsAgo: 0);
 
     expect(challengesFor($user)['uncategorized']['count'])->toBe(2);
-});
-
-it('refuses to snooze a prompt that is switched off', function (): void {
-    config()->set('achievements.enabled', false);
-
-    $this->actingAs(challenged())
-        ->post(route('achievements.uncategorized.snooze'))
-        ->assertNotFound();
 });

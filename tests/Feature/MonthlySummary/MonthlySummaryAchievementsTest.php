@@ -14,14 +14,12 @@ use Inertia\Testing\AssertableInertia;
  * The medals block of the monthly report.
  *
  * Two halves, in both the email and on the screen: what the reported month
- * earned, and what is close enough now to say how far off it is. Behind the
- * same flag as everything else about medals, and gone entirely when neither
- * half has anything to say.
+ * earned, and what is close enough now to say how far off it is. Gone entirely
+ * when neither half has anything to say.
  */
 
 beforeEach(function (): void {
     Cache::flush();
-    config()->set('achievements.enabled', true);
     // These assertions are about props and rendered mail, never about the HTML
     // an SSR pass would produce — see MonthlySummaryPagesTest.
     config()->set('inertia.ssr.enabled', false);
@@ -111,21 +109,6 @@ it('suggests the three nearest medals, nearest first, each with the distance lef
         // A month of the streak left, and the amount left of the net worth rung.
         ->and($rendered)->toContain('<strong>1 month</strong> to go')
         ->and($rendered)->toContain('89,776.95');
-});
-
-it('says nothing at all when the medals are off for the reader', function (): void {
-    config()->set('achievements.enabled', false);
-
-    $user = readerWithMedalReport();
-    awardMedals($user, ['streaks.1'], $user->monthlySummaries()->first()->periodStart()->toDateString());
-
-    expect(renderedMedalReport($user))
-        ->not->toContain('What you unlocked')
-        ->not->toContain('What you can unlock next');
-
-    $this->actingAs($user)
-        ->get(route('monthly-summaries.show', $user->monthlySummaries()->first()))
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('achievements', null));
 });
 
 it('drops the block when the month earned nothing and every next medal is already within reach', function (): void {

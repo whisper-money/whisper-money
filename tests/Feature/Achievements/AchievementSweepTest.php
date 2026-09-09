@@ -1,10 +1,8 @@
 <?php
 
 use App\Enums\CategoryType;
-use App\Features\Achievements;
 use App\Jobs\Drip\SendAchievementsEmailJob;
 use App\Models\Account;
-use App\Models\Achievement;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
@@ -14,7 +12,6 @@ use App\Services\Achievements\Awarder;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
 
 /*
  * The sweep, end to end: real transactions in, rows out, and who gets told.
@@ -172,32 +169,7 @@ it('measures a reader in a currency it has no ladder for against the fallback', 
     expect($medal?->currency_code)->toBe('USD');
 });
 
-it('only sweeps a reader the feature is on for', function (): void {
-    config()->set('achievements.enabled', false);
-    $user = reader();
-    recordMonth($user, now()->subMonths(3)->format('Y-m'), 300000, 150000);
-
-    $this->artisan('achievements:sweep', ['--user' => $user->email])->assertSuccessful();
-
-    expect(Achievement::query()->count())->toBe(0);
-
-    // Pennant stored the "off" it resolved a moment ago, so turning the config
-    // on only reaches a scope that has not been resolved yet — the same step
-    // the rollout has to take in production.
-    config()->set('achievements.enabled', true);
-    Feature::purge(Achievements::class);
-
-    $this->artisan('achievements:sweep', ['--user' => $user->email])->assertSuccessful();
-
-    expect(Achievement::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
-});
-
 it('records nothing when a foreign balance cannot be converted', function (): void {
-    // The command is the subject here, and it walks past a reader the medals
-    // are off for without a word, so the flag has to be on for the skip to be
-    // the thing under test rather than the flag.
-    config()->set('achievements.enabled', true);
-
     // No rate for the day, and neither the CDN nor the mirror behind it can be
     // reached for one. Both hosts, because an unfaked URL is fetched for real:
     // faking only the CDN left the test asking the network for a BTC rate and

@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Features\Achievements;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Laravel\Pennant\Feature;
 
 /**
  * "Not now" on the prompt that asks a reader to categorize the month.
@@ -24,8 +22,6 @@ class UncategorizedPromptController extends Controller
 
     public function __invoke(Request $request): JsonResponse
     {
-        abort_unless(Feature::active(Achievements::class), 404);
-
         $user = $request->user();
         $user->uncategorized_prompt_snoozed_until = now()->addDays(self::SNOOZE_DAYS);
         $user->save();
