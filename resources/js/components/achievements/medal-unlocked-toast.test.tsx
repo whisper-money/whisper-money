@@ -127,7 +127,7 @@ describe('MedalUnlockedToast', () => {
         expect(localStorage.getItem(MEDAL_SEEN_KEY)).toBeNull();
     });
 
-    it('says nothing with the feature switched off', async () => {
+    it('says nothing with no challenges at all', async () => {
         await mountShell(null);
 
         await waitFor(() => expect(announced()).toBeNull());

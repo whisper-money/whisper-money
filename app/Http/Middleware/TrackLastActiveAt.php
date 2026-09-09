@@ -2,13 +2,11 @@
 
 namespace App\Http\Middleware;
 
-use App\Features\Achievements;
 use App\Models\User;
 use App\Services\Achievements\Awarder;
 use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Http\Request;
-use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -90,7 +88,7 @@ class TrackLastActiveAt
      */
     private function award(User $user): void
     {
-        if ($user->onboarded_at === null || ! Feature::for($user)->active(Achievements::class)) {
+        if ($user->onboarded_at === null) {
             return;
         }
 
