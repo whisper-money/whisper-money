@@ -313,19 +313,31 @@ it('measures a visit streak by the longest run, which is what the medal is award
     expect($medal['progress'])->toBe(['now' => 2, 'goal' => 3, 'unlocking' => false]);
 });
 
-it('says a medal unlocks tonight once the reader is already past it', function (): void {
+it('says a medal unlocks tonight for a reader the sweep has never been through', function (): void {
     $user = readerWithMedals(0);
     $user->forceFill(['longest_visit_streak' => 35])->saveQuietly();
 
-    collect(['visits.1', 'visits.2'])->each(fn (string $key) => Achievement::factory()->key($key)->create([
-        'user_id' => $user->id,
-        'space_id' => $user->activeSpace()->id,
-    ]));
+    // No medals at all is a reader the sweep has never run for, and its first
+    // pass is the one that reads a whole life and announces itself once. The
+    // visit award stays out of its way, so the rung is still standing here
+    // waiting for tonight — which is what every other track looks like.
+    $medal = medalsIn(progressProps($user))->firstWhere('key', 'visits.1');
 
-    // Thirty days crossed today, with the sweep that awards it still hours off.
-    $medal = medalsIn(progressProps($user))->firstWhere('key', 'visits.3');
+    expect($medal['progress'])->toBe(['now' => 35, 'goal' => 3, 'unlocking' => true]);
+});
 
-    expect($medal['progress'])->toBe(['now' => 35, 'goal' => 30, 'unlocking' => true]);
+it('hands a run its medals on the request that earns them, not on the sweep', function (): void {
+    $user = readerWithMedals(1);
+    $user->forceFill(['longest_visit_streak' => 35])->saveQuietly();
+
+    // Thirty days crossed: every visit rung up to it is on the shelf by the
+    // time the screen renders, and the hundred-day one is what is left to
+    // chase. Nothing here waited for the small hours.
+    $next = medalsIn(progressProps($user))->firstWhere('key', 'visits.4');
+
+    expect($user->achievements()->pluck('key')->all())
+        ->toContain('visits.1', 'visits.2', 'visits.3');
+    expect($next['progress'])->toBe(['now' => 35, 'goal' => 100, 'unlocking' => false]);
 });
 
 it('counts the transactions a reader recorded in closed months', function (): void {

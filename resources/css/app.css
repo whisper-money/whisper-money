@@ -116,6 +116,15 @@
     --medal-gold: oklch(0.52 0.12 72);
     --medal-obsidian: oklch(0.45 0.075 74);
 
+    /* The visit streak pill in the header, struck in the same chroma family as
+       the copper/gold medals so the chrome reads as one set of colours. */
+    --streak-fill: oklch(0.968 0.028 72);
+    --streak-border: oklch(0.885 0.075 70);
+    --streak-track: oklch(0.93 0.035 74);
+    --streak-from: oklch(0.72 0.16 52);
+    --streak-to: oklch(0.63 0.19 34);
+    --streak-ink: oklch(0.46 0.12 40);
+
     --radius: 0.625rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
@@ -151,6 +160,12 @@
     --medal-steel: oklch(0.8 0.012 252);
     --medal-gold: oklch(0.84 0.13 90);
     --medal-obsidian: oklch(0.84 0.13 90);
+    --streak-fill: oklch(0.3 0.055 55);
+    --streak-border: oklch(0.44 0.09 55);
+    --streak-track: oklch(0.36 0.055 58);
+    --streak-from: oklch(0.8 0.15 66);
+    --streak-to: oklch(0.72 0.18 44);
+    --streak-ink: oklch(0.9 0.1 78);
     --chart-1: var(--color-zinc-200);
     --chart-2: var(--color-zinc-300);
     --chart-3: var(--color-zinc-400);
@@ -388,6 +403,226 @@
 
     .unlock-icon-pulse {
         animation: icon-pulse 2s ease-in-out infinite;
+    }
+
+    /*
+     * The visit streak pill.
+     *
+     * Two registers. The flame flickers and the halo breathes for as long as
+     * the pill is on screen, which is what makes a run look alive rather than
+     * counted. On top of that the `-flare` / `-burst` / `streak-pop` variants
+     * play once, the morning the run went up; they restate the resting
+     * animation after their own delay so the flame settles back into its
+     * flicker instead of freezing.
+     *
+     * Everything here is switched off wholesale for a reader who asked for
+     * less motion — see the media query at the end of the block. A pill that
+     * moves forever in the app chrome is exactly what that setting is for.
+     */
+    @keyframes streak-flicker {
+        0%,
+        100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 0.92;
+        }
+        42% {
+            transform: scale(1.16) rotate(-4deg);
+            opacity: 1;
+        }
+        68% {
+            transform: scale(1.04) rotate(3deg);
+            opacity: 0.96;
+        }
+    }
+
+    @keyframes streak-glow {
+        0%,
+        100% {
+            opacity: 0.28;
+            transform: scale(0.86);
+        }
+        50% {
+            opacity: 0.7;
+            transform: scale(1.18);
+        }
+    }
+
+    /* The ring drawing itself up to its percentage. `--streak-dash` is the
+       struck length the component already computes for `stroke-dasharray`. */
+    @keyframes streak-draw {
+        from {
+            stroke-dashoffset: var(--streak-dash);
+        }
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    @keyframes streak-flare {
+        0% {
+            transform: scale(1) rotate(0deg);
+        }
+        35% {
+            transform: scale(1.75) rotate(-8deg);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(1) rotate(0deg);
+        }
+    }
+
+    @keyframes streak-burst {
+        0% {
+            opacity: 0.35;
+            transform: scale(0.8);
+        }
+        40% {
+            opacity: 0.95;
+            transform: scale(2.1);
+        }
+        100% {
+            opacity: 0.28;
+            transform: scale(0.86);
+        }
+    }
+
+    /* The new number arriving from below, the way a counter rolls over. */
+    @keyframes streak-pop {
+        0% {
+            transform: translateY(60%) scale(0.7);
+            opacity: 0;
+        }
+        55% {
+            transform: translateY(0) scale(1.4);
+            opacity: 1;
+        }
+        100% {
+            transform: none;
+        }
+    }
+
+    .streak-flame {
+        transform-origin: center;
+        animation: streak-flicker 1.9s ease-in-out infinite;
+    }
+
+    .streak-halo {
+        animation: streak-glow 2.6s ease-in-out infinite;
+    }
+
+    .streak-ring {
+        animation: streak-draw 0.9s cubic-bezier(0.22, 0.9, 0.3, 1);
+    }
+
+    /* The celebration variants replace the resting class rather than stacking
+       on it — two animations driving one transform fight — and hand the
+       element back to its resting loop once they are done. */
+    .streak-flame-flare {
+        animation:
+            streak-flare 0.9s cubic-bezier(0.22, 0.9, 0.3, 1),
+            streak-flicker 1.9s ease-in-out 0.9s infinite;
+    }
+
+    .streak-halo-burst {
+        animation:
+            streak-burst 0.9s cubic-bezier(0.22, 0.9, 0.3, 1),
+            streak-glow 2.6s ease-in-out 0.9s infinite;
+    }
+
+    .streak-count-pop {
+        display: inline-block;
+        animation: streak-pop 0.7s cubic-bezier(0.22, 0.9, 0.3, 1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .streak-chip,
+        .streak-chip * {
+            animation: none !important;
+        }
+    }
+
+    /*
+     * A medal being struck, for the toast that announces one.
+     *
+     * Visit medals land on the request that earns them rather than overnight,
+     * so there is a moment to mark: the medal turns into place, a sweep of
+     * light crosses it and the warmth behind it flares out once. It plays a
+     * single time and the toast is gone ten seconds later.
+     */
+    @keyframes medal-strike {
+        0% {
+            transform: perspective(400px) rotateY(-180deg) scale(0.4);
+            opacity: 0;
+        }
+        45% {
+            transform: perspective(400px) rotateY(0deg) scale(1.25);
+            opacity: 1;
+        }
+        70% {
+            transform: perspective(400px) rotateY(0deg) scale(0.94);
+        }
+        100% {
+            transform: none;
+        }
+    }
+
+    @keyframes medal-shine {
+        0%,
+        14% {
+            opacity: 0;
+            transform: translateX(-150%) skewX(-18deg);
+        }
+        45% {
+            opacity: 1;
+        }
+        78%,
+        100% {
+            opacity: 0;
+            transform: translateX(150%) skewX(-18deg);
+        }
+    }
+
+    @keyframes medal-burst {
+        0% {
+            opacity: 0;
+            transform: scale(0.4);
+        }
+        35% {
+            opacity: 0.8;
+            transform: scale(1.55);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(2.2);
+        }
+    }
+
+    .medal-strike {
+        animation: medal-strike 0.85s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+    }
+
+    .medal-shine {
+        animation: medal-shine 1.4s ease-in-out 0.25s both;
+    }
+
+    .medal-burst {
+        animation: medal-burst 1.1s ease-out both;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        /* The medal still arrives, it just stops performing: `both` would
+           otherwise leave the burst frozen on its last frame, invisible, and
+           the medal frozen on its first, turned edge-on and gone. */
+        .medal-strike,
+        .medal-shine,
+        .medal-burst {
+            animation: none !important;
+        }
+
+        .medal-shine,
+        .medal-burst {
+            display: none;
+        }
     }
 }
 

@@ -2,11 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Features\Achievements;
 use App\Models\User;
+use App\Services\Achievements\Awarder;
 use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class TrackLastActiveAt
 {
@@ -15,41 +19,95 @@ class TrackLastActiveAt
      */
     private const THROTTLE_SECONDS = 300;
 
+    public function __construct(private Awarder $awarder) {}
+
     /**
      * Handle an incoming request.
+     *
+     * Before the response, not after it. The shared Inertia props are closures
+     * the renderer calls further down the stack, so a run carried forward here
+     * is the run the page is drawn with — the reader sees the day they are on,
+     * and the medal it just earned, on the request that earned it rather than
+     * on the next one.
      *
      * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
-
         $user = $request->user();
 
         if ($user instanceof User) {
-            $lastActiveAt = $user->last_active_at;
-
-            // A new day is always written, however recent the last write: the
-            // day is what a visit streak counts, and someone who comes back a
-            // minute after midnight has started a new one.
-            if ($lastActiveAt === null
-                || ! $this->sameSpan($user, $lastActiveAt, now(), 'day')
-                || $lastActiveAt->lte(now()->subSeconds(self::THROTTLE_SECONDS))) {
-                $this->carryStreak($user, $lastActiveAt, 'day', 'visit_streak', 'longest_visit_streak');
-                $this->carryStreak($user, $lastActiveAt, 'week', 'visit_week_streak', 'longest_visit_week_streak');
-                $user->last_active_at = now();
-                $user->saveQuietly();
-            }
+            $this->track($user);
         }
 
-        return $response;
+        return $next($request);
+    }
+
+    private function track(User $user): void
+    {
+        $lastActiveAt = $user->last_active_at;
+
+        // A new day is always written, however recent the last write: the day
+        // is what a visit streak counts, and someone who comes back a minute
+        // after midnight has started a new one.
+        if ($lastActiveAt !== null
+            && $this->sameSpan($user, $lastActiveAt, now(), 'day')
+            && $lastActiveAt->gt(now()->subSeconds(self::THROTTLE_SECONDS))) {
+            return;
+        }
+
+        $before = $this->runs($user);
+
+        $this->carryStreak($user, $lastActiveAt, 'day', 'visit_streak', 'longest_visit_streak');
+        $this->carryStreak($user, $lastActiveAt, 'week', 'visit_week_streak', 'longest_visit_week_streak');
+        $user->last_active_at = now();
+        $user->saveQuietly();
+
+        if ($this->runs($user) !== $before) {
+            $this->award($user);
+        }
+    }
+
+    /**
+     * Both runs as they stand, which is the whole of what a visit medal is
+     * judged on: unchanged means there is nothing new to award.
+     *
+     * @return array{int, int}
+     */
+    private function runs(User $user): array
+    {
+        return [(int) $user->longest_visit_streak, (int) $user->longest_visit_week_streak];
+    }
+
+    /**
+     * The medal a run just reached, settled now instead of overnight.
+     *
+     * Cheap enough to sit on a request — one read of the reader's own medal
+     * keys against a catalog held in memory, and at most one insert — and only
+     * reached on the first request of a new day, which is the only time a run
+     * moves. A reader still onboarding is left to the sweep, the way every
+     * other medal is.
+     */
+    private function award(User $user): void
+    {
+        if ($user->onboarded_at === null || ! Feature::for($user)->active(Achievements::class)) {
+            return;
+        }
+
+        try {
+            $this->awarder->awardVisitRuns($user);
+        } catch (Throwable $exception) {
+            // Never at the cost of the page the reader actually asked for: the
+            // sweep will find the same medal tonight.
+            report($exception);
+        }
     }
 
     /**
      * Carries one run forward: one more when the span before this one counted,
      * one when the run is broken or has never started. The longest is kept
-     * alongside it, because the nightly sweep is what turns a run into a medal
-     * and a peak between two sweeps still happened.
+     * alongside it, because that is what a medal is judged on: a run that
+     * peaked and broke before anyone looked still happened.
      */
     private function carryStreak(User $user, ?CarbonInterface $lastActiveAt, string $unit, string $current, string $longest): void
     {

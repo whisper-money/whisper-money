@@ -1,7 +1,12 @@
 import { initializeTheme } from '@/hooks/use-appearance';
 import { initializeChartColorScheme } from '@/hooks/use-chart-color-scheme';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { readStoredValue, writeStoredValue } from './safe-storage';
+import {
+    readOwnedValue,
+    readStoredValue,
+    writeOwnedValue,
+    writeStoredValue,
+} from './safe-storage';
 
 const realStorage = Object.getOwnPropertyDescriptor(
     window,
@@ -104,5 +109,32 @@ describe('boot initializers', () => {
         initializeTheme();
 
         expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+});
+
+describe('per-user values', () => {
+    it('reads back what the same user wrote', () => {
+        writeOwnedValue('medal-seen', 'user-1', 'visits.3');
+
+        expect(readOwnedValue('medal-seen', 'user-1')).toBe('visits.3');
+    });
+
+    it('reads nothing for a different user on the same browser', () => {
+        // A household laptop, or a demo account opened beside a real one:
+        // replaying somebody else's moment is worse than replaying none.
+        writeOwnedValue('medal-seen', 'user-1', 'visits.3');
+
+        expect(readOwnedValue('medal-seen', 'user-2')).toBeNull();
+    });
+
+    it('reads nothing when nothing was ever written', () => {
+        expect(readOwnedValue('medal-seen', 'user-1')).toBeNull();
+    });
+
+    it('keeps a value that contains the separator whole', () => {
+        // Only the first separator divides owner from value.
+        writeOwnedValue('note', 'user-1', 'a:b:c');
+
+        expect(readOwnedValue('note', 'user-1')).toBe('a:b:c');
     });
 });
