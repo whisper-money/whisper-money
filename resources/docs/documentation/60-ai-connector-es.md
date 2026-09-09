@@ -41,8 +41,8 @@ la práctica:
 - Tú decides cuándo existe la conexión. No hay nada conectado hasta que lo
   conectas, y quitarlo corta el acceso al instante.
 
-Whisper Money expone 32 de esas preguntas y acciones, llamadas herramientas: 11
-que leen tus datos y 21 que los modifican. El asistente elige las que necesita
+Whisper Money expone 34 de esas preguntas y acciones, llamadas herramientas: 11
+que leen tus datos y 23 que los modifican. El asistente elige las que necesita
 por su cuenta; tú escribes en lenguaje normal.
 
 ## Qué le puedes pedir
@@ -189,17 +189,41 @@ no depende del listado.
 
 Este es el que hay que usar si quieres todo lo que el conector puede hacer hoy.
 
-El listado aprobado se actualiza despacio. Una herramienta que ya funciona aquí
-puede tardar semanas en aparecer en él, así que los dos caminos no siempre
-ofrecen lo mismo: un conector personalizado apunta directamente a nuestro
-servidor y tiene siempre la versión actual, mientras que el listado del
-directorio es simplemente el más cómodo.
+El listado del directorio va unas 2-3 semanas por detrás del conector
+personalizado, porque cada actualización tiene que pasar por la revisión de
+OpenAI antes de publicarse. Los dos caminos no siempre ofrecen lo mismo: un
+conector personalizado apunta directamente a nuestro servidor y tiene siempre la
+versión actual, mientras que el listado del directorio es simplemente el más
+cómodo.
 
 1. Activa el modo desarrollador: **Ajustes → Seguridad e inicio de sesión → Modo
    desarrollador**.
 2. En **Plugins**, haz clic en el botón **+** de arriba a la derecha.
 3. Ponle un nombre y pega la misma URL que termina en `/mcp/oauth`.
 4. Aprueba la conexión en la pantalla de Whisper Money que se abre.
+
+### Actualizar un conector personalizado
+
+Un conector personalizado en modo desarrollador se queda con la lista de
+herramientas que vio el día que lo añadiste. Cuando publicamos una herramienta
+nueva no aparece por su cuenta: tienes que pedirle a ChatGPT que vuelva a leer
+la lista.
+
+1. Abre en ChatGPT la página del conector que añadiste y haz clic en el botón
+   **...** que hay al lado de **Probar en el chat**, arriba a la derecha. Se
+   abren los ajustes del conector. También llegas al mismo panel desde
+   **Ajustes → Complementos**, eligiéndolo en la lista.
+2. Baja por el panel, más allá de los esquemas de las herramientas, hasta la
+   sección **Información**.
+3. Haz clic en **Actualizar**, al lado del título. La lista se vuelve a leer de
+   nuestro servidor y las herramientas nuevas aparecen arriba.
+
+Esa misma sección es donde compruebas a qué estás conectado: la URL, el nombre
+de la versión (`dev mode`) y la fecha en que se hizo la conexión. Si tienes
+conectada también la app del directorio, el nombre de la versión es lo que te
+permite distinguirlas.
+
+![Actualizar un conector personalizado en ChatGPT: abrir sus ajustes desde el botón de puntos de la página del conector, bajar hasta la sección Información y pulsar Actualizar](/docs/documentation/chatgpt-refresh-connector.mp4)
 
 ## Conectar Claude Code
 

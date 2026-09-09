@@ -36,8 +36,8 @@ means in practice:
 - You decide when the connection exists. Nothing is connected until you connect
   it, and removing it cuts access off at once.
 
-Whisper Money exposes 32 of these questions and actions, called tools: 11 that
-read your data and 21 that change it. The assistant picks the ones it needs on
+Whisper Money exposes 34 of these questions and actions, called tools: 11 that
+read your data and 23 that change it. The assistant picks the ones it needs on
 its own; you write in plain language.
 
 ## What you can ask for
@@ -182,15 +182,37 @@ instead. It does not depend on the listing.
 
 This is the one to use if you want everything the connector can do today.
 
-The approved listing updates slowly. A tool that already works here can take
-weeks to appear in it, so the two paths do not always offer the same thing: a
-custom connector points straight at our server and always has the current
-version, while the directory listing is simply the more convenient one.
+The directory listing runs about 2-3 weeks behind the custom connector, because
+every update has to go through OpenAI's review before it is published. The two
+paths do not always offer the same thing: a custom connector points straight at
+our server and always has the current version, while the directory listing is
+simply the more convenient one.
 
 1. Turn on developer mode: **Settings → Security and login → Developer mode**.
 2. In **Plugins**, click the **+** button in the top right.
 3. Give it a name and paste the same URL ending in `/mcp/oauth`.
 4. Approve the connection on the Whisper Money screen that opens.
+
+### Refreshing a custom connector
+
+A custom connector in developer mode keeps the tool list it saw on the day you
+added it. When we publish a new tool it does not turn up on its own: you have
+to ask ChatGPT to read the list again.
+
+1. Open the page of the connector you added in ChatGPT and click the **...**
+   button next to **Try in chat**, in the top right. That opens the connector's
+   settings. You can also reach the same panel from **Settings → Apps and
+   connectors**, picking it from the list there.
+2. Scroll the panel down, past the tool schemas, to the **Information** section.
+3. Click **Refresh**, next to the heading. The list is read again from our
+   server and the new tools appear above.
+
+That same section is where you check what you are connected to: the URL, the
+version name (`dev mode`), and the date the connection was made. If you have
+the directory app connected as well, the version name is how you tell the two
+apart.
+
+![Refreshing a custom connector in ChatGPT: opening its settings from the dots button on the connector's page, scrolling down to the Information section and clicking Refresh](/docs/documentation/chatgpt-refresh-connector.mp4)
 
 ## Connect Claude Code
 
