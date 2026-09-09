@@ -116,7 +116,7 @@ class UpdateAccount extends WriteTool
 
         if ($requestedType !== null && ! $requestedType->canSyncBankTransactions()) {
             throw ValidationException::withMessages([
-                'type' => "That account is connected to a bank, and a {$requestedType->value} account keeps a balance rather than a transaction ledger, so the sync would have nowhere to write and would silently stop. Only checking, credit_card, savings and others are possible here.",
+                'type' => "That account is connected to a bank, so its type has to keep a transaction ledger: only checking, credit_card, savings and others do. A balance-only type like {$requestedType->value} would leave the sync nowhere to write, and it would silently stop.",
             ]);
         }
     }
