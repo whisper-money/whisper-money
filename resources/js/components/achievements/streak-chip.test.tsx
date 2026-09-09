@@ -1,7 +1,7 @@
 import { type ChallengeMedal, type Challenges } from '@/types';
 import { render, screen } from '@testing-library/react';
-import { type ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { StrictMode, type ReactNode } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StreakChip } from './streak-chip';
 
 /*
@@ -11,10 +11,21 @@ import { StreakChip } from './streak-chip';
  * towards the next rung, the real medal in the ring's place while the sweep
  * catches up, and a full ring for a reader with nothing left to reach. A reader
  * with no live run gets no pill at all — there is nothing to keep.
+ *
+ * The fourth thing under test is the celebration: the pill flares only when the
+ * run has grown past the last number this device saw for *this* user, and never
+ * on a device that has never seen one.
  */
 
+const USER_ID = 'a1b2c3d4';
+const STREAK_SEEN_KEY = 'streak-seen';
+
 const page = vi.hoisted(() => ({
-    props: {} as { challenges: Challenges | null; locale: string },
+    props: {} as {
+        auth: { user: { id: string } };
+        challenges: Challenges | null;
+        locale: string;
+    },
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -39,7 +50,11 @@ function medal(overrides: Partial<ChallengeMedal> = {}): ChallengeMedal {
 }
 
 function draw(challenges: Challenges | null) {
-    page.props = { challenges, locale: 'en-US' };
+    page.props = {
+        auth: { user: { id: USER_ID } },
+        challenges,
+        locale: 'en-US',
+    };
 
     return render(<StreakChip />);
 }
@@ -71,6 +86,14 @@ function ringFill(container: HTMLElement): number | null {
 /** The medallion itself, which the ring is never mistaken for: it is bigger. */
 const medallion = (container: HTMLElement) =>
     container.querySelector('svg[viewBox="0 0 48 48"]');
+
+/** Whether the one-off "+1" flare is on, rather than the resting flicker. */
+const celebrating = (container: HTMLElement) =>
+    container.querySelector('.streak-flame-flare') !== null;
+
+beforeEach(() => {
+    localStorage.clear();
+});
 
 describe('StreakChip', () => {
     it('is not drawn at all with the feature switched off', () => {
@@ -126,7 +149,11 @@ describe('StreakChip', () => {
 
         expect(medallion(container)).not.toBeNull();
         expect(ringFill(container)).toBeNull();
-        expect(container.querySelector('button')).toHaveClass('bg-muted');
+        // The warm skin is the pill's own and does not change with the state:
+        // it is the medal, not a fill, that marks this one out.
+        expect(container.querySelector('button')).toHaveClass(
+            'bg-[var(--streak-fill)]',
+        );
     });
 
     it('fills the ring for a reader past the last rung', () => {
@@ -137,5 +164,112 @@ describe('StreakChip', () => {
         expect(screen.getByText('400')).toBeInTheDocument();
         expect(ringFill(container)).toBe(100);
         expect(medallion(container)).toBeNull();
+    });
+
+    it('plays the entrance once per page load, not on every visit', async () => {
+        // No screen keeps the header across an Inertia visit, so the pill
+        // remounts on every click. A plain mount animation would replay the
+        // entrance each time; a fresh module is a fresh page load.
+        vi.resetModules();
+        const { StreakChip: Fresh } = await import('./streak-chip');
+
+        page.props = {
+            auth: { user: { id: USER_ID } },
+            challenges: chip(),
+            locale: 'en-US',
+        };
+
+        const first = render(<Fresh />);
+
+        expect(first.container.querySelector('button')).toHaveClass(
+            'animate-in',
+        );
+        expect(first.container.querySelector('.streak-ring')).not.toBeNull();
+
+        first.unmount();
+
+        const second = render(<Fresh />);
+
+        expect(second.container.querySelector('button')).not.toHaveClass(
+            'animate-in',
+        );
+        expect(second.container.querySelector('.streak-ring')).toBeNull();
+    });
+
+    it('does not celebrate on a device that has never seen this run', () => {
+        // Nothing stored: the reader may have been on this run for weeks, and
+        // cheering it now would be a lie.
+        const { container } = draw(chip());
+
+        expect(celebrating(container)).toBe(false);
+        expect(localStorage.getItem(STREAK_SEEN_KEY)).toBe(`${USER_ID}:12`);
+    });
+
+    it('celebrates once when the run has grown since the last visit', () => {
+        localStorage.setItem(STREAK_SEEN_KEY, `${USER_ID}:11`);
+
+        const { container } = draw(chip());
+
+        expect(celebrating(container)).toBe(true);
+        expect(localStorage.getItem(STREAK_SEEN_KEY)).toBe(`${USER_ID}:12`);
+    });
+
+    it('survives an effect that runs twice for the same number', () => {
+        // StrictMode replays effects in development, and the effect reads the
+        // very value it then overwrites: a second pass must not talk itself out
+        // of the celebration the first one earned.
+        localStorage.setItem(STREAK_SEEN_KEY, `${USER_ID}:11`);
+        page.props = {
+            auth: { user: { id: USER_ID } },
+            challenges: chip(),
+            locale: 'en-US',
+        };
+
+        const { container } = render(
+            <StrictMode>
+                <StreakChip />
+            </StrictMode>,
+        );
+
+        expect(celebrating(container)).toBe(true);
+    });
+
+    it('does not celebrate the same number twice', () => {
+        // Which is what every navigation after the first one of the day is.
+        localStorage.setItem(STREAK_SEEN_KEY, `${USER_ID}:12`);
+
+        const { container } = draw(chip());
+
+        expect(celebrating(container)).toBe(false);
+    });
+
+    it('does not celebrate another account\u2019s number', () => {
+        // One browser, two logins: the number left behind by the other account
+        // says nothing about this one.
+        localStorage.setItem(STREAK_SEEN_KEY, 'someone-else:3');
+
+        const { container } = draw(chip());
+
+        expect(celebrating(container)).toBe(false);
+        expect(localStorage.getItem(STREAK_SEEN_KEY)).toBe(`${USER_ID}:12`);
+    });
+
+    it('celebrates a run restarted after a break', () => {
+        // The break stored a zero, so day one of the next run is a rise.
+        localStorage.setItem(STREAK_SEEN_KEY, `${USER_ID}:0`);
+
+        const { container } = draw(chip({ visit_streak: 1 }));
+
+        expect(celebrating(container)).toBe(true);
+    });
+
+    it('records the broken run so the next day reads as a rise', () => {
+        localStorage.setItem(STREAK_SEEN_KEY, `${USER_ID}:12`);
+
+        // No pill is drawn for a dead run, but the number is still the last one
+        // the reader saw: leaving 12 behind would swallow the whole next run.
+        draw(chip({ visit_streak: 0 }));
+
+        expect(localStorage.getItem(STREAK_SEEN_KEY)).toBe(`${USER_ID}:0`);
     });
 });
