@@ -18,8 +18,8 @@ vi.mock('@inertiajs/react', () => ({
 }));
 
 vi.mock('./bank-combobox', () => ({
-    BankCombobox: ({ clearable }: { clearable?: boolean }) => (
-        <div data-testid="bank-combobox" data-clearable={String(clearable)} />
+    BankCombobox: ({ disabled }: { disabled?: boolean }) => (
+        <div data-testid="bank-combobox" data-disabled={String(disabled)} />
     ),
 }));
 
@@ -52,9 +52,14 @@ describe('AccountForm', () => {
             ),
         ).toBeInTheDocument();
         expect(screen.getByTestId('bank-combobox')).toHaveAttribute(
-            'data-clearable',
-            'false',
+            'data-disabled',
+            'true',
         );
+        expect(
+            screen.getByText(
+                'A connected account keeps the bank of its connection.',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('leaves the currency and the bank open on a manual account', () => {
@@ -64,8 +69,13 @@ describe('AccountForm', () => {
 
         expect(currencySelect(container)).toBeEnabled();
         expect(screen.getByTestId('bank-combobox')).toHaveAttribute(
-            'data-clearable',
-            'true',
+            'data-disabled',
+            'false',
         );
+        expect(
+            screen.getByText(
+                'Leave empty for cash or any account without a bank.',
+            ),
+        ).toBeInTheDocument();
     });
 });

@@ -335,7 +335,9 @@ export function AccountForm({
 
             {!isRealEstate && (
                 <div className="space-y-2">
-                    <Label htmlFor="bank_id">{__('Bank (optional)')}</Label>
+                    <Label htmlFor="bank_id">
+                        {isConnected ? __('Bank') : __('Bank (optional)')}
+                    </Label>
                     <div className="mt-1">
                         {isCreatingCustomBank ? (
                             <CustomBankForm
@@ -359,16 +361,20 @@ export function AccountForm({
                                         initialValues?.bank ?? undefined
                                     }
                                     onCreateCustomBank={handleCreateCustomBank}
-                                    clearable={!isConnected}
+                                    disabled={isConnected}
                                 />
                             </>
                         )}
                     </div>
                     {!isCreatingCustomBank && (
                         <p className="pl-1 text-xs text-muted-foreground">
-                            {__(
-                                'Leave empty for cash or any account without a bank.',
-                            )}
+                            {isConnected
+                                ? __(
+                                      'A connected account keeps the bank of its connection.',
+                                  )
+                                : __(
+                                      'Leave empty for cash or any account without a bank.',
+                                  )}
                         </p>
                     )}
                 </div>

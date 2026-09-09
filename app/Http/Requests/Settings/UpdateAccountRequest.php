@@ -34,7 +34,7 @@ class UpdateAccountRequest extends FormRequest
 
         $rules = [
             'name' => ['required', 'string'],
-            'bank_id' => ['nullable', 'exists:banks,id'],
+            'bank_id' => $this->bankIdRules(),
             'currency_code' => [
                 'required',
                 'string',
@@ -63,6 +63,17 @@ class UpdateAccountRequest extends FormRequest
     }
 
     /**
+     * The account being updated, when the bank is the one that owns its shape.
+     * Null for a manual account, which the user owns end to end.
+     */
+    private function connectedAccount(): ?Account
+    {
+        $account = $this->route('account');
+
+        return $account instanceof Account && $account->isConnected() ? $account : null;
+    }
+
+    /**
      * The bank owns the currency of a connected account: everything already
      * synced is in it, so only the code it already has is accepted. A manual
      * account can move to any supported currency.
@@ -71,12 +82,26 @@ class UpdateAccountRequest extends FormRequest
      */
     private function allowedCurrencyCodes(): array
     {
-        $account = $this->route('account');
+        $account = $this->connectedAccount();
 
-        if ($account instanceof Account && $account->isConnected()) {
-            return [$account->currency_code];
-        }
+        return $account
+            ? [$account->currency_code]
+            : app(CurrencyOptions::class)->accountCodes();
+    }
 
-        return app(CurrencyOptions::class)->accountCodes();
+    /**
+     * A connected account inherits its bank from the connection, so it can
+     * neither be pointed at another one nor be cleared. Every path that
+     * connects an account gives it a bank, so requiring one is safe here.
+     *
+     * @return array<mixed>
+     */
+    private function bankIdRules(): array
+    {
+        $account = $this->connectedAccount();
+
+        return $account
+            ? ['required', Rule::in([$account->bank_id])]
+            : ['nullable', 'exists:banks,id'];
     }
 }

@@ -419,6 +419,55 @@ it('keeps the currency of a connected account', function () {
     ]);
 });
 
+it('keeps the bank of a connected account', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->connected()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking,
+    ]);
+    $otherBank = Bank::factory()->create();
+
+    $response = $this->patch(route('accounts.update', $account), [
+        'name' => 'Renamed',
+        'bank_id' => $otherBank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking->value,
+    ]);
+
+    $response->assertSessionHasErrors(['bank_id']);
+    assertDatabaseHas('accounts', [
+        'id' => $account->id,
+        'bank_id' => $this->bank->id,
+    ]);
+});
+
+it('refuses to clear the bank of a connected account', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->connected()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking,
+    ]);
+
+    $response = $this->patch(route('accounts.update', $account), [
+        'name' => 'Renamed',
+        'bank_id' => null,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking->value,
+    ]);
+
+    $response->assertSessionHasErrors(['bank_id']);
+    assertDatabaseHas('accounts', [
+        'id' => $account->id,
+        'bank_id' => $this->bank->id,
+    ]);
+});
+
 it('still updates a connected account when the currency is left alone', function () {
     actingAs($this->user);
 
