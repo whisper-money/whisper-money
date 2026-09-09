@@ -331,10 +331,17 @@ class AccountController extends Controller
 
     /**
      * Hard delete the specified account and cascade delete all transactions.
+     *
+     * A connected account has to be archived first: archiving detaches it from
+     * the bank and revokes the connection when it was the last account on it,
+     * which deleting does not do. Both menus hide the option, so this only
+     * catches a stale page or a hand-made request.
      */
     public function destroy(Account $account): RedirectResponse
     {
         $this->authorize('delete', $account);
+
+        abort_if($account->isConnected(), 403, __('Archive this account first: it is still connected to your bank.'));
 
         $account->transactions()->delete();
         $account->delete();

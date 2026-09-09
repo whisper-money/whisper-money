@@ -26,7 +26,7 @@ interface BankComboboxProps {
     onValueChange: (value: string | null) => void;
     defaultBank?: Bank;
     onCreateCustomBank?: (searchQuery: string) => void;
-    clearable?: boolean;
+    disabled?: boolean;
 }
 
 const bankCache = new Map<string, Bank[]>();
@@ -36,7 +36,7 @@ export function BankCombobox({
     onValueChange,
     defaultBank,
     onCreateCustomBank,
-    clearable = true,
+    disabled = false,
 }: BankComboboxProps) {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -114,6 +114,7 @@ export function BankCombobox({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
+                    disabled={disabled}
                     className="w-full justify-between"
                     data-testid="bank-select"
                 >
@@ -152,7 +153,7 @@ export function BankCombobox({
                                   ? __('Type at least 3 characters to search')
                                   : __('No bank found.')}
                         </CommandEmpty>
-                        {clearable && selectedBank && (
+                        {selectedBank && (
                             <>
                                 <CommandGroup>
                                     <CommandItem

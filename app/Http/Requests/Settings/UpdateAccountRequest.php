@@ -5,6 +5,7 @@ namespace App\Http\Requests\Settings;
 use App\Enums\AccountType;
 use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
+use App\Models\Account;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,15 +31,14 @@ class UpdateAccountRequest extends FormRequest
     public function rules(): array
     {
         $isRealEstate = $this->input('type') === AccountType::RealEstate->value;
-        $currencyOptions = app(CurrencyOptions::class);
 
         $rules = [
             'name' => ['required', 'string'],
-            'bank_id' => ['nullable', 'exists:banks,id'],
+            'bank_id' => $this->bankIdRules(),
             'currency_code' => [
                 'required',
                 'string',
-                Rule::in($currencyOptions->accountCodes()),
+                Rule::in($this->allowedCurrencyCodes()),
             ],
             'type' => [
                 'required',
@@ -60,5 +60,48 @@ class UpdateAccountRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * The account being updated, when the bank is the one that owns its shape.
+     * Null for a manual account, which the user owns end to end.
+     */
+    private function connectedAccount(): ?Account
+    {
+        $account = $this->route('account');
+
+        return $account instanceof Account && $account->isConnected() ? $account : null;
+    }
+
+    /**
+     * The bank owns the currency of a connected account: everything already
+     * synced is in it, so only the code it already has is accepted. A manual
+     * account can move to any supported currency.
+     *
+     * @return list<string>
+     */
+    private function allowedCurrencyCodes(): array
+    {
+        $account = $this->connectedAccount();
+
+        return $account
+            ? [$account->currency_code]
+            : app(CurrencyOptions::class)->accountCodes();
+    }
+
+    /**
+     * A connected account inherits its bank from the connection, so it can
+     * neither be pointed at another one nor be cleared. Every path that
+     * connects an account gives it a bank, so requiring one is safe here.
+     *
+     * @return array<mixed>
+     */
+    private function bankIdRules(): array
+    {
+        $account = $this->connectedAccount();
+
+        return $account
+            ? ['required', Rule::in([$account->bank_id])]
+            : ['nullable', 'exists:banks,id'];
     }
 }

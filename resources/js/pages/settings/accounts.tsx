@@ -53,6 +53,11 @@ import { type Account, formatAccountType } from '@/types/account';
  * This settings list is the one place an archived account stays visible, so it
  * can be brought back. Restoring needs no warning; archiving explains itself in
  * ArchiveAccountDialog first.
+ *
+ * Deleting is offered on manual accounts only, matching the account page: a
+ * connected one has to be archived first, which is what detaches it from the
+ * bank and revokes the connection. Archiving clears the connection, so an
+ * archived account can then be deleted from here.
  */
 function unarchive(account: Account) {
     router.patch(
@@ -100,12 +105,14 @@ function AccountActions({
                             {__('Archive')}
                         </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem
-                        onClick={() => setDeleteOpen(true)}
-                        className="text-red-600"
-                    >
-                        {__('Delete')}
-                    </DropdownMenuItem>
+                    {!account.banking_connection_id && (
+                        <DropdownMenuItem
+                            onClick={() => setDeleteOpen(true)}
+                            className="text-red-600"
+                        >
+                            {__('Delete')}
+                        </DropdownMenuItem>
+                    )}
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -182,12 +189,14 @@ function AccountRow({
                             {__('Archive')}
                         </ContextMenuItem>
                     )}
-                    <ContextMenuItem
-                        onClick={() => setDeleteOpen(true)}
-                        className="text-red-600"
-                    >
-                        {__('Delete')}
-                    </ContextMenuItem>
+                    {!account.banking_connection_id && (
+                        <ContextMenuItem
+                            onClick={() => setDeleteOpen(true)}
+                            className="text-red-600"
+                        >
+                            {__('Delete')}
+                        </ContextMenuItem>
+                    )}
                 </ContextMenuContent>
             </ContextMenu>
 
