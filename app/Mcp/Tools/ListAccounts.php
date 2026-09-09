@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Tools\Concerns\PresentsAccounts;
 use App\Models\Account;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -14,6 +15,8 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[Description('List the user\'s accounts in a space, including whether each is connected to a bank/provider (connected accounts accept manual transactions but not manual balances).')]
 class ListAccounts extends McpTool
 {
+    use PresentsAccounts;
+
     /**
      * @return array<string, mixed>
      */
@@ -33,15 +36,7 @@ class ListAccounts extends McpTool
             ->with('bank:id,name')
             ->orderBy('name')
             ->get()
-            ->map(fn (Account $account): array => [
-                'id' => $account->id,
-                'name' => $account->name,
-                'type' => $account->type->value,
-                'currency' => $account->currency_code,
-                'bank' => $account->bank?->name,
-                'is_connected' => $account->isConnected(),
-                'ownership_percentage' => $account->ownership_percentage,
-            ]);
+            ->map(fn (Account $account): array => $this->presentAccount($account));
 
         return $this->json([
             'space_id' => $space->id,

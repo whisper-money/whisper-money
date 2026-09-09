@@ -1,13 +1,17 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
 use App\Features\SplitTransactions;
 use App\Jobs\ApplySingleAutomationRuleJob;
+use App\Jobs\GenerateHistoricalLoanBalancesJob;
+use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\ApplyAutomationRule;
 use App\Mcp\Tools\CategorizeTransaction;
+use App\Mcp\Tools\CreateAccount;
 use App\Mcp\Tools\CreateAutomationRule;
 use App\Mcp\Tools\CreateBalance;
 use App\Mcp\Tools\CreateBudget;
@@ -23,6 +27,7 @@ use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SplitTransaction;
+use App\Mcp\Tools\UpdateAccount;
 use App\Mcp\Tools\UpdateAutomationRule;
 use App\Mcp\Tools\UpdateBudget;
 use App\Mcp\Tools\UpdateCategory;
@@ -30,13 +35,16 @@ use App\Mcp\Tools\UpdateLabel;
 use App\Mcp\Tools\UpdateTransaction;
 use App\Models\Account;
 use App\Models\AutomationRule;
+use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
+use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleApplier;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Laravel\Mcp\Server\Testing\TestResponse;
 use Laravel\Pennant\Feature;
 
@@ -1218,4 +1226,352 @@ it('lets an archived catch-all budget be replaced', function () {
     ])->assertOk();
 
     expect($user->budgets()->notArchived()->where('is_catch_all', true)->count())->toBe(1);
+});
+
+it('creates a manual account with a balance for today', function () {
+    $user = User::factory()->create();
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Rainy day savings',
+        'type' => 'savings',
+        'currency_code' => 'EUR',
+        'balance' => 250_000,
+    ])->assertOk()->assertSee('Rainy day savings');
+
+    $account = $user->accounts()->sole();
+
+    expect($account->type)->toBe(AccountType::Savings)
+        ->and($account->currency_code)->toBe('EUR')
+        ->and($account->isConnected())->toBeFalse()
+        ->and($account->space_id)->toBe($user->personalSpace->id)
+        ->and($account->balances()->where('balance_date', now()->toDateString())->value('balance'))->toBe(250_000);
+
+    // The first account is also what the user's own currency is read from.
+    expect($user->fresh()->currency_code)->toBe('EUR');
+});
+
+it('creates a loan with its details and backfills the balance history', function () {
+    Queue::fake();
+
+    $user = User::factory()->create();
+    Account::factory()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Mortgage',
+        'type' => 'loan',
+        'currency_code' => 'EUR',
+        'balance' => 15_000_000,
+        'annual_interest_rate' => 2.5,
+        'loan_term_months' => 360,
+        'original_amount' => 20_000_000,
+        'loan_start_date' => now()->subYears(3)->toDateString(),
+    ])->assertOk()->assertSee('Mortgage');
+
+    $loan = $user->accounts()->where('type', 'loan')->sole();
+
+    expect($loan->loanDetail)->not->toBeNull()
+        ->and((int) $loan->loanDetail->loan_term_months)->toBe(360)
+        ->and((int) $loan->loanDetail->original_amount)->toBe(20_000_000);
+
+    // The last twelve months are generated inline so the chart is populated on
+    // the next render, and the three years behind them go on the queue.
+    expect($loan->balances()->where('balance_date', '>=', now()->subMonths(12)->startOfMonth()->toDateString())->count())
+        ->toBeGreaterThan(1);
+    Queue::assertPushed(GenerateHistoricalLoanBalancesJob::class);
+});
+
+it('creates a property with its details and backfills the value history', function () {
+    Queue::fake();
+
+    $user = User::factory()->create();
+    Account::factory()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'The flat',
+        'type' => 'real_estate',
+        'currency_code' => 'EUR',
+        'balance' => 30_000_000,
+        'property_type' => 'residential',
+        'purchase_price' => 24_000_000,
+        'purchase_date' => now()->subYears(4)->toDateString(),
+        'area_value' => 85.5,
+        'area_unit' => 'sqm',
+    ])->assertOk()->assertSee('The flat');
+
+    $property = $user->accounts()->where('type', 'real_estate')->sole();
+
+    expect($property->realEstateDetail)->not->toBeNull()
+        ->and($property->realEstateDetail->property_type->value)->toBe('residential')
+        ->and((int) $property->realEstateDetail->purchase_price)->toBe(24_000_000);
+
+    expect($property->balances()->count())->toBeGreaterThan(1);
+    Queue::assertPushed(GenerateHistoricalRealEstateBalancesJob::class);
+});
+
+it('links a new loan to the property it is the mortgage of', function () {
+    $user = User::factory()->create();
+    $property = Account::factory()->create(['user_id' => $user->id, 'type' => 'real_estate']);
+    $property->realEstateDetail()->create(['property_type' => 'residential']);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Mortgage on the flat',
+        'type' => 'loan',
+        'currency_code' => 'EUR',
+        'annual_interest_rate' => 3.1,
+        'loan_term_months' => 240,
+        'original_amount' => 18_000_000,
+        'linked_real_estate_account_id' => $property->id,
+    ])->assertOk();
+
+    $loan = $user->accounts()->where('type', 'loan')->sole();
+
+    expect($property->realEstateDetail->fresh()->linked_loan_account_id)->toBe($loan->id);
+});
+
+it('refuses to link a property that is already answering to another loan', function () {
+    $user = User::factory()->create();
+    $firstLoan = Account::factory()->create(['user_id' => $user->id, 'type' => 'loan']);
+    $property = Account::factory()->create(['user_id' => $user->id, 'type' => 'real_estate']);
+    $property->realEstateDetail()->create([
+        'property_type' => 'residential',
+        'linked_loan_account_id' => $firstLoan->id,
+    ]);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Second mortgage',
+        'type' => 'loan',
+        'currency_code' => 'EUR',
+        'annual_interest_rate' => 3.1,
+        'loan_term_months' => 240,
+        'original_amount' => 18_000_000,
+        'linked_real_estate_account_id' => $property->id,
+    ])->assertHasErrors();
+
+    expect($user->accounts()->where('name', 'Second mortgage')->exists())->toBeFalse();
+});
+
+it('never creates a bank-connected account, pointing at the app instead', function () {
+    $user = User::factory()->create();
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Looks like a bank account',
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+        'banking_connection_id' => 'whatever-the-agent-made-up',
+    ])->assertHasErrors(['Whisper Money app']);
+
+    expect($user->accounts()->count())->toBe(0);
+});
+
+it('restricts the very first account to a primary currency', function () {
+    $user = User::factory()->create();
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Cold wallet',
+        'type' => 'investment',
+        'currency_code' => 'BTC',
+        'balance' => 100_000_000,
+    ])->assertHasErrors();
+
+    expect($user->accounts()->count())->toBe(0);
+});
+
+it('rejects create_account for a read-only token', function () {
+    $user = User::factory()->create();
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Should not exist',
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ], ['mcp:read'])->assertHasErrors(['read-only']);
+
+    expect($user->accounts()->count())->toBe(0);
+});
+
+it('changes only the fields update_account is passed', function () {
+    $user = User::factory()->create();
+    $bank = Bank::factory()->create();
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Old name',
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+        'bank_id' => $bank->id,
+        'ownership_percentage' => 100,
+    ]);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $account->id,
+        'name' => 'Joint current account',
+        'ownership_percentage' => 50,
+    ])->assertOk()->assertSee('Joint current account');
+
+    $account->refresh();
+
+    expect($account->name)->toBe('Joint current account')
+        ->and($account->ownership_percentage)->toBe(50)
+        // Untouched by the call.
+        ->and($account->type)->toBe(AccountType::Checking)
+        ->and($account->currency_code)->toBe('EUR')
+        ->and($account->bank_id)->toBe($bank->id);
+});
+
+it('renames a bank-connected account, which the sync never rewrites', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'name' => 'ES91 **** 1234',
+        'type' => 'checking',
+    ]);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $account->id,
+        'name' => 'Everyday account',
+        'ownership_percentage' => 50,
+        'ownership_applies_to_balance' => true,
+    ])->assertOk()->assertSee('Everyday account');
+
+    $account->refresh();
+
+    expect($account->name)->toBe('Everyday account')
+        ->and($account->ownership_percentage)->toBe(50)
+        ->and($account->ownership_applies_to_balance)->toBeTrue()
+        ->and($account->isConnected())->toBeTrue();
+});
+
+it('refuses to change what the bank sync owns on a connected account', function (string $field, mixed $value, string $reason) {
+    $user = User::factory()->create();
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'name' => 'Untouched',
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+
+    $bankBefore = $account->bank_id;
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $account->id,
+        $field => is_callable($value) ? $value() : $value,
+    ])->assertHasErrors([$reason]);
+
+    $account->refresh();
+
+    expect($account->currency_code)->toBe('EUR')
+        ->and($account->type)->toBe(AccountType::Checking)
+        ->and($account->bank_id)->toBe($bankBefore);
+})->with([
+    'currency comes from the bank' => ['currency_code', 'USD', 'reinterpret the whole history'],
+    'bank comes from the connection' => ['bank_id', fn (): string => Bank::factory()->create()->id, 'its bank comes from the connection'],
+    'a type with no ledger breaks the sync' => ['type', 'investment', 'nowhere to write'],
+]);
+
+it('lets a connected account move between the types the sync can write into', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->connected()->create(['user_id' => $user->id, 'type' => 'checking']);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $account->id,
+        'type' => 'savings',
+    ])->assertOk();
+
+    expect($account->fresh()->type)->toBe(AccountType::Savings);
+});
+
+it('refuses to edit an account owned by another member of the space', function () {
+    $owner = User::factory()->create();
+    $housemate = User::factory()->create();
+
+    $shared = Space::factory()->create(['owner_id' => $owner->id, 'name' => 'Household']);
+    $shared->members()->attach($housemate->id, ['id' => (string) Str::uuid(), 'role' => 'member']);
+
+    $account = Account::factory()->create([
+        'user_id' => $owner->id,
+        'space_id' => $shared->id,
+        'name' => 'Their account',
+    ]);
+
+    callWriteTool($housemate, UpdateAccount::class, [
+        'account_id' => $account->id,
+        'space' => $shared->id,
+        'name' => 'Mine now',
+    ])->assertHasErrors(['another member of the space']);
+
+    expect($account->fresh()->name)->toBe('Their account');
+});
+
+it('edits the loan details of an account that already has them', function () {
+    $user = User::factory()->create();
+    $loan = Account::factory()->create(['user_id' => $user->id, 'type' => 'loan']);
+    $loan->loanDetail()->create([
+        'annual_interest_rate' => 3.0,
+        'loan_term_months' => 240,
+        'original_amount' => 18_000_000,
+        'start_date' => now()->subYear()->toDateString(),
+    ]);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $loan->id,
+        'annual_interest_rate' => 1.75,
+    ])->assertOk();
+
+    expect((float) $loan->loanDetail->fresh()->annual_interest_rate)->toBe(1.75)
+        // The rest of the detail is left alone.
+        ->and((int) $loan->loanDetail->fresh()->loan_term_months)->toBe(240);
+});
+
+it('names every loan field it needs rather than half-creating a loan detail', function () {
+    $user = User::factory()->create();
+    $loan = Account::factory()->create(['user_id' => $user->id, 'type' => 'loan']);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $loan->id,
+        'annual_interest_rate' => 2.25,
+    ])->assertHasErrors(['loan_term_months', 'original_amount']);
+
+    expect($loan->loanDetail)->toBeNull();
+});
+
+it('edits one field of a property without being asked for its type again', function () {
+    $user = User::factory()->create();
+    $property = Account::factory()->create(['user_id' => $user->id, 'type' => 'real_estate']);
+    $property->realEstateDetail()->create([
+        'property_type' => 'residential',
+        'purchase_price' => 24_000_000,
+    ]);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $property->id,
+        'purchase_price' => 26_000_000,
+    ])->assertOk();
+
+    $detail = $property->realEstateDetail->fresh();
+
+    expect((int) $detail->purchase_price)->toBe(26_000_000)
+        ->and($detail->property_type->value)->toBe('residential');
+});
+
+it('demands a property type only while the property is being created', function () {
+    $user = User::factory()->create();
+    Account::factory()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'A flat with no type',
+        'type' => 'real_estate',
+        'currency_code' => 'EUR',
+    ])->assertHasErrors();
+
+    expect($user->accounts()->where('name', 'A flat with no type')->exists())->toBeFalse();
+});
+
+it('rejects update_account for a read-only token', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id, 'name' => 'Untouched']);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $account->id,
+        'name' => 'Should not stick',
+    ], ['mcp:read'])->assertHasErrors(['read-only']);
+
+    expect($account->fresh()->name)->toBe('Untouched');
 });

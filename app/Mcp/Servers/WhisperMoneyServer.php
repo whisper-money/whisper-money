@@ -4,6 +4,7 @@ namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\ApplyAutomationRule;
 use App\Mcp\Tools\CategorizeTransaction;
+use App\Mcp\Tools\CreateAccount;
 use App\Mcp\Tools\CreateAutomationRule;
 use App\Mcp\Tools\CreateBalance;
 use App\Mcp\Tools\CreateBudget;
@@ -29,6 +30,7 @@ use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SpendingByCategory;
 use App\Mcp\Tools\SplitTransaction;
+use App\Mcp\Tools\UpdateAccount;
 use App\Mcp\Tools\UpdateAutomationRule;
 use App\Mcp\Tools\UpdateBudget;
 use App\Mcp\Tools\UpdateCategory;
@@ -95,11 +97,12 @@ data.
 - To find recurring charges (subscriptions), use `search_transactions` and group
   the results by merchant and cadence yourself.
 
-Write tools (create_transaction, update_transaction, delete_transaction,
-split_transaction, merge_transaction_splits, categorize_transaction,
-label_transaction, create_balance, apply_automation_rule and full CRUD for
-budgets, categories, labels and automation rules) require a read & write token;
-a read-only token can analyse data but never change it.
+Write tools (create_account, update_account, create_transaction,
+update_transaction, delete_transaction, split_transaction,
+merge_transaction_splits, categorize_transaction, label_transaction,
+create_balance, apply_automation_rule and full CRUD for budgets, categories,
+labels and automation rules) require a read & write token; a read-only token
+can analyse data but never change it.
 Manual transactions can be created on any account, bank-connected ones included
 — a sync never removes them.
 Bank/imported transactions keep their core fields protected: only a
@@ -110,6 +113,28 @@ any transaction, split parts included — and labelling and splitting work on an
 transaction too.
 Balances can only be recorded on non-connected accounts, since a connected
 account's balances come from the bank and would be overwritten.
+Accounts come in two kinds and the difference decides what can be written.
+`create_account` opens a manual account of any of the eight types — a loan or a
+property takes its own details (interest rate and term, purchase price and date)
+and, given a balance, gets the monthly history in between generated for it, the
+older part in the background. A bank-connected account cannot be created at all:
+one is only born when the user goes through their bank's consent flow in the
+Whisper Money app, so ask them to connect the bank there rather than trying to
+build one.
+`update_account` changes only the fields it is passed. On a manual account that
+is everything: name, type, currency, bank, ownership share and the loan/property
+details. On a connected account only the name and the ownership fields can
+change — the currency is what its whole synced history is denominated in, the
+bank comes from the connection, and the type can only move between the four
+types that keep a transaction ledger (checking, credit_card, savings, others),
+since the others would leave the sync nowhere to write. Neither tool archives,
+hides or deletes an account; the user does that in the app. Retyping a loan or a
+property to something else keeps its details (interest rate, purchase price) and
+any mortgage link on file but stops using them, so confirm it with the user
+first.
+`ownership_percentage` below 100 means the user only owns that share of the
+account, and the app counts only that slice of it in their figures — changing it
+also reweighs the budgets that already counted the account.
 MARKDOWN)]
 class WhisperMoneyServer extends Server
 {
@@ -129,6 +154,8 @@ class WhisperMoneyServer extends Server
         ListAchievements::class,
 
         // Write
+        CreateAccount::class,
+        UpdateAccount::class,
         CreateTransaction::class,
         UpdateTransaction::class,
         DeleteTransaction::class,
