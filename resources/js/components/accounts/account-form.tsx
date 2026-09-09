@@ -85,7 +85,7 @@ interface AccountFormProps {
     hiddenAccountTypes?: AccountType[];
     availableLoanAccounts?: Account[];
     usePrimaryCurrenciesOnly?: boolean;
-    bankClearable?: boolean;
+    isConnected?: boolean;
     onChange: (data: AccountFormData) => void;
     errors?: Record<string, string>;
 }
@@ -122,7 +122,7 @@ export function AccountForm({
     hiddenAccountTypes = [],
     availableLoanAccounts = [],
     usePrimaryCurrenciesOnly = false,
-    bankClearable = true,
+    isConnected = false,
     onChange,
     errors = {},
 }: AccountFormProps) {
@@ -359,7 +359,7 @@ export function AccountForm({
                                         initialValues?.bank ?? undefined
                                     }
                                     onCreateCustomBank={handleCreateCustomBank}
-                                    clearable={bankClearable}
+                                    clearable={!isConnected}
                                 />
                             </>
                         )}
@@ -380,6 +380,7 @@ export function AccountForm({
                     <Select
                         name="currency_code"
                         value={selectedCurrency ?? undefined}
+                        disabled={isConnected}
                         onValueChange={(value) =>
                             setSelectedCurrency(value as CurrencyCode)
                         }
@@ -400,6 +401,13 @@ export function AccountForm({
                         </SelectContent>
                     </Select>
                 </div>
+                {isConnected && (
+                    <p className="pl-1 text-xs text-muted-foreground">
+                        {__(
+                            'Your bank sets the currency of a connected account.',
+                        )}
+                    </p>
+                )}
             </div>
 
             {showBalanceField && selectedCurrency && !initialValues && (

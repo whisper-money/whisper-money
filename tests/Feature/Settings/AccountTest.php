@@ -395,6 +395,70 @@ it('deletes all transactions when deleting account', function () {
     expect(Transaction::find($transaction2->id))->toBeNull();
 });
 
+it('keeps the currency of a connected account', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->connected()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking,
+    ]);
+
+    $response = $this->patch(route('accounts.update', $account), [
+        'name' => 'Renamed',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Checking->value,
+    ]);
+
+    $response->assertSessionHasErrors(['currency_code']);
+    assertDatabaseHas('accounts', [
+        'id' => $account->id,
+        'currency_code' => 'EUR',
+    ]);
+});
+
+it('still updates a connected account when the currency is left alone', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->connected()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking,
+    ]);
+
+    $response = $this->patch(route('accounts.update', $account), [
+        'name' => 'Renamed',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking->value,
+    ]);
+
+    $response->assertRedirect(route('accounts.index'));
+    assertDatabaseHas('accounts', [
+        'id' => $account->id,
+        'name' => 'Renamed',
+    ]);
+});
+
+// Archiving is what detaches an account from the bank (see AccountControllerTest),
+// and an archived account is no longer connected, so it can then be deleted.
+it('prevents deleting a connected account', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->connected()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    $response = $this->delete(route('accounts.destroy', $account));
+
+    $response->assertForbidden();
+    assertDatabaseHas('accounts', ['id' => $account->id, 'deleted_at' => null]);
+});
+
 it('prevents deleting another users account', function () {
     $otherUser = User::factory()->create();
     $account = Account::factory()->create([

@@ -2501,5 +2501,7 @@
     "Visit streak: :days": "Série de visites : :days",
     ":count uncategorized transactions": ":count transactions sans catégorie",
     "A month with everything categorized is a month you can actually read.": "Un mois entièrement catégorisé est un mois vraiment lisible.",
-    "Not now": "Pas maintenant"
+    "Not now": "Pas maintenant",
+    "Your bank sets the currency of a connected account.": "Votre banque définit la devise d’un compte connecté.",
+    "Archive this account first: it is still connected to your bank.": "Archivez d’abord ce compte : il est encore connecté à votre banque."
 }

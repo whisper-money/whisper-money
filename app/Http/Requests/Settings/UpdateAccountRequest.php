@@ -5,6 +5,7 @@ namespace App\Http\Requests\Settings;
 use App\Enums\AccountType;
 use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
+use App\Models\Account;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,7 +31,6 @@ class UpdateAccountRequest extends FormRequest
     public function rules(): array
     {
         $isRealEstate = $this->input('type') === AccountType::RealEstate->value;
-        $currencyOptions = app(CurrencyOptions::class);
 
         $rules = [
             'name' => ['required', 'string'],
@@ -38,7 +38,7 @@ class UpdateAccountRequest extends FormRequest
             'currency_code' => [
                 'required',
                 'string',
-                Rule::in($currencyOptions->accountCodes()),
+                Rule::in($this->allowedCurrencyCodes()),
             ],
             'type' => [
                 'required',
@@ -60,5 +60,23 @@ class UpdateAccountRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * The bank owns the currency of a connected account: everything already
+     * synced is in it, so only the code it already has is accepted. A manual
+     * account can move to any supported currency.
+     *
+     * @return list<string>
+     */
+    private function allowedCurrencyCodes(): array
+    {
+        $account = $this->route('account');
+
+        if ($account instanceof Account && $account->isConnected()) {
+            return [$account->currency_code];
+        }
+
+        return app(CurrencyOptions::class)->accountCodes();
     }
 }
