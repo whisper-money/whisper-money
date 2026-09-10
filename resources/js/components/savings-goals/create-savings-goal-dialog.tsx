@@ -172,6 +172,7 @@ export function CreateSavingsGoalDialog({
                                 id="goal-target-date"
                                 type="date"
                                 min={today}
+                                max="2100-01-01"
                                 value={targetDate}
                                 onChange={(e) => setTargetDate(e.target.value)}
                             />
