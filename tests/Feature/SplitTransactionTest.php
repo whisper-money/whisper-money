@@ -3,6 +3,7 @@
 use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
 use App\Models\Account;
+use App\Models\AutomationRule;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
@@ -21,13 +22,14 @@ beforeEach(function () {
     $this->category = Category::factory()->create(['user_id' => $this->user->id]);
 });
 
-function splittableTransaction(int $amount = -5340): Transaction
+function splittableTransaction(int $amount = -5340, ?string $description = null): Transaction
 {
     return Transaction::factory()->plaintext()->create([
         'user_id' => test()->user->id,
         'account_id' => test()->account->id,
         'category_id' => null,
         'amount' => $amount,
+        ...($description === null ? [] : ['description' => $description]),
     ]);
 }
 
@@ -57,6 +59,69 @@ it('replaces a transaction with its parts and keeps the original out of sight', 
     // The original is gone from every list and total, but still on the row.
     expect(Transaction::query()->find($original->id))->toBeNull()
         ->and(Transaction::withTrashed()->find($original->id)->trashed())->toBeTrue();
+});
+
+it('keeps the category each part was given, even when an automation rule matches', function () {
+    $ruleCategory = Category::factory()->create(['user_id' => $this->user->id]);
+    $ruleLabel = Label::factory()->create(['user_id' => $this->user->id]);
+    $otherCategory = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['mercadona', ['var' => 'description']]],
+        'action_category_id' => $ruleCategory->id,
+    ]);
+    $rule->labels()->attach($ruleLabel->id);
+
+    $original = splittableTransaction(-5340, 'MERCADONA S.A.');
+
+    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
+        'splits' => [
+            ['amount' => -3490, 'category_id' => $this->category->id],
+            ['amount' => -1850, 'category_id' => $otherCategory->id],
+        ],
+    ])->assertCreated();
+
+    $parts = Transaction::query()
+        ->where('split_parent_id', $original->id)
+        ->with('labels')
+        ->orderBy('amount')
+        ->get();
+
+    // The rule matches the description, but the user picked these categories a
+    // second ago in the dialog — the rule does not get to overwrite them, nor to
+    // put its own labels on the parts.
+    expect($parts->pluck('category_id')->all())->toBe([$this->category->id, $otherCategory->id])
+        ->and($parts->pluck('category_source')->unique()->all())->toBe([CategorySource::Manual])
+        ->and($parts->pluck('categorized_by_rule_id')->unique()->all())->toBe([null])
+        ->and($parts->pluck('labels')->flatten())->toBeEmpty();
+});
+
+it('still lets an automation rule categorize a part left uncategorized on purpose', function () {
+    $ruleCategory = Category::factory()->create(['user_id' => $this->user->id]);
+
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['mercadona', ['var' => 'description']]],
+        'action_category_id' => $ruleCategory->id,
+    ]);
+
+    $original = splittableTransaction(-5340, 'MERCADONA S.A.');
+
+    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
+        'splits' => [
+            ['amount' => -3490, 'category_id' => $this->category->id],
+            ['amount' => -1850],
+        ],
+    ])->assertCreated();
+
+    $parts = Transaction::query()->where('split_parent_id', $original->id)->orderBy('amount')->get();
+
+    expect($parts->first()->category_id)->toBe($this->category->id)
+        ->and($parts->last()->category_id)->toBe($ruleCategory->id)
+        ->and($parts->last()->category_source)->toBe(CategorySource::Rule);
 });
 
 it('keeps the dedup fingerprint on the original and off the parts, so a re-sync cannot recreate it', function () {
