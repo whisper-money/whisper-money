@@ -15,6 +15,21 @@ enum BankingProvider: string
     case EnableBanking = 'enablebanking';
 
     /**
+     * The provider's name as a person reads it, for log lines and error
+     * messages. The case name would do for most of them but not all:
+     * `IndexaCapital` is one word, the company is two.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::IndexaCapital => 'Indexa Capital',
+            self::InteractiveBrokers => 'Interactive Brokers',
+            self::EnableBanking => 'Enable Banking',
+            default => $this->name,
+        };
+    }
+
+    /**
      * Whether the provider authenticates with user-supplied API keys
      * rather than EnableBanking's hosted OAuth flow.
      */
