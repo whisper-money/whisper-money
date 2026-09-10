@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CategorySource;
 use App\Events\TransactionCreated;
 use App\Events\TransactionUpdated;
 use App\Models\Account;
@@ -450,4 +451,33 @@ test('applies automation rules via listener on TransactionCreated event', functi
     // The TransactionCreated event is dispatched automatically via $dispatchesEvents.
     // The listener should have already run. Verify the result.
     expect($transaction->fresh()->category_id)->toBe($this->category->id);
+});
+
+test('leaves a category the user set at creation time alone', function () {
+    $ruleCategory = Category::factory()->create(['user_id' => $this->user->id]);
+    $ruleLabel = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
+        'action_category_id' => $ruleCategory->id,
+    ]);
+    $rule->labels()->attach($ruleLabel->id);
+
+    $transaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => $this->category->id,
+        'category_source' => CategorySource::Manual,
+    ]);
+
+    $fresh = $transaction->fresh();
+
+    expect($fresh->category_id)->toBe($this->category->id)
+        ->and($fresh->category_source)->toBe(CategorySource::Manual)
+        ->and($fresh->categorized_by_rule_id)->toBeNull()
+        ->and($fresh->labels)->toBeEmpty();
 });
