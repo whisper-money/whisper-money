@@ -12,6 +12,7 @@ use App\Services\ExchangeRateService;
 use App\Services\NetWorthCalculator;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as BaseCollection;
 use RuntimeException;
 
 /**
@@ -23,6 +24,10 @@ use RuntimeException;
  * hundred rows and one balance walk per user, on a nightly job — if it ever
  * stops being cheap, the fix is to skip users with no new transactions since
  * their last sweep, not to shorten the window.
+ *
+ * The whole past as far back as it can be valued, that is: a reader holding a
+ * foreign currency is read from {@see firstConvertibleMonth()} on, because a
+ * month whose money no rate can convert is a month with no figures in it.
  */
 class HistoryBuilder
 {
@@ -36,14 +41,14 @@ class HistoryBuilder
     public function for(User $user): History
     {
         $currency = $this->ladders->currencyFor($user->currency_code);
-        $first = $this->firstMonth($user);
+        $accounts = Account::query()->where('user_id', $user->id)->get();
+        $first = $this->firstConvertibleMonth($user, $accounts, $currency);
         $last = now()->subMonth()->startOfMonth();
 
         if ($first === null || $first->gt($last)) {
             return new History($currency);
         }
 
-        $accounts = Account::query()->where('user_id', $user->id)->get();
         $lookup = BalanceLookup::forAccounts($accounts->pluck('id'), $first, $last->copy()->endOfMonth());
         $months = $this->cashflow->forMonths($user->id, $currency, $first, $last->copy()->endOfMonth());
         $counts = $this->transactionCounts($user, $first, $last);
@@ -64,6 +69,51 @@ class HistoryBuilder
     }
 
     /**
+     * The first month of a history whose money can be valued.
+     *
+     * Their first transaction, unless they hold a currency other than the one
+     * they are measured in and that transaction predates
+     * `achievements.rates_from`. The rate provider has nothing before that
+     * month and never will, so no sweep can ever put a figure on an earlier
+     * one: demanding a rate for it only skips the reader again every night,
+     * for a gap that will not close. Their medals start where their money can
+     * first be read instead, which costs them the milestones of a statement
+     * imported from further back than any rate exists for.
+     *
+     * @param  Collection<int, Account>  $accounts
+     */
+    private function firstConvertibleMonth(User $user, Collection $accounts, string $currency): ?Carbon
+    {
+        $first = $this->firstMonth($user);
+
+        if ($first === null || $this->foreignCurrencies($accounts, $currency)->isEmpty()) {
+            return $first;
+        }
+
+        $from = (string) config('achievements.rates_from');
+        $floor = Carbon::createFromFormat('Y-m-d', $from.'-01')->startOfMonth();
+
+        return $first->lt($floor) ? $floor : $first;
+    }
+
+    /**
+     * The currencies the reader keeps money in other than the one their medals
+     * are measured in, lowercased the way a rate map keys them.
+     *
+     * @param  Collection<int, Account>  $accounts
+     * @return BaseCollection<int, lowercase-string>
+     */
+    private function foreignCurrencies(Collection $accounts, string $currency): BaseCollection
+    {
+        return $accounts
+            ->pluck('currency_code')
+            ->map(fn (string $code): string => strtolower($code))
+            ->unique()
+            ->reject(fn (string $code): bool => $code === strtolower($currency))
+            ->values();
+    }
+
+    /**
      * Refuse to read a history whose money cannot all be converted.
      *
      * An account in another currency is worth what the rate on the day says,
@@ -74,19 +124,16 @@ class HistoryBuilder
      * wrong month, or awarded on a figure nobody ever had, permanently.
      *
      * Better to record nothing today: the sweep runs again tomorrow, and the
-     * command reports the reader it skipped.
+     * command reports the reader it skipped. That is a bet on tomorrow, so it
+     * is only made for months a rate can actually arrive for —
+     * {@see firstConvertibleMonth()} has already dropped the ones it cannot.
      *
      * @param  Collection<int, Account>  $accounts
      * @param  list<string>  $months
      */
     private function ensureRates(Collection $accounts, string $currency, array $months): void
     {
-        $foreign = $accounts
-            ->pluck('currency_code')
-            ->map(fn (string $code): string => strtolower($code))
-            ->unique()
-            ->reject(fn (string $code): bool => $code === strtolower($currency))
-            ->values();
+        $foreign = $this->foreignCurrencies($accounts, $currency);
 
         if ($foreign->isEmpty()) {
             return;
