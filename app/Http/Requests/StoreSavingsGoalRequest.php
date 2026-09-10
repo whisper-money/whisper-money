@@ -29,7 +29,13 @@ class StoreSavingsGoalRequest extends FormRequest
             ],
             'target_amount' => ['required', 'integer', 'min:1'],
             'initial_amount' => ['nullable', 'integer', 'min:0'],
-            'target_date' => ['nullable', 'date', 'after:today'],
+            // Pin the format and cap the year: 'date' alone silently mangles a
+            // five-digit year typo like 20026-11-10 into 2006-11-10, so every
+            // range rule sees a plausible date while the raw string is what
+            // reaches MySQL and blows up as an out-of-range date (PHP-LARAVEL-5X).
+            // The date picker always sends Y-m-d, and 2100 rejects typos rather
+            // than real target dates.
+            'target_date' => ['nullable', 'date_format:Y-m-d', 'after:today', 'before_or_equal:2100-01-01'],
         ];
     }
 

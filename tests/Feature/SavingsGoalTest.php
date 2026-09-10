@@ -299,6 +299,46 @@ test('the starting amount cannot be negative', function () {
     expect(SavingsGoal::where('user_id', $user->id)->count())->toBe(0);
 });
 
+test('a target date with an out-of-range year is rejected when creating', function () {
+    $user = onboardedSavingsUser();
+
+    $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'Typo',
+        'target_amount' => 500000,
+        'target_date' => '20026-11-10',
+    ])->assertSessionHasErrors('target_date');
+
+    expect(SavingsGoal::where('user_id', $user->id)->count())->toBe(0);
+});
+
+test('a target date with an out-of-range year is rejected when editing', function (string $targetDate) {
+    $user = onboardedSavingsUser();
+
+    $goal = SavingsGoal::factory()->create([
+        'user_id' => $user->id,
+        'target_date' => '2026-11-10',
+    ]);
+
+    $this->actingAs($user)->patch("/savings-goals/{$goal->id}", [
+        'target_date' => $targetDate,
+    ])->assertSessionHasErrors('target_date');
+
+    expect($goal->fresh()->target_date->toDateString())->toBe('2026-11-10');
+})->with(['20026-11-10', '9999-12-31']);
+
+test('editing a goal accepts a normal future target date', function () {
+    $user = onboardedSavingsUser();
+
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id]);
+    $targetDate = now()->addYear()->toDateString();
+
+    $this->actingAs($user)->patch("/savings-goals/{$goal->id}", [
+        'target_date' => $targetDate,
+    ])->assertRedirect();
+
+    expect($goal->fresh()->target_date->toDateString())->toBe($targetDate);
+});
+
 test('the starting amount does not inflate the projected pace', function () {
     $start = Carbon::parse('2026-07-20');
     $today = Carbon::parse('2026-07-30');

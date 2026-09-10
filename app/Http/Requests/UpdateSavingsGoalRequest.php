@@ -31,7 +31,10 @@ class UpdateSavingsGoalRequest extends FormRequest
             ],
             'target_amount' => ['sometimes', 'required', 'integer', 'min:1'],
             'initial_amount' => ['sometimes', 'required', 'integer', 'min:0'],
-            'target_date' => ['nullable', 'date'],
+            // Pin the format and cap the year for the same reason as in
+            // StoreSavingsGoalRequest: a five-digit year typo passes 'date' and
+            // then blows up as an out-of-range MySQL date (PHP-LARAVEL-5X).
+            'target_date' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:2100-01-01'],
         ];
     }
 
