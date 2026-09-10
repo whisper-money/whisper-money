@@ -57,12 +57,13 @@ class CardRenderer
         Achievement $achievement,
         Definition $definition,
         string $currency,
+        string $formatLocale,
         CardFormat $format,
         CardTheme $theme,
         bool $amount,
         bool $pro,
     ): string {
-        $path = $this->pathFor($achievement, $format, $theme, $amount, $pro);
+        $path = $this->pathFor($achievement, $formatLocale, $format, $theme, $amount, $pro);
 
         if (! Storage::disk(self::DISK)->exists($path)) {
             [$width, $height] = $format->dimensions();
@@ -75,6 +76,7 @@ class CardRenderer
                         $definition,
                         $achievement->achieved_on,
                         $currency,
+                        $formatLocale,
                         $format,
                         $theme,
                         $amount,
@@ -107,12 +109,12 @@ class CardRenderer
      * byte-identical to before. Bumping would have redrawn every medal for
      * everybody for nothing.
      */
-    private function pathFor(Achievement $achievement, CardFormat $format, CardTheme $theme, bool $amount, bool $pro): string
+    private function pathFor(Achievement $achievement, string $formatLocale, CardFormat $format, CardTheme $theme, bool $amount, bool $pro): string
     {
         $locale = app()->getLocale();
         $suffix = ($amount ? '' : '-plain').($pro ? '-pro' : '');
 
-        return $this->directoryFor($achievement->user_id)."/{$achievement->key}-{$format->value}-{$theme->value}-{$locale}{$suffix}.png";
+        return $this->directoryFor($achievement->user_id)."/{$achievement->key}-{$format->value}-{$theme->value}-{$locale}-{$formatLocale}{$suffix}.png";
     }
 
     private function directoryFor(string $userId): string

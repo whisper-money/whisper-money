@@ -48,10 +48,13 @@ class AchievementsSection
     {
         $earned = $user->achievements()->orderBy('key')->get()->keyBy('key');
         $currency = $this->ladders->currencyFor($user->currency_code);
+        // Milestones are figures, so they follow the reader's region rather
+        // than the language the sentences around them are written in.
+        $formatLocale = $user->formatLocale();
 
         $groups = array_values(array_filter([
-            $this->unlocked($earned, $summary, $currency, $locale),
-            $this->next($user, $earned, $summary, $currency, $locale),
+            $this->unlocked($earned, $summary, $currency, $locale, $formatLocale),
+            $this->next($user, $earned, $summary, $currency, $formatLocale),
         ]));
 
         return $groups === [] ? null : $groups;
@@ -68,7 +71,7 @@ class AchievementsSection
      * @param  Collection<string, Achievement>  $earned
      * @return array{title: string, lines: list<string>}|null
      */
-    private function unlocked(Collection $earned, MonthlySummary $summary, string $currency, string $locale): ?array
+    private function unlocked(Collection $earned, MonthlySummary $summary, string $currency, string $locale, string $formatLocale): ?array
     {
         $month = $summary->periodStart();
 
@@ -76,7 +79,7 @@ class AchievementsSection
             ->filter(fn (Achievement $achievement): bool => $achievement->achieved_on->toDateString() === $month->toDateString())
             ->map(fn (Achievement $achievement): ?Definition => $this->catalog->find($achievement->key))
             ->filter()
-            ->map(fn (Definition $definition): string => $this->earnedLine($definition, $currency, $locale))
+            ->map(fn (Definition $definition): string => $this->earnedLine($definition, $currency, $formatLocale))
             ->values()
             ->all();
 
@@ -96,7 +99,7 @@ class AchievementsSection
      * @param  Collection<string, Achievement>  $earned
      * @return array{title: string, lines: list<string>}|null
      */
-    private function next(User $user, Collection $earned, MonthlySummary $summary, string $currency, string $locale): ?array
+    private function next(User $user, Collection $earned, MonthlySummary $summary, string $currency, string $formatLocale): ?array
     {
         $figures = $this->figures($user, $summary);
         $candidates = [];
@@ -117,7 +120,7 @@ class AchievementsSection
 
             $candidates[] = [
                 'share' => $now / $goal['value'],
-                'line' => $this->nextLine($definition, $goal, $now, $locale),
+                'line' => $this->nextLine($definition, $goal, $now, $formatLocale),
             ];
         }
 
@@ -163,9 +166,9 @@ class AchievementsSection
         return $figures;
     }
 
-    private function earnedLine(Definition $definition, string $currency, string $locale): string
+    private function earnedLine(Definition $definition, string $currency, string $formatLocale): string
     {
-        $milestone = $this->presenter->write($this->presenter->milestone($definition, $currency), $locale);
+        $milestone = $this->presenter->write($this->presenter->milestone($definition, $currency), $formatLocale);
         $name = $this->strong($definition->name);
 
         return $milestone === null
@@ -176,12 +179,12 @@ class AchievementsSection
     /**
      * @param  array{type: string, value: int|float, currency: ?string}  $goal
      */
-    private function nextLine(Definition $definition, array $goal, int|float $now, string $locale): string
+    private function nextLine(Definition $definition, array $goal, int|float $now, string $formatLocale): string
     {
         return __(':name, :milestone. :remaining to go.', [
             'name' => $this->strong($definition->name),
-            'milestone' => e((string) $this->presenter->write($goal, $locale)),
-            'remaining' => $this->strong((string) $this->presenter->write([...$goal, 'value' => $goal['value'] - $now], $locale)),
+            'milestone' => e((string) $this->presenter->write($goal, $formatLocale)),
+            'remaining' => $this->strong((string) $this->presenter->write([...$goal, 'value' => $goal['value'] - $now], $formatLocale)),
         ]);
     }
 

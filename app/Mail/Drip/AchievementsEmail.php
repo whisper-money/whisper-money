@@ -120,10 +120,11 @@ class AchievementsEmail extends DripMail
         $renderer = app(CardRenderer::class);
         $catalog = app(Catalog::class);
         $currency = app(Ladders::class)->currencyFor($this->user->currency_code);
+        $formatLocale = $this->user->formatLocale();
 
         return $this->cards = $this->achievements
             ->take(self::MAX_CARDS)
-            ->mapWithKeys(function (Achievement $achievement) use ($renderer, $catalog, $currency): array {
+            ->mapWithKeys(function (Achievement $achievement) use ($renderer, $catalog, $currency, $formatLocale): array {
                 $definition = $catalog->find($achievement->key);
 
                 if ($definition === null) {
@@ -135,6 +136,7 @@ class AchievementsEmail extends DripMail
                         $achievement,
                         $definition,
                         $currency,
+                        $formatLocale,
                         CardFormat::default(),
                         CardTheme::default(),
                         amount: true,
@@ -173,11 +175,13 @@ class AchievementsEmail extends DripMail
     {
         $catalog = app(Catalog::class);
         $presenter = app(Presenter::class);
-        $locale = app()->getLocale();
+        // A milestone is a figure, so it is written in the reader's region
+        // rather than in the language the line around it is written in.
+        $formatLocale = $this->user->formatLocale();
         $cards = $this->cards();
 
         return $this->achievements
-            ->map(function (Achievement $achievement) use ($catalog, $presenter, $locale, $cards): ?array {
+            ->map(function (Achievement $achievement) use ($catalog, $presenter, $formatLocale, $cards): ?array {
                 $definition = $catalog->find($achievement->key);
 
                 if ($definition === null) {
@@ -186,7 +190,7 @@ class AchievementsEmail extends DripMail
 
                 return [
                     'name' => $definition->name,
-                    'milestone' => $presenter->write($presenter->milestone($definition, $this->user->currency_code), $locale),
+                    'milestone' => $presenter->write($presenter->milestone($definition, $this->user->currency_code), $formatLocale),
                     'rarity' => $definition->rarity->label(),
                     'card' => isset($cards[$achievement->key]) ? $this->cid($achievement->key) : null,
                 ];

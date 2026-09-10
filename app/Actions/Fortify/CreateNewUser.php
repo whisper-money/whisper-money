@@ -5,6 +5,7 @@ namespace App\Actions\Fortify;
 use App\Enums\Locale;
 use App\Enums\SignupPlan;
 use App\Models\User;
+use App\Services\FormatLocaleOptions;
 use App\Services\Subscriptions\PriceExperiment;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -13,6 +14,8 @@ use Laravel\Fortify\Contracts\CreatesNewUsers;
 class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
+
+    public function __construct(private FormatLocaleOptions $formatLocales) {}
 
     /**
      * Validate and create a newly registered user.
@@ -38,12 +41,18 @@ class CreateNewUser implements CreatesNewUsers
         ])->validate();
 
         $signupPlan = SignupPlan::fromRequest($input['signup_plan'] ?? null);
+        $acceptLanguage = request()->header('Accept-Language');
+        $locale = Locale::detectFromHeader($acceptLanguage)->value;
 
         $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
-            'locale' => Locale::detectFromHeader(request()->header('Accept-Language'))->value,
+            'locale' => $locale,
+            // The same header read a second time, for the region rather than
+            // the language: which of the two "es" they are decides where their
+            // decimal separator goes.
+            'format_locale' => $this->formatLocales->detectFromHeader($acceptLanguage, $locale),
             'timezone' => $this->normalizeTimezone($input['timezone'] ?? null),
             // Freeze the arm this visitor was quoted as an anonymous browser, so
             // the price on the landing is the price at checkout. Null when they
