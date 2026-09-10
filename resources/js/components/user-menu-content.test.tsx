@@ -85,6 +85,7 @@ const user: User = {
     email: 'test@example.com',
     currency_code: 'USD',
     locale: 'en',
+    format_locale: 'en-US',
     timezone: 'UTC',
     email_verified_at: null,
     created_at: '2026-01-01T00:00:00.000000Z',

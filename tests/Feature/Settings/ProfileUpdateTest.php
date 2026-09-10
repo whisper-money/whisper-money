@@ -293,3 +293,52 @@ test('user with a subscription Stripe cannot collect on can delete their account
     'canceled with no end date' => ['canceled', false],
     'paused, so nothing to collect' => ['paused', false],
 ]);
+
+test('the reader can pick the region their amounts are written in', function () {
+    $user = User::factory()->create(['format_locale' => 'es-ES']);
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'currency_code' => 'EUR',
+            'format_locale' => 'es-MX',
+        ]);
+
+    $response->assertSessionHasNoErrors();
+
+    expect($user->refresh()->format_locale)->toBe('es-MX');
+});
+
+test('a region the app does not offer is rejected rather than stored', function (string $region) {
+    // An unknown tag is not cosmetic: a malformed one makes every `Intl`
+    // constructor throw and takes the whole screen with it, so the list is
+    // closed on the way in.
+    $user = User::factory()->create(['format_locale' => 'es-ES']);
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'currency_code' => 'EUR',
+            'format_locale' => $region,
+        ]);
+
+    $response->assertSessionHasErrors('format_locale');
+
+    expect($user->refresh()->format_locale)->toBe('es-ES');
+})->with(['es_MX', 'nb-NO', 'not a locale', 'es']);
+
+test('the settings page is handed every region it has to draw', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('account.edit'))
+        ->assertInertia(fn ($page) => $page
+            ->where('formatLocales', fn ($locales): bool => collect($locales)
+                ->intersect(['es-MX', 'es-419', 'en-US'])
+                ->count() === 3)
+        );
+});
