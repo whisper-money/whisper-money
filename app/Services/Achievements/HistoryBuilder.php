@@ -90,7 +90,8 @@ class HistoryBuilder
             return $first;
         }
 
-        $floor = Carbon::createFromFormat('Y-m-d', config('achievements.rates_from').'-01')->startOfMonth();
+        $from = (string) config('achievements.rates_from');
+        $floor = Carbon::createFromFormat('Y-m-d', $from.'-01')->startOfMonth();
 
         return $first->lt($floor) ? $floor : $first;
     }
