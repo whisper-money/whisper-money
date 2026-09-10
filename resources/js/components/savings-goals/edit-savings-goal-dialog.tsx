@@ -157,6 +157,8 @@ export function EditSavingsGoalDialog({
                             <Input
                                 id="edit-goal-target-date"
                                 type="date"
+                                min="1900-01-01"
+                                max="2100-01-01"
                                 value={targetDate}
                                 onChange={(e) => setTargetDate(e.target.value)}
                             />
