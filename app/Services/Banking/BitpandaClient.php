@@ -2,14 +2,17 @@
 
 namespace App\Services\Banking;
 
+use App\Enums\BankingProvider;
+use App\Services\Banking\Concerns\TranslatesTransportFailures;
 use Exception;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class BitpandaClient
 {
+    use TranslatesTransportFailures;
+
     private const BASE_URL = 'https://api.bitpanda.com/v1';
 
     /** @var array<int, int> Retry backoff: 10s, 30s, 60s */
@@ -169,12 +172,17 @@ class BitpandaClient
         return array_reverse($allTrades);
     }
 
+    protected function provider(): BankingProvider
+    {
+        return BankingProvider::Bitpanda;
+    }
+
     /**
      * Execute an authenticated GET request with retry on rate limiting.
      */
     private function get(string $path, array $params = []): array
     {
-        return retry(
+        return $this->translateTransportFailures(fn () => retry(
             self::RETRY_BACKOFF_MS,
             function () use ($path, $params) {
                 $response = $this->client()->get($path, $params);
@@ -184,16 +192,16 @@ class BitpandaClient
                 return $response->json();
             },
             when: fn (Exception $e) => $e instanceof RequestException && $e->response->status() === 429,
-        );
+        ));
     }
 
     private function client(): PendingRequest
     {
-        return Http::baseUrl(self::BASE_URL)
+        return $this->transportClient(self::BASE_URL)
             ->withHeaders(['X-Api-Key' => $this->apiKey])
             ->acceptJson()
             ->throw(function ($response, $exception) {
-                Log::error('Bitpanda API error', [
+                Log::log($response->serverError() ? 'warning' : 'error', 'Bitpanda API error', [
                     'status' => $response->status(),
                     'body' => $response->json(),
                 ]);
