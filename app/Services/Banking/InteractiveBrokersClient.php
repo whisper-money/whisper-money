@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Exceptions\Banking\TransientBankingProviderException;
 use GuzzleHttp\Psr7\Response as PsrResponse;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
@@ -56,15 +57,7 @@ class InteractiveBrokersClient
 
     private function sendRequest(): string
     {
-        $response = $this->http()->get(self::BASE_URL.'/SendRequest', [
-            't' => $this->token,
-            'q' => $this->queryId,
-            'v' => self::VERSION,
-        ]);
-
-        $response->throw();
-
-        $xml = $this->loadXml($response->body());
+        $xml = $this->fetchXml('SendRequest', $this->queryId);
 
         if ((string) $xml->Status !== 'Success') {
             $this->throwForError((string) $xml->ErrorCode, (string) $xml->ErrorMessage);
@@ -85,15 +78,7 @@ class InteractiveBrokersClient
     private function getStatement(string $referenceCode): SimpleXMLElement
     {
         for ($attempt = 1; $attempt <= self::MAX_STATEMENT_ATTEMPTS; $attempt++) {
-            $response = $this->http()->get(self::BASE_URL.'/GetStatement', [
-                't' => $this->token,
-                'q' => $referenceCode,
-                'v' => self::VERSION,
-            ]);
-
-            $response->throw();
-
-            $xml = $this->loadXml($response->body());
+            $xml = $this->fetchXml('GetStatement', $referenceCode);
 
             if ($xml->getName() === 'FlexQueryResponse') {
                 return $xml;
@@ -184,6 +169,45 @@ class InteractiveBrokersClient
         }
 
         return $accounts;
+    }
+
+    /**
+     * Both Flex calls take the same shape, so they share the transport
+     * classification: an unattended sync can do nothing about IB being down or
+     * slow, so a timeout or a 5xx becomes transient — logged as a warning, kept
+     * out of Sentry and, crucially, not charged to the connection's retry
+     * budget. Failures IB reports inside the XML stay with throwForError().
+     */
+    private function fetchXml(string $endpoint, string $query): SimpleXMLElement
+    {
+        try {
+            $response = $this->http()->get(self::BASE_URL.'/'.$endpoint, [
+                't' => $this->token,
+                'q' => $query,
+                'v' => self::VERSION,
+            ]);
+
+            $response->throw();
+        } catch (ConnectionException $e) {
+            throw new TransientBankingProviderException(
+                'Interactive Brokers did not respond in time.',
+                provider: 'interactivebrokers',
+                previous: $e,
+            );
+        } catch (RequestException $e) {
+            if (! $e->response->serverError()) {
+                throw $e;
+            }
+
+            throw new TransientBankingProviderException(
+                'Interactive Brokers could not serve the request right now.',
+                provider: 'interactivebrokers',
+                statusCode: $e->response->status(),
+                previous: $e,
+            );
+        }
+
+        return $this->loadXml($response->body());
     }
 
     private function http(): PendingRequest
