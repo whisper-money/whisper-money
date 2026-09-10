@@ -1,13 +1,29 @@
 <?php
 
 use App\Services\CurrencyConversionService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 beforeEach(function () {
     Cache::flush();
 });
+
+/**
+ * The deadlock the database cache store raises when concurrent requests race
+ * to `insert ignore` the same rate row.
+ */
+function deadlockOnCacheInsert(): QueryException
+{
+    return new QueryException(
+        'mysql',
+        'insert ignore into `cache` (`key`, `value`, `expiration`) values (?, ?, ?)',
+        ['currency-rates:eur:2026-01-15', 'serialized-rates', 1767225600],
+        new PDOException('SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction'),
+    );
+}
 
 test('converts crypto to fiat using CDN rates', function () {
     Http::fake([
@@ -189,4 +205,52 @@ test('converts new latam fiat currency using CDN rates', function () {
     $result = $service->convert('ARS', 'USD', 2800.0, '2026-01-15');
 
     expect($result)->toBe(2.0);
+});
+
+test('returns the fetched rates when the cache write deadlocks (regression for PHP-LARAVEL-J)', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => ['btc' => 0.000015],
+        ]),
+    ]);
+
+    Log::spy();
+
+    Cache::shouldReceive('get')->andReturnNull();
+    Cache::shouldReceive('put')->once()->andThrow(deadlockOnCacheInsert());
+
+    $rates = (new CurrencyConversionService)->getRatesForCurrency('EUR', '2026-01-15');
+
+    expect($rates)->toBe(['btc' => 0.000015]);
+
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(fn (string $message, array $context) => $message === 'Currency rate cache write failed'
+            && $context['key'] === 'currency-rates:eur:2026-01-15');
+});
+
+test('memoizes rates in-request when the cache write deadlocks', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => ['btc' => 0.000015],
+        ]),
+    ]);
+
+    Cache::shouldReceive('get')->andReturnNull();
+    Cache::shouldReceive('put')->andThrow(deadlockOnCacheInsert());
+
+    $service = new CurrencyConversionService;
+    $service->getRatesForCurrency('EUR', '2026-01-15');
+    $service->getRatesForCurrency('EUR', '2026-01-15');
+
+    Http::assertSentCount(1);
+});
+
+test('the cache write guard does not swallow a broken cache read', function () {
+    Http::fake();
+
+    Cache::shouldReceive('get')->andThrow(deadlockOnCacheInsert());
+
+    expect(fn () => (new CurrencyConversionService)->getRatesForCurrency('EUR', '2026-01-15'))
+        ->toThrow(QueryException::class);
 });
