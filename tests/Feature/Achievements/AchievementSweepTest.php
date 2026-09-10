@@ -6,11 +6,14 @@ use App\Jobs\Drip\SendAchievementsEmailJob;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\AchievementsWelcome;
 use App\Notifications\AchievementUnlocked;
 use App\Services\Achievements\Awarder;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -67,6 +70,40 @@ function recordMonth(User $user, string $month, int $income, int $saved): void
         'transaction_date' => $date,
         'amount' => -$saved,
         'currency_code' => 'EUR',
+    ]);
+}
+
+/**
+ * The rate provider as it really answers: a rate map from
+ * `achievements.rates_from` on, and a 404 for every date before it, which is
+ * what a month end in 2001 gets asked for and always will.
+ */
+function fakeCoveredCurrencyApi(): void
+{
+    $from = (string) config('achievements.rates_from');
+
+    Http::fake(function (Request $request) use ($from) {
+        if (! preg_match('#(\d{4}-\d{2})-\d{2}/(?:v1/)?currencies/([a-z0-9]+)\.min\.json#i', $request->url(), $matches)) {
+            return null;
+        }
+
+        if ($matches[1] < $from) {
+            return Http::response([], 404);
+        }
+
+        return Http::response([strtolower($matches[2]) => ['btc' => 0.00001, 'eur' => 1.0, 'usd' => 1.1]]);
+    });
+}
+
+/**
+ * A reader holding a currency other than the one their medals are measured in.
+ */
+function withForeignAccount(User $user): void
+{
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+        'currency_code' => 'BTC',
     ]);
 }
 
@@ -246,4 +283,73 @@ it('records a year of growth off a near-zero start instead of failing the whole 
     app(Awarder::class)->sweep($user);
 
     expect($user->achievements()->where('key', 'momentum.2')->first()?->percent)->toBe(999999.99);
+});
+
+it('reads a foreign-currency reader from the first month a rate can exist', function (): void {
+    fakeCoveredCurrencyApi();
+
+    $user = reader();
+
+    // A statement imported from further back than any rate provider goes, and
+    // a month from the covered period.
+    recordMonth($user, '2001-01', 300000, 150000);
+    recordMonth($user, now()->subMonths(3)->format('Y-m'), 300000, 150000);
+
+    withForeignAccount($user);
+
+    $this->artisan('achievements:sweep', ['--user' => $user->email])
+        ->doesntExpectOutputToContain('Skipped')
+        ->assertSuccessful();
+
+    // The medals their convertible history earns, rather than nothing at all
+    // every night forever because January 2001 has no rate and never will.
+    // Their 2001 months are the price: no rate can date a medal to them.
+    expect($user->achievements()->where('key', 'monthly_saving.2')->exists())->toBeTrue()
+        ->and($user->achievements()->where('key', 'transactions.1')->firstOrFail()->achieved_on->format('Y-m'))
+        ->toBe(now()->subMonths(3)->format('Y-m'));
+});
+
+it('reads the rates afresh for every reader instead of hoarding them for the run', function (): void {
+    $month = now()->subMonths(3)->format('Y-m');
+    $first = reader();
+    $second = reader();
+
+    foreach ([$first, $second] as $user) {
+        recordMonth($user, $month, 300000, 150000);
+        withForeignAccount($user);
+    }
+
+    // Every month end the sweep needs, already in the database, so a rate
+    // lookup is a query and never a request: counting the queries counts the
+    // lookups.
+    foreach (range(1, 3) as $monthsBack) {
+        ExchangeRate::factory()->create([
+            'base_currency' => 'eur',
+            'date' => now()->subMonths($monthsBack)->endOfMonth()->toDateString(),
+            'rates' => ['btc' => 0.00001, 'eur' => 1.0, 'usd' => 1.1],
+        ]);
+    }
+
+    $lookups = function (array $options): int {
+        $count = 0;
+
+        DB::listen(function ($query) use (&$count): void {
+            if (str_starts_with(strtolower($query->sql), 'select') && str_contains($query->sql, 'exchange_rates')) {
+                $count++;
+            }
+        });
+
+        $this->artisan('achievements:sweep', [...$options, '--quiet-notifications' => true])->assertSuccessful();
+
+        return $count;
+    };
+
+    $one = $lookups(['--user' => $first->email]);
+    $both = $lookups([]);
+
+    // Two readers cost two readers' worth of lookups: neither inherits the
+    // rates the one before it cached, which is what keeps a run over the whole
+    // member list inside the memory of one history.
+    expect($one)->toBeGreaterThan(0)
+        ->and($both)->toBe($one * 2);
 });

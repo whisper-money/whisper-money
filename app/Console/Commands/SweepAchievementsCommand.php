@@ -28,11 +28,6 @@ class SweepAchievementsCommand extends Command
 
     protected $description = 'Record the achievements every user has earned';
 
-    public function __construct(private Awarder $awarder)
-    {
-        parent::__construct();
-    }
-
     public function handle(): int
     {
         $swept = 0;
@@ -50,10 +45,23 @@ class SweepAchievementsCommand extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * One reader, with an {@see Awarder} of their own.
+     *
+     * Resolved here rather than held for the run because of what hangs off it:
+     * the rate service behind the calculators memoizes every month-end rate it
+     * reads, and one kept for the whole command grows by a reader's worth of
+     * rate maps on every pass until the process runs out of memory. A reader's
+     * history is freed with the graph that read it, so the peak is one member
+     * rather than all of them, and the cost is a dozen constructor calls
+     * against the hundreds of queries a history already takes.
+     */
     private function sweep(User $user): int
     {
         try {
-            return $this->awarder->sweep($user, notify: ! $this->option('quiet-notifications'))->count();
+            return $this->laravel->make(Awarder::class)
+                ->sweep($user, notify: ! $this->option('quiet-notifications'))
+                ->count();
         } catch (Throwable $exception) {
             report($exception);
             $this->warn("Skipped {$user->email}: {$exception->getMessage()}");

@@ -18,6 +18,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Where convertible history starts
+    |--------------------------------------------------------------------------
+    |
+    | The rate provider holds nothing before this month and never will, so
+    | money kept in another currency cannot be valued any earlier than it. A
+    | reader holding a foreign currency is read from this month on rather than
+    | from their first transaction: a medal is dated to the month it happened,
+    | and a month whose money nobody can convert is a month nobody can date.
+    | Readers whose money is all in one currency need no rate and keep their
+    | whole past. YYYY-MM.
+    |
+    */
+
+    'rates_from' => env('ACHIEVEMENTS_RATES_FROM', '2024-03'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Rarity
     |--------------------------------------------------------------------------
     |
