@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Jobs\Drip\SendAchievementsEmailJob;
 use App\Models\Account;
+use App\Models\AccountBalance;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
@@ -212,4 +214,36 @@ it('keeps the account menu count in step, even on a sweep that awards nothing', 
     app(Awarder::class)->sweep($user);
 
     expect($user->fresh()->achievements_count)->toBe($user->achievements()->count());
+});
+
+it('records a year of growth off a near-zero start instead of failing the whole sweep', function (): void {
+    $user = reader();
+
+    // Pinned rather than left to the factory's random type: a loan subtracts
+    // from net worth and a credit card is left out of it altogether, and either
+    // one would leave nothing for a growth rate to be read against.
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => $user->activeSpace()->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking,
+    ]);
+
+    recordMonth($user, now()->subMonths(13)->format('Y-m'), 300000, 150000);
+    recordMonth($user, now()->subMonth()->format('Y-m'), 300000, 150000);
+
+    // A few cents a year ago against an ordinary balance today. The rate that
+    // comes out of that is seven figures, well past what the `percent` column
+    // holds, and the insert used to take every other medal down with it.
+    foreach ([13 => 100, 1 => 1092000] as $monthsAgo => $balance) {
+        AccountBalance::factory()->create([
+            'account_id' => $account->id,
+            'balance_date' => now()->subMonths($monthsAgo)->endOfMonth()->toDateString(),
+            'balance' => $balance,
+        ]);
+    }
+
+    app(Awarder::class)->sweep($user);
+
+    expect($user->achievements()->where('key', 'momentum.2')->first()?->percent)->toBe(999999.99);
 });
