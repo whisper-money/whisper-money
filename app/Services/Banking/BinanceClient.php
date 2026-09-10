@@ -2,14 +2,17 @@
 
 namespace App\Services\Banking;
 
+use App\Enums\BankingProvider;
+use App\Services\Banking\Concerns\TranslatesTransportFailures;
 use Exception;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class BinanceClient
 {
+    use TranslatesTransportFailures;
+
     private const BASE_URL = 'https://api.binance.com';
 
     /** @var array<int, int> Retry backoff: 10s, 30s, 60s */
@@ -37,11 +40,13 @@ class BinanceClient
      */
     public function getTickerPrices(): array
     {
-        $response = $this->publicClient()->get('/api/v3/ticker/price');
+        return $this->translateTransportFailures(function () {
+            $response = $this->publicClient()->get('/api/v3/ticker/price');
 
-        $response->throw();
+            $response->throw();
 
-        return $response->json();
+            return $response->json();
+        });
     }
 
     /**
@@ -101,12 +106,17 @@ class BinanceClient
         return $this->signedRequest('/sapi/v1/capital/withdraw/history', $params);
     }
 
+    protected function provider(): BankingProvider
+    {
+        return BankingProvider::Binance;
+    }
+
     /**
      * Execute a signed request with fresh timestamp on each retry attempt.
      */
     private function signedRequest(string $path, array $params = []): array
     {
-        return retry(
+        return $this->translateTransportFailures(fn () => retry(
             self::RETRY_BACKOFF_MS,
             function () use ($path, $params) {
                 $params['timestamp'] = (int) (microtime(true) * 1000);
@@ -121,12 +131,12 @@ class BinanceClient
                 return $response->json();
             },
             when: fn (Exception $e) => $e instanceof RequestException && $e->response->status() === 429,
-        );
+        ));
     }
 
     private function authenticatedClient(): PendingRequest
     {
-        return Http::baseUrl(self::BASE_URL)
+        return $this->transportClient(self::BASE_URL)
             ->withHeaders(['X-MBX-APIKEY' => $this->apiKey])
             ->acceptJson()
             ->throw(function ($response, $exception) {
@@ -139,7 +149,7 @@ class BinanceClient
 
     private function publicClient(): PendingRequest
     {
-        return Http::baseUrl(self::BASE_URL)
+        return $this->transportClient(self::BASE_URL)
             ->acceptJson()
             ->retry(
                 self::RETRY_BACKOFF_MS,

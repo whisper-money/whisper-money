@@ -2,12 +2,15 @@
 
 namespace App\Services\Banking;
 
+use App\Enums\BankingProvider;
+use App\Services\Banking\Concerns\TranslatesTransportFailures;
 use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class IndexaCapitalClient
 {
+    use TranslatesTransportFailures;
+
     private const BASE_URL = 'https://api.indexacapital.com';
 
     public function __construct(
@@ -21,11 +24,7 @@ class IndexaCapitalClient
      */
     public function getUser(): array
     {
-        $response = $this->client()->get('/users/me');
-
-        $response->throw();
-
-        return $response->json();
+        return $this->get('/users/me');
     }
 
     /**
@@ -54,11 +53,7 @@ class IndexaCapitalClient
      */
     public function getAccount(string $accountNumber): array
     {
-        $response = $this->client()->get("/accounts/{$accountNumber}");
-
-        $response->throw();
-
-        return $response->json();
+        return $this->get("/accounts/{$accountNumber}");
     }
 
     /**
@@ -67,31 +62,54 @@ class IndexaCapitalClient
      * Returns an empty array when Indexa Capital responds with 404 (no
      * performance data available yet for the account, e.g. brand-new or
      * inactive accounts) instead of throwing, so the sync can no-op cleanly.
+     * That is why this endpoint builds its own request rather than going
+     * through {@see get()}: it needs the response back before it throws.
      *
      * @return array{total_amount?: float, return?: float, return_percentage?: float, portfolios?: array<int, array{date?: string, total_amount?: float, return?: float}>, net_amounts?: array<string, float>}
      */
     public function getPerformance(string $accountNumber): array
     {
-        $response = $this->client(throwOnError: false)->get("/accounts/{$accountNumber}/performance");
+        return $this->translateTransportFailures(function () use ($accountNumber) {
+            $response = $this->client(throwOnError: false)->get("/accounts/{$accountNumber}/performance");
 
-        if ($response->status() === 404) {
-            Log::info('No Indexa Capital performance data available', [
-                'account_number' => $accountNumber,
-            ]);
+            if ($response->status() === 404) {
+                Log::info('No Indexa Capital performance data available', [
+                    'account_number' => $accountNumber,
+                ]);
 
-            return [];
-        }
+                return [];
+            }
 
-        $response->throw();
+            $response->throw();
 
-        $json = $response->json();
+            $json = $response->json();
 
-        return is_array($json) ? $json : [];
+            return is_array($json) ? $json : [];
+        });
+    }
+
+    protected function provider(): BankingProvider
+    {
+        return BankingProvider::IndexaCapital;
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private function get(string $path): array
+    {
+        return $this->translateTransportFailures(function () use ($path) {
+            $response = $this->client()->get($path);
+
+            $response->throw();
+
+            return $response->json() ?? [];
+        });
     }
 
     private function client(bool $throwOnError = true): PendingRequest
     {
-        $client = Http::baseUrl(self::BASE_URL)
+        $client = $this->transportClient(self::BASE_URL)
             ->withHeaders(['X-AUTH-TOKEN' => $this->apiToken])
             ->acceptJson();
 

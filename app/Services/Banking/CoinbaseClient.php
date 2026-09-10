@@ -2,15 +2,18 @@
 
 namespace App\Services\Banking;
 
+use App\Enums\BankingProvider;
+use App\Services\Banking\Concerns\TranslatesTransportFailures;
 use Exception;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class CoinbaseClient
 {
+    use TranslatesTransportFailures;
+
     private const BASE_URL = 'https://api.coinbase.com';
 
     private const HOST = 'api.coinbase.com';
@@ -120,6 +123,11 @@ class CoinbaseClient
         ]);
     }
 
+    protected function provider(): BankingProvider
+    {
+        return BankingProvider::Coinbase;
+    }
+
     /**
      * Execute a signed JWT request with retry on rate limiting.
      *
@@ -128,7 +136,7 @@ class CoinbaseClient
      */
     private function signedRequest(string $method, string $path, array $params = []): array
     {
-        return retry(
+        return $this->translateTransportFailures(fn () => retry(
             self::RETRY_BACKOFF_MS,
             function () use ($method, $path, $params) {
                 $jwt = $this->buildJwt($method, $path);
@@ -154,7 +162,7 @@ class CoinbaseClient
                 return $response->json();
             },
             when: fn (Exception $e) => $e instanceof RequestException && $e->response->status() === 429,
-        );
+        ));
     }
 
     /**
@@ -182,7 +190,7 @@ class CoinbaseClient
 
     private function client(string $jwt): PendingRequest
     {
-        return Http::baseUrl(self::BASE_URL)
+        return $this->transportClient(self::BASE_URL)
             ->withToken($jwt)
             ->acceptJson()
             ->throw(function ($response) {
