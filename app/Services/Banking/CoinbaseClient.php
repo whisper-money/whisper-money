@@ -194,7 +194,7 @@ class CoinbaseClient
             ->withToken($jwt)
             ->acceptJson()
             ->throw(function ($response) {
-                Log::error('Coinbase API error', [
+                Log::log($response->serverError() ? 'warning' : 'error', 'Coinbase API error', [
                     'status' => $response->status(),
                     'body' => $response->json(),
                 ]);

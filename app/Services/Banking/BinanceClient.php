@@ -140,7 +140,7 @@ class BinanceClient
             ->withHeaders(['X-MBX-APIKEY' => $this->apiKey])
             ->acceptJson()
             ->throw(function ($response, $exception) {
-                Log::error('Binance API error', [
+                Log::log($response->serverError() ? 'warning' : 'error', 'Binance API error', [
                     'status' => $response->status(),
                     'body' => $response->json(),
                 ]);

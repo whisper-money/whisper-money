@@ -8,6 +8,7 @@ use App\Services\Banking\IndexaCapitalClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 
 beforeEach(function () {
@@ -33,35 +34,49 @@ function transientErrorEcPrivateKey(): string
 
 /**
  * The API-key clients that share TranslatesTransportFailures, each paired with
- * the provider slug the translated exception must carry. Wise and Interactive
- * Brokers translate the same way but keep their own copy for now.
+ * the provider slug the translated exception must carry and the name a person
+ * reads in its message. Wise and Interactive Brokers translate the same way but
+ * keep their own copy for now.
  */
 dataset('api key banking clients', [
-    'binance' => ['binance', fn () => (new BinanceClient('api-key', 'api-secret'))->getAccount()],
-    'coinbase' => ['coinbase', fn () => (new CoinbaseClient('organizations/org/apiKeys/key', transientErrorEcPrivateKey()))->getAccounts()],
-    'bitpanda' => ['bitpanda', fn () => (new BitpandaClient('api-key'))->getCryptoWallets()],
-    'indexacapital' => ['indexacapital', fn () => (new IndexaCapitalClient('api-token'))->getUser()],
+    'binance' => ['binance', 'Binance', fn () => (new BinanceClient('api-key', 'api-secret'))->getAccount()],
+    'coinbase' => ['coinbase', 'Coinbase', fn () => (new CoinbaseClient('organizations/org/apiKeys/key', transientErrorEcPrivateKey()))->getAccounts()],
+    'bitpanda' => ['bitpanda', 'Bitpanda', fn () => (new BitpandaClient('api-key'))->getCryptoWallets()],
+    'indexacapital' => ['indexacapital', 'Indexa Capital', fn () => (new IndexaCapitalClient('api-token'))->getUser()],
 ]);
 
-test('a provider timeout is reclassified as transient', function (string $provider, Closure $call) {
+test('a provider timeout is reclassified as transient', function (string $provider, string $label, Closure $call) {
     Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
 
-    expect($call)
-        ->toThrow(TransientBankingProviderException::class)
-        ->and(transientErrorFrom($call)->provider)->toBe($provider);
+    $exception = transientErrorFrom($call);
+
+    expect($exception->provider)->toBe($provider)
+        ->and($exception->getMessage())->toStartWith($label)
+        ->and($exception->getPrevious())->toBeInstanceOf(ConnectionException::class);
 })->with('api key banking clients');
 
-test('a provider 500 is reclassified as transient', function (string $provider, Closure $call) {
+test('a provider 500 is reclassified as transient', function (string $provider, string $label, Closure $call) {
     Http::fake(Http::response(['error' => 'oops'], 500));
 
     $exception = transientErrorFrom($call);
 
     expect($exception->provider)->toBe($provider)
         ->and($exception->statusCode)->toBe(500)
+        ->and($exception->getMessage())->toStartWith($label)
         ->and($exception->getPrevious())->toBeInstanceOf(RequestException::class);
 })->with('api key banking clients');
 
-test('auth and rate-limit responses stay raw so the sync job can act on them', function (string $provider, Closure $call, int $status) {
+test('a provider 500 is logged as a warning, so an outage is not an error', function (string $provider, string $label, Closure $call) {
+    Http::fake(Http::response(['error' => 'oops'], 500));
+    Log::spy();
+
+    transientErrorFrom($call);
+
+    Log::shouldNotHaveReceived('error');
+    Log::shouldHaveReceived('log')->with('warning', "{$label} API error", Mockery::any());
+})->with('api key banking clients');
+
+test('auth and rate-limit responses stay raw so the sync job can act on them', function (string $provider, string $label, Closure $call, int $status) {
     Http::fake(Http::response(['error' => 'nope'], $status));
 
     expect($call)->toThrow(RequestException::class);

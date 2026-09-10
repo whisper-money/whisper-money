@@ -61,7 +61,7 @@ trait TranslatesTransportFailures
             return $request();
         } catch (ConnectionException $e) {
             throw new TransientBankingProviderException(
-                "{$this->provider()->name} did not respond in time.",
+                "{$this->provider()->label()} did not respond in time.",
                 provider: $this->provider()->value,
                 previous: $e,
             );
@@ -71,7 +71,7 @@ trait TranslatesTransportFailures
             }
 
             throw new TransientBankingProviderException(
-                "{$this->provider()->name} could not serve the request right now.",
+                "{$this->provider()->label()} could not serve the request right now.",
                 provider: $this->provider()->value,
                 statusCode: $e->response->status(),
                 previous: $e,

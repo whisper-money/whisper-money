@@ -201,7 +201,7 @@ class BitpandaClient
             ->withHeaders(['X-Api-Key' => $this->apiKey])
             ->acceptJson()
             ->throw(function ($response, $exception) {
-                Log::error('Bitpanda API error', [
+                Log::log($response->serverError() ? 'warning' : 'error', 'Bitpanda API error', [
                     'status' => $response->status(),
                     'body' => $response->json(),
                 ]);

@@ -118,7 +118,7 @@ class IndexaCapitalClient
         }
 
         return $client->throw(function ($response, $exception) {
-            Log::error('Indexa Capital API error', [
+            Log::log($response->serverError() ? 'warning' : 'error', 'Indexa Capital API error', [
                 'status' => $response->status(),
                 'body' => $response->json(),
             ]);
