@@ -101,7 +101,7 @@ class HistoryBuilder
      * are measured in, lowercased the way a rate map keys them.
      *
      * @param  Collection<int, Account>  $accounts
-     * @return BaseCollection<int, string>
+     * @return BaseCollection<int, lowercase-string>
      */
     private function foreignCurrencies(Collection $accounts, string $currency): BaseCollection
     {
