@@ -324,7 +324,7 @@ test('a target date with an out-of-range year is rejected when editing', functio
     ])->assertSessionHasErrors('target_date');
 
     expect($goal->fresh()->target_date->toDateString())->toBe('2026-11-10');
-})->with(['20026-11-10', '9999-12-31']);
+})->with(['20026-11-10', '9999-12-31', '0026-11-10']);
 
 test('editing a goal accepts a normal future target date', function () {
     $user = onboardedSavingsUser();
