@@ -131,6 +131,7 @@ interface TransactionRowProps {
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
     onEdit: (transaction: DecryptedTransaction) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
+    onAutomate: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
     onSplit: (transaction: DecryptedTransaction) => void;
     onUnsplit: (transaction: DecryptedTransaction) => void;
@@ -142,6 +143,7 @@ function TransactionRowComponent({
     rowVirtualizer,
     onEdit,
     onReEvaluateRules,
+    onAutomate,
     onDelete,
     onSplit,
     onUnsplit,
@@ -212,6 +214,7 @@ function TransactionRowComponent({
                     transaction,
                     onEdit,
                     onReEvaluateRules,
+                    onAutomate,
                     onDelete,
                     onSplit,
                     onUnsplit,
@@ -772,6 +775,20 @@ export function TransactionList({
         [],
     );
 
+    const openAutomateDialog = useCallback(
+        (transaction: DecryptedTransaction) => {
+            captureEvent('automation_rule_toast_automatize_clicked', {
+                source: 'row_menu',
+            });
+            setAutomateCandidate({
+                transaction,
+                category: transaction.category ?? null,
+            });
+            setAutomateDialogOpen(true);
+        },
+        [],
+    );
+
     const columns = useMemo(() => {
         const allColumns = createTransactionColumns({
             categories,
@@ -784,6 +801,7 @@ export function TransactionList({
             onUpdate: updateTransaction,
             onCategorized: showAutomatizeToast,
             onReEvaluateRules: handleReEvaluateRules,
+            onAutomate: openAutomateDialog,
             onSplit: setSplitTransaction,
             onUnsplit: setUnsplitTransaction,
             isDateHidden: columnVisibility.transaction_date === false,
@@ -808,6 +826,7 @@ export function TransactionList({
         updateTransaction,
         showAutomatizeToast,
         handleReEvaluateRules,
+        openAutomateDialog,
         hideColumns,
         columnVisibility,
         hiddenLabelId,
@@ -1037,12 +1056,13 @@ export function TransactionList({
                     onEdit={setEditTransaction}
                     onReEvaluateRules={handleReEvaluateRules}
                     onDelete={setDeleteTransaction}
+                    onAutomate={openAutomateDialog}
                     onSplit={setSplitTransaction}
                     onUnsplit={setUnsplitTransaction}
                 />
             );
         },
-        [handleReEvaluateRules],
+        [handleReEvaluateRules, openAutomateDialog],
     );
 
     return (

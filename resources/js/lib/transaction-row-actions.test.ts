@@ -31,6 +31,7 @@ function transaction(
 const handlers = {
     onEdit: () => {},
     onReEvaluateRules: () => {},
+    onAutomate: () => {},
     onDelete: () => {},
     onSplit: () => {},
     onUnsplit: () => {},
@@ -43,7 +44,13 @@ describe('getTransactionRowActions', () => {
             ...handlers,
         }).map((action) => action.id);
 
-        expect(ids).toEqual(['edit', 'split', 're-evaluate-rules', 'delete']);
+        expect(ids).toEqual([
+            'edit',
+            'split',
+            're-evaluate-rules',
+            'automate',
+            'delete',
+        ]);
     });
 
     it('replaces deleting with merging back on a part of a split', () => {
@@ -52,7 +59,12 @@ describe('getTransactionRowActions', () => {
             ...handlers,
         }).map((action) => action.id);
 
-        expect(ids).toEqual(['edit', 're-evaluate-rules', 'unsplit']);
+        expect(ids).toEqual([
+            'edit',
+            're-evaluate-rules',
+            'automate',
+            'unsplit',
+        ]);
         expect(ids).not.toContain('delete');
         expect(ids).not.toContain('split');
     });
