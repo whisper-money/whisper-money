@@ -19,6 +19,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cache Store Used By The Rate Limiter
+    |--------------------------------------------------------------------------
+    |
+    | The rate limiter counts a hit by writing to the cache, which on the
+    | "database" store is an `insert ignore into cache`. Every concurrent
+    | request in the same bucket races for the same `...:timer` row, so InnoDB
+    | deadlocks one of them and `throttle` turned that into a 500 (the
+    | dashboard fires several API requests at once, so it hit real users).
+    |
+    | Pointing only the limiter at the "failover" store degrades that losing
+    | request to the in-process "array" store instead: its hit goes uncounted,
+    | but the request is served. "database" is still the first store, so a
+    | healthy cache counts every hit exactly as it did before.
+    |
+    | The trade is that a deadlocked hit is dropped rather than deferred, and
+    | this covers every limiter sharing the singleton — the "login" and
+    | "two-factor" ones included. A burst concurrent enough to deadlock buys a
+    | few uncounted attempts, which still beats answering them with a 500, but
+    | it is why the failover is logged instead of passing in silence.
+    |
+    */
+
+    'limiter' => 'failover',
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache Stores
     |--------------------------------------------------------------------------
     |
