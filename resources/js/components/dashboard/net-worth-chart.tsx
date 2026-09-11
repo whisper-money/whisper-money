@@ -36,7 +36,7 @@ import {
 } from '@/lib/chart-calculations';
 import { fetchJson } from '@/lib/fetch-json';
 import { SharedData } from '@/types';
-import { formatDayFromDate } from '@/utils/date';
+import { formatDayFromDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { format, subDays } from 'date-fns';
@@ -64,25 +64,19 @@ interface TrendData {
     currentAmount: number;
 }
 
+/**
+ * The monthly branch used to be a hand-rolled copy of
+ * {@see formatMonthFromYearMonth}, which is how this chart alone kept printing
+ * "oct 25" for a prior year after every other one started writing it out.
+ */
 function formatXAxisLabel(
     value: string,
-    locale: string = 'en',
+    locale: string = 'en-US',
     granularity: ChartGranularity = 'monthly',
 ): string {
-    if (granularity === 'daily') {
-        return formatDayFromDate(value, locale);
-    }
-
-    const [year, month] = value.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    const monthName = date.toLocaleString(locale, { month: 'short' });
-    const currentYear = new Date().getFullYear();
-
-    if (parseInt(year) === currentYear) {
-        return monthName;
-    }
-
-    return `${monthName} ${year.slice(-2)}`;
+    return granularity === 'daily'
+        ? formatDayFromDate(value, locale)
+        : formatMonthFromYearMonth(value, locale);
 }
 
 function calculateTrend(

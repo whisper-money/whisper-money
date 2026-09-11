@@ -1,21 +1,38 @@
 import { __ } from '@/utils/i18n';
 import {
-    format as dateFnsFormat,
     isToday as dateFnsIsToday,
     isYesterday as dateFnsIsYesterday,
 } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 /**
- * Get the date-fns locale object based on locale code
+ * The date-fns tokens this app uses, as the `Intl` option each one asks for.
+ *
+ * Only the fields are carried over, never the order: `Intl` puts them where the
+ * reader's region puts them, which is the whole point. So "MMM d, yyyy" prints
+ * "Sep 10, 2026" in Boston and "10 sept 2026" in Madrid off the same call — and
+ * a Mexican no longer reads a British date because they read Spanish.
  */
-function getDateFnsLocale(locale: string) {
-    switch (locale) {
-        case 'es':
-            return es;
-        default:
-            return undefined; // Uses English by default
-    }
+const TOKEN_OPTIONS: Record<string, Intl.DateTimeFormatOptions> = {
+    yyyy: { year: 'numeric' },
+    yy: { year: '2-digit' },
+    MMMM: { month: 'long' },
+    MMM: { month: 'short' },
+    MM: { month: '2-digit' },
+    M: { month: 'numeric' },
+    dd: { day: '2-digit' },
+    d: { day: 'numeric' },
+    EEEE: { weekday: 'long' },
+    EEE: { weekday: 'short' },
+};
+
+/** Quoted literals in a pattern — date-fns' "''yy" — carry no field of their own. */
+const TOKENS = /y{2,4}|M{1,4}|d{1,2}|E{3,4}/g;
+
+function toIntlOptions(pattern: string): Intl.DateTimeFormatOptions {
+    return (pattern.match(TOKENS) ?? []).reduce<Intl.DateTimeFormatOptions>(
+        (options, token) => ({ ...options, ...TOKEN_OPTIONS[token] }),
+        {},
+    );
 }
 
 /**
@@ -33,25 +50,28 @@ function toLocalDate(date: Date | string | number): Date {
 }
 
 /**
- * Format a date using the user's locale
+ * A date written the way the reader's region writes it.
+ *
+ * `formatStr` still names the fields in date-fns' spelling, because that is what
+ * every call site already passes; what it no longer decides is their order.
  */
 export function formatDate(
     date: Date | string | number,
     formatStr: string,
     locale: string = 'en-US',
 ): string {
-    const dateObj = toLocalDate(date);
-
-    const dateFnsLocale = getDateFnsLocale(locale);
-
-    return dateFnsFormat(dateObj, formatStr, {
-        locale: dateFnsLocale,
-    });
+    return new Intl.DateTimeFormat(locale, toIntlOptions(formatStr)).format(
+        toLocalDate(date),
+    );
 }
 
 /**
- * Format a month from YYYY-MM string
- * Shows abbreviated month for current year, or "MMM 'YY" for other years
+ * A month from a YYYY-MM key, for chart axes: the month alone inside the
+ * current year, the month and the full year outside it.
+ *
+ * The year is written out rather than abbreviated. date-fns wrote "Sep '25" and
+ * the apostrophe was doing the work of saying "this is a year"; `Intl` has no
+ * way to ask for one, and "Sep 25" beside "Sep 10" reads as a day.
  */
 export function formatMonthFromYearMonth(
     yearMonth: string,
@@ -61,7 +81,7 @@ export function formatMonthFromYearMonth(
     const date = new Date(parseInt(year), parseInt(month) - 1);
     const isCurrentYear = date.getFullYear() === new Date().getFullYear();
 
-    const formatStr = isCurrentYear ? 'MMM' : "MMM ''yy";
+    const formatStr = isCurrentYear ? 'MMM' : 'MMM yyyy';
 
     return formatDate(date, formatStr, locale);
 }
@@ -145,8 +165,8 @@ export function formatRelativeDate(
 }
 
 /**
- * Format a date from YYYY-MM-DD string for daily chart X-axis labels
- * Shows "MMM d" (e.g., "Feb 14") for current year, or "MMM d 'YY" for other years
+ * A day for a daily chart's X axis: "Feb 14" inside the current year, and the
+ * full year alongside it outside — "Feb 14 25" would be three numbers in a row.
  */
 export function formatDayFromDate(
     dateStr: string,
@@ -155,7 +175,7 @@ export function formatDayFromDate(
     const date = new Date(dateStr + 'T00:00:00');
     const isCurrentYear = date.getFullYear() === new Date().getFullYear();
 
-    const formatStr = isCurrentYear ? 'MMM d' : "MMM d ''yy";
+    const formatStr = isCurrentYear ? 'MMM d' : 'MMM d yyyy';
 
     return formatDate(date, formatStr, locale);
 }
