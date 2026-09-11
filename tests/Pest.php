@@ -15,6 +15,7 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -97,6 +98,26 @@ pest()->beforeEach(function () {
 pest()->beforeEach(function () {
     Http::preventStrayRequests();
 })->in('Feature');
+
+/*
+|--------------------------------------------------------------------------
+| Keep throttle bookkeeping out of the query counts
+|--------------------------------------------------------------------------
+|
+| The rate limiter runs on the "failover" store, whose first store is
+| "database", so counting a hit costs a few queries against the cache table.
+| Production has always paid those — it runs CACHE_STORE=database, and the
+| limiter reached the same table long before the failover store did — so they
+| are not a cost this suite exists to watch. It runs CACHE_STORE=array, where
+| the limiter would otherwise spend nothing, and the ceilings below are there
+| to catch an endpoint loading its own data badly.
+|
+*/
+pest()->beforeEach(function () {
+    config(['cache.limiter' => 'array']);
+
+    app()->forgetInstance(RateLimiter::class);
+})->in('Performance');
 
 /*
 |--------------------------------------------------------------------------
