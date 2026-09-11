@@ -15,6 +15,7 @@ interface TransactionRowActionsOptions {
     transaction: DecryptedTransaction;
     onEdit: (transaction: DecryptedTransaction) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
+    onAutomate: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
     onSplit: (transaction: DecryptedTransaction) => void;
     onUnsplit: (transaction: DecryptedTransaction) => void;
@@ -28,6 +29,7 @@ export function getTransactionRowActions({
     transaction,
     onEdit,
     onReEvaluateRules,
+    onAutomate,
     onDelete,
     onSplit,
     onUnsplit,
@@ -48,11 +50,18 @@ export function getTransactionRowActions({
         });
     }
 
-    actions.push({
-        id: 're-evaluate-rules',
-        label: __('Re-evaluate rules'),
-        onSelect: () => onReEvaluateRules(transaction),
-    });
+    actions.push(
+        {
+            id: 're-evaluate-rules',
+            label: __('Re-evaluate rules'),
+            onSelect: () => onReEvaluateRules(transaction),
+        },
+        {
+            id: 'automate',
+            label: __('Automatize categorization'),
+            onSelect: () => onAutomate(transaction),
+        },
+    );
 
     // One part of a split cannot be deleted on its own: the rest would stop
     // adding up to what the account actually moved. Merging back is the way out.
