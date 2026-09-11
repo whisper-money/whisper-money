@@ -282,6 +282,7 @@ interface TransactionRowProps {
     isNew: boolean;
     onEdit: (transaction: DecryptedTransaction) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
+    onAutomate: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
     onSplit: (transaction: DecryptedTransaction) => void;
     onUnsplit: (transaction: DecryptedTransaction) => void;
@@ -294,6 +295,7 @@ function TransactionRowComponent({
     isNew,
     onEdit,
     onReEvaluateRules,
+    onAutomate,
     onDelete,
     onSplit,
     onUnsplit,
@@ -378,6 +380,7 @@ function TransactionRowComponent({
                     transaction,
                     onEdit,
                     onReEvaluateRules,
+                    onAutomate,
                     onDelete,
                     onSplit,
                     onUnsplit,
@@ -1064,6 +1067,20 @@ export default function Transactions({
         [],
     );
 
+    const openAutomateDialog = useCallback(
+        (transaction: DecryptedTransaction) => {
+            captureEvent('automation_rule_toast_automatize_clicked', {
+                source: 'row_menu',
+            });
+            setAutomateCandidate({
+                transaction,
+                category: transaction.category ?? null,
+            });
+            setAutomateDialogOpen(true);
+        },
+        [],
+    );
+
     const columns = useMemo(
         () =>
             createTransactionColumns({
@@ -1077,6 +1094,7 @@ export default function Transactions({
                 onUpdate: updateTransaction,
                 onCategorized: showAutomatizeToast,
                 onReEvaluateRules: handleReEvaluateRules,
+                onAutomate: openAutomateDialog,
                 onSplit: setSplitTransaction,
                 onUnsplit: setUnsplitTransaction,
                 isDateHidden: columnVisibility.transaction_date === false,
@@ -1091,6 +1109,7 @@ export default function Transactions({
             updateTransaction,
             showAutomatizeToast,
             handleReEvaluateRules,
+            openAutomateDialog,
             columnVisibility,
             categorizingIds,
         ],
@@ -1375,12 +1394,13 @@ export default function Transactions({
                     onEdit={setEditTransaction}
                     onReEvaluateRules={handleReEvaluateRules}
                     onDelete={setDeleteTransaction}
+                    onAutomate={openAutomateDialog}
                     onSplit={setSplitTransaction}
                     onUnsplit={setUnsplitTransaction}
                 />
             );
         },
-        [handleReEvaluateRules, lastVisitAtMount],
+        [handleReEvaluateRules, lastVisitAtMount, openAutomateDialog],
     );
 
     return (

@@ -47,6 +47,7 @@ interface CreateColumnsOptions {
         source: 'transaction_table',
     ) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
+    onAutomate: (transaction: DecryptedTransaction) => void;
     onSplit: (transaction: DecryptedTransaction) => void;
     onUnsplit: (transaction: DecryptedTransaction) => void;
     isDateHidden?: boolean;
@@ -67,6 +68,7 @@ export function createTransactionColumns({
     onUpdate,
     onCategorized,
     onReEvaluateRules,
+    onAutomate,
     onSplit,
     onUnsplit,
     isDateHidden = false,
@@ -402,6 +404,7 @@ export function createTransactionColumns({
                                     transaction,
                                     onEdit,
                                     onReEvaluateRules,
+                                    onAutomate,
                                     onDelete,
                                     onSplit,
                                     onUnsplit,

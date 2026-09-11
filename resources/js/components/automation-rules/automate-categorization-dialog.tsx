@@ -24,7 +24,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 export interface AutomateCategorizationCandidate {
     transaction: DecryptedTransaction;
-    category: Category;
+    /** Null when the transaction is not categorized yet: the user picks one in the form. */
+    category: Category | null;
 }
 
 interface AutomateCategorizationDialogProps {
@@ -126,9 +127,11 @@ export function AutomateCategorizationDialog({
                     <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                         {__('Transaction')}
                     </div>
-                    <div className="mt-1 font-medium text-foreground">
-                        {candidate.category.name}
-                    </div>
+                    {candidate.category && (
+                        <div className="mt-1 font-medium text-foreground">
+                            {candidate.category.name}
+                        </div>
+                    )}
                     <div className="mt-1 line-clamp-2 text-muted-foreground">
                         {description}
                     </div>
@@ -151,9 +154,13 @@ export function AutomateCategorizationDialog({
                                     {__('Create a new rule')}
                                 </span>
                                 <span className="mt-1 block text-sm leading-5 break-words whitespace-normal text-muted-foreground">
-                                    {__(
-                                        'Start with this category and transaction description.',
-                                    )}
+                                    {candidate.category
+                                        ? __(
+                                              'Start with this category and transaction description.',
+                                          )
+                                        : __(
+                                              'Start with this transaction description.',
+                                          )}
                                 </span>
                             </span>
                         </Button>
@@ -223,9 +230,13 @@ export function AutomateCategorizationDialog({
                         mode="create"
                         categories={categories}
                         labels={labels}
-                        initialTitle={candidate.category.name}
+                        initialTitle={candidate.category?.name}
                         initialRuleStructure={createInitialStructure}
-                        initialCategoryId={String(candidate.category.id)}
+                        initialCategoryId={
+                            candidate.category
+                                ? String(candidate.category.id)
+                                : undefined
+                        }
                         onCancel={() => setStep('choose')}
                         onSuccess={handleSaved}
                     />

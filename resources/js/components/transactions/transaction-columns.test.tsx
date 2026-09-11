@@ -29,6 +29,7 @@ function buildColumns(isDateHidden: boolean) {
         onDelete: () => {},
         onUpdate: () => {},
         onReEvaluateRules: () => {},
+        onAutomate: () => {},
         onSplit: () => {},
         onUnsplit: () => {},
         isDateHidden,
