@@ -153,3 +153,25 @@ describe('per-currency scale', () => {
         expect(formatCurrency(164545, 'EUR', 'en-US', 0, 0)).toBe('€1,645');
     });
 });
+
+describe('formatCurrency across regions', () => {
+    // The locale is a full region, not a language: the same Spanish reader
+    // writes "1.234,56" in Madrid and "1,234.56" in Mexico City, and getting
+    // that from the language alone is what this column exists to stop.
+    it('separates a Mexican amount the Mexican way', () => {
+        expect(formatCurrency(123456, 'MXN', 'es-MX')).toBe('$1,234.56');
+        expect(formatCurrency(123456, 'EUR', 'es-ES')).toBe('1.234,56\u202F€');
+    });
+
+    it('keeps a British reader off American separators', () => {
+        expect(formatCurrency(123456, 'USD', 'en-GB')).toBe('US$1,234.56');
+        expect(formatCurrency(123456, 'USD', 'en-US')).toBe('$1,234.56');
+    });
+
+    it('groups thousands below ten thousand, which Spanish CLDR does not', () => {
+        // Without `useGrouping: 'always'` this is "1234,56 €": es-ES only starts
+        // grouping at 10,000. Dropping the option is the regression to watch.
+        expect(formatCurrency(123456, 'EUR', 'es-ES')).toContain('1.234');
+        expect(formatCurrency(123456, 'EUR', 'fr-FR')).toContain('1\u202F234');
+    });
+});

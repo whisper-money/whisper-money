@@ -443,9 +443,17 @@ class EmailPresenter
         return max(0, min(100, (int) round($percent)));
     }
 
+    /**
+     * Read off the summary's own reader rather than taken as an argument: the
+     * region belongs to the user, and threading it down through every row and
+     * sentence below would touch a dozen signatures to say one thing. The app
+     * locale is only a last resort — it names a language, not a region.
+     */
     private function money(MonthlySummary $summary, int $amount): string
     {
-        return Money::formatIn($amount, (string) $summary->figure('currency', 'EUR'), app()->getLocale());
+        $locale = $summary->user?->formatLocale() ?? app()->getLocale();
+
+        return Money::formatIn($amount, (string) $summary->figure('currency', 'EUR'), $locale);
     }
 
     /**

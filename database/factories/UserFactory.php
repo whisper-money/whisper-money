@@ -66,6 +66,11 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'onboarded_at' => now(),
             'locale' => 'en',
+            // Settled alongside the language: a user who has been through
+            // onboarding has made requests, and `SetLocale` pins the region on
+            // the first one. Leaving it null makes every test request pay for
+            // that one-time write, which the query-count ceilings then count.
+            'format_locale' => 'en-US',
         ]);
     }
 

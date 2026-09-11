@@ -78,6 +78,7 @@ class AchievementController extends Controller
                 $achievement,
                 $definition,
                 $this->ladders->currencyFor($request->user()->currency_code),
+                $request->user()->formatLocale(),
                 $format,
                 $theme,
                 $amount,

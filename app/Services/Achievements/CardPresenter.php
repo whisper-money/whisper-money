@@ -33,6 +33,11 @@ class CardPresenter
      *                        Medals whose figure is a rate, a run of months or
      *                        a count ignore this: those are safe to post, and
      *                        the summary cards have shown them from the start.
+     * @param  string  $formatLocale  The reader's region, which writes the
+     *                                figure. Separate from the app locale above
+     *                                it, which writes the month and the copy: a
+     *                                medal can read in English and count in
+     *                                Mexican.
      * @param  bool  $pro  Whether the footer carries the Pro member badge.
      * @return array<string, mixed>
      */
@@ -40,6 +45,7 @@ class CardPresenter
         Definition $definition,
         Carbon $achievedOn,
         string $currency,
+        string $formatLocale,
         CardFormat $format,
         CardTheme $theme,
         bool $amount,
@@ -57,7 +63,7 @@ class CardPresenter
             'glyph' => $this->pictograms->path($definition->icon),
             'track' => $this->catalog->tracks()[$definition->track] ?? $definition->track,
             'name' => $definition->name,
-            'figure' => $this->figure($definition, $currency, $locale, $amount),
+            'figure' => $this->figure($definition, $currency, $formatLocale, $amount),
             'tier' => $definition->rarity->label(),
             // Derived from the medal's own metal rather than from a second table
             // of label colours: on paper the struck edge reads, on a dark card
@@ -72,7 +78,7 @@ class CardPresenter
      * to write — an event medal has no number, and a money medal whose reader
      * asked to keep the amount out has none either.
      */
-    private function figure(Definition $definition, string $currency, string $locale, bool $amount): ?string
+    private function figure(Definition $definition, string $currency, string $formatLocale, bool $amount): ?string
     {
         $milestone = $this->presenter->milestone($definition, $currency);
 
@@ -84,15 +90,15 @@ class CardPresenter
 
         return match ($milestone['type']) {
             Figure::Money->value => $amount && $milestone['currency'] !== null
-                ? Money::formatIn((int) $value, $milestone['currency'], $locale, decimals: 0)
+                ? Money::formatIn((int) $value, $milestone['currency'], $formatLocale, decimals: 0)
                 : null,
             // A milestone is a round rung — 20, 30, 50, 75 — so it is written
             // without decimals, the same as the screen writes it.
-            Figure::Percent->value => Figures::percent((float) $value, $locale, decimals: 0),
-            Figure::Months->value => trans_choice(':count month|:count months', (int) $value, ['count' => Figures::count((int) $value, $locale)]),
-            Figure::Weeks->value => trans_choice(':count week|:count weeks', (int) $value, ['count' => Figures::count((int) $value, $locale)]),
-            Figure::Days->value => trans_choice(':count day|:count days', (int) $value, ['count' => Figures::count((int) $value, $locale)]),
-            default => Figures::count((int) $value, $locale),
+            Figure::Percent->value => Figures::percent((float) $value, $formatLocale, decimals: 0),
+            Figure::Months->value => trans_choice(':count month|:count months', (int) $value, ['count' => Figures::count((int) $value, $formatLocale)]),
+            Figure::Weeks->value => trans_choice(':count week|:count weeks', (int) $value, ['count' => Figures::count((int) $value, $formatLocale)]),
+            Figure::Days->value => trans_choice(':count day|:count days', (int) $value, ['count' => Figures::count((int) $value, $formatLocale)]),
+            default => Figures::count((int) $value, $formatLocale),
         };
     }
 

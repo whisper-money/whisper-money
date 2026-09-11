@@ -130,7 +130,7 @@ class AnalysisWriter
             self::LANGUAGES[$locale] ?? self::LANGUAGES['en'],
             $summary->periodStart()->locale($locale)->isoFormat('MMMM YYYY'),
         ))->prompt(
-            $this->payloadFor($summary, $locale),
+            $this->payloadFor($summary, $user->formatLocale()),
             provider: Lab::from((string) config('ai_monthly_summary.provider')),
             model: (string) config('ai_monthly_summary.model'),
             timeout: (int) config('ai_monthly_summary.timeout'),
@@ -180,20 +180,21 @@ class AnalysisWriter
     /**
      * The month's frozen figures plus the previous months already inside them,
      * with every amount and percentage rendered the way the reader will see them
-     * elsewhere in the email. Nothing is added that is not already in the
+     * elsewhere in the email — their region's way, which is not their language's:
+     * the model is told to write in Spanish and handed Mexican numbers. Nothing is added that is not already in the
      * payload, which is what keeps the promise printed under the block true.
      */
-    private function payloadFor(MonthlySummary $summary, string $locale): string
+    private function payloadFor(MonthlySummary $summary, string $formatLocale): string
     {
         $payload = $summary->payload;
         $currency = (string) ($payload['currency'] ?? 'EUR');
 
         foreach (self::MONEY_PATHS as $path) {
-            $payload = $this->rewrite($payload, $path, fn (int|float $value): string => Money::formatIn((int) $value, $currency, $locale));
+            $payload = $this->rewrite($payload, $path, fn (int|float $value): string => Money::formatIn((int) $value, $currency, $formatLocale));
         }
 
         foreach (self::PERCENT_PATHS as $path) {
-            $payload = $this->rewrite($payload, $path, fn (int|float $value): string => Figures::percent((float) $value, $locale));
+            $payload = $this->rewrite($payload, $path, fn (int|float $value): string => Figures::percent((float) $value, $formatLocale));
         }
 
         return (string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
