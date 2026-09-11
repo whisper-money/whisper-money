@@ -17,6 +17,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { useLocale } from '@/hooks/use-locale';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -25,11 +26,56 @@ import { disable, enable } from '@/routes/two-factor';
 import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { LANGUAGE_OPTIONS } from '@/types/language';
+import { formatLocaleOptions } from '@/utils/format-locale';
 import { __ } from '@/utils/i18n';
 import { Transition } from '@headlessui/react';
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ShieldBan, ShieldCheck } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+
+/**
+ * One labelled dropdown in the profile form. Three of these sit in a row —
+ * currency, language, region — and they were the same twenty-five lines three
+ * times over until they were not.
+ */
+function PreferenceSelect({
+    name,
+    label,
+    placeholder,
+    defaultValue,
+    options,
+    error,
+    required = false,
+}: {
+    name: string;
+    label: string;
+    placeholder: string;
+    defaultValue?: string;
+    options: readonly { code: string; label: string }[];
+    error?: string;
+    required?: boolean;
+}) {
+    return (
+        <div className="grid gap-2">
+            <Label htmlFor={name}>{label}</Label>
+
+            <Select name={name} defaultValue={defaultValue} required={required}>
+                <SelectTrigger className="mt-1 w-full">
+                    <SelectValue placeholder={placeholder} />
+                </SelectTrigger>
+                <SelectContent>
+                    {options.map((option) => (
+                        <SelectItem key={option.code} value={option.code}>
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+
+            <InputError className="mt-2" message={error} />
+        </div>
+    );
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -49,7 +95,23 @@ export default function Account({
     requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;
 }) {
-    const { auth, currencies } = usePage<SharedData>().props;
+    const { auth, currencies, formatLocales } = usePage<SharedData>().props;
+    const locale = useLocale();
+    // Each row carries a live example, so a reader picks by what it does to
+    // their money rather than by guessing what a tag means.
+    const formatOptions = useMemo(
+        () =>
+            formatLocaleOptions(formatLocales, auth.user.currency_code, locale),
+        [formatLocales, auth.user.currency_code, locale],
+    );
+    const currencyOptions = useMemo(
+        () =>
+            currencies.profile.map((currency) => ({
+                code: currency.code,
+                label: `${currency.code} - ${currency.name}`,
+            })),
+        [currencies.profile],
+    );
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
@@ -126,81 +188,35 @@ export default function Account({
                                     />
                                 </div>
 
-                                <div className="grid gap-2">
-                                    <Label htmlFor="currency_code">
-                                        {__('Currency')}
-                                    </Label>
+                                <PreferenceSelect
+                                    name="currency_code"
+                                    label={__('Currency')}
+                                    placeholder={__('Select currency')}
+                                    defaultValue={auth.user.currency_code}
+                                    options={currencyOptions}
+                                    error={errors.currency_code}
+                                    required
+                                />
 
-                                    <Select
-                                        name="currency_code"
-                                        defaultValue={auth.user.currency_code}
-                                        required
-                                    >
-                                        <SelectTrigger className="mt-1 w-full">
-                                            <SelectValue
-                                                placeholder={__(
-                                                    'Select currency',
-                                                )}
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {currencies.profile.map(
-                                                (currency) => (
-                                                    <SelectItem
-                                                        key={currency.code}
-                                                        value={currency.code}
-                                                    >
-                                                        {currency.code} -{' '}
-                                                        {currency.name}
-                                                    </SelectItem>
-                                                ),
-                                            )}
-                                        </SelectContent>
-                                    </Select>
+                                <PreferenceSelect
+                                    name="locale"
+                                    label={__('Language')}
+                                    placeholder={__('Select language')}
+                                    defaultValue={auth.user.locale ?? undefined}
+                                    options={LANGUAGE_OPTIONS}
+                                    error={errors.locale}
+                                />
 
-                                    <InputError
-                                        className="mt-2"
-                                        message={errors.currency_code}
-                                    />
-                                </div>
-
-                                <div className="grid gap-2">
-                                    <Label htmlFor="locale">
-                                        {__('Language')}
-                                    </Label>
-
-                                    <Select
-                                        name="locale"
-                                        defaultValue={
-                                            auth.user.locale ?? undefined
-                                        }
-                                    >
-                                        <SelectTrigger className="mt-1 w-full">
-                                            <SelectValue
-                                                placeholder={__(
-                                                    'Select language',
-                                                )}
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {LANGUAGE_OPTIONS.map(
-                                                (language) => (
-                                                    <SelectItem
-                                                        key={language.code}
-                                                        value={language.code}
-                                                    >
-                                                        {language.label}
-                                                    </SelectItem>
-                                                ),
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-
-                                    <InputError
-                                        className="mt-2"
-                                        message={errors.locale}
-                                    />
-                                </div>
+                                <PreferenceSelect
+                                    name="format_locale"
+                                    label={__('Number and date format')}
+                                    placeholder={__('Select a region')}
+                                    defaultValue={
+                                        auth.user.format_locale ?? undefined
+                                    }
+                                    options={formatOptions}
+                                    error={errors.format_locale}
+                                />
 
                                 {mustVerifyEmail &&
                                     auth.user.email_verified_at === null && (

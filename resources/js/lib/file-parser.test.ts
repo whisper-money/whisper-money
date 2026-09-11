@@ -62,6 +62,20 @@ describe('getLocaleDateFormat', () => {
     it('handles underscored locales like en_US', () => {
         expect(getLocaleDateFormat('en_US')).toBe(DateFormat.MonthDayYear);
     });
+
+    // The whole reason this used to be dead code: the app's `locale` prop was
+    // two letters, so a US reader arrived here as 'en' and got the rest of the
+    // world's order suggested for their own bank export. It carries the region
+    // now, so the comparison against 'en-US' finally has something to match.
+    it('suggests the American order to an American, which a bare language never did', () => {
+        expect(getLocaleDateFormat('en')).toBe(DateFormat.DayMonthYear);
+        expect(getLocaleDateFormat('en-US')).toBe(DateFormat.MonthDayYear);
+    });
+
+    it('keeps a Latin American reader on day-first', () => {
+        expect(getLocaleDateFormat('es-MX')).toBe(DateFormat.DayMonthYear);
+        expect(getLocaleDateFormat('es-419')).toBe(DateFormat.DayMonthYear);
+    });
 });
 
 describe('convertRowsToTransactions', () => {
