@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DripEmailType;
 use App\Enums\PlanFeature;
 use App\Notifications\VerifyEmailNotification;
+use App\Services\FormatLocaleOptions;
 use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -66,6 +67,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'paywall_seen_at',
         'currency_code',
         'locale',
+        'format_locale',
         'timezone',
         'current_space_id',
         'price_arm',
@@ -622,6 +624,18 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function preferredLocale(): string
     {
         return $this->locale ?? 'en';
+    }
+
+    /**
+     * The locale this reader's amounts and dates are written in — a full region
+     * like `es-MX`, not the two letters {@see preferredLocale()} returns.
+     *
+     * Null until a request detects it from the browser, so until then it reads
+     * as whatever the language formatted like before the column existed.
+     */
+    public function formatLocale(): string
+    {
+        return $this->format_locale ?? app(FormatLocaleOptions::class)->fallbackFor($this->locale);
     }
 
     public function isDeleted(): bool
