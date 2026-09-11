@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -84,12 +85,41 @@ class CurrencyConversionService
 
         if ($rates === null) {
             $rates = $this->fetchRates($currency, $date);
-            Cache::put($persistentKey, $rates, $this->cacheTtlFor($date, $rates));
+            $this->cacheRates($persistentKey, $rates, $date);
         }
 
         $this->rateCache[$cacheKey] = $rates;
 
         return $rates;
+    }
+
+    /**
+     * Persist a fetched rate map, best-effort.
+     *
+     * The database cache store turns a write into an `insert ignore into
+     * cache`, so concurrent requests missing the same hot rate key race for
+     * the same row and InnoDB deadlocks one of them. The rates are already in
+     * hand by then, so losing that race is no reason to fail the request: the
+     * request that won it populated the row, and the next miss re-attempts the
+     * write anyway.
+     *
+     * Any write failure is swallowed, not only the deadlock: each one costs a
+     * value the next miss re-fetches, so none of them is worth a 500. Only the
+     * write is guarded — a structurally broken cache backend still surfaces,
+     * because the read a few lines above is not.
+     *
+     * @param  array<string, float>  $rates
+     */
+    private function cacheRates(string $persistentKey, array $rates, string $date): void
+    {
+        try {
+            Cache::put($persistentKey, $rates, $this->cacheTtlFor($date, $rates));
+        } catch (QueryException $e) {
+            Log::warning('Currency rate cache write failed', [
+                'key' => $persistentKey,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
