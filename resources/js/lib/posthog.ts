@@ -56,9 +56,17 @@ function withPostHog(call: () => void): void {
 
     try {
         call();
-    } catch {
+    } catch (error) {
         // A browser that will not let the SDK run is a browser we collect no
         // analytics from. The page carries on.
+        //
+        // Loud in development only: the two conditions above are nothing a
+        // developer can fix, but a genuinely broken integration — a bad key, a
+        // blocked host, a misused SDK method — lands in the same catch and
+        // would otherwise be invisible while working on it.
+        if (import.meta.env.DEV) {
+            console.warn('[PostHog] Call failed and was ignored.', error);
+        }
     }
 }
 

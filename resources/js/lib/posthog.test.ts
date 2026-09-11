@@ -36,8 +36,11 @@ describe('isPostHogSessionRecordingEnabled', () => {
 });
 
 describe('PostHog wrappers', () => {
+    let warn: ReturnType<typeof vi.spyOn>;
+
     beforeEach(() => {
         vi.clearAllMocks();
+        warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         // Pinned rather than inherited: the local .env disables PostHog and CI
         // has no .env at all, so without this the wrappers would no-op on one
         // machine and run on the other.
@@ -49,6 +52,7 @@ describe('PostHog wrappers', () => {
 
     afterEach(() => {
         vi.unstubAllEnvs();
+        vi.restoreAllMocks();
     });
 
     it.each([
@@ -63,6 +67,9 @@ describe('PostHog wrappers', () => {
             // The call still has to reach the SDK: a guard that skipped it
             // altogether would pass the assertion above and collect nothing.
             expect(posthog[method]).toHaveBeenCalled();
+            // Swallowed, but not in silence while someone is developing —
+            // a broken integration lands in the same catch.
+            expect(warn).toHaveBeenCalled();
         },
     );
 
