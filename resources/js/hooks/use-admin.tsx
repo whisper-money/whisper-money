@@ -1,8 +1,3 @@
-export const isAdmin = (): boolean => {
-    if (typeof window !== 'undefined') {
-        const isAdminFlag = localStorage.getItem('admin');
-        return isAdminFlag === 'true';
-    }
+import { readStoredValue } from '@/lib/safe-storage';
 
-    return false;
-};
+export const isAdmin = (): boolean => readStoredValue('admin') === 'true';

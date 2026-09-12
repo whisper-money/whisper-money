@@ -1,5 +1,7 @@
+import { isAdmin } from '@/hooks/use-admin';
 import { initializeTheme } from '@/hooks/use-appearance';
 import { initializeChartColorScheme } from '@/hooks/use-chart-color-scheme';
+import { consoleDebug } from '@/lib/debug';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
     readOwnedValue,
@@ -109,6 +111,20 @@ describe('boot initializers', () => {
         initializeTheme();
 
         expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+});
+
+// Same invariant, off the boot path: a logging helper and an admin-flag check
+// have no business being the thing that throws (PHP-LARAVEL-5V).
+describe('flag readers', () => {
+    it.each([
+        ['a null localStorage', () => replaceStorage(null)],
+        ['a localStorage that throws on access', throwOnStorageAccess],
+    ])('read a flag through %s without throwing', (_name, breakStorage) => {
+        breakStorage();
+
+        expect(() => consoleDebug('anything')).not.toThrow();
+        expect(isAdmin()).toBe(false);
     });
 });
 
