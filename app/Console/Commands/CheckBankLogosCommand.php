@@ -75,6 +75,10 @@ class CheckBankLogosCommand extends Command
 
     private function hasWorkingImage(string $logoUrl): bool
     {
+        if (str_starts_with($logoUrl, '/')) {
+            return is_file(public_path($logoUrl));
+        }
+
         if (! filter_var($logoUrl, FILTER_VALIDATE_URL)) {
             return false;
         }
