@@ -115,3 +115,40 @@ test('command falls back to get request when head request is not allowed', funct
     expect($bank->fresh()->logo)->toBe('https://bank-head-fallback.test/logo.png');
     Mail::assertNothingSent();
 });
+
+test('command keeps locally hosted logos without making http requests', function () {
+    Mail::fake();
+    Http::fake();
+
+    config(['mail.admin_email' => 'admin@example.com']);
+
+    $bank = Bank::factory()->create([
+        'logo' => '/images/banks/logos/bbva.png',
+    ]);
+
+    artisan('banks:check-logos')
+        ->expectsOutputToContain('All bank logos are valid.')
+        ->assertSuccessful();
+
+    expect($bank->fresh()->logo)->toBe('/images/banks/logos/bbva.png');
+    Http::assertNothingSent();
+    Mail::assertNothingSent();
+});
+
+test('command clears locally hosted logos whose file is missing', function () {
+    Mail::fake();
+    Http::fake();
+
+    config(['mail.admin_email' => null]);
+
+    $bank = Bank::factory()->create([
+        'logo' => '/images/banks/logos/missing.png',
+    ]);
+
+    artisan('banks:check-logos')
+        ->expectsOutputToContain('Cleared broken logos for 1 bank(s).')
+        ->assertSuccessful();
+
+    expect($bank->fresh()->logo)->toBeNull();
+    Http::assertNothingSent();
+});
