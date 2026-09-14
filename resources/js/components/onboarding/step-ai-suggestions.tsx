@@ -345,8 +345,8 @@ export function StepAiSuggestions({
         );
     }
 
-    // ponytail: unreachable — timedOut only flips after state has loaded; the
-    // guard just restores non-null narrowing for the branches below.
+    // Unreachable in practice — timedOut only flips after state has loaded.
+    // The guard is here to restore non-null narrowing for the branches below.
     if (!state) {
         return null;
     }
