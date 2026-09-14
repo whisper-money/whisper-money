@@ -94,6 +94,24 @@ test('users can start bank authorization during onboarding when subscriptions ar
     ]);
 });
 
+test('a free-plan signup cannot start bank authorization during onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->notOnboarded()->create(['signup_plan' => 'free']);
+
+    $response = $this->actingAs($user)->postJson('/open-banking/authorize', [
+        'aspsp_name' => 'Test Bank',
+        'country' => 'ES',
+    ]);
+
+    $response->assertStatus(402);
+    $response->assertJson(['redirect' => route('subscribe')]);
+
+    $this->assertDatabaseMissing('banking_connections', [
+        'user_id' => $user->id,
+    ]);
+});
+
 test('subscribed users can start bank authorization when subscriptions are enabled', function () {
     config(['subscriptions.enabled' => true]);
 
