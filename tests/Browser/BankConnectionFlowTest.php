@@ -26,9 +26,12 @@ beforeEach(function () {
     app()->instance(BankingProviderInterface::class, $this->fakeProvider);
 });
 
-it('connects a bank during onboarding', function () {
+it('connects a bank during onboarding and asks which accounts to keep', function () {
     $user = User::factory()->notOnboarded()->create([
         'email_verified_at' => now(),
+        // Spain is a country we connect in, so the picker opens on its banks
+        // instead of asking for a country first.
+        'format_locale' => 'es-ES',
     ]);
 
     actingAs($user);
@@ -39,25 +42,29 @@ it('connects a bank during onboarding', function () {
 
     $page->waitForText("Let's build the picture", 5)
         ->click('Connect a bank')
-        ->waitForText('Connect Your Bank', 5)
-        ->click('[role="combobox"]')
-        ->wait(0.5)
-        ->click('[role="option"]:has-text("Spain")')
-        ->wait(0.3)
-        ->click('button:has-text("Continue")')
-        ->waitForText('Banco de Sabadell', 5)
+        // No country step: the guess put the country beside the search box.
+        ->waitForText('Where do you bank?', 5)
+        ->assertSee('Beta')
+        // One tap from the list to the handoff, rather than select-then-continue.
         ->click('button:has-text("Banco de Sabadell")')
-        ->click('button:has-text("Continue")')
-        ->waitForText('You will be redirected', 5)
-        ->click('button:has-text("Connect")')
+        ->waitForText('You’re about to log in at Banco de Sabadell', 5)
+        ->assertSee('Your password stays at your bank')
+        ->assertSee('This bank is still in beta')
+        ->click('button:has-text("Continue to Banco de Sabadell")')
         ->wait(3);
 
-    // The faked provider redirects straight to our callback, which auto-creates the
-    // accounts for a not-yet-onboarded user and marks the connection active.
+    // Two accounts is a decision, so nothing is created until the user makes it.
     $connection = $user->bankingConnections()->sole();
 
-    expect($connection->status)->toBe(BankingConnectionStatus::Active)
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping)
         ->and($connection->aspsp_name)->toBe('Banco de Sabadell')
+        ->and($connection->accounts()->count())->toBe(0);
+
+    $page->waitForText('Banco de Sabadell gave us 2 accounts', 5)
+        ->click('button:has-text("Track these 2")')
+        ->wait(3);
+
+    expect($connection->fresh()->status)->toBe(BankingConnectionStatus::Active)
         ->and($connection->accounts()->count())->toBe(2);
 
     $page->assertNoJavascriptErrors();
@@ -125,8 +132,11 @@ it('shows the connected confirmation when the session is lost on return', functi
     // bank redirect lands in a browser that has no app session.
     $page = visit('/open-banking/callback?code=fake&state=session-lost-token');
 
-    $page->assertSee('Bank account connected')
-        ->assertSee('go back to the app')
+    // The page a bank redirect lands on when it picks a browser the app session
+    // does not exist in. It now names the bank and carries a way back.
+    $page->assertSee('Banco de Sabadell sent you here')
+        ->assertSee('The connection worked')
+        ->assertSee('Open Whisper')
         ->assertNoJavascriptErrors();
 
     // The connection is still finalized server-side (resolved from the state token).

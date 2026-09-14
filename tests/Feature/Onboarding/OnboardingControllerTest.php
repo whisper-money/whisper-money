@@ -3,6 +3,7 @@
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Account;
 use App\Models\Bank;
+use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
@@ -181,4 +182,49 @@ it('returns banks and accounts props on onboarding index', function () {
             ->has('banks', 2) // global + user's own bank
             ->has('accounts')
         );
+});
+
+// The accounts hub renders the chooser for a bank that returned more than one
+// account, so the connection waiting on that answer has to reach the page.
+it('offers a connection awaiting its account mapping to the hub', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $connection = BankingConnection::factory()->for($user)->awaitingMapping()->create([
+        'aspsp_name' => 'BBVA',
+        'aspsp_logo' => 'https://logos.test/bbva.png',
+        'pending_accounts_data' => [
+            [
+                'uid' => 'ext-1',
+                'name' => 'Cuenta Nomina',
+                'currency' => 'EUR',
+                'account_id' => ['iban' => 'ES1234567890123456789012'],
+            ],
+            // No uid, so the provider gave us nothing to sync it by: it is not a
+            // choice the user can make and never reaches the screen.
+            ['name' => 'Sin identificador', 'currency' => 'EUR'],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get('/onboarding')
+        ->assertInertia(fn ($page) => $page
+            ->where('pendingMapping.connection_id', $connection->id)
+            ->where('pendingMapping.bank_name', 'BBVA')
+            ->where('pendingMapping.bank_logo', 'https://logos.test/bbva.png')
+            ->count('pendingMapping.accounts', 1)
+            ->where('pendingMapping.accounts.0.uid', 'ext-1')
+            ->where('pendingMapping.accounts.0.name', 'Cuenta Nomina')
+            ->where('pendingMapping.accounts.0.iban', 'ES1234567890123456789012')
+            ->etc()
+        );
+});
+
+it('offers no mapping when every connection is settled', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    BankingConnection::factory()->for($user)->create(['pending_accounts_data' => null]);
+
+    $this->actingAs($user)
+        ->get('/onboarding')
+        ->assertInertia(fn ($page) => $page->where('pendingMapping', null)->etc());
 });

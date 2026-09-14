@@ -1,5 +1,6 @@
 import { BankLogo } from '@/components/bank-logo';
 import { StepButton } from '@/components/onboarding/step-button';
+import { StepConnectFailed } from '@/components/onboarding/step-connect-failed';
 import {
     StepCheck,
     StepChevron,
@@ -8,8 +9,15 @@ import {
     StepSectionLabel,
 } from '@/components/onboarding/step-list';
 import { StepManualAccount } from '@/components/onboarding/step-manual-account';
+import {
+    StepMapAccounts,
+    type PendingMapping,
+} from '@/components/onboarding/step-map-accounts';
 import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
-import { ConnectAccountInline } from '@/components/open-banking/connect-account-inline';
+import {
+    ConnectAccountInline,
+    type RetryBank,
+} from '@/components/open-banking/connect-account-inline';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { captureEvent } from '@/lib/posthog';
@@ -34,7 +42,39 @@ import { useCallback, useMemo, useState } from 'react';
  * for everything hanging off the hub — the same arrangement `SUB_STEPS` gives
  * `import-transactions` and `import-balances`.
  */
-type HubMode = 'hub' | 'manual' | 'connected';
+type HubMode = 'hub' | 'manual' | 'connected' | 'failed';
+
+/**
+ * The bank a failed authorization named, off the URL
+ * `AuthorizationController::finishWithError` sends the user back with. The
+ * connection row is deleted by then, so the URL is the only place left that
+ * knows which bank refused.
+ */
+function readFailedBank(): RetryBank | null {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const name = params.get('connect_error');
+    const country = params.get('connect_country');
+
+    // Both or neither: without the country there is no retry to offer, and the
+    // country is half of what identifies a bank to the provider.
+    return name && country ? { name, country } : null;
+}
+
+/** Drop the failure off the URL so a reload does not replay a dealt-with one. */
+function clearFailedBank(): void {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('connect_error');
+    url.searchParams.delete('connect_country');
+    window.history.replaceState(window.history.state, '', url.toString());
+}
 
 /** One account row, however it reached the screen. */
 interface AccountLine {
@@ -86,6 +126,8 @@ interface StepAccountsHubProps {
     createdAccounts?: CreatedAccount[];
     hasSelectedConnectedAccount?: boolean;
     signupPlan?: SignupPlan | null;
+    /** A connection waiting for the user to say which of its accounts to keep. */
+    pendingMapping?: PendingMapping | null;
     onAccountCreated: (account: CreatedAccount) => void;
     onConnectedAccountSelected?: () => void;
     onContinue?: () => void;
@@ -110,11 +152,12 @@ export function StepAccountsHub({
     createdAccounts = [],
     hasSelectedConnectedAccount = false,
     signupPlan = null,
+    pendingMapping = null,
     onAccountCreated,
     onConnectedAccountSelected,
     onContinue,
 }: StepAccountsHubProps) {
-    const { pricing, subscriptionsEnabled, locale } =
+    const { pricing, subscriptionsEnabled, locale, flash } =
         usePage<SharedData>().props;
     const cheapestMonthlyPrice = useCheapestMonthlyPrice();
     // Someone who signed up from the free card gets no bank connections, so an
@@ -122,9 +165,22 @@ export function StepAccountsHub({
     const isFreePlan = signupPlan === 'free';
     const hasAccounts =
         createdAccounts.length > 0 || existingAccounts.length > 0;
-    const [mode, setMode] = useState<HubMode>(
-        isFreePlan && !hasAccounts ? 'manual' : 'hub',
-    );
+    const [failedBank] = useState(readFailedBank);
+    const [mode, setMode] = useState<HubMode>(() => {
+        if (failedBank) {
+            return 'failed';
+        }
+
+        return isFreePlan && !hasAccounts ? 'manual' : 'hub';
+    });
+
+    const [retryBank, setRetryBank] = useState<RetryBank | null>(null);
+
+    /** Every exit from the failure screen, so none of them leaves it on the URL. */
+    const leaveFailure = useCallback((next: HubMode) => {
+        clearFailedBank();
+        setMode(next);
+    }, []);
 
     // Shown until the user has committed to a connected account once; after
     // that repeating the price on every extra account is just noise. The
@@ -273,10 +329,47 @@ export function StepAccountsHub({
         (suggestion) => suggestion.route === 'connected',
     )?.key;
 
+    // Only from the hub itself. The step polls for connections finished in
+    // another browser, so a mapping can arrive at any moment — and swapping the
+    // screen out from under a half-filled manual form would throw the form away.
+    // It is still there when they come back.
+    if (pendingMapping && mode === 'hub') {
+        return <StepMapAccounts pending={pendingMapping} />;
+    }
+
     // The bank flow renders its own StepScreen so each of its sub-steps gets
     // the pinned action footer. It comes back to the hub, not out of the step.
     if (mode === 'connected') {
-        return <ConnectAccountInline onBack={() => setMode('hub')} />;
+        // The retry target belongs to this visit to the flow only. Leaving it
+        // set would send the next plain "Connect a bank" straight back to the
+        // bank that failed, with no list in between.
+        const leaveConnect = (next: HubMode) => {
+            setRetryBank(null);
+            setMode(next);
+        };
+
+        return (
+            <ConnectAccountInline
+                onBack={() => leaveConnect('hub')}
+                onManual={() => leaveConnect('manual')}
+                retryBank={retryBank}
+            />
+        );
+    }
+
+    if (mode === 'failed' && failedBank) {
+        return (
+            <StepConnectFailed
+                bankName={failedBank.name}
+                message={flash?.error}
+                onRetry={() => {
+                    setRetryBank(failedBank);
+                    leaveFailure('connected');
+                }}
+                onDifferentBank={() => leaveFailure('connected')}
+                onManual={() => leaveFailure('manual')}
+            />
+        );
     }
 
     if (mode === 'manual') {

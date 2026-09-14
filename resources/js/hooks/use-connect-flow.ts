@@ -16,7 +16,7 @@ import type {
     EnableBankingInstitution,
 } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /** Countries we can connect banks in, most-used first. */
 export const CONNECT_COUNTRY_CODES = [
@@ -60,14 +60,52 @@ export function useConnectCountries(): { code: string; name: string }[] {
 export type ConnectStep = 'country' | 'bank' | 'confirm';
 
 /**
+ * The country the bank picker should open on, or null when the user's own
+ * settings do not name one we can connect in.
+ *
+ * The country is part of a bank's identity rather than a filter over one list:
+ * `/aspsps` takes it as a required parameter and `startAuthorization()` is keyed
+ * by the (name, country) pair, so Santander in Spain and Santander in Portugal
+ * are two different connections. Guessing it from the region the user already
+ * formats their money in is right often enough to make the full list a control
+ * rather than a step.
+ */
+export function useGuessedCountry(): string | null {
+    const locale = useLocale();
+
+    return useMemo(() => {
+        const region = new Intl.Locale(locale).region;
+
+        return region &&
+            (CONNECT_COUNTRY_CODES as readonly string[]).includes(region)
+            ? region
+            : null;
+    }, [locale]);
+}
+
+interface ConnectFlowOptions {
+    /**
+     * Opens straight on the bank list for this country instead of asking for one
+     * first. The onboarding flow guesses it and keeps the full list one tap away;
+     * the settings dialog passes nothing and still asks.
+     */
+    initialCountry?: string | null;
+}
+
+/**
  * Shared state and behavior for the bank-connect flow: country → bank list →
  * confirm/credentials → POST. Both the dialog and the inline flow consume this;
  * they only differ in chrome (layout, haptics, back navigation), which stays in
  * the components.
  */
-export function useConnectFlow(connections: BankingConnection[]) {
-    const [step, setStep] = useState<ConnectStep>('country');
-    const [country, setCountry] = useState('');
+export function useConnectFlow(
+    connections: BankingConnection[],
+    { initialCountry = null }: ConnectFlowOptions = {},
+) {
+    const [step, setStep] = useState<ConnectStep>(
+        initialCountry ? 'bank' : 'country',
+    );
+    const [country, setCountry] = useState(initialCountry ?? '');
     const [institutions, setInstitutions] = useState<
         EnableBankingInstitution[]
     >([]);
@@ -194,6 +232,18 @@ export function useConnectFlow(connections: BankingConnection[]) {
         [connections],
     );
 
+    // Only ever once: `fetchInstitutions` is rebuilt whenever `connections`
+    // changes, and re-running this would throw away a country the user has since
+    // picked by hand.
+    const hasAutoFetched = useRef(false);
+
+    useEffect(() => {
+        if (initialCountry && !hasAutoFetched.current) {
+            hasAutoFetched.current = true;
+            fetchInstitutions(initialCountry);
+        }
+    }, [initialCountry, fetchInstitutions]);
+
     const handleAuthorize = useCallback(async () => {
         if (!selectedBank) {
             return;
@@ -258,6 +308,7 @@ export function useConnectFlow(connections: BankingConnection[]) {
         setStep,
         country,
         setCountry,
+        institutions,
         filteredInstitutions,
         searchQuery,
         setSearchQuery,

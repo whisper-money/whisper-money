@@ -3,6 +3,8 @@ import { AlertCircle } from 'lucide-react';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
 interface StepScreenProps {
+    /** Sits above the title — the logo of the bank a screen is about. */
+    icon?: ReactNode;
     title?: ReactNode;
     description?: ReactNode;
     /** Rendered in the action area: pinned to the bottom on phones, inline on desktop. */
@@ -18,6 +20,7 @@ interface StepScreenProps {
  * supporting line, the content, and the action pinned within thumb reach.
  */
 export function StepScreen({
+    icon,
     title,
     description,
     footer,
@@ -42,8 +45,9 @@ export function StepScreen({
                         align === 'center' ? 'justify-center' : 'md:flex-none',
                     )}
                 >
-                    {(title || description) && (
+                    {(icon || title || description) && (
                         <div className="flex flex-col gap-2.5">
+                            {icon && <div className="pb-1.5">{icon}</div>}
                             {title && (
                                 <h1 className="text-3xl leading-[1.14] font-semibold tracking-tight text-balance md:text-[2rem]">
                                     {title}

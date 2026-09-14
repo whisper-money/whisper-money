@@ -49,6 +49,11 @@ interface StepRowProps {
      * billing), where onboarding-tall rows read as a flow leaking in.
      */
     size?: 'default' | 'compact';
+    /**
+     * Makes the row a toggle rather than a link: the check on the right is then
+     * a state a screen reader has to be told about, not decoration.
+     */
+    pressed?: boolean;
     onClick?: () => void;
 }
 
@@ -61,6 +66,7 @@ export function StepRow({
     badge,
     trailing,
     size = 'default',
+    pressed,
     onClick,
 }: StepRowProps) {
     const compact = size === 'compact';
@@ -123,6 +129,7 @@ export function StepRow({
     return (
         <button
             type="button"
+            aria-pressed={pressed}
             onClick={onClick}
             className={cn(
                 shared,

@@ -9,6 +9,7 @@ import { goalLabel, StepGoal } from '@/components/onboarding/step-goal';
 import { StepGuess } from '@/components/onboarding/step-guess';
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
 import { StepImportTransactions } from '@/components/onboarding/step-import-transactions';
+import { type PendingMapping } from '@/components/onboarding/step-map-accounts';
 import { StepPlan } from '@/components/onboarding/step-plan';
 import { StepPromise } from '@/components/onboarding/step-promise';
 import { StepSyncing } from '@/components/onboarding/step-syncing';
@@ -40,6 +41,7 @@ interface OnboardingProps {
     initialStep?: OnboardingStep | null;
     onboardingAnswers?: OnboardingAnswers;
     signupPlan?: SignupPlan | null;
+    pendingMapping?: PendingMapping | null;
 }
 
 export default function Onboarding({
@@ -50,6 +52,7 @@ export default function Onboarding({
     initialStep: initialStepProp,
     onboardingAnswers = {},
     signupPlan = null,
+    pendingMapping = null,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
     const { auth } = usePage<SharedData>().props;
@@ -116,7 +119,7 @@ export default function Onboarding({
     // connection server-side in a different browser without a session here).
     const { start, stop } = usePoll(
         4000,
-        { only: ['accounts'] },
+        { only: ['accounts', 'pendingMapping'] },
         { autoStart: false },
     );
 
@@ -224,6 +227,7 @@ export default function Onboarding({
                         hasSelectedConnectedAccount={
                             hasSelectedConnectedAccount
                         }
+                        pendingMapping={pendingMapping}
                         onAccountCreated={handleAccountCreated}
                         onConnectedAccountSelected={
                             markConnectedAccountSelected
