@@ -43,12 +43,6 @@ test('monthly spending API does not exceed query threshold', function () {
     }, 'API Monthly Spending');
 });
 
-test('cash flow API does not exceed query threshold', function () {
-    assertMaxQueries(15, function () {
-        $this->getJson("/api/dashboard/cash-flow?{$this->dateParams}")->assertOk();
-    }, 'API Cash Flow');
-});
-
 test('top categories API does not exceed query threshold', function () {
     assertMaxQueries(13, function () {
         $this->getJson("/api/dashboard/top-categories?{$this->dateParams}")->assertOk();

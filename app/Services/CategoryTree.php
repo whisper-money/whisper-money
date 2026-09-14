@@ -298,7 +298,7 @@ class CategoryTree
             ->map(function (array $root): array {
                 $children = collect($root['children'])->values();
 
-                if ($root['direct'] > 0 && $children->isNotEmpty()) {
+                if ($root['direct'] != 0 && $children->isNotEmpty()) {
                     $children->push([
                         'category_id' => $root['category_id'],
                         'category' => $this->renamedCopy($root['category'], __('Direct')),

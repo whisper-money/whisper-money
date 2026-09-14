@@ -57,7 +57,6 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     Route::prefix('dashboard')->group(function () {
         Route::get('net-worth', [DashboardAnalyticsController::class, 'netWorth']);
         Route::get('monthly-spending', [DashboardAnalyticsController::class, 'monthlySpending']);
-        Route::get('cash-flow', [DashboardAnalyticsController::class, 'cashFlow']);
         Route::get('net-worth-evolution', [DashboardAnalyticsController::class, 'netWorthEvolution']);
         Route::get('net-worth-daily-evolution', [DashboardAnalyticsController::class, 'netWorthDailyEvolution']);
         Route::get('top-categories', [DashboardAnalyticsController::class, 'topCategories']);

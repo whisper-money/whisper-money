@@ -30,6 +30,16 @@ trait ConvertsTransactionCurrency
     }
 
     /**
+     * The signed total of a set of transactions in the user's currency.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     */
+    protected function sumConvertedAmounts(Collection $transactions, string $currency): int
+    {
+        return $transactions->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency));
+    }
+
+    /**
      * @param  Collection<int, Transaction>  $transactions
      */
     protected function preloadExchangeRates(Collection $transactions, string $currency): void
