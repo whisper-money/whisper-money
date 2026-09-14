@@ -33,6 +33,7 @@ export function StepImportTransactions({
     onComplete,
 }: StepImportTransactionsProps) {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [hasClosedDrawer, setHasClosedDrawer] = useState(false);
     const [importedCount, setImportedCount] = useState(0);
     const { accounts, categories, banks, automationRules } = usePage<{
         accounts: Account[];
@@ -57,6 +58,17 @@ export function StepImportTransactions({
             transactions_imported: count,
         });
         setImportedCount((previous) => previous + count);
+    };
+
+    // Closing the drawer is what unlocks the way out, and nothing else: the
+    // step leads with the import, and only a user who has seen it and backed
+    // out of it is offered a way past.
+    const handleDrawerOpenChange = (open: boolean) => {
+        setIsDrawerOpen(open);
+
+        if (!open) {
+            setHasClosedDrawer(true);
+        }
     };
 
     // A partial import leaves the drawer open so the failed rows can be
@@ -89,9 +101,13 @@ export function StepImportTransactions({
                         icon={Upload}
                         onClick={() => setIsDrawerOpen(true)}
                     />
-                    {importedCount > 0 && (
+                    {(importedCount > 0 || hasClosedDrawer) && (
                         <StepButton
-                            text={__('Continue')}
+                            text={
+                                importedCount > 0
+                                    ? __('Continue')
+                                    : __('Skip for now')
+                            }
                             variant="ghost"
                             onClick={onComplete}
                         />
@@ -125,7 +141,7 @@ export function StepImportTransactions({
 
             <ImportTransactionsDrawer
                 open={isDrawerOpen}
-                onOpenChange={setIsDrawerOpen}
+                onOpenChange={handleDrawerOpenChange}
                 onImportComplete={handleImportComplete}
                 accounts={accounts}
                 categories={categories}
