@@ -17,6 +17,42 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Subscription Experiment
+    |--------------------------------------------------------------------------
+    |
+    | A/B test on how the paid plan is offered. Users who register on or after
+    | `started_at` are split evenly across `variants` by a stable hash of their
+    | id; everyone who registered earlier stays "legacy" and keeps the plan
+    | defaults. While `started_at` is null, or no variant is declared, the
+    | experiment is off and every user is legacy — this block is inert until an
+    | experiment fills it in.
+    |
+    | Each variant may override `trial_days` per plan. A variant whose trial is
+    | 0 on every plan charges upfront, which is what opens the self-service
+    | refund window (`refund_window_days` from the subscription date).
+    |
+    | The split is positional: adding, removing or reordering a variant
+    | reassigns existing users, so only change `variants` between experiments.
+    |
+    |   'variants' => [
+    |       'control' => [],
+    |       'short_trial' => ['trial_days' => ['monthly' => 3, 'yearly' => 7]],
+    |       'pay_now' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
+    |   ],
+    |
+    */
+
+    'experiment' => [
+        'started_at' => env('SUBSCRIPTION_EXPERIMENT_STARTED_AT'),
+        // Once a winner is chosen, set this to one of the variant keys to give
+        // every user that variant and end the split (env-only, no deploy).
+        'force_variant' => env('SUBSCRIPTION_EXPERIMENT_FORCE_VARIANT'),
+        'refund_window_days' => (int) env('SUBSCRIPTION_EXPERIMENT_REFUND_WINDOW_DAYS', 3),
+        'variants' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Free Plan Escape Delay
     |--------------------------------------------------------------------------
     |
