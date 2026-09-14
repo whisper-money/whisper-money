@@ -504,7 +504,14 @@ export function ImportTransactionsDrawer({
         setError(null);
         setImportErrors([]);
 
-        const newTransactions = state.transactions.filter((t) => t.selected);
+        // The row's index in the full list, carried along so the rows that make
+        // it in can be marked and left out of a retry.
+        const selectedIndexes = state.transactions
+            .map((transaction, index) => (transaction.selected ? index : -1))
+            .filter((index) => index !== -1);
+        const newTransactions = selectedIndexes.map(
+            (index) => state.transactions[index],
+        );
         const total = newTransactions.length;
         setImportTotal(total);
         setImportProgress(0);
@@ -516,6 +523,7 @@ export function ImportTransactionsDrawer({
         }
 
         const createdTransactions: unknown[] = [];
+        const importedIndexes = new Set<number>();
         const errors: ImportError[] = [];
         const keyString = getStoredKey();
         const key = keyString ? await importKey(keyString) : null;
@@ -629,6 +637,7 @@ export function ImportTransactionsDrawer({
 
                 if (result.status === 'fulfilled') {
                     createdTransactions.push(result.value.transaction);
+                    importedIndexes.add(selectedIndexes[i + batchIndex]);
                     if (!result.value.hasCategory) {
                         uncategorizedCount++;
                     }
@@ -691,6 +700,20 @@ export function ImportTransactionsDrawer({
             }
         }
 
+        // A partial import keeps the drawer open on the same preview, so the
+        // rows already created have to be taken out of the selection: pressing
+        // Import again would otherwise create every one of them a second time.
+        if (importedIndexes.size > 0) {
+            setState((prev) => ({
+                ...prev,
+                transactions: prev.transactions.map((transaction, index) =>
+                    importedIndexes.has(index)
+                        ? { ...transaction, imported: true, selected: false }
+                        : transaction,
+                ),
+            }));
+        }
+
         setImportErrors(errors);
         setIsImporting(false);
 
@@ -728,21 +751,6 @@ export function ImportTransactionsDrawer({
                           }
                         : undefined,
             });
-        } else if (successCount > 0) {
-            const message =
-                uncategorizedCount > 0
-                    ? `${successCount} transaction${successCount !== 1 ? 's' : ''} imported (${uncategorizedCount} uncategorized)`
-                    : `${successCount} transaction${successCount !== 1 ? 's' : ''} imported successfully`;
-            toast.success(message, {
-                action:
-                    uncategorizedCount > 0
-                        ? {
-                              label: 'Categorize',
-                              onClick: () => router.visit(categorize.url()),
-                          }
-                        : undefined,
-            });
-            onOpenChange(false);
         } else {
             toast.error(__('All transactions failed to import'));
         }
@@ -763,7 +771,7 @@ export function ImportTransactionsDrawer({
         setState((prev) => ({
             ...prev,
             transactions: prev.transactions.map((t) =>
-                t.isDuplicate ? t : { ...t, selected },
+                t.isDuplicate || t.imported ? t : { ...t, selected },
             ),
         }));
     };
