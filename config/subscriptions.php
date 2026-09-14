@@ -34,45 +34,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Price Experiment
-    |--------------------------------------------------------------------------
-    |
-    | A/B test on the price of the paid plan. Anonymous visitors are drawn 50/50
-    | into `control` (the plans.* prices below) and `high` (the variant tier) on
-    | their first page view, and the arm is frozen onto users.price_arm when they
-    | register — so the landing quotes the price they will actually be charged.
-    | Anyone without an arm keeps the control price. While `started_at` is blank
-    | the experiment is off and nobody is drawn. Set `force_variant` to
-    | control/high to roll a winner out to everyone without a deploy; that also
-    | ends the split.
-    |
-    | Each variant needs its own Stripe price — run `php artisan stripe:sync-prices`
-    | BEFORE setting `started_at`. The yearly price is the monthly × 6, matching
-    | the control plan structure.
-    |
-    */
-
-    'price_experiment' => [
-        'started_at' => env('PRICE_EXPERIMENT_STARTED_AT'),
-        'force_variant' => env('PRICE_EXPERIMENT_FORCE_VARIANT'),
-        'variants' => [
-            'high' => [
-                'monthly' => [
-                    'price' => 8.99,
-                    'original_price' => null,
-                    'lookup' => 'whisper_pro_monthly_high',
-                ],
-                'yearly' => [
-                    'price' => 53.94,
-                    'original_price' => 107.88,
-                    'lookup' => 'whisper_pro_yearly_high',
-                ],
-            ],
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Stripe Product IDs
     |--------------------------------------------------------------------------
     |
@@ -102,14 +63,20 @@ return [
     | `trial_days` is per plan: the longer commitment gets the longer trial.
     | Set it to 0 to charge that plan immediately, with no free trial.
     |
+    | The lookup keys still carry the `_high` suffix they were given as the price
+    | experiment's variant tier, which won and became the only price. Renaming
+    | them would make `stripe:sync-prices` transfer the key onto a fresh price and
+    | move every live subscription's key for a cosmetic gain; the suffix is an
+    | internal identifier no user ever sees.
+    |
     */
 
     'plans' => [
         'monthly' => [
             'name' => 'Standard Monthly',
-            'price' => 3.99,
+            'price' => 8.99,
             'original_price' => null,
-            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly'),
+            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly_high'),
             'billing_period' => 'month',
             'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 7),
             'features' => [
@@ -126,9 +93,9 @@ return [
         ],
         'yearly' => [
             'name' => 'Standard Yearly',
-            'price' => 23.88,
-            'original_price' => 47.88,
-            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly'),
+            'price' => 53.94,
+            'original_price' => 107.88,
+            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly_high'),
             'billing_period' => 'year',
             'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 15),
             'features' => [

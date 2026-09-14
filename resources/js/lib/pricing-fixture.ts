@@ -6,13 +6,13 @@ import { PricingConfig } from '@/types/pricing';
  * rather than three times — and in `lib/` rather than under `components/`,
  * where the orphan-components check would flag a file no page imports.
  *
- * Mirrors `config/subscriptions.php`'s control arm.
+ * Mirrors `config/subscriptions.php`.
  */
 export const pricingFixture: PricingConfig = {
     plans: {
         monthly: {
             name: 'Standard Monthly',
-            price: 3.99,
+            price: 8.99,
             original_price: null,
             stripe_lookup_key: 'monthly',
             billing_period: 'month',
@@ -21,8 +21,8 @@ export const pricingFixture: PricingConfig = {
         },
         yearly: {
             name: 'Standard Yearly',
-            price: 23.88,
-            original_price: 47.88,
+            price: 53.94,
+            original_price: 107.88,
             stripe_lookup_key: 'yearly',
             billing_period: 'year',
             trial_days: 15,
