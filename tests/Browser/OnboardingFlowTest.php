@@ -493,27 +493,20 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Create Account')
         ->wait(5);
 
-    // Import Transactions - open the import drawer
-    $page->assertSee('Import Your Transactions')
-        ->click('Import Transactions')
-        ->wait(3);
-
-    // The drawer auto-selects the only account and moves to Upload File step
-    // Upload the test CSV file
-    $csvPath = __DIR__.'/assets/test-transactions.csv';
-    $page->attach('input[type="file"]', $csvPath)
-        ->wait(2)
-        ->click('Next')
+    // The import is screens of the flow now, and the only account that can take
+    // a file is the one just created — so it opens straight on the file.
+    $page->assertSee('Bring in your history')
+        ->attach('input[type="file"]', __DIR__.'/assets/test-transactions.csv')
         ->wait(2);
 
-    // Column Mapping step (auto-detected: Date, Description, Amount)
-    $page->assertSee('Map Columns')
-        ->click('Preview Transactions')
+    // The columns we guessed, for the user to disagree with.
+    $page->assertSee('Did we read it right?')
+        ->click("That's right")
         ->wait(3);
 
-    // Preview step - import all 5 transactions from the CSV
-    $page->assertSee('Preview Transactions')
-        ->click('Import 5 transactions')
+    // The preview, where nothing has been written yet.
+    $page->assertSee('5 movements')
+        ->click('Import 5 movements')
         ->wait(15);
 
     // After import completes, back to the hub with the account in it

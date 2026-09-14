@@ -254,6 +254,7 @@ export default function Onboarding({
                 return (
                     <StepImportTransactions
                         account={lastAccount}
+                        canConnectBank={!isFreePlan}
                         onComplete={handleImportComplete}
                     />
                 );

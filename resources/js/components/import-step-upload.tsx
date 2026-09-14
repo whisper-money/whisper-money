@@ -1,30 +1,14 @@
 import { Button } from '@/components/ui/button';
+import {
+    isSupportedImportFile,
+    SUPPORTED_IMPORT_EXTENSIONS,
+} from '@/lib/transaction-import';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
-/**
- * Everything SheetJS can read for us. Apple Numbers files are a zipped IWA
- * bundle, but the same reader handles them, so they need no special casing
- * beyond being let through here.
- */
-const supportedExtensions = ['.csv', '.xls', '.xlsx', '.numbers'];
-
-export function isSupportedImportFile(file: File | null | undefined): boolean {
-    if (!file || !file.name) {
-        return false;
-    }
-
-    const lastDotIndex = file.name.lastIndexOf('.');
-    if (lastDotIndex === -1) {
-        return false;
-    }
-
-    return supportedExtensions.includes(
-        file.name.toLowerCase().slice(lastDotIndex),
-    );
-}
+export { isSupportedImportFile };
 
 interface ImportStepUploadProps {
     file: File | null;
@@ -110,7 +94,9 @@ export function ImportStepUpload({
                                 <input
                                     type="file"
                                     className="hidden"
-                                    accept={supportedExtensions.join(',')}
+                                    accept={SUPPORTED_IMPORT_EXTENSIONS.join(
+                                        ',',
+                                    )}
                                     onChange={handleFileInput}
                                 />
                             </label>
