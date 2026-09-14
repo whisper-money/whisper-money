@@ -17,6 +17,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
+/**
+ * @phpstan-type BreakdownRow array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}
+ */
 class CashflowAnalyticsController extends Controller
 {
     use ConvertsTransactionCurrency;
@@ -64,10 +67,10 @@ class CashflowAnalyticsController extends Controller
         [$incomeCategories, $expenseCategories] = $this->sankeyColumns($user->id, $user->currency_code, $from, $to, $drillParentId);
 
         return $this->cashflowJson([
-            'income_categories' => $incomeCategories->values(),
-            'expense_categories' => $expenseCategories->values(),
-            'total_income' => $incomeCategories->sum('amount'),
-            'total_expense' => $expenseCategories->sum('amount'),
+            'income_categories' => $incomeCategories,
+            'expense_categories' => $expenseCategories,
+            'total_income' => array_sum(array_column($incomeCategories, 'amount')),
+            'total_expense' => array_sum(array_column($expenseCategories, 'amount')),
         ]);
     }
 
@@ -183,7 +186,7 @@ class CashflowAnalyticsController extends Controller
      * lands on whichever side its net points at, so nothing is dropped for
      * ending up on the "wrong" side.
      *
-     * @return array{0: Collection<int, array<string, mixed>>, 1: Collection<int, array<string, mixed>>}
+     * @return array{0: array<int, BreakdownRow>, 1: array<int, BreakdownRow>}
      */
     private function sankeyColumns(string $userId, string $userCurrency, Carbon $from, Carbon $to, ?string $drillParentId): array
     {
@@ -197,7 +200,7 @@ class CashflowAnalyticsController extends Controller
 
         // Signed amounts all the way through the roll-up, so a parent nets its
         // children against each other before it picks a side.
-        $rolledUp = collect($this->tree->rollUp($netted->values()->all(), $userId, $drillParentId));
+        $rolledUp = $this->tree->rollUp($netted->values()->all(), $userId, $drillParentId);
 
         return [
             $this->sankeyColumn($rolledUp, CategoryType::Income, $transactions, $userCurrency, $drillParentId),
@@ -210,23 +213,22 @@ class CashflowAnalyticsController extends Controller
      * positive flows. A sankey cannot draw a negative flow, so a category that
      * crossed over says so in its label instead.
      *
-     * @param  Collection<int, array<string, mixed>>  $rolledUp
+     * @param  array<int, BreakdownRow>  $rolledUp
      * @param  Collection<int, Transaction>  $transactions
-     * @return Collection<int, array<string, mixed>>
+     * @return array<int, BreakdownRow>
      */
-    private function sankeyColumn(Collection $rolledUp, CategoryType $side, Collection $transactions, string $userCurrency, ?string $drillParentId): Collection
+    private function sankeyColumn(array $rolledUp, CategoryType $side, Collection $transactions, string $userCurrency, ?string $drillParentId): array
     {
-        $rows = $rolledUp
-            ->filter(fn (array $row): bool => $this->amountMatchesSide($row['amount'], $side))
-            ->map(fn (array $row): array => [
+        $rows = array_values(array_map(
+            fn (array $row): array => [
                 ...$row,
                 'amount' => abs($row['amount']),
                 'category' => $this->labelCrossover($row['category'], $side),
-            ])
-            ->values()
-            ->all();
+            ],
+            array_filter($rolledUp, fn (array $row): bool => $this->amountMatchesSide($row['amount'], $side)),
+        ));
 
-        return collect($this->appendUncategorized($rows, $transactions, $userCurrency, $side, $drillParentId));
+        return $this->appendUncategorized($rows, $transactions, $userCurrency, $side, $drillParentId);
     }
 
     private function getMonthlyTrendTotals(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
@@ -367,7 +369,7 @@ class CashflowAnalyticsController extends Controller
      * belongs to, so the sankey can state the crossover in words instead of
      * drawing a flow backwards.
      */
-    private function labelCrossover(Category $category, CategoryType $side): Category
+    private function labelCrossover(?Category $category, CategoryType $side): ?Category
     {
         $naturalSide = $this->cashflowSideOf($category);
 
@@ -392,9 +394,9 @@ class CashflowAnalyticsController extends Controller
      * would invent an offset nobody booked. So an uncategorized refund stays
      * its own "Unknown Income".
      *
-     * @param  array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>  $rolledUp
+     * @param  array<int, BreakdownRow>  $rolledUp
      * @param  Collection<int, Transaction>  $transactions
-     * @return array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>
+     * @return array<int, BreakdownRow>
      */
     private function appendUncategorized(array $rolledUp, Collection $transactions, string $userCurrency, CategoryType $type, ?string $drillParentId): array
     {
