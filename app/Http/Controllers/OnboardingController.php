@@ -9,6 +9,7 @@ use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\Ai\AiCategorizationGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -117,15 +118,35 @@ class OnboardingController extends Controller
         ]);
     }
 
-    public function complete(Request $request): RedirectResponse
+    /**
+     * Queue the AI pass over whatever the suggestions step left uncategorized.
+     *
+     * Fired when the user leaves the AI step, by any of its exits: rules
+     * accepted or skipped, too few transactions to be eligible, nothing
+     * suggested, or a run that failed. Every one of those users paid the same
+     * and expects the same, and the batch is small (the generated rules already
+     * cover the bulk of the import), so it finishes during the two or three
+     * steps that remain instead of on a dashboard the user is already looking
+     * at. The gate is the job's own, so a user without a plan or without
+     * consent never even queues one.
+     */
+    public function categorize(Request $request, AiCategorizationGate $gate): JsonResponse
     {
         $user = $request->user();
+        $queued = $gate->allows($user);
 
-        $user->update([
+        if ($queued) {
+            CategorizeOnboardingTransactionsJob::dispatch($user);
+        }
+
+        return response()->json(['queued' => $queued]);
+    }
+
+    public function complete(Request $request): RedirectResponse
+    {
+        $request->user()->update([
             'onboarded_at' => now(),
         ]);
-
-        CategorizeOnboardingTransactionsJob::dispatch($user);
 
         return redirect()->route('dashboard');
     }
