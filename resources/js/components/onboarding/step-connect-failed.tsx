@@ -1,6 +1,10 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepList, StepRow } from '@/components/onboarding/step-list';
-import { StepError, StepScreen } from '@/components/onboarding/step-screen';
+import {
+    StepCallout,
+    StepError,
+    StepScreen,
+} from '@/components/onboarding/step-screen';
 import { __ } from '@/utils/i18n';
 import { Check } from 'lucide-react';
 
@@ -69,12 +73,12 @@ export function StepConnectFailed({
                 />
             </StepList>
 
-            <p className="rounded-lg bg-muted px-4.5 py-4 text-sm leading-normal text-pretty text-muted-foreground">
+            <StepCallout>
                 {__(
                     'If it happens twice, it is normally the bank and not you. Try a different bank or bring a file instead — you can add :bank later without redoing any of this.',
                     { bank: bankName },
                 )}
-            </p>
+            </StepCallout>
         </StepScreen>
     );
 }

@@ -143,6 +143,23 @@ describe('StepAccountsHub', () => {
         expect(screen.getByText("1 in. What's missing?")).toBeInTheDocument();
     });
 
+    // The whole point of that row sitting under "usually missed" rather than
+    // next to the manual form: a broker is connected, not typed in.
+    it('takes the pension row to the brokers, not to the manual form', () => {
+        renderHub({
+            existingAccounts: [existingAccount({ id: 'a1', name: 'Savings' })],
+        });
+
+        fireEvent.click(screen.getByText('A pension or a broker'));
+
+        expect(screen.getByText('Which broker or fund?')).toBeInTheDocument();
+        expect(screen.getByText('Indexa Capital')).toBeInTheDocument();
+        expect(screen.queryByTestId('account-form')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Back'));
+        expect(screen.getByText("1 in. What's missing?")).toBeInTheDocument();
+    });
+
     it('ends the step only when the user says there is nothing left', () => {
         const onContinue = vi.fn();
 

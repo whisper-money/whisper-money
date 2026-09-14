@@ -105,6 +105,42 @@ export function StepNote({
     );
 }
 
+/**
+ * The muted block that carries a caveat worth reading but not acting on — what
+ * a connection will not bring in, what a failure did not leave behind.
+ */
+export function StepCallout({ children }: PropsWithChildren) {
+    return (
+        <p className="rounded-lg bg-muted px-4.5 py-4 text-sm leading-normal text-pretty text-muted-foreground">
+            {children}
+        </p>
+    );
+}
+
+/**
+ * A sentence carrying one emphasised word, written as a single translatable
+ * string with the word left as a placeholder (`:both`, `:none`). It is split
+ * out after translation so the emphasis lands on the word that carries the
+ * point in every language, rather than on a fixed position in the English.
+ */
+export function StepEmphasis({
+    sentence,
+    word,
+}: {
+    sentence: string;
+    word: string;
+}) {
+    return sentence.split(/(:\w+)/).map((part, index) =>
+        part.startsWith(':') ? (
+            <span key={index} className="font-medium text-foreground">
+                {word}
+            </span>
+        ) : (
+            part
+        ),
+    );
+}
+
 /** Onboarding controls are taller than the app's default so they stay easy to hit. */
 export const stepControlClass = 'h-13 rounded-lg text-base md:text-base';
 

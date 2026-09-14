@@ -6,8 +6,10 @@ import {
 import {
     CONNECT_PROVIDERS,
     connectProviderForBank,
-    credentialPayload,
     isProviderComplete,
+    postConnectRequest,
+    providerConnectBody,
+    providersForCountry,
 } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
 import { leavePage } from '@/lib/leave-page';
@@ -90,6 +92,13 @@ interface ConnectFlowOptions {
      * the settings dialog passes nothing and still asks.
      */
     initialCountry?: string | null;
+    /**
+     * Keeps the API-key providers out of the bank list. The onboarding flow
+     * gives them a section of their own — a broker is not a bank, and its
+     * confirm step promises different things — while the settings dialog still
+     * shows them inline.
+     */
+    separateProviders?: boolean;
 }
 
 /**
@@ -100,7 +109,10 @@ interface ConnectFlowOptions {
  */
 export function useConnectFlow(
     connections: BankingConnection[],
-    { initialCountry = null }: ConnectFlowOptions = {},
+    {
+        initialCountry = null,
+        separateProviders = false,
+    }: ConnectFlowOptions = {},
 ) {
     const [step, setStep] = useState<ConnectStep>(
         initialCountry ? 'bank' : 'country',
@@ -197,14 +209,17 @@ export function useConnectFlow(
 
                 const data = await response.json();
 
-                const extraInstitutions = CONNECT_PROVIDERS.filter(
-                    (p) =>
-                        (!p.onlyCountry || p.onlyCountry === countryCode) &&
-                        !hasLiveConnectionForProvider(
-                            connections,
-                            p.providerKey,
-                        ),
-                ).map((p) => p.institution);
+                const extraInstitutions = separateProviders
+                    ? []
+                    : providersForCountry(countryCode)
+                          .filter(
+                              (p) =>
+                                  !hasLiveConnectionForProvider(
+                                      connections,
+                                      p.providerKey,
+                                  ),
+                          )
+                          .map((p) => p.institution);
 
                 // A provider we integrate natively (e.g. Wise) must surface only
                 // through its own entry, never the bank-aggregator's duplicate.
@@ -229,7 +244,7 @@ export function useConnectFlow(
                 setIsLoading(false);
             }
         },
-        [connections],
+        [connections, separateProviders],
     );
 
     // Only ever once: `fetchInstitutions` is rebuilt whenever `connections`
@@ -253,41 +268,19 @@ export function useConnectFlow(
         setError(null);
 
         try {
-            const url = provider
-                ? provider.endpoint
-                : '/open-banking/authorize';
-
-            const body = provider
-                ? {
-                      ...credentialPayload(provider, credentials),
-                      ...(provider.sendsCountry ? { country } : {}),
-                  }
-                : {
+            const redirectUrl = provider
+                ? await postConnectRequest(
+                      provider.endpoint,
+                      providerConnectBody(provider, credentials, country),
+                  )
+                : await postConnectRequest('/open-banking/authorize', {
                       aspsp_name: selectedBank.name,
                       country,
                       logo: selectedBank.logo,
                       beta: selectedBank.beta ?? false,
-                  };
+                  });
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'X-XSRF-TOKEN': getCsrfToken(),
-                },
-                body: JSON.stringify(body),
-            });
-
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(
-                    data.message || 'Failed to start authorization',
-                );
-            }
-
-            const data = await response.json();
-            leavePage(data.redirect_url);
+            leavePage(redirectUrl);
         } catch (e) {
             setError(
                 e instanceof Error

@@ -59,7 +59,7 @@ async function reachConnect(bank: RegExp) {
 
     fireEvent.click(screen.getByRole('button', { name: bank }));
 
-    return screen.getByRole('button', { name: /^Continue to|^Connect$/ });
+    return screen.getByRole('button', { name: /^Continue to/ });
 }
 
 describe('ConnectAccountInline', () => {
@@ -82,10 +82,10 @@ describe('ConnectAccountInline', () => {
             ),
         );
 
-        // Counts what the list actually offers: the country's banks plus the
-        // natively integrated connectors that live in the same picker.
+        // Counts the country's banks alone: the API-key connectors are no
+        // longer rows in this list, they are the section under it.
         expect(
-            screen.getByPlaceholderText('Search 7 banks'),
+            screen.getByPlaceholderText('Search 1 banks'),
         ).toBeInTheDocument();
         expect(screen.getByText('Where do you bank?')).toBeInTheDocument();
     });
@@ -132,6 +132,45 @@ describe('ConnectAccountInline', () => {
         ).toBeInTheDocument();
     });
 
+    // Brokers speak API keys, not open banking: they get a section of their
+    // own under the banks, and a screen that promises different things.
+    it('offers the brokers under the banks, folded after the first two', async () => {
+        await reachBankStep();
+
+        expect(screen.getByText('Brokers and exchanges')).toBeInTheDocument();
+        expect(screen.getByText('Indexa Capital')).toBeInTheDocument();
+        expect(screen.getByText('Coinbase')).toBeInTheDocument();
+        expect(screen.queryByText('Binance')).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /Binance, Bitpanda/ }),
+        );
+
+        expect(screen.getByText('Binance')).toBeInTheDocument();
+    });
+
+    // They used to be rows in the bank list, so a user who types "Binance" has
+    // to keep finding it.
+    it('keeps a folded broker reachable from the search box', async () => {
+        await reachBankStep();
+
+        fireEvent.change(screen.getByPlaceholderText('Search 1 banks'), {
+            target: { value: 'binance' },
+        });
+
+        expect(screen.getByText('Binance')).toBeInTheDocument();
+        expect(screen.queryByText('Coinbase')).not.toBeInTheDocument();
+    });
+
+    it('opens the broker form rather than the bank handoff', async () => {
+        await reachBankStep();
+
+        fireEvent.click(screen.getByRole('button', { name: /Indexa Capital/ }));
+
+        expect(screen.getByText('Connect Indexa Capital')).toBeInTheDocument();
+        expect(screen.getByLabelText('API Token')).toBeInTheDocument();
+    });
+
     describe('analytics', () => {
         // The redirect out to the bank is the last thing we can see before the
         // user leaves the app, and the widest gap in the onboarding funnel.
@@ -144,23 +183,6 @@ describe('ConnectAccountInline', () => {
                 { country: 'ES', provider: 'enable_banking' },
             );
             await waitFor(() => expect(leavePage).toHaveBeenCalled());
-        });
-
-        it('names the native provider when one handles the bank', async () => {
-            const connect = await reachConnect(/Binance/);
-
-            fireEvent.change(screen.getByLabelText('API Key'), {
-                target: { value: 'key' },
-            });
-            fireEvent.change(screen.getByLabelText('API Secret'), {
-                target: { value: 'secret' },
-            });
-            fireEvent.click(connect);
-
-            expect(captureEvent).toHaveBeenCalledWith(
-                'onboarding_bank_connect_started',
-                { country: 'ES', provider: 'binance' },
-            );
         });
 
         it('reports nothing while the user is still choosing', async () => {

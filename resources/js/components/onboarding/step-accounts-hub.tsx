@@ -13,11 +13,17 @@ import {
     StepMapAccounts,
     type PendingMapping,
 } from '@/components/onboarding/step-map-accounts';
-import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
+import {
+    StepCallout,
+    StepEmphasis,
+    StepNote,
+    StepScreen,
+} from '@/components/onboarding/step-screen';
 import {
     ConnectAccountInline,
     type RetryBank,
 } from '@/components/open-banking/connect-account-inline';
+import { ConnectBrokerInline } from '@/components/open-banking/connect-broker-inline';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { captureEvent } from '@/lib/posthog';
@@ -42,7 +48,7 @@ import { useCallback, useMemo, useState } from 'react';
  * for everything hanging off the hub — the same arrangement `SUB_STEPS` gives
  * `import-transactions` and `import-balances`.
  */
-type HubMode = 'hub' | 'manual' | 'connected' | 'failed';
+type HubMode = 'hub' | 'manual' | 'connected' | 'broker' | 'failed';
 
 /**
  * The bank a failed authorization named, off the URL
@@ -94,13 +100,16 @@ interface AccountGroup {
     accounts: AccountLine[];
 }
 
+/** Where a row of the hub leads. Only 'manual' asks the user to type. */
+type HubRoute = 'manual' | 'connected' | 'broker';
+
 /** One row of the section that asks for what open banking never returns. */
 interface HubSuggestion {
     key: string;
     icon: LucideIcon;
     title: string;
     description: string;
-    route: 'manual' | 'connected';
+    route: HubRoute;
 }
 
 export interface ExistingAccount {
@@ -277,13 +286,13 @@ export function StepAccountsHub({
      * question this screen exists to ask. `accounts` tells the two states apart.
      */
     const openRoute = useCallback(
-        (route: 'manual' | 'connected', option: string) => {
+        (route: HubRoute, option: string) => {
             captureEvent('onboarding_accounts_hub_route', {
                 option,
                 accounts: accountCount,
             });
 
-            if (route === 'connected') {
+            if (route !== 'manual') {
                 onConnectedAccountSelected?.();
             }
 
@@ -306,7 +315,9 @@ export function StepAccountsHub({
                 icon: ChartLine,
                 title: __('A pension or a broker'),
                 description: __('Indexa and Coinbase connect with a token'),
-                route: 'connected',
+                // A broker is connected, not typed: it has its own list and its
+                // own form, because open banking is not what any of them speak.
+                route: 'broker',
             },
             {
                 key: 'bank',
@@ -326,7 +337,7 @@ export function StepAccountsHub({
 
     /** The plan disclosure belongs above the first commitment, and only there. */
     const firstConnectKey = suggestions.find(
-        (suggestion) => suggestion.route === 'connected',
+        (suggestion) => suggestion.route !== 'manual',
     )?.key;
 
     // Only from the hub itself. The step polls for connections finished in
@@ -353,6 +364,15 @@ export function StepAccountsHub({
                 onBack={() => leaveConnect('hub')}
                 onManual={() => leaveConnect('manual')}
                 retryBank={retryBank}
+            />
+        );
+    }
+
+    if (mode === 'broker') {
+        return (
+            <ConnectBrokerInline
+                onBack={() => setMode('hub')}
+                onManual={() => setMode('manual')}
             />
         );
     }
@@ -422,27 +442,14 @@ export function StepAccountsHub({
                         />
                     </StepList>
 
-                    {/* One translatable sentence, split before the placeholder
-                        is filled in, so the emphasis lands on the word that
-                        carries the point in every language. */}
-                    <p className="rounded-lg bg-muted px-4.5 py-4 text-sm leading-normal text-pretty text-muted-foreground">
-                        {__(
-                            'Most people end up with :both: a bank for the day-to-day, and a couple added by hand for the mortgage and the pension. Open banking almost never returns those.',
-                        )
-                            .split(/(:both)/)
-                            .map((part, index) =>
-                                part === ':both' ? (
-                                    <span
-                                        key={index}
-                                        className="font-medium text-foreground"
-                                    >
-                                        {__('both')}
-                                    </span>
-                                ) : (
-                                    part
-                                ),
+                    <StepCallout>
+                        <StepEmphasis
+                            sentence={__(
+                                'Most people end up with :both: a bank for the day-to-day, and a couple added by hand for the mortgage and the pension. Open banking almost never returns those.',
                             )}
-                    </p>
+                            word={__('both')}
+                        />
+                    </StepCallout>
                 </div>
             </StepScreen>
         );

@@ -18,6 +18,10 @@ import {
     BetaConnectorBadge,
     BetaConnectorNotice,
 } from '@/components/open-banking/beta-connector';
+import {
+    BrokerRows,
+    ConnectBrokerInline,
+} from '@/components/open-banking/connect-broker-inline';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,7 +30,11 @@ import {
     useGuessedCountry,
 } from '@/hooks/use-connect-flow';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
-import { ProviderCredentialFields } from '@/lib/connect-providers';
+import { hasLiveConnectionForProvider } from '@/lib/banking-connections';
+import {
+    providersForCountry,
+    type ConnectProvider,
+} from '@/lib/connect-providers';
 import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import type {
@@ -109,9 +117,6 @@ export function ConnectAccountInline({
         isLoading,
         isSubmitting,
         error,
-        credentials,
-        setCredential,
-        provider,
         connectedBankNames,
         isAlreadyConnected,
         acknowledgedReplace,
@@ -120,7 +125,17 @@ export function ConnectAccountInline({
         fetchInstitutions,
         handleAuthorize,
         clearBankSelection,
-    } = useConnectFlow(connections, { initialCountry: openOn });
+    } = useConnectFlow(connections, {
+        initialCountry: openOn,
+        separateProviders: true,
+    });
+
+    /**
+     * The broker the user tapped in the section below the banks. It is a screen
+     * of its own rather than this one's confirm step: there is no redirect to
+     * warn about, and what comes back is a position, not a statement.
+     */
+    const [broker, setBroker] = useState<ConnectProvider | null>(null);
 
     const countries = useConnectCountries();
     const [countryQuery, setCountryQuery] = useState('');
@@ -130,6 +145,23 @@ export function ConnectAccountInline({
     const countryName = useMemo(
         () => countries.find((c) => c.code === country)?.name ?? country,
         [countries, country],
+    );
+
+    /**
+     * The brokers, filtered by the same search box as the banks. They used to be
+     * rows in the bank list, so a user who types "Binance" has to keep finding
+     * it — having its own section must not make it unsearchable.
+     */
+    const brokers = useMemo(
+        () =>
+            providersForCountry(country).filter(
+                (p) =>
+                    !hasLiveConnectionForProvider(connections, p.providerKey) &&
+                    p.institution.name
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()),
+            ),
+        [connections, country, searchQuery],
     );
 
     const filteredCountries = useMemo(
@@ -210,14 +242,24 @@ export function ConnectAccountInline({
     const startConnect = useCallback(() => {
         captureEvent('onboarding_bank_connect_started', {
             country,
-            provider: provider?.providerKey ?? 'enable_banking',
+            provider: 'enable_banking',
         });
         handleAuthorize();
-    }, [country, provider, handleAuthorize]);
+    }, [country, handleAuthorize]);
 
     const back = (
         <StepButton text={__('Back')} variant="ghost" onClick={handleBack} />
     );
+
+    if (broker) {
+        return (
+            <ConnectBrokerInline
+                initialProvider={broker}
+                initialCountry={country}
+                onBack={() => setBroker(null)}
+            />
+        );
+    }
 
     if (step === 'country') {
         return (
@@ -296,10 +338,6 @@ export function ConnectAccountInline({
     }
 
     if (step === 'confirm' && selectedBank) {
-        // An API-key connector never sends the user anywhere, so none of the
-        // handoff's reassurance about the bank's own login page applies to it.
-        const isHandoff = !provider;
-
         return (
             <StepScreen
                 icon={
@@ -310,71 +348,55 @@ export function ConnectAccountInline({
                         className="size-11 rounded-lg text-base"
                     />
                 }
-                title={
-                    isHandoff
-                        ? __('You’re about to log in at :bank', {
-                              bank: selectedBank.name,
-                          })
-                        : __('Connect :bank', { bank: selectedBank.name })
-                }
-                description={
-                    isHandoff
-                        ? __(
-                              'Their page, their login, the same one you always use. Then you land straight back here.',
-                          )
-                        : __(provider.cardDescription)
-                }
+                title={__('You’re about to log in at :bank', {
+                    bank: selectedBank.name,
+                })}
+                description={__(
+                    'Their page, their login, the same one you always use. Then you land straight back here.',
+                )}
                 footer={
                     <>
                         <StepButton
-                            text={
-                                isHandoff
-                                    ? __('Continue to :bank', {
-                                          bank: selectedBank.name,
-                                      })
-                                    : __('Connect')
-                            }
+                            text={__('Continue to :bank', {
+                                bank: selectedBank.name,
+                            })}
                             loading={isSubmitting}
                             loadingText={__('Connecting...')}
                             onClick={startConnect}
                             disabled={!canSubmit}
                         />
-                        {isHandoff && (
-                            <StepNote>
-                                {__('About 40 seconds. We’ll hold your place.')}
-                            </StepNote>
-                        )}
+                        <StepNote>
+                            {__('About 40 seconds. We’ll hold your place.')}
+                        </StepNote>
                         {back}
                     </>
                 }
             >
                 {error && <StepError>{error}</StepError>}
 
-                {isHandoff && (
-                    <StepList>
-                        <StepRow
-                            icon={Lock}
-                            title={__('Your password stays at your bank')}
-                            description={__(
-                                'It is never typed into Whisper and never reaches us.',
-                            )}
-                        />
-                        <StepRow
-                            icon={Eye}
-                            title={__('We can read, never touch')}
-                            description={__(
-                                'The permission you grant cannot move money, even by accident.',
-                            )}
-                        />
-                        <StepRow
-                            icon={RefreshCw}
-                            title={__('Once now, then it keeps itself current')}
-                            description={__(
-                                'Twelve months today, and every new movement after.',
-                            )}
-                        />
-                    </StepList>
-                )}
+                <StepList>
+                    <StepRow
+                        icon={Lock}
+                        title={__('Your password stays at your bank')}
+                        description={__(
+                            'It is never typed into Whisper and never reaches us.',
+                        )}
+                    />
+                    <StepRow
+                        icon={Eye}
+                        title={__('We can read, never touch')}
+                        description={__(
+                            'The permission you grant cannot move money, even by accident.',
+                        )}
+                    />
+                    <StepRow
+                        icon={RefreshCw}
+                        title={__('Once now, then it keeps itself current')}
+                        description={__(
+                            'Twelve months today, and every new movement after.',
+                        )}
+                    />
+                </StepList>
 
                 {selectedBank.beta && <BetaConnectorNotice />}
 
@@ -382,15 +404,6 @@ export function ConnectAccountInline({
                     <ReplaceConnectionWarning
                         acknowledged={acknowledgedReplace}
                         onAcknowledgedChange={setAcknowledgedReplace}
-                    />
-                )}
-
-                {provider && (
-                    <ProviderCredentialFields
-                        provider={provider}
-                        values={credentials}
-                        onChange={setCredential}
-                        idPrefix="inline"
                     />
                 )}
             </StepScreen>
@@ -495,6 +508,25 @@ export function ConnectAccountInline({
                             ? __('Loading banks...')
                             : __('No banks found.')}
                     </p>
+                )}
+
+                {brokers.length > 0 && (
+                    <>
+                        <StepSectionLabel>
+                            {__('Brokers and exchanges')}
+                        </StepSectionLabel>
+                        {/* Folded after the first two while the user is
+                            searching for a bank, and opened whole by a search
+                            that has already narrowed the list. */}
+                        <BrokerRows
+                            providers={brokers}
+                            collapsedAfter={searchQuery ? undefined : 2}
+                            onSelect={(provider) => {
+                                trigger('light');
+                                setBroker(provider);
+                            }}
+                        />
+                    </>
                 )}
 
                 <p className="flex items-start gap-2.5 pt-4 text-[13px] leading-normal text-pretty text-muted-foreground">
