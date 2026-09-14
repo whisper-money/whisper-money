@@ -44,7 +44,9 @@ if ($useContainers) {
     // helper for Hub credentials and throws when the machine never ran `docker
     // login`, which would break the very first run on a fresh checkout.
     $ryukImage = 'testcontainers/ryuk:0.11.0';
-    exec("docker image inspect {$ryukImage} >/dev/null 2>&1 || docker pull {$ryukImage}", result_code: $pulled);
+    // passthru, not exec: the pull shows its progress instead of leaving the first
+    // run of a fresh checkout sitting silent for half a minute.
+    passthru("docker image inspect {$ryukImage} >/dev/null 2>&1 || docker pull {$ryukImage}", $pulled);
 
     if ($pulled !== 0) {
         throw new RuntimeException("Could not pull {$ryukImage}.");
