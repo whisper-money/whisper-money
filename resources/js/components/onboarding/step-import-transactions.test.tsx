@@ -165,3 +165,78 @@ describe('StepImportTransactions step completion', () => {
         expect(onComplete).not.toHaveBeenCalled();
     });
 });
+
+// Without a CSV to hand, "Import Transactions" was the only action on the
+// screen, so an account created by hand left the user stuck on this step.
+describe('StepImportTransactions way out', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('offers no way out until the import has been seen', () => {
+        render(
+            <StepImportTransactions account={undefined} onComplete={vi.fn()} />,
+        );
+
+        expect(screen.queryByText('Skip for now')).not.toBeInTheDocument();
+        expect(screen.queryByText('Continue')).not.toBeInTheDocument();
+    });
+
+    it('offers a way out once the drawer is closed with nothing imported', () => {
+        render(
+            <StepImportTransactions account={undefined} onComplete={vi.fn()} />,
+        );
+
+        openDrawer();
+        fireEvent.click(screen.getByText('close drawer'));
+
+        expect(screen.getByText('Skip for now')).toBeInTheDocument();
+    });
+
+    it('leaves the step when the way out is taken', () => {
+        const onComplete = vi.fn();
+        render(
+            <StepImportTransactions
+                account={undefined}
+                onComplete={onComplete}
+            />,
+        );
+
+        openDrawer();
+        fireEvent.click(screen.getByText('close drawer'));
+        fireEvent.click(screen.getByText('Skip for now'));
+
+        expect(onComplete).toHaveBeenCalled();
+    });
+
+    // The way out is a button the user has to press: appearing is not
+    // advancing.
+    it('does not advance on its own once the way out is offered', () => {
+        const onComplete = vi.fn();
+        render(
+            <StepImportTransactions
+                account={undefined}
+                onComplete={onComplete}
+            />,
+        );
+
+        openDrawer();
+        fireEvent.click(screen.getByText('close drawer'));
+
+        expect(screen.getByText('Skip for now')).toBeInTheDocument();
+        expect(onComplete).not.toHaveBeenCalled();
+    });
+
+    // An import that brought something in is a continuation, not a skip.
+    it('reads as a continuation once something has been imported', () => {
+        render(
+            <StepImportTransactions account={undefined} onComplete={vi.fn()} />,
+        );
+
+        openDrawer();
+        fireEvent.click(screen.getByText('finish import'));
+
+        expect(screen.getByText('Continue')).toBeInTheDocument();
+        expect(screen.queryByText('Skip for now')).not.toBeInTheDocument();
+    });
+});
