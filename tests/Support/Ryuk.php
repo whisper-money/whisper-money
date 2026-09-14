@@ -42,10 +42,15 @@ class Ryuk
     public static function watch(string $host, int $port, string $session): void
     {
         $socket = false;
+        $error = '';
 
-        // The container reports itself running before its port accepts connections.
+        // This doubles as the wait for the port to open. The library ships a
+        // WaitForHostPort strategy, but it connects and disconnects to probe, and a
+        // dropped connection is precisely how Ryuk is told the run is over: it shuts
+        // itself down a few seconds later. Connecting once and holding on avoids
+        // racing that countdown.
         for ($attempt = 0; $attempt < 20 && $socket === false; $attempt++) {
-            $socket = @stream_socket_client("tcp://{$host}:{$port}", timeout: 2);
+            $socket = @stream_socket_client("tcp://{$host}:{$port}", $errno, $error, timeout: 2);
 
             if ($socket === false) {
                 usleep(250_000);
@@ -53,8 +58,13 @@ class Ryuk
         }
 
         if ($socket === false) {
-            throw new RuntimeException('Could not connect to the Ryuk reaper.');
+            throw new RuntimeException("Could not connect to the Ryuk reaper: {$error}");
         }
+
+        // Ryuk answers in milliseconds. Without this, a reaper that accepts the
+        // connection and then says nothing would stall the run for
+        // default_socket_timeout — a minute of no output before failing.
+        stream_set_timeout($socket, 5);
 
         fwrite($socket, self::filter($session)."\n");
 

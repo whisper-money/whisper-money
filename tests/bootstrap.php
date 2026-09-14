@@ -40,17 +40,21 @@ if ($useContainers) {
     // sibling's database down as soon as the first worker finished.
     $session = getmypid().'-'.bin2hex(random_bytes(4));
 
+    // Pull through the CLI: the library's own pull path asks the Docker credential
+    // helper for Hub credentials and throws when the machine never ran `docker
+    // login`, which would break the very first run on a fresh checkout.
+    $ryukImage = 'testcontainers/ryuk:0.11.0';
+    exec("docker image inspect {$ryukImage} >/dev/null 2>&1 || docker pull {$ryukImage}", result_code: $pulled);
+
+    if ($pulled !== 0) {
+        throw new RuntimeException("Could not pull {$ryukImage}.");
+    }
+
     // Ryuk removes every container labelled with our session as soon as the
     // connection we hold against it drops. It is started first and labels are
     // applied by Docker on create, so the database is covered from the moment it
     // exists — including the window inside start() where nothing else holds a
     // handle to it yet.
-    // Pull through the CLI: the library's own pull path asks the Docker credential
-    // helper for Hub credentials and throws when the machine never ran `docker
-    // login`, which would break the very first run on a fresh checkout.
-    $ryukImage = 'testcontainers/ryuk:0.11.0';
-    exec("docker image inspect {$ryukImage} >/dev/null 2>&1 || docker pull {$ryukImage} >/dev/null 2>&1");
-
     $ryuk = (new GenericContainer($ryukImage))
         ->withMount('/var/run/docker.sock', '/var/run/docker.sock')
         ->withExposedPorts(8080)
@@ -68,13 +72,13 @@ if ($useContainers) {
 
     // Stop and remove the containers when the PHP process exits. Ryuk would get to
     // them on its own, but only after its reconnection grace period, and there is
-    // no reason to keep the memory busy that long on the happy path.
-    // We wrap in try/catch because an uncaught exception inside a
-    // shutdown function becomes a fatal error in PHP, which would leave
-    // the container running.
-    // The database goes first, so a failure stopping it still leaves the reaper
-    // behind to deal with it. They are stopped independently because AutoRemove
-    // deletes a container on stop, which makes the library's own delete throw.
+    // no reason to keep the memory busy that long on the happy path. The database
+    // goes first, so a failure stopping it still leaves the reaper behind to deal
+    // with it.
+    //
+    // Each stop gets its own try/catch: an uncaught exception inside a shutdown
+    // function is a fatal error in PHP, and AutoRemove deletes a container on stop,
+    // which makes the library's own delete call throw on the way out.
     $cleanup = function () use ($container, $ryuk): void {
         foreach ([$container, $ryuk] as $started) {
             try {
