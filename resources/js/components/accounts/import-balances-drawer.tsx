@@ -13,7 +13,6 @@ import { Progress } from '@/components/ui/progress';
 import { getCsrfToken } from '@/lib/csrf';
 import {
     detectDateFormat,
-    formatLocalDate,
     parseAmount,
     parseDate,
     parseFile,
@@ -33,6 +32,7 @@ import {
 import { DateFormat } from '@/types/import';
 import type { UUID } from '@/types/uuid';
 import { toMajorUnits, toMinorUnits } from '@/utils/currency';
+import { formatLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { Check } from 'lucide-react';

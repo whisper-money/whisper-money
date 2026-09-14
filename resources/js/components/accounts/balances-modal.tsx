@@ -43,6 +43,7 @@ import {
     supportsInvestedAmount,
 } from '@/types/account';
 import { formatCurrency } from '@/utils/currency';
+import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -219,15 +220,6 @@ export function BalancesModal({
         }
     }
 
-    function formatDate(dateString: string): string {
-        const date = new Date(dateString);
-        return date.toLocaleDateString(locale, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    }
-
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
@@ -320,8 +312,9 @@ export function BalancesModal({
                                                 className="[&>td]:align-middle"
                                             >
                                                 <TableCell>
-                                                    {formatDate(
+                                                    {formatDateMedium(
                                                         balance.balance_date,
+                                                        locale,
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono">

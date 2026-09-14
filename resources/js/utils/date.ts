@@ -41,12 +41,34 @@ function toIntlOptions(pattern: string): Intl.DateTimeFormatOptions {
  * the same string parse as local midnight, which is what a date-only value
  * from the server (a budget period, a transaction date) actually means.
  */
-function toLocalDate(date: Date | string | number): Date {
+export function toLocalDate(date: Date | string | number): Date {
     if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return new Date(`${date}T00:00:00`);
     }
 
     return date instanceof Date ? date : new Date(date);
+}
+
+/**
+ * The other half: the calendar day a `Date` names locally. `toISOString()`
+ * cannot stand in for it, because it reads the `Date` in UTC — local midnight
+ * is the day before east of Greenwich and the day after west of it.
+ */
+export function formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Today where the reader is standing, as `YYYY-MM-DD`. What a form defaults a
+ * transaction or balance date to: at 23:30 in Buenos Aires the UTC clock has
+ * already turned over, and the user did not mean tomorrow.
+ */
+export function todayDateString(): string {
+    return formatLocalDate(new Date());
 }
 
 /**
@@ -128,8 +150,7 @@ export function formatDateMedium(
     dateStr: string,
     locale: string = 'en-US',
 ): string {
-    const date = new Date(dateStr);
-    const formatted = formatDate(date, 'MMM d, yyyy', locale);
+    const formatted = formatDate(dateStr, 'MMM d, yyyy', locale);
 
     // Capitalize first letter (important for Spanish dates)
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
@@ -144,7 +165,7 @@ export function formatRelativeDate(
     dateStr: string,
     locale: string = 'en-US',
 ): string {
-    const date = new Date(dateStr + 'T00:00:00');
+    const date = toLocalDate(dateStr);
 
     if (dateFnsIsToday(date)) {
         return __('Today');
@@ -172,7 +193,7 @@ export function formatDayFromDate(
     dateStr: string,
     locale: string = 'en-US',
 ): string {
-    const date = new Date(dateStr + 'T00:00:00');
+    const date = toLocalDate(dateStr);
     const isCurrentYear = date.getFullYear() === new Date().getFullYear();
 
     const formatStr = isCurrentYear ? 'MMM d' : 'MMM d yyyy';
@@ -188,8 +209,7 @@ export function formatDateLong(
     dateStr: string,
     locale: string = 'en-US',
 ): string {
-    const date = new Date(dateStr);
-    const formatted = formatDate(date, 'EEE, MMM d, yyyy', locale);
+    const formatted = formatDate(dateStr, 'EEE, MMM d, yyyy', locale);
 
     // Capitalize first letter (important for Spanish dates)
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);

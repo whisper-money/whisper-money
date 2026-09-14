@@ -1,3 +1,5 @@
+import { type TransactionFilters } from '@/types/transaction';
+import { toLocalDate } from '@/utils/date';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { transactionSyncService } from './transaction-sync';
 
@@ -10,6 +12,7 @@ const dbMock = vi.hoisted(() => ({
 
 const axiosMock = vi.hoisted(() => ({
     delete: vi.fn(async () => ({ data: {} })),
+    patch: vi.fn(async () => ({ data: { count: 1 } })),
 }));
 
 // Keep the real withDb (reads globalThis live); swap only the Dexie-backed db.
@@ -51,5 +54,56 @@ describe('transactionSyncService.delete', () => {
             data: undefined,
         });
         expect(dbMock.transactions.delete).toHaveBeenCalledWith('txn-1');
+    });
+});
+
+/**
+ * The request half of the date filter: `toISOString()` here shifted the picked
+ * day by the UTC offset, which used to cancel out an equal and opposite bug in
+ * the input. Both halves are asserted, in their own suites, so neither can go
+ * back to compensating for the other.
+ */
+describe.each([
+    'America/Argentina/Buenos_Aires',
+    'Europe/Madrid',
+    'Pacific/Auckland',
+])('transactionSyncService.updateByFilters in %s', (timeZone) => {
+    const originalTimeZone = process.env.TZ;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        process.env.TZ = timeZone;
+    });
+
+    afterEach(() => {
+        process.env.TZ = originalTimeZone;
+    });
+
+    it('sends the calendar day the user picked, not its UTC day', async () => {
+        const picked = toLocalDate('2026-09-09');
+        const filters = {
+            dateFrom: picked,
+            dateTo: picked,
+            amountMin: null,
+            amountMax: null,
+            categoryIds: [],
+            accountIds: [],
+            labelIds: [],
+            creditorName: '',
+            debtorName: '',
+            searchText: '',
+            aiCategorizedOnly: false,
+        } satisfies TransactionFilters;
+
+        await transactionSyncService.updateByFilters(filters, {
+            category_id: 'cat-1',
+        });
+
+        expect(axiosMock.patch).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({
+                filters: { date_from: '2026-09-09', date_to: '2026-09-09' },
+            }),
+        );
     });
 });

@@ -1,6 +1,7 @@
 import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
 import { useLocale } from '@/hooks/use-locale';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
+import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
@@ -157,12 +158,8 @@ const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
 
 function serverToClientFilters(applied: AppliedFilters): Filters {
     return {
-        dateFrom: applied.date_from
-            ? new Date(applied.date_from + 'T00:00:00')
-            : null,
-        dateTo: applied.date_to
-            ? new Date(applied.date_to + 'T00:00:00')
-            : null,
+        dateFrom: applied.date_from ? toLocalDate(applied.date_from) : null,
+        dateTo: applied.date_to ? toLocalDate(applied.date_to) : null,
         amountMin: applied.amount_min,
         amountMax: applied.amount_max,
         categoryIds: applied.category_ids,

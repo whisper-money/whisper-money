@@ -16,6 +16,7 @@ import type { SplitInput } from '@/lib/transaction-splits';
 import type { LearnedRuleNotice } from '@/types/automation-rule';
 import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
+import { formatLocalDate } from '@/utils/date';
 import axios from 'axios';
 
 /** A transaction update plus any rule the correction just taught the system. */
@@ -146,12 +147,10 @@ class TransactionSyncService {
 
         const requestFilters: Record<string, unknown> = {};
         if (filters.dateFrom) {
-            requestFilters.date_from = filters.dateFrom
-                .toISOString()
-                .split('T')[0];
+            requestFilters.date_from = formatLocalDate(filters.dateFrom);
         }
         if (filters.dateTo) {
-            requestFilters.date_to = filters.dateTo.toISOString().split('T')[0];
+            requestFilters.date_to = formatLocalDate(filters.dateTo);
         }
         if (filters.amountMin !== null && filters.amountMin !== undefined) {
             requestFilters.amount_min = filters.amountMin;
