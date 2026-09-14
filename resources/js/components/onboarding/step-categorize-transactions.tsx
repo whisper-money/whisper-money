@@ -70,6 +70,7 @@ export function StepCategorizeTransactions({
         accounts,
         banks,
         transactions,
+        source: 'onboarding',
     });
 
     const totalAvailable = uncategorizedTransactions.length;

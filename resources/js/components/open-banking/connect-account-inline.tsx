@@ -28,6 +28,7 @@ import {
 import { useConnectCountries, useConnectFlow } from '@/hooks/use-connect-flow';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { ProviderCredentialFields } from '@/lib/connect-providers';
+import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
@@ -83,6 +84,20 @@ export function ConnectAccountInline({
             setStep('bank');
         }
     }, [step, onBack, setStep, clearBankSelection]);
+
+    /**
+     * The last thing that happens inside our app before the bank takes over, and
+     * the widest gap in the onboarding funnel: whoever does not come back from
+     * the redirect is only visible here. This inline flow is the onboarding one
+     * (settings uses the dialog), so the event is named for that surface.
+     */
+    const startConnect = useCallback(() => {
+        captureEvent('onboarding_bank_connect_started', {
+            country,
+            provider: provider?.providerKey ?? 'enable_banking',
+        });
+        handleAuthorize();
+    }, [country, provider, handleAuthorize]);
 
     const back = (
         <StepButton
@@ -243,7 +258,7 @@ export function ConnectAccountInline({
             action: (
                 <StepButton
                     text={isSubmitting ? __('Connecting...') : __('Connect')}
-                    onClick={handleAuthorize}
+                    onClick={startConnect}
                     disabled={!canSubmit}
                 />
             ),

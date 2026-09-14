@@ -4,9 +4,22 @@ import { StepComplete } from './step-complete';
 
 const post = vi.fn();
 
+const { captureEvent } = vi.hoisted(() => ({ captureEvent: vi.fn() }));
+
+vi.mock('@/lib/posthog', () => ({ captureEvent }));
+
 vi.mock('@inertiajs/react', () => ({
     router: { post: (...args: unknown[]) => post(...args) },
 }));
+
+const renderStep = () =>
+    render(
+        <StepComplete
+            accountsCreated={2}
+            hasConnectedAccount
+            signupPlan="paid"
+        />,
+    );
 
 type VisitCallbacks = {
     onError?: () => void;
@@ -46,12 +59,13 @@ const failures: Array<[string, (callbacks: VisitCallbacks) => void]> = [
 describe('StepComplete', () => {
     afterEach(() => {
         post.mockReset();
+        captureEvent.mockReset();
     });
 
     it('forgets the stored resume step once onboarding is done', async () => {
         window.localStorage.setItem('onboarding-step', 'complete');
 
-        render(<StepComplete />);
+        renderStep();
 
         fireEvent.click(screen.getByRole('button'));
 
@@ -68,7 +82,7 @@ describe('StepComplete', () => {
     it.each(failures)(
         'lets the user try again when %s',
         async (_failure, settle) => {
-            render(<StepComplete />);
+            renderStep();
 
             fireEvent.click(screen.getByRole('button'));
 
@@ -84,4 +98,37 @@ describe('StepComplete', () => {
             expect(screen.getByRole('button')).toBeEnabled();
         },
     );
+
+    it('reports the completion with what the user set up', async () => {
+        renderStep();
+
+        fireEvent.click(screen.getByRole('button'));
+
+        await act(async () => {
+            const callbacks = post.mock.calls[0][2] as VisitCallbacks;
+            callbacks.onSuccess?.();
+            callbacks.onFinish?.();
+        });
+
+        expect(captureEvent).toHaveBeenCalledOnce();
+        expect(captureEvent).toHaveBeenCalledWith('onboarding_completed', {
+            accounts_created: 2,
+            has_connected_account: true,
+            signup_plan: 'paid',
+        });
+    });
+
+    // A retryable failure is not a completed onboarding, and counting it as one
+    // would put the funnel's last step above the number of onboarded users.
+    it.each(failures)('reports nothing when %s', async (_failure, settle) => {
+        renderStep();
+
+        fireEvent.click(screen.getByRole('button'));
+
+        await act(async () => {
+            settle(post.mock.calls[0][2] as VisitCallbacks);
+        });
+
+        expect(captureEvent).not.toHaveBeenCalled();
+    });
 });
