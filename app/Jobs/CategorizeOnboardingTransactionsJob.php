@@ -9,10 +9,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * One-shot AI categorization of everything still uncategorized when onboarding
- * completes. The per-transaction listener is skipped during onboarding, so the
- * AI rules generated in the suggestions step get first crack at the import (they
- * cover the bulk of it); this pass then labels whatever the rules left blank.
+ * One-shot AI categorization of everything still uncategorized when the user
+ * leaves the AI suggestions step. The per-transaction listener is skipped during
+ * onboarding, so the AI rules generated in that step get first crack at the
+ * import (they cover the bulk of it); this pass then labels whatever the rules
+ * left blank. That leaves a small batch, which is why it fits in the two or
+ * three onboarding steps still ahead of the user.
  *
  * Runs on the dedicated AI queue so it never delays the rest of the app.
  */

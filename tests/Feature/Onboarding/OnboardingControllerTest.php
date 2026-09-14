@@ -106,7 +106,9 @@ it('ignores an unknown step and falls back to the default flow', function () {
         );
 });
 
-it('marks the user onboarded and queues the AI categorization batch on complete', function () {
+// The batch is queued when the user leaves the AI suggestions step, so by the
+// time they finish onboarding it has been running for two or three steps.
+it('marks the user onboarded without queueing the AI categorization batch on complete', function () {
     Queue::fake();
 
     $user = User::factory()->create(['onboarded_at' => null]);
@@ -117,10 +119,52 @@ it('marks the user onboarded and queues the AI categorization batch on complete'
 
     expect($user->refresh()->onboarded_at)->not->toBeNull();
 
+    Queue::assertNotPushed(CategorizeOnboardingTransactionsJob::class);
+});
+
+it('queues the AI categorization batch when the user leaves the AI suggestions step', function () {
+    Queue::fake();
+
+    $user = User::factory()->create(['onboarded_at' => null]);
+    $user->recordAiConsent();
+
+    $this->actingAs($user)
+        ->post('/onboarding/categorize')
+        ->assertOk()
+        ->assertJson(['queued' => true]);
+
     Queue::assertPushed(
         CategorizeOnboardingTransactionsJob::class,
         fn (CategorizeOnboardingTransactionsJob $job): bool => $job->user->is($user),
     );
+});
+
+it('does not queue the AI categorization batch without a paid plan', function () {
+    Queue::fake();
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create(['onboarded_at' => null]);
+    $user->recordAiConsent();
+
+    $this->actingAs($user)
+        ->post('/onboarding/categorize')
+        ->assertOk()
+        ->assertJson(['queued' => false]);
+
+    Queue::assertNotPushed(CategorizeOnboardingTransactionsJob::class);
+});
+
+it('does not queue the AI categorization batch without AI consent', function () {
+    Queue::fake();
+
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $this->actingAs($user)
+        ->post('/onboarding/categorize')
+        ->assertOk()
+        ->assertJson(['queued' => false]);
+
+    Queue::assertNotPushed(CategorizeOnboardingTransactionsJob::class);
 });
 
 it('returns banks and accounts props on onboarding index', function () {

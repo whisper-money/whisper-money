@@ -172,6 +172,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['onboarded'])->group(function () {
         Route::get('onboarding', [OnboardingController::class, 'index'])->name('onboarding');
         Route::get('onboarding/sync-status', [OnboardingController::class, 'syncStatus'])->name('onboarding.sync-status');
+        Route::post('onboarding/categorize', [OnboardingController::class, 'categorize'])->name('onboarding.categorize');
         Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
         // The bell: what happened in the account, newest first. Opening a row

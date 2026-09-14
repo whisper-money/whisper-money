@@ -73,9 +73,10 @@ class CategorizeTransactionWithAi implements ShouldQueue
         }
 
         // Transactions imported during onboarding are deliberately skipped here:
-        // the bulk of them are covered by the AI automation rules generated at the
-        // end of onboarding, and whatever is left is categorized in a single batch
-        // pass once onboarding completes (CategorizeOnboardingTransactionsJob).
+        // running per transaction would mean ~900 model calls for one import. The
+        // bulk of them are covered by the AI automation rules generated in the
+        // suggestions step, and whatever is left is categorized in a single batch
+        // pass when the user leaves that step (CategorizeOnboardingTransactionsJob).
         if (! $user->isOnboarded()) {
             return false;
         }

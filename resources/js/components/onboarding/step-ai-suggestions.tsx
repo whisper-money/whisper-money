@@ -12,6 +12,7 @@ import { captureEvent } from '@/lib/posthog';
 import { isRecoveringFromExpiredSession } from '@/lib/session-expiry-recovery';
 import { store as storeConsent } from '@/routes/ai/consent';
 import { accept, generate, show } from '@/routes/ai/rule-suggestions';
+import { categorize } from '@/routes/onboarding';
 import { type SharedData } from '@/types';
 import { type Category } from '@/types/category';
 import { type SignupPlan } from '@/types/pricing';
@@ -72,6 +73,21 @@ export function StepAiSuggestions({
     const deadlineRef = useRef(0);
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
+
+    // Every way out of this step goes through here, not just accepting rules:
+    // fewer than the minimum transactions, an empty run, a failed or timed-out
+    // one and a plain skip all land the user on the next step, and all of them
+    // paid for the same thing. Leaving starts the AI pass over whatever the
+    // generated rules left uncategorized, so it runs during the two or three
+    // steps still ahead instead of on a dashboard the user is already reading.
+    // Fire and forget: the server drops it without a plan or without consent,
+    // and nothing here should wait on it.
+    const leaveStep = useCallback(() => {
+        axios.post(categorize().url).catch(() => {
+            // The dashboard still prompts for whatever stays uncategorized.
+        });
+        onCompleteRef.current();
+    }, []);
 
     const applyState = useCallback((data: SuggestionState) => {
         setState(data);
@@ -180,7 +196,7 @@ export function StepAiSuggestions({
                 }
             } catch {
                 // Never block onboarding if the AI step can't load.
-                onCompleteRef.current();
+                leaveStep();
             }
         })();
 
@@ -206,7 +222,7 @@ export function StepAiSuggestions({
 
     const declineConsent = () => {
         captureEvent('onboarding_ai_consent', { granted: false });
-        onComplete();
+        leaveStep();
     };
 
     // The two "Skip for now" buttons leave the step with the work undone, and
@@ -217,7 +233,7 @@ export function StepAiSuggestions({
             step: 'ai-suggestions',
             reason,
         });
-        onComplete();
+        leaveStep();
     };
 
     const submit = async () => {
@@ -234,7 +250,7 @@ export function StepAiSuggestions({
         });
 
         if (chosen.length === 0) {
-            onCompleteRef.current();
+            leaveStep();
             return;
         }
 
@@ -313,7 +329,7 @@ export function StepAiSuggestions({
                     },
                 )}
                 footer={
-                    <StepButton text={__('Continue')} onClick={onComplete} />
+                    <StepButton text={__('Continue')} onClick={leaveStep} />
                 }
             />
         );
@@ -394,7 +410,7 @@ export function StepAiSuggestions({
                     { count: state.min_transactions },
                 )}
                 footer={
-                    <StepButton text={__('Continue')} onClick={onComplete} />
+                    <StepButton text={__('Continue')} onClick={leaveStep} />
                 }
             />
         );
@@ -434,7 +450,7 @@ export function StepAiSuggestions({
                     'We couldn’t find confident rules to suggest right now. You can categorize your transactions in the next step.',
                 )}
                 footer={
-                    <StepButton text={__('Continue')} onClick={onComplete} />
+                    <StepButton text={__('Continue')} onClick={leaveStep} />
                 }
             />
         );
