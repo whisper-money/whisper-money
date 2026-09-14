@@ -102,6 +102,7 @@ export default function Onboarding({
         hasConnectedAccount,
         skipAiSuggestions: isFreePlan,
         userId: auth.user.id,
+        signupPlan,
     });
 
     // While on the connections step, poll for connections finalized elsewhere
@@ -239,7 +240,13 @@ export default function Onboarding({
                 );
 
             case 'complete':
-                return <StepComplete />;
+                return (
+                    <StepComplete
+                        accountsCreated={createdAccounts.length}
+                        hasConnectedAccount={hasConnectedAccount}
+                        signupPlan={signupPlan}
+                    />
+                );
 
             default:
                 return null;

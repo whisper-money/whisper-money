@@ -1,10 +1,12 @@
+import { captureEvent } from '@/lib/posthog';
 import {
     readStoredValue,
     removeStoredValue,
     writeStoredValue,
 } from '@/lib/safe-storage';
 import { type AccountType } from '@/types/account';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type SignupPlan } from '@/types/pricing';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export type OnboardingStep =
     | 'welcome'
@@ -148,6 +150,8 @@ interface UseOnboardingStateOptions {
     skipAiSuggestions?: boolean;
     /** Owner of the stored resume point. Nothing is stored without it. */
     userId?: string;
+    /** Reported on every step event: it decides how many steps there are. */
+    signupPlan?: SignupPlan | null;
 }
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
@@ -157,6 +161,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         hasConnectedAccount = false,
         skipAiSuggestions = false,
         userId,
+        signupPlan = null,
     } = options;
 
     // Dropped from the array rather than short-circuited in the component, so
@@ -222,6 +227,40 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
     }, [currentStep, primarySteps]);
 
     const totalSteps = primarySteps.length;
+
+    /**
+     * Every step entry, from the one place that owns step transitions: a deep
+     * link, a stored resume point and a bank redirect coming back all land here,
+     * where a per-component effect would miss them. The wizard is a single
+     * Inertia render, so autocapture sees one `$pageview` for all nine steps and
+     * this event is the only thing a funnel can be built from.
+     */
+    const lastTrackedStep = useRef<OnboardingStep | null>(null);
+
+    useEffect(() => {
+        // The effect re-runs whenever the counter changes and React StrictMode
+        // double-invokes it in development, so only a step that is actually new
+        // counts as a view - otherwise every step ships doubled.
+        if (lastTrackedStep.current === currentStep) {
+            return;
+        }
+
+        const isEntryStep = lastTrackedStep.current === null;
+        lastTrackedStep.current = currentStep;
+
+        captureEvent('onboarding_step_viewed', {
+            step: currentStep,
+            // 1-based to read as "3 of 9". 'customize-categories' is not in the
+            // progress counter (and nothing renders it), so it has no position.
+            step_index: stepIndex >= 0 ? stepIndex + 1 : null,
+            total_steps: totalSteps,
+            signup_plan: signupPlan,
+            // A reload or a return from the bank re-fires the step the user was
+            // already on. Harmless for a funnel, which dedupes by person, and
+            // ruinous for raw drop-off counts - so both readings stay available.
+            resumed: isEntryStep && resolvedInitialStep !== 'welcome',
+        });
+    }, [currentStep, stepIndex, totalSteps, signupPlan, resolvedInitialStep]);
 
     const goToStep = useCallback((step: OnboardingStep) => {
         setCurrentStep(step);
