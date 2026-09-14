@@ -1,18 +1,18 @@
-import { StepAccountTypes } from '@/components/onboarding/step-account-types';
 import { StepAiSuggestions } from '@/components/onboarding/step-ai-suggestions';
 import { StepCategorizeTransactions } from '@/components/onboarding/step-categorize-transactions';
-import { StepCategoryTypes } from '@/components/onboarding/step-category-types';
 import { StepComplete } from '@/components/onboarding/step-complete';
 import {
     StepCreateAccount,
     type ExistingAccount,
 } from '@/components/onboarding/step-create-account';
-import { StepCustomizeCategories } from '@/components/onboarding/step-customize-categories';
+import { goalLabel, StepGoal } from '@/components/onboarding/step-goal';
+import { StepGuess } from '@/components/onboarding/step-guess';
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
 import { StepImportTransactions } from '@/components/onboarding/step-import-transactions';
-import { StepSmartRules } from '@/components/onboarding/step-smart-rules';
+import { StepPlan } from '@/components/onboarding/step-plan';
+import { StepPromise } from '@/components/onboarding/step-promise';
 import { StepSyncing } from '@/components/onboarding/step-syncing';
-import { StepWelcome } from '@/components/onboarding/step-welcome';
+import { StepToday } from '@/components/onboarding/step-today';
 import { useSyncContext } from '@/contexts/sync-context';
 import {
     BACKABLE_STEPS,
@@ -20,6 +20,7 @@ import {
     OnboardingStep,
     useOnboardingState,
     validStepsFor,
+    type OnboardingAnswers,
 } from '@/hooks/use-onboarding-state';
 import OnboardingLayout from '@/layouts/onboarding-layout';
 import { type SharedData } from '@/types';
@@ -37,6 +38,7 @@ interface OnboardingProps {
     categories: Category[];
     transactions: Transaction[];
     initialStep?: OnboardingStep | null;
+    onboardingAnswers?: OnboardingAnswers;
     signupPlan?: SignupPlan | null;
 }
 
@@ -46,6 +48,7 @@ export default function Onboarding({
     categories,
     transactions,
     initialStep: initialStepProp,
+    onboardingAnswers = {},
     signupPlan = null,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
@@ -88,6 +91,8 @@ export default function Onboarding({
         currentStep,
         stepIndex,
         totalSteps,
+        answers,
+        saveAnswer,
         createdAccounts,
         isFirstAccount,
         hasSelectedConnectedAccount,
@@ -103,6 +108,7 @@ export default function Onboarding({
         skipAiSuggestions: isFreePlan,
         userId: auth.user.id,
         signupPlan,
+        initialAnswers: onboardingAnswers,
     });
 
     // While on the connections step, poll for connections finalized elsewhere
@@ -164,11 +170,48 @@ export default function Onboarding({
         const lastAccount = createdAccounts[createdAccounts.length - 1];
 
         switch (currentStep) {
-            case 'welcome':
-                return <StepWelcome onContinue={goNext} />;
+            case 'promise':
+                return <StepPromise onContinue={goNext} />;
 
-            case 'account-types':
-                return <StepAccountTypes onContinue={goNext} />;
+            case 'goal':
+                return (
+                    <StepGoal
+                        value={answers.goal}
+                        onSelect={(value) => saveAnswer('goal', value)}
+                        onContinue={goNext}
+                    />
+                );
+
+            case 'today':
+                return (
+                    <StepToday
+                        value={answers.today}
+                        onSelect={(value) => saveAnswer('today', value)}
+                        onContinue={goNext}
+                    />
+                );
+
+            case 'guess':
+                return (
+                    <StepGuess
+                        currencyCode={auth.user.currency_code}
+                        value={answers.spending_guess}
+                        onContinue={(spendingGuess) => {
+                            saveAnswer('spending_guess', spendingGuess);
+                            goNext();
+                        }}
+                    />
+                );
+
+            case 'plan':
+                return (
+                    <StepPlan
+                        goal={goalLabel(answers.goal)}
+                        spendingGuess={answers.spending_guess}
+                        currencyCode={auth.user.currency_code}
+                        onContinue={goNext}
+                    />
+                );
 
             case 'create-account':
                 return (
@@ -189,15 +232,6 @@ export default function Onboarding({
                         onContinue={goNext}
                     />
                 );
-
-            case 'category-types':
-                return <StepCategoryTypes onContinue={goNext} />;
-
-            case 'customize-categories':
-                return <StepCustomizeCategories onContinue={goNext} />;
-
-            case 'smart-rules':
-                return <StepSmartRules onContinue={goNext} />;
 
             case 'syncing':
                 return <StepSyncing onComplete={goNext} />;
@@ -255,12 +289,12 @@ export default function Onboarding({
 
     const getStepTitle = (step: OnboardingStep): string => {
         const titles: Record<OnboardingStep, string> = {
-            welcome: __('Welcome'),
-            'account-types': __('Account Types'),
+            promise: __('Welcome'),
+            goal: __('Your Goal'),
+            today: __('How You Track'),
+            guess: __('Your Guess'),
+            plan: __('Your Plan'),
             'create-account': __('Create Account'),
-            'category-types': __('Categories'),
-            'customize-categories': __('Customize Categories'),
-            'smart-rules': __('Smart Rules'),
             syncing: __('Syncing'),
             'ai-suggestions': __('AI Suggestions'),
             'import-transactions': __('Import Transactions'),

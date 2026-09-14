@@ -21,14 +21,28 @@ it('walks the first steps on a phone with the action pinned to the footer', func
 
     visit('/onboarding')
         ->resize(430, 932)
-        ->assertSee('Welcome to Whisper Money')
-        ->click("Let's Get Started")
+        ->assertSee('Find out where your money actually went')
+        ->click('Start')
         ->wait(1)
-        // Seven account-type rows push the content past the viewport: the
+        // The four rows plus the copy push the content past the viewport: the
         // footer button has to stay clickable without scrolling.
-        ->assertSee('Account Types')
-        ->assertSee('Real Estate')
-        ->click('Create Your First Account')
+        ->assertSee('What do you want to change?')
+        ->assertSee('Save for something specific')
+        ->click('Understand where it all goes')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
+        ->assertSee('How do you keep track today?')
+        ->click('In my head')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
+        // The slider and the note below it are the tallest question of the four.
+        ->assertSee('What did you spend last month?')
+        ->click('Lock in my guess')
+        ->wait(1)
+        ->assertSee("Here's what happens next")
+        ->click("Let's go")
         ->wait(1)
         ->assertSee('How would you like to set up this account?')
         ->assertSee("You'll choose a plan at the end of the onboarding.")
@@ -56,8 +70,8 @@ it('offers the header back arrow only where going back is safe', function () {
     $user = User::factory()->create(['onboarded_at' => null]);
     $this->actingAs($user);
 
-    // 'account-types' can be backed out of...
-    visit('/onboarding?step=account-types')
+    // 'goal' can be backed out of...
+    visit('/onboarding?step=goal')
         ->resize(430, 932)
         ->wait(1)
         ->assertPresent('[aria-label="Back"]')

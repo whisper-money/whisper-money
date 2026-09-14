@@ -33,13 +33,11 @@ it('connects a bank during onboarding', function () {
 
     actingAs($user);
 
-    $page = visit('/onboarding');
+    // Straight to the accounts step: the questions before it are not what
+    // this test is about.
+    $page = visit('/onboarding?step=create-account');
 
-    $page->assertSee('Welcome to Whisper Money')
-        ->click("Let's Get Started")
-        ->waitForText('Account Types', 5)
-        ->click('Create Your First Account')
-        ->waitForText('How would you like to set up this account?', 5)
+    $page->waitForText('How would you like to set up this account?', 5)
         ->click('Connected')
         ->waitForText('Connect Your Bank', 5)
         ->click('[role="combobox"]')

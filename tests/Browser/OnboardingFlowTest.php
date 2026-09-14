@@ -51,14 +51,9 @@ it('syncs user currency from first onboarding account after signup', function ()
 
     $this->actingAs($user->refresh());
 
-    $page = visit('/onboarding');
+    $page = visit('/onboarding?step=create-account');
 
     $page->assertPathIs('/onboarding')
-        ->assertSee('Welcome to Whisper Money')
-        ->click("Let's Get Started")
-        ->wait(1)
-        ->assertSee('Account Types')
-        ->click('Create Your First Account')
         ->wait(1)
         ->assertSee('Create an Account')
         ->click('Manual')
@@ -118,7 +113,7 @@ it('redirects non-onboarded user from dashboard to onboarding', function () {
 // Step Navigation Tests
 // =============================================================================
 
-it('shows welcome step as first onboarding step', function () {
+it('opens on the promise rather than a welcome', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
     ]);
@@ -127,12 +122,12 @@ it('shows welcome step as first onboarding step', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to Whisper Money')
-        ->assertSee("Let's Get Started")
+    $page->assertSee('Find out where your money actually went')
+        ->assertSee('Start')
         ->assertNoJavascriptErrors();
 });
 
-it('navigates from welcome to account types', function () {
+it('walks the four questions and reads the answers back', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
     ]);
@@ -141,27 +136,30 @@ it('navigates from welcome to account types', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to Whisper Money')
-        ->click("Let's Get Started")
+    $page->click('Start')
         ->wait(1)
-        ->assertSee('Account Types')
+        ->assertSee('What do you want to change?')
+        ->click('Understand where it all goes')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
+        ->assertSee('How do you keep track today?')
+        ->click('A spreadsheet')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
+        ->assertSee('What did you spend last month?')
+        ->click('Lock in my guess')
+        ->wait(1)
+        // The plan step is the whole point of asking: it hands the answers back.
+        ->assertSee("Here's what happens next")
+        ->assertSee('understand where it all goes')
         ->assertNoJavascriptErrors();
-});
 
-it('shows real estate on onboarding account types by default', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
+    expect($user->refresh()->onboarding_answers)->toMatchArray([
+        'goal' => 'understand',
+        'today' => 'spreadsheet',
     ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding');
-
-    $page->click("Let's Get Started")
-        ->wait(1)
-        ->assertSee('Account Types')
-        ->assertSee('Balance')
-        ->assertNoJavascriptErrors();
 });
 
 // =============================================================================
@@ -183,13 +181,9 @@ it('shows existing accounts instead of create form when accounts exist', functio
 
     $this->actingAs($user);
 
-    $page = visit('/onboarding');
+    $page = visit('/onboarding?step=create-account');
 
-    $page->click("Let's Get Started")
-        ->wait(1)
-        ->assertSee('Account Types')
-        ->click('Create Your First Account')
-        ->wait(1)
+    $page->wait(1)
         // Should show existing accounts, not the create form
         ->assertSee('Your Accounts')
         ->assertSee('Test Bank')
@@ -212,20 +206,16 @@ it('allows continuing with existing accounts', function () {
 
     $this->actingAs($user);
 
-    $page = visit('/onboarding');
+    $page = visit('/onboarding?step=create-account');
 
-    $page->click("Let's Get Started")
-        ->wait(1)
-        ->assertSee('Account Types')
-        ->click('Create Your First Account')
-        ->wait(1)
+    $page->wait(1)
         ->assertSee('Your Accounts')
         ->assertSee('Existing Bank')
         // Click Continue to proceed
         ->click('Continue')
-        ->wait(2)
-        // Should go to category types (existing accounts no longer trigger import)
-        ->assertSee('Understanding Categories')
+        ->wait(3)
+        // Nothing to sync, so the syncing step hands straight over
+        ->assertSee('Let AI organize your money')
         ->assertNoJavascriptErrors();
 });
 
@@ -259,7 +249,7 @@ it('returns to the accounts step when bank authorization fails during onboarding
         ->assertQueryStringHas('step', 'create-account')
         ->assertSee('Your Accounts')
         ->assertSee('Connected Bank')
-        ->assertDontSee('Welcome to Whisper Money')
+        ->assertDontSee('Find out where your money actually went')
         ->assertNoJavascriptErrors();
 
     $connection->refresh();
@@ -276,10 +266,10 @@ it('deep links straight to the connections step via ?step=create-account', funct
     $page = visit('/onboarding?step=create-account');
 
     $page->wait(1)
-        // Lands on the connections step, skipping the welcome step entirely.
+        // Lands on the connections step, skipping the questions entirely.
         ->assertSee('Create an Account')
         ->assertSee('Manual')
-        ->assertDontSee('Welcome to Whisper Money')
+        ->assertDontSee('Find out where your money actually went')
         ->assertNoJavascriptErrors();
 });
 
@@ -336,16 +326,13 @@ it('shows import transactions step after account creation', function () {
 
     $this->actingAs($user);
 
-    $page = visit('/onboarding');
+    $page = visit('/onboarding?step=create-account');
 
-    $page->click("Let's Get Started")
-        ->wait(1)
-        ->click('Create Your First Account')
-        ->wait(1)
+    $page->wait(1)
         ->click('Continue')
-        ->wait(2)
-        // Should go to category types (existing accounts no longer trigger import)
-        ->assertSee('Understanding Categories')
+        ->wait(3)
+        // Existing accounts no longer trigger import, and there is nothing to sync
+        ->assertSee('Let AI organize your money')
         ->assertNoJavascriptErrors();
 });
 
@@ -364,12 +351,9 @@ it('shows add another account form without first account restriction', function 
 
     $this->actingAs($user);
 
-    $page = visit('/onboarding');
+    $page = visit('/onboarding?step=create-account');
 
-    $page->click("Let's Get Started")
-        ->wait(1)
-        ->click('Create Your First Account')
-        ->wait(1)
+    $page->wait(1)
         // At this point, the "Your Accounts" view shows existing accounts
         ->assertSee('Your Accounts')
         ->assertSee('Primary Bank')
@@ -387,12 +371,9 @@ it('hides the connected plan warning after connected setup is selected once', fu
 
     $warning = "You'll choose a plan at the end of the onboarding.";
 
-    $page = visit('/onboarding');
+    $page = visit('/onboarding?step=create-account');
 
-    $page->click("Let's Get Started")
-        ->wait(1)
-        ->click('Create Your First Account')
-        ->wait(1)
+    $page->wait(1)
         ->assertSee($warning)
         ->assertSee('/month')
         ->click('Connected')
@@ -413,12 +394,9 @@ it('creates a real estate account during onboarding by default', function () {
 
     $this->actingAs($user);
 
-    $page = visit('/onboarding');
+    $page = visit('/onboarding?step=create-account');
 
-    $page->click("Let's Get Started")
-        ->wait(1)
-        ->click('Create Your First Account')
-        ->wait(1)
+    $page->wait(1)
         ->assertSee('Create an Account')
         ->click('Manual')
         ->wait(1)
@@ -473,17 +451,25 @@ it('completes entire onboarding flow with account creation, transaction import, 
     $page->assertPathIs('/onboarding')
         ->assertNoJavascriptErrors();
 
-    // Step 1: Welcome
-    $page->assertSee('Welcome to Whisper Money')
-        ->click("Let's Get Started")
+    // Steps 1-5: the promise and the four questions
+    $page->assertSee('Find out where your money actually went')
+        ->click('Start')
+        ->wait(1)
+        ->click('Understand where it all goes')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
+        ->click('In my head')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
+        ->click('Lock in my guess')
+        ->wait(1)
+        ->assertSee("Here's what happens next")
+        ->click("Let's go")
         ->wait(1);
 
-    // Step 2: Account Types
-    $page->assertSee('Account Types')
-        ->click('Create Your First Account')
-        ->wait(1);
-
-    // Step 3: Create Account - connected mode is preselected, switch to manual and fill the form
+    // Step 6: Create Account - connected mode is preselected, switch to manual and fill the form
     $page->assertSee('Create an Account')
         ->assertSee('Manual')
         ->click('Manual')
@@ -506,7 +492,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Create Account')
         ->wait(5);
 
-    // Step 4: Import Transactions - open the import drawer
+    // Import Transactions - open the import drawer
     $page->assertSee('Import Your Transactions')
         ->click('Import Transactions')
         ->wait(3);
@@ -534,14 +520,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Continue')
         ->wait(1);
 
-    // Category Types
-    $page->assertSee('Understanding Categories')
-        ->click('Continue')
-        ->wait(1);
-
-    // Smart Rules
-    $page->assertSee('Smart Automation Rules')
-        ->click('Continue')
+    $page->click('Continue')
         ->wait(3); // syncing step reloads transactions — allow time for axios + router.reload
 
     // AI Suggestions - decline the consent prompt to continue without generating
@@ -579,6 +558,13 @@ it('completes entire onboarding flow with account creation, transaction import, 
 
     // User currency_code should match the first account's currency
     expect($user->currency_code)->toBe('EUR');
+
+    // The questions asked on the way in are kept, guess included
+    expect($user->onboarding_answers)->toMatchArray([
+        'goal' => 'understand',
+        'today' => 'head',
+        'spending_guess' => 120000,
+    ]);
 
     // Account should exist with correct properties
     $account = $user->accounts()->first();

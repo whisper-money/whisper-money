@@ -233,14 +233,9 @@ async function scenarioOnboardingConnect(page, onboarding) {
     log('Onboarding → connect BBVA');
     const captured = trackCallback(page);
     await login(page, onboarding.email, onboarding.password);
-    await page.goto(`${BASE_URL}/onboarding`, {
+    await page.goto(`${BASE_URL}/onboarding?step=create-account`, {
         waitUntil: 'domcontentloaded',
     });
-    await page.getByRole('button', { name: "Let's Get Started" }).click();
-    await page.waitForTimeout(800);
-    await page
-        .getByRole('button', { name: 'Create Your First Account' })
-        .click();
     await page.waitForTimeout(800);
     await page.getByRole('button', { name: /Connected/ }).click();
     await page.getByRole('button', { name: 'Continue' }).click();

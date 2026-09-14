@@ -1,3 +1,4 @@
+import { answers as storeAnswers } from '@/actions/App/Http/Controllers/OnboardingController';
 import { captureEvent } from '@/lib/posthog';
 import {
     readStoredValue,
@@ -6,15 +7,16 @@ import {
 } from '@/lib/safe-storage';
 import { type AccountType } from '@/types/account';
 import { type SignupPlan } from '@/types/pricing';
+import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export type OnboardingStep =
-    | 'welcome'
-    | 'account-types'
+    | 'promise'
+    | 'goal'
+    | 'today'
+    | 'guess'
+    | 'plan'
     | 'create-account'
-    | 'category-types'
-    | 'customize-categories'
-    | 'smart-rules'
     | 'syncing'
     | 'ai-suggestions'
     | 'import-transactions'
@@ -27,14 +29,14 @@ export type OnboardingStep =
  * prop or from the value stored below. Mirrors `OnboardingController::VALID_STEPS`.
  */
 const VALID_STEPS: OnboardingStep[] = [
-    'welcome',
-    'account-types',
+    'promise',
+    'goal',
+    'today',
+    'guess',
+    'plan',
     'create-account',
     'import-transactions',
     'import-balances',
-    'category-types',
-    'customize-categories',
-    'smart-rules',
     'syncing',
     'ai-suggestions',
     'categorize-transactions',
@@ -54,7 +56,7 @@ export function validStepsFor(skipAiSuggestions: boolean): OnboardingStep[] {
 /**
  * The step is otherwise only ever persisted into ?step=, and a bank redirect
  * that dies on iOS drops the user back on a bare /onboarding — which restarted
- * them from 'welcome' having already created their accounts. localStorage
+ * them from the first step having already created their accounts. localStorage
  * survives that round trip; the URL does not.
  *
  * The value carries the user it belongs to, because storage is per browser and
@@ -95,31 +97,45 @@ function readStoredStep(
 // Primary steps shown in the progress indicator
 // import-transactions and import-balances are sub-steps that don't increment the counter
 const PRIMARY_STEPS: OnboardingStep[] = [
-    'welcome',
-    'account-types',
+    'promise',
+    'goal',
+    'today',
+    'guess',
+    'plan',
     'create-account',
-    'category-types',
-    'smart-rules',
     'syncing',
     'ai-suggestions',
     'categorize-transactions',
     'complete',
 ];
 
+/**
+ * What the progress bar is drawn over, which is not `PRIMARY_STEPS.length`: the
+ * redesigned flow ends at eleven steps and this is the first of six PRs, so the
+ * steps still standing behind 'plan' are the old ones, one short of the count.
+ * Measuring the bar against the list instead would walk the percentages back a
+ * notch every time one of the remaining steps lands.
+ */
+const TOTAL_PRIMARY_STEPS = 11;
+
+/** Where onboarding starts, and where anything unresolvable falls back to. */
+const FIRST_STEP: OnboardingStep = PRIMARY_STEPS[0];
+
 // Steps that are sub-steps (shown under the same progress position as 'create-account')
 const SUB_STEPS: OnboardingStep[] = ['import-transactions', 'import-balances'];
 
 /**
  * Steps the header's back arrow is offered on. Everything else is left out on
- * purpose: 'welcome' has nowhere to go; 'create-account' carries its own back
- * buttons inside the bank flow and the manual form; backing out of 'syncing',
- * 'ai-suggestions' or 'complete' would abandon work already in flight; and
- * 'customize-categories' is not in PRIMARY_STEPS, so goBack() there is a no-op.
+ * purpose: 'promise' has nowhere to go; 'create-account' carries its own back
+ * buttons inside the bank flow and the manual form; and backing out of
+ * 'syncing', 'ai-suggestions' or 'complete' would abandon work already in
+ * flight.
  */
 export const BACKABLE_STEPS: OnboardingStep[] = [
-    'account-types',
-    'category-types',
-    'smart-rules',
+    'goal',
+    'today',
+    'guess',
+    'plan',
     'import-transactions',
     'import-balances',
 ];
@@ -131,6 +147,18 @@ export interface OnboardingState {
     createdAccounts: CreatedAccount[];
     isFirstAccount: boolean;
     hasSelectedConnectedAccount: boolean;
+}
+
+/**
+ * What the user told the onboarding about themselves. Only the spending guess
+ * is read back by the flow; the other two are kept because the question was
+ * asked anyway. Mirrors `StoreOnboardingAnswersRequest::CHOICES`.
+ */
+export interface OnboardingAnswers {
+    goal?: string;
+    today?: string;
+    /** Minor units of the user's own currency, like every stored amount. */
+    spending_guess?: number;
 }
 
 export interface CreatedAccount {
@@ -152,6 +180,8 @@ interface UseOnboardingStateOptions {
     userId?: string;
     /** Reported on every step event: it decides how many steps there are. */
     signupPlan?: SignupPlan | null;
+    /** Answers already on the user's row, so a reload keeps them. */
+    initialAnswers?: OnboardingAnswers;
 }
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
@@ -162,6 +192,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         skipAiSuggestions = false,
         userId,
         signupPlan = null,
+        initialAnswers = {},
     } = options;
 
     // Dropped from the array rather than short-circuited in the component, so
@@ -180,7 +211,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         return (
             initialStep ??
             readStoredStep(userId, skipAiSuggestions) ??
-            'welcome'
+            FIRST_STEP
         );
     }, [initialStep, skipAiSuggestions, userId]);
 
@@ -191,6 +222,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
     );
     const [hasSelectedConnectedAccount, setHasSelectedConnectedAccount] =
         useState(hasConnectedAccount);
+    const [answers, setAnswers] = useState<OnboardingAnswers>(initialAnswers);
 
     useEffect(() => {
         if (hasConnectedAccount) {
@@ -226,7 +258,11 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         return primarySteps.indexOf(currentStep);
     }, [currentStep, primarySteps]);
 
-    const totalSteps = primarySteps.length;
+    // Not primarySteps.length: see TOTAL_PRIMARY_STEPS. A free signup sees one
+    // fewer, the same way it drops out of the list.
+    const totalSteps = skipAiSuggestions
+        ? TOTAL_PRIMARY_STEPS - 1
+        : TOTAL_PRIMARY_STEPS;
 
     /**
      * Every step entry, from the one place that owns step transitions: a deep
@@ -250,21 +286,51 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
 
         captureEvent('onboarding_step_viewed', {
             step: currentStep,
-            // 1-based to read as "3 of 9". 'customize-categories' is not in the
-            // progress counter (and nothing renders it), so it has no position.
+            // 1-based to read as "3 of 11". A step outside the progress
+            // counter has no position to report.
             step_index: stepIndex >= 0 ? stepIndex + 1 : null,
             total_steps: totalSteps,
             signup_plan: signupPlan,
             // A reload or a return from the bank re-fires the step the user was
             // already on. Harmless for a funnel, which dedupes by person, and
             // ruinous for raw drop-off counts - so both readings stay available.
-            resumed: isEntryStep && resolvedInitialStep !== 'welcome',
+            resumed: isEntryStep && resolvedInitialStep !== FIRST_STEP,
         });
     }, [currentStep, stepIndex, totalSteps, signupPlan, resolvedInitialStep]);
 
     const goToStep = useCallback((step: OnboardingStep) => {
         setCurrentStep(step);
     }, []);
+
+    /**
+     * Record one answer, locally and on the user's row.
+     *
+     * Written as it is given rather than in one batch at the end, so a user who
+     * quits on the third question still leaves the first two behind. The visit
+     * asks for nothing back but the answers themselves and keeps the wizard's
+     * state, so a request between two questions cannot reset the flow.
+     */
+    const saveAnswer = useCallback(
+        <K extends keyof OnboardingAnswers>(
+            question: K,
+            answer: NonNullable<OnboardingAnswers[K]>,
+        ) => {
+            setAnswers((previous) => ({ ...previous, [question]: answer }));
+
+            captureEvent('onboarding_answered', { question, answer });
+
+            router.post(
+                storeAnswers.url(),
+                { [question]: answer },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    only: ['onboardingAnswers'],
+                },
+            );
+        },
+        [],
+    );
 
     const goNext = useCallback(() => {
         // Find the next primary step
@@ -301,6 +367,8 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         currentStep,
         stepIndex,
         totalSteps,
+        answers,
+        saveAnswer,
         createdAccounts,
         isFirstAccount,
         hasSelectedConnectedAccount,
