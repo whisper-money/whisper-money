@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\SignupPlan;
+use App\Http\Requests\StoreOnboardingAnswersRequest;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
@@ -24,14 +25,14 @@ class OnboardingController extends Controller
      * @var list<string>
      */
     private const VALID_STEPS = [
-        'welcome',
-        'account-types',
+        'promise',
+        'goal',
+        'today',
+        'guess',
+        'plan',
         'create-account',
         'import-transactions',
         'import-balances',
-        'category-types',
-        'customize-categories',
-        'smart-rules',
         'syncing',
         'ai-suggestions',
         'categorize-transactions',
@@ -87,6 +88,7 @@ class OnboardingController extends Controller
             'categories' => $categories,
             'transactions' => $transactions,
             'initialStep' => $initialStep,
+            'onboardingAnswers' => $user->onboarding_answers ?? [],
             'signupPlan' => $signupPlan?->value,
         ]);
     }
@@ -116,6 +118,24 @@ class OnboardingController extends Controller
             'pending' => $pending,
             'failed' => ! $pending && $unsynced->isNotEmpty(),
         ]);
+    }
+
+    /**
+     * Keep what the user told the onboarding about themselves.
+     *
+     * Merged rather than replaced, because each question saves on its own as
+     * it is answered: a user who drops out after the second one leaves the
+     * first behind instead of overwriting it with a half-empty payload.
+     */
+    public function answers(StoreOnboardingAnswersRequest $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $user->update([
+            'onboarding_answers' => [...$user->onboarding_answers ?? [], ...$request->validated()],
+        ]);
+
+        return back();
     }
 
     /**
