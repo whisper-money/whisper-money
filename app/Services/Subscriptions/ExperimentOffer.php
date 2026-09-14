@@ -16,7 +16,12 @@ use Laravel\Pennant\Feature;
  */
 class ExperimentOffer
 {
-    /** The plans an offer is described for. */
+    /**
+     * The recurring plans an offer is described for, listed rather than read
+     * from config: a variant charges upfront when it zeroes the trial on *these*
+     * two, so a plan added later (a one-off lifetime licence, say) must not be
+     * able to make every variant look upfront by having no trial of its own.
+     */
     private const PLAN_KEYS = ['monthly', 'yearly'];
 
     public function variantFor(User $user): string
@@ -64,29 +69,6 @@ class ExperimentOffer
         }
 
         return true;
-    }
-
-    /**
-     * The offer descriptor handed to the frontend so it can render the trial /
-     * money-back copy without re-deriving any experiment logic.
-     *
-     * @return array{variant: string, payNow: bool, refundWindowDays: int, trialDays: array<string, int>}
-     */
-    public function offerFor(User $user): array
-    {
-        $variant = $this->variantFor($user);
-
-        $trialDays = [];
-        foreach (self::PLAN_KEYS as $planKey) {
-            $trialDays[$planKey] = $this->trialDaysForVariant($variant, $planKey);
-        }
-
-        return [
-            'variant' => $variant,
-            'payNow' => $this->paysUpfront($variant),
-            'refundWindowDays' => $this->refundWindowDays(),
-            'trialDays' => $trialDays,
-        ];
     }
 
     /**

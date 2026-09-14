@@ -4,7 +4,11 @@ use App\Features\SubscriptionExperiment;
 use App\Models\User;
 use App\Services\Subscriptions\ExperimentOffer;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Laravel\Cashier\Checkout;
+use Laravel\Cashier\SubscriptionBuilder;
 use Laravel\Pennant\Feature;
 
 beforeEach(function () {
@@ -105,50 +109,25 @@ it('applies the trial days that match each variant, falling back to the plan def
         ->and($offer->trialDaysFor($user, 'yearly'))->toBe(0);
 });
 
-it('describes an upfront-paying offer for the frontend', function () {
-    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
-    Feature::for($user)->activate(SubscriptionExperiment::class, 'upfront');
-
-    $offer = app(ExperimentOffer::class)->offerFor($user);
-
-    expect($offer['variant'])->toBe('upfront')
-        ->and($offer['payNow'])->toBeTrue()
-        ->and($offer['refundWindowDays'])->toBe(3)
-        ->and($offer['trialDays']['monthly'])->toBe(0)
-        ->and($offer['trialDays']['yearly'])->toBe(0);
-});
-
-it('does not call a trialling variant pay-now', function () {
-    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
-    Feature::for($user)->activate(SubscriptionExperiment::class, 'short');
-
-    expect(app(ExperimentOffer::class)->offerFor($user)['payNow'])->toBeFalse();
-});
-
-it('does not call a legacy user pay-now just because a plan has no trial', function () {
-    config(['subscriptions.plans.monthly.trial_days' => 0, 'subscriptions.plans.yearly.trial_days' => 0]);
-
-    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-05-01')]);
-
-    expect(app(ExperimentOffer::class)->offerFor($user)['payNow'])->toBeFalse();
-});
-
 it('applies the assigned variant trial at checkout', function () {
     config(['subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup']);
-    Illuminate\Support\Facades\Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
+    Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
 
     $user = User::factory()->onboarded()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
-    Feature::for($user)->activate(SubscriptionExperiment::class, 'short');
 
-    $builder = Mockery::mock(Laravel\Cashier\SubscriptionBuilder::class);
+    $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
     $builder->shouldReceive('trialDays')->once()->with(3)->andReturnSelf();
-    $checkout = Mockery::mock(Laravel\Cashier\Checkout::class);
-    $checkout->shouldReceive('toResponse')->andReturn(new Illuminate\Http\RedirectResponse('https://stripe.test/session'));
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
     $builder->shouldReceive('checkout')->once()->andReturn($checkout);
 
     $user = Mockery::mock($user)->makePartial();
     $user->shouldReceive('newSubscription')->once()->with('default', 'price_test_monthly')->andReturn($builder);
+
+    // Assign on the partial mock, not the model it wraps: Pennant keys a scope by
+    // class name as well as id, and the mock's class is its own.
+    Feature::for($user)->activate(SubscriptionExperiment::class, 'short');
 
     $this->actingAs($user)
         ->get(route('subscribe.checkout', ['plan' => 'monthly']))

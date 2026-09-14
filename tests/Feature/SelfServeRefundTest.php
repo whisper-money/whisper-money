@@ -82,6 +82,18 @@ it('blocks a self-refund for a legacy user', function () {
     expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
 });
 
+it('does not open the refund window for a legacy user just because a plan has no trial', function () {
+    // "Charges upfront" is a property of the variant, not of the plan config. A
+    // plan set to trial_days 0 for everyone is a pricing decision that comes with
+    // no money-back promise, so it must not hand the whole user base a refund.
+    config(['subscriptions.plans.monthly.trial_days' => 0, 'subscriptions.plans.yearly.trial_days' => 0]);
+
+    $user = payNowSubscriber();
+    Feature::for($user)->activate(SubscriptionExperiment::class, SubscriptionExperiment::LEGACY);
+
+    expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
+});
+
 it('runs the refund action when eligible and reports it on the billing screen', function () {
     $user = payNowSubscriber();
 
