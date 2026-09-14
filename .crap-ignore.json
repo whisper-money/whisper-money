@@ -1,1 +1,3 @@
-{}
+{
+    "App\\Console\\Commands\\VerifyRefundFlowCommand::handle": "A linear sandbox script: it charges a real Stripe test subscription, refunds it, and asserts eight ordered facts about the result. Every branch is one of those assertions plus the try/finally that must delete the Stripe customer whatever happens. Splitting it would only scatter a sequence that has to stay readable end to end, and it never runs outside a developer's machine against test keys."
+}
