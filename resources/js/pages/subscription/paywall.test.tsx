@@ -74,15 +74,15 @@ describe('Paywall', () => {
         ).toHaveAttribute('href', expect.stringContaining('plan=monthly'));
     });
 
-    it('renders the price the server hands over, per experiment arm', () => {
+    it('renders the price the server hands over', () => {
         render(<Paywall />);
 
-        // Whatever the arm, the page states the monthly equivalent and the real
-        // yearly charge rather than a price of its own.
+        // The page states the monthly equivalent and the real yearly charge
+        // rather than a price of its own.
         expect(
-            screen.getByText('€1.99/month, billed as €23.88 a year'),
+            screen.getByText('€4.50/month, billed as €53.94 a year'),
         ).toBeInTheDocument();
-        expect(screen.getByText('€3.99 a month')).toBeInTheDocument();
+        expect(screen.getByText('€8.99 a month')).toBeInTheDocument();
     });
 
     it('names what the user already has when the gate is hard', () => {
@@ -203,7 +203,7 @@ describe('Paywall', () => {
         // scrolled off, or sit behind the sticky footer.
         expect(
             screen.getByText(
-                'Free for 15 days, then €23.88 a year. Cancel before then and you are not charged.',
+                'Free for 15 days, then €53.94 a year. Cancel before then and you are not charged.',
             ),
         ).toBeInTheDocument();
 
@@ -211,7 +211,7 @@ describe('Paywall', () => {
 
         expect(
             screen.getByText(
-                'Free for 7 days, then €3.99 a month. Cancel before then and you are not charged.',
+                'Free for 7 days, then €8.99 a month. Cancel before then and you are not charged.',
             ),
         ).toBeInTheDocument();
     });

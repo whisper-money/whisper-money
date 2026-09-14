@@ -6,7 +6,6 @@ use App\Enums\Locale;
 use App\Enums\SignupPlan;
 use App\Models\User;
 use App\Services\FormatLocaleOptions;
-use App\Services\Subscriptions\PriceExperiment;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -54,10 +53,6 @@ class CreateNewUser implements CreatesNewUsers
             // decimal separator goes.
             'format_locale' => $this->formatLocales->detectFromHeader($acceptLanguage, $locale),
             'timezone' => $this->normalizeTimezone($input['timezone'] ?? null),
-            // Freeze the arm this visitor was quoted as an anonymous browser, so
-            // the price on the landing is the price at checkout. Null when they
-            // arrived without a cookie: those users pay the control price.
-            'price_arm' => PriceExperiment::sanitize(request()->cookie(PriceExperiment::COOKIE)),
             // Which pricing card they came from, so onboarding can hide the paid
             // options from someone who signed up for the free plan.
             'signup_plan' => $signupPlan?->value,

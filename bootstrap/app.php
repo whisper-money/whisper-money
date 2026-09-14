@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\AssignPriceExperimentArm;
 use App\Http\Middleware\BlockSharedAccountActions;
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -48,9 +47,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleAppearance::class,
             SetLocale::class,
-            // Before HandleInertiaRequests: it draws the visitor's price arm onto
-            // the request, which the shared pricing prop then reads.
-            AssignPriceExperimentArm::class,
             SetSentryUser::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

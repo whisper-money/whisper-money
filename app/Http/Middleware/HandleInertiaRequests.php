@@ -13,7 +13,6 @@ use App\Services\Achievements\Challenges;
 use App\Services\CurrencyOptions;
 use App\Services\FormatLocaleOptions;
 use App\Services\Notifications\NotificationFeed;
-use App\Services\Subscriptions\PriceExperiment;
 use Closure;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -104,7 +103,7 @@ class HandleInertiaRequests extends Middleware
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
             'pricing' => [
-                'plans' => PriceExperiment::plansFor($user, $request->cookie(PriceExperiment::COOKIE)),
+                'plans' => config('subscriptions.plans', []),
                 'defaultPlan' => config('subscriptions.default_plan', 'monthly'),
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),
