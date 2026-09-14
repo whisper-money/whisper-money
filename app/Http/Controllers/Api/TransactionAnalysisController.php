@@ -101,11 +101,11 @@ class TransactionAnalysisController extends Controller
             }
         }
 
-        // Refunds net against their side before it is clamped, so a credit in
-        // an expense category lowers spending instead of inflating income —
-        // matching how the cashflow screen reconciles the same transactions.
-        $income = max(0, $income);
-        $expense = max(0, -$expense);
+        // Refunds net against their own side, so a credit in an expense
+        // category lowers spending instead of inflating income — and it stays
+        // netted even past zero, matching how the cashflow screen reconciles
+        // the same transactions.
+        $expense = -$expense;
 
         $days = $this->spanInDays($transactions);
 
