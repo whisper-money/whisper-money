@@ -8,6 +8,7 @@ import { StepList } from '@/components/onboarding/step-list';
 import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
+import { captureEvent } from '@/lib/posthog';
 import { isRecoveringFromExpiredSession } from '@/lib/session-expiry-recovery';
 import { store as storeConsent } from '@/routes/ai/consent';
 import { accept, generate, show } from '@/routes/ai/rule-suggestions';
@@ -197,7 +198,26 @@ export function StepAiSuggestions({
         } finally {
             setBusy(false);
         }
+        // Reported once the consent is stored, not when the button was pressed:
+        // a request that failed left the user without AI either way.
+        captureEvent('onboarding_ai_consent', { granted: true });
         startGenerate();
+    };
+
+    const declineConsent = () => {
+        captureEvent('onboarding_ai_consent', { granted: false });
+        onComplete();
+    };
+
+    // The two "Skip for now" buttons leave the step with the work undone, and
+    // they are worth telling apart: one is a user walking away from suggestions
+    // that are on screen, the other is a user we failed to generate any for.
+    const skipStep = (reason: 'suggestions_shown' | 'generation_failed') => {
+        captureEvent('onboarding_step_skipped', {
+            step: 'ai-suggestions',
+            reason,
+        });
+        onComplete();
     };
 
     const submit = async () => {
@@ -356,7 +376,7 @@ export function StepAiSuggestions({
                         <StepButton
                             text={__('No thanks')}
                             variant="ghost"
-                            onClick={onComplete}
+                            onClick={declineConsent}
                         />
                     </>
                 }
@@ -397,7 +417,7 @@ export function StepAiSuggestions({
                         <StepButton
                             text={__('Skip for now')}
                             variant="ghost"
-                            onClick={onComplete}
+                            onClick={() => skipStep('generation_failed')}
                         />
                     </>
                 }
@@ -448,7 +468,7 @@ export function StepAiSuggestions({
                     <StepButton
                         text={__('Skip for now')}
                         variant="ghost"
-                        onClick={onComplete}
+                        onClick={() => skipStep('suggestions_shown')}
                     />
                 </>
             }

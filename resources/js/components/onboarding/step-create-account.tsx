@@ -23,6 +23,7 @@ import { ConnectAccountInline } from '@/components/open-banking/connect-account-
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { getCsrfToken } from '@/lib/csrf';
+import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { formatAccountType, type AccountType } from '@/types/account';
@@ -280,6 +281,10 @@ export function StepCreateAccount({
             const bankLogo = formDataRef.current.customBank
                 ? null
                 : (matchedBank?.logo ?? null);
+
+            captureEvent('onboarding_account_created', {
+                account_type: type,
+            });
 
             onAccountCreated({
                 id: accountData.id || finalBankId,

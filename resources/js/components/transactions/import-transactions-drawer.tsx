@@ -58,7 +58,8 @@ interface ImportTransactionsDrawerProps {
     automationRules?: AutomationRule[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onImportComplete?: () => void;
+    /** Receives how many transactions actually made it in (0 when all failed). */
+    onImportComplete?: (importedCount: number) => void;
     autoSelectSingleAccount?: boolean;
 }
 
@@ -746,7 +747,7 @@ export function ImportTransactionsDrawer({
             toast.error(__('All transactions failed to import'));
         }
 
-        onImportComplete?.();
+        onImportComplete?.(successCount);
     };
 
     const handleSelectionChange = (index: number, selected: boolean) => {

@@ -7,6 +7,7 @@ import {
 import { StepScreen } from '@/components/onboarding/step-screen';
 import { ImportTransactionsDrawer } from '@/components/transactions/import-transactions-drawer';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
+import { captureEvent } from '@/lib/posthog';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -48,6 +49,15 @@ export function StepImportTransactions({
             });
         }
     }, [accounts.length]);
+
+    // Closing the drawer moves the wizard on whether or not anything was
+    // imported, so the count is the only thing that says which of the two
+    // happened. It comes from the import itself, not from the close.
+    const handleImportComplete = (importedCount: number) => {
+        captureEvent('onboarding_import_completed', {
+            transactions_imported: importedCount,
+        });
+    };
 
     const handleDrawerClose = (open: boolean) => {
         setIsDrawerOpen(open);
@@ -120,6 +130,7 @@ export function StepImportTransactions({
             <ImportTransactionsDrawer
                 open={isDrawerOpen}
                 onOpenChange={handleDrawerClose}
+                onImportComplete={handleImportComplete}
                 accounts={accounts}
                 categories={categories}
                 banks={banks}

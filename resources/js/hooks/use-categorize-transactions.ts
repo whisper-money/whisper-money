@@ -69,6 +69,12 @@ interface UseCategorizeTransactionsOptions {
     accounts: Account[];
     banks: Bank[];
     transactions: Transaction[];
+    /**
+     * Which screen is running the flow. The hook is shared between the
+     * onboarding step and the transactions page, and without this every event
+     * it captures reads as the same surface.
+     */
+    source?: 'categorize_flow' | 'onboarding';
 }
 
 export function useCategorizeTransactions({
@@ -76,6 +82,7 @@ export function useCategorizeTransactions({
     accounts,
     banks,
     transactions: initialTransactions,
+    source = 'categorize_flow',
 }: UseCategorizeTransactionsOptions) {
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
         DecryptedTransaction[]
@@ -198,7 +205,7 @@ export function useCategorizeTransactions({
                         onClick: () => {
                             captureEvent(
                                 'automation_rule_toast_automatize_clicked',
-                                { source: 'categorize_flow' },
+                                { source },
                             );
                             setAutomateCandidate(nextAutomateCandidate);
                             setAutomateDialogOpen(true);
@@ -227,7 +234,7 @@ export function useCategorizeTransactions({
                 }, 400);
             }, 300);
         },
-        [currentTransaction, animationState],
+        [currentTransaction, animationState, source],
     );
 
     const handleSkip = useCallback(() => {

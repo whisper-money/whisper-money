@@ -1,5 +1,6 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepScreen } from '@/components/onboarding/step-screen';
+import { captureEvent } from '@/lib/posthog';
 import { syncStatus } from '@/routes/onboarding';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
@@ -26,6 +27,9 @@ const MESSAGES = [
     'Almost there, just double-checking the math...',
 ] as const;
 
+/** How the wait ended, from the step's own point of view. */
+type SyncOutcome = 'synced' | 'error' | 'stuck' | 'continued_anyway';
+
 interface StepSyncingProps {
     onComplete: () => void;
 }
@@ -36,6 +40,21 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
     const [hasStalled, setHasStalled] = useState(false);
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
+    const startedAtRef = useRef(0);
+
+    // Every outcome is reported through here, so none of the four can drift from
+    // the others. The wait is how long the user actually stared at the spinner,
+    // which is what says whether the 5 minute cap is the right one.
+    const reportOutcome = useCallback(
+        (status: SyncOutcome) =>
+            captureEvent('onboarding_sync_outcome', {
+                status,
+                waited_seconds: Math.round(
+                    (Date.now() - startedAtRef.current) / 1000,
+                ),
+            }),
+        [],
+    );
 
     const advance = useCallback(() => {
         // Always reload transactions so the categorize step sees the latest data,
@@ -51,8 +70,12 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
         let cancelled = false;
         let pollTimer: ReturnType<typeof setTimeout>;
         const deadline = Date.now() + MAX_POLL_MS;
+        startedAtRef.current = Date.now();
 
-        const stall = () => {
+        // Every outcome is reported from inside the `cancelled` guards below, so
+        // a StrictMode remount cannot report the same sync twice.
+        const stall = (status: 'error' | 'stuck') => {
+            reportOutcome(status);
             setIsPending(false);
             setHasStalled(true);
         };
@@ -62,7 +85,7 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
         // deadline rather than dropping the user into the next step early.
         const keepPolling = () => {
             if (Date.now() > deadline) {
-                stall();
+                stall('stuck');
 
                 return;
             }
@@ -83,10 +106,11 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
                 }
 
                 if (data.failed) {
-                    stall();
+                    stall('error');
                 } else if (data.pending) {
                     keepPolling();
                 } else {
+                    reportOutcome('synced');
                     setIsPending(false);
                     advance();
                 }
@@ -103,7 +127,7 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
             cancelled = true;
             clearTimeout(pollTimer);
         };
-    }, [advance]);
+    }, [advance, reportOutcome]);
 
     // Rotate through messages every 2 seconds while pending
     useEffect(() => {
@@ -118,6 +142,13 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
         return () => clearInterval(interval);
     }, [isPending]);
 
+    // A second event on purpose: the stall already told us the sync broke, this
+    // one tells us how many of those users pressed on instead of leaving.
+    const continueAfterStall = () => {
+        reportOutcome('continued_anyway');
+        advance();
+    };
+
     if (hasStalled) {
         return (
             <StepScreen
@@ -126,7 +157,12 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
                 description={__(
                     'Your bank is taking longer than expected. We’ll keep trying in the background and your transactions will show up automatically.',
                 )}
-                footer={<StepButton text={__('Continue')} onClick={advance} />}
+                footer={
+                    <StepButton
+                        text={__('Continue')}
+                        onClick={continueAfterStall}
+                    />
+                }
             />
         );
     }

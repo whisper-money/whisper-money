@@ -3,12 +3,25 @@ import { StepButton } from '@/components/onboarding/step-button';
 import { StepList, StepRow } from '@/components/onboarding/step-list';
 import { StepScreen } from '@/components/onboarding/step-screen';
 import { clearStoredOnboardingStep } from '@/hooks/use-onboarding-state';
+import { captureEvent } from '@/lib/posthog';
+import { type SignupPlan } from '@/types/pricing';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
 
-export function StepComplete() {
+interface StepCompleteProps {
+    /** Accounts added during this run of the wizard, not counting earlier ones. */
+    accountsCreated: number;
+    hasConnectedAccount: boolean;
+    signupPlan: SignupPlan | null;
+}
+
+export function StepComplete({
+    accountsCreated,
+    hasConnectedAccount,
+    signupPlan,
+}: StepCompleteProps) {
     const [isRedirecting, setIsRedirecting] = useState(false);
 
     const handleComplete = () => {
@@ -20,7 +33,18 @@ export function StepComplete() {
             {
                 // Onboarding is over, so the locally stored resume step has to
                 // go with it or a later visit drags the user back in.
-                onSuccess: clearStoredOnboardingStep,
+                //
+                // The event rides along here rather than on the click: only a
+                // request the server accepted actually stamped `onboarded_at`,
+                // and the button is deliberately retryable after a failure.
+                onSuccess: () => {
+                    clearStoredOnboardingStep();
+                    captureEvent('onboarding_completed', {
+                        accounts_created: accountsCreated,
+                        has_connected_account: hasConnectedAccount,
+                        signup_plan: signupPlan,
+                    });
+                },
                 // `onError` only fires for a response Inertia could read, so a
                 // request that died on the network left the last step of
                 // onboarding behind a spinning, disabled button with no way out

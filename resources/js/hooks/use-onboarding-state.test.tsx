@@ -1,6 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useOnboardingState } from './use-onboarding-state';
+
+const { captureEvent } = vi.hoisted(() => ({ captureEvent: vi.fn() }));
+
+vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
 describe('useOnboardingState', () => {
     describe('step URL sync', () => {
@@ -206,6 +210,135 @@ describe('useOnboardingState', () => {
             });
 
             expect(window.localStorage.getItem('onboarding-step')).toBeNull();
+        });
+    });
+
+    describe('step analytics', () => {
+        beforeEach(() => {
+            captureEvent.mockClear();
+        });
+
+        const stepEvents = () =>
+            captureEvent.mock.calls.filter(
+                ([name]) => name === 'onboarding_step_viewed',
+            );
+
+        it('reports the step, its position and the signup plan', () => {
+            renderHook(() =>
+                useOnboardingState({ signupPlan: 'paid', userId: 'user-1' }),
+            );
+
+            expect(captureEvent).toHaveBeenCalledWith(
+                'onboarding_step_viewed',
+                {
+                    step: 'welcome',
+                    step_index: 1,
+                    total_steps: 9,
+                    signup_plan: 'paid',
+                    resumed: false,
+                },
+            );
+        });
+
+        it('counts the steps a free signup actually sees', () => {
+            renderHook(() =>
+                useOnboardingState({
+                    signupPlan: 'free',
+                    skipAiSuggestions: true,
+                }),
+            );
+
+            expect(stepEvents()[0][1]).toMatchObject({
+                total_steps: 8,
+                signup_plan: 'free',
+            });
+        });
+
+        // The whole point of the hook-level event: one per step, however many
+        // times React re-renders it. StrictMode double-invokes effects in dev.
+        it('reports a step once, however often the hook re-renders', () => {
+            const { rerender } = renderHook(() => useOnboardingState());
+
+            rerender();
+            rerender();
+
+            expect(stepEvents()).toHaveLength(1);
+        });
+
+        it('reports each step the user moves to', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.goNext();
+            });
+
+            expect(stepEvents().map(([, props]) => props)).toMatchObject([
+                { step: 'welcome', step_index: 1 },
+                { step: 'account-types', step_index: 2 },
+            ]);
+        });
+
+        it('reports a sub-step under the position it shares with create-account', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.goToStep('import-transactions');
+            });
+
+            expect(stepEvents().at(-1)?.[1]).toMatchObject({
+                step: 'import-transactions',
+                step_index: 3,
+            });
+        });
+
+        // In VALID_STEPS but not in the progress counter, so it has no position
+        // to report - and must not report a nonsensical one.
+        it('reports no position for a step outside the counter', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.goToStep('customize-categories');
+            });
+
+            expect(stepEvents().at(-1)?.[1]).toMatchObject({
+                step: 'customize-categories',
+                step_index: null,
+            });
+        });
+
+        it('flags an entry that resumed mid-flow', () => {
+            const { result } = renderHook(() =>
+                useOnboardingState({ initialStep: 'syncing' }),
+            );
+
+            expect(stepEvents()[0][1]).toMatchObject({
+                step: 'syncing',
+                resumed: true,
+            });
+
+            // Only the entry itself is a resume; what follows is normal progress.
+            act(() => {
+                result.current.goNext();
+            });
+
+            expect(stepEvents().at(-1)?.[1]).toMatchObject({
+                step: 'ai-suggestions',
+                resumed: false,
+            });
+        });
+
+        it('flags a resume from the stored step too', () => {
+            window.localStorage.setItem(
+                'onboarding-step',
+                'user-1:smart-rules',
+            );
+
+            renderHook(() => useOnboardingState({ userId: 'user-1' }));
+
+            expect(stepEvents()[0][1]).toMatchObject({
+                step: 'smart-rules',
+                resumed: true,
+            });
         });
     });
 
