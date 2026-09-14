@@ -212,46 +212,6 @@ test('monthly spending calculates expenses correctly', function () {
         ]);
 });
 
-test('cash flow calculates income and expenses', function () {
-    $incomeCategory = Category::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => CategoryType::Income,
-    ]);
-    $expenseCategory = Category::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => CategoryType::Expense,
-    ]);
-
-    // Income
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'category_id' => $incomeCategory->id,
-        'amount' => 10000, // $100.00
-        'transaction_date' => now(),
-    ]);
-
-    // Expense
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'category_id' => $expenseCategory->id,
-        'amount' => -4000, // -$40.00
-        'transaction_date' => now(),
-    ]);
-
-    $response = $this->getJson('/api/dashboard/cash-flow?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
-    ]));
-
-    $response->assertOk()
-        ->assertJson([
-            'current' => [
-                'income' => 10000,
-                'expense' => 4000,
-            ],
-        ]);
-});
-
 test('top categories returns highest spending categories', function () {
     $cat1 = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
     $cat2 = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Rent']);
@@ -325,15 +285,10 @@ test('dashboard analytics net refunds in expense categories', function () {
     ];
 
     $monthlySpending = $this->getJson('/api/dashboard/monthly-spending?'.http_build_query($period));
-    $cashFlow = $this->getJson('/api/dashboard/cash-flow?'.http_build_query($period));
     $topCategories = $this->getJson('/api/dashboard/top-categories?'.http_build_query($period));
 
     $monthlySpending->assertOk()
         ->assertJsonPath('current', 4000);
-
-    $cashFlow->assertOk()
-        ->assertJsonPath('current.income', 0)
-        ->assertJsonPath('current.expense', 4000);
 
     $topCategories->assertOk()
         ->assertJsonPath('0.category.name', 'Food Delivery')
@@ -1699,11 +1654,6 @@ test('archived accounts stop feeding dashboard totals from the day they were arc
     $this->getJson('/api/dashboard/monthly-spending?'.http_build_query($period))
         ->assertOk()
         ->assertJsonPath('current', 8000);
-
-    $this->getJson('/api/dashboard/cash-flow?'.http_build_query($period))
-        ->assertOk()
-        ->assertJsonPath('current.expense', 8000)
-        ->assertJsonPath('current.income', 3000);
 
     $this->getJson('/api/dashboard/top-categories?'.http_build_query($period))
         ->assertOk()

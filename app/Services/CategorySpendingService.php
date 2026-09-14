@@ -45,6 +45,9 @@ class CategorySpendingService
             ->values()
             ->all();
 
+        // Positives only, on purpose: this ranks where the money went, and a
+        // category that a refund nets below zero has no place in a "top
+        // spending" list. The cashflow screen is the surface that nets.
         return collect($this->tree->rollUp($perCategory, $userId, $drillParentId))
             ->filter(fn (array $item): bool => $item['amount'] > 0)
             ->values();

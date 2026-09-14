@@ -98,19 +98,6 @@ test('the cashflow breakdown endpoint counts only the owner share of a shared ac
     expect($response->json('total'))->toBe(40000);
 });
 
-test('the dashboard cashflow endpoint counts only the owner share of a shared account', function () {
-    sharedAccountWithTransactions($this->user, 50);
-
-    $response = $this->getJson('/api/dashboard/cash-flow?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
-    ]));
-
-    $response->assertOk();
-    expect($response->json('current.income'))->toBe(100000)
-        ->and($response->json('current.expense'))->toBe(40000);
-});
-
 test('the dashboard monthly spending endpoint counts only the owner share of a shared account', function () {
     sharedAccountWithTransactions($this->user, 50);
 

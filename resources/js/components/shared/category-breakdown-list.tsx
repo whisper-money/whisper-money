@@ -77,9 +77,13 @@ export function CategoryBreakdownRow<T>({
     invertTrendColors = false,
 }: CategoryBreakdownRowProps<T>) {
     const id = adapter.getId(item);
+    const amount = adapter.getAmount(item);
     const percentage = adapter.getPercentage(item);
     const href = adapter.getHref?.(item) ?? null;
     const trend = adapter.getTrend?.(item) ?? null;
+    // A refund can net a category below zero. A bar cannot be drawn backwards
+    // and "-5% of expenses" says nothing, so a negative row is just its amount.
+    const netsNegative = amount < 0;
 
     const canExpand = Boolean(expandable && adapter.canExpand?.(item));
     const expanded = canExpand && expandable!.isExpanded(id);
@@ -102,13 +106,13 @@ export function CategoryBreakdownRow<T>({
                     className="shrink-0 text-xs"
                 />
             )}
-            {showPercentage && (
+            {showPercentage && !netsNegative && (
                 <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
                     {percentage.toFixed(0)}%
                 </span>
             )}
             <AmountDisplay
-                amountInCents={adapter.getAmount(item)}
+                amountInCents={amount}
                 currencyCode={currencyCode}
                 variant="compact"
                 minimumFractionDigits={0}
@@ -161,11 +165,13 @@ export function CategoryBreakdownRow<T>({
                     <div className="min-w-0 grow px-1.5 py-1">{header}</div>
                 )}
             </div>
-            <Progress
-                value={percentage}
-                className="h-2 w-full"
-                indicatorColor={adapter.getBarColor(item, index)}
-            />
+            {!netsNegative && (
+                <Progress
+                    value={percentage}
+                    className="h-2 w-full"
+                    indicatorColor={adapter.getBarColor(item, index)}
+                />
+            )}
 
             {canExpand && (
                 <AnimatedCollapse open={expanded}>

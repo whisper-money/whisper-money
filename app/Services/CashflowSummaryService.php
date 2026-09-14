@@ -16,8 +16,9 @@ class CashflowSummaryService
     public function __construct(private ExchangeRateService $exchangeRateService) {}
 
     /**
-     * Derive the summary from already-clamped income and expense totals (both
-     * non-negative, in minor units).
+     * Derive the summary from signed income and expense totals, in minor units.
+     * Either side can be negative when a period's reversals outweigh what they
+     * reverse, and the net says so rather than hiding it.
      *
      * @return array{income: int, expense: int, net: int, savings_rate: float|int}
      */
@@ -101,8 +102,11 @@ class CashflowSummaryService
      */
     private function forTransactions(Collection $transactions, string $userCurrency): array
     {
-        $income = max(0, $this->sumTransactions($transactions, $userCurrency, CategoryType::Income));
-        $expense = max(0, -$this->sumTransactions($transactions, $userCurrency, CategoryType::Expense));
+        // Deliberately unclamped: a month whose refunds outweigh its spending
+        // has negative expenses, and clamping that to zero is the one place
+        // money goes missing from the net.
+        $income = $this->sumTransactions($transactions, $userCurrency, CategoryType::Income);
+        $expense = -$this->sumTransactions($transactions, $userCurrency, CategoryType::Expense);
 
         return [
             ...self::summarize($income, $expense),
@@ -122,9 +126,7 @@ class CashflowSummaryService
             default => throw new InvalidArgumentException("sumTransactions only supports Income and Expense, got {$type->value}."),
         };
 
-        return $transactions
-            ->filter($onSide)
-            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
+        return $this->sumConvertedAmounts($transactions->filter($onSide), $userCurrency);
     }
 
     /**
@@ -132,10 +134,11 @@ class CashflowSummaryService
      */
     private function sumOutflowTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
     {
-        return abs($transactions
-            ->filter(fn (Transaction $transaction): bool => $transaction->categoryType() === $type
-                && $transaction->amount < 0)
-            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency)));
+        return abs($this->sumConvertedAmounts(
+            $transactions->filter(fn (Transaction $transaction): bool => $transaction->categoryType() === $type
+                && $transaction->amount < 0),
+            $userCurrency,
+        ));
     }
 
     /**
