@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\CreateDefaultCategories;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\BankingConnection;
@@ -214,8 +215,12 @@ it('allows continuing with existing accounts', function () {
         // The step ends when the user says it does, not when they add one thing
         ->click("That's everything — continue")
         ->wait(3)
-        // Nothing to sync, so the syncing step hands straight over
-        ->assertSee('Let AI organize your money')
+        // Nothing to sync, so the syncing step hands straight over to the
+        // reveal, which has no movements to reveal for this user.
+        ->assertSee('You’re worth')
+        ->click('Continue without one')
+        ->wait(2)
+        ->assertSee('Let AI draft your rules?')
         ->assertNoJavascriptErrors();
 });
 
@@ -332,8 +337,12 @@ it('shows import transactions step after account creation', function () {
     $page->wait(1)
         ->click("That's everything — continue")
         ->wait(3)
-        // Existing accounts no longer trigger import, and there is nothing to sync
-        ->assertSee('Let AI organize your money')
+        // Existing accounts no longer trigger import, and there is nothing to
+        // sync — so the reveal has nothing to show but the balances.
+        ->assertSee('You’re worth')
+        ->click('Continue without one')
+        ->wait(2)
+        ->assertSee('Let AI draft your rules?')
         ->assertNoJavascriptErrors();
 });
 
@@ -445,6 +454,10 @@ it('completes entire onboarding flow with account creation, transaction import, 
         'onboarded_at' => null,
     ]);
 
+    // Registration seeds these; the factory does not, and the categorize step
+    // has nothing to offer without them.
+    app(CreateDefaultCategories::class)->handle($user);
+
     $this->actingAs($user);
 
     $page = visit('/onboarding');
@@ -517,20 +530,35 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click("That's everything — continue")
         ->wait(3); // syncing step reloads transactions — allow time for axios + router.reload
 
-    // AI Suggestions - decline the consent prompt to continue without generating
-    $page->assertSee('Let AI organize your money')
-        ->click('No thanks')
+    // The reveal: five movements in one month is under the bar, so this user
+    // gets the balances variant.
+    $page->assertSee('You’re worth')
+        ->click('Continue without one')
         ->wait(2);
 
-    // Categorize Transactions - 5 CSV transactions are loaded after the syncing step reloads
-    $page->assertSee('Categorize Your Transactions')
-        ->click("Let's start")
-        ->wait(1)
-        ->click('button:has-text("Skip")')->wait(1)
-        ->click('button:has-text("Skip")')->wait(1)
-        ->click('button:has-text("Skip")')->wait(1)
-        ->click('button:has-text("Skip")')->wait(1)
-        ->click('button:has-text("Skip")')->wait(1)
+    // AI Suggestions - decline the consent prompt to continue without generating
+    $page->assertSee('Let AI draft your rules?')
+        ->click('Leave it off')
+        ->wait(2);
+
+    // Teach us - the movements the rules could not place. Skipping is no longer
+    // a way through the step: the minimum has to be filed for real.
+    $page->assertSee('Teach us your habits')
+        ->assertSee('File 5 movements to carry on')
+        ->wait(1);
+
+    // The rules hint opens over the category list after the first one, and
+    // holds it disabled until it is acknowledged.
+    $page->click('Food')
+        ->wait(2)
+        ->click('Got it')
+        ->wait(1);
+
+    foreach (range(1, 4) as $ignored) {
+        $page->click('Food')->wait(2);
+    }
+
+    $page->assertSee('That’s enough to continue')
         ->click('Continue')
         ->wait(1);
 
@@ -600,9 +628,9 @@ it('activates AI directly without a consent prompt when a bank is connected', fu
     // prompt is skipped and AI is turned on for them. With no transactions yet
     // the run stops at the "need more data" screen instead of calling the AI.
     $page->wait(3)
-        ->assertDontSee('Let AI organize your money')
-        ->assertDontSee('Suggest my rules with AI')
-        ->assertSee('AI suggestions need more data')
+        ->assertDontSee('Let AI draft your rules?')
+        ->assertDontSee('Turn it on')
+        ->assertSee('Not enough to learn from yet')
         ->assertNoJavascriptErrors();
 
     expect($user->refresh()->hasActiveAiConsent())->toBeTrue();
@@ -621,15 +649,15 @@ it('asks for consent before activating AI when no bank is connected', function (
 
     // Free users must opt in, and are told AI commits them to picking a plan.
     $page->wait(2)
-        ->assertSee('Let AI organize your money')
+        ->assertSee('Let AI draft your rules?')
         ->assertSee("AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.")
-        ->assertSee('Suggest my rules with AI')
+        ->assertSee('Turn it on')
         ->assertNoJavascriptErrors();
 
     // Nothing is activated until they explicitly accept.
     expect($user->refresh()->hasActiveAiConsent())->toBeFalse();
 
-    $page->click('Suggest my rules with AI')
+    $page->click('Turn it on')
         ->wait(3)
         ->assertNoJavascriptErrors();
 

@@ -29,6 +29,7 @@ const suggestion: AiSuggestion = {
 const state = {
     available: true,
     consented: false,
+    previously_consented: false,
     requires_upgrade: false,
     eligible: true,
     transaction_count: 120,
@@ -39,6 +40,7 @@ const state = {
     run: null as {
         id: string;
         status: string;
+        merchants_considered: number;
         suggestions_count: number;
     } | null,
     suggestions: [] as AiSuggestion[],
@@ -66,6 +68,7 @@ function renderStep(onComplete = vi.fn()) {
         <StepAiSuggestions
             categories={[]}
             hasConnectedAccount={false}
+            onAddAccount={vi.fn()}
             onComplete={onComplete}
         />,
     );
@@ -84,7 +87,7 @@ describe('StepAiSuggestions analytics', () => {
     it('reports consent given, once it is stored', async () => {
         renderStep();
 
-        fireEvent.click(await screen.findByText('Suggest my rules with AI'));
+        fireEvent.click(await screen.findByText('Turn it on'));
         // The consent is reported after the request that stores it settles.
         await act(async () => {});
 
@@ -99,7 +102,7 @@ describe('StepAiSuggestions analytics', () => {
     it('reports consent refused, and still moves on', async () => {
         const onComplete = renderStep();
 
-        fireEvent.click(await screen.findByText('No thanks'));
+        fireEvent.click(await screen.findByText('Leave it off'));
 
         expect(captureEvent).toHaveBeenCalledOnce();
         expect(captureEvent).toHaveBeenCalledWith('onboarding_ai_consent', {
@@ -110,7 +113,12 @@ describe('StepAiSuggestions analytics', () => {
 
     it('reports a skip after a generation that failed', async () => {
         state.consented = true;
-        state.run = { id: 'run-1', status: 'failed', suggestions_count: 0 };
+        state.run = {
+            id: 'run-1',
+            status: 'failed',
+            merchants_considered: 12,
+            suggestions_count: 0,
+        };
 
         const onComplete = renderStep();
 
@@ -125,7 +133,12 @@ describe('StepAiSuggestions analytics', () => {
 
     it('reports walking away from suggestions that were shown', async () => {
         state.consented = true;
-        state.run = { id: 'run-1', status: 'completed', suggestions_count: 1 };
+        state.run = {
+            id: 'run-1',
+            status: 'completed',
+            merchants_considered: 12,
+            suggestions_count: 1,
+        };
         state.suggestions = [suggestion];
 
         const onComplete = renderStep();

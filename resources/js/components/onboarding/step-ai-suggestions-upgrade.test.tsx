@@ -9,6 +9,7 @@ const UPGRADE_NOTICE =
 const state = {
     available: true,
     consented: false,
+    previously_consented: false,
     requires_upgrade: true,
     eligible: true,
     transaction_count: 0,
@@ -45,6 +46,7 @@ describe('StepAiSuggestions upgrade notice', () => {
             <StepAiSuggestions
                 categories={[]}
                 hasConnectedAccount={false}
+                onAddAccount={vi.fn()}
                 onComplete={vi.fn()}
             />,
         );
@@ -59,13 +61,12 @@ describe('StepAiSuggestions upgrade notice', () => {
             <StepAiSuggestions
                 categories={[]}
                 hasConnectedAccount={false}
+                onAddAccount={vi.fn()}
                 onComplete={vi.fn()}
             />,
         );
 
-        expect(
-            await screen.findByText('Suggest my rules with AI'),
-        ).toBeInTheDocument();
+        expect(await screen.findByText('Turn it on')).toBeInTheDocument();
         expect(screen.queryByText(UPGRADE_NOTICE)).not.toBeInTheDocument();
     });
 
@@ -77,13 +78,12 @@ describe('StepAiSuggestions upgrade notice', () => {
                 categories={[]}
                 hasConnectedAccount={false}
                 signupPlan="paid"
+                onAddAccount={vi.fn()}
                 onComplete={vi.fn()}
             />,
         );
 
-        expect(
-            await screen.findByText('Suggest my rules with AI'),
-        ).toBeInTheDocument();
+        expect(await screen.findByText('Turn it on')).toBeInTheDocument();
         expect(screen.queryByText(UPGRADE_NOTICE)).not.toBeInTheDocument();
     });
 
@@ -95,6 +95,7 @@ describe('StepAiSuggestions upgrade notice', () => {
                 categories={[]}
                 hasConnectedAccount={false}
                 signupPlan={null}
+                onAddAccount={vi.fn()}
                 onComplete={vi.fn()}
             />,
         );
@@ -109,16 +110,15 @@ describe('StepAiSuggestions upgrade notice', () => {
             <StepAiSuggestions
                 categories={[]}
                 hasConnectedAccount
+                onAddAccount={vi.fn()}
                 onComplete={vi.fn()}
             />,
         );
 
         // Auto-consent runs, so the prompt is skipped and we jump to generating.
         expect(
-            await screen.findByText('Looking for patterns'),
+            await screen.findByText('Reading your merchants'),
         ).toBeInTheDocument();
-        expect(
-            screen.queryByText('Suggest my rules with AI'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Turn it on')).not.toBeInTheDocument();
     });
 });

@@ -256,6 +256,7 @@ export default function Onboarding({
                         categories={categories}
                         hasConnectedAccount={hasConnectedAccount}
                         signupPlan={signupPlan}
+                        onAddAccount={() => goToStep('create-account')}
                         onComplete={goNext}
                     />
                 );

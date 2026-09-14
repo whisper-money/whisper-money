@@ -4,9 +4,18 @@ import {
     SuggestionDraft,
 } from '@/components/onboarding/ai-suggestion-card';
 import { StepButton } from '@/components/onboarding/step-button';
-import { StepList } from '@/components/onboarding/step-list';
-import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+    StepChevron,
+    StepList,
+    StepRow,
+} from '@/components/onboarding/step-list';
+import {
+    StepCallout,
+    StepEmphasis,
+    StepNote,
+    StepScreen,
+} from '@/components/onboarding/step-screen';
+import { Spinner } from '@/components/ui/spinner';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import { captureEvent } from '@/lib/posthog';
 import { isRecoveringFromExpiredSession } from '@/lib/session-expiry-recovery';
@@ -20,18 +29,26 @@ import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { Loader2, Sparkles } from 'lucide-react';
+import {
+    ChartNoAxesColumnIncreasing,
+    Check,
+    RotateCcw,
+    Sparkles,
+    Undo2,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // Client-side give-up: the backend marks the run failed on timeout/crash, but
 // this guarantees the spinner resolves even if the worker dies before it can.
-// A little beyond the "up to two minutes" the UI promises.
+// A little beyond the couple of minutes the screen promises.
 const MAX_POLL_MS = 3 * 60_000;
 
 interface SuggestionState {
     available: boolean;
     consented: boolean;
+    /** Whether we are asking for consent or asking for it again. */
+    previously_consented: boolean;
     requires_upgrade: boolean;
     eligible: boolean;
     transaction_count: number;
@@ -39,7 +56,12 @@ interface SuggestionState {
     auto_select_confidence: number;
     throttled: boolean;
     throttled_until: string | null;
-    run: { id: string; status: string; suggestions_count: number } | null;
+    run: {
+        id: string;
+        status: string;
+        merchants_considered: number;
+        suggestions_count: number;
+    } | null;
     suggestions: AiSuggestion[];
 }
 
@@ -52,6 +74,8 @@ interface StepAiSuggestionsProps {
     categories: Category[];
     hasConnectedAccount: boolean;
     signupPlan?: SignupPlan | null;
+    /** Back to the accounts hub, for a user who arrived with too little to read. */
+    onAddAccount: () => void;
     onComplete: () => void;
 }
 
@@ -59,6 +83,7 @@ export function StepAiSuggestions({
     categories,
     hasConnectedAccount,
     signupPlan = null,
+    onAddAccount,
     onComplete,
 }: StepAiSuggestionsProps) {
     const [state, setState] = useState<SuggestionState | null>(null);
@@ -320,12 +345,22 @@ export function StepAiSuggestions({
         return (
             <StepScreen
                 align="center"
-                title={__('Rules created')}
+                title={__('Your rules are live')}
                 description={__(
-                    'We created :rules rules and categorized :count transactions for you.',
+                    'We created :rules and filed :movements with them. From here they run on their own, on everything that arrives.',
                     {
-                        rules: summary.rules_created,
-                        count: summary.transactions_categorized,
+                        rules:
+                            summary.rules_created === 1
+                                ? __('1 rule')
+                                : __(':count rules', {
+                                      count: summary.rules_created,
+                                  }),
+                        movements:
+                            summary.transactions_categorized === 1
+                                ? __('1 movement')
+                                : __(':count movements', {
+                                      count: summary.transactions_categorized,
+                                  }),
                     },
                 )}
                 footer={
@@ -338,23 +373,39 @@ export function StepAiSuggestions({
     if (!timedOut && (!state || busy || isRunning(state))) {
         return (
             <StepScreen
-                width="xl"
-                title={__('Looking for patterns')}
-                description={__(
-                    'We’re finding the rules that will categorize most of your transactions automatically.',
-                )}
+                align="center"
+                title={__('Reading your merchants')}
+                description={
+                    state
+                        ? __(
+                              ':count movements, grouped by who you paid. This is the part that saves you an afternoon.',
+                              { count: state.transaction_count },
+                          )
+                        : __(
+                              'Your movements, grouped by who you paid. This is the part that saves you an afternoon.',
+                          )
+                }
             >
-                <div className="flex flex-col gap-5">
-                    <GeneratingMessages />
-
+                <div className="flex flex-col gap-7">
                     <StepList>
-                        <SuggestionCardSkeleton />
-                        <SuggestionCardSkeleton />
-                        <SuggestionCardSkeleton />
+                        <RunCounter
+                            label={__('Merchants found')}
+                            value={state?.run?.merchants_considered ?? 0}
+                        />
+                        <RunCounter
+                            label={__('Rules drafted')}
+                            value={state?.run?.suggestions_count ?? 0}
+                        />
                     </StepList>
 
-                    <p className="text-[13px] text-muted-foreground">
-                        {__('This can take up to two minutes.')}
+                    <p
+                        className="flex items-center justify-center gap-2.5 text-center text-[13px] text-pretty text-muted-foreground"
+                        aria-live="polite"
+                    >
+                        <Spinner className="size-3.5 shrink-0" />
+                        {__(
+                            'Up to a couple of minutes. You can leave this screen — it keeps going without you.',
+                        )}
                     </p>
                 </div>
             </StepScreen>
@@ -370,10 +421,20 @@ export function StepAiSuggestions({
     if (!state.consented) {
         return (
             <StepScreen
-                title={__('Let AI organize your money')}
-                description={__(
-                    'With your permission, we’ll send merchant names from your transactions to our AI provider to suggest categorization rules. We never send your full financial picture, and you review every rule before it’s created.',
-                )}
+                title={
+                    state.previously_consented
+                        ? __('Turn AI sorting back on?')
+                        : __('Let AI draft your rules?')
+                }
+                description={
+                    state.previously_consented
+                        ? __(
+                              'You switched this off, or we changed what we send and need you to look again. Here is exactly what it is.',
+                          )
+                        : __(
+                              'We send one line at a time to our AI provider so it can draft your rules. Here is exactly what that means.',
+                          )
+                }
                 footer={
                     <>
                         {/* Someone who signed up from a paid card has already
@@ -384,51 +445,118 @@ export function StepAiSuggestions({
                             <UpgradeNotice />
                         )}
                         <StepButton
-                            text={__('Suggest my rules with AI')}
+                            text={__('Turn it on')}
                             icon={Sparkles}
                             onClick={acceptConsent}
                             loading={busy}
                         />
                         <StepButton
-                            text={__('No thanks')}
+                            text={__('Leave it off')}
                             variant="ghost"
                             onClick={declineConsent}
                         />
                     </>
                 }
-            />
+            >
+                <StepList>
+                    <StepRow
+                        icon={Check}
+                        title={__('One line at a time, never the picture')}
+                        description={__(
+                            'The description and the amount — “MERCADONA 4412, €62.40”. Never your balance, your name or your account number.',
+                        )}
+                    />
+                    <StepRow
+                        icon={Check}
+                        title={__('Every rule is yours to reject')}
+                        description={__(
+                            'Nothing is applied that you haven’t seen on the next screen.',
+                        )}
+                    />
+                    <StepRow
+                        icon={Check}
+                        title={__('Turn it off whenever')}
+                        description={__(
+                            'Settings, one switch. Your categories stay.',
+                        )}
+                    />
+                </StepList>
+
+                <StepCallout>
+                    <StepEmphasis
+                        sentence={__(
+                            'Without this you sort :count by hand. With it you approve a handful of rules and the rest happens on its own.',
+                        )}
+                        word={__(':count movements', {
+                            count: state.transaction_count,
+                        })}
+                    />
+                </StepCallout>
+            </StepScreen>
         );
     }
 
     if (!state.eligible) {
         return (
             <StepScreen
-                align="center"
-                title={__('AI suggestions need more data')}
+                title={__('Not enough to learn from yet')}
                 description={__(
-                    'Once you have at least :count transactions, you can generate rule suggestions from Settings → Automation rules.',
-                    { count: state.min_transactions },
+                    'You have :count movements. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.',
+                    {
+                        count: state.transaction_count,
+                        min: state.min_transactions,
+                    },
                 )}
                 footer={
-                    <StepButton text={__('Continue')} onClick={leaveStep} />
+                    <>
+                        <StepButton text={__('Continue')} onClick={leaveStep} />
+                        <StepButton
+                            text={__('Add more history first')}
+                            variant="outline"
+                            onClick={onAddAccount}
+                        />
+                    </>
                 }
-            />
+            >
+                <StepList>
+                    <StepRow
+                        icon={ChartNoAxesColumnIncreasing}
+                        title={__('Bring more history')}
+                        description={__('Another file, or connect the bank')}
+                        trailing={<StepChevron />}
+                        onClick={onAddAccount}
+                    />
+                    <StepRow
+                        icon={Check}
+                        title={__('Or carry on')}
+                        description={__(
+                            'You file a handful by hand in the next step',
+                        )}
+                    />
+                </StepList>
+
+                <StepCallout>
+                    {__(
+                        'Nothing is lost by waiting. Any transaction can become a rule from the app itself, one at a time.',
+                    )}
+                </StepCallout>
+            </StepScreen>
         );
     }
 
     if (timedOut || state.run?.status === 'failed') {
         return (
             <StepScreen
-                align="center"
-                title={__('We couldn’t generate suggestions')}
+                title={__('That didn’t finish')}
                 description={__(
-                    'Something went wrong. You can try again or skip for now.',
+                    'It ran too long and we stopped it. Your movements are safe and untouched — nothing half-categorised.',
                 )}
                 footer={
                     <>
                         <StepButton
                             text={__('Try again')}
                             onClick={startGenerate}
+                            loading={busy}
                         />
                         <StepButton
                             text={__('Skip for now')}
@@ -437,22 +565,67 @@ export function StepAiSuggestions({
                         />
                     </>
                 }
-            />
+            >
+                <StepList>
+                    <StepRow
+                        icon={RotateCcw}
+                        title={__('Try again')}
+                        description={__('Usually works on the second run')}
+                    />
+                    <StepRow
+                        icon={Undo2}
+                        title={__('Or sort them yourself')}
+                        description={__(
+                            ':count movements, at your own pace, whenever',
+                            { count: state.transaction_count },
+                        )}
+                    />
+                </StepList>
+
+                <StepCallout>
+                    {__(
+                        'You are not stuck either way: any transaction can become a rule from the app itself, whenever you like.',
+                    )}
+                </StepCallout>
+            </StepScreen>
         );
     }
 
     if (state.run?.status === 'empty' || state.suggestions.length === 0) {
         return (
             <StepScreen
-                align="center"
-                title={__('No clear patterns yet')}
+                title={__('Nothing worth a rule')}
                 description={__(
-                    'We couldn’t find confident rules to suggest right now. You can categorize your transactions in the next step.',
+                    'We read all :count and found no merchant that repeats often enough to be worth automating. That is unusual, and it is not a problem.',
+                    { count: state.transaction_count },
                 )}
                 footer={
                     <StepButton text={__('Continue')} onClick={leaveStep} />
                 }
-            />
+            >
+                <StepList>
+                    <StepRow
+                        icon={Check}
+                        title={__('Nothing was changed')}
+                        description={__(
+                            'Your movements are exactly as they were',
+                        )}
+                    />
+                    <StepRow
+                        icon={Sparkles}
+                        title={__('You file a few by hand next')}
+                        description={__(
+                            'A handful of movements, and any of them can become a rule',
+                        )}
+                    />
+                </StepList>
+
+                <StepCallout>
+                    {__(
+                        'This usually means one-off purchases dominate your history — a house move, a trip, a year abroad. Next month will look different.',
+                    )}
+                </StepCallout>
+            </StepScreen>
         );
     }
 
@@ -463,24 +636,29 @@ export function StepAiSuggestions({
     return (
         <StepScreen
             width="xl"
-            title={__('Review your suggested rules')}
+            title={
+                state.suggestions.length === 1
+                    ? __('1 rule, ready when you are')
+                    : __(':count rules, ready when you are', {
+                          count: state.suggestions.length,
+                      })
+            }
             description={__(
-                'We found these patterns. Tweak anything you like, then create the rules — we’ll apply them to your transactions right away.',
+                'Each one files a merchant forever, backwards and forwards. Untick anything you’d rather decide case by case.',
             )}
             footer={
                 <>
                     <StepButton
-                        text={
-                            selectedCount > 0
-                                ? __('Create :count rules & apply', {
-                                      count: selectedCount,
-                                  })
-                                : __('Continue')
-                        }
+                        text={applyLabel(selectedCount)}
                         onClick={submit}
                         loading={submitting}
                         loadingText={__('Applying…')}
                     />
+                    <StepNote>
+                        {__(
+                            'Any of them can be undone from the transaction itself.',
+                        )}
+                    </StepNote>
                     <StepButton
                         text={__('Skip for now')}
                         variant="ghost"
@@ -522,6 +700,17 @@ export function StepAiSuggestions({
     );
 }
 
+/** The action of the review screen, which is nothing at all when nothing is ticked. */
+function applyLabel(selectedCount: number): string {
+    if (selectedCount === 0) {
+        return __('Continue');
+    }
+
+    return selectedCount === 1
+        ? __('Apply 1 rule')
+        : __('Apply :count rules', { count: selectedCount });
+}
+
 /**
  * Warns free users (who haven't linked a bank yet) that turning on AI
  * suggestions commits them to picking a paid plan at the end of onboarding,
@@ -554,60 +743,16 @@ function UpgradeNotice() {
     );
 }
 
-const GENERATING_MESSAGE_INTERVAL_MS = 3500;
-
 /**
- * Cycles through reassuring status messages while a run is in flight. The
- * backend exposes no real progress, so the messages step forward on a timer and
- * hold on the last one rather than looping back to the start (which would read
- * as the process restarting).
+ * One of the two numbers the generating screen counts out loud. They are the
+ * run's own figures rather than a timer dressed up as progress: merchants land
+ * as soon as the grouping is done, rules as the model returns them.
  */
-function GeneratingMessages() {
-    const messages = [
-        __('Analysing your transactions…'),
-        __('Finding related groups…'),
-        __('Finding the right categories…'),
-        __('Grouping everything together…'),
-        __('Polishing your suggestions…'),
-    ];
-    const [index, setIndex] = useState(0);
-
-    useEffect(() => {
-        const id = setInterval(() => {
-            setIndex((current) => Math.min(current + 1, messages.length - 1));
-        }, GENERATING_MESSAGE_INTERVAL_MS);
-        return () => clearInterval(id);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
+function RunCounter({ label, value }: { label: string; value: number }) {
     return (
-        <div className="flex items-center gap-2.5 text-[15px] font-medium">
-            <Loader2 className="size-4 shrink-0 animate-spin" />
-            <span
-                key={index}
-                className="animate-in duration-300 fade-in"
-                aria-live="polite"
-            >
-                {messages[index]}
-            </span>
-        </div>
-    );
-}
-
-/**
- * Mirrors the collapsed {@link AiSuggestionCard} layout so the loading state
- * resembles the final UI: checkbox, summary line, match count, expand chevron.
- */
-function SuggestionCardSkeleton() {
-    return (
-        <div className="flex items-center gap-3.5 py-4">
-            <Skeleton className="size-5 shrink-0 rounded-md" />
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-                <Skeleton className="h-4 w-32 max-w-[45%]" />
-                <Skeleton className="h-4 w-20 max-w-[30%]" />
-            </div>
-            <Skeleton className="h-3 w-14 shrink-0" />
-            <Skeleton className="size-4 shrink-0 rounded" />
+        <div className="flex items-baseline justify-between gap-3 py-4">
+            <span className="text-[15px] text-muted-foreground">{label}</span>
+            <span className="text-2xl font-semibold tabular-nums">{value}</span>
         </div>
     );
 }

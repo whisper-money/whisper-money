@@ -59,7 +59,7 @@ it('categorizes on a phone with both footer actions reachable', function () {
     visit('/onboarding?step=categorize-transactions')
         ->resize(430, 932)
         ->wait(2)
-        ->assertSee('No Uncategorized Transactions')
+        ->assertSee('Nothing left to teach us')
         ->click('Continue')
         ->wait(1)
         ->assertSee("You're All Set!")

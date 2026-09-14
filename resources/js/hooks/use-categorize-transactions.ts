@@ -75,6 +75,13 @@ interface UseCategorizeTransactionsOptions {
      * it captures reads as the same surface.
      */
     source?: 'categorize_flow' | 'onboarding';
+    /**
+     * Send a skipped movement to the back of the queue rather than past the end
+     * of it. The onboarding step gates on a real count of categorized
+     * movements, so a queue that empties by skipping would leave the user
+     * looking at nothing with the gate still shut.
+     */
+    recycleSkipped?: boolean;
 }
 
 export function useCategorizeTransactions({
@@ -83,6 +90,7 @@ export function useCategorizeTransactions({
     banks,
     transactions: initialTransactions,
     source = 'categorize_flow',
+    recycleSkipped = false,
 }: UseCategorizeTransactionsOptions) {
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
         DecryptedTransaction[]
@@ -245,14 +253,25 @@ export function useCategorizeTransactions({
         setAnimationState('exiting');
 
         setTimeout(() => {
-            setCurrentIndex((prev) => prev + 1);
+            if (recycleSkipped) {
+                setUncategorizedTransactions((prev) => {
+                    const next = [...prev];
+                    const [skipped] = next.splice(currentIndex, 1);
+                    if (skipped) {
+                        next.push(skipped);
+                    }
+                    return next;
+                });
+            } else {
+                setCurrentIndex((prev) => prev + 1);
+            }
             setAnimationState('entering');
 
             setTimeout(() => {
                 setAnimationState('idle');
             }, 300);
         }, 300);
-    }, [animationState]);
+    }, [animationState, currentIndex, recycleSkipped]);
 
     const handleAutomateDialogOpenChange = useCallback((open: boolean) => {
         setAutomateDialogOpen(open);

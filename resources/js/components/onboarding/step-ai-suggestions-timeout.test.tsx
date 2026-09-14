@@ -15,6 +15,7 @@ vi.mock('@inertiajs/react', () => ({
 const processingState = {
     available: true,
     consented: true,
+    previously_consented: true,
     requires_upgrade: false,
     eligible: true,
     transaction_count: 4000,
@@ -22,7 +23,12 @@ const processingState = {
     auto_select_confidence: 0.8,
     throttled: false,
     throttled_until: null,
-    run: { id: 'run-1', status: 'processing', suggestions_count: 0 },
+    run: {
+        id: 'run-1',
+        status: 'processing',
+        merchants_considered: 147,
+        suggestions_count: 0,
+    },
     suggestions: [],
 };
 
@@ -43,6 +49,7 @@ describe('StepAiSuggestions polling timeout', () => {
             <StepAiSuggestions
                 categories={[]}
                 hasConnectedAccount={false}
+                onAddAccount={vi.fn()}
                 onComplete={vi.fn()}
             />,
         );
@@ -51,20 +58,14 @@ describe('StepAiSuggestions polling timeout', () => {
         await act(async () => {
             await vi.advanceTimersByTimeAsync(0);
         });
-        expect(
-            screen.getByText('This can take up to two minutes.'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Merchants found')).toBeInTheDocument();
 
         // Past the client-side deadline it gives up instead of polling forever.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3 * 60_000 + 3000);
         });
 
-        expect(
-            screen.getByText('We couldn’t generate suggestions'),
-        ).toBeInTheDocument();
-        expect(
-            screen.queryByText('This can take up to two minutes.'),
-        ).not.toBeInTheDocument();
+        expect(screen.getByText('That didn’t finish')).toBeInTheDocument();
+        expect(screen.queryByText('Merchants found')).not.toBeInTheDocument();
     });
 });
