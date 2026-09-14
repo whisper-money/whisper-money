@@ -1,6 +1,8 @@
 <?php
 
+use Testcontainers\Container\GenericContainer;
 use Testcontainers\Modules\MySQLContainer;
+use Tests\Support\Ryuk;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,20 +35,59 @@ if (! file_exists($envPath)) {
 }
 
 if ($useContainers) {
+    // The session label must be unique per process: `pest --parallel` starts one
+    // container per worker, and a reaper shared between them would take a live
+    // sibling's database down as soon as the first worker finished.
+    $session = getmypid().'-'.bin2hex(random_bytes(4));
+
+    // Pull through the CLI: the library's own pull path asks the Docker credential
+    // helper for Hub credentials and throws when the machine never ran `docker
+    // login`, which would break the very first run on a fresh checkout.
+    $ryukImage = 'testcontainers/ryuk:0.11.0';
+    // passthru, not exec: the pull shows its progress instead of leaving the first
+    // run of a fresh checkout sitting silent for half a minute.
+    passthru("docker image inspect {$ryukImage} >/dev/null 2>&1 || docker pull {$ryukImage}", $pulled);
+
+    if ($pulled !== 0) {
+        throw new RuntimeException("Could not pull {$ryukImage}.");
+    }
+
+    // Ryuk removes every container labelled with our session as soon as the
+    // connection we hold against it drops. It is started first and labels are
+    // applied by Docker on create, so the database is covered from the moment it
+    // exists — including the window inside start() where nothing else holds a
+    // handle to it yet.
+    $ryuk = (new GenericContainer($ryukImage))
+        ->withMount('/var/run/docker.sock', '/var/run/docker.sock')
+        ->withExposedPorts(8080)
+        ->withAutoRemove(true)
+        ->start();
+
+    Ryuk::watch($ryuk->getHost(), (int) $ryuk->getFirstMappedPort(), $session);
+
     $container = (new MySQLContainer('8.0'))
         ->withMySQLDatabase('testing')
         ->withMySQLUser('testing', 'testing')
+        ->withLabels([Ryuk::LABEL => $session])
+        ->withAutoRemove(true)
         ->start();
 
-    // Stop and remove the container when the PHP process exits.
-    // We wrap in try/catch because an uncaught exception inside a
-    // shutdown function becomes a fatal error in PHP, which would leave
-    // the container running.
-    $cleanup = function () use ($container): void {
-        try {
-            $container->stop();
-        } catch (Throwable) {
-            // Silently ignore — best-effort cleanup.
+    // Stop and remove the containers when the PHP process exits. Ryuk would get to
+    // them on its own, but only after its reconnection grace period, and there is
+    // no reason to keep the memory busy that long on the happy path. The database
+    // goes first, so a failure stopping it still leaves the reaper behind to deal
+    // with it.
+    //
+    // Each stop gets its own try/catch: an uncaught exception inside a shutdown
+    // function is a fatal error in PHP, and AutoRemove deletes a container on stop,
+    // which makes the library's own delete call throw on the way out.
+    $cleanup = function () use ($container, $ryuk): void {
+        foreach ([$container, $ryuk] as $started) {
+            try {
+                $started->stop();
+            } catch (Throwable) {
+                // Silently ignore — Ryuk reaps whatever is left once our connection drops.
+            }
         }
     };
 
