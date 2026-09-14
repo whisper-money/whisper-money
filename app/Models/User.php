@@ -70,7 +70,6 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'format_locale',
         'timezone',
         'current_space_id',
-        'price_arm',
         'signup_plan',
     ];
 

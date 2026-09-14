@@ -325,18 +325,18 @@ test('pricing config includes all plan details', function () {
             ->component('welcome')
             ->has('pricing.plans.monthly', fn ($plan) => $plan
                 ->has('name')
-                ->where('price', 3.99)
+                ->where('price', 8.99)
                 ->where('original_price', null)
-                ->has('stripe_lookup_key')
+                ->where('stripe_lookup_key', 'whisper_pro_monthly_high')
                 ->where('billing_period', 'month')
                 ->where('trial_days', 7)
                 ->has('features')
             )
             ->has('pricing.plans.yearly', fn ($plan) => $plan
                 ->has('name')
-                ->where('price', 23.88)
-                ->where('original_price', 47.88)
-                ->has('stripe_lookup_key')
+                ->where('price', 53.94)
+                ->where('original_price', 107.88)
+                ->where('stripe_lookup_key', 'whisper_pro_yearly_high')
                 ->where('billing_period', 'year')
                 ->where('trial_days', 15)
                 ->has('features')
@@ -495,6 +495,34 @@ test('billing portal skips stripe customer creation when user already has a stri
     $this->actingAs($user);
 
     $this->get(route('settings.billing.portal'))->assertRedirect();
+});
+
+test('checkout charges the price behind the plan config lookup key', function () {
+    // The price experiment used to pick this key from the user's stored arm. With
+    // one canonical price it comes straight from config, so no cookie, query
+    // string or other client-supplied value can steer what Stripe charges.
+    Cache::put('stripe_price_id:whisper_pro_yearly_high', 'price_yearly_high', now()->addHour());
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+
+    $builder = Mockery::mock(SubscriptionBuilder::class)->shouldIgnoreMissing();
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
+    $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('newSubscription')
+        ->once()
+        ->with('default', 'price_yearly_high')
+        ->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->withCookie('price_arm', 'control')
+        ->get(route('subscribe.checkout', ['plan' => 'yearly']))
+        ->assertRedirect();
 });
 
 test('checkout applies each plan its own trial days', function (string $planKey, int $trialDays) {

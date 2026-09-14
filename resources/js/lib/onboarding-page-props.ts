@@ -15,8 +15,8 @@ export const pageProps: {
         plans: {
             yearly: {
                 name: 'Standard Yearly',
-                price: 23.88,
-                original_price: 47.88,
+                price: 53.94,
+                original_price: 107.88,
                 stripe_lookup_key: null,
                 billing_period: 'year',
                 trial_days: 0,

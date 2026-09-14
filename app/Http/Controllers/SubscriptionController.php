@@ -8,7 +8,6 @@ use App\Http\Requests\ChooseFreePlanRequest;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserLead;
-use App\Services\Subscriptions\PriceExperiment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -100,9 +99,7 @@ class SubscriptionController extends Controller
             abort(400, 'Invalid plan selected');
         }
 
-        $priceId = $this->resolvePriceIdByLookupKey(
-            PriceExperiment::lookupKeyFor($request->user(), $planKey),
-        );
+        $priceId = $this->resolvePriceIdByLookupKey((string) $plan['stripe_lookup_key']);
 
         $subscriptionBuilder = $request->user()
             ->newSubscription('default', $priceId);
