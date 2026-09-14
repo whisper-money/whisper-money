@@ -386,6 +386,12 @@ class CashflowAnalyticsController extends Controller
      * Appends the transactions with no category as a single synthetic row. Only
      * at the top level: a drilled-down parent has no uncategorized children.
      *
+     * Split by the sign of each transaction rather than netted, unlike every
+     * categorized row: with no category there is nothing for a refund to net
+     * against, and folding unrelated inflows and outflows into one bucket
+     * would invent an offset nobody booked. So an uncategorized refund stays
+     * its own "Unknown Income".
+     *
      * @param  array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>  $rolledUp
      * @param  Collection<int, Transaction>  $transactions
      * @return array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>
@@ -394,10 +400,11 @@ class CashflowAnalyticsController extends Controller
     {
         $uncategorized = $transactions
             ->filter(fn (Transaction $transaction): bool => $transaction->category_id === null
-                && $this->amountMatchesSide($transaction->amount, $type))
-            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
+                && $this->amountMatchesSide($transaction->amount, $type));
 
-        if ($drillParentId === null && $uncategorized != 0) {
+        $total = $this->sumConvertedAmounts($uncategorized, $userCurrency);
+
+        if ($drillParentId === null && $total != 0) {
             $rolledUp[] = [
                 'category_id' => null,
                 'category' => (new Category)->forceFill([
@@ -407,7 +414,7 @@ class CashflowAnalyticsController extends Controller
                     'color' => 'gray',
                     'icon' => 'HelpCircle',
                 ]),
-                'amount' => abs($uncategorized),
+                'amount' => abs($total),
                 'has_children' => false,
                 'is_direct' => false,
             ];

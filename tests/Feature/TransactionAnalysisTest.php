@@ -97,6 +97,25 @@ test('category breakdown groups expenses by top-level category', function () {
     expect($response->json('by_category.1'))->toMatchArray(['name' => 'Meals', 'amount' => 20000, 'children' => []]);
 });
 
+test('a category a refund nets below zero stays as a negative row that reconciles with the summary', function () {
+    $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Rent']);
+    $restaurants = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Restaurants']);
+
+    makeTransaction(['amount' => -80000, 'category_id' => $rent->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => 4000, 'category_id' => $restaurants->id, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis');
+
+    $response->assertOk();
+    expect($response->json('summary.expense'))->toBe(76000);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Rent', 'amount' => 80000]);
+    expect($response->json('by_category.1'))->toMatchArray(['name' => 'Restaurants', 'amount' => -4000]);
+
+    // The rows add up to the headline the drawer shows above them.
+    expect(collect($response->json('by_category'))->sum('amount'))
+        ->toBe($response->json('summary.expense'));
+});
+
 test('category breakdown nests sub-categories under their parent total', function () {
     $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
     $groceries = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Groceries', 'parent_id' => $food->id]);

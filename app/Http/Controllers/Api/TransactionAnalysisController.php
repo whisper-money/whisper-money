@@ -167,9 +167,8 @@ class TransactionAnalysisController extends Controller
             ->groupBy('category_id')
             ->map(fn (Collection $group): array => [
                 'category_id' => $group->first()->category_id,
-                'amount' => -$group->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency)),
+                'amount' => -$this->sumConvertedAmounts($group, $currency),
             ])
-            ->filter(fn (array $node): bool => $node['amount'] > 0)
             ->values()
             ->all();
 
@@ -188,9 +187,10 @@ class TransactionAnalysisController extends Controller
             ], $node['children']),
         ], $this->tree->spendingBreakdown($grouped, $userId, $drillParentId));
 
-        $uncategorized = -$expenses
-            ->filter(fn (Transaction $transaction): bool => $transaction->category_id === null)
-            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency));
+        $uncategorized = -$this->sumConvertedAmounts(
+            $expenses->filter(fn (Transaction $transaction): bool => $transaction->category_id === null),
+            $currency,
+        );
 
         if ($uncategorized > 0) {
             $rows[] = [
@@ -203,8 +203,11 @@ class TransactionAnalysisController extends Controller
             ];
         }
 
+        // Signed, like the cashflow screen: a category a refund nets below zero
+        // stays as a negative row instead of dropping out, so the rows still
+        // reconcile with the summary total above them.
         return collect($rows)
-            ->filter(fn (array $node): bool => $node['amount'] > 0)
+            ->filter(fn (array $node): bool => $node['amount'] != 0)
             ->sortByDesc('amount')
             ->values();
     }

@@ -27,7 +27,9 @@ const Progress = React.forwardRef<
                 indicatorClassName,
             )}
             style={{
-                transform: `translateX(-${100 - (value || 0)}%)`,
+                // A fill is 0-100 by definition: past it the indicator slides
+                // out of the track and leaves a gap instead of reading full.
+                transform: `translateX(-${100 - Math.min(100, Math.max(0, value || 0))}%)`,
                 ...(indicatorColor && { backgroundColor: indicatorColor }),
             }}
         />
