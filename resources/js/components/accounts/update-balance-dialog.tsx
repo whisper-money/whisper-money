@@ -100,7 +100,7 @@ export function UpdateBalanceDialog({
         }
 
         if (open) {
-            setDate(getTodayDate());
+            setDate(todayDateString());
             setError(null);
             fetchLastBalance();
         }
