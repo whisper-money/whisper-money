@@ -157,11 +157,8 @@ export function ConnectAccountInline({
                     </div>
 
                     {filteredInstitutions.length > 0 ? (
-                        // A country can return ~300 banks; scrolling them inside
-                        // the list keeps the step (and the page scrollbar) sane.
-                        // 35vh and no more: the title, the sticky search and the
-                        // pinned footer take ~405px of fixed chrome, so a taller
-                        // cap runs the list under the footer on a short phone.
+                        // ~300 banks in some countries; 35vh keeps the last
+                        // rows clear of the pinned footer on short phones.
                         <StepList className="max-h-[35vh] overflow-y-auto">
                             {filteredInstitutions.map((institution, index) => {
                                 const isSelected =
