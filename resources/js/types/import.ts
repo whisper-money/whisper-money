@@ -89,6 +89,8 @@ export interface ParsedTransaction {
     debtor_name?: string | null;
     isDuplicate?: boolean;
     selected?: boolean;
+    /** Set once the row is in: a retry of the same preview must not resend it. */
+    imported?: boolean;
     validationErrors?: string[];
 }
 
