@@ -12,6 +12,7 @@ import { StepImportTransactions } from '@/components/onboarding/step-import-tran
 import { type PendingMapping } from '@/components/onboarding/step-map-accounts';
 import { StepPlan } from '@/components/onboarding/step-plan';
 import { StepPromise } from '@/components/onboarding/step-promise';
+import { StepReveal } from '@/components/onboarding/step-reveal';
 import { StepSyncing } from '@/components/onboarding/step-syncing';
 import { StepToday } from '@/components/onboarding/step-today';
 import { useSyncContext } from '@/contexts/sync-context';
@@ -240,6 +241,15 @@ export default function Onboarding({
             case 'syncing':
                 return <StepSyncing onComplete={goNext} />;
 
+            case 'reveal':
+                return (
+                    <StepReveal
+                        spendingGuess={answers.spending_guess}
+                        onContinue={goNext}
+                        onAddAccount={() => goToStep('create-account')}
+                    />
+                );
+
             case 'ai-suggestions':
                 return (
                     <StepAiSuggestions
@@ -301,6 +311,7 @@ export default function Onboarding({
             plan: __('Your Plan'),
             'create-account': __('Create Account'),
             syncing: __('Syncing'),
+            reveal: __('Last Month'),
             'ai-suggestions': __('AI Suggestions'),
             'import-transactions': __('Import Transactions'),
             'import-balances': __('Set Balance'),

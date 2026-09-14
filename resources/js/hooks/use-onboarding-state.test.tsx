@@ -87,14 +87,35 @@ describe('useOnboardingState', () => {
         expect(result.current.hasSelectedConnectedAccount).toBe(true);
     });
 
+    // The reveal answers the guess step 4 took, so it has to land between the
+    // import finishing and anything being asked of the user again.
+    it('puts the reveal between the sync and the AI step', () => {
+        const { result } = renderHook(() => useOnboardingState());
+
+        act(() => {
+            result.current.goToStep('syncing');
+        });
+        act(() => {
+            result.current.goNext();
+        });
+
+        expect(result.current.currentStep).toBe('reveal');
+
+        act(() => {
+            result.current.goNext();
+        });
+
+        expect(result.current.currentStep).toBe('ai-suggestions');
+    });
+
     describe('skipping the AI step for a free signup', () => {
-        it('walks from syncing straight to categorize-transactions', () => {
+        it('walks from the reveal straight to categorize-transactions', () => {
             const { result } = renderHook(() =>
                 useOnboardingState({ skipAiSuggestions: true }),
             );
 
             act(() => {
-                result.current.goToStep('syncing');
+                result.current.goToStep('reveal');
             });
             act(() => {
                 result.current.goNext();
@@ -118,7 +139,7 @@ describe('useOnboardingState', () => {
             const { result } = renderHook(() => useOnboardingState());
 
             act(() => {
-                result.current.goToStep('syncing');
+                result.current.goToStep('reveal');
             });
             act(() => {
                 result.current.goNext();
@@ -359,7 +380,7 @@ describe('useOnboardingState', () => {
             });
 
             expect(stepEvents().at(-1)?.[1]).toMatchObject({
-                step: 'ai-suggestions',
+                step: 'reveal',
                 resumed: false,
             });
         });

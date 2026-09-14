@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
+use App\Services\OnboardingRevealService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -36,6 +37,7 @@ class OnboardingController extends Controller
         'import-transactions',
         'import-balances',
         'syncing',
+        'reveal',
         'ai-suggestions',
         'categorize-transactions',
         'complete',
@@ -216,6 +218,18 @@ class OnboardingController extends Controller
             'first_date' => $first->toDateString(),
             'last_date' => $last->toDateString(),
         ];
+    }
+
+    /**
+     * The numbers step 7 is written about.
+     *
+     * Its own request rather than a page prop: it is several queries over a
+     * year of movements, and every other step of the onboarding would pay for
+     * them on every render without ever showing them.
+     */
+    public function reveal(Request $request, OnboardingRevealService $reveal): JsonResponse
+    {
+        return response()->json($reveal->for($request->user()));
     }
 
     /**

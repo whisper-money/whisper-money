@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
-import { type PropsWithChildren, type ReactNode } from 'react';
+import { Fragment, type PropsWithChildren, type ReactNode } from 'react';
 
 interface StepScreenProps {
     /** Sits above the title — the logo of the bank a screen is about. */
@@ -118,10 +118,33 @@ export function StepCallout({ children }: PropsWithChildren) {
 }
 
 /**
- * A sentence carrying one emphasised word, written as a single translatable
- * string with the word left as a placeholder (`:both`, `:none`). It is split
- * out after translation so the emphasis lands on the word that carries the
- * point in every language, rather than on a fixed position in the English.
+ * A sentence with the user's own values set into it, each carrying whatever
+ * emphasis it was handed. Written as a single translatable string with the
+ * values left as placeholders (`:gap`, `:total`) and split out after
+ * translation, so each one lands where the sentence puts it in every language
+ * rather than at a fixed position in the English.
+ */
+export function StepFilled({
+    sentence,
+    values,
+}: {
+    sentence: string;
+    values: Record<string, ReactNode>;
+}) {
+    return sentence.split(/(:\w+)/).map((part, index) => {
+        const name = part.slice(1);
+
+        return part.startsWith(':') && name in values ? (
+            <Fragment key={index}>{values[name]}</Fragment>
+        ) : (
+            part
+        );
+    });
+}
+
+/**
+ * The common case of the above: one emphasised word, one placeholder, whatever
+ * the placeholder happens to be called.
  */
 export function StepEmphasis({
     sentence,
@@ -130,14 +153,15 @@ export function StepEmphasis({
     sentence: string;
     word: string;
 }) {
-    return sentence.split(/(:\w+)/).map((part, index) =>
-        part.startsWith(':') ? (
-            <span key={index} className="font-medium text-foreground">
-                {word}
-            </span>
-        ) : (
-            part
-        ),
+    return (
+        <StepFilled
+            sentence={sentence}
+            values={{
+                [sentence.match(/:(\w+)/)?.[1] ?? '']: (
+                    <span className="font-medium text-foreground">{word}</span>
+                ),
+            }}
+        />
     );
 }
 

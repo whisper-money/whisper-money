@@ -18,6 +18,7 @@ export type OnboardingStep =
     | 'plan'
     | 'create-account'
     | 'syncing'
+    | 'reveal'
     | 'ai-suggestions'
     | 'import-transactions'
     | 'import-balances'
@@ -38,6 +39,7 @@ const VALID_STEPS: OnboardingStep[] = [
     'import-transactions',
     'import-balances',
     'syncing',
+    'reveal',
     'ai-suggestions',
     'categorize-transactions',
     'complete',
@@ -104,17 +106,17 @@ const PRIMARY_STEPS: OnboardingStep[] = [
     'plan',
     'create-account',
     'syncing',
+    'reveal',
     'ai-suggestions',
     'categorize-transactions',
     'complete',
 ];
 
 /**
- * What the progress bar is drawn over, which is not `PRIMARY_STEPS.length`: the
- * redesigned flow ends at eleven steps and this is the first of six PRs, so the
- * steps still standing behind 'plan' are the old ones, one short of the count.
- * Measuring the bar against the list instead would walk the percentages back a
- * notch every time one of the remaining steps lands.
+ * What the progress bar is drawn over. The redesigned flow ends at eleven steps
+ * and the list has reached that count, but the last two entries are still the
+ * old steps the remaining PRs replace — so the bar keeps being measured against
+ * the number the flow ends on rather than against whatever is in the list today.
  */
 const TOTAL_PRIMARY_STEPS = 11;
 
