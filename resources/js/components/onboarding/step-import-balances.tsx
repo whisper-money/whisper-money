@@ -1,3 +1,4 @@
+import { store as storeBalance } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { StepButton } from '@/components/onboarding/step-button';
 import {
     StepError,
@@ -7,6 +8,7 @@ import {
 } from '@/components/onboarding/step-screen';
 import { AmountInput } from '@/components/ui/amount-input';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
+import { getCsrfToken } from '@/lib/csrf';
 import { __ } from '@/utils/i18n';
 import { useMemo, useState } from 'react';
 
@@ -27,10 +29,35 @@ export function StepImportBalances({
         e.preventDefault();
         setError(null);
 
+        // Reached by a deep link or a refresh, with the account the balance
+        // belongs to no longer in hand: there is nothing to save, so move on
+        // rather than trap the user on a form that cannot go anywhere.
+        if (!account) {
+            onComplete();
+
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
-            // TODO: Save balance to backend
+            const response = await fetch(storeBalance.url(account.id), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    balance_date: new Date().toISOString().split('T')[0],
+                    balance: balanceInCents,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Balance request failed: ${response.status}`);
+            }
+
             onComplete();
         } catch (err) {
             console.error('Failed to set balance:', err);

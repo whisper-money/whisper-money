@@ -271,13 +271,21 @@ export function ImportStepPreview({
                                             checked === true,
                                         )
                                     }
+                                    disabled={transaction.imported}
                                     aria-label={__('Select :description', {
                                         description: transaction.description,
                                     })}
                                     className="row-span-2 self-center md:row-span-1"
                                 />
-                                <span className="col-start-2 row-start-1 truncate md:col-start-3">
-                                    {transaction.description}
+                                <span className="col-start-2 row-start-1 flex min-w-0 items-center gap-1.5 md:col-start-3">
+                                    <span className="truncate">
+                                        {transaction.description}
+                                    </span>
+                                    {transaction.imported && (
+                                        <span className="shrink-0 rounded-md border bg-muted px-1.5 text-xs font-medium">
+                                            {__('Imported')}
+                                        </span>
+                                    )}
                                 </span>
                                 <span className="col-start-3 row-start-1 text-right md:col-start-4">
                                     <AmountDisplay
