@@ -55,8 +55,8 @@ it('syncs user currency from first onboarding account after signup', function ()
 
     $page->assertPathIs('/onboarding')
         ->wait(1)
-        ->assertSee('Create an Account')
-        ->click('Manual')
+        ->assertSee("Let's build the picture")
+        ->click('Add one myself')
         ->wait(1)
         ->fill('#display_name', 'Euro Checking Account')
         ->click('Select bank...')
@@ -184,8 +184,8 @@ it('shows existing accounts instead of create form when accounts exist', functio
     $page = visit('/onboarding?step=create-account');
 
     $page->wait(1)
-        // Should show existing accounts, not the create form
-        ->assertSee('Your Accounts')
+        // Should show the hub with what is already in, not the empty one
+        ->assertSee("1 in. What's missing?")
         ->assertSee('Test Bank')
         ->assertSee('Checking')
         ->assertNoJavascriptErrors();
@@ -209,10 +209,10 @@ it('allows continuing with existing accounts', function () {
     $page = visit('/onboarding?step=create-account');
 
     $page->wait(1)
-        ->assertSee('Your Accounts')
+        ->assertSee("1 in. What's missing?")
         ->assertSee('Existing Bank')
-        // Click Continue to proceed
-        ->click('Continue')
+        // The step ends when the user says it does, not when they add one thing
+        ->click("That's everything — continue")
         ->wait(3)
         // Nothing to sync, so the syncing step hands straight over
         ->assertSee('Let AI organize your money')
@@ -247,7 +247,7 @@ it('returns to the accounts step when bank authorization fails during onboarding
     $page->wait(1)
         ->assertPathIs('/onboarding')
         ->assertQueryStringHas('step', 'create-account')
-        ->assertSee('Your Accounts')
+        ->assertSee("1 in. What's missing?")
         ->assertSee('Connected Bank')
         ->assertDontSee('Find out where your money actually went')
         ->assertNoJavascriptErrors();
@@ -266,9 +266,10 @@ it('deep links straight to the connections step via ?step=create-account', funct
     $page = visit('/onboarding?step=create-account');
 
     $page->wait(1)
-        // Lands on the connections step, skipping the questions entirely.
-        ->assertSee('Create an Account')
-        ->assertSee('Manual')
+        // Lands on the accounts hub, skipping the questions entirely.
+        ->assertSee("Let's build the picture")
+        ->assertSee('Connect a bank')
+        ->assertSee('Add one myself')
         ->assertDontSee('Find out where your money actually went')
         ->assertNoJavascriptErrors();
 });
@@ -283,7 +284,7 @@ it('polls and shows a connection finalized in another browser', function () {
     // User sits on the connections step with no accounts yet.
     $page = visit('/onboarding?step=create-account');
     $page->wait(1)
-        ->assertSee('Create an Account')
+        ->assertSee("Let's build the picture")
         ->assertDontSee('Polled Bank');
 
     // The bank flow is finalized elsewhere (iOS PWA -> Safari): an account is
@@ -302,7 +303,7 @@ it('polls and shows a connection finalized in another browser', function () {
 
     // The 4s poll picks it up and the connection appears without a manual refresh.
     $page->wait(6)
-        ->assertSee('Your Accounts')
+        ->assertSee("1 in. What's missing?")
         ->assertSee('Polled Bank')
         ->assertNoJavascriptErrors();
 });
@@ -329,7 +330,7 @@ it('shows import transactions step after account creation', function () {
     $page = visit('/onboarding?step=create-account');
 
     $page->wait(1)
-        ->click('Continue')
+        ->click("That's everything — continue")
         ->wait(3)
         // Existing accounts no longer trigger import, and there is nothing to sync
         ->assertSee('Let AI organize your money')
@@ -354,8 +355,8 @@ it('shows add another account form without first account restriction', function 
     $page = visit('/onboarding?step=create-account');
 
     $page->wait(1)
-        // At this point, the "Your Accounts" view shows existing accounts
-        ->assertSee('Your Accounts')
+        // At this point, the hub lists what the user already has
+        ->assertSee("1 in. What's missing?")
         ->assertSee('Primary Bank')
         ->assertNoJavascriptErrors();
 });
@@ -376,12 +377,12 @@ it('hides the connected plan warning after connected setup is selected once', fu
     $page->wait(1)
         ->assertSee($warning)
         ->assertSee('/month')
-        ->click('Connected')
+        ->click('Connect a bank')
         ->wait(1)
         ->assertSee('Connect Your Bank')
         ->click('Back')
         ->wait(1)
-        ->assertSee('How would you like to set up this account?')
+        ->assertSee("Let's build the picture")
         ->assertDontSee($warning)
         ->assertDontSee('/month')
         ->assertNoJavascriptErrors();
@@ -397,8 +398,8 @@ it('creates a real estate account during onboarding by default', function () {
     $page = visit('/onboarding?step=create-account');
 
     $page->wait(1)
-        ->assertSee('Create an Account')
-        ->click('Manual')
+        ->assertSee("Let's build the picture")
+        ->click('Add one myself')
         ->wait(1)
         ->fill('#display_name', 'My Apartment')
         ->click('Select account type')
@@ -469,10 +470,10 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click("Let's go")
         ->wait(1);
 
-    // Step 6: Create Account - connected mode is preselected, switch to manual and fill the form
-    $page->assertSee('Create an Account')
-        ->assertSee('Manual')
-        ->click('Manual')
+    // Step 6: the accounts hub, empty. Take the by-hand route and fill the form.
+    $page->assertSee("Let's build the picture")
+        ->assertSee('Connect a bank')
+        ->click('Add one myself')
         ->wait(1)
         ->fill('#display_name', 'My Checking Account')
         ->click('Select bank...')
@@ -515,12 +516,12 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Import 5 transactions')
         ->wait(15);
 
-    // After import completes, back to create-account step in list mode
+    // After import completes, back to the hub with the account in it
     $page->assertSee('My Checking Account')
-        ->click('Continue')
-        ->wait(1);
-
-    $page->click('Continue')
+        ->assertSee('Usually missed')
+        // One click, not two: the import step completes itself, so the hub is
+        // already the screen by the time this runs.
+        ->click("That's everything — continue")
         ->wait(3); // syncing step reloads transactions — allow time for axios + router.reload
 
     // AI Suggestions - decline the consent prompt to continue without generating

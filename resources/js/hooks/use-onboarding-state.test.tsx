@@ -270,9 +270,26 @@ describe('useOnboardingState', () => {
                     step_index: 1,
                     total_steps: 11,
                     signup_plan: 'paid',
+                    accounts_count: 0,
                     resumed: false,
                 },
             );
+        });
+
+        // The accounts hub is one step with two very different screens, and
+        // this is the only thing on the event that says which one was seen.
+        it('reports what the user has to show for themselves so far', () => {
+            renderHook(() =>
+                useOnboardingState({
+                    initialStep: 'create-account',
+                    existingAccountsCount: 3,
+                }),
+            );
+
+            expect(stepEvents()[0][1]).toMatchObject({
+                step: 'create-account',
+                accounts_count: 3,
+            });
         });
 
         it('counts the steps a free signup actually sees', () => {

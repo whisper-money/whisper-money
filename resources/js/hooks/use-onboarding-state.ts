@@ -273,6 +273,15 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
      */
     const lastTrackedStep = useRef<OnboardingStep | null>(null);
 
+    /**
+     * What the user has to show for themselves so far. Reported on every step
+     * so the accounts hub's two states — nothing in yet, and the list of what
+     * is — can be told apart in the funnel: they are one step, and only this
+     * separates someone who dropped out facing an empty screen from someone who
+     * dropped out having already connected a bank.
+     */
+    const accountsCount = createdAccounts.length + existingAccountsCount;
+
     useEffect(() => {
         // The effect re-runs whenever the counter changes and React StrictMode
         // double-invokes it in development, so only a step that is actually new
@@ -291,12 +300,20 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
             step_index: stepIndex >= 0 ? stepIndex + 1 : null,
             total_steps: totalSteps,
             signup_plan: signupPlan,
+            accounts_count: accountsCount,
             // A reload or a return from the bank re-fires the step the user was
             // already on. Harmless for a funnel, which dedupes by person, and
             // ruinous for raw drop-off counts - so both readings stay available.
             resumed: isEntryStep && resolvedInitialStep !== FIRST_STEP,
         });
-    }, [currentStep, stepIndex, totalSteps, signupPlan, resolvedInitialStep]);
+    }, [
+        currentStep,
+        stepIndex,
+        totalSteps,
+        signupPlan,
+        accountsCount,
+        resolvedInitialStep,
+    ]);
 
     const goToStep = useCallback((step: OnboardingStep) => {
         setCurrentStep(step);

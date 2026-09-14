@@ -37,8 +37,8 @@ it('connects a bank during onboarding', function () {
     // this test is about.
     $page = visit('/onboarding?step=create-account');
 
-    $page->waitForText('How would you like to set up this account?', 5)
-        ->click('Connected')
+    $page->waitForText("Let's build the picture", 5)
+        ->click('Connect a bank')
         ->waitForText('Connect Your Bank', 5)
         ->click('[role="combobox"]')
         ->wait(0.5)

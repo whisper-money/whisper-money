@@ -259,7 +259,7 @@ async function scenarioOnboardingConnect(page, onboarding) {
     // The onboarding step hydrates its account list from the client store after
     // navigation; wait for it to render so we assert the UI (not just the DB) and the
     // recording ends on the real result rather than a mid-load frame.
-    await page.getByText('Your Accounts').waitFor({ timeout: 15000 });
+    await page.getByText("What's missing?").waitFor({ timeout: 15000 });
     await page.waitForTimeout(2500);
 
     const { connection } = artisanJson([

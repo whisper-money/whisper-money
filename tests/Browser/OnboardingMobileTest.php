@@ -44,9 +44,9 @@ it('walks the first steps on a phone with the action pinned to the footer', func
         ->assertSee("Here's what happens next")
         ->click("Let's go")
         ->wait(1)
-        ->assertSee('How would you like to set up this account?')
+        ->assertSee("Let's build the picture")
         ->assertSee("You'll choose a plan at the end of the onboarding.")
-        ->click('Manual')
+        ->click('Add one myself')
         ->wait(1)
         ->assertSee('Create an Account')
         ->assertNoJavascriptErrors();

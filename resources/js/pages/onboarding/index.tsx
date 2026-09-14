@@ -1,10 +1,10 @@
+import {
+    StepAccountsHub,
+    type ExistingAccount,
+} from '@/components/onboarding/step-accounts-hub';
 import { StepAiSuggestions } from '@/components/onboarding/step-ai-suggestions';
 import { StepCategorizeTransactions } from '@/components/onboarding/step-categorize-transactions';
 import { StepComplete } from '@/components/onboarding/step-complete';
-import {
-    StepCreateAccount,
-    type ExistingAccount,
-} from '@/components/onboarding/step-create-account';
 import { goalLabel, StepGoal } from '@/components/onboarding/step-goal';
 import { StepGuess } from '@/components/onboarding/step-guess';
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
@@ -215,7 +215,7 @@ export default function Onboarding({
 
             case 'create-account':
                 return (
-                    <StepCreateAccount
+                    <StepAccountsHub
                         key={createdAccounts.length}
                         banks={banks}
                         isFirstAccount={isFirstAccount}
