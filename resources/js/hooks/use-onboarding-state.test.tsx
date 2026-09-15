@@ -89,11 +89,11 @@ describe('useOnboardingState', () => {
 
     // The reveal answers the guess step 4 took, so it has to land between the
     // import finishing and anything being asked of the user again.
-    it('puts the reveal between the sync and the AI step', () => {
+    it('puts the reveal after the accounts hub, then the AI step', () => {
         const { result } = renderHook(() => useOnboardingState());
 
         act(() => {
-            result.current.goToStep('syncing');
+            result.current.goToStep('create-account');
         });
         act(() => {
             result.current.goNext();
@@ -106,6 +106,44 @@ describe('useOnboardingState', () => {
         });
 
         expect(result.current.currentStep).toBe('ai-suggestions');
+    });
+
+    // Waiting on a bank's first sync is part of connecting it, so the bar must
+    // not move for it — the hub hands over to it and on to the reveal itself.
+    it('holds the sync at the accounts hub position', () => {
+        const { result } = renderHook(() => useOnboardingState());
+        const hub = renderHook(() => useOnboardingState());
+
+        act(() => {
+            hub.result.current.goToStep('create-account');
+        });
+        act(() => {
+            result.current.goToStep('syncing');
+        });
+
+        expect(result.current.stepIndex).toBe(hub.result.current.stepIndex);
+    });
+
+    // The redesign ends at eleven, and the list is now the only thing saying so.
+    it('closes on the target and the inventory', () => {
+        const { result } = renderHook(() => useOnboardingState());
+
+        act(() => {
+            result.current.goToStep('categorize-transactions');
+        });
+        act(() => {
+            result.current.goNext();
+        });
+
+        expect(result.current.currentStep).toBe('target');
+        expect(result.current.stepIndex).toBe(9);
+
+        act(() => {
+            result.current.goNext();
+        });
+
+        expect(result.current.currentStep).toBe('complete');
+        expect(result.current.stepIndex + 1).toBe(result.current.totalSteps);
     });
 
     describe('skipping the AI step for a free signup', () => {
@@ -366,11 +404,11 @@ describe('useOnboardingState', () => {
 
         it('flags an entry that resumed mid-flow', () => {
             const { result } = renderHook(() =>
-                useOnboardingState({ initialStep: 'syncing' }),
+                useOnboardingState({ initialStep: 'reveal' }),
             );
 
             expect(stepEvents()[0][1]).toMatchObject({
-                step: 'syncing',
+                step: 'reveal',
                 resumed: true,
             });
 
@@ -380,7 +418,7 @@ describe('useOnboardingState', () => {
             });
 
             expect(stepEvents().at(-1)?.[1]).toMatchObject({
-                step: 'reveal',
+                step: 'ai-suggestions',
                 resumed: false,
             });
         });

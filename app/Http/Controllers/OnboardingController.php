@@ -3,17 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BudgetPeriodType;
+use App\Enums\RolloverType;
 use App\Enums\SignupPlan;
 use App\Http\Requests\StoreOnboardingAnswersRequest;
+use App\Http\Requests\StoreOnboardingTargetRequest;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
+use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
+use App\Services\BudgetService;
 use App\Services\OnboardingRevealService;
-use Carbon\Carbon;
+use App\Services\OnboardingSummaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,6 +45,7 @@ class OnboardingController extends Controller
         'reveal',
         'ai-suggestions',
         'categorize-transactions',
+        'target',
         'complete',
     ];
 
@@ -141,7 +147,7 @@ class OnboardingController extends Controller
      * must not hold the user on the syncing step forever. It is reported as
      * failed instead, so the step can say so rather than claim everything worked.
      */
-    public function syncStatus(Request $request): JsonResponse
+    public function syncStatus(Request $request, OnboardingSummaryService $summary): JsonResponse
     {
         $user = $request->user();
 
@@ -161,63 +167,10 @@ class OnboardingController extends Controller
             'failed' => ! $pending && $unsynced->isNotEmpty(),
             // The wait is the bank's, so the screen says whose it is.
             'bank' => $unsynced->first()?->aspsp_name,
-            'progress' => $this->syncProgress($user),
+            'progress' => $summary->ledger($user, $user->accounts()
+                ->whereNotNull('banking_connection_id')
+                ->pluck('id')),
         ]);
-    }
-
-    /**
-     * What the first sync has actually brought in so far.
-     *
-     * A spinner cannot tell a slow bank from a dead queue, and this wait is the
-     * longest one in the onboarding. Real counters can: they move, and when they
-     * stop moving the user can see for themselves how much they already have and
-     * decide whether the rest is worth waiting for.
-     *
-     * @return array{transactions: int, merchants: int, accounts: int, months: int, first_date: ?string, last_date: ?string}
-     */
-    private function syncProgress(User $user): array
-    {
-        $accountIds = $user->accounts()
-            ->whereNotNull('banking_connection_id')
-            ->pluck('id');
-
-        $empty = [
-            'transactions' => 0,
-            'merchants' => 0,
-            'accounts' => $accountIds->count(),
-            'months' => 0,
-            'first_date' => null,
-            'last_date' => null,
-        ];
-
-        if ($accountIds->isEmpty()) {
-            return $empty;
-        }
-
-        $totals = Transaction::query()
-            ->where('user_id', $user->id)
-            ->whereIn('account_id', $accountIds)
-            ->selectRaw('count(*) as transactions, count(distinct creditor_name) as merchants, min(transaction_date) as first_date, max(transaction_date) as last_date')
-            ->first();
-
-        if (! $totals || (int) $totals->transactions === 0) {
-            return $empty;
-        }
-
-        $first = Carbon::parse($totals->first_date)->startOfMonth();
-        $last = Carbon::parse($totals->last_date)->startOfMonth();
-
-        return [
-            'transactions' => (int) $totals->transactions,
-            // Counterparty names are the only plaintext description we hold:
-            // `description` is encrypted at rest, so it cannot be counted here.
-            'merchants' => (int) $totals->merchants,
-            'accounts' => $accountIds->count(),
-            // Inclusive: a January-to-January import covers one month, not zero.
-            'months' => (int) $first->diffInMonths($last) + 1,
-            'first_date' => $first->toDateString(),
-            'last_date' => $last->toDateString(),
-        ];
     }
 
     /**
@@ -241,13 +194,87 @@ class OnboardingController extends Controller
      */
     public function answers(StoreOnboardingAnswersRequest $request): RedirectResponse
     {
-        $user = $request->user();
-
-        $user->update([
-            'onboarding_answers' => [...$user->onboarding_answers ?? [], ...$request->validated()],
-        ]);
+        $this->remember($request->user(), $request->validated());
 
         return back();
+    }
+
+    /**
+     * Merge answers onto the user's row.
+     *
+     * @param  array<string, mixed>  $answers
+     */
+    private function remember(User $user, array $answers): void
+    {
+        $user->update([
+            'onboarding_answers' => [...$user->onboarding_answers ?? [], ...$answers],
+        ]);
+    }
+
+    /**
+     * What the user has to show for the flow, for the two screens that close it.
+     *
+     * Its own request for the same reason the reveal is: it reads a year of
+     * movements, and the nine steps before it would pay for that on every
+     * render without ever showing it.
+     */
+    public function summary(Request $request, OnboardingSummaryService $summary): JsonResponse
+    {
+        return response()->json($summary->for($request->user()));
+    }
+
+    /**
+     * Turn the number step 10 landed on into the budget that holds it.
+     *
+     * The target is what the user chose to keep back; the budget's limit is
+     * what is left of the month they actually spent once that is set aside. It
+     * is a catch-all, so every movement counts towards it without the user
+     * having to assign categories to a budget on their way out of onboarding.
+     *
+     * A user who already has a catch-all keeps it — a reload, or a second run
+     * through the step, must not leave two budgets claiming the same movements.
+     */
+    public function target(
+        StoreOnboardingTargetRequest $request,
+        BudgetService $budgets,
+        OnboardingSummaryService $summary,
+    ): JsonResponse {
+        $user = $request->user();
+        $target = (int) $request->validated('amount');
+        $spending = $summary->spending($user)['spent'] ?? null;
+
+        if ($spending === null) {
+            // Nothing was read to build a target on, so there is no limit to
+            // set: the step itself never offers this to such a user.
+            return response()->json(['message' => __('No spending to build a target on.')], 422);
+        }
+
+        $budget = $this->catchAll($user) ?? $budgets->create($user, [
+            'name' => __('Monthly spending'),
+            'period_type' => BudgetPeriodType::Monthly,
+            'period_start_day' => 1,
+            'rollover_type' => RolloverType::Reset,
+            'is_catch_all' => true,
+        ], max(0, $spending - $target));
+
+        // Set from the toggle rather than left to the account default, so the
+        // row that says "warn me before I overspend" is the row that decides it.
+        $budget->update([
+            'notify_on_close_to_limit' => $request->boolean('warn'),
+            'notify_on_over_limit' => $request->boolean('warn'),
+        ]);
+
+        // Only once the budget behind it exists: step 11 reads this back as
+        // proof the target is real, and it may not report one that is not.
+        $this->remember($user, ['target' => $target]);
+
+        return response()->json(['target' => $target, 'budget_id' => $budget->id]);
+    }
+
+    /** The budget that absorbs everything not claimed by another one. */
+    private function catchAll(User $user): ?Budget
+    {
+        return $user->budgets()->notArchived()->where('is_catch_all', true)->first();
     }
 
     /**

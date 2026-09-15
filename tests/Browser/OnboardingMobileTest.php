@@ -61,8 +61,10 @@ it('categorizes on a phone with both footer actions reachable', function () {
         ->wait(2)
         ->assertSee('Nothing left to teach us')
         ->click('Continue')
-        ->wait(1)
-        ->assertSee("You're All Set!")
+        ->wait(2)
+        // No month was read, so the target step has nothing to build on and
+        // steps aside: the flow lands on the close itself.
+        ->assertSee('Your dashboard isn’t empty')
         ->assertNoJavascriptErrors();
 });
 
@@ -81,7 +83,7 @@ it('offers the header back arrow only where going back is safe', function () {
     visit('/onboarding?step=complete')
         ->resize(430, 932)
         ->wait(1)
-        ->assertSee("You're All Set!")
+        ->assertSee('Your dashboard isn’t empty')
         ->assertMissing('[aria-label="Back"]')
         ->assertNoJavascriptErrors();
 });

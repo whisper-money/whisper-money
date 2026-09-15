@@ -77,6 +77,7 @@ class OnboardingRevealService
 
         $currency = $user->currency_code;
         $this->preloadExchangeRates($outgoings, $currency);
+        $recurring = $this->recurringCharges($byMonth, $month);
 
         return [
             'variant' => 'spending',
@@ -88,7 +89,10 @@ class OnboardingRevealService
             'spent' => -$this->sumConvertedAmounts($byMonth[$month], $currency),
             'merchants' => $this->topMerchants($byMonth[$month], $currency),
             'merchant_count' => $this->merchantCount($user),
-            'recurring_count' => $this->recurringMerchants($byMonth, $month),
+            'recurring_count' => $this->recurringMerchants($recurring),
+            // What the repeat charges come to in a month, which is the figure
+            // step 10 sets a first target against.
+            'recurring_amount' => -$this->sumConvertedAmounts($recurring->values(), $currency),
         ];
     }
 
@@ -182,15 +186,17 @@ class OnboardingRevealService
     }
 
     /**
-     * Merchants that charged the same amount in each of the last three months.
+     * Charges that repeated, unchanged, in each of the last three months, as one
+     * representative charge per merchant and amount.
      *
      * Grouped by merchant and exact amount, which is what "the same" means to
      * someone reading a statement. It comes out of the rows themselves, which is
      * the only reason the screen can claim it before anything is categorized.
      *
      * @param  Collection<string, Collection<int, Transaction>>  $byMonth
+     * @return Collection<string, Transaction>
      */
-    private function recurringMerchants(Collection $byMonth, string $month): int
+    private function recurringCharges(Collection $byMonth, string $month): Collection
     {
         $window = collect(range(0, self::RECURRING_MONTHS - 1))
             ->map(fn (int $back): string => Carbon::parse($month.'-01')->subMonths($back)->format('Y-m'));
@@ -202,11 +208,24 @@ class OnboardingRevealService
                 ->map(fn (Transaction $charge): string => $charge->transaction_date->format('Y-m'))
                 ->unique()
                 ->count() === self::RECURRING_MONTHS)
+            // A charge nobody can name is one no screen can read back, and both
+            // the count and the total are spoken about as merchants.
+            ->reject(fn (Collection $charges, string $key): bool => explode('|', $key)[0] === '')
+            ->map(fn (Collection $charges): Transaction => $charges->first());
+    }
+
+    /**
+     * How many merchants those repeat charges belong to.
+     *
+     * @param  Collection<string, Transaction>  $recurring
+     */
+    private function recurringMerchants(Collection $recurring): int
+    {
+        return $recurring
             ->keys()
             // One merchant billing two subscriptions is one merchant, and the
             // sentence on the screen counts merchants.
             ->map(fn (string $key): string => explode('|', $key)[0])
-            ->filter()
             ->unique()
             ->count();
     }

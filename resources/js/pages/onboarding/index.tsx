@@ -14,6 +14,7 @@ import { StepPlan } from '@/components/onboarding/step-plan';
 import { StepPromise } from '@/components/onboarding/step-promise';
 import { StepReveal } from '@/components/onboarding/step-reveal';
 import { StepSyncing } from '@/components/onboarding/step-syncing';
+import { StepTarget } from '@/components/onboarding/step-target';
 import { StepToday } from '@/components/onboarding/step-today';
 import { useSyncContext } from '@/contexts/sync-context';
 import {
@@ -234,12 +235,12 @@ export default function Onboarding({
                             markConnectedAccountSelected
                         }
                         signupPlan={signupPlan}
-                        onContinue={goNext}
+                        onContinue={() => goToStep('syncing')}
                     />
                 );
 
             case 'syncing':
-                return <StepSyncing onComplete={goNext} />;
+                return <StepSyncing onComplete={() => goToStep('reveal')} />;
 
             case 'reveal':
                 return (
@@ -289,12 +290,22 @@ export default function Onboarding({
                     />
                 );
 
+            case 'target':
+                return (
+                    <StepTarget
+                        goal={answers.goal}
+                        spendingGuess={answers.spending_guess}
+                        onContinue={goNext}
+                    />
+                );
+
             case 'complete':
                 return (
                     <StepComplete
                         accountsCreated={createdAccounts.length}
                         hasConnectedAccount={hasConnectedAccount}
                         signupPlan={signupPlan}
+                        spendingGuess={answers.spending_guess}
                     />
                 );
 
@@ -317,6 +328,7 @@ export default function Onboarding({
             'import-transactions': __('Import Transactions'),
             'import-balances': __('Set Balance'),
             'categorize-transactions': __('Categorize Transactions'),
+            target: __('Your First Target'),
             complete: __('All Set!'),
         };
         return titles[step];

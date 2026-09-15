@@ -23,6 +23,7 @@ export type OnboardingStep =
     | 'import-transactions'
     | 'import-balances'
     | 'categorize-transactions'
+    | 'target'
     | 'complete';
 
 /**
@@ -42,6 +43,7 @@ const VALID_STEPS: OnboardingStep[] = [
     'reveal',
     'ai-suggestions',
     'categorize-transactions',
+    'target',
     'complete',
 ];
 
@@ -96,8 +98,11 @@ function readStoredStep(
         : undefined;
 }
 
-// Primary steps shown in the progress indicator
-// import-transactions and import-balances are sub-steps that don't increment the counter
+/**
+ * What the progress bar is drawn over, and now the only thing it is measured
+ * against: the redesign is complete, so the list is the flow rather than a
+ * count the flow is working towards.
+ */
 const PRIMARY_STEPS: OnboardingStep[] = [
     'promise',
     'goal',
@@ -105,26 +110,26 @@ const PRIMARY_STEPS: OnboardingStep[] = [
     'guess',
     'plan',
     'create-account',
-    'syncing',
     'reveal',
     'ai-suggestions',
     'categorize-transactions',
+    'target',
     'complete',
 ];
-
-/**
- * What the progress bar is drawn over. The redesigned flow ends at eleven steps
- * and the list has reached that count, but the last two entries are still the
- * old steps the remaining PRs replace — so the bar keeps being measured against
- * the number the flow ends on rather than against whatever is in the list today.
- */
-const TOTAL_PRIMARY_STEPS = 11;
 
 /** Where onboarding starts, and where anything unresolvable falls back to. */
 const FIRST_STEP: OnboardingStep = PRIMARY_STEPS[0];
 
-// Steps that are sub-steps (shown under the same progress position as 'create-account')
-const SUB_STEPS: OnboardingStep[] = ['import-transactions', 'import-balances'];
+/**
+ * Steps shown under the same progress position as 'create-account'. Waiting on
+ * a bank's first sync is part of connecting it, not a step of its own: the bar
+ * would otherwise move for something the user did not do.
+ */
+const SUB_STEPS: OnboardingStep[] = [
+    'import-transactions',
+    'import-balances',
+    'syncing',
+];
 
 /**
  * Steps the header's back arrow is offered on. Everything else is left out on
@@ -152,15 +157,19 @@ export interface OnboardingState {
 }
 
 /**
- * What the user told the onboarding about themselves. Only the spending guess
- * is read back by the flow; the other two are kept because the question was
- * asked anyway. Mirrors `StoreOnboardingAnswersRequest::CHOICES`.
+ * What the user told the onboarding about themselves. The first two are kept
+ * because the question was asked anyway; the last two are read back by the
+ * screens that close the flow. Mirrors `StoreOnboardingAnswersRequest::CHOICES`,
+ * except for the target, which step 10 writes through its own endpoint once the
+ * budget behind it exists.
  */
 export interface OnboardingAnswers {
     goal?: string;
     today?: string;
     /** Minor units of the user's own currency, like every stored amount. */
     spending_guess?: number;
+    /** Minor units. Written by step 10, and only once its budget exists. */
+    target?: number;
 }
 
 export interface CreatedAccount {
@@ -260,11 +269,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         return primarySteps.indexOf(currentStep);
     }, [currentStep, primarySteps]);
 
-    // Not primarySteps.length: see TOTAL_PRIMARY_STEPS. A free signup sees one
-    // fewer, the same way it drops out of the list.
-    const totalSteps = skipAiSuggestions
-        ? TOTAL_PRIMARY_STEPS - 1
-        : TOTAL_PRIMARY_STEPS;
+    const totalSteps = primarySteps.length;
 
     /**
      * Every step entry, from the one place that owns step transitions: a deep

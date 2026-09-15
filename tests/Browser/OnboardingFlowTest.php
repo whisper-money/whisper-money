@@ -562,9 +562,12 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Continue')
         ->wait(1);
 
-    // Complete step
-    $page->assertSee("You're All Set!")
-        ->click('Go to Dashboard')
+    // Step 10 has no month to build a target on for this user — five movements
+    // never got revealed — so it steps aside rather than invent a number, and
+    // the flow lands on the close itself.
+    $page->assertSee('Your dashboard isn’t empty')
+        ->assertDontSee('put aside')
+        ->click('Open my dashboard')
         ->wait(5);
 
     // Since SUBSCRIPTIONS_ENABLED is true, user should end on /subscribe
