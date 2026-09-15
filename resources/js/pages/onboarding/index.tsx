@@ -320,7 +320,9 @@ export default function Onboarding({
             today: __('How You Track'),
             guess: __('Your Guess'),
             plan: __('Your Plan'),
-            'create-account': __('Create Account'),
+            // The step stopped being a form and became the accounts hub; the
+            // tab was the last place still calling it "Create Account".
+            'create-account': __('Your Accounts'),
             syncing: __('Syncing'),
             reveal: __('Last Month'),
             'ai-suggestions': __('AI Suggestions'),
