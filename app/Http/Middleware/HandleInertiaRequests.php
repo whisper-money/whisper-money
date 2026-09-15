@@ -166,13 +166,16 @@ class HandleInertiaRequests extends Middleware
     /**
      * The two medals the chrome puts in front of the reader rather than waiting
      * to be looked up: the visit streak in the header, and what is left to
-     * categorize this month. Null for guests.
+     * categorize this month. Null for guests and for readers still onboarding,
+     * for the same reason the bell below is: the wizard is not the app's chrome,
+     * and the toasts these feed render over whatever step the reader is on —
+     * one of them landed on top of the reveal's own button.
      *
      * @return array<string, mixed>|null
      */
     private function challengesFor(?User $user): ?array
     {
-        if ($user === null) {
+        if ($user === null || ! $user->isOnboarded()) {
             return null;
         }
 

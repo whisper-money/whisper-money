@@ -219,3 +219,12 @@ it('asks again once the snooze has run out', function (): void {
 
     expect(challengesFor($user)['uncategorized']['count'])->toBe(2);
 });
+
+it('sends readers still onboarding no challenges, so no toast lands on the wizard', function (): void {
+    // Same reasoning as the bell: the wizard is not the app's chrome. The
+    // toasts these feed render over whatever step the reader is on, and one of
+    // them landed on top of the reveal's own button.
+    $this->actingAs(User::factory()->notOnboarded()->create())
+        ->get(route('onboarding'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('challenges', null));
+});
