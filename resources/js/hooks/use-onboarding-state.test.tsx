@@ -2,9 +2,13 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useOnboardingState } from './use-onboarding-state';
 
-const { captureEvent } = vi.hoisted(() => ({ captureEvent: vi.fn() }));
+const { captureEvent, post } = vi.hoisted(() => ({
+    captureEvent: vi.fn(),
+    post: vi.fn(),
+}));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
+vi.mock('@inertiajs/react', () => ({ router: { post } }));
 
 describe('useOnboardingState', () => {
     describe('step URL sync', () => {
@@ -21,7 +25,7 @@ describe('useOnboardingState', () => {
 
             expect(
                 new URLSearchParams(window.location.search).get('step'),
-            ).toBe('welcome');
+            ).toBe('promise');
         });
 
         it('updates the ?step= query param when the step advances', () => {
@@ -33,7 +37,7 @@ describe('useOnboardingState', () => {
 
             expect(
                 new URLSearchParams(window.location.search).get('step'),
-            ).toBe('account-types');
+            ).toBe('goal');
         });
 
         it('reflects a step reached via goToStep', () => {
@@ -83,14 +87,73 @@ describe('useOnboardingState', () => {
         expect(result.current.hasSelectedConnectedAccount).toBe(true);
     });
 
+    // The reveal answers the guess step 4 took, so it has to land between the
+    // import finishing and anything being asked of the user again.
+    it('puts the reveal after the accounts hub, then the AI step', () => {
+        const { result } = renderHook(() => useOnboardingState());
+
+        act(() => {
+            result.current.goToStep('create-account');
+        });
+        act(() => {
+            result.current.goNext();
+        });
+
+        expect(result.current.currentStep).toBe('reveal');
+
+        act(() => {
+            result.current.goNext();
+        });
+
+        expect(result.current.currentStep).toBe('ai-suggestions');
+    });
+
+    // Waiting on a bank's first sync is part of connecting it, so the bar must
+    // not move for it — the hub hands over to it and on to the reveal itself.
+    it('holds the sync at the accounts hub position', () => {
+        const { result } = renderHook(() => useOnboardingState());
+        const hub = renderHook(() => useOnboardingState());
+
+        act(() => {
+            hub.result.current.goToStep('create-account');
+        });
+        act(() => {
+            result.current.goToStep('syncing');
+        });
+
+        expect(result.current.stepIndex).toBe(hub.result.current.stepIndex);
+    });
+
+    // The redesign ends at eleven, and the list is now the only thing saying so.
+    it('closes on the target and the inventory', () => {
+        const { result } = renderHook(() => useOnboardingState());
+
+        act(() => {
+            result.current.goToStep('categorize-transactions');
+        });
+        act(() => {
+            result.current.goNext();
+        });
+
+        expect(result.current.currentStep).toBe('target');
+        expect(result.current.stepIndex).toBe(9);
+
+        act(() => {
+            result.current.goNext();
+        });
+
+        expect(result.current.currentStep).toBe('complete');
+        expect(result.current.stepIndex + 1).toBe(result.current.totalSteps);
+    });
+
     describe('skipping the AI step for a free signup', () => {
-        it('walks from syncing straight to categorize-transactions', () => {
+        it('walks from the reveal straight to categorize-transactions', () => {
             const { result } = renderHook(() =>
                 useOnboardingState({ skipAiSuggestions: true }),
             );
 
             act(() => {
-                result.current.goToStep('syncing');
+                result.current.goToStep('reveal');
             });
             act(() => {
                 result.current.goNext();
@@ -114,7 +177,7 @@ describe('useOnboardingState', () => {
             const { result } = renderHook(() => useOnboardingState());
 
             act(() => {
-                result.current.goToStep('syncing');
+                result.current.goToStep('reveal');
             });
             act(() => {
                 result.current.goNext();
@@ -146,21 +209,52 @@ describe('useOnboardingState', () => {
             const { result } = renderHook(() =>
                 useOnboardingState({
                     userId: 'user-1',
-                    initialStep: 'smart-rules',
+                    initialStep: 'syncing',
                 }),
             );
 
-            expect(result.current.currentStep).toBe('smart-rules');
+            expect(result.current.currentStep).toBe('syncing');
         });
 
-        it('falls back to welcome when the stored step is not a real step', () => {
+        it('falls back to the first step when the stored step is not real', () => {
             store('user-1:not-a-step');
 
             const { result } = renderHook(() =>
                 useOnboardingState({ userId: 'user-1' }),
             );
 
-            expect(result.current.currentStep).toBe('welcome');
+            expect(result.current.currentStep).toBe('promise');
+        });
+
+        // The redesign renames the steps under a storage key that survives the
+        // deploy, so anyone mid-onboarding when it ships has a step stored that
+        // no longer exists. It has to read as "start over", not as a blank screen.
+        it.each([
+            'welcome',
+            'account-types',
+            'category-types',
+            'customize-categories',
+            'smart-rules',
+        ])('falls back to the first step from the retired %s', (retired) => {
+            store(`user-1:${retired}`);
+
+            const { result } = renderHook(() =>
+                useOnboardingState({ userId: 'user-1' }),
+            );
+
+            expect(result.current.currentStep).toBe('promise');
+        });
+
+        // The steps that outlived the rename still resume, so a user who had
+        // already created their accounts is not sent back to the first question.
+        it('still resumes a step the redesign kept', () => {
+            store('user-1:create-account');
+
+            const { result } = renderHook(() =>
+                useOnboardingState({ userId: 'user-1' }),
+            );
+
+            expect(result.current.currentStep).toBe('create-account');
         });
 
         it('never resumes a free signup onto the AI step', () => {
@@ -173,19 +267,19 @@ describe('useOnboardingState', () => {
                 }),
             );
 
-            expect(result.current.currentStep).toBe('welcome');
+            expect(result.current.currentStep).toBe('promise');
         });
 
         // Storage is per browser, not per account: the next signup on a shared
         // machine would otherwise land mid-onboarding with nothing created.
         it('ignores a step another account left behind', () => {
-            store('user-1:smart-rules');
+            store('user-1:syncing');
 
             const { result } = renderHook(() =>
                 useOnboardingState({ userId: 'user-2' }),
             );
 
-            expect(result.current.currentStep).toBe('welcome');
+            expect(result.current.currentStep).toBe('promise');
         });
 
         it('stores every step it moves to against its owner', () => {
@@ -231,13 +325,30 @@ describe('useOnboardingState', () => {
             expect(captureEvent).toHaveBeenCalledWith(
                 'onboarding_step_viewed',
                 {
-                    step: 'welcome',
+                    step: 'promise',
                     step_index: 1,
-                    total_steps: 9,
+                    total_steps: 11,
                     signup_plan: 'paid',
+                    accounts_count: 0,
                     resumed: false,
                 },
             );
+        });
+
+        // The accounts hub is one step with two very different screens, and
+        // this is the only thing on the event that says which one was seen.
+        it('reports what the user has to show for themselves so far', () => {
+            renderHook(() =>
+                useOnboardingState({
+                    initialStep: 'create-account',
+                    existingAccountsCount: 3,
+                }),
+            );
+
+            expect(stepEvents()[0][1]).toMatchObject({
+                step: 'create-account',
+                accounts_count: 3,
+            });
         });
 
         it('counts the steps a free signup actually sees', () => {
@@ -249,7 +360,7 @@ describe('useOnboardingState', () => {
             );
 
             expect(stepEvents()[0][1]).toMatchObject({
-                total_steps: 8,
+                total_steps: 10,
                 signup_plan: 'free',
             });
         });
@@ -273,8 +384,8 @@ describe('useOnboardingState', () => {
             });
 
             expect(stepEvents().map(([, props]) => props)).toMatchObject([
-                { step: 'welcome', step_index: 1 },
-                { step: 'account-types', step_index: 2 },
+                { step: 'promise', step_index: 1 },
+                { step: 'goal', step_index: 2 },
             ]);
         });
 
@@ -287,32 +398,17 @@ describe('useOnboardingState', () => {
 
             expect(stepEvents().at(-1)?.[1]).toMatchObject({
                 step: 'import-transactions',
-                step_index: 3,
-            });
-        });
-
-        // In VALID_STEPS but not in the progress counter, so it has no position
-        // to report - and must not report a nonsensical one.
-        it('reports no position for a step outside the counter', () => {
-            const { result } = renderHook(() => useOnboardingState());
-
-            act(() => {
-                result.current.goToStep('customize-categories');
-            });
-
-            expect(stepEvents().at(-1)?.[1]).toMatchObject({
-                step: 'customize-categories',
-                step_index: null,
+                step_index: 6,
             });
         });
 
         it('flags an entry that resumed mid-flow', () => {
             const { result } = renderHook(() =>
-                useOnboardingState({ initialStep: 'syncing' }),
+                useOnboardingState({ initialStep: 'reveal' }),
             );
 
             expect(stepEvents()[0][1]).toMatchObject({
-                step: 'syncing',
+                step: 'reveal',
                 resumed: true,
             });
 
@@ -328,16 +424,88 @@ describe('useOnboardingState', () => {
         });
 
         it('flags a resume from the stored step too', () => {
-            window.localStorage.setItem(
-                'onboarding-step',
-                'user-1:smart-rules',
-            );
+            window.localStorage.setItem('onboarding-step', 'user-1:syncing');
 
             renderHook(() => useOnboardingState({ userId: 'user-1' }));
 
             expect(stepEvents()[0][1]).toMatchObject({
-                step: 'smart-rules',
+                step: 'syncing',
                 resumed: true,
+            });
+        });
+    });
+
+    describe('the answers the questions collect', () => {
+        beforeEach(() => {
+            captureEvent.mockClear();
+            post.mockClear();
+        });
+
+        it('keeps an answer for the steps that read it back', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.saveAnswer('goal', 'understand');
+            });
+
+            expect(result.current.answers).toEqual({ goal: 'understand' });
+        });
+
+        it('starts from the answers already on the user row', () => {
+            const { result } = renderHook(() =>
+                useOnboardingState({
+                    initialAnswers: { goal: 'debt', spending_guess: 120000 },
+                }),
+            );
+
+            expect(result.current.answers.spending_guess).toBe(120000);
+        });
+
+        // Each answer is written as it is given, so quitting on the third
+        // question still leaves the first two behind.
+        it('sends each answer on its own without disturbing the wizard', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.saveAnswer('spending_guess', 120000);
+            });
+
+            expect(post).toHaveBeenCalledWith(
+                '/onboarding/answers',
+                { spending_guess: 120000 },
+                expect.objectContaining({
+                    preserveState: true,
+                    only: ['onboardingAnswers'],
+                }),
+            );
+        });
+
+        it('merges a later answer into the ones already given', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.saveAnswer('goal', 'understand');
+            });
+            act(() => {
+                result.current.saveAnswer('today', 'spreadsheet');
+            });
+
+            expect(result.current.answers).toEqual({
+                goal: 'understand',
+                today: 'spreadsheet',
+            });
+        });
+
+        it('reports the answer to analytics', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.saveAnswer('today', 'head');
+            });
+
+            expect(captureEvent).toHaveBeenCalledWith('onboarding_answered', {
+                question: 'today',
+                answer: 'head',
             });
         });
     });

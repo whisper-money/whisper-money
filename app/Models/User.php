@@ -45,6 +45,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property int $visit_week_streak
  * @property int $longest_visit_week_streak
  * @property ?Carbon $onboarded_at
+ * @property ?array<string, mixed> $onboarding_answers
  * @property ?string $price_arm
  * @property ?string $signup_plan
  */
@@ -64,6 +65,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'password',
         'encryption_salt',
         'onboarded_at',
+        'onboarding_answers',
         'paywall_seen_at',
         'currency_code',
         'locale',
@@ -108,6 +110,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'trial_ends_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'onboarded_at' => 'datetime',
+            'onboarding_answers' => 'array',
             'paywall_seen_at' => 'datetime',
             'last_logged_in_at' => 'datetime',
             'last_active_at' => 'datetime',

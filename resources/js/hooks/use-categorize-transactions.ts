@@ -23,6 +23,15 @@ export type AnimationState = 'idle' | 'exiting' | 'entering' | 'success';
 
 const CATEGORY_USAGE_KEY = 'category-usage-order';
 
+/**
+ * The onboarding step files movements one after another, so its confirmations
+ * are given one id: a new one replaces the last instead of stacking five of
+ * them. They are also short-lived and dismissed when the step goes — at twelve
+ * seconds they used to follow the user onto the close screen and the paywall.
+ */
+const ONBOARDING_TOAST_ID = 'onboarding-transaction-categorized';
+const ONBOARDING_TOAST_MS = 4000;
+
 export function getCategoryUsageOrder(): string[] {
     try {
         const stored = localStorage.getItem(CATEGORY_USAGE_KEY);
@@ -75,6 +84,13 @@ interface UseCategorizeTransactionsOptions {
      * it captures reads as the same surface.
      */
     source?: 'categorize_flow' | 'onboarding';
+    /**
+     * Send a skipped movement to the back of the queue rather than past the end
+     * of it. The onboarding step gates on a real count of categorized
+     * movements, so a queue that empties by skipping would leave the user
+     * looking at nothing with the gate still shut.
+     */
+    recycleSkipped?: boolean;
 }
 
 export function useCategorizeTransactions({
@@ -83,6 +99,7 @@ export function useCategorizeTransactions({
     banks,
     transactions: initialTransactions,
     source = 'categorize_flow',
+    recycleSkipped = false,
 }: UseCategorizeTransactionsOptions) {
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
         DecryptedTransaction[]
@@ -102,9 +119,19 @@ export function useCategorizeTransactions({
     const [categorizedCount, setCategorizedCount] = useState(0);
     const commandInputRef = useRef<HTMLInputElement>(null);
 
+    const isOnboarding = source === 'onboarding';
+
     useEffect(() => {
         setCategoryUsageOrder(getCategoryUsageOrder());
     }, []);
+
+    useEffect(() => {
+        if (!isOnboarding) {
+            return;
+        }
+
+        return () => toast.dismiss(ONBOARDING_TOAST_ID);
+    }, [isOnboarding]);
 
     useEffect(() => {
         if (!isLoading && animationState === 'idle') {
@@ -190,8 +217,9 @@ export function useCategorizeTransactions({
                 setCategorizedCount((prev) => prev + 1);
                 setAutomateCandidate(nextAutomateCandidate);
                 toast.success(__('Transaction categorized'), {
+                    id: isOnboarding ? ONBOARDING_TOAST_ID : undefined,
                     closeButton: true,
-                    duration: 12000,
+                    duration: isOnboarding ? ONBOARDING_TOAST_MS : 12000,
                     action: {
                         label: createElement(
                             'span',
@@ -234,7 +262,7 @@ export function useCategorizeTransactions({
                 }, 400);
             }, 300);
         },
-        [currentTransaction, animationState, source],
+        [currentTransaction, animationState, source, isOnboarding],
     );
 
     const handleSkip = useCallback(() => {
@@ -245,14 +273,25 @@ export function useCategorizeTransactions({
         setAnimationState('exiting');
 
         setTimeout(() => {
-            setCurrentIndex((prev) => prev + 1);
+            if (recycleSkipped) {
+                setUncategorizedTransactions((prev) => {
+                    const next = [...prev];
+                    const [skipped] = next.splice(currentIndex, 1);
+                    if (skipped) {
+                        next.push(skipped);
+                    }
+                    return next;
+                });
+            } else {
+                setCurrentIndex((prev) => prev + 1);
+            }
             setAnimationState('entering');
 
             setTimeout(() => {
                 setAnimationState('idle');
             }, 300);
         }, 300);
-    }, [animationState]);
+    }, [animationState, currentIndex, recycleSkipped]);
 
     const handleAutomateDialogOpenChange = useCallback((open: boolean) => {
         setAutomateDialogOpen(open);

@@ -45,6 +45,10 @@
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
 
+    --color-success: var(--success);
+    --color-success-fill: var(--success-fill);
+    --color-success-border: var(--success-border);
+
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -92,6 +96,15 @@
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.577 0.245 27.325);
+
+    /* The first chroma in the interface proper, and deliberate, the same way
+       --destructive is: the money-back window is the one promise on a checkout
+       screen that is in the user's favour, and it has to be findable at a
+       glance rather than read in order. 5.7:1 on its own fill. */
+    --success: oklch(0.48 0.13 152);
+    --success-fill: oklch(0.972 0.022 152);
+    --success-border: oklch(0.88 0.13 152);
+
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.87 0 0);
@@ -153,6 +166,9 @@
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.396 0.141 25.723);
     --destructive-foreground: oklch(0.637 0.237 25.331);
+    --success: oklch(0.76 0.15 152);
+    --success-fill: oklch(0.3 0.05 152);
+    --success-border: oklch(0.44 0.09 152);
     --border: oklch(0.325 0 0);
     --input: oklch(0.41 0 0);
     --ring: oklch(0.439 0 0);

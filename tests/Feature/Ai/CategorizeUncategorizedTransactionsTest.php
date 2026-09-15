@@ -15,9 +15,12 @@ use Illuminate\Support\Facades\Cache;
 
 use function Pest\Laravel\actingAs;
 
+// Onboarded, every one of them: `StartCategorizationBackfill` returns early
+// while the wizard is still running, so a mid-onboarding user would pass the
+// three "does not dispatch" tests below for a reason none of them is about.
 it('dispatches a backfill and returns job progress when consent is granted', function () {
     Bus::fake();
-    $user = User::factory()->create();
+    $user = User::factory()->onboarded()->create();
     Transaction::factory()->plaintext()->count(2)->create([
         'user_id' => $user->id,
         'category_id' => null,
@@ -35,7 +38,7 @@ it('dispatches a backfill and returns job progress when consent is granted', fun
 
 it('does not dispatch a backfill when nothing is uncategorized', function () {
     Bus::fake();
-    $user = User::factory()->create();
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->for($user)->create();
     Transaction::factory()->plaintext()->create([
         'user_id' => $user->id,
@@ -52,7 +55,7 @@ it('does not dispatch a backfill when nothing is uncategorized', function () {
 it('does not dispatch a backfill for a user without a paid plan', function () {
     config(['subscriptions.enabled' => true]);
     Bus::fake();
-    $user = User::factory()->create();
+    $user = User::factory()->onboarded()->create();
     Transaction::factory()->plaintext()->create([
         'user_id' => $user->id,
         'category_id' => null,
@@ -70,7 +73,7 @@ it('does not dispatch a backfill for a user without a paid plan', function () {
 it('does not dispatch a backfill when AI categorization is disabled', function () {
     config(['ai_categorization.enabled' => false]);
     Bus::fake();
-    $user = User::factory()->create();
+    $user = User::factory()->onboarded()->create();
     Transaction::factory()->plaintext()->create([
         'user_id' => $user->id,
         'category_id' => null,

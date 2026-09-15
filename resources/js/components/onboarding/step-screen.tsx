@@ -1,8 +1,10 @@
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
-import { type PropsWithChildren, type ReactNode } from 'react';
+import { Fragment, type PropsWithChildren, type ReactNode } from 'react';
 
 interface StepScreenProps {
+    /** Sits above the title — the logo of the bank a screen is about. */
+    icon?: ReactNode;
     title?: ReactNode;
     description?: ReactNode;
     /** Rendered in the action area: pinned to the bottom on phones, inline on desktop. */
@@ -18,6 +20,7 @@ interface StepScreenProps {
  * supporting line, the content, and the action pinned within thumb reach.
  */
 export function StepScreen({
+    icon,
     title,
     description,
     footer,
@@ -40,10 +43,18 @@ export function StepScreen({
                     className={cn(
                         'flex flex-1 flex-col gap-7 pt-3 md:pt-0',
                         align === 'center' ? 'justify-center' : 'md:flex-none',
+                        // The footer below is opaque and pinned to the bottom of
+                        // the phone viewport for the whole scroll, so whatever
+                        // ends up behind it is only readable at the very end of
+                        // the scroll — on the AI gate at 390px that was the
+                        // sentence arguing for the free path, on the screen that
+                        // asks for money. This is the room to scroll it clear.
+                        footer && 'pb-8 md:pb-0',
                     )}
                 >
-                    {(title || description) && (
+                    {(icon || title || description) && (
                         <div className="flex flex-col gap-2.5">
+                            {icon && <div className="pb-1.5">{icon}</div>}
                             {title && (
                                 <h1 className="text-3xl leading-[1.14] font-semibold tracking-tight text-balance md:text-[2rem]">
                                     {title}
@@ -98,6 +109,66 @@ export function StepNote({
         >
             {children}
         </p>
+    );
+}
+
+/**
+ * The muted block that carries a caveat worth reading but not acting on — what
+ * a connection will not bring in, what a failure did not leave behind.
+ */
+export function StepCallout({ children }: PropsWithChildren) {
+    return (
+        <p className="rounded-lg bg-muted px-4.5 py-4 text-sm leading-normal text-pretty text-muted-foreground">
+            {children}
+        </p>
+    );
+}
+
+/**
+ * A sentence with the user's own values set into it, each carrying whatever
+ * emphasis it was handed. Written as a single translatable string with the
+ * values left as placeholders (`:gap`, `:total`) and split out after
+ * translation, so each one lands where the sentence puts it in every language
+ * rather than at a fixed position in the English.
+ */
+export function StepFilled({
+    sentence,
+    values,
+}: {
+    sentence: string;
+    values: Record<string, ReactNode>;
+}) {
+    return sentence.split(/(:\w+)/).map((part, index) => {
+        const name = part.slice(1);
+
+        return part.startsWith(':') && name in values ? (
+            <Fragment key={index}>{values[name]}</Fragment>
+        ) : (
+            part
+        );
+    });
+}
+
+/**
+ * The common case of the above: one emphasised word, one placeholder, whatever
+ * the placeholder happens to be called.
+ */
+export function StepEmphasis({
+    sentence,
+    word,
+}: {
+    sentence: string;
+    word: string;
+}) {
+    return (
+        <StepFilled
+            sentence={sentence}
+            values={{
+                [sentence.match(/:(\w+)/)?.[1] ?? '']: (
+                    <span className="font-medium text-foreground">{word}</span>
+                ),
+            }}
+        />
     );
 }
 

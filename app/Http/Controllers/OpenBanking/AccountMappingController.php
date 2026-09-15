@@ -34,15 +34,6 @@ class AccountMappingController extends Controller
             return redirect()->route($redirect, $params);
         }
 
-        // During onboarding, skip the mapping UI — auto-create all accounts directly
-        if (! $user->isOnboarded()) {
-            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
-            SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Connect);
-
-            return redirect()->route('onboarding', ['step' => 'create-account'])
-                ->with('success', 'Bank account connected successfully.');
-        }
-
         $mappableAccounts = $connection->mappablePendingAccounts();
 
         // Nothing the bank gave us can be mapped, so there is no decision left for the
@@ -51,8 +42,19 @@ class AccountMappingController extends Controller
         if ($mappableAccounts === []) {
             $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
 
-            return redirect()->route('settings.connections.index')
+            $route = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+            $params = $user->isOnboarded() ? [] : ['step' => 'create-account'];
+
+            return redirect()->route($route, $params)
                 ->with('error', __('Your bank did not provide an identifier for any of its accounts, so they cannot be synced.'));
+        }
+
+        // During onboarding the accounts hub renders the chooser itself, so there
+        // is no separate mapping screen to show. It used to take every account the
+        // bank offered without asking, which is how a joint account nobody wanted
+        // in their first picture ended up in it.
+        if (! $user->isOnboarded()) {
+            return redirect()->route('onboarding', ['step' => 'create-account']);
         }
 
         $existingAccounts = $user

@@ -21,6 +21,9 @@ use Laravel\Cashier\Checkout;
 
 class SubscriptionController extends Controller
 {
+    /** Where a checkout started mid-onboarding comes back to. */
+    private const RETURN_SESSION_KEY = 'subscription.onboarding_return';
+
     public function __construct(
         private ExperimentOffer $experimentOffer,
         private DiscordWebhook $discord,
@@ -54,6 +57,37 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * The confirmation in front of the free plan, as a screen of its own rather
+     * than a dialog: it is the one irreversible thing the paywall offers, and
+     * what it costs is specific to this user — their banks by name, their
+     * movements by count. A dialog cannot hold that and stays vague instead.
+     *
+     * A user with nothing connected is not asked to confirm giving up nothing:
+     * the paywall walks them straight out to the dashboard.
+     */
+    public function freePlanConfirm(Request $request): Response|RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($user->hasProPlan() || ! $user->canEscapeToFreePlan()) {
+            return redirect()->route('subscribe');
+        }
+
+        $connections = $user->bankingConnections()->pluck('aspsp_name')->filter()->unique()->values();
+
+        if ($connections->isEmpty() && ! $user->hasActiveAiConsent()) {
+            return redirect()->route('dashboard');
+        }
+
+        return Inertia::render('subscription/free-plan', [
+            'banks' => $connections,
+            'transactionsCount' => $user->transactions()->count(),
+            'hasAiConsent' => $user->hasActiveAiConsent(),
+        ]);
+    }
+
+    /**
      * Take the user down to the free plan by giving up what the paid plan
      * gates: every banking connection is disconnected and the AI consent is
      * revoked, which is the whole of `App\Enums\PlanFeature`.
@@ -83,7 +117,12 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int}
+     * What the user already has here, which is the whole of the argument a
+     * former subscriber's screen makes: the movements and rules are still
+     * theirs, the accounts are the ones that stopped moving, and the date is
+     * when they did.
+     *
+     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int, rulesCount: int, connectionsCount: int, endedAt: ?string}
      */
     private function getUserStats(User $user): array
     {
@@ -91,6 +130,9 @@ class SubscriptionController extends Controller
             'accountsCount' => $user->accounts()->count(),
             'transactionsCount' => $user->transactions()->count(),
             'categoriesCount' => $user->categories()->count(),
+            'rulesCount' => $user->automationRules()->count(),
+            'connectionsCount' => $user->bankingConnections()->count(),
+            'endedAt' => $user->subscription('default')?->ends_at?->toIso8601String(),
         ];
     }
 
@@ -129,12 +171,35 @@ class SubscriptionController extends Controller
         // PersistUpsellSourceFromStripe).
         if ($source = UpsellSource::tryFrom((string) $request->query('source', ''))) {
             $subscriptionBuilder->withMetadata(['upsell_source' => $source->value]);
+            $this->rememberCheckoutIntent($request, $source);
         }
 
         return $subscriptionBuilder->checkout([
             'success_url' => route('subscribe.success'),
             'cancel_url' => route('subscribe.cancel'),
         ]);
+    }
+
+    /**
+     * The two things a checkout started from an onboarding gate carries over
+     * Stripe and back: the AI consent that gate disclosed and grouped with the
+     * purchase, and the step to drop the user back on.
+     *
+     * The consent is recorded here rather than on the way back because here is
+     * where the user gave it — they read the row and pressed the button. It is
+     * inert without a plan (every AI path checks the plan first), and recording
+     * it is idempotent, so an abandoned checkout leaves nothing behind but a
+     * consent that only takes effect if they ever do pay.
+     */
+    private function rememberCheckoutIntent(Request $request, UpsellSource $source): void
+    {
+        if ($source->grantsAiConsent()) {
+            $request->user()->recordAiConsent();
+        }
+
+        if ($return = $source->onboardingReturn()) {
+            $request->session()->put(self::RETURN_SESSION_KEY, $return);
+        }
     }
 
     /**
@@ -195,9 +260,22 @@ class SubscriptionController extends Controller
         return $promotionCodes->data[0]->id ?? null;
     }
 
-    public function success(): Response
+    /**
+     * Stripe's landing page, and the only place that waits for the subscription
+     * to actually exist locally. A user who paid mid-onboarding is sent back
+     * into it from here rather than straight from Stripe: the webhook has not
+     * necessarily landed yet, and returning to the wizard a second too early
+     * would show them the gate they just paid to get past.
+     */
+    public function success(Request $request): Response
     {
-        return Inertia::render('subscription/success');
+        $return = $request->session()->pull(self::RETURN_SESSION_KEY);
+
+        return Inertia::render('subscription/success', [
+            'continueUrl' => is_array($return) && ! $request->user()->isOnboarded()
+                ? route('onboarding', $return)
+                : null,
+        ]);
     }
 
     public function cancel(): RedirectResponse

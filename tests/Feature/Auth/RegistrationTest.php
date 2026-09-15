@@ -162,3 +162,29 @@ test('new users can register with the email of a deleted user', function () {
         ->and(User::withTrashed()->find($deletedUser->id)?->email)
         ->toBe('20260422100956_test@example.com');
 });
+
+test('new users are quoted in the currency of the region their browser asks for', function (string $header, string $formatLocale, string $currency) {
+    Queue::fake();
+
+    $this->withHeader('Accept-Language', $header)->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    // Steps 4 and 5 of onboarding echo an amount back before any account
+    // exists, so the column default alone had a Spaniard reading "1.200 US$".
+    expect(User::where('email', 'test@example.com')->first())
+        ->format_locale->toBe($formatLocale)
+        ->currency_code->toBe($currency);
+})->with([
+    'a Spanish browser' => ['es-ES,es;q=0.9', 'es-ES', 'EUR'],
+    'a Mexican one' => ['es-MX,es;q=0.9', 'es-MX', 'MXN'],
+    'a British one' => ['en-GB,en;q=0.9', 'en-GB', 'GBP'],
+    // Not a country, so there is no currency to read off it: the column's own
+    // default stands.
+    'Spanish (Latin America)' => ['es-419,es;q=0.9', 'es-419', 'USD'],
+    'a region that shares the euro' => ['de-DE,de;q=0.9', 'de-DE', 'EUR'],
+    'nothing we recognize' => ['ko-KR,ko;q=0.9', 'en-US', 'USD'],
+]);

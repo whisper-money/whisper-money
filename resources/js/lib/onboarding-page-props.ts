@@ -7,10 +7,14 @@ import { type PricingConfig } from '@/types/pricing';
 export const pageProps: {
     locale: string;
     subscriptionsEnabled: boolean;
+    auth: { hasProPlan: boolean };
     pricing: PricingConfig;
 } = {
     locale: 'en',
     subscriptionsEnabled: true,
+    // Overwritten per test: whether there is a plan behind the user decides
+    // whether a step shows its gate or the thing the gate is in front of.
+    auth: { hasProPlan: false },
     pricing: {
         plans: {
             yearly: {
@@ -27,5 +31,6 @@ export const pageProps: {
         bestValuePlan: 'yearly',
         promo: { enabled: false, code: '', description: '', badge: '' },
         currency: 'EUR',
+        refundWindowDays: 3,
     },
 };

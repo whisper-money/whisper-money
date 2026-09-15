@@ -108,6 +108,9 @@ class HandleInertiaRequests extends Middleware
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),
                 'currency' => strtoupper(config('cashier.currency', 'eur')),
+                // The way back out of an upfront charge, and so part of every
+                // screen that asks for one — the gates, the paywall and billing.
+                'refundWindowDays' => (int) config('subscriptions.experiment.refund_window_days', 3),
             ],
             'chartColorScheme' => $user?->setting?->chart_color_scheme->value ?? 'colorful',
             'includeLoansInNetWorthChart' => $user?->setting->include_loans_in_net_worth_chart ?? true,
@@ -163,13 +166,16 @@ class HandleInertiaRequests extends Middleware
     /**
      * The two medals the chrome puts in front of the reader rather than waiting
      * to be looked up: the visit streak in the header, and what is left to
-     * categorize this month. Null for guests.
+     * categorize this month. Null for guests and for readers still onboarding,
+     * for the same reason the bell below is: the wizard is not the app's chrome,
+     * and the toasts these feed render over whatever step the reader is on —
+     * one of them landed on top of the reveal's own button.
      *
      * @return array<string, mixed>|null
      */
     private function challengesFor(?User $user): ?array
     {
-        if ($user === null) {
+        if ($user === null || ! $user->isOnboarded()) {
             return null;
         }
 

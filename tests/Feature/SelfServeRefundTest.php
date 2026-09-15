@@ -21,7 +21,7 @@ beforeEach(function () {
         'subscriptions.experiment.started_at' => '2026-06-01',
         'subscriptions.experiment.refund_window_days' => 3,
         'subscriptions.experiment.variants' => [
-            'baseline' => [],
+            'baseline' => ['trial_days' => ['monthly' => 7, 'yearly' => 15]],
             'upfront' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
         ],
     ]);
@@ -75,18 +75,23 @@ it('blocks a self-refund for variants that still get a trial', function () {
     expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
 });
 
-it('blocks a self-refund for a legacy user', function () {
+/**
+ * The plans themselves now charge in full at signup, so "no variant" is an
+ * upfront payer and the money-back window is what the gates promise them. This
+ * replaces the rule that read the other way round, back when the plans carried
+ * a trial and only an experiment variant could take it away: with the trial
+ * gone from the plans, refusing legacy would leave the paying majority charged
+ * upfront with no way back out.
+ */
+it('opens the refund window for a legacy user, because the plan charges upfront', function () {
     $user = payNowSubscriber();
     Feature::for($user)->activate(SubscriptionExperiment::class, SubscriptionExperiment::LEGACY);
 
-    expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
+    expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeTrue();
 });
 
-it('does not open the refund window for a legacy user just because a plan has no trial', function () {
-    // "Charges upfront" is a property of the variant, not of the plan config. A
-    // plan set to trial_days 0 for everyone is a pricing decision that comes with
-    // no money-back promise, so it must not hand the whole user base a refund.
-    config(['subscriptions.plans.monthly.trial_days' => 0, 'subscriptions.plans.yearly.trial_days' => 0]);
+it('closes it again for a legacy user once a plan gets a trial back', function () {
+    config(['subscriptions.plans.monthly.trial_days' => 7]);
 
     $user = payNowSubscriber();
     Feature::for($user)->activate(SubscriptionExperiment::class, SubscriptionExperiment::LEGACY);

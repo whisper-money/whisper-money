@@ -50,12 +50,10 @@ describe('StepImportBalances', () => {
     });
 
     it('keeps the user on the step when the balance could not be saved', async () => {
-        global.fetch = vi
-            .fn()
-            .mockResolvedValue({
-                ok: false,
-                status: 422,
-            }) as unknown as typeof fetch;
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 422,
+        }) as unknown as typeof fetch;
         const onComplete = vi.fn();
 
         render(

@@ -89,7 +89,7 @@ describe('AiSuggestionCard when the match preview fails', () => {
         await renderWithEditedToken();
 
         expect(post).toHaveBeenCalled();
-        expect(screen.queryByText('42 matches')).not.toBeInTheDocument();
-        expect(screen.getByText('? matches')).toBeInTheDocument();
+        expect(screen.queryByText('42 movements')).not.toBeInTheDocument();
+        expect(screen.getByText('? movements')).toBeInTheDocument();
     });
 });

@@ -107,7 +107,11 @@ test('show redirects if no pending accounts', function () {
     $response->assertRedirect(route('settings.connections.index'));
 });
 
-test('show auto-creates pending accounts and updates currency during onboarding', function () {
+// The accounts hub renders the chooser itself now, so this screen has nothing
+// to show an onboarding user. It used to take every account the bank offered
+// without asking, which is how a joint account nobody wanted in their first
+// picture ended up in it.
+test('show hands an onboarding user back to the accounts hub without creating anything', function () {
     Queue::fake();
 
     $user = User::factory()->notOnboarded()->create(['currency_code' => 'USD']);
@@ -127,16 +131,33 @@ test('show auto-creates pending accounts and updates currency during onboarding'
         ->get(route('open-banking.map-accounts', $connection))
         ->assertRedirect(route('onboarding', ['step' => 'create-account']));
 
-    expect($user->refresh()->currency_code)->toBe('EUR');
+    // Still pending, so `OnboardingController::pendingMapping` can offer it.
+    expect($connection->refresh()->pending_accounts_data)->not->toBeNull();
+    expect($user->refresh()->currency_code)->toBe('USD');
 
-    $this->assertDatabaseHas('accounts', [
-        'user_id' => $user->id,
+    $this->assertDatabaseMissing('accounts', [
         'banking_connection_id' => $connection->id,
-        'external_account_id' => 'ext-1',
-        'currency_code' => 'EUR',
     ]);
 
-    Queue::assertPushed(SyncBankingConnectionJob::class);
+    Queue::assertNotPushed(SyncBankingConnectionJob::class);
+});
+
+// The other half: nothing mappable is not a decision, so it is not handed to a
+// chooser that would render an empty list and no way forward.
+test('show closes an unmappable connection during onboarding instead of offering a choice', function () {
+    $user = User::factory()->notOnboarded()->create();
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'pending_accounts_data' => [['currency' => 'EUR', 'name' => 'No identifier']],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('open-banking.map-accounts', $connection))
+        ->assertRedirect(route('onboarding', ['step' => 'create-account']))
+        ->assertSessionHas('error');
+
+    expect($connection->refresh()->pending_accounts_data)->toBeNull();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
 });
 
 test('show returns 403 for other user\'s connection', function () {

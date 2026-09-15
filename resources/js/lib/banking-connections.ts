@@ -109,3 +109,15 @@ export function isExpiringSoon(connection: BankingConnection): boolean {
 export function canSyncManually(connection: BankingConnection): boolean {
     return connection.can_sync_manually !== false;
 }
+
+/**
+ * Banks don't always report a usable currency: EnableBanking sends XXX, the ISO
+ * 4217 code for "no currency". Treat that as unknown rather than as a real code.
+ */
+export function usableCurrency(
+    reported: string | null | undefined,
+): string | null {
+    const currency = (reported ?? '').trim().toUpperCase();
+
+    return currency === '' || currency === 'XXX' ? null : currency;
+}
