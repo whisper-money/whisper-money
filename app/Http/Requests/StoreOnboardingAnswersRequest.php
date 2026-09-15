@@ -14,7 +14,7 @@ class StoreOnboardingAnswersRequest extends FormRequest
      *
      * @var array<string, list<string>>
      */
-    public const CHOICES = [
+    private const CHOICES = [
         'goal' => ['keep-more', 'understand', 'debt', 'save-for'],
         'today' => ['head', 'spreadsheet', 'another-app', 'none'],
     ];

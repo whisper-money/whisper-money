@@ -1,5 +1,23 @@
 <?php
 
+use App\Support\PriceTiers;
+
+/*
+|--------------------------------------------------------------------------
+| Price Tier
+|--------------------------------------------------------------------------
+|
+| Which of the pre-declared price tiers the app quotes and charges. `high` is
+| the current price; `low` is the pre-experiment one. The tier supplies the
+| displayed price, the struck-through price and the Stripe lookup key as one
+| unit, so what is shown is always what is charged (env-only, no deploy —
+| `php artisan config:clear` after changing it). An unknown value falls back
+| to `high`. The tiers themselves live in `App\Support\PriceTiers`.
+|
+*/
+
+$tier = PriceTiers::plansFor(env('SUBSCRIPTION_PRICE_TIER', PriceTiers::DEFAULT));
+
 return [
 
     /*
@@ -23,9 +41,9 @@ return [
     | A/B test on how the paid plan is offered. Users who register on or after
     | `started_at` are split evenly across `variants` by a stable hash of their
     | id; everyone who registered earlier stays "legacy" and keeps the plan
-    | defaults. While `started_at` is null, or no variant is declared, the
-    | experiment is off and every user is legacy — this block is inert until an
-    | experiment fills it in.
+    | defaults. While `started_at` is null or blank, or no variant is declared,
+    | the experiment is off and every user is legacy — this block is inert until
+    | an experiment fills it in.
     |
     | Each variant may override `trial_days` per plan. A variant whose trial is
     | 0 on every plan charges upfront, which is what opens the self-service
@@ -49,7 +67,12 @@ return [
     */
 
     'experiment' => [
-        'started_at' => env('SUBSCRIPTION_EXPERIMENT_STARTED_AT'),
+        // `?:`, not `env()`'s default: a variable that is present but blank
+        // yields '' rather than null, and '' would read as a declared start
+        // date — every user assigned to an arm the moment the key exists in a
+        // hosting panel. Blanking the value is the ordinary way to leave the
+        // experiment off, so it has to mean the same as removing the line.
+        'started_at' => env('SUBSCRIPTION_EXPERIMENT_STARTED_AT') ?: null,
         // Once a winner is chosen, set this to one of the variant keys to give
         // every user that variant and end the split (env-only, no deploy).
         'force_variant' => env('SUBSCRIPTION_EXPERIMENT_FORCE_VARIANT'),
@@ -116,20 +139,32 @@ return [
     | ends. Raising it here reverts that for everyone; the `trial` experiment
     | variant is how to put a trial in front of half the signups instead.
     |
-    | The lookup keys still carry the `_high` suffix they were given as the price
-    | experiment's variant tier, which won and became the only price. Renaming
-    | them would make `stripe:sync-prices` transfer the key onto a fresh price and
-    | move every live subscription's key for a cosmetic gain; the suffix is an
-    | internal identifier no user ever sees.
+    | `price`, `original_price` and `stripe_lookup_key` all come from the tier
+    | selected above and move as one unit — never hardcode one of them here, or
+    | the price shown stops matching the price Stripe charges. Overriding
+    | `STRIPE_PRO_*_LOOKUP_KEY` breaks that welding too, so only do it for a key
+    | that genuinely differs per environment.
+    |
+    | Those overrides fall back with `?:`, not with `env()`'s default, because a
+    | variable that is present but blank yields '' rather than the default — and
+    | an empty lookup key makes checkout abort with "Invalid plan selected" for
+    | everyone. Blanking the value in a hosting panel is the ordinary way to
+    | clear an override, so it has to mean the same as removing the line.
+    |
+    | The default tier's lookup keys still carry the `_high` suffix they were
+    | given as the price experiment's variant tier, which won and became the
+    | default price. Renaming them would make `stripe:sync-prices` transfer the
+    | key onto a fresh price and move every live subscription's key for a
+    | cosmetic gain; the suffix is an internal identifier no user ever sees.
     |
     */
 
     'plans' => [
         'monthly' => [
             'name' => 'Standard Monthly',
-            'price' => 8.99,
-            'original_price' => null,
-            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly_high'),
+            'price' => $tier['monthly']['price'],
+            'original_price' => $tier['monthly']['original_price'],
+            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY') ?: $tier['monthly']['stripe_lookup_key'],
             'billing_period' => 'month',
             'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 0),
             'features' => [
@@ -146,9 +181,9 @@ return [
         ],
         'yearly' => [
             'name' => 'Standard Yearly',
-            'price' => 53.94,
-            'original_price' => 107.88,
-            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly_high'),
+            'price' => $tier['yearly']['price'],
+            'original_price' => $tier['yearly']['original_price'],
+            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY') ?: $tier['yearly']['stripe_lookup_key'],
             'billing_period' => 'year',
             'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 0),
             'features' => [

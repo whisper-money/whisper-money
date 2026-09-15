@@ -47,8 +47,8 @@ it('walks the first steps on a phone with the action pinned to the footer', func
         ->click("Let's go")
         ->wait(1)
         ->assertSee("Let's build the picture")
-        // The row leads to the gate now, and the gate is where the plan
-        // starts — the old "you'll choose a plan at the end" went with it.
+        // The row names the price; the plan itself is bought at the gate behind
+        // it, not chosen at the end of the flow.
         ->assertSee('Standard plan, from')
         ->click('Add one myself')
         ->wait(1)

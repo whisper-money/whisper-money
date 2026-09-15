@@ -54,8 +54,15 @@ class AppServiceProvider extends ServiceProvider
         // type-hint). Do not also register them explicitly here — doing both
         // registers every listener twice, so each queued listener is dispatched
         // twice per event.
+
+        // SES allows this account 10 sends per second (and 50,000 a day), and
+        // throttles anything above it. Every mailable and job on the `emails`
+        // queue passes through here, so a bulk campaign shares this bucket with
+        // transactional mail: bank failures, budget alerts, the drip series.
+        // Raising it past 10 does not send faster, it just makes SES start
+        // rejecting. At 10/s a 4,600-email campaign clears in under 8 minutes.
         RateLimiter::for('emails', function (object $job): Limit {
-            return Limit::perSecond(30);
+            return Limit::perSecond(10);
         });
 
         // MCP requests are throttled per authenticated user. The shared accounts

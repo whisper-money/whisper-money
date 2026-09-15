@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
     addDescriptionMatchToRuleStructure,
     buildJsonLogic,
+    type Condition,
     createDescriptionCondition,
+    type Operator,
+    parseJsonLogic,
     type RuleStructure,
 } from './rule-builder-utils';
 
@@ -157,6 +160,141 @@ describe('addDescriptionMatchToRuleStructure', () => {
                     ],
                 },
             ],
+        });
+    });
+});
+
+describe('negative text operators', () => {
+    function singleCondition(
+        field: string,
+        operator: Operator,
+        value: string,
+    ): RuleStructure {
+        return {
+            groupOperator: 'and',
+            groups: [
+                {
+                    id: 'group-1',
+                    operator: 'and',
+                    conditions: [{ id: 'condition-1', field, operator, value }],
+                },
+            ],
+        };
+    }
+
+    function firstCondition(structure: RuleStructure): Condition {
+        return structure.groups[0].conditions[0];
+    }
+
+    it.each([
+        [
+            'not_contains' as Operator,
+            { '!': { in: ['tarjeta visa', { var: 'description' }] } },
+        ],
+        [
+            'not_equals' as Operator,
+            { '!=': [{ var: 'description' }, 'tarjeta visa'] },
+        ],
+    ])('builds %s into JsonLogic', (operator, expected) => {
+        expect(
+            buildJsonLogic(
+                singleCondition('description', operator, 'tarjeta visa'),
+            ),
+        ).toEqual(expected);
+    });
+
+    it.each<Operator>(['contains', 'not_contains', 'equals', 'not_equals'])(
+        'round-trips a %s condition through build and parse',
+        (operator) => {
+            const built = buildJsonLogic(
+                singleCondition('creditor_name', operator, 'tarjeta visa'),
+            );
+
+            expect(firstCondition(parseJsonLogic(built))).toMatchObject({
+                field: 'creditor_name',
+                operator,
+                value: 'tarjeta visa',
+            });
+        },
+    );
+
+    // The exception the operators exist for: "contains X but not Y", which only
+    // works if the AND group survives the trip back through parseJsonLogic.
+    it('round-trips an exception rule', () => {
+        const structure: RuleStructure = {
+            groupOperator: 'and',
+            groups: [
+                {
+                    id: 'group-1',
+                    operator: 'and',
+                    conditions: [
+                        {
+                            id: 'condition-1',
+                            field: 'description',
+                            operator: 'contains',
+                            value: 'palabra clave',
+                        },
+                        {
+                            id: 'condition-2',
+                            field: 'description',
+                            operator: 'not_contains',
+                            value: 'tarjeta visa',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const jsonLogic = buildJsonLogic(structure);
+
+        expect(jsonLogic).toEqual({
+            and: [
+                { in: ['palabra clave', { var: 'description' }] },
+                { '!': { in: ['tarjeta visa', { var: 'description' }] } },
+            ],
+        });
+
+        const parsed = parseJsonLogic(jsonLogic);
+
+        expect(parsed.groups[0].operator).toBe('and');
+        expect(parsed.groups[0].conditions).toMatchObject([
+            {
+                field: 'description',
+                operator: 'contains',
+                value: 'palabra clave',
+            },
+            {
+                field: 'description',
+                operator: 'not_contains',
+                value: 'tarjeta visa',
+            },
+        ]);
+    });
+
+    // json-logic accepts both {"!": node} and {"!": [node]}, and an agent over
+    // MCP can save either, so the builder has to reopen both.
+    it('parses the array form of a negation', () => {
+        const parsed = parseJsonLogic({
+            '!': [{ in: ['tarjeta visa', { var: 'description' }] }],
+        });
+
+        expect(firstCondition(parsed)).toMatchObject({
+            field: 'description',
+            operator: 'not_contains',
+            value: 'tarjeta visa',
+        });
+    });
+
+    // `is_not_empty` is also a `!=`, and it must keep winning over not_equals.
+    it('still parses a null comparison as is not empty', () => {
+        const parsed = parseJsonLogic({
+            '!=': [{ var: 'creditor_name' }, null],
+        });
+
+        expect(firstCondition(parsed)).toMatchObject({
+            field: 'creditor_name',
+            operator: 'is_not_empty',
+            value: '',
         });
     });
 });
