@@ -1,5 +1,5 @@
 import { type TransactionFilters } from '@/types/transaction';
-import { format } from 'date-fns';
+import { formatLocalDate, toLocalDate } from '@/utils/date';
 
 /** Persisted, snake_case representation of a filter set (matches the backend query params). */
 export interface SerializedFilters {
@@ -21,10 +21,10 @@ export function serializeFilters(
     const result: SerializedFilters = {};
 
     if (filters.dateFrom) {
-        result.date_from = format(filters.dateFrom, 'yyyy-MM-dd');
+        result.date_from = formatLocalDate(filters.dateFrom);
     }
     if (filters.dateTo) {
-        result.date_to = format(filters.dateTo, 'yyyy-MM-dd');
+        result.date_to = formatLocalDate(filters.dateTo);
     }
     if (filters.amountMin !== null) {
         result.amount_min = filters.amountMin;
@@ -58,10 +58,8 @@ export function deserializeFilters(
     data: SerializedFilters,
 ): TransactionFilters {
     return {
-        dateFrom: data.date_from
-            ? new Date(data.date_from + 'T00:00:00')
-            : null,
-        dateTo: data.date_to ? new Date(data.date_to + 'T00:00:00') : null,
+        dateFrom: data.date_from ? toLocalDate(data.date_from) : null,
+        dateTo: data.date_to ? toLocalDate(data.date_to) : null,
         amountMin: data.amount_min ?? null,
         amountMax: data.amount_max ?? null,
         categoryIds: data.category_ids ?? [],

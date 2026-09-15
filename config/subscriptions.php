@@ -1,5 +1,23 @@
 <?php
 
+use App\Support\PriceTiers;
+
+/*
+|--------------------------------------------------------------------------
+| Price Tier
+|--------------------------------------------------------------------------
+|
+| Which of the pre-declared price tiers the app quotes and charges. `high` is
+| the current price; `low` is the pre-experiment one. The tier supplies the
+| displayed price, the struck-through price and the Stripe lookup key as one
+| unit, so what is shown is always what is charged (env-only, no deploy —
+| `php artisan config:clear` after changing it). An unknown value falls back
+| to `high`. The tiers themselves live in `App\Support\PriceTiers`.
+|
+*/
+
+$tier = PriceTiers::plansFor(env('SUBSCRIPTION_PRICE_TIER', PriceTiers::DEFAULT));
+
 return [
 
     /*
@@ -116,20 +134,32 @@ return [
     | ends. Raising it here reverts that for everyone; the `trial` experiment
     | variant is how to put a trial in front of half the signups instead.
     |
-    | The lookup keys still carry the `_high` suffix they were given as the price
-    | experiment's variant tier, which won and became the only price. Renaming
-    | them would make `stripe:sync-prices` transfer the key onto a fresh price and
-    | move every live subscription's key for a cosmetic gain; the suffix is an
-    | internal identifier no user ever sees.
+    | `price`, `original_price` and `stripe_lookup_key` all come from the tier
+    | selected above and move as one unit — never hardcode one of them here, or
+    | the price shown stops matching the price Stripe charges. Overriding
+    | `STRIPE_PRO_*_LOOKUP_KEY` breaks that welding too, so only do it for a key
+    | that genuinely differs per environment.
+    |
+    | Those overrides fall back with `?:`, not with `env()`'s default, because a
+    | variable that is present but blank yields '' rather than the default — and
+    | an empty lookup key makes checkout abort with "Invalid plan selected" for
+    | everyone. Blanking the value in a hosting panel is the ordinary way to
+    | clear an override, so it has to mean the same as removing the line.
+    |
+    | The default tier's lookup keys still carry the `_high` suffix they were
+    | given as the price experiment's variant tier, which won and became the
+    | default price. Renaming them would make `stripe:sync-prices` transfer the
+    | key onto a fresh price and move every live subscription's key for a
+    | cosmetic gain; the suffix is an internal identifier no user ever sees.
     |
     */
 
     'plans' => [
         'monthly' => [
             'name' => 'Standard Monthly',
-            'price' => 8.99,
-            'original_price' => null,
-            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly_high'),
+            'price' => $tier['monthly']['price'],
+            'original_price' => $tier['monthly']['original_price'],
+            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY') ?: $tier['monthly']['stripe_lookup_key'],
             'billing_period' => 'month',
             'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 0),
             'features' => [
@@ -146,9 +176,9 @@ return [
         ],
         'yearly' => [
             'name' => 'Standard Yearly',
-            'price' => 53.94,
-            'original_price' => 107.88,
-            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly_high'),
+            'price' => $tier['yearly']['price'],
+            'original_price' => $tier['yearly']['original_price'],
+            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY') ?: $tier['yearly']['stripe_lookup_key'],
             'billing_period' => 'year',
             'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 0),
             'features' => [

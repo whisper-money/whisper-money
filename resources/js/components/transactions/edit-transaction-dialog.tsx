@@ -48,7 +48,7 @@ import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { formatCurrency, toMajorUnits, toMinorUnits } from '@/utils/currency';
-import { formatDate } from '@/utils/date';
+import { formatDate, todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
@@ -240,7 +240,7 @@ export function EditTransactionDialog({
             setNotes(transaction.decryptedNotes || '');
             setShowNotes(!!transaction.decryptedNotes);
         } else if (mode === 'create' && open) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = todayDateString();
             setTransactionDate(today);
             setDescription('');
             setUnsignedAmount(0);

@@ -25,7 +25,7 @@ class UpdateAutomationRule extends WriteTool
             'automation_rule_id' => $schema->string()->description('Id of the automation rule to edit.')->required(),
             'title' => $schema->string()->description('New rule name.'),
             'priority' => $schema->integer()->min(0)->description('New priority (lower is evaluated first).'),
-            'rules_json' => $schema->object()->description('New JsonLogic condition object.'),
+            'rules_json' => $schema->object()->description('Replacement condition object (it replaces the rule\'s conditions entirely). '.$this->rulesJsonDescription()),
             'action_category_id' => $schema->string()->description('New category id to assign, or null to clear.'),
             'action_label_ids' => $schema->array()->items($schema->string())->description('Replacement set of label ids (replaces all existing labels).'),
             'action_note' => $schema->string()->description('New note to append, or null to clear.'),
