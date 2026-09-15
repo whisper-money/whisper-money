@@ -18,7 +18,7 @@ use function Pest\Laravel\actingAs;
  * that adds up to €1,847 against a €1,200 guess, and nine subscriptions that
  * have charged the same amount three months running.
  */
-function revealUser(int $guess): User
+function userWhoGuessed(int $guess): User
 {
     return User::factory()->notOnboarded()->create([
         'email_verified_at' => now(),
@@ -83,7 +83,7 @@ const ODDS_AND_ENDS = [
 ];
 
 it('captures the answer to the guess the flow opened with', function () {
-    $user = revealUser(120000);
+    $user = userWhoGuessed(120000);
     $account = Account::factory()->for($user)->create([
         'name' => 'Cuenta Nómina',
         'type' => 'checking',
@@ -140,7 +140,7 @@ it('captures the answer to the guess the flow opened with', function () {
 });
 
 it('captures what someone with no movements gets instead', function () {
-    $user = revealUser(120000);
+    $user = userWhoGuessed(120000);
 
     $pension = Account::factory()->for($user)->create([
         'name' => 'Plan de pensiones',
@@ -190,7 +190,7 @@ it('captures what someone with no movements gets instead', function () {
  * misses this way", which is a compliment nobody earned.
  */
 it('captures the month that has not finished, without a verdict on it', function () {
-    $user = revealUser(120000);
+    $user = userWhoGuessed(120000);
     $account = Account::factory()->for($user)->create([
         'name' => 'Cuenta Nómina',
         'type' => 'checking',
