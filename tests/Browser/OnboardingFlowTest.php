@@ -74,7 +74,7 @@ it('syncs user currency from first onboarding account after signup', function ()
         ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
-        ->click('Create Account')
+        ->click('Add this account')
         ->wait(5)
         ->assertNoJavascriptErrors();
 
@@ -423,7 +423,7 @@ it('creates a real estate account during onboarding by default', function () {
         ->wait(1)
         ->click('[role="option"]:has-text("Residential")')
         ->wait(1)
-        ->click('Create Account')
+        ->click('Add this account')
         ->wait(5)
         ->assertNoJavascriptErrors();
 
@@ -503,7 +503,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
-        ->click('Create Account')
+        ->click('Add this account')
         ->wait(5);
 
     // The import is screens of the flow now, and the only account that can take

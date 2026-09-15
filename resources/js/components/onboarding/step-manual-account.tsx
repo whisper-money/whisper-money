@@ -242,15 +242,17 @@ export function StepManualAccount({
         <StepScreen
             title={
                 isFirstAccount
-                    ? __('Create an Account')
-                    : __('Add Another Account')
+                    ? __('Add it yourself')
+                    : __('What else should be in the picture?')
             }
             description={
                 isFirstAccount
                     ? __(
-                          "Let's set up your first account to start tracking your finances.",
+                          'Name it, say what it is, and what it’s worth today. That is the whole form.',
                       )
-                    : __('Add another account to track more of your finances.')
+                    : __(
+                          'Another account, a mortgage, a pension, a cash pot — the same three answers as before.',
+                      )
             }
             footer={
                 <>
@@ -259,8 +261,8 @@ export function StepManualAccount({
                         form="onboarding-account"
                         disabled={isSubmitting}
                         loading={isSubmitting}
-                        loadingText={__('Creating...')}
-                        text={__('Create Account')}
+                        loadingText={__('Adding…')}
+                        text={__('Add this account')}
                     />
                     {onBack && (
                         <StepButton

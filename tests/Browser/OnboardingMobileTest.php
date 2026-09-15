@@ -50,7 +50,7 @@ it('walks the first steps on a phone with the action pinned to the footer', func
         ->assertSee("You'll choose a plan at the end of the onboarding.")
         ->click('Add one myself')
         ->wait(1)
-        ->assertSee('Create an Account')
+        ->assertSee('Add it yourself')
         ->assertNoJavascriptErrors();
 });
 
