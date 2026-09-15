@@ -21,6 +21,17 @@ class StartCategorizationBackfill
      */
     public function handle(User $user): ?array
     {
+        // Onboarding has its own pass, and it runs later on purpose:
+        // `OnboardingController::categorize` fires it when the user leaves the
+        // AI step, after the rules that step drafted have been seen and
+        // approved. Consent is recorded on that same step, so without this
+        // guard granting it categorized the whole import while the user was
+        // still reading "Nothing is applied that you haven't seen on the next
+        // screen" — and queued a second batch behind it.
+        if (! $user->isOnboarded()) {
+            return null;
+        }
+
         if (! $this->gate->allows($user)) {
             return null;
         }
