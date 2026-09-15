@@ -685,6 +685,61 @@ it('creates, updates and deletes an automation rule', function () {
     expect(AutomationRule::query()->find($rule->id))->toBeNull();
 });
 
+it('accepts an exception rule built from and, or and a negation', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Shopping']);
+
+    callWriteTool($user, CreateAutomationRule::class, [
+        'title' => 'Amazon except Prime',
+        'priority' => 0,
+        'rules_json' => ['and' => [
+            ['or' => [
+                ['in' => ['amazon', ['var' => 'description']]],
+                ['in' => ['amazon', ['var' => 'creditor_name']]],
+            ]],
+            ['!' => ['in' => ['amazon prime', ['var' => 'description']]]],
+            ['<' => [['var' => 'amount'], 0]],
+        ]],
+        'action_category_id' => $category->id,
+    ])->assertOk()->assertSee('Amazon except Prime');
+
+    expect($user->automationRules()->where('title', 'Amazon except Prime')->exists())->toBeTrue();
+});
+
+// A rule that never matches anything saves happily and then fails silently, so
+// the write tools name what they accept instead of letting the agent guess.
+it('rejects a rule whose variable or operator the engine cannot evaluate', function (array $rulesJson, string $expected) {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, CreateAutomationRule::class, [
+        'title' => 'Broken rule',
+        'priority' => 0,
+        'rules_json' => $rulesJson,
+        'action_category_id' => $category->id,
+    ])->assertHasErrors([$expected]);
+
+    expect($user->automationRules()->count())->toBe(0);
+})->with([
+    'unknown variable' => [['in' => ['netflix', ['var' => 'merchant']]], 'merchant'],
+    'unknown operator' => [['contains' => [['var' => 'description'], 'netflix']], 'contains'],
+    'nested unknown variable' => [['and' => [['!' => ['in' => ['netflix', ['var' => 'payee']]]]]], 'payee'],
+]);
+
+it('rejects a bare list of conditions that is missing its and/or wrapper', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, CreateAutomationRule::class, [
+        'title' => 'Listed rule',
+        'priority' => 0,
+        'rules_json' => [['in' => ['netflix', ['var' => 'description']]]],
+        'action_category_id' => $category->id,
+    ])->assertHasErrors(['non-empty JsonLogic object']);
+
+    expect($user->automationRules()->count())->toBe(0);
+});
+
 it('requires an automation rule to have at least one action', function () {
     $user = User::factory()->create();
 

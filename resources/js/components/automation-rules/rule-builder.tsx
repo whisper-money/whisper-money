@@ -317,7 +317,9 @@ function ConditionRow({
                     value={condition.operator}
                     onValueChange={handleOperatorChange}
                 >
-                    <SelectTrigger className="w-full sm:w-[140px]">
+                    {/* Wide enough for the longest label ("does not contain"),
+                        which the trigger would otherwise clamp to one clipped line. */}
+                    <SelectTrigger className="w-full sm:w-[170px]">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

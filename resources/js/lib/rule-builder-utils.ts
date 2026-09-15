@@ -2,11 +2,26 @@ export type FieldType = 'string' | 'number';
 
 export type Operator =
     | 'contains'
+    | 'not_contains'
     | 'equals'
+    | 'not_equals'
     | 'greater_than'
     | 'less_than'
     | 'is_empty'
     | 'is_not_empty';
+
+/**
+ * Text operators every string field offers, in the order the builder lists them.
+ * `not_contains` / `not_equals` are how a rule expresses an exception, and they
+ * deliberately match a field that is empty or null — "the description does not
+ * mention Visa" is true for a transaction with no description at all.
+ */
+const TEXT_OPERATORS: Operator[] = [
+    'contains',
+    'not_contains',
+    'equals',
+    'not_equals',
+];
 
 export interface Condition {
     id: string;
@@ -33,7 +48,7 @@ export const FIELD_CONFIG: Record<
     description: {
         label: 'Description',
         type: 'string',
-        operators: ['contains', 'equals'],
+        operators: TEXT_OPERATORS,
     },
     amount: {
         label: 'Amount',
@@ -43,28 +58,30 @@ export const FIELD_CONFIG: Record<
     bank_name: {
         label: 'Bank Name',
         type: 'string',
-        operators: ['contains', 'equals'],
+        operators: TEXT_OPERATORS,
     },
     creditor_name: {
         label: 'Creditor Name',
         type: 'string',
-        operators: ['contains', 'equals', 'is_empty', 'is_not_empty'],
+        operators: [...TEXT_OPERATORS, 'is_empty', 'is_not_empty'],
     },
     debtor_name: {
         label: 'Debtor Name',
         type: 'string',
-        operators: ['contains', 'equals', 'is_empty', 'is_not_empty'],
+        operators: [...TEXT_OPERATORS, 'is_empty', 'is_not_empty'],
     },
     account_name: {
         label: 'Account Name',
         type: 'string',
-        operators: ['contains', 'equals'],
+        operators: TEXT_OPERATORS,
     },
 };
 
 export const OPERATOR_LABELS: Record<Operator, string> = {
     contains: 'contains',
+    not_contains: 'does not contain',
     equals: 'equals',
+    not_equals: 'does not equal',
     greater_than: 'greater than',
     less_than: 'less than',
     is_empty: 'is empty',
@@ -79,6 +96,10 @@ function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
     switch (operator) {
         case 'contains':
             return { in: [value, { var: field }] };
+        case 'not_contains':
+            return { '!': { in: [value, { var: field }] } };
+        case 'not_equals':
+            return { '!=': [{ var: field }, value] };
         case 'equals':
             if (FIELD_CONFIG[field]?.type === 'number') {
                 return { '==': [{ var: field }, parseFloat(value)] };
@@ -139,10 +160,41 @@ function jsonLogicVariable(value: unknown): string | null {
     return null;
 }
 
+/**
+ * What a condition becomes once it is wrapped in a JsonLogic `!`. Only the two
+ * positive text operators have a negative twin in the builder, so anything else
+ * under a `!` stays unparseable and is dropped like any other unknown node.
+ *
+ * The two entries are not symmetric: the builder writes `not_contains` as a `!`
+ * and reads it back here, while it writes `not_equals` as a plain `!=`. The
+ * `equals` entry only exists to also read the `!`-wrapped form an agent may
+ * write over MCP.
+ */
+const NEGATED_OPERATORS: Partial<Record<Operator, Operator>> = {
+    contains: 'not_contains',
+    equals: 'not_equals',
+};
+
 function parseConditionFromJsonLogic(
     jsonLogic: JsonLogicRule,
 ): Condition | null {
     const id = crypto.randomUUID();
+
+    if ('!' in jsonLogic) {
+        // json-logic accepts both {"!": node} and {"!": [node]}.
+        const negated = Array.isArray(jsonLogic['!'])
+            ? jsonLogic['!'][0]
+            : jsonLogic['!'];
+        const inner =
+            negated && typeof negated === 'object'
+                ? parseConditionFromJsonLogic(negated as JsonLogicRule)
+                : null;
+        const operator = inner ? NEGATED_OPERATORS[inner.operator] : undefined;
+
+        if (inner && operator) {
+            return { ...inner, operator };
+        }
+    }
 
     if ('in' in jsonLogic) {
         const args = jsonLogicArgs(jsonLogic.in);
@@ -184,12 +236,20 @@ function parseConditionFromJsonLogic(
         const args = jsonLogicArgs(jsonLogic['!=']);
         const field = args ? jsonLogicVariable(args[0]) : null;
 
-        if (args && field && args[1] === null) {
+        if (args && field) {
+            if (args[1] === null) {
+                return {
+                    id,
+                    field,
+                    operator: 'is_not_empty',
+                    value: '',
+                };
+            }
             return {
                 id,
                 field,
-                operator: 'is_not_empty',
-                value: '',
+                operator: 'not_equals',
+                value: String(args[1]),
             };
         }
     }

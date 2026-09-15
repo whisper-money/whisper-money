@@ -70,7 +70,10 @@ data.
   in the account is a separate, preview-first step: `list_automation_rules` for
   the ids, then `apply_automation_rule`, which reports the matches and changes
   nothing until it is called again with `dry_run: false`. Amounts inside a
-  rule's `rules_json` are in MAJOR units, unlike every other amount here.
+  rule's `rules_json` are in MAJOR units, unlike every other amount here. Never
+  trust a rule you just wrote: conditions that say something other than what was
+  meant still save, and then quietly match nothing, so dry-run every rule you
+  create or edit and read the matched transactions before committing it.
 - A transaction that covered several things can be split into parts, each with
   its own category and labels: `split_transaction` replaces it with 2-20 parts
   whose amounts must add up to the original and all move money the same way.
