@@ -20,7 +20,11 @@ import { useState } from 'react';
  *
  * Mirrors the App\Enums\UpsellSource cases that appear on these screens.
  */
-export type OfferSource = 'onboarding_bank' | 'onboarding_ai' | null;
+export type OfferSource =
+    | 'onboarding_bank'
+    | 'onboarding_broker'
+    | 'onboarding_ai'
+    | null;
 
 /**
  * The paid offer, as every screen that makes it renders it: the two plans, then

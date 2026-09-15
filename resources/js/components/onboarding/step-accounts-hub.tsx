@@ -72,18 +72,25 @@ function readFailedBank(): RetryBank | null {
 }
 
 /**
- * Whether the user is arriving from a checkout they started at the gate in
- * front of this screen. Paying for the connection was the whole errand, so the
- * bank picker opens itself rather than asking them to press the same row again.
+ * Which picker to open for a user arriving from a checkout they started at the
+ * gate in front of this screen, or null when they came from anywhere else.
+ * Paying for the connection was the whole errand, so it opens itself rather
+ * than asking them to press the same row again.
  */
-function cameBackToConnect(): boolean {
+function cameBackToConnect(): HubMode | null {
     if (typeof window === 'undefined') {
-        return false;
+        return null;
     }
 
-    return (
-        new URLSearchParams(window.location.search).get('connect') === 'bank'
-    );
+    // Paying at the broker gate and landing on the bank one puts a country list
+    // in front of someone who asked for Indexa.
+    const connect = new URLSearchParams(window.location.search).get('connect');
+
+    return connect === 'bank'
+        ? 'connected'
+        : connect === 'broker'
+          ? 'broker'
+          : null;
 }
 
 /** Drop a dealt-with parameter off the URL so a reload does not replay it. */
@@ -214,10 +221,12 @@ export function StepAccountsHub({
             return 'failed';
         }
 
-        if (cameBackToConnect()) {
+        const returnedTo = cameBackToConnect();
+
+        if (returnedTo) {
             clearUrlParams('connect');
 
-            return 'connected';
+            return returnedTo;
         }
 
         return isFreePlan && !hasAccounts ? 'manual' : 'hub';

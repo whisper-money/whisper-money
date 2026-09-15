@@ -51,7 +51,14 @@ export function StepGate({
     onDecline,
 }: StepGateProps) {
     const isAi = kind === 'ai';
-    const source: OfferSource = isAi ? 'onboarding_ai' : 'onboarding_bank';
+    // Per kind, not bank-or-not: a broker checkout that reported itself as a
+    // bank one came back to the bank picker, in front of a country list the
+    // user never asked for.
+    const source: OfferSource = {
+        bank: 'onboarding_bank',
+        broker: 'onboarding_broker',
+        ai: 'onboarding_ai',
+    }[kind] as OfferSource;
     const { selectedPlan, setSelectedPlan, hasPlans, button, terms } =
         useOffer(source);
 
@@ -114,17 +121,20 @@ export function StepGate({
 
             <StepList>
                 <AiDisclosure kind={kind} />
+                {/* The free way past this gate is only an answer on the AI
+                    one. Telling someone who reached for a broker that they can
+                    "keep sorting by hand" answers a question they never asked. */}
                 <StepRow
-                    icon={kind === 'bank' ? Check : RotateCcw}
+                    icon={isAi ? RotateCcw : Check}
                     title={
-                        kind === 'bank'
-                            ? __('And the rest of Standard')
-                            : __('Or keep sorting by hand')
+                        isAi
+                            ? __('Or keep sorting by hand')
+                            : __('And the rest of Standard')
                     }
                     description={
-                        kind === 'bank'
-                            ? __('Bank sync, unlimited accounts, daily updates')
-                            : __('Free, unlimited, and your rules still work')
+                        isAi
+                            ? __('Free, unlimited, and your rules still work')
+                            : __('Bank sync, unlimited accounts, daily updates')
                     }
                 />
             </StepList>

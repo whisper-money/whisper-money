@@ -20,15 +20,18 @@ enum UpsellSource: string
     case Connections = 'connections';
     case Accounts = 'accounts';
     case OnboardingBank = 'onboarding_bank';
+    case OnboardingBroker = 'onboarding_broker';
     case OnboardingAi = 'onboarding_ai';
 
     /**
      * Where a checkout started from this point sends the user once the plan is
-     * active, as query parameters for the onboarding route. The two gates
+     * active, as query parameters for the onboarding route. The three gates
      * interrupt a flow the user is in the middle of, so they go back to the step
-     * that sent them — with the bank picker reopened, since paying for the
-     * connection was the whole point of the detour. Every other point is reached
-     * from the app itself and has somewhere of its own to return to.
+     * that sent them — with the picker they reached for reopened, since paying
+     * for that connection was the whole point of the detour. A broker gate that
+     * came back to the bank picker would drop the user in front of a country
+     * list they never asked for. Every other point is reached from the app
+     * itself and has somewhere of its own to return to.
      *
      * @return array<string, string>|null
      */
@@ -36,6 +39,7 @@ enum UpsellSource: string
     {
         return match ($this) {
             self::OnboardingBank => ['step' => 'create-account', 'connect' => 'bank'],
+            self::OnboardingBroker => ['step' => 'create-account', 'connect' => 'broker'],
             self::OnboardingAi => ['step' => 'ai-suggestions'],
             default => null,
         };
@@ -45,13 +49,13 @@ enum UpsellSource: string
      * Whether the screen behind this point discloses, in a row the user cannot
      * miss, what the AI sorting sends out — and so is allowed to switch the
      * consent on with the plan instead of asking for it again a step later. Only
-     * the two onboarding gates carry that row; every other checkout leaves the
+     * the onboarding gates carry that row; every other checkout leaves the
      * consent to the screen that asks for it on its own terms.
      */
     public function grantsAiConsent(): bool
     {
         return match ($this) {
-            self::OnboardingBank, self::OnboardingAi => true,
+            self::OnboardingBank, self::OnboardingBroker, self::OnboardingAi => true,
             default => false,
         };
     }

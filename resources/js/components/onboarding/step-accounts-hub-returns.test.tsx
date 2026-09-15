@@ -19,6 +19,10 @@ vi.mock('@/components/accounts/account-form', () => ({
     AccountForm: () => <div data-testid="account-form" />,
 }));
 
+vi.mock('@/components/open-banking/connect-broker-inline', () => ({
+    ConnectBrokerInline: () => <div data-testid="broker-flow" />,
+}));
+
 // The bank flow fetches its institutions on mount; the returns under test never
 // get that far, so a stub keeps the screens they do reach identifiable.
 vi.mock('@/components/open-banking/connect-account-inline', () => ({
@@ -96,6 +100,21 @@ describe('StepAccountsHub returns from the bank', () => {
 
     // A connection still waiting on an answer outranks everything else on the
     // hub: the user has already paid SCA for it.
+    // Both gates park a return; the one that charged decides which picker
+    // reopens. A broker checkout coming back to the bank picker puts a country
+    // list in front of someone who asked for Indexa.
+    it('reopens the bank picker after a checkout started at the bank gate', () => {
+        renderHub('?step=create-account&connect=bank');
+
+        expect(screen.getByTestId('connect-flow')).toBeInTheDocument();
+    });
+
+    it('reopens the broker picker after a checkout started at the broker gate', () => {
+        renderHub('?step=create-account&connect=broker');
+
+        expect(screen.getByTestId('broker-flow')).toBeInTheDocument();
+    });
+
     it('asks which accounts to keep when a bank left some waiting', () => {
         renderHub('?step=create-account', {
             pendingMapping: {

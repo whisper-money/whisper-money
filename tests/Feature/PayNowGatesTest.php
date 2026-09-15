@@ -78,6 +78,13 @@ it('grants it from the AI gate too', function () {
  * what leaves the account. Everywhere else the user is asked on its own terms,
  * on the screen that asks.
  */
+it('grants it from the broker gate, which carries the same row', function () {
+    $user = checkoutUser();
+    $user->shouldReceive('recordAiConsent')->once();
+
+    startCheckout($user, 'onboarding_broker')->assertRedirect();
+});
+
 it('grants no consent from a checkout that disclosed nothing', function () {
     $user = checkoutUser();
     $user->shouldNotReceive('recordAiConsent');
@@ -98,6 +105,18 @@ it('parks the bank picker to come back to, reopened', function () {
     startCheckout($user, 'onboarding_bank')
         ->assertRedirect()
         ->assertSessionHas(RETURN_KEY, ['step' => 'create-account', 'connect' => 'bank']);
+});
+
+/**
+ * Someone who reached for Indexa and paid for it used to come back in front of
+ * a country list, because the broker gate reported itself as the bank one.
+ */
+it('parks the broker picker when that is the gate that charged', function () {
+    $user = checkoutUser();
+
+    startCheckout($user, 'onboarding_broker')
+        ->assertRedirect()
+        ->assertSessionHas(RETURN_KEY, ['step' => 'create-account', 'connect' => 'broker']);
 });
 
 it('parks the AI step to come back to', function () {
