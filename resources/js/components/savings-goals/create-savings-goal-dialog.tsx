@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label as UILabel } from '@/components/ui/label';
 import { useControllableOpen } from '@/hooks/use-controllable-open';
+import { todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import React, { useState } from 'react';
@@ -46,7 +47,7 @@ export function CreateSavingsGoalDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayDateString();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

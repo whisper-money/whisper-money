@@ -1,8 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
     formatDate,
+    formatDateLong,
+    formatDateMedium,
     formatDayFromDate,
     formatMonthFromYearMonth,
+    todayDateString,
 } from './date';
 
 describe('formatDate', () => {
@@ -85,4 +88,45 @@ describe('formatDate across regions', () => {
             'Sep 10, 26',
         );
     });
+});
+
+/**
+ * Reported from Argentina (GMT-3): a balance saved on Sept 9 came back as Sept
+ * 8, and one entered at night came back as Sept 10. Both directions of the UTC
+ * offset are covered, because the two symptoms live on opposite sides of it.
+ */
+describe.each([
+    ['America/Argentina/Buenos_Aires', -3],
+    ['Europe/Madrid', 2],
+    ['Pacific/Auckland', 12],
+])('calendar dates in %s', (timeZone) => {
+    const originalTimeZone = process.env.TZ;
+
+    beforeAll(() => {
+        process.env.TZ = timeZone;
+    });
+
+    afterAll(() => {
+        process.env.TZ = originalTimeZone;
+        vi.useRealTimers();
+    });
+
+    it('renders a stored date-only value as the day it names', () => {
+        expect(formatDateMedium('2026-09-09', 'en-US')).toBe('Sep 9, 2026');
+        expect(formatDateLong('2026-09-09', 'en-US')).toBe('Wed, Sep 9, 2026');
+    });
+
+    // The two edges where the UTC day and the local day disagree: late evening
+    // west of Greenwich, early morning east of it.
+    it.each(['23:30', '00:30'])(
+        'calls %s local today, not the UTC day',
+        (time) => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date(`2026-09-09T${time}:00`));
+
+            expect(todayDateString()).toBe('2026-09-09');
+
+            vi.useRealTimers();
+        },
+    );
 });

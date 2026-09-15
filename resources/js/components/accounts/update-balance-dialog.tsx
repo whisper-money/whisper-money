@@ -23,6 +23,7 @@ import {
     balanceTermCapitalized,
     supportsInvestedAmount,
 } from '@/types/account';
+import { todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
@@ -32,11 +33,6 @@ interface UpdateBalanceDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
-}
-
-function getTodayDate(): string {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
 }
 
 interface PaginatedBalanceResponse {
@@ -49,7 +45,7 @@ export function UpdateBalanceDialog({
     onOpenChange,
     onSuccess,
 }: UpdateBalanceDialogProps) {
-    const [date, setDate] = useState(getTodayDate());
+    const [date, setDate] = useState(todayDateString());
     const [balance, setBalance] = useState(0);
     const [investedAmount, setInvestedAmount] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,7 +100,7 @@ export function UpdateBalanceDialog({
         }
 
         if (open) {
-            setDate(getTodayDate());
+            setDate(todayDateString());
             setError(null);
             fetchLastBalance();
         }

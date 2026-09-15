@@ -27,6 +27,7 @@ import {
     type CurrencyCode,
     type PropertyType,
 } from '@/types/account';
+import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -185,7 +186,7 @@ export function AccountForm({
             return;
         }
 
-        const purchaseDateObj = new Date(purchaseDate);
+        const purchaseDateObj = toLocalDate(purchaseDate);
         const today = new Date();
         const diffMs = today.getTime() - purchaseDateObj.getTime();
         const years = diffMs / (365.25 * 24 * 60 * 60 * 1000);

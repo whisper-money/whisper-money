@@ -9,6 +9,7 @@ import {
     type RowProblem,
 } from '@/types/import';
 import { toMinorUnits } from '@/utils/currency';
+import { formatLocalDate } from '@/utils/date';
 import * as XLSX from 'xlsx';
 
 export const UNREADABLE_FILE_MESSAGE =
@@ -591,19 +592,6 @@ export function parseDate(
     }
 
     return date;
-}
-
-/**
- * The calendar day a Date names locally. `toISOString()` cannot stand in for
- * this: parseDate builds local midnight, which is the day before in UTC for
- * anywhere east of Greenwich.
- */
-export function formatLocalDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
 }
 
 export function parseAmount(amountStr: string | number): number | null {

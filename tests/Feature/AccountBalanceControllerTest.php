@@ -385,3 +385,20 @@ it('preserves existing invested_amount when updating balance without it', functi
         'invested_amount' => 400000,
     ]);
 });
+
+// A balance date is a calendar day, not an instant. Serialised as a full UTC
+// datetime it lost the frontend's date-only guard and rendered as the day
+// before for anyone at a negative offset — the symptom reported from Argentina.
+it('serialises the balance date as a plain calendar day, like a transaction date', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    AccountBalance::factory()->for($account)->create([
+        'balance_date' => '2026-09-09',
+        'balance' => 1000,
+    ]);
+
+    $response = $this->actingAs($user)->getJson("/api/accounts/{$account->id}/balances");
+
+    expect($response->json('data.0.balance_date'))->toBe('2026-09-09');
+});
