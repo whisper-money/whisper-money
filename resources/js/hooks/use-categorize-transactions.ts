@@ -23,6 +23,15 @@ export type AnimationState = 'idle' | 'exiting' | 'entering' | 'success';
 
 const CATEGORY_USAGE_KEY = 'category-usage-order';
 
+/**
+ * The onboarding step files movements one after another, so its confirmations
+ * are given one id: a new one replaces the last instead of stacking five of
+ * them. They are also short-lived and dismissed when the step goes — at twelve
+ * seconds they used to follow the user onto the close screen and the paywall.
+ */
+const ONBOARDING_TOAST_ID = 'onboarding-transaction-categorized';
+const ONBOARDING_TOAST_MS = 4000;
+
 export function getCategoryUsageOrder(): string[] {
     try {
         const stored = localStorage.getItem(CATEGORY_USAGE_KEY);
@@ -110,9 +119,19 @@ export function useCategorizeTransactions({
     const [categorizedCount, setCategorizedCount] = useState(0);
     const commandInputRef = useRef<HTMLInputElement>(null);
 
+    const isOnboarding = source === 'onboarding';
+
     useEffect(() => {
         setCategoryUsageOrder(getCategoryUsageOrder());
     }, []);
+
+    useEffect(() => {
+        if (!isOnboarding) {
+            return;
+        }
+
+        return () => toast.dismiss(ONBOARDING_TOAST_ID);
+    }, [isOnboarding]);
 
     useEffect(() => {
         if (!isLoading && animationState === 'idle') {
@@ -198,8 +217,9 @@ export function useCategorizeTransactions({
                 setCategorizedCount((prev) => prev + 1);
                 setAutomateCandidate(nextAutomateCandidate);
                 toast.success(__('Transaction categorized'), {
+                    id: isOnboarding ? ONBOARDING_TOAST_ID : undefined,
                     closeButton: true,
-                    duration: 12000,
+                    duration: isOnboarding ? ONBOARDING_TOAST_MS : 12000,
                     action: {
                         label: createElement(
                             'span',
@@ -242,7 +262,7 @@ export function useCategorizeTransactions({
                 }, 400);
             }, 300);
         },
-        [currentTransaction, animationState, source],
+        [currentTransaction, animationState, source, isOnboarding],
     );
 
     const handleSkip = useCallback(() => {

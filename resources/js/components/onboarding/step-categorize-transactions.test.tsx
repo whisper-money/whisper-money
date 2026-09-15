@@ -1,6 +1,12 @@
 import { type Category } from '@/types/category';
 import { type Transaction } from '@/types/transaction';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+    act,
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StepCategorizeTransactions } from './step-categorize-transactions';
 
@@ -12,9 +18,11 @@ vi.mock('@/services/transaction-sync', () => ({
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: vi.fn() }));
 
-vi.mock('sonner', () => ({
-    toast: { success: vi.fn(), error: vi.fn() },
+const { toast } = vi.hoisted(() => ({
+    toast: { success: vi.fn(), error: vi.fn(), dismiss: vi.fn() },
 }));
+
+vi.mock('sonner', () => ({ toast }));
 
 // The dialogs and the categorizer itself belong to the transactions page and
 // are tested there; this suite is about the step's own gate.
@@ -107,6 +115,8 @@ describe('StepCategorizeTransactions gate', () => {
     beforeEach(() => {
         vi.useFakeTimers();
         update.mockResolvedValue(undefined);
+        toast.success.mockReset();
+        toast.dismiss.mockReset();
     });
 
     afterEach(() => {
@@ -155,5 +165,25 @@ describe('StepCategorizeTransactions gate', () => {
         const second = screen.getByTestId('card').textContent;
         expect(second).not.toBe('');
         expect(second).not.toBe(first);
+    });
+
+    // Filing five in a row used to stack five twelve-second toasts, and three
+    // of them were still on screen two steps later, over the close screen and
+    // then the paywall. One id, a short life, and gone with the step.
+    it('keeps its confirmations to one, short-lived and no longer than the step', async () => {
+        renderStep();
+        await act(async () => {});
+
+        await file();
+        await file();
+
+        const ids = toast.success.mock.calls.map(([, options]) => options.id);
+        expect(ids).toEqual([ids[0], ids[0]]);
+        expect(ids[0]).toBeTruthy();
+        expect(toast.success.mock.calls[0][1].duration).toBeLessThan(12000);
+
+        cleanup();
+
+        expect(toast.dismiss).toHaveBeenCalledWith(ids[0]);
     });
 });
