@@ -63,10 +63,16 @@ test('free tier users cannot start bank authorization when subscriptions are ena
     ]);
 });
 
-test('users can start bank authorization during onboarding when subscriptions are enabled', function () {
+test('a subscriber can start bank authorization during onboarding', function () {
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->notOnboarded()->create();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_test_onboarding',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('startAuthorization')
         ->once()
@@ -94,10 +100,17 @@ test('users can start bank authorization during onboarding when subscriptions ar
     ]);
 });
 
-test('a free-plan signup cannot start bank authorization during onboarding', function () {
+/**
+ * A connection costs us money with the provider from the moment it is
+ * authorized, so onboarding is no longer an exception to the plan: the wizard
+ * sells the plan at the gate in front of the bank picker, and this is the same
+ * rule where it cannot be talked past. Which card the user signed up from stops
+ * mattering — what they have does.
+ */
+test('an unsubscribed signup cannot start bank authorization during onboarding', function () {
     config(['subscriptions.enabled' => true]);
 
-    $user = User::factory()->notOnboarded()->create(['signup_plan' => 'free']);
+    $user = User::factory()->notOnboarded()->create();
 
     $response = $this->actingAs($user)->postJson('/open-banking/authorize', [
         'aspsp_name' => 'Test Bank',

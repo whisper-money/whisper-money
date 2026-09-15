@@ -4,6 +4,7 @@ import {
     SuggestionDraft,
 } from '@/components/onboarding/ai-suggestion-card';
 import { StepButton } from '@/components/onboarding/step-button';
+import { StepGate } from '@/components/onboarding/step-gate';
 import {
     StepChevron,
     StepList,
@@ -16,7 +17,6 @@ import {
     StepScreen,
 } from '@/components/onboarding/step-screen';
 import { Spinner } from '@/components/ui/spinner';
-import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import { captureEvent } from '@/lib/posthog';
 import { isRecoveringFromExpiredSession } from '@/lib/session-expiry-recovery';
 import { store as storeConsent } from '@/routes/ai/consent';
@@ -24,8 +24,6 @@ import { accept, generate, show } from '@/routes/ai/rule-suggestions';
 import { categorize } from '@/routes/onboarding';
 import { type SharedData } from '@/types';
 import { type Category } from '@/types/category';
-import { type SignupPlan } from '@/types/pricing';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -73,7 +71,6 @@ interface AcceptResponse {
 interface StepAiSuggestionsProps {
     categories: Category[];
     hasConnectedAccount: boolean;
-    signupPlan?: SignupPlan | null;
     /** Back to the accounts hub, for a user who arrived with too little to read. */
     onAddAccount: () => void;
     onComplete: () => void;
@@ -82,10 +79,13 @@ interface StepAiSuggestionsProps {
 export function StepAiSuggestions({
     categories,
     hasConnectedAccount,
-    signupPlan = null,
     onAddAccount,
     onComplete,
 }: StepAiSuggestionsProps) {
+    const { auth, subscriptionsEnabled } = usePage<SharedData>().props;
+    // Everyone who connected a bank paid at that gate, so this only catches the
+    // user who came the manual way and has reached the one paid thing left.
+    const needsPlan = subscriptionsEnabled && !auth.hasProPlan;
     const [state, setState] = useState<SuggestionState | null>(null);
     const [drafts, setDrafts] = useState<Record<string, SuggestionDraft>>({});
     const [busy, setBusy] = useState(false);
@@ -198,6 +198,13 @@ export function StepAiSuggestions({
                     return;
                 }
                 applyState(data);
+
+                // The gate below is the whole screen for this user. An
+                // abandoned checkout can leave a consent behind without a plan,
+                // and starting a run on it would only be refused.
+                if (needsPlan) {
+                    return;
+                }
 
                 if (isRunning(data)) {
                     startPolling();
@@ -418,6 +425,19 @@ export function StepAiSuggestions({
         return null;
     }
 
+    // Nothing below this is reachable without a plan: the run costs money per
+    // user, the consent screen is the plan's own disclosure, and the rules are
+    // what the plan buys. The gate is the step for this user.
+    if (needsPlan) {
+        return (
+            <StepGate
+                kind="ai"
+                transactionCount={state.transaction_count}
+                onDecline={leaveStep}
+            />
+        );
+    }
+
     if (!state.consented) {
         return (
             <StepScreen
@@ -437,13 +457,6 @@ export function StepAiSuggestions({
                 }
                 footer={
                     <>
-                        {/* Someone who signed up from a paid card has already
-                            agreed to pay, so the upgrade warning would only be
-                            noise. They still give consent explicitly: what gets
-                            sent stays on screen. */}
-                        {state.requires_upgrade && signupPlan !== 'paid' && (
-                            <UpgradeNotice />
-                        )}
                         <StepButton
                             text={__('Turn it on')}
                             icon={Sparkles}
@@ -709,38 +722,6 @@ function applyLabel(selectedCount: number): string {
     return selectedCount === 1
         ? __('Apply 1 rule')
         : __('Apply :count rules', { count: selectedCount });
-}
-
-/**
- * Warns free users (who haven't linked a bank yet) that turning on AI
- * suggestions commits them to picking a paid plan at the end of onboarding,
- * mirroring the notice shown when choosing a connected account.
- */
-function UpgradeNotice() {
-    const { pricing, locale } = usePage<SharedData>().props;
-
-    const cheapestMonthlyPrice = useCheapestMonthlyPrice();
-
-    return (
-        <>
-            <StepNote emphasis>
-                {__(
-                    "AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.",
-                )}
-            </StepNote>
-            {cheapestMonthlyPrice !== null && (
-                <StepNote>
-                    {__('Standard plan, from :price/month.', {
-                        price: formatCurrency(
-                            cheapestMonthlyPrice * 100,
-                            pricing.currency,
-                            locale,
-                        ),
-                    })}
-                </StepNote>
-            )}
-        </>
-    );
 }
 
 /**

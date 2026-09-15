@@ -1,6 +1,7 @@
 import { BankLogo } from '@/components/bank-logo';
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepConnectFailed } from '@/components/onboarding/step-connect-failed';
+import { StepGate } from '@/components/onboarding/step-gate';
 import {
     StepCheck,
     StepChevron,
@@ -48,7 +49,7 @@ import { useCallback, useMemo, useState } from 'react';
  * for everything hanging off the hub — the same arrangement `SUB_STEPS` gives
  * `import-transactions` and `import-balances`.
  */
-type HubMode = 'hub' | 'manual' | 'connected' | 'broker' | 'failed';
+type HubMode = 'hub' | 'manual' | 'connected' | 'broker' | 'failed' | 'gate';
 
 /**
  * The bank a failed authorization named, off the URL
@@ -70,15 +71,29 @@ function readFailedBank(): RetryBank | null {
     return name && country ? { name, country } : null;
 }
 
-/** Drop the failure off the URL so a reload does not replay a dealt-with one. */
-function clearFailedBank(): void {
+/**
+ * Whether the user is arriving from a checkout they started at the gate in
+ * front of this screen. Paying for the connection was the whole errand, so the
+ * bank picker opens itself rather than asking them to press the same row again.
+ */
+function cameBackToConnect(): boolean {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    return (
+        new URLSearchParams(window.location.search).get('connect') === 'bank'
+    );
+}
+
+/** Drop a dealt-with parameter off the URL so a reload does not replay it. */
+function clearUrlParams(...names: string[]): void {
     if (typeof window === 'undefined') {
         return;
     }
 
     const url = new URL(window.location.href);
-    url.searchParams.delete('connect_error');
-    url.searchParams.delete('connect_country');
+    names.forEach((name) => url.searchParams.delete(name));
     window.history.replaceState(window.history.state, '', url.toString());
 }
 
@@ -166,8 +181,9 @@ export function StepAccountsHub({
     onConnectedAccountSelected,
     onContinue,
 }: StepAccountsHubProps) {
-    const { pricing, subscriptionsEnabled, locale, flash } =
+    const { auth, pricing, subscriptionsEnabled, locale, flash } =
         usePage<SharedData>().props;
+    const hasProPlan = auth.hasProPlan;
     const cheapestMonthlyPrice = useCheapestMonthlyPrice();
     // Someone who signed up from the free card gets no bank connections, so an
     // empty hub would have a single row on it: open the manual form instead.
@@ -180,49 +196,50 @@ export function StepAccountsHub({
             return 'failed';
         }
 
+        if (cameBackToConnect()) {
+            clearUrlParams('connect');
+
+            return 'connected';
+        }
+
         return isFreePlan && !hasAccounts ? 'manual' : 'hub';
     });
 
     const [retryBank, setRetryBank] = useState<RetryBank | null>(null);
+    /** Which connection the gate is standing in front of, for its wording. */
+    const [gateKind, setGateKind] = useState<'bank' | 'broker'>('bank');
 
     /** Every exit from the failure screen, so none of them leaves it on the URL. */
     const leaveFailure = useCallback((next: HubMode) => {
-        clearFailedBank();
+        clearUrlParams('connect_error', 'connect_country');
         setMode(next);
     }, []);
 
     // Shown until the user has committed to a connected account once; after
-    // that repeating the price on every extra account is just noise. The
-    // commitment sentence never depends on the price: with no plans configured
-    // the row would otherwise sell a paid feature with no disclosure at all.
+    // that repeating the price on every extra account is just noise. It no
+    // longer says a plan is chosen at the end, because it is not: the row leads
+    // to the gate, and the gate is where the plan starts. Someone who already
+    // has one is told nothing at all — there is nothing left to warn them of.
     const connectedPlanNotice = useMemo(() => {
         if (
             !subscriptionsEnabled ||
-            signupPlan === 'paid' ||
-            hasSelectedConnectedAccount
+            hasProPlan ||
+            hasSelectedConnectedAccount ||
+            cheapestMonthlyPrice === null
         ) {
             return undefined;
         }
 
-        return (
-            <>
-                {cheapestMonthlyPrice !== null && (
-                    <>
-                        {__('Standard plan, from :price/month.', {
-                            price: formatCurrency(
-                                cheapestMonthlyPrice * 100,
-                                pricing.currency,
-                                locale,
-                            ),
-                        })}{' '}
-                    </>
-                )}
-                {__("You'll choose a plan at the end of the onboarding.")}
-            </>
-        );
+        return __('Standard plan, from :price/month.', {
+            price: formatCurrency(
+                cheapestMonthlyPrice * 100,
+                pricing.currency,
+                locale,
+            ),
+        });
     }, [
         subscriptionsEnabled,
-        signupPlan,
+        hasProPlan,
         hasSelectedConnectedAccount,
         cheapestMonthlyPrice,
         pricing.currency,
@@ -296,9 +313,22 @@ export function StepAccountsHub({
                 onConnectedAccountSelected?.();
             }
 
-            setMode(route);
+            // A connection is billable from the moment it is authorized, so the
+            // plan comes first and the picker after — never the other way round.
+            // The endpoints behind both pickers refuse an unsubscribed user
+            // anyway; this is where that refusal is turned into an offer.
+            const needsPlan =
+                route !== 'manual' && subscriptionsEnabled && !hasProPlan;
+
+            setGateKind(route === 'broker' ? 'broker' : 'bank');
+            setMode(needsPlan ? 'gate' : route);
         },
-        [accountCount, onConnectedAccountSelected],
+        [
+            accountCount,
+            onConnectedAccountSelected,
+            subscriptionsEnabled,
+            hasProPlan,
+        ],
     );
 
     const suggestions = useMemo((): HubSuggestion[] => {
@@ -346,6 +376,10 @@ export function StepAccountsHub({
     // It is still there when they come back.
     if (pendingMapping && mode === 'hub') {
         return <StepMapAccounts pending={pendingMapping} />;
+    }
+
+    if (mode === 'gate') {
+        return <StepGate kind={gateKind} onDecline={() => setMode('manual')} />;
     }
 
     // The bank flow renders its own StepScreen so each of its sub-steps gets

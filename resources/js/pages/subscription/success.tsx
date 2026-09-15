@@ -13,6 +13,15 @@ import { useEffect, useState } from 'react';
 const MAX_ACTIVATION_POLLS = 5;
 const ACTIVATION_POLL_MS = 2000;
 
+interface SuccessPageProps extends SharedData {
+    /**
+     * Back into the wizard, for a user who bought mid-onboarding. Null once
+     * onboarding is done, and null for a checkout that started anywhere else —
+     * those have the dashboard to go to.
+     */
+    continueUrl: string | null;
+}
+
 /**
  * Where Stripe drops the user after a successful checkout.
  *
@@ -22,9 +31,13 @@ const ACTIVATION_POLL_MS = 2000;
  * plan back to the paywall. So the wait here is real, driven by the actual
  * subscription state rather than by a timer, and bounded: if the webhook is
  * slow beyond all reason, the user gets the button rather than a trap.
+ *
+ * That wait is also why a user who paid at one of the onboarding gates comes
+ * back through here rather than straight from Stripe: returning to the wizard a
+ * second too early would show them the gate they just paid to get past.
  */
 export default function Success() {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, continueUrl } = usePage<SuccessPageProps>().props;
     const isActive = auth?.hasProPlan ?? false;
     const [polls, setPolls] = useState(0);
     const isWaiting = !isActive && polls < MAX_ACTIVATION_POLLS;
@@ -54,10 +67,16 @@ export default function Success() {
                 footer={
                     <>
                         <StepButton
-                            text={__('Go to Dashboard')}
+                            text={
+                                continueUrl
+                                    ? __('Pick up where you left off')
+                                    : __('Go to Dashboard')
+                            }
                             loading={isWaiting}
                             loadingText={__('Activating your plan…')}
-                            onClick={() => router.visit(dashboard().url)}
+                            onClick={() =>
+                                router.visit(continueUrl ?? dashboard().url)
+                            }
                         />
                         {!isActive && polls >= MAX_ACTIVATION_POLLS && (
                             <StepNote>

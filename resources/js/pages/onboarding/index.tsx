@@ -256,7 +256,6 @@ export default function Onboarding({
                     <StepAiSuggestions
                         categories={categories}
                         hasConnectedAccount={hasConnectedAccount}
-                        signupPlan={signupPlan}
                         onAddAccount={() => goToStep('create-account')}
                         onComplete={goNext}
                     />

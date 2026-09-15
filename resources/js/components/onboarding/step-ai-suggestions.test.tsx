@@ -10,6 +10,10 @@ vi.mock('axios', () => ({
 
 vi.mock('@inertiajs/react', () => ({
     router: { reload: vi.fn() },
+    // These screens are behind the plan gate, so the user reaching them has one.
+    usePage: () => ({
+        props: { subscriptionsEnabled: true, auth: { hasProPlan: true } },
+    }),
 }));
 
 const runningState = {

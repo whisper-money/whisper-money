@@ -34,11 +34,17 @@ return [
     | The split is positional: adding, removing or reordering a variant
     | reassigns existing users, so only change `variants` between experiments.
     |
-    |   'variants' => [
-    |       'control' => [],
-    |       'short_trial' => ['trial_days' => ['monthly' => 3, 'yearly' => 7]],
-    |       'pay_now' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
-    |   ],
+    | The declared experiment is the one the pay-now redesign asks for: two
+    | branches, `pay_now` (the plan defaults below, charged in full at signup)
+    | against `trial`, which restores the free trial the plans used to carry.
+    | The primary metric is subscribed -> still active, read per variant by
+    | `stats:experiment-funnel`.
+    |
+    | It is declared but NOT running: `started_at` is unset, which leaves every
+    | user legacy and every user on the plan defaults. Turn it on only once the
+    | redesign has been live for weeks — starting it while the flow is still
+    | changing splits the cohort across two different products and the result
+    | cannot be read.
     |
     */
 
@@ -48,7 +54,10 @@ return [
         // every user that variant and end the split (env-only, no deploy).
         'force_variant' => env('SUBSCRIPTION_EXPERIMENT_FORCE_VARIANT'),
         'refund_window_days' => (int) env('SUBSCRIPTION_EXPERIMENT_REFUND_WINDOW_DAYS', 3),
-        'variants' => [],
+        'variants' => [
+            'pay_now' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
+            'trial' => ['trial_days' => ['monthly' => 7, 'yearly' => 15]],
+        ],
     ],
 
     /*
@@ -63,6 +72,12 @@ return [
     | their AI consent. The delay is what keeps a brand new user from being
     | invited to throw away what they just connected. Set it to 0 to offer the
     | free plan straight away.
+    |
+    | Dead for anyone onboarding now: a bank cannot be connected and AI cannot
+    | be switched on without a subscription, so nobody finishes onboarding with
+    | something to throw away and no plan to lose it from. It still governs the
+    | legacy users who reached that state under the old rules, which is why it
+    | stays.
     |
     */
 
@@ -96,8 +111,10 @@ return [
     |
     | Supported billing_period values: 'month', 'year', null (for lifetime)
     |
-    | `trial_days` is per plan: the longer commitment gets the longer trial.
-    | Set it to 0 to charge that plan immediately, with no free trial.
+    | `trial_days` is 0 on both plans: the plan is charged in full at signup and
+    | the way back out is the self-service refund window above, not a trial that
+    | ends. Raising it here reverts that for everyone; the `trial` experiment
+    | variant is how to put a trial in front of half the signups instead.
     |
     | The lookup keys still carry the `_high` suffix they were given as the price
     | experiment's variant tier, which won and became the only price. Renaming
@@ -114,7 +131,7 @@ return [
             'original_price' => null,
             'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly_high'),
             'billing_period' => 'month',
-            'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 7),
+            'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 0),
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',
@@ -133,7 +150,7 @@ return [
             'original_price' => 107.88,
             'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly_high'),
             'billing_period' => 'year',
-            'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 15),
+            'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 0),
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',

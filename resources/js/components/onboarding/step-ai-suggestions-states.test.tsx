@@ -12,6 +12,10 @@ vi.mock('axios', () => ({
 vi.mock('@inertiajs/react', async () => {
     const { pageProps } = await import('@/lib/onboarding-page-props');
 
+    // Everything below the gate belongs to a user who has already paid; the
+    // gate itself has its own suite.
+    pageProps.auth.hasProPlan = true;
+
     return {
         router: { reload: vi.fn() },
         usePage: () => ({ props: pageProps }),
