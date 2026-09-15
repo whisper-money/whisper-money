@@ -559,6 +559,24 @@ export function StepAccountsHub({
                         />
                     ))}
                 </StepList>
+
+                {/* The empty state offers this outright; once an account is in,
+                    the suggestions replaced it and the only way to the plain
+                    form was through the row labelled "A mortgage or a loan".
+                    Someone adding a second current account by hand had to click
+                    a mortgage to get there. */}
+                <StepSectionLabel>{__('Anything else')}</StepSectionLabel>
+                <StepList>
+                    <StepRow
+                        icon={Plus}
+                        title={__('Add one myself')}
+                        description={__(
+                            "A file to import, or just what it's worth today.",
+                        )}
+                        trailing={<StepChevron />}
+                        onClick={() => openRoute('manual', 'manual')}
+                    />
+                </StepList>
             </div>
         </StepScreen>
     );

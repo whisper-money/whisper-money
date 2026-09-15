@@ -93,6 +93,18 @@ describe('StepAccountsHub', () => {
         expect(screen.getByText('Another bank')).toBeInTheDocument();
     });
 
+    // The empty state offers this outright; the populated one used to hide it
+    // behind the row labelled "A mortgage or a loan".
+    it('keeps a plain way to the manual form once an account is in', () => {
+        renderHub({
+            existingAccounts: [existingAccount({ id: 'a1', name: 'Savings' })],
+        });
+
+        fireEvent.click(screen.getByText('Add one myself'));
+
+        expect(screen.getByTestId('account-form')).toBeInTheDocument();
+    });
+
     // The step polls for accounts finalized in another browser while the user
     // adds more here, so the same account arrives down both routes. Counting it
     // twice would make the hub claim more than the user has.
