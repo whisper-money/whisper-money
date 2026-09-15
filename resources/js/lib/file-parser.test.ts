@@ -1,5 +1,6 @@
 import type { ColumnMapping, ParsedTransaction } from '@/types/import';
 import { DateFormat } from '@/types/import';
+import { formatLocalDate } from '@/utils/date';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
@@ -11,7 +12,6 @@ import {
     collectCurrencyCodes,
     convertRowsToTransactions,
     detectDateFormat,
-    formatLocalDate,
     getLatestTransactionDate,
     getLocaleDateFormat,
     isInAccountCurrency,

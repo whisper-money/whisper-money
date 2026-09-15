@@ -28,7 +28,7 @@ class AccountBalance extends Model
     protected function casts(): array
     {
         return [
-            'balance_date' => 'date',
+            'balance_date' => 'date:Y-m-d',
             'balance' => 'integer',
             'invested_amount' => 'integer',
             'derived' => 'boolean',

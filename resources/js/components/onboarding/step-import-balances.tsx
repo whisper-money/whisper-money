@@ -9,6 +9,7 @@ import {
 import { AmountInput } from '@/components/ui/amount-input';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { getCsrfToken } from '@/lib/csrf';
+import { todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { useMemo, useState } from 'react';
 
@@ -49,7 +50,7 @@ export function StepImportBalances({
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
-                    balance_date: new Date().toISOString().split('T')[0],
+                    balance_date: todayDateString(),
                     balance: balanceInCents,
                 }),
             });

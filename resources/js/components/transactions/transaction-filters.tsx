@@ -1,5 +1,5 @@
+import { formatLocalDate, toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { ChevronsUpDown, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
@@ -289,9 +289,8 @@ export function TransactionFilters({
                                             type="date"
                                             value={
                                                 filters.dateFrom
-                                                    ? format(
+                                                    ? formatLocalDate(
                                                           filters.dateFrom,
-                                                          'yyyy-MM-dd',
                                                       )
                                                     : ''
                                             }
@@ -299,7 +298,7 @@ export function TransactionFilters({
                                                 onFiltersChange({
                                                     ...filters,
                                                     dateFrom: e.target.value
-                                                        ? new Date(
+                                                        ? toLocalDate(
                                                               e.target.value,
                                                           )
                                                         : null,
@@ -312,9 +311,8 @@ export function TransactionFilters({
                                             type="date"
                                             value={
                                                 filters.dateTo
-                                                    ? format(
+                                                    ? formatLocalDate(
                                                           filters.dateTo,
-                                                          'yyyy-MM-dd',
                                                       )
                                                     : ''
                                             }
@@ -322,7 +320,7 @@ export function TransactionFilters({
                                                 onFiltersChange({
                                                     ...filters,
                                                     dateTo: e.target.value
-                                                        ? new Date(
+                                                        ? toLocalDate(
                                                               e.target.value,
                                                           )
                                                         : null,
