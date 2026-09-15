@@ -5,6 +5,7 @@ namespace App\Actions\Fortify;
 use App\Enums\Locale;
 use App\Enums\SignupPlan;
 use App\Models\User;
+use App\Services\CurrencyOptions;
 use App\Services\FormatLocaleOptions;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -14,7 +15,10 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
 
-    public function __construct(private FormatLocaleOptions $formatLocales) {}
+    public function __construct(
+        private FormatLocaleOptions $formatLocales,
+        private CurrencyOptions $currencies,
+    ) {}
 
     /**
      * Validate and create a newly registered user.
@@ -42,6 +46,7 @@ class CreateNewUser implements CreatesNewUsers
         $signupPlan = SignupPlan::fromRequest($input['signup_plan'] ?? null);
         $acceptLanguage = request()->header('Accept-Language');
         $locale = Locale::detectFromHeader($acceptLanguage)->value;
+        $formatLocale = $this->formatLocales->detectFromHeader($acceptLanguage, $locale);
 
         $user = User::create([
             'name' => $input['name'],
@@ -51,7 +56,11 @@ class CreateNewUser implements CreatesNewUsers
             // The same header read a second time, for the region rather than
             // the language: which of the two "es" they are decides where their
             // decimal separator goes.
-            'format_locale' => $this->formatLocales->detectFromHeader($acceptLanguage, $locale),
+            'format_locale' => $formatLocale,
+            // And the same region a third time, for the money. Steps 4 and 5
+            // quote an amount back at the user before any account exists, and
+            // the column's own default would have quoted a Spaniard in dollars.
+            'currency_code' => $this->currencies->forFormatLocale($formatLocale),
             'timezone' => $this->normalizeTimezone($input['timezone'] ?? null),
             // Which pricing card they came from, so onboarding can hide the paid
             // options from someone who signed up for the free plan.

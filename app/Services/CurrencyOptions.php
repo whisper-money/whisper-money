@@ -55,6 +55,20 @@ class CurrencyOptions
     }
 
     /**
+     * The currency to quote a reader in, off the region half of their
+     * `format_locale`. USD for a region `config/currencies.php` maps no
+     * currency for, which is what the column defaults to anyway.
+     */
+    public function forFormatLocale(?string $formatLocale): string
+    {
+        /** @var array<string, string> $byRegion */
+        $byRegion = config('currencies.by_region', []);
+        $region = strtoupper((string) substr((string) $formatLocale, -2));
+
+        return $byRegion[$region] ?? 'USD';
+    }
+
+    /**
      * @return list<array{code: string, name: string, allows_primary: bool, allows_account: bool, decimals?: int}>
      */
     public function all(): array
