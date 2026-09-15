@@ -68,7 +68,7 @@ export function StepPlan({
                 />
                 <StepRow
                     leading={<StepNumber>2</StepNumber>}
-                    title={__('Every euro already filed when you arrive')}
+                    title={__('Every movement already filed when you arrive')}
                     description={__(
                         'You correct the handful we get wrong, once.',
                     )}
