@@ -123,6 +123,12 @@ return [
     | `STRIPE_PRO_*_LOOKUP_KEY` breaks that welding too, so only do it for a key
     | that genuinely differs per environment.
     |
+    | Those overrides fall back with `?:`, not with `env()`'s default, because a
+    | variable that is present but blank yields '' rather than the default — and
+    | an empty lookup key makes checkout abort with "Invalid plan selected" for
+    | everyone. Blanking the value in a hosting panel is the ordinary way to
+    | clear an override, so it has to mean the same as removing the line.
+    |
     | The default tier's lookup keys still carry the `_high` suffix they were
     | given as the price experiment's variant tier, which won and became the
     | default price. Renaming them would make `stripe:sync-prices` transfer the
@@ -136,7 +142,7 @@ return [
             'name' => 'Standard Monthly',
             'price' => $tier['monthly']['price'],
             'original_price' => $tier['monthly']['original_price'],
-            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', $tier['monthly']['stripe_lookup_key']),
+            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY') ?: $tier['monthly']['stripe_lookup_key'],
             'billing_period' => 'month',
             'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 7),
             'features' => [
@@ -155,7 +161,7 @@ return [
             'name' => 'Standard Yearly',
             'price' => $tier['yearly']['price'],
             'original_price' => $tier['yearly']['original_price'],
-            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', $tier['yearly']['stripe_lookup_key']),
+            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY') ?: $tier['yearly']['stripe_lookup_key'],
             'billing_period' => 'year',
             'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 15),
             'features' => [
