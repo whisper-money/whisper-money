@@ -27,6 +27,7 @@ function existingAccount(
         encrypted: false,
         type: 'checking',
         currency_code: 'EUR',
+        iban_tail: null,
         bank_id: 'bank-1',
         banking_connection_id: null,
         bank: { id: 'bank-1', name: 'BBVA', logo: null },
@@ -91,6 +92,35 @@ describe('StepAccountsHub', () => {
         expect(screen.getByText('A mortgage or a loan')).toBeInTheDocument();
         expect(screen.getByText('A pension or a broker')).toBeInTheDocument();
         expect(screen.getByText('Another bank')).toBeInTheDocument();
+    });
+
+    // A Spanish bank routinely returns the holder's name for every account, so
+    // BBVA's seven came back as seven identical rows reading "Checking · EUR".
+    // The mapping screen tells them apart with the IBAN tail; so does this.
+    it('tells two identically named connected accounts apart by their IBAN', () => {
+        renderHub({
+            existingAccounts: [
+                existingAccount({
+                    id: 'a1',
+                    name: 'Nombre Apellido1 Apellido2',
+                    iban_tail: '0191',
+                    banking_connection_id: 'connection-1',
+                }),
+                existingAccount({
+                    id: 'a2',
+                    name: 'Nombre Apellido1 Apellido2',
+                    iban_tail: '4417',
+                    banking_connection_id: 'connection-1',
+                }),
+            ],
+        });
+
+        expect(
+            screen.getByText('Checking · EUR · •••• 0191'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Checking · EUR · •••• 4417'),
+        ).toBeInTheDocument();
     });
 
     // The empty state offers this outright; the populated one used to hide it

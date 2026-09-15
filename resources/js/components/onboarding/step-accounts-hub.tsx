@@ -97,6 +97,22 @@ function clearUrlParams(...names: string[]): void {
     window.history.replaceState(window.history.state, '', url.toString());
 }
 
+/**
+ * The line under an account's name. Spanish banks routinely return the holder's
+ * name for every account, so BBVA's seven came back as seven identical rows
+ * reading "Checking · EUR" — the IBAN tail is what the mapping screen tells them
+ * apart with, and it is the only thing here that can.
+ */
+function accountMeta(
+    type: string,
+    currency: string,
+    ibanTail: string | null,
+): string {
+    return [type, currency, ibanTail && `•••• ${ibanTail}`]
+        .filter(Boolean)
+        .join(' · ');
+}
+
 /** One account row, however it reached the screen. */
 interface AccountLine {
     id: string;
@@ -134,6 +150,8 @@ export interface ExistingAccount {
     encrypted: boolean;
     type: AccountType;
     currency_code: string;
+    /** Last four of the IBAN, when the bank gave one. */
+    iban_tail: string | null;
     bank_id: string;
     banking_connection_id: string | null;
     bank?: {
@@ -259,7 +277,11 @@ export function StepAccountsHub({
                 name: account.name || __('Account'),
                 bankName: account.bank?.name ?? __('No bank'),
                 bankLogo: account.bank?.logo ?? null,
-                meta: `${formatAccountType(account.type)} · ${account.currency_code}`,
+                meta: accountMeta(
+                    formatAccountType(account.type),
+                    account.currency_code,
+                    account.iban_tail,
+                ),
                 connected: account.banking_connection_id !== null,
             });
         }
@@ -270,7 +292,11 @@ export function StepAccountsHub({
                 name: account.name,
                 bankName: account.bankName ?? __('No bank'),
                 bankLogo: account.bankLogo ?? null,
-                meta: `${formatAccountType(account.type)} · ${account.currencyCode}`,
+                meta: accountMeta(
+                    formatAccountType(account.type),
+                    account.currencyCode,
+                    null,
+                ),
                 connected: account.connected ?? false,
             });
         }

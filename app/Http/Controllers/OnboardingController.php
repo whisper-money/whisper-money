@@ -60,7 +60,10 @@ class OnboardingController extends Controller
 
         $accounts = $user->accounts()
             ->with('bank')
-            ->get();
+            ->get()
+            // Only the hub needs it, so it is asked for here rather than
+            // appended to every account the app serializes.
+            ->append('iban_tail');
 
         $categories = Category::query()
             ->where('user_id', $user->id)

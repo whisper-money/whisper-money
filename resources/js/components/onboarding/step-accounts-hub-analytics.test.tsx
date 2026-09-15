@@ -59,6 +59,7 @@ const EXISTING_ACCOUNT = {
     encrypted: false,
     type: 'checking' as const,
     currency_code: 'EUR',
+    iban_tail: null,
     bank_id: 'bank-1',
     banking_connection_id: 'connection-1',
     bank: { id: 'bank-1', name: 'BBVA', logo: null },
