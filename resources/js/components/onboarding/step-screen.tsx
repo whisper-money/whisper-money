@@ -43,6 +43,13 @@ export function StepScreen({
                     className={cn(
                         'flex flex-1 flex-col gap-7 pt-3 md:pt-0',
                         align === 'center' ? 'justify-center' : 'md:flex-none',
+                        // The footer below is opaque and pinned to the bottom of
+                        // the phone viewport for the whole scroll, so whatever
+                        // ends up behind it is only readable at the very end of
+                        // the scroll — on the AI gate at 390px that was the
+                        // sentence arguing for the free path, on the screen that
+                        // asks for money. This is the room to scroll it clear.
+                        footer && 'pb-8 md:pb-0',
                     )}
                 >
                     {(icon || title || description) && (
