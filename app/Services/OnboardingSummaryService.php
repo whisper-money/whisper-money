@@ -83,10 +83,14 @@ class OnboardingSummaryService
             return $empty;
         }
 
+        // `toBase()`: the row is four aggregates, not a transaction, so it is
+        // read as the plain result row it is rather than hydrated into a
+        // Transaction that has none of these columns.
         $totals = Transaction::query()
             ->where('user_id', $user->id)
             ->whereIn('account_id', $accountIds)
             ->selectRaw('count(*) as transactions, count(distinct creditor_name) as merchants, min(transaction_date) as first_date, max(transaction_date) as last_date')
+            ->toBase()
             ->first();
 
         if (! $totals || (int) $totals->transactions === 0) {
