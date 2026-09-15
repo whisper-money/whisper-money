@@ -41,9 +41,9 @@ return [
     | A/B test on how the paid plan is offered. Users who register on or after
     | `started_at` are split evenly across `variants` by a stable hash of their
     | id; everyone who registered earlier stays "legacy" and keeps the plan
-    | defaults. While `started_at` is null, or no variant is declared, the
-    | experiment is off and every user is legacy — this block is inert until an
-    | experiment fills it in.
+    | defaults. While `started_at` is null or blank, or no variant is declared,
+    | the experiment is off and every user is legacy — this block is inert until
+    | an experiment fills it in.
     |
     | Each variant may override `trial_days` per plan. A variant whose trial is
     | 0 on every plan charges upfront, which is what opens the self-service
@@ -67,7 +67,12 @@ return [
     */
 
     'experiment' => [
-        'started_at' => env('SUBSCRIPTION_EXPERIMENT_STARTED_AT'),
+        // `?:`, not `env()`'s default: a variable that is present but blank
+        // yields '' rather than null, and '' would read as a declared start
+        // date — every user assigned to an arm the moment the key exists in a
+        // hosting panel. Blanking the value is the ordinary way to leave the
+        // experiment off, so it has to mean the same as removing the line.
+        'started_at' => env('SUBSCRIPTION_EXPERIMENT_STARTED_AT') ?: null,
         // Once a winner is chosen, set this to one of the variant keys to give
         // every user that variant and end the split (env-only, no deploy).
         'force_variant' => env('SUBSCRIPTION_EXPERIMENT_FORCE_VARIANT'),
