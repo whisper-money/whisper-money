@@ -89,8 +89,13 @@ Good for incoming transfers from the same person or company.
 </div>
 
 Each condition compares a field with a value. Text fields can _contain_ or
-_equal_ a value, amounts can _equal_, be _greater than_ or _less than_ one, and
-creditor and debtor name can also be _empty_ or _not empty_.
+_equal_ a value, or the opposite — _does not contain_ and _does not equal_ —
+which is how you write an exception. Amounts can _equal_, be _greater than_ or
+_less than_ one, and creditor and debtor name can also be _empty_ or
+_not empty_.
+
+A negative condition is also true when the field is empty. "Creditor name does
+not contain Amazon" matches a transaction whose creditor the bank never sent.
 
 ## Actions
 
@@ -112,6 +117,8 @@ Examples:
 
 - Description contains "Netflix" **and** amount is less than 20.
 - Description contains "Uber" **or** description contains "Cabify".
+- Description contains "Amazon" **and** description does not contain "Amazon
+  Prime" — everything from the shop except the subscription.
 
 Priority controls which rule wins when multiple rules could match.
 
