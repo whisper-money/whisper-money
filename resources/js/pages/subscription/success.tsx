@@ -61,9 +61,15 @@ export default function Success() {
 
             <StepScreen
                 title={__('Payment received')}
-                description={__(
-                    'Your plan is on. Connected banks, AI suggestions and the AI assistant are all available now.',
-                )}
+                description={
+                    continueUrl
+                        ? __(
+                              'Your plan is on. We’ll put you back where you left off and carry on from there.',
+                          )
+                        : __(
+                              'Your plan is on. Connected banks, AI suggestions and the AI assistant are all available now.',
+                          )
+                }
                 footer={
                     <>
                         <StepButton
@@ -95,9 +101,18 @@ export default function Success() {
                 </StepList>
 
                 <StepNote>
-                    {__(
-                        'Banks sync a few times a day. To pull yours in right now, go to Settings → Connections.',
-                    )}
+                    {/* Someone who paid mid-onboarding has nothing connected
+                        yet — they bought in order to connect something — so
+                        telling them to refresh it in Settings is advice about a
+                        thing that does not exist. The button below puts them
+                        back in the wizard, which sets it up. */}
+                    {continueUrl
+                        ? __(
+                              'Nothing to sync yet — the wizard sets that up from here, so there’s no need to go looking in Settings.',
+                          )
+                        : __(
+                              'Banks sync a few times a day. To pull yours in right now, go to Settings → Connections.',
+                          )}
                 </StepNote>
             </StepScreen>
         </SubscriptionLayout>
