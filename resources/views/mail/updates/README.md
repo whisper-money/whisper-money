@@ -77,6 +77,9 @@ php artisan email:update jan-2026-updates --exclude-demo
 # Only users with no subscription and no trial
 php artisan email:update jan-2026-updates --audience=unsubscribed
 
+# Only users with a live subscription on the old price
+php artisan email:update jan-2026-updates --audience=active-low-price
+
 # Only users who cancelled but are still inside their period, on the old price
 php artisan email:update jan-2026-updates --audience=cancelling-low-price
 
@@ -113,10 +116,18 @@ Emails will be sent over 3 day(s) (50 emails per day)
 | --- | --- |
 | `all` | Every user (deleted ones are skipped by the job). |
 | `unsubscribed` | Nothing Stripe can still collect on, no trial running, and no subscription still inside its period. The last one matters: `/subscribe` redirects anyone with a valid subscription (grace period included) to the dashboard, so they would get an email with a dead CTA. |
-| `cancelling-low-price` | Cancelled but still inside their period, on a price that is not the high tier's. The high-tier price IDs are resolved from their lookup keys through Stripe, and the command refuses to send if it cannot resolve them. |
+| `active-low-price` | A subscription Stripe can still collect on, on the low price. `collectableSubscription()` decides, so cancelled ones are out and the billable statuses are not listed a second time. |
+| `cancelling-low-price` | Cancelled but still inside their period, on the low price. |
 
-`unsubscribed` refuses to run while `subscriptions.enabled` is false, because
-then every user reads as unsubscribed.
+The three price audiences all start from the same filter: **no subscription on a
+high-tier price, ever**. Someone already paying the new price has nothing to
+gain from hearing it is coming. The high-tier price IDs are resolved from their
+lookup keys through Stripe, and the command refuses to send if it cannot resolve
+them, rather than letting that cohort through the filter that exists to keep
+them out.
+
+`unsubscribed` also refuses to run while `subscriptions.enabled` is false,
+because then every user reads as unsubscribed.
 
 ### 4. Command Arguments
 
