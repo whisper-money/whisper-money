@@ -315,3 +315,60 @@ it('can use is empty operator for nullable fields', function () {
         'title' => 'Empty Creditor Rule',
     ]);
 });
+
+// The exception the negative operators exist for. Reopening the rule is the half
+// worth testing: it only comes back as "does not contain" if parseJsonLogic
+// unwraps the `!` the builder wrote.
+it('can build an exception rule and reopen it with the negative operator', function () {
+    $user = User::factory()->onboarded()->create();
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    createCategoryViaUI($page, 'Subscriptions');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
+        ->wait(0.5)
+        ->fill('title', 'Exception Rule')
+        ->fill('input[placeholder="Value"]', 'keyword')
+        ->click('Add Condition')
+        ->wait(0.5)
+        // A new group joins its conditions with OR; the exception needs AND.
+        ->click('[data-testid="toggle-condition-operator"]')
+        ->wait(0.5)
+        ->assertSee('AND')
+        // The second condition, still on the "contains" default it was created with.
+        ->click('button[role="combobox"]:has-text("contains") >> nth=1')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("does not contain")')
+        ->wait(0.5)
+        ->fill('input[placeholder="Value"] >> nth=1', 'visa card')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Subscriptions')
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+
+    $rule = AutomationRule::where('user_id', $user->id)->sole();
+
+    expect(json_decode($rule->rules_json, true))->toBe(['and' => [
+        ['in' => ['keyword', ['var' => 'description']]],
+        ['!' => ['in' => ['visa card', ['var' => 'description']]]],
+    ]]);
+
+    $page->navigate('/settings/automation-rules')->wait(1);
+
+    $page->assertSee('Exception Rule')
+        ->click('button[aria-label="Actions"]')
+        ->wait(0.5)
+        ->click('Edit')
+        ->wait(1)
+        ->assertSee('Edit Automation Rule')
+        ->assertSee('does not contain')
+        ->assertNoJavascriptErrors();
+});

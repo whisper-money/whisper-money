@@ -36,6 +36,27 @@ hand: `create_automation_rule` for future ones, then `apply_automation_rule`
 for the history — it previews by default, so show the user the match count and
 the sample before calling it again with `dry_run: false`.
 
+**"Always file X under Y"** — build the rule instead of categorizing by hand.
+Get the category and label ids from `list_categories` / `list_labels` first,
+then write the condition in plain language ("description mentions amazon, but
+not amazon prime") and only then map it to JsonLogic:
+
+- contains → `{"in":["amazon",{"var":"description"}]}`, and does not contain →
+  the same wrapped in a negation, `{"!":{"in":["amazon prime",{"var":"description"}]}}`.
+- equals / is not → `{"==":[{"var":"creditor_name"},"netflix"]}` and
+  `{"!=":[...]}`; empty / not empty are the same two against `null`.
+- Join them with `{"and":[...]}` or `{"or":[...]}`, which nest: "any of these
+  merchants, but not that one" is one `and` holding an `or` and a `!`.
+- Values are compared lowercased, and amounts inside `rules_json` are in major
+  units. "Does not contain" is also true when the field is empty.
+
+Then `create_automation_rule`, and `apply_automation_rule` with `dry_run: true`
+before anything else — the match list is the only way to find out the rule says
+what you meant. A rule that is merely wrong (bad nesting, a variable that does
+not exist, a token that never appears) saves happily and matches nothing, so a
+dry run returning 0 matches is a bug in the rule, not an empty history. Fix it
+with `update_automation_rule`, dry-run again, then commit with `dry_run: false`.
+
 **"This charge was for two things"** — `split_transaction` with parts that add
 up to the original and share its sign. The parts replace it everywhere; to undo
 it, `merge_transaction_splits` with any part.

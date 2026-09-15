@@ -90,9 +90,14 @@ Coincide con quién pagó, cuando el banco lo envía aparte de la descripción.
 </div>
 
 Cada condición compara un campo con un valor. Los campos de texto pueden
-_contener_ o ser _igual a_ un valor, los importes pueden ser _igual a_, _mayor
-que_ o _menor que_ uno, y el nombre del acreedor y del deudor admiten además
-_está vacío_ y _no está vacío_.
+_contener_ o ser _igual a_ un valor, o lo contrario — _no contiene_ y _no es
+igual a_ —, que es como se escribe una excepción. Los importes pueden ser
+_igual a_, _mayor que_ o _menor que_ uno, y el nombre del acreedor y del deudor
+admiten además _está vacío_ y _no está vacío_.
+
+Una condición negativa también se cumple cuando el campo está vacío. "El nombre
+del acreedor no contiene Amazon" coincide con una transacción cuyo acreedor el
+banco nunca envió.
 
 ## Acciones
 
@@ -114,6 +119,8 @@ Ejemplos:
 
 - La descripción contiene "Netflix" **y** el importe es menor que 20.
 - La descripción contiene "Uber" **o** la descripción contiene "Cabify".
+- La descripción contiene "Amazon" **y** la descripción no contiene "Amazon
+  Prime": todo lo de la tienda menos la suscripción.
 
 La prioridad controla qué regla gana cuando varias podrían coincidir.
 

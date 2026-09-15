@@ -81,3 +81,36 @@ describe('RuleBuilder amount field', () => {
         expect(typeAmount('')).toBe('');
     });
 });
+
+describe('RuleBuilder operators', () => {
+    function descriptionStructure(): RuleStructure {
+        return {
+            groups: [
+                {
+                    id: 'group-1',
+                    operator: 'and',
+                    conditions: [
+                        {
+                            id: 'condition-1',
+                            field: 'description',
+                            operator: 'not_contains',
+                            value: 'tarjeta visa',
+                        },
+                    ],
+                },
+            ],
+            groupOperator: 'and',
+        };
+    }
+
+    it('shows the negative operator a saved rule was built with', () => {
+        render(
+            <RuleBuilder value={descriptionStructure()} onChange={vi.fn()} />,
+        );
+
+        expect(screen.getByText('does not contain')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Value')).toHaveValue(
+            'tarjeta visa',
+        );
+    });
+});
