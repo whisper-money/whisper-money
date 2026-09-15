@@ -189,3 +189,51 @@ it('names the merchant from the description when the row has no counterparty', f
 it('is closed to guests', function () {
     $this->getJson('/onboarding/reveal')->assertUnauthorized();
 });
+
+it('reveals the last finished month rather than the one still running', function () {
+    $user = revealUser();
+    $account = Account::factory()->for($user)->create(['type' => 'checking', 'currency_code' => 'EUR']);
+
+    // Anyone on a live bank connection has movements in the month still
+    // running. A handful of them is not a month, and setting them against a
+    // guess about a whole one is the comparison nobody made.
+    foreach (range(1, 6) as $day) {
+        outgoing($account, now()->format('Y-m'), -1350, 'KIOSK', $day);
+    }
+
+    foreach (range(1, 11) as $back) {
+        foreach (range(1, 5) as $day) {
+            outgoing($account, monthsBack($back), -41800, 'MERCADONA', $day);
+        }
+    }
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson([
+            'variant' => 'spending',
+            'month' => monthsBack(1),
+            'is_last_month' => true,
+            'is_partial' => false,
+            'spent' => 209000,
+        ]);
+});
+
+it('answers a user who only has the running month, without comparing it', function () {
+    $user = revealUser();
+    $account = Account::factory()->for($user)->create(['type' => 'checking', 'currency_code' => 'EUR']);
+
+    foreach (range(1, 6) as $day) {
+        outgoing($account, now()->format('Y-m'), -1350, 'KIOSK', $day);
+    }
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson([
+            'variant' => 'spending',
+            'month' => now()->format('Y-m'),
+            'is_partial' => true,
+            'spent' => 8100,
+        ]);
+});

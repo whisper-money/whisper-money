@@ -180,3 +180,40 @@ it('captures what someone with no movements gets instead', function () {
         ->screenshot(filename: 'reveal-assets')
         ->assertNoJavascriptErrors();
 });
+
+/**
+ * The month still running, for the user whose only history is this one — a file
+ * exported this week, or a bank connected on the 2nd.
+ *
+ * It is the one reveal with no verdict on it: six days of a month set against a
+ * guess about a whole one produced "You came in €1,119 under — almost nobody
+ * misses this way", which is a compliment nobody earned.
+ */
+it('captures the month that has not finished, without a verdict on it', function () {
+    $user = revealUser(120000);
+    $account = Account::factory()->for($user)->create([
+        'name' => 'Cuenta Nómina',
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+
+    spend($account, now()->startOfMonth(), [
+        'MERCADONA' => [4210, 3180],
+        'GLOVO' => [2650],
+        'BAR MANOLO' => [1850, 2200],
+        'UBER' => [1420],
+    ]);
+
+    actingAs($user);
+
+    visit('/onboarding?step=reveal')
+        ->resize(430, 932)
+        ->waitForText('This month so far', 10)
+        ->assertSee('155')
+        ->assertSee('The month isn’t over')
+        ->assertDontSee('You guessed')
+        ->assertSee('Who you paid most')
+        ->wait(1)
+        ->screenshot(filename: 'reveal-partial-month')
+        ->assertNoJavascriptErrors();
+});

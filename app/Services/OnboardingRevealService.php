@@ -67,13 +67,23 @@ class OnboardingRevealService
         $outgoings = $this->recentOutgoings($user);
         $byMonth = $outgoings->groupBy(fn (Transaction $transaction): string => $transaction->transaction_date->format('Y-m'));
 
-        $month = $byMonth->keys()
+        $candidates = $byMonth->keys()
             ->sortDesc()
-            ->first(fn (string $month): bool => $byMonth[$month]->count() >= self::MIN_TRANSACTIONS);
+            ->filter(fn (string $month): bool => $byMonth[$month]->count() >= self::MIN_TRANSACTIONS)
+            ->values();
 
-        if ($month === null) {
+        if ($candidates->isEmpty()) {
             return null;
         }
+
+        // Anyone who connects a live bank has movements in the month still
+        // running, and two days of it is not a month: set against a guess about
+        // a whole one it reads as a €1,119 underspend nobody achieved. The
+        // running month is only revealed when it is all there is — a file
+        // holding this month alone still deserves an answer, and the screen is
+        // told to drop the comparison rather than draw one.
+        $running = now()->format('Y-m');
+        $month = $candidates->first(fn (string $month): bool => $month !== $running) ?? $candidates->first();
 
         $currency = $user->currency_code;
         $this->preloadExchangeRates($outgoings, $currency);
@@ -84,6 +94,9 @@ class OnboardingRevealService
             'currency_code' => $currency,
             'month' => $month,
             'is_last_month' => $month === now()->startOfMonth()->subMonth()->format('Y-m'),
+            // The month has not finished, so neither the comparison against the
+            // guess nor the annualisation the screen draws from it holds.
+            'is_partial' => $month === $running,
             // Outgoings are stored negative and the screen states a spend, so
             // the sign is flipped once, here.
             'spent' => -$this->sumConvertedAmounts($byMonth[$month], $currency),

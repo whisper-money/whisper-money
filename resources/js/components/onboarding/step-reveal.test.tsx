@@ -25,6 +25,7 @@ function spending(overrides: Record<string, unknown> = {}) {
             currency_code: 'EUR',
             month: '2026-08',
             is_last_month: true,
+            is_partial: false,
             spent: 184700,
             merchants: [
                 { name: 'MERCADONA', amount: 31200 },
@@ -90,6 +91,25 @@ describe('StepReveal', () => {
 
         expect(screen.getByText(/a year, at the rate of/)).toBeInTheDocument();
         expect(screen.queryByText(/You guessed/)).toBeNull();
+    });
+
+    it('does not set a month still running against the guess', async () => {
+        get.mockResolvedValue(
+            spending({
+                month: '2026-09',
+                is_last_month: false,
+                is_partial: true,
+                spent: 8100,
+            }),
+        );
+
+        await renderReveal({ spendingGuess: 120000 });
+
+        expect(screen.getByText('This month so far')).toBeInTheDocument();
+        expect(screen.getByText(/isn’t over/)).toBeInTheDocument();
+        // Neither half of the verdict holds on a month that has not finished.
+        expect(screen.queryByText(/You guessed/)).toBeNull();
+        expect(screen.queryByText(/a year/)).toBeNull();
     });
 
     it('names the month when the import is not last month’s', async () => {

@@ -35,6 +35,8 @@ interface SpendingReveal {
     /** The revealed month, `YYYY-MM`. */
     month: string;
     is_last_month: boolean;
+    /** The revealed month is the one still running, so it is not comparable. */
+    is_partial: boolean;
     /** Minor units, positive. */
     spent: number;
     merchants: RevealMerchant[];
@@ -218,9 +220,7 @@ function RevealSpending({
             <div className="flex flex-col gap-6.5">
                 <div className="flex flex-col gap-3.5">
                     <StepSectionLabel>
-                        {data.is_last_month
-                            ? __('Last month')
-                            : monthName(data.month, locale)}
+                        {sectionLabel(data, locale)}
                     </StepSectionLabel>
 
                     <h1 className="flex items-baseline gap-1.5">
@@ -235,11 +235,17 @@ function RevealSpending({
                     </h1>
 
                     <p className="text-[17px] leading-normal text-pretty">
-                        <Verdict
-                            spent={data.spent}
-                            guess={spendingGuess}
-                            money={money}
-                        />
+                        {data.is_partial ? (
+                            __(
+                                'The month isn’t over, so there’s nothing to set your guess against yet — this is what it has cost so far.',
+                            )
+                        ) : (
+                            <Verdict
+                                spent={data.spent}
+                                guess={spendingGuess}
+                                money={money}
+                            />
+                        )}
                     </p>
                 </div>
 
@@ -380,6 +386,21 @@ function Verdict({
             values={{ guess: guessed, gap: strong(-gap) }}
         />
     );
+}
+
+/**
+ * What the figure underneath is a figure of. The running month says so outright:
+ * naming it the way a finished month is named is what made the number read as a
+ * whole month's spending in the first place.
+ */
+function sectionLabel(data: SpendingReveal, locale: string): string {
+    if (data.is_partial) {
+        return __('This month so far');
+    }
+
+    return data.is_last_month
+        ? __('Last month')
+        : monthName(data.month, locale);
 }
 
 /** The revealed month, named, for an import that is not last month's. */
