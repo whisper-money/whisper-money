@@ -121,19 +121,31 @@ export function StepImportTransactions({
         [accounts, accountId],
     );
 
+    /**
+     * Whether the account this step was opened for has reached the props yet.
+     *
+     * Not "are there any accounts": a user who connected a bank first arrives
+     * here with seven of them already in the props and the one they just typed
+     * in missing. Connected accounts are never eligible for a file, so the step
+     * read that as nothing to import into and handed itself straight back to
+     * the hub — the manual account made, its history never asked for.
+     */
+    const awaitingAccount =
+        account !== undefined && !accounts.some((one) => one.id === account.id);
+
     // Refresh shared props so the newly created account is available.
     useEffect(() => {
-        if (accounts.length === 0) {
+        if (accounts.length === 0 || awaitingAccount) {
             router.reload({
                 only: ['accounts', 'categories', 'banks', 'automationRules'],
             });
         }
-    }, [accounts.length]);
+    }, [accounts.length, awaitingAccount]);
 
     // Which screen opens the step is a question about the accounts, and they
     // arrive with the reload above — so it is answered once they are here.
     useEffect(() => {
-        if (screen !== null || accounts.length === 0) {
+        if (screen !== null || accounts.length === 0 || awaitingAccount) {
             return;
         }
 
@@ -152,7 +164,14 @@ export function StepImportTransactions({
         // One account is not a question worth asking; more than one is exactly
         // the question the old drawer skipped and got wrong.
         setScreen(eligible.length === 1 ? 'upload' : 'pick-account');
-    }, [screen, accounts.length, eligible, account?.id, onComplete]);
+    }, [
+        screen,
+        accounts.length,
+        awaitingAccount,
+        eligible,
+        account?.id,
+        onComplete,
+    ]);
 
     const reject = useCallback((fileName: string, reason: string) => {
         setRejection({ fileName, reason });

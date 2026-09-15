@@ -1,4 +1,5 @@
 import { type Account } from '@/types/account';
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StepImportTransactions } from './step-import-transactions';
@@ -92,13 +93,26 @@ const ROWS = [
     { transaction_date: '2026-08-13', description: 'Mercadona', amount: -6240 },
 ];
 
-function renderStep(onComplete = vi.fn()) {
+function renderStep(
+    onComplete = vi.fn(),
+    account: Parameters<
+        typeof StepImportTransactions
+    >[0]['account'] = undefined,
+) {
     const view = render(
-        <StepImportTransactions account={undefined} onComplete={onComplete} />,
+        <StepImportTransactions account={account} onComplete={onComplete} />,
     );
 
     return { ...view, onComplete };
 }
+
+/** The account the hub just made, as the step is handed it. */
+const JUST_CREATED = {
+    id: 'account-9',
+    name: 'Cuenta Nomina',
+    type: 'checking',
+    currencyCode: 'EUR',
+} as Parameters<typeof StepImportTransactions>[0]['account'];
 
 async function chooseFile(container: HTMLElement, name = 'movements.csv') {
     const input = container.querySelector(
@@ -175,6 +189,30 @@ describe('StepImportTransactions account choice', () => {
         accounts.current = [CHECKING, CONNECTED];
 
         renderStep();
+
+        expect(await screen.findByText('Bring in your history')).toBeTruthy();
+    });
+
+    /**
+     * Connect a bank first, then add an account by hand: the props already hold
+     * the bank's accounts, so "are there any accounts yet" was true while the
+     * one the user just typed in was still missing. None of the bank's can take
+     * a file, so the step read that as nothing to import into and handed itself
+     * back to the hub — the account made, its history never asked for.
+     */
+    it('waits for the account it was opened for before giving up on the step', async () => {
+        accounts.current = [CONNECTED];
+
+        const { onComplete } = renderStep(vi.fn(), JUST_CREATED);
+
+        await waitFor(() => expect(router.reload).toHaveBeenCalled());
+        expect(onComplete).not.toHaveBeenCalled();
+    });
+
+    it('opens the upload screen once that account arrives', async () => {
+        accounts.current = [CONNECTED, { ...CHECKING, id: 'account-9' }];
+
+        renderStep(vi.fn(), JUST_CREATED);
 
         expect(await screen.findByText('Bring in your history')).toBeTruthy();
     });
