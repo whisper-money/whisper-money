@@ -74,33 +74,56 @@ php artisan email:update jan-2026-updates --subject="Exciting January Updates!"
 # Exclude demo account
 php artisan email:update jan-2026-updates --exclude-demo
 
+# Only users with no subscription and no trial
+php artisan email:update jan-2026-updates --audience=unsubscribed
+
+# Only users who cancelled but are still inside their period, on the old price
+php artisan email:update jan-2026-updates --audience=cancelling-low-price
+
+# Drip it out 500 a day instead of sending the whole audience at once
+php artisan email:update jan-2026-updates --per-day=500
+
 # Skip confirmation prompt (for scripts/automation)
 php artisan email:update jan-2026-updates --force
 ```
 
 ### 3.1. Rate Limiting
 
-**Important**: The command automatically rate limits to **50 emails per day** to avoid overwhelming your email service and to maintain good sender reputation.
+By default the whole audience is queued at once. The ceiling that matters is
+SES: 50,000 sends a day on this account, which `--per-day` defaults to, and 10 a
+second, which the `emails` queue limiter (`AppServiceProvider`) is set to.
+4,600 emails drain in under ten minutes.
 
-For example:
-- **50 users**: All sent immediately
-- **125 users**: 50 sent today, 50 tomorrow, 25 the day after
-- **250 users**: 50 per day over 5 days
+Pass `--per-day` to go slower than that, and the command spreads the send over
+days, that many at a time. With `--per-day=50` and 126 users: 50 today, 50
+tomorrow, 26 the day after. Jobs are queued with the delay already on them.
 
-The command will show you the schedule:
 ```
 Found 126 user(s).
 Rate limit: 50 emails per day
 Successfully queued 126 update email(s) to the 'emails' queue!
-Emails will be sent over 2 day(s) (50 emails per day)
+Emails will be sent over 3 day(s) (50 emails per day)
 ```
 
-Jobs are queued with delays automatically - you don't need to do anything special!
+### 3.2. Audience
+
+`--audience` decides who is in the send. It defaults to `all`.
+
+| Value | Who |
+| --- | --- |
+| `all` | Every user (deleted ones are skipped by the job). |
+| `unsubscribed` | Nothing Stripe can still collect on, no trial running, and no subscription still inside its period. The last one matters: `/subscribe` redirects anyone with a valid subscription (grace period included) to the dashboard, so they would get an email with a dead CTA. |
+| `cancelling-low-price` | Cancelled but still inside their period, on a price that is not the high tier's. The high-tier price IDs are resolved from their lookup keys through Stripe, and the command refuses to send if it cannot resolve them. |
+
+`unsubscribed` refuses to run while `subscriptions.enabled` is false, because
+then every user reads as unsubscribed.
 
 ### 4. Command Arguments
 
 - `view`: The name of your template file (without .blade.php extension)
 - `identifier`: A unique tracking identifier to prevent duplicate sends
+- `--audience`: Who to send to (see 3.2). Defaults to `all`
+- `--per-day`: How many emails to queue per day. Defaults to 50,000, the SES daily quota
 
 ### 5. How Tracking Works
 

@@ -104,6 +104,10 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            // Cashier reads this as a date in onGenericTrial(). Nothing sets it
+            // today, so the cast is what keeps that branch from fatalling the
+            // day something does.
+            'trial_ends_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'onboarded_at' => 'datetime',
             'onboarding_answers' => 'array',
