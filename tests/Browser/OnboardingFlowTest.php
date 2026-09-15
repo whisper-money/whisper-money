@@ -395,7 +395,7 @@ it('hides the connected plan price after connected setup is selected once', func
         ->assertSee('Connecting a bank needs Standard')
         ->click('Not now — I’ll add accounts by hand')
         ->wait(1)
-        ->assertSee('Create an Account')
+        ->assertSee('Add it yourself')
         ->click('Back')
         ->wait(1)
         ->assertSee("Let's build the picture")
