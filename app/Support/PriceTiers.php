@@ -11,6 +11,8 @@ namespace App\Support;
  * Both tiers' Stripe prices already exist, so switching between them needs no
  * `stripe:sync-prices` run — only `config:clear`.
  *
+ * @api Consumed by config/subscriptions.php, which static analysis does not scan.
+ *
  * @phpstan-type TierPlan array{price: float, original_price: float|null, stripe_lookup_key: string}
  */
 final class PriceTiers
