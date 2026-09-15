@@ -4,10 +4,51 @@ use App\Enums\DripEmailType;
 use App\Jobs\SendUpdateEmailJob;
 use App\Models\User;
 use App\Models\UserMailLog;
+use App\Support\PriceTiers;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
+use Stripe\Collection as StripeCollection;
+use Stripe\Service\PriceService;
+use Stripe\StripeClient;
 
 use function Pest\Laravel\artisan;
+
+/**
+ * Give a user a subscription of their own, in the shape the audience filters
+ * read: `ends_at` in the future means cancelled but still running.
+ */
+function subscribeUser(User $user, string $stripePrice, string $status = 'active', mixed $endsAt = null): User
+{
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_'.$user->id,
+        'stripe_status' => $status,
+        'stripe_price' => $stripePrice,
+        'ends_at' => $endsAt,
+    ]);
+
+    return $user;
+}
+
+/**
+ * Seed the price IDs of the high tier into the cache the command resolves them
+ * through, so no test reaches for Stripe.
+ *
+ * @return list<string>
+ */
+function cacheHighTierPriceIds(): array
+{
+    $ids = [];
+
+    foreach (PriceTiers::plansFor('high') as $plan) {
+        $id = 'price_'.$plan['stripe_lookup_key'];
+        Cache::put("stripe_price_id:{$plan['stripe_lookup_key']}", $id, now()->addHour());
+        $ids[] = $id;
+    }
+
+    return $ids;
+}
 
 beforeEach(function () {
     Queue::fake();
@@ -227,8 +268,9 @@ test('command skips confirmation with force flag', function () {
     Queue::assertPushed(SendUpdateEmailJob::class, 1);
 });
 
-test('command applies rate limiting delay for large batches', function () {
-    // Create 150 users to test rate limiting across 3 days
+test('command queues a large batch for today by default', function () {
+    // The default per-day is the SES daily quota, so nothing is held back for
+    // tomorrow until a send is bigger than SES will accept in a day.
     User::factory()->count(150)->create();
 
     artisan('email:update', [
@@ -239,16 +281,141 @@ test('command applies rate limiting delay for large batches', function () {
 
     Queue::assertPushed(SendUpdateEmailJob::class, 150);
 
-    // Check that delays are applied correctly
-    // First 50 emails: no delay (day 0)
-    // Next 50 emails: 1 day delay (day 1)
-    // Last 50 emails: 2 days delay (day 2)
-    $pushedJobs = Queue::pushedJobs()[SendUpdateEmailJob::class] ?? [];
+    $delays = collect(Queue::pushedJobs()[SendUpdateEmailJob::class])
+        ->map(fn (array $pushed) => $pushed['job']->delay);
 
-    expect($pushedJobs)->toHaveCount(150);
+    expect($delays->filter(fn ($delay) => $delay->isSameDay(now()))->count())->toBe(150);
+});
 
-    // Verify delays are applied correctly
-    // Note: We can't easily check the exact delay value in the test,
-    // but we can verify all jobs were pushed
-    expect($pushedJobs)->toHaveCount(150);
+test('audience unsubscribed leaves out subscribers and users on a trial', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $unsubscribed = User::factory()->create();
+    $ended = subscribeUser(User::factory()->create(), 'price_low', 'canceled', now()->subDay());
+    $onTrial = User::factory()->create(['trial_ends_at' => now()->addWeek()]);
+    $subscribed = subscribeUser(User::factory()->create(), 'price_low');
+    $pastDue = subscribeUser(User::factory()->create(), 'price_low', 'past_due');
+    // Cancelled but still running: /subscribe would bounce them to the
+    // dashboard, and the cancelling-low-price email is the one that fits them.
+    $cancelling = subscribeUser(User::factory()->create(), 'price_low', 'active', now()->addWeek());
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--audience' => 'unsubscribed',
+        '--force' => true,
+    ])->assertSuccessful();
+
+    Queue::assertCount(2);
+
+    foreach ([$unsubscribed, $ended] as $user) {
+        Queue::assertPushed(SendUpdateEmailJob::class, fn ($job) => $job->user->id === $user->id);
+    }
+
+    foreach ([$onTrial, $subscribed, $pastDue, $cancelling] as $user) {
+        Queue::assertNotPushed(SendUpdateEmailJob::class, fn ($job) => $job->user->id === $user->id);
+    }
+});
+
+test('audience unsubscribed refuses to send while subscriptions are disabled', function () {
+    // Otherwise hasActiveSubscriptionOrTrial() answers false for everyone and
+    // the whole database reads as unsubscribed.
+    config(['subscriptions.enabled' => false]);
+
+    subscribeUser(User::factory()->create(), 'price_low');
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--audience' => 'unsubscribed',
+        '--force' => true,
+    ])->assertFailed();
+
+    Queue::assertNothingPushed();
+});
+
+test('audience cancelling-low-price only mails cancelling users still on the old price', function () {
+    [$highMonthly] = cacheHighTierPriceIds();
+
+    $cancellingOnLowPrice = subscribeUser(User::factory()->create(), 'price_low', 'active', now()->addWeek());
+    $cancellingOnTrial = subscribeUser(User::factory()->create(), 'price_low', 'trialing', now()->addDays(3));
+    $cancellingOnHighPrice = subscribeUser(User::factory()->create(), $highMonthly, 'active', now()->addWeek());
+    $alreadyEnded = subscribeUser(User::factory()->create(), 'price_low', 'canceled', now()->subDay());
+    $stillSubscribed = subscribeUser(User::factory()->create(), 'price_low');
+    $neverSubscribed = User::factory()->create();
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--audience' => 'cancelling-low-price',
+        '--force' => true,
+    ])->assertSuccessful();
+
+    Queue::assertCount(2);
+
+    foreach ([$cancellingOnLowPrice, $cancellingOnTrial] as $user) {
+        Queue::assertPushed(SendUpdateEmailJob::class, fn ($job) => $job->user->id === $user->id);
+    }
+
+    foreach ([$cancellingOnHighPrice, $alreadyEnded, $stillSubscribed, $neverSubscribed] as $user) {
+        Queue::assertNotPushed(SendUpdateEmailJob::class, fn ($job) => $job->user->id === $user->id);
+    }
+});
+
+test('audience cancelling-low-price refuses when a high tier price cannot be resolved', function () {
+    // With no high price IDs to exclude, the A/B cohort already on the high
+    // price would be mailed about losing a price they never had.
+    $prices = Mockery::mock(PriceService::class);
+    $prices->shouldReceive('all')->andReturn(StripeCollection::constructFrom([
+        'object' => 'list',
+        'has_more' => false,
+        'data' => [],
+    ]));
+
+    $stripe = Mockery::mock(StripeClient::class);
+    $stripe->prices = $prices;
+    app()->bind(StripeClient::class, fn () => $stripe);
+
+    subscribeUser(User::factory()->create(), 'price_low', 'active', now()->addWeek());
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--audience' => 'cancelling-low-price',
+        '--force' => true,
+    ])->assertFailed();
+
+    Queue::assertNothingPushed();
+});
+
+test('command fails on an unknown audience', function () {
+    User::factory()->create();
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--audience' => 'everyone-i-like',
+        '--force' => true,
+    ])->assertFailed();
+
+    Queue::assertNothingPushed();
+});
+
+test('per-day option decides how many emails go out each day', function () {
+    User::factory()->count(5)->create();
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--per-day' => 2,
+        '--force' => true,
+    ])->assertSuccessful();
+
+    $delays = collect(Queue::pushedJobs()[SendUpdateEmailJob::class])
+        ->map(fn (array $pushed) => $pushed['job']->delay);
+
+    expect($delays)->toHaveCount(5)
+        ->and($delays->filter(fn ($delay) => $delay->isSameDay(now()))->count())->toBe(2)
+        ->and($delays->filter(fn ($delay) => $delay->isSameDay(now()->addDay()))->count())->toBe(2)
+        ->and($delays->filter(fn ($delay) => $delay->isSameDay(now()->addDays(2)))->count())->toBe(1);
 });
