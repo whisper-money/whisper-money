@@ -47,7 +47,9 @@ it('walks the first steps on a phone with the action pinned to the footer', func
         ->click("Let's go")
         ->wait(1)
         ->assertSee("Let's build the picture")
-        ->assertSee("You'll choose a plan at the end of the onboarding.")
+        // The row leads to the gate now, and the gate is where the plan
+        // starts — the old "you'll choose a plan at the end" went with it.
+        ->assertSee('Standard plan, from')
         ->click('Add one myself')
         ->wait(1)
         ->assertSee('Add it yourself')
