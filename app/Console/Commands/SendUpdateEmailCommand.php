@@ -23,7 +23,7 @@ class SendUpdateEmailCommand extends Command
                             {view : The view name (e.g., "jan-2026-updates")}
                             {identifier? : The tracking identifier (defaults to view name)}
                             {--subject= : Custom email subject (default: "Update from Whisper Money")}
-                            {--audience=all : Who to send to: all, unsubscribed, cancelling-low-price}
+                            {--audience=all : Who to send to: all, unsubscribed, active-low-price, cancelling-low-price}
                             {--per-day=50000 : How many emails to queue per day (SES allows 50,000)}
                             {--exclude-demo : Exclude the shared demo and press accounts}
                             {--force : Skip confirmation prompt}';
@@ -136,8 +136,9 @@ class SendUpdateEmailCommand extends Command
         $users = match ($this->option('audience')) {
             'all' => User::query()->get(),
             'unsubscribed' => $this->usersWithoutSubscriptionOrTrial(),
+            'active-low-price' => $this->usersSubscribedOnTheLowPrice(),
             'cancelling-low-price' => $this->usersCancellingOnTheLowPrice(),
-            default => $this->refuse("Unknown --audience '{$this->option('audience')}'. Use all, unsubscribed or cancelling-low-price."),
+            default => $this->refuse("Unknown --audience '{$this->option('audience')}'. Use all, unsubscribed, active-low-price or cancelling-low-price."),
         };
 
         if ($users === null) {
@@ -170,19 +171,55 @@ class SendUpdateEmailCommand extends Command
             return $this->refuse('Subscriptions are disabled, so every user reads as unsubscribed. Refusing to send.');
         }
 
-        return User::query()
-            ->with('subscriptions')
+        return $this->usersNeverOnTheHighPrice()?->with('subscriptions')
             ->get()
             ->reject(fn (User $user) => $user->hasActiveSubscriptionOrTrial() || $user->subscribed('default'));
     }
 
     /**
-     * Users who cancelled but are still inside their period, on a price that is
-     * not the high tier's.
+     * Users with a subscription Stripe can still collect on, on the low price.
+     * `collectableSubscription()` is what says so: it already rejects cancelled
+     * subscriptions and allowlists the statuses that are still being billed, so
+     * the status list is not written out a second time here.
+     *
+     * "Low price" here means "not the high tier", which is the same thing while
+     * PriceTiers declares exactly two tiers. A third tier would land in this
+     * audience until this says otherwise.
+     *
+     * @return Collection<int, User>|null
+     */
+    private function usersSubscribedOnTheLowPrice(): ?Collection
+    {
+        return $this->usersNeverOnTheHighPrice()?->with('subscriptions')
+            ->get()
+            ->filter(fn (User $user) => $user->collectableSubscription() !== null);
+    }
+
+    /**
+     * Users who cancelled but are still inside their period, on the low price.
      *
      * @return Collection<int, User>|null
      */
     private function usersCancellingOnTheLowPrice(): ?Collection
+    {
+        return $this->usersNeverOnTheHighPrice()
+            ?->whereHas('subscriptions', fn (Builder $query) => $query
+                ->whereNotNull('ends_at')
+                ->where('ends_at', '>', now()))
+            ->get();
+    }
+
+    /**
+     * Users with no subscription on a high-tier price, ever. Every audience in
+     * a price increase campaign starts here: someone already paying the new
+     * price has nothing to gain from being told it is coming, and being sold
+     * the old price they cannot have is worse than silence. Null when the
+     * high-tier prices cannot be resolved, which refuses the send rather than
+     * mailing that cohort by accident.
+     *
+     * @return Builder<User>|null
+     */
+    private function usersNeverOnTheHighPrice(): ?Builder
     {
         $highPriceIds = $this->highTierPriceIds();
 
@@ -190,20 +227,18 @@ class SendUpdateEmailCommand extends Command
             return null;
         }
 
-        return User::query()
-            ->whereHas('subscriptions', fn (Builder $query) => $query
-                ->whereNotNull('ends_at')
-                ->where('ends_at', '>', now())
-                ->whereNotIn('stripe_price', $highPriceIds))
-            ->get();
+        return User::query()->whereDoesntHave(
+            'subscriptions',
+            fn (Builder $query) => $query->whereIn('stripe_price', $highPriceIds),
+        );
     }
 
     /**
      * The high tier's Stripe price IDs, resolved from its lookup keys through
      * the same `stripe_price_id:` cache checkout uses. Resolved rather than
      * hardcoded because the IDs differ per Stripe account, and refused rather
-     * than half-resolved because `whereNotIn` on a short list would mail the
-     * high-price cohort an email about losing a price they never had.
+     * than half-resolved because a short list here would let the high-price
+     * cohort through the filter that exists to keep them out.
      *
      * @return list<string>|null
      */
