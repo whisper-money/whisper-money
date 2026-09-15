@@ -249,11 +249,14 @@ it('returns to the accounts step when bank authorization fails during onboarding
     // the callback cannot resolve deletes nothing.
     $page = visit('/open-banking/callback?error=access_denied&error_description=Authentication+failed&state=onboarding-failure-token');
 
+    // The accounts step opens on its failure screen, which names the bank that
+    // refused and says what it did not leave behind — not on the hub listing.
     $page->wait(1)
         ->assertPathIs('/onboarding')
         ->assertQueryStringHas('step', 'create-account')
-        ->assertSee("1 in. What's missing?")
-        ->assertSee('Connected Bank')
+        ->assertSee('Failing Bank didn’t let us in')
+        ->assertSee('Nothing was created')
+        ->assertSee('Nothing was charged')
         ->assertDontSee('Find out where your money actually went')
         ->assertNoJavascriptErrors();
 
@@ -370,7 +373,7 @@ it('shows add another account form without first account restriction', function 
         ->assertNoJavascriptErrors();
 });
 
-it('hides the connected plan warning after connected setup is selected once', function () {
+it('hides the connected plan price after connected setup is selected once', function () {
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->create([
@@ -379,20 +382,24 @@ it('hides the connected plan warning after connected setup is selected once', fu
 
     $this->actingAs($user);
 
-    $warning = "You'll choose a plan at the end of the onboarding.";
-
     $page = visit('/onboarding?step=create-account');
 
+    // The row no longer says a plan is chosen at the end, because it is not:
+    // it names the price and leads to the gate, which is where the plan starts.
     $page->wait(1)
-        ->assertSee($warning)
+        ->assertSee('Standard plan, from')
         ->assertSee('/month')
+        ->assertDontSee("You'll choose a plan at the end of the onboarding.")
         ->click('Connect a bank')
         ->wait(1)
-        ->assertSee('Connect Your Bank')
+        ->assertSee('Connecting a bank needs Standard')
+        ->click('Not now — I’ll add accounts by hand')
+        ->wait(1)
+        ->assertSee('Create an Account')
         ->click('Back')
         ->wait(1)
         ->assertSee("Let's build the picture")
-        ->assertDontSee($warning)
+        ->assertDontSee('Standard plan, from')
         ->assertDontSee('/month')
         ->assertNoJavascriptErrors();
 });
@@ -536,9 +543,11 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Continue without one')
         ->wait(2);
 
-    // AI Suggestions - decline the consent prompt to continue without generating
-    $page->assertSee('Let AI draft your rules?')
-        ->click('Leave it off')
+    // AI Suggestions - the AI cannot be switched on without a plan, so this
+    // user meets the gate rather than the consent prompt. Decline it and the
+    // flow carries on unpaid, which is the whole point of the way past it.
+    $page->assertSee('AI sorting needs Standard')
+        ->click('I’ll sort them myself')
         ->wait(2);
 
     // Teach us - the movements the rules could not place. Skipping is no longer
@@ -611,7 +620,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
 it('activates AI directly without a consent prompt when a bank is connected', function () {
     config(['subscriptions.enabled' => true]);
 
-    $user = User::factory()->create(['onboarded_at' => null]);
+    $user = User::factory()->subscribed()->create(['onboarded_at' => null]);
 
     $bank = Bank::factory()->create(['name' => 'Connected AI Bank']);
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
@@ -627,9 +636,10 @@ it('activates AI directly without a consent prompt when a bank is connected', fu
 
     $page = visit('/onboarding?step=ai-suggestions');
 
-    // A linked bank already commits the user to a paid plan, so the consent
-    // prompt is skipped and AI is turned on for them. With no transactions yet
-    // the run stops at the "need more data" screen instead of calling the AI.
+    // A bank cannot be linked without paying for it first, so this user has a
+    // plan: the consent prompt is skipped and AI is turned on for them. With no
+    // transactions yet the run stops at the "need more data" screen instead of
+    // calling the AI.
     $page->wait(3)
         ->assertDontSee('Let AI draft your rules?')
         ->assertDontSee('Turn it on')
@@ -639,10 +649,13 @@ it('activates AI directly without a consent prompt when a bank is connected', fu
     expect($user->refresh()->hasActiveAiConsent())->toBeTrue();
 });
 
-it('asks for consent before activating AI when no bank is connected', function () {
+it('asks for consent before activating AI when the plan was bought without a bank', function () {
     config(['subscriptions.enabled' => true]);
 
-    $user = User::factory()->create(['onboarded_at' => null]);
+    // Paid, but with nothing connected — the bank gate's checkout came back and
+    // the authorization never happened, or the plan was bought from the paywall.
+    // Nothing has taken their consent yet, so the prompt is still theirs to answer.
+    $user = User::factory()->subscribed()->create(['onboarded_at' => null]);
 
     $this->actingAs($user);
 
@@ -650,10 +663,9 @@ it('asks for consent before activating AI when no bank is connected', function (
 
     $page = visit('/onboarding?step=ai-suggestions');
 
-    // Free users must opt in, and are told AI commits them to picking a plan.
     $page->wait(2)
         ->assertSee('Let AI draft your rules?')
-        ->assertSee("AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.")
+        ->assertSee('Without this you sort')
         ->assertSee('Turn it on')
         ->assertNoJavascriptErrors();
 
@@ -680,8 +692,11 @@ it('shows free plan option on subscribe page when no bank was connected', functi
 
     $page = visit('/subscribe');
 
+    // The soft gate: nothing was connected and nothing was switched on, so the
+    // way out is offered from the first paint rather than after a delay.
     $page->assertPathIs('/subscribe')
-        ->assertSee('Continue with the free plan')
+        ->assertSee('One thing left to decide')
+        ->assertSee('Carry on free')
         ->assertDontSee('Need help?')
         ->assertNoJavascriptErrors();
 });
@@ -696,10 +711,14 @@ it('forces a plan choice on subscribe when a bank is connected', function () {
 
     $page = visit('/subscribe');
 
+    // A connected bank is what the free plan would have to cut, so that door
+    // waits out the delay after onboarding. Until then there is a plan to buy
+    // and a way to ask for help, and nothing else.
     $page->assertPathIs('/subscribe')
-        ->assertSee('Choose your plan')
+        ->assertSee('Start Standard')
         ->assertSee('Need help?')
-        ->assertDontSee('Continue with the free plan')
+        ->assertDontSee('Carry on free')
+        ->assertDontSee('Stay on the free plan')
         ->assertNoJavascriptErrors();
 });
 
@@ -713,9 +732,12 @@ it('forces a plan choice on subscribe when AI consent is active', function () {
 
     $page = visit('/subscribe');
 
+    // AI switched on does the same as a bank: the free plan would revoke it, so
+    // the way out waits and the plan is the only thing on offer until it opens.
     $page->assertPathIs('/subscribe')
-        ->assertSee('Choose your plan')
+        ->assertSee('Start Standard')
         ->assertSee('Need help?')
-        ->assertDontSee('Continue with the free plan')
+        ->assertDontSee('Carry on free')
+        ->assertDontSee('Stay on the free plan')
         ->assertNoJavascriptErrors();
 });
