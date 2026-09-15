@@ -237,29 +237,31 @@ async function scenarioOnboardingConnect(page, onboarding) {
         waitUntil: 'domcontentloaded',
     });
     await page.waitForTimeout(800);
-    await page.getByRole('button', { name: /Connected/ }).click();
-    await page.getByRole('button', { name: 'Continue' }).click();
+    // The accounts hub's first row. The paid gate that stands in front of it is
+    // not this script's subject, so the fixture user is subscribed.
+    await page.getByRole('button', { name: 'Connect a bank' }).click();
     await page.waitForTimeout(1000);
-    // Inline (non-modal) connect on the onboarding step.
-    await page.getByRole('combobox').last().click();
-    await page.waitForTimeout(400);
-    await page.getByRole('option', { name: 'Spain' }).click();
-    await page.waitForTimeout(300);
-    await page.getByRole('button', { name: 'Continue' }).click();
+    // Inline (non-modal) connect on the onboarding step: country, bank, hand-off.
+    await page.getByRole('button', { name: 'Spain' }).click();
     await page.waitForTimeout(2800);
-    await page.getByRole('button', { name: /^BBVA$/ }).click();
-    await page.waitForTimeout(300);
-    await page.getByRole('button', { name: 'Continue' }).click();
-    await page.waitForTimeout(800);
-    await page.getByRole('button', { name: 'Connect' }).click();
+    // The row's accessible name carries the bank logo's alt text as well.
+    await page.getByRole('button', { name: /BBVA/ }).first().click();
+    await page.waitForTimeout(1200);
+    await page.getByRole('button', { name: /^Continue to BBVA$/ }).click();
     await page.waitForTimeout(6000);
     await driveBbva(page);
     await replayCallback(page, captured);
 
+    // The bank hands back more accounts than anyone wants tracked, so the flow
+    // stops on the mapping screen before the hub. Keep the lot.
+    await page
+        .getByRole('button', { name: /^Track (this one|these \d+)$/ })
+        .click({ timeout: 20000 });
+
     // The onboarding step hydrates its account list from the client store after
     // navigation; wait for it to render so we assert the UI (not just the DB) and the
     // recording ends on the real result rather than a mid-load frame.
-    await page.getByText("What's missing?").waitFor({ timeout: 15000 });
+    await page.getByText("What's missing?").waitFor({ timeout: 20000 });
     await page.waitForTimeout(2500);
 
     const { connection } = artisanJson([
@@ -342,8 +344,10 @@ async function scenarioSessionLost(page, settings) {
     // They must see the standalone "connected — go back to your app" confirmation
     // rather than being bounced to the login screen. This screen renders late in the
     // flow, so hold on it long enough to be clearly visible in the recording.
-    await page.getByText('Bank account connected').waitFor({ timeout: 15000 });
-    await page.getByText('go back to the app').waitFor({ timeout: 5000 });
+    await page.getByText('sent you here').waitFor({ timeout: 15000 });
+    await page
+        .getByText('Go back to the Whisper tab or app you started in')
+        .waitFor({ timeout: 5000 });
     await page.waitForTimeout(6000);
 
     const { connection } = artisanJson([
@@ -459,7 +463,16 @@ async function main() {
     const results = [];
     // Each scenario gets its own recording context, so it produces one video and
     // starts from a clean session.
+    //
+    // SCENARIO=<name> runs one of them, which is how you iterate on a selector
+    // without re-driving the bank sandbox four times. Only `onboarding-connect`
+    // stands alone; the other three share a user and expect to run in order.
+    const only = process.env.SCENARIO;
     const run = async (name, fn) => {
+        if (only && name !== only) {
+            return;
+        }
+
         const context = await browser.newContext({
             ...CONTEXT_OPTIONS,
             recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 800 } },

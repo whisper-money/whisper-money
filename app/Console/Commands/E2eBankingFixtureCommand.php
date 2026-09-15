@@ -48,7 +48,10 @@ class E2eBankingFixtureCommand extends Command
 
     private function seed(): int
     {
-        $onboarding = $this->resetUser(self::ONBOARDING_EMAIL, onboarded: false, pro: false);
+        // The onboarding user is subscribed: connecting a bank is behind the paid
+        // gate now, so an unsubscribed user reaches a checkout screen and never the
+        // bank picker. This script covers Enable Banking, not the paywall.
+        $onboarding = $this->resetUser(self::ONBOARDING_EMAIL, onboarded: false, pro: true);
         $settings = $this->resetUser(self::SETTINGS_EMAIL, onboarded: true, pro: true);
 
         $this->line((string) json_encode([
