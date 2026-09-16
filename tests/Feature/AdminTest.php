@@ -104,6 +104,8 @@ test('the arguments the curated commands actually need are accepted', function (
     // A feature is a class name and needs its backslashes; a rollout is a percentage.
     ['feature:enable', 'App\\Features\\CalculateBalancesOnImport 25%'],
     ['user:delete', 'someone@whisper.money'],
+    // The admin page always runs with --no-interaction, so deleting a user needs --force.
+    ['user:delete', 'someone@whisper.money --force'],
     ['stats:mcp-usage', '--days=7 --top=5'],
 ]);
 
