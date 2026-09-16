@@ -4,8 +4,10 @@ namespace App\Console\Commands;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\BankingProvider;
+use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Collection;
 use Laravel\Cashier\Subscription;
 
 class DeleteUserCommand extends Command
@@ -15,7 +17,9 @@ class DeleteUserCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'user:delete {email : The email address of the user to delete}';
+    protected $signature = 'user:delete
+                            {email : The email address of the user to delete}
+                            {--force : Skip the confirmation prompts}';
 
     /**
      * The console command description.
@@ -45,26 +49,14 @@ class DeleteUserCommand extends Command
             return self::SUCCESS;
         }
 
-        if (! $this->confirm("Are you sure you want to mark user '{$user->name}' ({$user->email}) as deleted? Their data will be preserved.")) {
-            $this->info('Deletion cancelled.');
-
-            return self::SUCCESS;
-        }
-
         $subscription = $user->collectableSubscription();
         $enableBankingConnections = $user->bankingConnections()
             ->with('accounts')
             ->where('provider', BankingProvider::EnableBanking)
             ->get();
 
-        if ($subscription && ! $this->confirm("User '{$user->email}' has a chargeable Stripe subscription ({$subscription->stripe_status}). Cancel it before deleting the user?")) {
-            $this->info('Deletion cancelled.');
-
-            return self::SUCCESS;
-        }
-
-        if ($enableBankingConnections->isNotEmpty() && ! $this->confirm("User '{$user->email}' has {$enableBankingConnections->count()} Enable Banking connection(s). Revoke them and keep linked accounts as manual accounts?")) {
-            $this->info('Deletion cancelled.');
+        if (! $this->confirmDeletion($user, $subscription, $enableBankingConnections)) {
+            $this->info('Deletion cancelled. Pass --force to confirm without being prompted.');
 
             return self::SUCCESS;
         }
@@ -87,6 +79,29 @@ class DeleteUserCommand extends Command
         $this->info("User '{$email}' has been marked as deleted. Their data remains in the database.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Ask about everything the deletion takes with it, unless --force answers yes to all of it.
+     *
+     * @param  Collection<int, BankingConnection>  $enableBankingConnections
+     */
+    private function confirmDeletion(User $user, ?Subscription $subscription, Collection $enableBankingConnections): bool
+    {
+        if ($this->option('force')) {
+            return true;
+        }
+
+        if (! $this->confirm("Are you sure you want to mark user '{$user->name}' ({$user->email}) as deleted? Their data will be preserved.")) {
+            return false;
+        }
+
+        if ($subscription && ! $this->confirm("User '{$user->email}' has a chargeable Stripe subscription ({$subscription->stripe_status}). Cancel it before deleting the user?")) {
+            return false;
+        }
+
+        return $enableBankingConnections->isEmpty()
+            || $this->confirm("User '{$user->email}' has {$enableBankingConnections->count()} Enable Banking connection(s). Revoke them and keep linked accounts as manual accounts?");
     }
 
     private function cancelSubscription(User $user, Subscription $subscription): void
