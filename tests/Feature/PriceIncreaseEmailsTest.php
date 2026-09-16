@@ -17,6 +17,12 @@ const SUBSCRIBERS_SUBJECT = 'Your price is not going up';
 const LAST_DAYS_VIEW = 'price-increase-last-days-oct-2026';
 const LAST_DAYS_SUBJECT = 'Four days left at €3.99';
 
+const LAST_DAYS_CANCELLING_VIEW = 'price-increase-last-days-cancelling-oct-2026';
+const LAST_DAYS_CANCELLING_SUBJECT = 'After 1 October, €3.99 only exists inside your subscription';
+
+const LAST_DAYS_SUBSCRIBERS_VIEW = 'price-increase-last-days-subscribers-oct-2026';
+const LAST_DAYS_SUBSCRIBERS_SUBJECT = 'The price changes on 1 October, yours does not';
+
 /**
  * Queue one of the price increase emails to a user with the given locale and
  * hand back the mailable, so each test asserts on exactly what that user gets.
@@ -233,6 +239,93 @@ it('renders the last days email in Spanish', function () {
     $mail->assertDontSeeInHtml('Four days, then €3.99 is gone');
 });
 
+it('renders the last days cancelling email in English', function () {
+    $mail = queuePriceIncreaseEmail(LAST_DAYS_CANCELLING_VIEW, LAST_DAYS_CANCELLING_SUBJECT, 'en');
+
+    $mail->assertHasSubject(LAST_DAYS_CANCELLING_SUBJECT);
+    $mail->assertSeeInHtml('Hi Ada,');
+    $mail->assertSeeInHtml('Your subscription is the last €3.99');
+
+    $mail->assertSeeInHtml('<table', escape: false);
+    $mail->assertSeeInHtml('From 1 October');
+    $mail->assertSeeInHtml('€8.99');
+    $mail->assertSeeInHtml('€53.94');
+
+    // This audience's deadline is the end of their own period, which can be
+    // months away, so the email must not promise them a 1 October one.
+    $mail->assertSeeInHtml('until the day your period runs out');
+    $mail->assertSeeInHtml('Reactivate before that day');
+    $mail->assertDontSeeInHtml('four days');
+
+    $mail->assertSeeInHtml('Reactivate my subscription');
+    $mail->assertSeeInHtml(route('settings.billing'), escape: false);
+
+    // A reminder, not a reprint of price-increase-cancelling-oct-2026.
+    $mail->assertDontSeeInHtml('Before your subscription ends');
+    $mail->assertDontSeeInHtml('Why it is going up:');
+});
+
+it('renders the last days cancelling email in Spanish', function () {
+    $mail = queuePriceIncreaseEmail(LAST_DAYS_CANCELLING_VIEW, LAST_DAYS_CANCELLING_SUBJECT, 'es');
+
+    $mail->assertHasSubject('Después del 1 de octubre, los 3,99 € solo existen dentro de tu suscripción');
+    $mail->assertSeeInHtml('Hola Ada,');
+    $mail->assertSeeInHtml('Tu suscripción es el último 3,99 €');
+
+    $mail->assertSeeInHtml('<table', escape: false);
+    $mail->assertSeeInHtml('Desde el 1 de octubre');
+    $mail->assertSeeInHtml('8,99 €');
+    $mail->assertSeeInHtml('53,94 €');
+
+    $mail->assertSeeInHtml('hasta el día en que se acabe tu periodo');
+    $mail->assertSeeInHtml('Reactívala antes de ese día');
+    $mail->assertDontSeeInHtml('cuatro días');
+
+    $mail->assertSeeInHtml('Reactivar mi suscripción');
+
+    $mail->assertDontSeeInHtml('Your subscription is the last €3.99');
+});
+
+it('renders the last days subscribers email in English', function () {
+    $mail = queuePriceIncreaseEmail(LAST_DAYS_SUBSCRIBERS_VIEW, LAST_DAYS_SUBSCRIBERS_SUBJECT, 'en');
+
+    $mail->assertHasSubject(LAST_DAYS_SUBSCRIBERS_SUBJECT);
+    $mail->assertSeeInHtml('Hi Ada,');
+    $mail->assertSeeInHtml('Four days, and nothing changes for you');
+
+    $mail->assertSeeInHtml('€8.99 a month, or €53.94 a year, for new subscriptions');
+    $mail->assertSeeInHtml('Yours stays where it is');
+    $mail->assertSeeInHtml('That is the whole email.');
+    $mail->assertSeeInHtml('Thank you for paying for this.');
+
+    // Nothing is at stake for them, so there is no price table and no CTA: no
+    // deadline to act on, and no page worth sending them to. The table is
+    // checked by its header, since the mail layout itself is built of tables.
+    $mail->assertDontSeeInHtml('From 1 October');
+    $mail->assertDontSeeInHtml(route('settings.billing'), escape: false);
+    $mail->assertDontSeeInHtml(route('subscribe'), escape: false);
+
+    // Cancelling is the one way to lose the price, but the first email already
+    // said so and repeating it here would only plant the idea.
+    $mail->assertDontSeeInHtml('cancel');
+});
+
+it('renders the last days subscribers email in Spanish', function () {
+    $mail = queuePriceIncreaseEmail(LAST_DAYS_SUBSCRIBERS_VIEW, LAST_DAYS_SUBSCRIBERS_SUBJECT, 'es');
+
+    $mail->assertHasSubject('El precio cambia el 1 de octubre, el tuyo no');
+    $mail->assertSeeInHtml('Hola Ada,');
+    $mail->assertSeeInHtml('Cuatro días, y para ti no cambia nada');
+
+    $mail->assertSeeInHtml('8,99 € al mes, o 53,94 € al año, para las suscripciones nuevas');
+    $mail->assertSeeInHtml('El tuyo se queda donde está');
+    $mail->assertSeeInHtml('Eso es todo el correo.');
+    $mail->assertSeeInHtml('Gracias por pagar por esto.');
+
+    $mail->assertDontSeeInHtml('Desde el 1 de octubre');
+    $mail->assertDontSeeInHtml('Four days, and nothing changes for you');
+});
+
 /**
  * LocalizationTest only scans resources/js, so a Blade line or a subject left
  * out of lang/es.json ships as English inside a Spanish email. This is the only
@@ -250,4 +343,6 @@ it('has a Spanish translation for every line of the template and its subject', f
     [CANCELLING_VIEW, CANCELLING_SUBJECT],
     [SUBSCRIBERS_VIEW, SUBSCRIBERS_SUBJECT],
     [LAST_DAYS_VIEW, LAST_DAYS_SUBJECT],
+    [LAST_DAYS_CANCELLING_VIEW, LAST_DAYS_CANCELLING_SUBJECT],
+    [LAST_DAYS_SUBSCRIBERS_VIEW, LAST_DAYS_SUBSCRIBERS_SUBJECT],
 ]);

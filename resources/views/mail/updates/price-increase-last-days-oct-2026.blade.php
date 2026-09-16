@@ -36,4 +36,6 @@
 
 Víctor Falcón Ruíz<br>
 {{ __('Co-founder and solo developer, Whisper Money') }}
+
+<x-slot:subcopy>@include('mail.partials.marketing-unsubscribe')</x-slot:subcopy>
 </x-mail::message>
