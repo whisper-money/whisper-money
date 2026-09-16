@@ -43,6 +43,7 @@ interface BudgetRow {
 
 interface Props {
     notifyAchievements: boolean;
+    notifyMarketing: boolean;
     notifyOnBankTransactionsSynced: boolean;
     notifyOnInactiveNoBank: boolean;
     notifyMonthlySummary: boolean;
@@ -78,6 +79,7 @@ const patchOptions = { preserveScroll: true, preserveState: true } as const;
 
 export default function Notifications({
     notifyAchievements,
+    notifyMarketing,
     notifyOnBankTransactionsSynced,
     notifyOnInactiveNoBank,
     notifyMonthlySummary,
@@ -85,6 +87,15 @@ export default function Notifications({
     budgets,
 }: Props) {
     const emailToggles = [
+        {
+            id: 'notify-marketing',
+            preferenceKey: 'marketing',
+            checked: notifyMarketing,
+            label: __('Product news and offers'),
+            description: __(
+                "Occasional emails about what's new, tips to get more out of Whisper Money, and the odd offer. Never your account or bank alerts.",
+            ),
+        },
         {
             id: 'notify-monthly-summary',
             preferenceKey: 'monthly_summary',

@@ -88,6 +88,9 @@ php artisan email:update jan-2026-updates --per-day=500
 
 # Skip confirmation prompt (for scripts/automation)
 php artisan email:update jan-2026-updates --force
+
+# Send it as a notice rather than a campaign
+php artisan email:update price-change-2027 --operational
 ```
 
 ### 3.1. Rate Limiting
@@ -108,7 +111,22 @@ Successfully queued 126 update email(s) to the 'emails' queue!
 Emails will be sent over 3 day(s) (50 emails per day)
 ```
 
-### 3.2. Audience
+### 3.2. Campaign or notice
+
+Every send is a **campaign** unless you pass `--operational`, and a campaign
+obeys the "Product news and offers" switch in Settings > Notifications: anyone
+who turned it off is skipped, and everyone else gets an unsubscribe link in the
+footer.
+
+Pass `--operational` when the email is something the reader needs whatever they
+opted out of — a price change on their own subscription, an account about to be
+removed. It ignores the switch and carries no unsubscribe link, because there is
+nothing to unsubscribe from.
+
+The default is the safe way round: forgetting the flag costs someone an email
+they asked not to get, rather than delivering one they opted out of.
+
+### 3.3. Audience
 
 `--audience` decides who is in the send. It defaults to `all`.
 
@@ -133,8 +151,9 @@ because then every user reads as unsubscribed.
 
 - `view`: The name of your template file (without .blade.php extension)
 - `identifier`: A unique tracking identifier to prevent duplicate sends
-- `--audience`: Who to send to (see 3.2). Defaults to `all`
+- `--audience`: Who to send to (see 3.3). Defaults to `all`
 - `--per-day`: How many emails to queue per day. Defaults to 50,000, the SES daily quota
+- `--operational`: Send as a notice instead of a campaign (see 3.2)
 
 ### 5. How Tracking Works
 

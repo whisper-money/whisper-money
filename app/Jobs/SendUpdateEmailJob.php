@@ -31,11 +31,22 @@ class SendUpdateEmailJob implements ShouldQueue
      */
     public $backoff = [2, 5, 10, 30];
 
+    /**
+     * `$marketing` separates a campaign from a notice. Campaigns are the default
+     * and obey "Product news and offers"; a notice — an account about to be
+     * deleted, say — is sent to say something the reader needs to know and is
+     * not something they opted into hearing.
+     *
+     * A flag rather than the email type, because every send here logs as
+     * {@see DripEmailType::Update}: the type cannot tell the two apart, only the
+     * caller can.
+     */
     public function __construct(
         public User $user,
         public string $viewName,
         public string $emailIdentifier,
-        public string $subject = 'Update from Whisper Money'
+        public string $subject = 'Update from Whisper Money',
+        public bool $marketing = true,
     ) {
         $this->onQueue('emails');
     }
@@ -50,8 +61,12 @@ class SendUpdateEmailJob implements ShouldQueue
             return;
         }
 
+        if ($this->marketing && ! $this->user->wantsMarketingEmails()) {
+            return;
+        }
+
         Mail::to($this->user)->send(
-            new UpdateEmail($this->user, $this->viewName, $this->subject)
+            new UpdateEmail($this->user, $this->viewName, $this->subject, $this->marketing)
         );
 
         UserMailLog::create([

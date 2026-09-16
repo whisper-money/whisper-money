@@ -2,8 +2,12 @@
 
 namespace App\Mail\Drip;
 
+use App\Mail\Concerns\MarketingUnsubscribe;
+
 class PaywallFollowUpEmail extends DripMail
 {
+    use MarketingUnsubscribe;
+
     protected function dripSubject(): string
     {
         return __('What stopped you from getting started?');

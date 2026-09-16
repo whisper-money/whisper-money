@@ -64,6 +64,10 @@ abstract class SendDripEmailJob implements ShouldQueue
             return;
         }
 
+        if ($this->isUnwantedMarketing()) {
+            return;
+        }
+
         if (! $this->shouldSend()) {
             return;
         }
@@ -76,6 +80,21 @@ abstract class SendDripEmailJob implements ShouldQueue
             'email_identifier' => $this->emailIdentifier(),
             'sent_at' => now(),
         ]);
+    }
+
+    /**
+     * "Product news and offers" switched off silences every email in
+     * {@see DripEmailType::marketing()} and nothing else: the bank, billing and
+     * verification mail below it in the list keeps going out, because a reader
+     * who wants no marketing has not asked to stop hearing that their bank
+     * connection expired.
+     *
+     * Nothing is logged for a send that never happened, so the email is still
+     * waiting if the reader switches the category back on.
+     */
+    private function isUnwantedMarketing(): bool
+    {
+        return $this->emailType()->isMarketing() && ! $this->user->wantsMarketingEmails();
     }
 
     /**

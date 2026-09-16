@@ -26,6 +26,7 @@ class SendUpdateEmailCommand extends Command
                             {--audience=all : Who to send to: all, unsubscribed, active-low-price, cancelling-low-price}
                             {--per-day=50000 : How many emails to queue per day (SES allows 50,000)}
                             {--exclude-demo : Exclude the shared demo and press accounts}
+                            {--operational : Send as a notice rather than a campaign, so it ignores the "Product news and offers" opt-out and carries no unsubscribe link. For mail the reader needs whatever they opted out of: a price change, an account about to be removed}
                             {--force : Skip confirmation prompt}';
 
     /**
@@ -83,7 +84,13 @@ class SendUpdateEmailCommand extends Command
         $this->info('Queueing update emails...');
         $this->info("Rate limit: {$perDay} emails per day");
 
-        $queued = $this->queue($users, $viewName, $identifier, $subject, $perDay);
+        $marketing = ! $this->option('operational');
+
+        if ($marketing) {
+            $this->info('Sending as a campaign: anyone with "Product news and offers" off will be skipped. Pass --operational for a notice they need regardless.');
+        }
+
+        $queued = $this->queue($users, $viewName, $identifier, $subject, $perDay, $marketing);
 
         $this->info("Successfully queued {$queued} update email(s) to the 'emails' queue!");
 
@@ -102,16 +109,20 @@ class SendUpdateEmailCommand extends Command
      * go and the `emails` rate limiter is what paces it; `--per-day` is there
      * for a campaign that wants to be slower than that.
      *
+     * A send is a campaign unless `--operational` says otherwise, so forgetting
+     * the flag costs a reader an email they opted out of rather than delivering
+     * one they did not.
+     *
      * @param  Collection<int, User>  $users
      */
-    private function queue(Collection $users, string $viewName, string $identifier, string $subject, int $perDay): int
+    private function queue(Collection $users, string $viewName, string $identifier, string $subject, int $perDay, bool $marketing): int
     {
         $progressBar = $this->output->createProgressBar($users->count());
         $progressBar->start();
 
         $queued = 0;
         foreach ($users as $index => $user) {
-            SendUpdateEmailJob::dispatch($user, $viewName, $identifier, $subject)
+            SendUpdateEmailJob::dispatch($user, $viewName, $identifier, $subject, $marketing)
                 ->delay(now()->addDays(intdiv($index, $perDay)));
 
             $queued++;

@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $notify_on_inactive_no_bank
  * @property bool $notify_monthly_summary
  * @property bool $notify_achievements
+ * @property bool $notify_marketing
  * @property bool $budget_notify_on_new_transaction
  * @property bool $budget_notify_on_close_to_limit
  * @property bool $budget_notify_on_over_limit
@@ -35,6 +36,7 @@ class UserSetting extends Model
         'notify_on_inactive_no_bank',
         'notify_monthly_summary',
         'notify_achievements',
+        'notify_marketing',
         'budget_notify_on_new_transaction',
         'budget_notify_on_close_to_limit',
         'budget_notify_on_over_limit',
@@ -50,6 +52,7 @@ class UserSetting extends Model
             'notify_on_inactive_no_bank' => 'boolean',
             'notify_monthly_summary' => 'boolean',
             'notify_achievements' => 'boolean',
+            'notify_marketing' => 'boolean',
             'budget_notify_on_new_transaction' => 'boolean',
             'budget_notify_on_close_to_limit' => 'boolean',
             'budget_notify_on_over_limit' => 'boolean',

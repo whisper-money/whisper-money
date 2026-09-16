@@ -43,6 +43,11 @@ class EmailUnsubscribeController extends Controller
                 'title' => __('Achievement emails turned off'),
                 'body' => __('You will not get an email when you unlock an achievement again. They still show up in the app. Everything else stays as it was.'),
             ],
+            'marketing' => [
+                'column' => 'notify_marketing',
+                'title' => __('Product news and offers turned off'),
+                'body' => __('You will not get emails about what is new, tips or offers again. Anything about your account, your banks or your billing still reaches you, and so does everything else you have switched on.'),
+            ],
         ];
     }
 
