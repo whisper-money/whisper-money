@@ -78,15 +78,7 @@ class RuleSuggestionGuard
         $token = mb_strtolower(trim((string) ($raw['match_token'] ?? '')));
         $confidence = (float) ($raw['confidence'] ?? 0);
 
-        if (! in_array($field, UncategorizedTransactionMatcher::ALLOWED_FIELDS, true)) {
-            return null;
-        }
-
-        if (mb_strlen($token) < $this->minimumTokenLength($operator)) {
-            return null;
-        }
-
-        if ($confidence < $floor) {
+        if (! $this->isMatcherUsable($field, $operator, $token, $confidence, $floor)) {
             return null;
         }
 
@@ -166,6 +158,18 @@ class RuleSuggestionGuard
             'new_category_name' => $newName,
             'new_category_direction' => $newDirection,
         ];
+    }
+
+    /**
+     * Whether the matcher the model proposed is one we would ever write a rule
+     * on, judged on the suggestion alone — before any of the user's own
+     * transactions are counted against it.
+     */
+    private function isMatcherUsable(string $field, string $operator, string $token, float $confidence, float $floor): bool
+    {
+        return in_array($field, UncategorizedTransactionMatcher::ALLOWED_FIELDS, true)
+            && mb_strlen($token) >= $this->minimumTokenLength($operator)
+            && $confidence >= $floor;
     }
 
     /**
