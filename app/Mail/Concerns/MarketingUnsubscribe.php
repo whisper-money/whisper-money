@@ -2,9 +2,6 @@
 
 namespace App\Mail\Concerns;
 
-use App\Enums\DripEmailType;
-use App\Mail\Drip\DripMail;
-use App\Mail\UpdateEmail;
 use App\Models\User;
 use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Support\Facades\URL;
@@ -18,9 +15,9 @@ use Illuminate\Support\Facades\URL;
  * their own "Unsubscribe" button, and a sender that honours one click there is
  * a sender whose next campaign lands in the inbox rather than in Promotions.
  *
- * Used by every mailable whose type is in {@see DripEmailType::marketing()},
- * which is why it lives in a trait: {@see UpdateEmail} is not a
- * {@see DripMail} and needs exactly the same two things.
+ * Every mailable whose type is in `DripEmailType::marketing()` uses this, and a
+ * trait rather than a base class because `UpdateEmail` is not a `DripMail` and
+ * needs exactly the same two things.
  *
  * @property User $user
  */

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\UserSetting;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\URL;
 
 /**
@@ -144,4 +145,24 @@ it('refuses an unsigned unsubscribe link', function (): void {
     $this->get(route('marketing.unsubscribe', ['user' => $user->id]))->assertForbidden();
 
     expect($user->fresh()->wantsMarketingEmails())->toBeTrue();
+});
+
+it('queues a campaign as marketing by default', function (): void {
+    Queue::fake();
+    User::factory()->create();
+
+    $this->artisan('email:update', ['view' => 'mcp-launch-aug-2026', '--force' => true])
+        ->assertSuccessful();
+
+    Queue::assertPushed(SendUpdateEmailJob::class, fn (SendUpdateEmailJob $job): bool => $job->marketing);
+});
+
+it('queues a campaign as a notice when told it is operational', function (): void {
+    Queue::fake();
+    User::factory()->create();
+
+    $this->artisan('email:update', ['view' => 'encrypted-data-removal', '--operational' => true, '--force' => true])
+        ->assertSuccessful();
+
+    Queue::assertPushed(SendUpdateEmailJob::class, fn (SendUpdateEmailJob $job): bool => ! $job->marketing);
 });

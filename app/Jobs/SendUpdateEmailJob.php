@@ -36,6 +36,10 @@ class SendUpdateEmailJob implements ShouldQueue
      * and obey "Product news and offers"; a notice — an account about to be
      * deleted, say — is sent to say something the reader needs to know and is
      * not something they opted into hearing.
+     *
+     * A flag rather than the email type, because every send here logs as
+     * {@see DripEmailType::Update}: the type cannot tell the two apart, only the
+     * caller can.
      */
     public function __construct(
         public User $user,

@@ -2,8 +2,6 @@
 
 namespace App\Enums;
 
-use App\Jobs\Drip\SendDripEmailJob;
-
 enum DripEmailType: string
 {
     case BankTransactionsSynced = 'bank_transactions_synced';
@@ -29,9 +27,10 @@ enum DripEmailType: string
     /**
      * Emails that sell the app rather than run it: the onboarding sequence, the
      * nudges that explain a feature, the offers and the broadcast updates. They
-     * are the ones "Product news and offers" switches off, and the list is the
-     * single source of truth for that — both {@see SendDripEmailJob}
-     * and the footer link read it.
+     * are the ones "Product news and offers" switches off, and this list is what
+     * decides it: `SendDripEmailJob` checks every send against it. The matching
+     * mailables carry the footer link by using `MarketingUnsubscribe`, so adding
+     * a case here means adding that trait to its mailable too.
      *
      * Operational mail is deliberately absent and always goes out: banks,
      * billing, verification, and the two categories that already carry a switch
