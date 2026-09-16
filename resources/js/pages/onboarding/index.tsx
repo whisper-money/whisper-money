@@ -158,9 +158,15 @@ export default function Onboarding({
 
         if (needsTransactionImport) {
             goToStep('import-transactions');
-        } else {
-            goToStep('import-balances');
+
+            return;
         }
+
+        // The balance step exists for accounts that are a balance and nothing
+        // else. The form offers that balance too, and someone who filled it in
+        // has already answered — asking again on the next screen reads as the
+        // first answer having gone nowhere.
+        goToStep(account.hasBalance ? 'create-account' : 'import-balances');
     };
 
     const handleImportComplete = async () => {

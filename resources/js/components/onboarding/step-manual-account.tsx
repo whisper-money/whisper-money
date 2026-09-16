@@ -225,6 +225,7 @@ export function StepManualAccount({
                 currencyCode: currencyCode,
                 bankName,
                 bankLogo,
+                hasBalance: formDataRef.current.balance !== null,
             });
             setIsSubmitting(false);
         } catch (err) {

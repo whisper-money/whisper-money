@@ -180,6 +180,13 @@ export interface CreatedAccount {
     bankName?: string;
     bankLogo?: string | null;
     connected?: boolean;
+    /**
+     * Whether the form already took a balance. A mortgage or a pension is a
+     * balance and nothing else, so the step that asks for one has nothing left
+     * to ask when the form got it — and asking twice reads as the first answer
+     * not having landed.
+     */
+    hasBalance?: boolean;
 }
 
 interface UseOnboardingStateOptions {

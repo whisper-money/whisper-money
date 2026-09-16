@@ -447,6 +447,68 @@ it('creates a real estate account during onboarding by default', function () {
     expect($account->realEstateDetail->property_type->value)->toBe('residential');
 });
 
+/**
+ * A mortgage is a balance and nothing else, and the form asks for that balance.
+ * The step behind it asks for the same number again, which reads as the first
+ * answer having gone nowhere — so it is skipped for anyone who already gave one.
+ */
+it('does not ask for a balance twice when the form already took one', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    visit('/onboarding?step=create-account')
+        ->wait(1)
+        ->assertSee("Let's build the picture")
+        ->click('Add one myself')
+        ->wait(1)
+        ->fill('#display_name', 'Hipoteca')
+        ->click('Select account type')
+        ->wait(1)
+        ->click('[role="option"]:has-text("Loan")')
+        ->wait(1)
+        ->click('Select currency')
+        ->wait(1)
+        ->click('[role="option"]:has-text("EUR")')
+        ->wait(1)
+        ->fill('#balance', '120000')
+        ->click('Add this account')
+        ->wait(5)
+        ->assertDontSee('Set Account Balance')
+        ->assertSee("What's missing?")
+        ->assertNoJavascriptErrors();
+
+    expect($user->accounts()->count())->toBe(1);
+});
+
+it('still asks for a balance when the form was left without one', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    visit('/onboarding?step=create-account')
+        ->wait(1)
+        ->click('Add one myself')
+        ->wait(1)
+        ->fill('#display_name', 'Plan de pensiones')
+        ->click('Select account type')
+        ->wait(1)
+        ->click('[role="option"]:has-text("Loan")')
+        ->wait(1)
+        ->click('Select currency')
+        ->wait(1)
+        ->click('[role="option"]:has-text("EUR")')
+        ->wait(1)
+        ->click('Add this account')
+        ->wait(5)
+        ->assertSee('Set Account Balance')
+        ->assertNoJavascriptErrors();
+});
+
 // =============================================================================
 // Full End-to-End Flow Test
 // =============================================================================
