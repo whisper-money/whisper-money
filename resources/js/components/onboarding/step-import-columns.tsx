@@ -11,7 +11,13 @@ import {
     SelectItem,
     SelectTrigger,
 } from '@/components/ui/select';
-import { type ColumnMapping, type ColumnOption } from '@/types/import';
+import { parseDate } from '@/lib/file-parser';
+import {
+    type ColumnMapping,
+    type ColumnOption,
+    type DateFormat,
+} from '@/types/import';
+import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { ChevronRight } from 'lucide-react';
 
@@ -59,9 +65,44 @@ interface StepImportColumnsProps {
     fileName: string;
     columnOptions: ColumnOption[];
     mapping: ColumnMapping;
+    dateFormat: DateFormat;
+    locale: string;
     onMappingChange: (field: ShownField, column: string | null) => void;
     onConfirm: () => void;
     onDifferentFile: () => void;
+}
+
+/**
+ * The example cell, as the user would recognise it.
+ *
+ * A spreadsheet stores a date as the number of days since 1900, and the reader
+ * keeps it that way on purpose so a CSV's text dates are not coerced on the way
+ * in. That is right for the parser and unreadable on this screen: the column
+ * the user is being asked to confirm showed `46243`. The preview two screens
+ * later already reads it, so this reads it the same way.
+ */
+function exampleFor(
+    field: ShownField,
+    example: string | number | undefined,
+    dateFormat: DateFormat,
+    locale: string,
+): string | undefined {
+    if (example === undefined) {
+        return undefined;
+    }
+
+    if (field !== 'transaction_date') {
+        return String(example);
+    }
+
+    const serial = Number(example);
+    const parsed = Number.isFinite(serial)
+        ? parseDate(serial, dateFormat)
+        : null;
+
+    return parsed === null
+        ? String(example)
+        : formatDate(parsed, 'd MMM yyyy', locale);
 }
 
 /**
@@ -75,6 +116,8 @@ export function StepImportColumns({
     fileName,
     columnOptions,
     mapping,
+    dateFormat,
+    locale,
     onMappingChange,
     onConfirm,
     onDifferentFile,
@@ -113,9 +156,14 @@ export function StepImportColumns({
                 <StepList>
                     {SHOWN_FIELDS.map((field) => {
                         const column = columnLabel(mapping[field]);
-                        const example = columnOptions.find(
-                            (option) => option.value === column,
-                        )?.examples[0];
+                        const example = exampleFor(
+                            field,
+                            columnOptions.find(
+                                (option) => option.value === column,
+                            )?.examples[0],
+                            dateFormat,
+                            locale,
+                        );
 
                         return (
                             <Select

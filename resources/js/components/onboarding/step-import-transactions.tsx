@@ -393,6 +393,8 @@ export function StepImportTransactions({
                 fileName={parsed.file.name}
                 columnOptions={parsed.columnOptions}
                 mapping={parsed.mapping}
+                dateFormat={parsed.dateFormat}
+                locale={locale}
                 onMappingChange={handleMappingChange}
                 onConfirm={handleColumnsConfirmed}
                 onDifferentFile={startOver}
