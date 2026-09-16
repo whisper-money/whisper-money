@@ -132,8 +132,9 @@ export function computeNetWorthSeries(
         return [];
     }
 
-    const includeLoanAccounts = options.includeLoanAccounts ?? true;
-    const includeRealEstateAccounts = options.includeRealEstateAccounts ?? true;
+    const includeLoanAccounts = options.includeLoanAccounts ?? false;
+    const includeRealEstateAccounts =
+        options.includeRealEstateAccounts ?? false;
 
     const accountIds = Object.entries(accounts)
         .filter(([, account]) => includeLoanAccounts || account.type !== 'loan')

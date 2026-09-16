@@ -65,11 +65,15 @@ test('net worth chart loan preference updates existing setting', function () {
     expect($user->fresh()->setting->include_loans_in_net_worth_chart)->toBeTrue();
 });
 
-test('net worth chart loan preference defaults to true when no setting exists', function () {
+test('net worth chart loan preference defaults to off when no setting exists', function () {
     $user = User::factory()->create();
 
     expect($user->setting)->toBeNull();
-    expect($user->setting?->include_loans_in_net_worth_chart ?? true)->toBeTrue();
+
+    $response = $this->actingAs($user)->get(route('appearance.edit'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->where('includeLoansInNetWorthChart', false));
 });
 
 test('net worth chart loan preference is shared via inertia', function () {
