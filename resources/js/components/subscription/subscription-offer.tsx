@@ -35,6 +35,10 @@ export type OfferSource =
  * terms cannot drift between the place a user is asked and the place they come
  * back to. `useOffer` hands the caller the selected plan and the button, which
  * is the other half that has to agree with it.
+ *
+ * The money-back window belongs to a plan that charges today. A plan with a
+ * trial in front of it has taken no money, so there is nothing to give back,
+ * and promising it next to "free for 7 days" is two answers to one question.
  */
 export function SubscriptionOffer({
     selectedPlan,
@@ -44,6 +48,7 @@ export function SubscriptionOffer({
     onSelect: (key: string) => void;
 }) {
     const { pricing } = usePage<SharedData>().props;
+    const chargedToday = pricing.plans[selectedPlan]?.trial_days === 0;
 
     return (
         <div className="flex flex-col gap-5">
@@ -54,7 +59,7 @@ export function SubscriptionOffer({
                 onSelect={onSelect}
             />
 
-            <RefundPromise />
+            {chargedToday && <RefundPromise />}
         </div>
     );
 }
@@ -116,6 +121,11 @@ export function useOffer(source: OfferSource = null) {
  * What the button charges, on the button. A checkout button that says only
  * "Continue" makes the user scroll back up to find out what they just agreed
  * to; this one is readable with the plan rows off screen.
+ *
+ * A plan with a trial in front of it charges nothing today, so it says what it
+ * does instead of naming a sum that is not about to leave the account — the
+ * terms underneath say the same thing, and the two cannot be allowed to
+ * disagree on the one screen that asks for money.
  */
 function checkoutLabel(
     plan: Plan | undefined,
@@ -124,6 +134,12 @@ function checkoutLabel(
 ): string {
     if (!plan) {
         return __('Start Standard');
+    }
+
+    if (plan.trial_days > 0) {
+        return __('Start Standard — free for :days days', {
+            days: plan.trial_days,
+        });
     }
 
     return __('Start Standard — :total today', {

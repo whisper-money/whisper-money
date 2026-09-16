@@ -329,9 +329,9 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', null)
                 ->where('stripe_lookup_key', 'whisper_pro_monthly_high')
                 ->where('billing_period', 'month')
-                // Both plans charge in full at signup; the way back out is the
-                // refund window, not a trial that ends.
-                ->where('trial_days', 0)
+                // What ships: `SUBSCRIPTION_PAY_NOW` is off by default, so the
+                // plans carry their trial and the checkout takes nothing today.
+                ->where('trial_days', 7)
                 ->has('features')
             )
             ->has('pricing.plans.yearly', fn ($plan) => $plan
@@ -340,7 +340,7 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', 107.88)
                 ->where('stripe_lookup_key', 'whisper_pro_yearly_high')
                 ->where('billing_period', 'year')
-                ->where('trial_days', 0)
+                ->where('trial_days', 15)
                 ->has('features')
             )
             ->has('pricing.promo', fn ($promo) => $promo

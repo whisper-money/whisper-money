@@ -18,6 +18,42 @@ use App\Support\PriceTiers;
 
 $tier = PriceTiers::plansFor(env('SUBSCRIPTION_PRICE_TIER', PriceTiers::DEFAULT));
 
+/*
+|--------------------------------------------------------------------------
+| Pay Now
+|--------------------------------------------------------------------------
+|
+| Whether the paid plan is charged in full at signup. Off, which is the
+| default, the plans carry the trial they have always carried and the checkout
+| takes no money today. On, the trial is 0 on both plans, the charge lands
+| immediately and the way back out is the self-service refund window declared
+| below — the three days and the button that spends them.
+|
+| It is a switch on `trial_days` and nothing else, because `trial_days` is what
+| every other part reads: `ExperimentOffer` calls a variant upfront when it
+| zeroes the trial, the checkout screens say "charged today" or "free for N
+| days" off the selected plan, and the refund button appears only for someone
+| who was actually charged. One value to flip, and no second source of truth to
+| disagree with it.
+|
+| It is only the *default*: `STRIPE_PRO_*_TRIAL_DAYS` still wins where it is
+| set, and an experiment variant still overrides both. There is deliberately no
+| `subscriptions.pay_now` key to read — code that wants to know whether a user
+| pays upfront asks `ExperimentOffer`, which answers for that user's variant
+| rather than for the environment.
+|
+*/
+
+$payNow = filter_var(env('SUBSCRIPTION_PAY_NOW', false), FILTER_VALIDATE_BOOLEAN);
+
+/*
+| A trial of 0 is a real value, so `env()`'s own default cannot be used: it only
+| applies when the variable is absent, and `?:` would swallow the deliberate 0
+| as well. Present-but-blank counts as absent, the way clearing a value in a
+| hosting panel is meant to.
+*/
+$trialDays = static fn (string $key, int $default): int => is_numeric($raw = env($key)) ? (int) $raw : $default;
+
 return [
 
     /*
@@ -134,10 +170,11 @@ return [
     |
     | Supported billing_period values: 'month', 'year', null (for lifetime)
     |
-    | `trial_days` is 0 on both plans: the plan is charged in full at signup and
-    | the way back out is the self-service refund window above, not a trial that
-    | ends. Raising it here reverts that for everyone; the `trial` experiment
-    | variant is how to put a trial in front of half the signups instead.
+    | `trial_days` comes from the `SUBSCRIPTION_PAY_NOW` switch above: the trial
+    | the plans have always carried while it is off, 0 while it is on. Setting
+    | `STRIPE_PRO_*_TRIAL_DAYS` pins a plan's trial regardless of the switch, and
+    | the `trial` experiment variant is how to put a trial in front of half the
+    | signups instead of all of them.
     |
     | `price`, `original_price` and `stripe_lookup_key` all come from the tier
     | selected above and move as one unit — never hardcode one of them here, or
@@ -166,7 +203,7 @@ return [
             'original_price' => $tier['monthly']['original_price'],
             'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY') ?: $tier['monthly']['stripe_lookup_key'],
             'billing_period' => 'month',
-            'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 0),
+            'trial_days' => $trialDays('STRIPE_PRO_MONTHLY_TRIAL_DAYS', $payNow ? 0 : 7),
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',
@@ -185,7 +222,7 @@ return [
             'original_price' => $tier['yearly']['original_price'],
             'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY') ?: $tier['yearly']['stripe_lookup_key'],
             'billing_period' => 'year',
-            'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 0),
+            'trial_days' => $trialDays('STRIPE_PRO_YEARLY_TRIAL_DAYS', $payNow ? 0 : 15),
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',

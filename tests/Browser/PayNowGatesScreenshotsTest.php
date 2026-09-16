@@ -22,6 +22,11 @@ beforeEach(function () {
     config([
         'subscriptions.enabled' => true,
         'subscriptions.experiment.refund_window_days' => 3,
+        // These are the pay-now screens, so they are captured with pay-now on:
+        // `SUBSCRIPTION_PAY_NOW` ships off, and off there is no charge today and
+        // so no money-back row to photograph.
+        'subscriptions.plans.monthly.trial_days' => 0,
+        'subscriptions.plans.yearly.trial_days' => 0,
     ]);
 });
 
