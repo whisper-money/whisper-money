@@ -61,18 +61,8 @@ interface AssetsReveal {
 
 type RevealData = SpendingReveal | AssetsReveal;
 
-/**
- * Below this the guess and the real number are the same number, and a screen
- * built on the gap between them has no gap to talk about. One unit of the
- * user's currency, in minor units.
- */
-const GAP_FLOOR = 100;
-
 /** Under two, the sentence about repeat charges has no plural to stand on. */
 const MIN_RECURRING = 2;
-
-/** What a month is worth said as a year, which is the point of saying it. */
-const MONTHS_IN_YEAR = 12;
 
 interface StepRevealProps {
     /** The user's own guess, in minor units. Absent on a resumed run. */
@@ -237,14 +227,10 @@ function RevealSpending({
                     <p className="text-[17px] leading-normal text-pretty">
                         {data.is_partial ? (
                             __(
-                                'The month isn’t over, so there’s nothing to set your guess against yet — this is what it has cost so far.',
+                                'The month isn’t over, so there’s nothing to set your guess against yet — this is everything that has left the account so far.',
                             )
                         ) : (
-                            <Verdict
-                                spent={data.spent}
-                                guess={spendingGuess}
-                                money={money}
-                            />
+                            <WhatLeft guess={spendingGuess} money={money} />
                         )}
                     </p>
                 </div>
@@ -331,59 +317,44 @@ function handover(merchants: number, repeats: boolean): string {
 }
 
 /**
- * The user's guess set against the real number.
+ * What the number is, said plainly, with the guess beside it.
  *
- * Which way they missed decides the sentence: told they were out by €647 "a
- * year you can’t account for", someone who spent less than they feared reads a
- * telling-off for having been right. A gap too small to name gets neither
- * sentence, only the year the month adds up to.
+ * Nothing is categorized when this screen runs — that is step 8 — so the figure
+ * is every outgoing of the month, and money the user moved to their own savings
+ * is in it. Measured on live data, internal movements are about a third of what
+ * leaves an account, and for half of users more than 30% of it.
+ *
+ * This used to read the gap as a verdict: "you were out by €92 — that's €1,105
+ * a year you can’t account for", said to somebody whose €92 was their own
+ * transfer, on the screen the whole flow is built towards. The guess still gets
+ * its answer. The answer stops claiming to be something the rows cannot say
+ * yet, and the sentence under it hands over to the step that can.
  */
-function Verdict({
-    spent,
+function WhatLeft({
     guess,
     money,
 }: {
-    spent: number;
     guess?: number;
     money: (amount: number) => string;
 }) {
-    const gap = guess === undefined ? 0 : spent - guess;
-    const strong = (amount: number) => (
-        <span className="font-semibold">{money(amount)}</span>
-    );
-
-    if (Math.abs(gap) < GAP_FLOOR) {
-        return (
-            <StepFilled
-                sentence={__(
-                    'That’s :yearly a year, at the rate of the month we read.',
-                )}
-                values={{ yearly: strong(spent * MONTHS_IN_YEAR) }}
-            />
+    if (guess === undefined) {
+        return __(
+            'Everything that left the account — money you moved to your own accounts included.',
         );
     }
 
-    const guessed = (
-        <span className="text-muted-foreground">{money(guess ?? 0)}</span>
-    );
-
-    return gap > 0 ? (
+    return (
         <StepFilled
             sentence={__(
-                'You guessed :guess. You were out by :gap — that’s :yearly a year you can’t account for.',
+                'You guessed :guess. This is everything that left the account — money you moved to your own accounts included.',
             )}
             values={{
-                guess: guessed,
-                gap: strong(gap),
-                yearly: strong(gap * MONTHS_IN_YEAR),
+                guess: (
+                    <span className="text-muted-foreground">
+                        {money(guess)}
+                    </span>
+                ),
             }}
-        />
-    ) : (
-        <StepFilled
-            sentence={__(
-                'You guessed :guess. You came in :gap under — almost nobody misses this way.',
-            )}
-            values={{ guess: guessed, gap: strong(-gap) }}
         />
     );
 }

@@ -302,7 +302,7 @@ function Gap({
         <StepCallout>
             <StepFilled
                 sentence={__(
-                    'You came in guessing :guess. You now know it’s :spent — and where the difference went.',
+                    'You came in guessing :guess. :spent left the account, and now you can see where each part of it went.',
                 )}
                 values={{ guess: strong(spendingGuess), spent: strong(spent) }}
             />

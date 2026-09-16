@@ -59,29 +59,46 @@ describe('StepReveal', () => {
         captureEvent.mockReset();
     });
 
-    it('answers the guess with the gap and what it costs in a year', async () => {
+    it('puts the guess beside the number, and the merchants under it', async () => {
         get.mockResolvedValue(spending());
 
         await renderReveal({ spendingGuess: 120000 });
 
         expect(screen.getByText('1,847')).toBeInTheDocument();
-        expect(screen.getByText('€647')).toBeInTheDocument();
-        expect(screen.getByText('€7,764')).toBeInTheDocument();
+        expect(screen.getByText('€1,200')).toBeInTheDocument();
         expect(screen.getByText('MERCADONA')).toBeInTheDocument();
         expect(
             screen.getByText('Sort these 147 merchants'),
         ).toBeInTheDocument();
     });
 
-    it('does not tell someone who spent less than they feared to account for it', async () => {
-        get.mockResolvedValue(spending({ spent: 100000 }));
+    /**
+     * Nothing is categorized this early, so the figure carries the user's own
+     * transfers — about a third of what leaves an account, measured. Read as a
+     * verdict it told half of them they had spending they could not account
+     * for, and the money was theirs, moved.
+     */
+    it('says what the number includes instead of reading a verdict into it', async () => {
+        get.mockResolvedValue(spending());
 
         await renderReveal({ spendingGuess: 120000 });
 
         expect(
-            screen.getByText(/almost nobody misses this way/),
+            screen.getByText(/money you moved to your own accounts/),
         ).toBeInTheDocument();
         expect(screen.queryByText(/you can’t account for/)).toBeNull();
+        expect(screen.queryByText(/a year/)).toBeNull();
+    });
+
+    it('accuses nobody who came in under their guess either', async () => {
+        get.mockResolvedValue(spending({ spent: 100000 }));
+
+        await renderReveal({ spendingGuess: 120000 });
+
+        expect(screen.queryByText(/almost nobody misses this way/)).toBeNull();
+        expect(
+            screen.getByText(/money you moved to your own accounts/),
+        ).toBeInTheDocument();
     });
 
     it('drops the comparison when there is no guess to compare against', async () => {
@@ -89,7 +106,11 @@ describe('StepReveal', () => {
 
         await renderReveal();
 
-        expect(screen.getByText(/a year, at the rate of/)).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'Everything that left the account — money you moved to your own accounts included.',
+            ),
+        ).toBeInTheDocument();
         expect(screen.queryByText(/You guessed/)).toBeNull();
     });
 

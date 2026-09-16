@@ -271,9 +271,13 @@ function opening(
 }
 
 /**
- * The line that makes the target theirs: it is built on the month they spent,
- * set against the month they thought they spent. Without a guess on file — a
- * resumed run, mostly — the second half has nothing to compare and is dropped.
+ * The line that makes the target theirs: it is built on the month that actually
+ * left the account, set against the month they thought. Not "what you spend":
+ * nothing is categorized this early, so the figure carries the user's own
+ * transfers with it, and the reveal two steps back says as much.
+ *
+ * Without a guess on file — a resumed run, mostly — the second half has nothing
+ * to compare and is dropped.
  */
 function Built({
     spending,
@@ -292,13 +296,15 @@ function Built({
         <>
             {guess === undefined ? (
                 <StepFilled
-                    sentence={__('Built on the :spending you actually spend.')}
+                    sentence={__(
+                        'Built on the :spending that left the account last month.',
+                    )}
                     values={{ spending: strong(spending) }}
                 />
             ) : (
                 <StepFilled
                     sentence={__(
-                        'Built on the :spending you actually spend, not the :guess you thought.',
+                        'Built on the :spending that left the account last month, not the :guess you thought.',
                     )}
                     values={{
                         spending: strong(spending),
