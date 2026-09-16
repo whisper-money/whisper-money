@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 class BalanceLookup
@@ -119,10 +120,14 @@ class BalanceLookup
         // recorded on one date can be carried to another. Grouped in the
         // database rather than read row by row: a year of movements is a few
         // hundred days, and the alternative is every transaction the user owns.
+        //
+        // The sum lands in `amount`, the column it is a sum of, so each row is
+        // still a transaction-shaped thing with its casts intact rather than a
+        // raw one carrying an attribute the model has never heard of.
         $dailyNet = Transaction::query()
             ->whereIn('account_id', $accountIdList)
             ->where('transaction_date', '<=', $endDate)
-            ->selectRaw('account_id, transaction_date, SUM(amount) as net')
+            ->selectRaw('account_id, transaction_date, SUM(amount) as amount')
             ->groupBy('account_id', 'transaction_date')
             ->get();
 
@@ -186,20 +191,16 @@ class BalanceLookup
      * One account's grouped movement rows as a date-keyed, date-sorted map,
      * scaled to the owner's share the same way its balances are.
      *
-     * @param  Collection<int, object>  $rows
+     * @param  EloquentCollection<int, Transaction>  $rows
      * @param  callable(?int): ?int  $share
      * @return array<string, int>
      */
-    private static function movementsByDay(Collection $rows, callable $share): array
+    private static function movementsByDay(EloquentCollection $rows, callable $share): array
     {
         $movements = [];
 
         foreach ($rows as $row) {
-            $date = $row->transaction_date instanceof Carbon
-                ? $row->transaction_date->toDateString()
-                : (string) $row->transaction_date;
-
-            $movements[$date] = (int) $share((int) $row->net);
+            $movements[$row->transaction_date->toDateString()] = (int) $share($row->amount);
         }
 
         ksort($movements);
