@@ -16,6 +16,7 @@ use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
+use App\Services\Banking\Formatters\AccountNameFormatter;
 use App\Services\BudgetService;
 use App\Services\OnboardingRevealService;
 use App\Services\OnboardingSummaryService;
@@ -135,7 +136,7 @@ class OnboardingController extends Controller
             'bank_logo' => $connection->aspsp_logo,
             'accounts' => array_map(fn (array $account): array => [
                 'uid' => $account['uid'],
-                'name' => $account['name'] ?? null,
+                'name' => AccountNameFormatter::format($account, __('Bank Account')),
                 'iban' => $account['account_id']['iban'] ?? null,
                 'currency' => $account['currency'] ?? null,
             ], $connection->mappablePendingAccounts()),

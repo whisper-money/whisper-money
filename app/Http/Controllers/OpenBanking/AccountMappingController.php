@@ -11,6 +11,7 @@ use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Services\AccountUserCurrencyService;
+use App\Services\Banking\Formatters\AccountNameFormatter;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -105,9 +106,7 @@ class AccountMappingController extends Controller
 
             if ($action === 'create') {
                 $currency = $accountUserCurrencyService->resolveImportedCurrency($accountData['currency'] ?? null, $user);
-                $name = $accountData['name']
-                    ?? $accountData['account_id']['iban']
-                    ?? $connection->aspsp_name.' Account';
+                $name = AccountNameFormatter::format($accountData, $connection->aspsp_name.' Account');
 
                 $account = $user->accounts()->create([
                     'name' => $name,
