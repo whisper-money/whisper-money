@@ -25,4 +25,8 @@
 {{ __('Best,') }}<br>
 {{ __('Álvaro & Víctor') }}<br>
 {{ __('Founders of Whisper Money') }}
+
+<x-slot:subcopy>
+<a href="{{ $unsubscribeUrl }}">{{ __('Stop receiving news and offers') }}</a>
+</x-slot:subcopy>
 </x-mail::message>

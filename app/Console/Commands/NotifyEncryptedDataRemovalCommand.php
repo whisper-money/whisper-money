@@ -73,7 +73,7 @@ class NotifyEncryptedDataRemovalCommand extends Command
 
         foreach ($users->values() as $index => $user) {
             // Spread over the 'emails' queue at 50/day to match the existing bulk-email convention.
-            SendUpdateEmailJob::dispatch($user, self::VIEW, self::IDENTIFIER, self::SUBJECT)
+            SendUpdateEmailJob::dispatch($user, self::VIEW, self::IDENTIFIER, self::SUBJECT, marketing: false)
                 ->delay(now()->addDays((int) floor($index / 50)));
 
             $progressBar->advance();

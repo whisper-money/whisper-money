@@ -696,6 +696,20 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
+     * Product news and offers: the onboarding sequence, the feature nudges, the
+     * promos and the broadcast updates. See {@see DripEmailType::marketing()}
+     * for exactly which emails it covers.
+     *
+     * Opt-out, and it can only ever silence that list: account, bank and billing
+     * mail ignore it, as do the monthly summary and the achievements email,
+     * which have switches of their own.
+     */
+    public function wantsMarketingEmails(): bool
+    {
+        return $this->setting->notify_marketing ?? true;
+    }
+
+    /**
      * Whether a nudge email reached this user recently enough that another one
      * would read as pestering. `$except` leaves one type out, so an email never
      * silences itself — its own cadence is governed by its own dedupe key.

@@ -40,4 +40,7 @@ Join the Discord Comminity
 Víctor Falcón Ruíz</br></br>
 Founder & Solo Developer, Whisper Money
 
+<x-slot:subcopy>
+<a href="{{ $unsubscribeUrl }}">{{ __('Stop receiving news and offers') }}</a>
+</x-slot:subcopy>
 </x-mail::message>

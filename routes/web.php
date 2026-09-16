@@ -345,3 +345,8 @@ Route::match(['get', 'post'], 'unsubscribe/achievements/{user}', EmailUnsubscrib
     ->defaults('preference', 'achievements')
     ->middleware('signed')
     ->name('achievements.unsubscribe');
+
+Route::match(['get', 'post'], 'unsubscribe/marketing/{user}', EmailUnsubscribeController::class)
+    ->defaults('preference', 'marketing')
+    ->middleware('signed')
+    ->name('marketing.unsubscribe');
