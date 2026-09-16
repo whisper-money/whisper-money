@@ -86,7 +86,10 @@ it('leaves loans out of net worth when the user has turned them off', function (
 
     $builder = app(SummaryBuilder::class);
 
-    expect($builder->build($user, $this->month, complete: true)['net_worth']['current'])->toBe(300000);
+    // A new user has loans off, so counting one at all has to be opted into.
+    $user->setting()->updateOrCreate(['user_id' => $user->id], ['include_loans_in_net_worth_chart' => true]);
+
+    expect($builder->build($user->fresh(), $this->month, complete: true)['net_worth']['current'])->toBe(300000);
 
     $user->setting()->updateOrCreate(['user_id' => $user->id], ['include_loans_in_net_worth_chart' => false]);
 

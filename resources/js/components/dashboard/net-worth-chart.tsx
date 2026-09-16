@@ -148,9 +148,9 @@ export function NetWorthChart({
     );
     const [isDailyLoading, setIsDailyLoading] = useState(false);
     const includeLoansInNetWorthChart =
-        props.includeLoansInNetWorthChart ?? true;
+        props.includeLoansInNetWorthChart ?? false;
     const includeRealEstateInNetWorthChart =
-        props.includeRealEstateInNetWorthChart ?? true;
+        props.includeRealEstateInNetWorthChart ?? false;
 
     const fetchDailyData = useCallback(async () => {
         setIsDailyLoading(true);

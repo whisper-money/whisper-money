@@ -114,7 +114,7 @@ class ResetDemoAccountCommand extends Command
 
         $this->deleteExistingData($user);
 
-        $this->silenceNotifications($user);
+        $this->applySettings($user);
 
         $this->createCategories($user);
 
@@ -239,8 +239,13 @@ class ResetDemoAccountCommand extends Command
     /**
      * A seeded account is a fixture nobody reads mail for, so every e-mail
      * notification it could trigger is switched off.
+     *
+     * The net worth chart toggles go the other way: they are off for a new user,
+     * and a seeded account is a new user as far as the database is concerned.
+     * The datasets seed a mortgage and a flat precisely to show them, so the
+     * account opts back in rather than drawing a chart missing both.
      */
-    private function silenceNotifications(User $user): void
+    private function applySettings(User $user): void
     {
         $user->setting()->updateOrCreate([], [
             'notify_on_bank_transactions_synced' => false,
@@ -250,6 +255,8 @@ class ResetDemoAccountCommand extends Command
             'budget_notify_on_new_transaction' => false,
             'budget_notify_on_close_to_limit' => false,
             'budget_notify_on_over_limit' => false,
+            'include_loans_in_net_worth_chart' => true,
+            'include_real_estate_in_net_worth_chart' => true,
         ]);
 
         $this->info('  Silenced e-mail notifications');

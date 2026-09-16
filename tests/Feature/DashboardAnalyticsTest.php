@@ -129,6 +129,9 @@ test('net worth response includes currency_code', function () {
 });
 
 test('net worth treats positive loan balances as liabilities', function () {
+    // A new user has loans off, so counting one at all has to be opted into.
+    $this->user->setting()->create(['include_loans_in_net_worth_chart' => true]);
+
     $checking = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,

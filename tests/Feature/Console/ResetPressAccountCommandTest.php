@@ -87,6 +87,11 @@ test('demo:reset --press seeds a Spanish account that survives a re-run', functi
         ->and($user->setting->notify_on_bank_transactions_synced)->toBeFalse()
         ->and($budget->notify_on_over_limit)->toBeFalse();
 
+    // The dataset seeds a mortgage and a flat to show them, so the chart has to
+    // count them even though a new account gets both switched off.
+    expect($user->setting->include_loans_in_net_worth_chart)->toBeTrue()
+        ->and($user->setting->include_real_estate_in_net_worth_chart)->toBeTrue();
+
     // A reseed must not recreate the row: an OAuth connection and every MCP
     // token hang off the user id, and recreating it breaks them silently.
     $token = $user->createToken('claude', ['mcp:read', 'mcp:write']);
