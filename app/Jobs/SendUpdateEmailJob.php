@@ -32,22 +32,32 @@ class SendUpdateEmailJob implements ShouldQueue
     public $backoff = [2, 5, 10, 30];
 
     /**
-     * `$marketing` separates a campaign from a notice. Campaigns are the default
-     * and obey "Product news and offers"; a notice — an account about to be
-     * deleted, say — is sent to say something the reader needs to know and is
-     * not something they opted into hearing.
+     * Separates a campaign from a notice. Campaigns are the default and obey
+     * "Product news and offers"; a notice — an account about to be deleted, say
+     * — is sent to say something the reader needs to know and is not something
+     * they opted into hearing.
      *
      * A flag rather than the email type, because every send here logs as
      * {@see DripEmailType::Update}: the type cannot tell the two apart, only the
      * caller can.
+     *
+     * Declared rather than promoted so the default survives a stale payload. The
+     * queue rebuilds a job through {@see SerializesModels::__unserialize()},
+     * which skips every property the payload does not carry, and a promoted
+     * parameter default cannot fill the gap because the constructor never runs.
+     * Jobs queued before this flag existed came back with it uninitialized.
      */
+    public bool $marketing = true;
+
     public function __construct(
         public User $user,
         public string $viewName,
         public string $emailIdentifier,
         public string $subject = 'Update from Whisper Money',
-        public bool $marketing = true,
+        bool $marketing = true,
     ) {
+        $this->marketing = $marketing;
+
         $this->onQueue('emails');
     }
 
