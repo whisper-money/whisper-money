@@ -66,8 +66,12 @@ it('categorizes on a phone with both footer actions reachable', function () {
         ->assertSee('Nothing left to teach us')
         ->click('Continue')
         ->wait(2)
-        // No month was read, so the target step has nothing to build on and
-        // steps aside: the flow lands on the close itself.
+        // No month was read, so the target step has nothing to build on. It
+        // says so on a screen of its own rather than vanishing between the two
+        // around it.
+        ->assertSee('Your target can wait')
+        ->click('Continue')
+        ->wait(2)
         ->assertSee('Your dashboard isn’t empty')
         ->assertNoJavascriptErrors();
 });

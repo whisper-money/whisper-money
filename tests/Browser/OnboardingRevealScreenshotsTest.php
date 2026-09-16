@@ -133,7 +133,7 @@ it('captures the answer to the guess the flow opened with', function () {
         ->assertSee('You guessed')
         ->assertSee('MERCADONA')
         ->assertSee('Who you paid most')
-        ->assertSee('Sort these 147 merchants')
+        ->assertSee('Sort my merchants')
         ->wait(1)
         ->screenshot(filename: 'reveal-spending')
         ->assertNoJavascriptErrors();

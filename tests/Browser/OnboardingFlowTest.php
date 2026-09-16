@@ -70,7 +70,7 @@ it('syncs user currency from first onboarding account after signup', function ()
         ->wait(1)
         ->click('[role="option"]:has-text("Checking")')
         ->wait(1)
-        ->click('Select currency')
+        ->click('button[name="currency_code"]')
         ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
@@ -218,9 +218,12 @@ it('allows continuing with existing accounts', function () {
         // Nothing to sync, so the syncing step hands straight over to the
         // reveal, which has no movements to reveal for this user.
         ->assertSee('You’re worth')
-        ->click('Continue without one')
-        ->wait(2)
-        ->assertSee('Let AI draft your rules?')
+        // The reveal's own button, which is just "Continue" for a reader with
+        // no month to read: the step after it depends on their plan, so what is
+        // asserted here is that the flow leaves the reveal at all.
+        ->click('Continue')
+        ->wait(3)
+        ->assertDontSee('You’re worth')
         ->assertNoJavascriptErrors();
 });
 
@@ -343,9 +346,9 @@ it('shows import transactions step after account creation', function () {
         // Existing accounts no longer trigger import, and there is nothing to
         // sync — so the reveal has nothing to show but the balances.
         ->assertSee('You’re worth')
-        ->click('Continue without one')
-        ->wait(2)
-        ->assertSee('Let AI draft your rules?')
+        ->click('Continue')
+        ->wait(3)
+        ->assertDontSee('You’re worth')
         ->assertNoJavascriptErrors();
 });
 
@@ -422,7 +425,7 @@ it('creates a real estate account during onboarding by default', function () {
         ->wait(1)
         ->click('[role="option"]:has-text("Real Estate")')
         ->wait(1)
-        ->click('Select currency')
+        ->click('button[name="currency_code"]')
         ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
@@ -469,7 +472,7 @@ it('does not ask for a balance twice when the form already took one', function (
         ->wait(1)
         ->click('[role="option"]:has-text("Loan")')
         ->wait(1)
-        ->click('Select currency')
+        ->click('button[name="currency_code"]')
         ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
@@ -499,7 +502,7 @@ it('still asks for a balance when the form was left without one', function () {
         ->wait(1)
         ->click('[role="option"]:has-text("Loan")')
         ->wait(1)
-        ->click('Select currency')
+        ->click('button[name="currency_code"]')
         ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
@@ -568,7 +571,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->wait(1)
         ->click('[role="option"]:has-text("Checking")')
         ->wait(1)
-        ->click('Select currency')
+        ->click('button[name="currency_code"]')
         ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
@@ -602,7 +605,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
     // The reveal: five movements in one month is under the bar, so this user
     // gets the balances variant.
     $page->assertSee('You’re worth')
-        ->click('Continue without one')
+        ->click('Continue')
         ->wait(2);
 
     // AI Suggestions - the AI cannot be switched on without a plan, so this
@@ -634,8 +637,13 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->wait(1);
 
     // Step 10 has no month to build a target on for this user — five movements
-    // never got revealed — so it steps aside rather than invent a number, and
-    // the flow lands on the close itself.
+    // never got revealed — so it says so rather than invent a number. It is
+    // still a screen: step 5 promised them a target, and vanishing between the
+    // step before and the step after would read as one that broke.
+    $page->assertSee('Your target can wait')
+        ->click('Continue')
+        ->wait(2);
+
     $page->assertSee('Your dashboard isn’t empty')
         ->assertDontSee('put aside')
         ->click('Open my dashboard')
@@ -784,7 +792,7 @@ it('forces a plan choice on subscribe when a bank is connected', function () {
         ->assertNoJavascriptErrors();
 });
 
-it('forces a plan choice on subscribe when AI consent is active', function () {
+it('leaves the free plan open on subscribe when AI consent never ran', function () {
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->onboarded()->create();
@@ -794,12 +802,14 @@ it('forces a plan choice on subscribe when AI consent is active', function () {
 
     $page = visit('/subscribe');
 
-    // AI switched on does the same as a bank: the free plan would revoke it, so
-    // the way out waits and the plan is the only thing on offer until it opens.
+    // Consent is recorded when a checkout starts, so someone who closed Stripe
+    // at the card form has consented to nothing that ever ran — `AiCategorizationGate`
+    // checks the plan before every pass. `hasPaidFeaturesToGiveUp()` counts it
+    // only alongside a subscription, so there is nothing here for the free plan
+    // to take away and the door stays open.
     $page->assertPathIs('/subscribe')
-        ->assertSee('Start Standard')
-        ->assertSee('Need help?')
-        ->assertDontSee('Carry on free')
-        ->assertDontSee('Stay on the free plan')
+        ->assertSee('One thing left to decide')
+        ->assertSee('Carry on free')
+        ->assertDontSee('Need help?')
         ->assertNoJavascriptErrors();
 });
