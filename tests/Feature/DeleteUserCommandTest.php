@@ -80,7 +80,7 @@ test('cancels deletion when not confirmed', function () {
 
     $this->artisan('user:delete', ['email' => 'test@example.com'])
         ->expectsConfirmation("Are you sure you want to mark user 'Test User' (test@example.com) as deleted? Their data will be preserved.", 'no')
-        ->expectsOutput('Deletion cancelled.')
+        ->expectsOutput('Deletion cancelled. Pass --force to confirm without being prompted.')
         ->assertSuccessful();
 
     // Verify user still exists
@@ -199,7 +199,7 @@ test('cancels deletion when subscription cancellation is not confirmed', functio
     $this->artisan('user:delete', ['email' => 'subscribed@example.com'])
         ->expectsConfirmation("Are you sure you want to mark user 'Subscribed User' (subscribed@example.com) as deleted? Their data will be preserved.", 'yes')
         ->expectsConfirmation("User 'subscribed@example.com' has a chargeable Stripe subscription (active). Cancel it before deleting the user?", 'no')
-        ->expectsOutput('Deletion cancelled.')
+        ->expectsOutput('Deletion cancelled. Pass --force to confirm without being prompted.')
         ->assertSuccessful();
 
     expect(User::query()->where('email', 'subscribed@example.com')->exists())->toBeTrue();
@@ -281,7 +281,7 @@ test('cancels deletion when enable banking revocation is not confirmed', functio
     $this->artisan('user:delete', ['email' => 'banking@example.com'])
         ->expectsConfirmation("Are you sure you want to mark user 'Banking User' (banking@example.com) as deleted? Their data will be preserved.", 'yes')
         ->expectsConfirmation("User 'banking@example.com' has 1 Enable Banking connection(s). Revoke them and keep linked accounts as manual accounts?", 'no')
-        ->expectsOutput('Deletion cancelled.')
+        ->expectsOutput('Deletion cancelled. Pass --force to confirm without being prompted.')
         ->assertSuccessful();
 
     expect(User::query()->where('email', 'banking@example.com')->exists())->toBeTrue();
@@ -301,7 +301,7 @@ test('deletes the user without any confirmation when forced, so it can run unatt
     app()->instance(BankingProviderInterface::class, $mockProvider);
 
     $this->artisan('user:delete', ['email' => 'test@example.com', '--force' => true, '--no-interaction' => true])
-        ->doesntExpectOutput('Deletion cancelled.')
+        ->doesntExpectOutput('Deletion cancelled. Pass --force to confirm without being prompted.')
         ->expectsOutput("User 'test@example.com' has been marked as deleted. Their data remains in the database.")
         ->assertSuccessful();
 
@@ -338,7 +338,7 @@ test('cancels the subscription and revokes the enable banking connections when f
     app()->instance(BankingProviderInterface::class, $mockProvider);
 
     $this->artisan('user:delete', ['email' => 'forced@example.com', '--force' => true])
-        ->doesntExpectOutput('Deletion cancelled.')
+        ->doesntExpectOutput('Deletion cancelled. Pass --force to confirm without being prompted.')
         ->expectsOutput("Cancelled Stripe subscription for 'forced@example.com'.")
         ->expectsOutput("Revoked 1 Enable Banking connection(s) for 'forced@example.com'.")
         ->expectsOutput("User 'forced@example.com' has been marked as deleted. Their data remains in the database.")

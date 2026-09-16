@@ -56,7 +56,7 @@ class DeleteUserCommand extends Command
             ->get();
 
         if (! $this->confirmDeletion($user, $subscription, $enableBankingConnections)) {
-            $this->info('Deletion cancelled.');
+            $this->info('Deletion cancelled. Pass --force to confirm without being prompted.');
 
             return self::SUCCESS;
         }
