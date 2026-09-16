@@ -82,6 +82,28 @@ it('still sends an operational update once the category is off', function (): vo
     Mail::assertQueued(UpdateEmail::class);
 });
 
+/**
+ * A job queued before `marketing` existed comes back without it, because
+ * Laravel's `SerializesModels::__unserialize()` skips whatever the payload lacks. It
+ * has to restore as a campaign, so the opt-out still wins and the read does not
+ * throw on an uninitialized typed property.
+ */
+it('treats an update queued before the flag existed as a campaign', function (): void {
+    Mail::fake();
+
+    $values = (new SendUpdateEmailJob(userWithoutMarketing(), 'mcp-launch-aug-2026', 'mcp-launch-aug-2026'))->__serialize();
+
+    unset($values['marketing']);
+
+    $stale = (new ReflectionClass(SendUpdateEmailJob::class))->newInstanceWithoutConstructor();
+    $stale->__unserialize($values);
+
+    $stale->handle();
+
+    expect($stale->marketing)->toBeTrue();
+    Mail::assertNothingQueued();
+});
+
 it('carries a one-click unsubscribe header and a footer link on a marketing drip', function (): void {
     $user = User::factory()->create();
     $mail = new WelcomeEmail($user);
