@@ -255,8 +255,17 @@ class OnboardingRevealService
         $accounts = $user->accounts()->get();
         $today = now();
         $lookup = BalanceLookup::forAccounts($accounts->pluck('id'), $today, $today);
-        $excluded = $this->netWorth->excludedTypesFor($user);
         $currency = $user->currency_code;
+
+        // Everything, with no chart preference applied. `excludedTypesFor()`
+        // answers for the dashboard's net worth chart, where a mortgage is off
+        // by default so a first chart is not swamped by a debt — and this
+        // screen is the one place that reasoning inverts. The reader typed that
+        // mortgage in two steps ago and this is the receipt for it: dropping it
+        // would tell someone who just entered a pension and a mortgage what
+        // they are worth without the mortgage, and leave it off the list
+        // underneath as well, so the screen would never mention it at all.
+        $excluded = [];
 
         return [
             'variant' => 'assets',
