@@ -118,6 +118,38 @@ test('the inactive-no-bank preference is shared with the notifications page', fu
     $response->assertInertia(fn ($page) => $page->where('notifyOnInactiveNoBank', false));
 });
 
+test('the product news and offers toggle can be turned off', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch(route('notifications.update'), [
+            'notifications' => ['marketing' => false],
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    expect($user->fresh()->setting->notify_marketing)->toBeFalse();
+});
+
+test('product news and offers defaults to true when no setting exists', function () {
+    $user = User::factory()->create();
+
+    expect($user->setting)->toBeNull();
+    expect($user->wantsMarketingEmails())->toBeTrue();
+});
+
+test('the product news and offers preference is shared with the notifications page', function () {
+    $user = User::factory()->create();
+    UserSetting::factory()->for($user)->create([
+        'notify_marketing' => false,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('notifications.index'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->where('notifyMarketing', false));
+});
+
 test('budget notification defaults can be updated', function () {
     $user = User::factory()->create();
 

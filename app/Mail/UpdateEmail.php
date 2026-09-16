@@ -2,6 +2,8 @@
 
 namespace App\Mail;
 
+use App\Jobs\SendUpdateEmailJob;
+use App\Mail\Concerns\MarketingUnsubscribe;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -9,12 +11,13 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\SerializesModels;
 
 class UpdateEmail extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use MarketingUnsubscribe, Queueable, SerializesModels;
 
     /**
      * The number of times the job may be attempted.
@@ -30,12 +33,24 @@ class UpdateEmail extends Mailable implements ShouldQueue
      */
     public $backoff = [2, 5, 10, 30];
 
+    /**
+     * `$marketing` decides whether this is a campaign or a notice. It is what
+     * {@see SendUpdateEmailJob} gates on, and it is also why the
+     * footer link and the `List-Unsubscribe` header only appear on campaigns: an
+     * account-deletion warning is not something a reader can unsubscribe from.
+     */
     public function __construct(
         public User $user,
         public string $viewName,
-        public string $emailSubject = 'Update from Whisper Money'
+        public string $emailSubject = 'Update from Whisper Money',
+        public bool $marketing = true,
     ) {
         $this->onQueue('emails');
+    }
+
+    public function headers(): Headers
+    {
+        return $this->marketing ? $this->marketingHeaders() : new Headers;
     }
 
     /**
@@ -64,6 +79,7 @@ class UpdateEmail extends Mailable implements ShouldQueue
             markdown: "mail.updates.{$this->viewName}",
             with: [
                 'user' => $this->user,
+                'unsubscribeUrl' => $this->marketing ? $this->marketingUnsubscribeUrl() : null,
             ],
         );
     }

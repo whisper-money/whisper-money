@@ -33,4 +33,6 @@
 {{ __('Best,') }}<br>
 {{ __('Álvaro & Víctor') }}<br>
 {{ __('Founders of Whisper Money') }}
+
+<x-slot:subcopy>@include('mail.partials.marketing-unsubscribe')</x-slot:subcopy>
 </x-mail::message>
