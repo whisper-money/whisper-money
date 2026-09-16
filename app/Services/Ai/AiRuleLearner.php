@@ -34,7 +34,7 @@ class AiRuleLearner
      * broadly as a substring. Two or more tokens are specific enough regardless
      * of length.
      */
-    private const MIN_SOLE_TOKEN_LENGTH = 5;
+    public const MIN_SOLE_TOKEN_LENGTH = 5;
 
     /**
      * Rule titles are built from bank-supplied merchant names, and some banks
