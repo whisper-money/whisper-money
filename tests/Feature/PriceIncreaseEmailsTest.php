@@ -14,6 +14,9 @@ const CANCELLING_SUBJECT = 'If your subscription ends, you lose the €3.99 pric
 const SUBSCRIBERS_VIEW = 'price-increase-subscribers-oct-2026';
 const SUBSCRIBERS_SUBJECT = 'Your price is not going up';
 
+const LAST_DAYS_VIEW = 'price-increase-last-days-oct-2026';
+const LAST_DAYS_SUBJECT = 'Four days left at €3.99';
+
 /**
  * Queue one of the price increase emails to a user with the given locale and
  * hand back the mailable, so each test asserts on exactly what that user gets.
@@ -181,6 +184,55 @@ it('renders the subscribers email in Spanish', function () {
     $mail->assertDontSeeInHtml('Your price is not going up');
 });
 
+it('renders the last days email in English', function () {
+    $mail = queuePriceIncreaseEmail(LAST_DAYS_VIEW, LAST_DAYS_SUBJECT, 'en');
+
+    $mail->assertHasSubject(LAST_DAYS_SUBJECT);
+    $mail->assertSeeInHtml('Hi Ada,');
+    $mail->assertSeeInHtml('Four days, then €3.99 is gone');
+
+    $mail->assertSeeInHtml('<table', escape: false);
+    $mail->assertSeeInHtml('From 1 October');
+    $mail->assertSeeInHtml('€8.99');
+    $mail->assertSeeInHtml('€53.94');
+
+    // The deadline is the whole message, so it appears twice: once as the
+    // offer, once as the door closing.
+    $mail->assertSeeInHtml('you have four days left at €3.99');
+    $mail->assertSeeInHtml('before 30 September at 23:59 CEST');
+    $mail->assertSeeInHtml('After that I cannot bring it back for you.');
+
+    $mail->assertSeeInHtml('Keep the €3.99 price');
+    $mail->assertSeeInHtml(route('subscribe'), escape: false);
+
+    // A reminder, not a reprint: the three reasons of the first email are one
+    // line here, and nothing else from it comes back.
+    $mail->assertSeeInHtml('The short version of why:');
+    $mail->assertDontSeeInHtml('There are three reasons.');
+    $mail->assertDontSeeInHtml('I am raising the price on 1 October');
+});
+
+it('renders the last days email in Spanish', function () {
+    $mail = queuePriceIncreaseEmail(LAST_DAYS_VIEW, LAST_DAYS_SUBJECT, 'es');
+
+    $mail->assertHasSubject('Quedan cuatro días a 3,99 €');
+    $mail->assertSeeInHtml('Hola Ada,');
+    $mail->assertSeeInHtml('Cuatro días y los 3,99 € desaparecen');
+
+    $mail->assertSeeInHtml('<table', escape: false);
+    $mail->assertSeeInHtml('Desde el 1 de octubre');
+    $mail->assertSeeInHtml('8,99 €');
+    $mail->assertSeeInHtml('53,94 €');
+
+    $mail->assertSeeInHtml('te quedan cuatro días a 3,99 €');
+    $mail->assertSeeInHtml('antes del 30 de septiembre a las 23:59 (hora peninsular española)');
+    $mail->assertSeeInHtml('Después de esa fecha no puedo recuperarlo para ti.');
+
+    $mail->assertSeeInHtml('Quedarme con el precio de 3,99 €');
+
+    $mail->assertDontSeeInHtml('Four days, then €3.99 is gone');
+});
+
 /**
  * LocalizationTest only scans resources/js, so a Blade line or a subject left
  * out of lang/es.json ships as English inside a Spanish email. This is the only
@@ -197,4 +249,5 @@ it('has a Spanish translation for every line of the template and its subject', f
     [LAST_CALL_VIEW, LAST_CALL_SUBJECT],
     [CANCELLING_VIEW, CANCELLING_SUBJECT],
     [SUBSCRIBERS_VIEW, SUBSCRIBERS_SUBJECT],
+    [LAST_DAYS_VIEW, LAST_DAYS_SUBJECT],
 ]);
