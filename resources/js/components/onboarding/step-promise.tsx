@@ -10,7 +10,7 @@ interface StepPromiseProps {
 
 /**
  * The first screen, and a claim rather than a welcome: it says what the user
- * walks away with, and what the four questions after it are for.
+ * walks away with, and what the three questions after it are for.
  */
 export function StepPromise({ onContinue }: StepPromiseProps) {
     return (
@@ -23,7 +23,7 @@ export function StepPromise({ onContinue }: StepPromiseProps) {
                 <>
                     <StepButton text={__('Start')} onClick={onContinue} />
                     <StepNote>
-                        {__('Four questions first. They change what you see.')}
+                        {__('Three questions first. They change what you see.')}
                     </StepNote>
                 </>
             }
