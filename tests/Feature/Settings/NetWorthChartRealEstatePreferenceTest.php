@@ -65,11 +65,15 @@ test('net worth chart real estate preference updates existing setting', function
     expect($user->fresh()->setting->include_real_estate_in_net_worth_chart)->toBeTrue();
 });
 
-test('net worth chart real estate preference defaults to true when no setting exists', function () {
+test('net worth chart real estate preference defaults to off when no setting exists', function () {
     $user = User::factory()->create();
 
     expect($user->setting)->toBeNull();
-    expect($user->setting?->include_real_estate_in_net_worth_chart ?? true)->toBeTrue();
+
+    $response = $this->actingAs($user)->get(route('appearance.edit'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->where('includeRealEstateInNetWorthChart', false));
 });
 
 test('net worth chart real estate preference is shared via inertia', function () {
