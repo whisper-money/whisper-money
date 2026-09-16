@@ -10,17 +10,17 @@
      exists so the new price on the site during launch week does not read as
      something that happened to them. --}}
 <x-mail::message>
-# {{ __('Four days, and nothing changes for you') }}
+# {{ __('Nothing changes for you') }}
 
 {{ __('Hi :name,', ['name' => $user->name]) }}
 
-{{ __('On 1 October the price goes up to €8.99 a month, or €53.94 a year, for new subscriptions. You are about to see that number in a few places.') }}
+{{ __('On 1 October Whisper Money goes to €8.99 a month, or €53.94 a year. You will probably see the new price around the site over the next few days, so here is what it means for you: nothing.') }}
 
-**{{ __('Yours stays where it is, for as long as you keep your subscription.') }}**
+**{{ __('Your subscription keeps the price you signed up at, for as long as you keep it.') }}** {{ __('The increase only applies to subscriptions created from 1 October onwards.') }}
 
-{{ __('That is the whole email. Nothing to do, nothing to click.') }}
+{{ __('There is nothing for you to do here, and nothing to click. I just did not want to leave you wondering.') }}
 
-{{ __('Thank you for paying for this. It is what pays for the work.') }}
+{{ __('Thank you for supporting us. It helps us keep Whisper Money going and carry on making it better.') }}
 
 Víctor Falcón Ruíz<br>
 {{ __('Co-founder and solo developer, Whisper Money') }}

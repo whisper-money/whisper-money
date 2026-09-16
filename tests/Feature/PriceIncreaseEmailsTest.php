@@ -18,7 +18,7 @@ const LAST_DAYS_VIEW = 'price-increase-last-days-oct-2026';
 const LAST_DAYS_SUBJECT = 'Four days left at €3.99';
 
 const LAST_DAYS_CANCELLING_VIEW = 'price-increase-last-days-cancelling-oct-2026';
-const LAST_DAYS_CANCELLING_SUBJECT = 'After 1 October, €3.99 only exists inside your subscription';
+const LAST_DAYS_CANCELLING_SUBJECT = 'Your subscription still has the old price';
 
 const LAST_DAYS_SUBSCRIBERS_VIEW = 'price-increase-last-days-subscribers-oct-2026';
 const LAST_DAYS_SUBSCRIBERS_SUBJECT = 'The price changes on 1 October, yours does not';
@@ -195,25 +195,28 @@ it('renders the last days email in English', function () {
 
     $mail->assertHasSubject(LAST_DAYS_SUBJECT);
     $mail->assertSeeInHtml('Hi Ada,');
-    $mail->assertSeeInHtml('Four days, then €3.99 is gone');
+    $mail->assertSeeInHtml('Four days left at the old price');
 
     $mail->assertSeeInHtml('<table', escape: false);
     $mail->assertSeeInHtml('From 1 October');
     $mail->assertSeeInHtml('€8.99');
     $mail->assertSeeInHtml('€53.94');
 
-    // The deadline is the whole message, so it appears twice: once as the
-    // offer, once as the door closing.
-    $mail->assertSeeInHtml('you have four days left at €3.99');
-    $mail->assertSeeInHtml('before 30 September at 23:59 CEST');
-    $mail->assertSeeInHtml('After that I cannot bring it back for you.');
+    // What the reader has to act on: the deadline, and why the price they lock
+    // in is theirs to keep.
+    $mail->assertSeeInHtml('You have until 30 September to subscribe');
+    $mail->assertSeeInHtml('Your price lives inside your subscription, not on the pricing page.');
+    $mail->assertSeeInHtml('After 30 September at 23:59 CEST the old price is gone');
 
     $mail->assertSeeInHtml('Keep the €3.99 price');
     $mail->assertSeeInHtml(route('subscribe'), escape: false);
 
+    // The free plan is not a consolation prize being withdrawn.
+    $mail->assertSeeInHtml('stay on it');
+
     // A reminder, not a reprint: the three reasons of the first email are one
     // line here, and nothing else from it comes back.
-    $mail->assertSeeInHtml('The short version of why:');
+    $mail->assertSeeInHtml('It is going up because bank connections and AI');
     $mail->assertDontSeeInHtml('There are three reasons.');
     $mail->assertDontSeeInHtml('I am raising the price on 1 October');
 });
@@ -223,20 +226,21 @@ it('renders the last days email in Spanish', function () {
 
     $mail->assertHasSubject('Quedan cuatro días a 3,99 €');
     $mail->assertSeeInHtml('Hola Ada,');
-    $mail->assertSeeInHtml('Cuatro días y los 3,99 € desaparecen');
+    $mail->assertSeeInHtml('Cuatro días al precio de siempre');
 
     $mail->assertSeeInHtml('<table', escape: false);
     $mail->assertSeeInHtml('Desde el 1 de octubre');
     $mail->assertSeeInHtml('8,99 €');
     $mail->assertSeeInHtml('53,94 €');
 
-    $mail->assertSeeInHtml('te quedan cuatro días a 3,99 €');
-    $mail->assertSeeInHtml('antes del 30 de septiembre a las 23:59 (hora peninsular española)');
-    $mail->assertSeeInHtml('Después de esa fecha no puedo recuperarlo para ti.');
+    $mail->assertSeeInHtml('Tienes hasta el 30 de septiembre para suscribirte');
+    $mail->assertSeeInHtml('Tu precio vive dentro de tu suscripción, no en la página de precios.');
+    $mail->assertSeeInHtml('a las 23:59 (hora peninsular española)');
 
     $mail->assertSeeInHtml('Quedarme con el precio de 3,99 €');
+    $mail->assertSeeInHtml('Sube porque las conexiones bancarias');
 
-    $mail->assertDontSeeInHtml('Four days, then €3.99 is gone');
+    $mail->assertDontSeeInHtml('Four days left at the old price');
 });
 
 it('renders the last days cancelling email in English', function () {
@@ -244,7 +248,7 @@ it('renders the last days cancelling email in English', function () {
 
     $mail->assertHasSubject(LAST_DAYS_CANCELLING_SUBJECT);
     $mail->assertSeeInHtml('Hi Ada,');
-    $mail->assertSeeInHtml('Your subscription is the last €3.99');
+    $mail->assertSeeInHtml('Reactivate it and you keep €3.99');
 
     $mail->assertSeeInHtml('<table', escape: false);
     $mail->assertSeeInHtml('From 1 October');
@@ -253,37 +257,42 @@ it('renders the last days cancelling email in English', function () {
 
     // This audience's deadline is the end of their own period, which can be
     // months away, so the email must not promise them a 1 October one.
-    $mail->assertSeeInHtml('until the day your period runs out');
-    $mail->assertSeeInHtml('Reactivate before that day');
+    $mail->assertSeeInHtml('The day it ends, the price goes with it.');
+    $mail->assertSeeInHtml('there stops being a cheaper subscription to come back to');
     $mail->assertDontSeeInHtml('four days');
 
     $mail->assertSeeInHtml('Reactivate my subscription');
     $mail->assertSeeInHtml(route('settings.billing'), escape: false);
 
+    // Leaving is a fine outcome, and the thank you does not depend on staying.
+    $mail->assertSeeInHtml('that is completely fine');
+    $mail->assertSeeInHtml('Thank you for supporting Whisper Money for as long as you did.');
+
     // A reminder, not a reprint of price-increase-cancelling-oct-2026.
     $mail->assertDontSeeInHtml('Before your subscription ends');
-    $mail->assertDontSeeInHtml('Why it is going up:');
+    $mail->assertDontSeeInHtml('The day it ends, that price ends with it.');
 });
 
 it('renders the last days cancelling email in Spanish', function () {
     $mail = queuePriceIncreaseEmail(LAST_DAYS_CANCELLING_VIEW, LAST_DAYS_CANCELLING_SUBJECT, 'es');
 
-    $mail->assertHasSubject('Después del 1 de octubre, los 3,99 € solo existen dentro de tu suscripción');
+    $mail->assertHasSubject('Tu suscripción todavía tiene el precio antiguo');
     $mail->assertSeeInHtml('Hola Ada,');
-    $mail->assertSeeInHtml('Tu suscripción es el último 3,99 €');
+    $mail->assertSeeInHtml('Reactívala y te quedas con los 3,99 €');
 
     $mail->assertSeeInHtml('<table', escape: false);
     $mail->assertSeeInHtml('Desde el 1 de octubre');
     $mail->assertSeeInHtml('8,99 €');
     $mail->assertSeeInHtml('53,94 €');
 
-    $mail->assertSeeInHtml('hasta el día en que se acabe tu periodo');
-    $mail->assertSeeInHtml('Reactívala antes de ese día');
+    $mail->assertSeeInHtml('El día que termine, el precio se va con ella.');
+    $mail->assertSeeInHtml('deja de haber una suscripción más barata a la que volver');
     $mail->assertDontSeeInHtml('cuatro días');
 
     $mail->assertSeeInHtml('Reactivar mi suscripción');
+    $mail->assertSeeInHtml('Gracias por haber apoyado Whisper Money');
 
-    $mail->assertDontSeeInHtml('Your subscription is the last €3.99');
+    $mail->assertDontSeeInHtml('Reactivate it and you keep €3.99');
 });
 
 it('renders the last days subscribers email in English', function () {
@@ -291,12 +300,13 @@ it('renders the last days subscribers email in English', function () {
 
     $mail->assertHasSubject(LAST_DAYS_SUBSCRIBERS_SUBJECT);
     $mail->assertSeeInHtml('Hi Ada,');
-    $mail->assertSeeInHtml('Four days, and nothing changes for you');
+    $mail->assertSeeInHtml('Nothing changes for you');
 
-    $mail->assertSeeInHtml('€8.99 a month, or €53.94 a year, for new subscriptions');
-    $mail->assertSeeInHtml('Yours stays where it is');
-    $mail->assertSeeInHtml('That is the whole email.');
-    $mail->assertSeeInHtml('Thank you for paying for this.');
+    $mail->assertSeeInHtml('€8.99 a month, or €53.94 a year');
+    $mail->assertSeeInHtml('what it means for you: nothing');
+    $mail->assertSeeInHtml('Your subscription keeps the price you signed up at');
+    $mail->assertSeeInHtml('There is nothing for you to do here');
+    $mail->assertSeeInHtml('Thank you for supporting us.');
 
     // Nothing is at stake for them, so there is no price table and no CTA: no
     // deadline to act on, and no page worth sending them to. The table is
@@ -315,15 +325,16 @@ it('renders the last days subscribers email in Spanish', function () {
 
     $mail->assertHasSubject('El precio cambia el 1 de octubre, el tuyo no');
     $mail->assertSeeInHtml('Hola Ada,');
-    $mail->assertSeeInHtml('Cuatro días, y para ti no cambia nada');
+    $mail->assertSeeInHtml('Para ti no cambia nada');
 
-    $mail->assertSeeInHtml('8,99 € al mes, o 53,94 € al año, para las suscripciones nuevas');
-    $mail->assertSeeInHtml('El tuyo se queda donde está');
-    $mail->assertSeeInHtml('Eso es todo el correo.');
-    $mail->assertSeeInHtml('Gracias por pagar por esto.');
+    $mail->assertSeeInHtml('8,99 € al mes, o 53,94 € al año');
+    $mail->assertSeeInHtml('lo que significa para ti: nada');
+    $mail->assertSeeInHtml('Tu suscripción mantiene el precio con el que la empezaste');
+    $mail->assertSeeInHtml('No tienes que hacer nada ni pulsar nada.');
+    $mail->assertSeeInHtml('Gracias por apoyarnos.');
 
     $mail->assertDontSeeInHtml('Desde el 1 de octubre');
-    $mail->assertDontSeeInHtml('Four days, and nothing changes for you');
+    $mail->assertDontSeeInHtml('Nothing changes for you');
 });
 
 /**

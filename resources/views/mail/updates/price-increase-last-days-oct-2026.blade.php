@@ -9,11 +9,11 @@
      The audience is recomputed at send time, so anyone who subscribed after the
      first email drops out on their own. --}}
 <x-mail::message>
-# {{ __('Four days, then €3.99 is gone') }}
+# {{ __('Four days left at the old price') }}
 
 {{ __('Hi :name,', ['name' => $user->name]) }}
 
-{{ __('I will keep this short, because the date is the whole of it. On 1 October the price of Whisper Money goes up, and you have four days left at €3.99.') }}
+{{ __('On 1 October the price of Whisper Money goes up, so this is the last reminder I will send you about it. You have until 30 September to subscribe at the price you see today.') }}
 
 <x-mail::table>
 | {{ __('Plan') }}        | {{ __('Today') }}  | {{ __('From 1 October') }} |
@@ -22,17 +22,17 @@
 | **{{ __('Yearly') }}**  | {{ __('€23.88') }} | **{{ __('€53.94') }}**     |
 </x-mail::table>
 
-{{ __('Subscribe before 30 September at 23:59 CEST and you keep €3.99 a month, or €23.88 a year, for as long as you keep the subscription. The price lives inside it, so a rise never touches yours.') }}
+{{ __('Your price lives inside your subscription, not on the pricing page. Subscribe now and yours stays at €3.99 a month, or €23.88 a year, for as long as you keep it. The increase only applies to subscriptions created afterwards.') }}
 
-{{ __('The short version of why: bank connections and AI cost us more every month, and this has to pay for itself to last. We are still two people, Álvaro and me.') }}
+{{ __('It is going up because bank connections and AI are what make Whisper Money worth opening, and both cost us more every month. There are two of us, Álvaro and me, and we would like to keep doing this for a long time.') }}
 
 <x-mail::button :url="route('subscribe')">
 {{ __('Keep the €3.99 price') }}
 </x-mail::button>
 
-**{{ __('After that I cannot bring it back for you. €3.99 will not exist.') }}**
+{{ __('After 30 September at 23:59 CEST the old price is gone, and I will not be able to bring it back for you.') }}
 
-{{ __('And if the free plan is what suits you, stay on it. It is not going anywhere, and I am glad you are here either way.') }}
+{{ __('And if the free plan is what works for you, stay on it. It is not going anywhere, and I am glad to have you here either way.') }}
 
 Víctor Falcón Ruíz<br>
 {{ __('Co-founder and solo developer, Whisper Money') }}
