@@ -113,7 +113,8 @@ it('sends the email once and records a mail log', function () {
 it('renders the email in the user locale', function () {
     app()->setLocale('es');
 
-    $user = User::factory()->make(['name' => 'Ada']);
+    // Persisted, because the footer signs an unsubscribe link against the id.
+    $user = User::factory()->create(['name' => 'Ada']);
     $html = (new AiConsentFollowUpEmail($user))->render();
 
     app()->setLocale('en');
