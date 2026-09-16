@@ -119,7 +119,7 @@ class AiCohortReportCollector
      */
     private function aggregateEligibleUsers(CarbonImmutable $windowStart): array
     {
-        $threshold = (int) config('ai_suggestions.eligibility_min_transactions', 50);
+        $threshold = (int) config('ai_suggestions.eligibility_min_transactions', 40);
         $excluded = (array) config('ai_suggestions.report.excluded_emails', []);
 
         $rows = User::query()
