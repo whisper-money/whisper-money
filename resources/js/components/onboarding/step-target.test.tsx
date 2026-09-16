@@ -52,6 +52,9 @@ describe('StepTarget', () => {
         // A tenth of €1,847, rounded to the stepper's own coarseness.
         expect(screen.getByText('200')).toBeInTheDocument();
         expect(screen.getByText('€2,400')).toBeInTheDocument();
+        // Named where it is asked for, not only on the closing screen: read as
+        // a ceiling it is the opposite of what the step does.
+        expect(screen.getByText('a month put aside')).toBeInTheDocument();
         // Built on the real month, set against the guess that opened the flow.
         expect(screen.getByText('€1,847')).toBeInTheDocument();
         expect(screen.getByText('€1,200')).toBeInTheDocument();

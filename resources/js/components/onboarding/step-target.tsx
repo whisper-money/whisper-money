@@ -468,8 +468,13 @@ function Stepper({
                         }).format(amount)}
                     </span>
                 </div>
+                {/* The number is money kept back, not money allowed out, and
+                    nothing else on the screen says so — "Warn me before I
+                    overspend" sits right under it and reads as a ceiling. The
+                    closing step already calls it "put aside"; the step that
+                    asks for it has to call it the same thing. */}
                 <span className="text-[13px] text-muted-foreground">
-                    {__('a month')}
+                    {__('a month put aside')}
                 </span>
             </div>
 
