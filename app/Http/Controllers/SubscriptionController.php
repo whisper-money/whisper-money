@@ -162,7 +162,15 @@ class SubscriptionController extends Controller
 
         $trialDays = $this->experimentOffer->trialDaysFor($request->user(), $planKey);
         if ($trialDays > 0) {
-            $subscriptionBuilder->trialDays($trialDays);
+            // End of day, not `trialDays()`. Cashier turns that call into an
+            // absolute `trial_end` fixed the moment this URL is built, and
+            // Stripe's checkout prints the whole days still left when the page
+            // renders — a few seconds later, so N days always read as N-1 and
+            // "free for 15 days" arrived at a screen saying "14 days free".
+            // Rounding to the end of the day leaves the remainder in [N, N+1)
+            // whatever the hour, so the two numbers agree and the trial is
+            // never shorter than the one we sold.
+            $subscriptionBuilder->trialUntil(now()->addDays($trialDays)->endOfDay());
         }
 
         // Attribute revenue to the upsell point the checkout started from. The

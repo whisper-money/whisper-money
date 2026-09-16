@@ -222,7 +222,7 @@ return [
             'original_price' => $tier['yearly']['original_price'],
             'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY') ?: $tier['yearly']['stripe_lookup_key'],
             'billing_period' => 'year',
-            'trial_days' => $trialDays('STRIPE_PRO_YEARLY_TRIAL_DAYS', $payNow ? 0 : 15),
+            'trial_days' => $trialDays('STRIPE_PRO_YEARLY_TRIAL_DAYS', $payNow ? 0 : 14),
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',

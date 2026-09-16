@@ -132,7 +132,10 @@ it('applies the assigned variant trial at checkout', function () {
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
-    $builder->shouldReceive('trialDays')->once()->with(3)->andReturnSelf();
+    $builder->shouldReceive('trialUntil')
+        ->once()
+        ->with(Mockery::on(fn ($trialEnd) => now()->diffInDays($trialEnd, absolute: false) >= 3))
+        ->andReturnSelf();
     $checkout = Mockery::mock(Checkout::class);
     $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
     $builder->shouldReceive('checkout')->once()->andReturn($checkout);

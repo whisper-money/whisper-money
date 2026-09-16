@@ -340,7 +340,7 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', 107.88)
                 ->where('stripe_lookup_key', 'whisper_pro_yearly_high')
                 ->where('billing_period', 'year')
-                ->where('trial_days', 15)
+                ->where('trial_days', 14)
                 ->has('features')
             )
             ->has('pricing.promo', fn ($promo) => $promo
@@ -588,7 +588,13 @@ test('checkout applies each plan its own trial days', function (string $planKey,
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
-    $builder->shouldReceive('trialDays')->once()->with($trialDays)->andReturnSelf();
+    // Whole days still left, not an instant exactly N days out: Stripe's
+    // checkout prints the floor of what remains when the page renders, so a
+    // trial that expires to the second reads one day short of the one sold.
+    $builder->shouldReceive('trialUntil')
+        ->once()
+        ->with(Mockery::on(fn ($trialEnd) => now()->diffInDays($trialEnd, absolute: false) >= $trialDays))
+        ->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn($checkout);
 
     $user = Mockery::mock(User::class)->shouldIgnoreMissing();
@@ -605,7 +611,7 @@ test('checkout applies each plan its own trial days', function (string $planKey,
     $this->get(route('subscribe.checkout', ['plan' => $planKey]))->assertRedirect();
 })->with([
     'monthly' => ['monthly', 7],
-    'yearly' => ['yearly', 15],
+    'yearly' => ['yearly', 14],
 ]);
 
 test('checkout tags the subscription with a valid upsell source', function () {

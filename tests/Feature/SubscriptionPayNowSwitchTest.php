@@ -59,7 +59,7 @@ function trialDaysWith(array $env): array
 }
 
 it('sells the trial while the switch is off', function () {
-    expect(trialDaysWith([]))->toBe(['monthly' => 7, 'yearly' => 15]);
+    expect(trialDaysWith([]))->toBe(['monthly' => 7, 'yearly' => 14]);
 });
 
 it('charges in full at signup while the switch is on', function () {
@@ -69,7 +69,7 @@ it('charges in full at signup while the switch is on', function () {
 
 it('reads anything but a true as off', function (string $value) {
     expect(trialDaysWith(['SUBSCRIPTION_PAY_NOW' => $value]))
-        ->toBe(['monthly' => 7, 'yearly' => 15]);
+        ->toBe(['monthly' => 7, 'yearly' => 14]);
 })->with(['false', '0', '', 'nonsense']);
 
 /**
@@ -85,7 +85,7 @@ it('lets a pinned trial override the switch', function () {
 
 it('lets a pinned zero charge one plan upfront with the switch off', function () {
     expect(trialDaysWith(['STRIPE_PRO_MONTHLY_TRIAL_DAYS' => '0']))
-        ->toBe(['monthly' => 0, 'yearly' => 15]);
+        ->toBe(['monthly' => 0, 'yearly' => 14]);
 });
 
 /**
@@ -95,5 +95,5 @@ it('lets a pinned zero charge one plan upfront with the switch off', function ()
  */
 it('treats a blank pinned trial as absent', function () {
     expect(trialDaysWith(['STRIPE_PRO_MONTHLY_TRIAL_DAYS' => '']))
-        ->toBe(['monthly' => 7, 'yearly' => 15]);
+        ->toBe(['monthly' => 7, 'yearly' => 14]);
 });
