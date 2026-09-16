@@ -117,6 +117,14 @@ const PRIMARY_STEPS: OnboardingStep[] = [
     'complete',
 ];
 
+/**
+ * Which onboarding this is, as a person property. The benefits-first redesign
+ * replaced the flow wholesale rather than branching inside it, so nothing in
+ * the events themselves says which one a person was shown once the step names
+ * are gone.
+ */
+const ONBOARDING_FLOW = 'benefits-first';
+
 /** Where onboarding starts, and where anything unresolvable falls back to. */
 const FIRST_STEP: OnboardingStep = PRIMARY_STEPS[0];
 
@@ -308,6 +316,15 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         lastTrackedStep.current = currentStep;
 
         captureEvent('onboarding_step_viewed', {
+            // Stamped on the person, not just this event, so every onboarding
+            // event they send afterwards can be broken down by which flow they
+            // were shown. The two flows do not share a step vocabulary — the
+            // old one opened on `welcome`, this one on `promise` — so a funnel
+            // cannot compare them step by step; what it can compare is who got
+            // through, and that needs one label both sides can be read by.
+            // Someone who did the old onboarding and comes back through this
+            // one is relabelled, which is right: this is the flow they saw.
+            $set: { onboarding_flow: ONBOARDING_FLOW },
             step: currentStep,
             // 1-based to read as "3 of 11". A step outside the progress
             // counter has no position to report.

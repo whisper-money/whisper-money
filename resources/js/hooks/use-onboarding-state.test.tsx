@@ -325,6 +325,7 @@ describe('useOnboardingState', () => {
             expect(captureEvent).toHaveBeenCalledWith(
                 'onboarding_step_viewed',
                 {
+                    $set: { onboarding_flow: 'benefits-first' },
                     step: 'promise',
                     step_index: 1,
                     total_steps: 11,
@@ -333,6 +334,25 @@ describe('useOnboardingState', () => {
                     resumed: false,
                 },
             );
+        });
+
+        /**
+         * The old flow and this one share no step vocabulary, so nothing in the
+         * events says which one a person saw once `welcome` and `promise` are
+         * both in the table. The label goes on the person, so every onboarding
+         * event they send afterwards carries it and one funnel can compare the
+         * two.
+         */
+        it('labels the person with the flow they were shown', () => {
+            renderHook(() => useOnboardingState({ userId: 'user-1' }));
+
+            const [, properties] = captureEvent.mock.calls.find(
+                ([name]) => name === 'onboarding_step_viewed',
+            )!;
+
+            expect(properties.$set).toEqual({
+                onboarding_flow: 'benefits-first',
+            });
         });
 
         // The accounts hub is one step with two very different screens, and
