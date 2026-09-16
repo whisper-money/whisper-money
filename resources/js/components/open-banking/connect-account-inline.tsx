@@ -25,6 +25,7 @@ import {
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Input } from '@/components/ui/input';
 import {
+    rememberConnectCountry,
     useConnectCountries,
     useConnectFlow,
     useGuessedCountry,
@@ -211,9 +212,13 @@ export function ConnectAccountInline({
         (code: string) => {
             trigger('light');
             setCountry(code);
+            // Their own answer, kept for the next visit: the guess off the
+            // locale sends an English-reading Spaniard to an empty United
+            // Kingdom list, and without this it does so every single time.
+            rememberConnectCountry(code);
             clearBankSelection();
             setCountryQuery('');
-            fetchInstitutions(code);
+            void fetchInstitutions(code);
         },
         [trigger, setCountry, clearBankSelection, fetchInstitutions],
     );

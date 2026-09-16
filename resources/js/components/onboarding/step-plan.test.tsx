@@ -35,4 +35,31 @@ describe('StepPlan', () => {
         ).toBeInTheDocument();
         expect(screen.queryByText(/You want to/)).not.toBeInTheDocument();
     });
+
+    // The free card is never offered a bank connection or the AI pass, so the
+    // plan must not open by promising both.
+    it('promises a free signup the flow they will actually get', () => {
+        render(<StepPlan currencyCode="EUR" isFreePlan onContinue={vi.fn()} />);
+
+        expect(
+            screen.getByText('A year of your spending, from a file'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/at your bank's own login/),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/already filed when you arrive/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('still promises the paid signup the bank and the AI pass', () => {
+        render(<StepPlan currencyCode="EUR" onContinue={vi.fn()} />);
+
+        expect(
+            screen.getByText('A year of your spending, without typing it'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Every movement already filed when you arrive'),
+        ).toBeInTheDocument();
+    });
 });

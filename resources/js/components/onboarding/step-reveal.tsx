@@ -50,6 +50,13 @@ interface SpendingReveal {
 interface AssetsReveal {
     variant: 'assets';
     currency_code: string;
+    /**
+     * The reader holds a current account, a card or a savings account — so the
+     * missing spending is a month we could not read, not a kind of account they
+     * never added. Both land here; only one of them should be offered a current
+     * account they already have.
+     */
+    has_spending_accounts: boolean;
     net_worth: number;
     accounts: {
         id: string;
@@ -198,9 +205,7 @@ function RevealSpending({
                 <StepButton
                     text={
                         data.merchant_count > 0
-                            ? __('Sort these :count merchants', {
-                                  count: data.merchant_count,
-                              })
+                            ? __('Sort my merchants')
                             : __('Continue')
                     }
                     onClick={onContinue}
@@ -300,6 +305,11 @@ function Closing({ data }: { data: SpendingReveal }) {
 /**
  * The sentence that points at step 8. It can only call out the repeat charges
  * when the sentence before it actually named some.
+ *
+ * It used to promise the whole pile by name — "all 16 of them" — and the step
+ * behind it then asks for five and lets the reader stop there. Counting them
+ * out set up a wall that is not there, so the handover names the work without
+ * pricing it.
  */
 function handover(merchants: number, repeats: boolean): string {
     if (merchants === 0) {
@@ -308,12 +318,9 @@ function handover(merchants: number, repeats: boolean): string {
 
     return repeats
         ? __(
-              'Next we turn all :total of them into categories, and the repeat charges are where to start.',
-              { total: merchants },
+              'Next we turn them into categories, and the repeat charges are where to start.',
           )
-        : __('Next we turn all :total of them into categories.', {
-              total: merchants,
-          });
+        : __('Next we turn them into categories.');
 }
 
 /**
@@ -385,9 +392,15 @@ function monthName(month: string, locale: string): string {
 }
 
 /**
- * The variant for someone who arrived with a pension, a mortgage or a broker
- * and no current account. They have nothing to be told about their spending, so
- * they are told what they are worth — and offered the half they are missing.
+ * The variant for someone with no month to read back.
+ *
+ * Two different readers arrive here. One brought a pension, a mortgage or a
+ * broker and no current account: they are missing half the picture, and the
+ * screen offers it. The other brought a current account whose movements we
+ * could not make a month out of — too few, or none of them outgoing. Telling
+ * that one their accounts "move as single numbers" and offering to add the
+ * current account they just connected is the screen answering somebody else's
+ * situation, so it says what is actually true of theirs and gets out of the way.
  */
 function RevealAssets({
     data,
@@ -399,6 +412,7 @@ function RevealAssets({
     onAddAccount: () => void;
 }) {
     const locale = useLocale();
+    const awaitingMovements = data.has_spending_accounts;
 
     return (
         <StepScreen
@@ -411,21 +425,31 @@ function RevealAssets({
                     0,
                 ),
             })}
-            description={__(
-                'No movements to read here — these accounts move as single numbers. That number is still one most people have never seen in one place.',
-            )}
+            description={
+                awaitingMovements
+                    ? __(
+                          'Not enough has left these accounts yet to read a month back to you. That number is still one most people have never seen in one place.',
+                      )
+                    : __(
+                          'No movements to read here — these accounts move as single numbers. That number is still one most people have never seen in one place.',
+                      )
+            }
             footer={
-                <>
-                    <StepButton
-                        text={__('Add a current account')}
-                        onClick={onAddAccount}
-                    />
-                    <StepButton
-                        text={__('Continue without one')}
-                        variant="ghost"
-                        onClick={onContinue}
-                    />
-                </>
+                awaitingMovements ? (
+                    <StepButton text={__('Continue')} onClick={onContinue} />
+                ) : (
+                    <>
+                        <StepButton
+                            text={__('Add a current account')}
+                            onClick={onAddAccount}
+                        />
+                        <StepButton
+                            text={__('Continue without one')}
+                            variant="ghost"
+                            onClick={onContinue}
+                        />
+                    </>
+                )
             }
         >
             <div className="flex flex-col gap-6">
@@ -455,9 +479,13 @@ function RevealAssets({
                 </StepList>
 
                 <StepCallout>
-                    {__(
-                        'Connect a current account and this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
-                    )}
+                    {awaitingMovements
+                        ? __(
+                              'Once a month of movements is in, this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
+                          )
+                        : __(
+                              'Connect a current account and this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
+                          )}
                 </StepCallout>
             </div>
         </StepScreen>

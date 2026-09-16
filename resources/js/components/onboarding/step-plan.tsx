@@ -16,6 +16,12 @@ interface StepPlanProps {
     /** Minor units. */
     spendingGuess?: number;
     currencyCode: string;
+    /**
+     * Someone who signed up from the free card, who is never offered a bank
+     * connection or the AI pass. Promising them both here was promising two
+     * things the next four steps then refuse to hand over.
+     */
+    isFreePlan?: boolean;
     onContinue: () => void;
 }
 
@@ -30,6 +36,7 @@ export function StepPlan({
     goal,
     spendingGuess,
     currencyCode,
+    isFreePlan = false,
     onContinue,
 }: StepPlanProps) {
     const locale = useLocale();
@@ -61,17 +68,35 @@ export function StepPlan({
             <StepList>
                 <StepRow
                     leading={<StepNumber>1</StepNumber>}
-                    title={__('A year of your spending, without typing it')}
-                    description={__(
-                        "Forty seconds at your bank's own login, read-only.",
-                    )}
+                    title={
+                        isFreePlan
+                            ? __('A year of your spending, from a file')
+                            : __('A year of your spending, without typing it')
+                    }
+                    description={
+                        isFreePlan
+                            ? __(
+                                  'The export your bank already offers, read in one go.',
+                              )
+                            : __(
+                                  "Forty seconds at your bank's own login, read-only.",
+                              )
+                    }
                 />
                 <StepRow
                     leading={<StepNumber>2</StepNumber>}
-                    title={__('Every movement already filed when you arrive')}
-                    description={__(
-                        'You correct the handful we get wrong, once.',
-                    )}
+                    title={
+                        isFreePlan
+                            ? __('Filed once, and filed from then on')
+                            : __('Every movement already filed when you arrive')
+                    }
+                    description={
+                        isFreePlan
+                            ? __(
+                                  'You sort a handful; each one becomes a rule that sorts the rest.',
+                              )
+                            : __('You correct the handful we get wrong, once.')
+                    }
                 />
                 <StepRow
                     leading={<StepNumber>3</StepNumber>}

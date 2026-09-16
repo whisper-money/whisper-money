@@ -261,6 +261,15 @@ class OnboardingRevealService
         return [
             'variant' => 'assets',
             'currency_code' => $currency,
+            // Which of the two silences this is. A current account that landed
+            // here has movements we could not read a month out of — too few, or
+            // none of them outgoing — and telling that reader their accounts
+            // "move as single numbers", then offering to add the current
+            // account they just connected, is the screen answering somebody
+            // else's situation.
+            'has_spending_accounts' => $accounts->contains(
+                fn (Account $account): bool => in_array($account->type, $this->spendingTypes(), true)
+            ),
             'net_worth' => $this->netWorth->at($accounts, $lookup, $today, $currency, $excluded),
             // Only what the total is made of: a credit card listed under a
             // figure it was left out of is a figure that does not add up.

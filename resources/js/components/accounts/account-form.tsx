@@ -34,14 +34,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BankCombobox } from './bank-combobox';
 import { CustomBankData, CustomBankForm } from './custom-bank-form';
 
-const BALANCE_ACCOUNT_TYPES: AccountType[] = [
-    'investment',
-    'loan',
-    'real_estate',
-    'retirement',
-    'savings',
-];
-
 export interface RealEstateFormData {
     propertyType: PropertyType | null;
     address: string;
@@ -127,7 +119,7 @@ export function AccountForm({
     onChange,
     errors = {},
 }: AccountFormProps) {
-    const { currencies } = usePage<SharedData>().props;
+    const { auth, currencies } = usePage<SharedData>().props;
     const currencyOptions = usePrimaryCurrenciesOnly
         ? currencies.profile
         : currencies.accounts;
@@ -140,8 +132,20 @@ export function AccountForm({
     const [selectedType, setSelectedType] = useState<AccountType | null>(
         initialValues?.type ?? forceAccountType ?? null,
     );
+    // The currency the reader already keeps their money in, rather than an
+    // empty select on every new account. Only when the list on offer actually
+    // holds it: a user whose currency is no longer offered picks one.
     const [selectedCurrency, setSelectedCurrency] =
-        useState<CurrencyCode | null>(initialValues?.currencyCode ?? null);
+        useState<CurrencyCode | null>(
+            () =>
+                initialValues?.currencyCode ??
+                (currencyOptions.some(
+                    (currency: CurrencyOption) =>
+                        currency.code === auth?.user?.currency_code,
+                )
+                    ? (auth.user.currency_code as CurrencyCode)
+                    : null),
+        );
     const [isCreatingCustomBank, setIsCreatingCustomBank] = useState(false);
     const [customBankData, setCustomBankData] = useState<CustomBankData>(
         initialCustomBankData,
@@ -155,8 +159,13 @@ export function AccountForm({
     );
     const isRevaluationManuallySet = useRef(false);
 
-    const showBalanceField =
-        selectedType !== null && BALANCE_ACCOUNT_TYPES.includes(selectedType);
+    // Every account is worth something today, including the current account the
+    // onboarding opens on. Asking only the types that move as a single number
+    // sent people to a dashboard reading €0.00 one screen after being told it
+    // would not be empty — a file import fills in the movements, never the
+    // balance they add up to. A loan and a property keep their own wording
+    // (`balanceTermCapitalized`) and their own follow-up questions.
+    const showBalanceField = selectedType !== null;
     const isRealEstate = selectedType === 'real_estate';
     const isLoan = selectedType === 'loan';
     const availableRealEstateAccounts = availableLoanAccounts.filter(

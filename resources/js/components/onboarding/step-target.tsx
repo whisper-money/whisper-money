@@ -69,17 +69,13 @@ export function StepTarget({
     const onContinueRef = useRef(onContinue);
     onContinueRef.current = onContinue;
 
-    // Someone who brought a pension and a mortgage has no month to build a
-    // target on, and a summary that never arrived has nothing at all. Neither
-    // is a reason to hold them on a screen that would have to invent a number.
-    const nothingToBuildOn =
-        summary === null || summary?.monthly_spending === null;
-
+    // A summary that never arrived has nothing to say and no way to say it, so
+    // it moves on the way the reveal does when its own numbers fail to land.
     useEffect(() => {
-        if (nothingToBuildOn) {
+        if (summary === null) {
             onContinueRef.current();
         }
-    }, [nothingToBuildOn]);
+    }, [summary]);
 
     if (summary === undefined || summary === null) {
         return <TargetSkeleton />;
@@ -87,8 +83,12 @@ export function StepTarget({
 
     const spending = summary.monthly_spending;
 
+    // Someone who brought a pension and a mortgage has no month to build a
+    // target on. Step 5 promised them this screen — "your first target comes
+    // out of it" — so it says why there is no number rather than vanishing
+    // between the step before it and the step after.
     if (spending === null) {
-        return <TargetSkeleton />;
+        return <NoSpendingToTarget onContinue={onContinue} />;
     }
 
     return (
@@ -115,6 +115,43 @@ function TargetSkeleton() {
                 <Skeleton className="mx-auto h-16 w-40" />
                 <Skeleton className="h-28 w-full" />
             </div>
+        </StepScreen>
+    );
+}
+
+/**
+ * The step for a reader with balances but no spending behind them — a pension,
+ * a mortgage, a broker, or a bank that has handed over nothing going out yet.
+ *
+ * A target set on no spending would be a number the app invented, so none is
+ * offered. What the screen owes them is the reason, because step 5 told them
+ * this was coming and silence reads as a step that broke.
+ */
+function NoSpendingToTarget({ onContinue }: { onContinue: () => void }) {
+    return (
+        <StepScreen
+            title={__('Your target can wait')}
+            description={__(
+                'A target is built on a month of real spending, and there isn’t one to read yet. Inventing a number here would only give you something to ignore.',
+            )}
+            footer={<StepButton text={__('Continue')} onClick={onContinue} />}
+        >
+            <StepList>
+                <StepRow
+                    leading={<StepCheck />}
+                    title={__('Nothing is missing')}
+                    description={__(
+                        'Everything you brought in is saved and on your dashboard.',
+                    )}
+                />
+                <StepRow
+                    leading={<StepCheck />}
+                    title={__('It comes back on its own')}
+                    description={__(
+                        'Once a month of movements is in, set one from Planning in a couple of taps.',
+                    )}
+                />
+            </StepList>
         </StepScreen>
     );
 }

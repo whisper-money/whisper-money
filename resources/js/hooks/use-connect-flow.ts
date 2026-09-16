@@ -61,9 +61,40 @@ export function useConnectCountries(): { code: string; name: string }[] {
 
 export type ConnectStep = 'country' | 'bank' | 'confirm';
 
+/** Where the last country the reader picked by hand is kept. */
+const COUNTRY_STORAGE_KEY = 'connect:country';
+
 /**
- * The country the bank picker should open on, or null when the user's own
- * settings do not name one we can connect in.
+ * Remember a country the reader chose themselves, so the next visit to the
+ * picker opens where the last one ended rather than back on a guess they have
+ * already corrected once.
+ */
+export function rememberConnectCountry(code: string): void {
+    try {
+        localStorage.setItem(COUNTRY_STORAGE_KEY, code);
+    } catch {
+        // A browser with site data blocked still connects banks; it just asks
+        // for the country every time.
+    }
+}
+
+/** The remembered country, if it is still one we connect in. */
+function rememberedCountry(): string | null {
+    try {
+        const code = localStorage.getItem(COUNTRY_STORAGE_KEY);
+
+        return code &&
+            (CONNECT_COUNTRY_CODES as readonly string[]).includes(code)
+            ? code
+            : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * The country the bank picker should open on, or null when nothing names one we
+ * can connect in.
  *
  * The country is part of a bank's identity rather than a filter over one list:
  * `/aspsps` takes it as a required parameter and `startAuthorization()` is keyed
@@ -71,11 +102,21 @@ export type ConnectStep = 'country' | 'bank' | 'confirm';
  * are two different connections. Guessing it from the region the user already
  * formats their money in is right often enough to make the full list a control
  * rather than a step.
+ *
+ * A country the reader picked themselves beats the guess: they have corrected
+ * it once already, and a Spaniard reading the app in English was being sent
+ * back to an empty United Kingdom list on every attempt.
  */
 export function useGuessedCountry(): string | null {
     const locale = useLocale();
 
     return useMemo(() => {
+        const remembered = rememberedCountry();
+
+        if (remembered) {
+            return remembered;
+        }
+
         const region = new Intl.Locale(locale).region;
 
         return region &&
@@ -187,8 +228,13 @@ export function useConnectFlow(
         setSelectedBank(null);
     }, []);
 
+    /**
+     * Resolves with how many banks the country turned out to have, or null when
+     * we could not ask — a country with none and a request that failed are two
+     * different answers, and only one of them is about the country.
+     */
     const fetchInstitutions = useCallback(
-        async (countryCode: string) => {
+        async (countryCode: string): Promise<number | null> => {
             setIsLoading(true);
             setError(null);
 
@@ -238,8 +284,12 @@ export function useConnectFlow(
                 setInstitutions(allInstitutions);
                 setFilteredInstitutions(allInstitutions);
                 setStep('bank');
+
+                return allInstitutions.length;
             } catch {
                 setError(__('Failed to load banks. Please try again.'));
+
+                return null;
             } finally {
                 setIsLoading(false);
             }
@@ -255,7 +305,17 @@ export function useConnectFlow(
     useEffect(() => {
         if (initialCountry && !hasAutoFetched.current) {
             hasAutoFetched.current = true;
-            fetchInstitutions(initialCountry);
+
+            // A guess that lands on a country with no banks behind it is a
+            // guess that did not pay off, and "No banks found" is the first
+            // thing somebody sees after paying to connect one. Ask instead —
+            // but only for an empty country, never for a request that failed,
+            // which has its own error to show where the reader already is.
+            void fetchInstitutions(initialCountry).then((found) => {
+                if (found === 0) {
+                    setStep('country');
+                }
+            });
         }
     }, [initialCountry, fetchInstitutions]);
 

@@ -158,11 +158,61 @@ it('shows what someone with no movements is worth instead', function () {
         ->assertOk()
         ->assertJson([
             'variant' => 'assets',
+            // Nothing here keeps a ledger, so the screen may say these accounts
+            // move as single numbers and offer a current account.
+            'has_spending_accounts' => false,
             'net_worth' => 1635000,
             'accounts' => [
                 ['name' => 'Plan de pensiones', 'connected' => false, 'balance' => 1840000],
                 ['name' => 'Hipoteca', 'connected' => false, 'balance' => -205000],
             ],
+        ]);
+});
+
+it('tells a current account with no readable month apart from having no ledger at all', function () {
+    $user = revealUser();
+    $account = Account::factory()->for($user)->create(['type' => 'checking', 'currency_code' => 'EUR']);
+
+    AccountBalance::factory()->for($account)->create([
+        'balance_date' => now()->subDay(),
+        'balance' => 500000,
+    ]);
+
+    // A bank that hands back only credits — the sandbox case, and the refund
+    // month case — leaves no outgoings to read a month out of.
+    outgoing($account, monthsBack(1), 120000, 'PAYROLL');
+    outgoing($account, monthsBack(1), 4000, 'REEMBOLSO');
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson([
+            'variant' => 'assets',
+            // The reader already holds the current account the other variant
+            // would offer them, so the screen must not ask for one.
+            'has_spending_accounts' => true,
+        ]);
+});
+
+it('counts too few outgoings to make a month as a spending account still', function () {
+    $user = revealUser();
+    $account = Account::factory()->for($user)->create(['type' => 'checking', 'currency_code' => 'EUR']);
+
+    AccountBalance::factory()->for($account)->create([
+        'balance_date' => now()->subDay(),
+        'balance' => 500000,
+    ]);
+
+    // Under `MIN_TRANSACTIONS`, so no month qualifies and the reveal falls back.
+    outgoing($account, monthsBack(1), -1000, 'MERCADONA');
+    outgoing($account, monthsBack(1), -2000, 'ZARA');
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson([
+            'variant' => 'assets',
+            'has_spending_accounts' => true,
         ]);
 });
 

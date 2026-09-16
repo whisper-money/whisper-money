@@ -162,7 +162,7 @@ describe('StepAccountsHub', () => {
     });
 
     // A free signup is never offered a bank, so the one suggestion that needs
-    // a token goes, and the one that reads the same either way stays.
+    // a token goes, and the one that leads somewhere manual stays — saying so.
     it('leaves a free signup only the suggestions it can act on', () => {
         renderHub({
             signupPlan: 'free',
@@ -170,10 +170,25 @@ describe('StepAccountsHub', () => {
         });
 
         expect(screen.getByText('A mortgage or a loan')).toBeInTheDocument();
-        expect(screen.getByText('Another bank')).toBeInTheDocument();
+        expect(screen.getByText('Another bank, by hand')).toBeInTheDocument();
         expect(
             screen.queryByText('A pension or a broker'),
         ).not.toBeInTheDocument();
+    });
+
+    // The row opens the manual form for a free signup, so a title promising a
+    // bank picker was promising one that never arrives.
+    it('says the free signup is typing the bank in, not connecting it', () => {
+        renderHub({
+            signupPlan: 'free',
+            existingAccounts: [existingAccount({ id: 'a1', name: 'Savings' })],
+        });
+
+        expect(screen.queryByText('Another bank')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Another bank, by hand'));
+
+        expect(screen.getByTestId('account-form')).toBeInTheDocument();
     });
 
     it('comes back to the hub from the manual form rather than out of the step', () => {

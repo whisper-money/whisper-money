@@ -386,11 +386,15 @@ export function StepAccountsHub({
             },
             {
                 key: 'bank',
+                // The one row that survives having no connections to offer, so
+                // it is also the one that has to say what it does instead: on
+                // the free plan it opens the manual form, and a row titled
+                // "Another bank" was promising a bank picker that never came.
                 icon: Landmark,
-                title: __('Another bank'),
+                title: isFreePlan
+                    ? __('Another bank, by hand')
+                    : __('Another bank'),
                 description: __('A second account, a joint one, one abroad'),
-                // The only row whose wording promises no connection, so it is
-                // the one that survives having no connections to offer.
                 route: isFreePlan ? 'manual' : 'connected',
             },
         ];

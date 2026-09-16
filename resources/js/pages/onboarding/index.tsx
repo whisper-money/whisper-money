@@ -220,6 +220,7 @@ export default function Onboarding({
                         goal={goalLabel(answers.goal)}
                         spendingGuess={answers.spending_guess}
                         currencyCode={auth.user.currency_code}
+                        isFreePlan={isFreePlan}
                         onContinue={goNext}
                     />
                 );

@@ -67,9 +67,7 @@ describe('StepReveal', () => {
         expect(screen.getByText('1,847')).toBeInTheDocument();
         expect(screen.getByText('€1,200')).toBeInTheDocument();
         expect(screen.getByText('MERCADONA')).toBeInTheDocument();
-        expect(
-            screen.getByText('Sort these 147 merchants'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Sort my merchants')).toBeInTheDocument();
     });
 
     /**
@@ -152,7 +150,7 @@ describe('StepReveal', () => {
         // And having named none, it cannot point at them either.
         expect(screen.queryByText(/repeat charges/)).toBeNull();
         expect(
-            screen.getByText('Next we turn all 147 of them into categories.'),
+            screen.getByText('Next we turn them into categories.'),
         ).toBeInTheDocument();
     });
 
@@ -161,6 +159,7 @@ describe('StepReveal', () => {
             data: {
                 variant: 'assets',
                 currency_code: 'EUR',
+                has_spending_accounts: false,
                 net_worth: 3124000,
                 accounts: [
                     {
@@ -192,6 +191,7 @@ describe('StepReveal', () => {
             data: {
                 variant: 'assets',
                 currency_code: 'EUR',
+                has_spending_accounts: false,
                 net_worth: 0,
                 accounts: [],
             },
@@ -210,5 +210,36 @@ describe('StepReveal', () => {
         await renderReveal({ onContinue });
 
         expect(onContinue).toHaveBeenCalled();
+    });
+
+    // The bank handed over movements, none of them outgoing — so this reader
+    // already holds the current account the other variant offers them.
+    it('does not offer a current account to someone who just connected three', async () => {
+        get.mockResolvedValue({
+            data: {
+                variant: 'assets',
+                currency_code: 'EUR',
+                has_spending_accounts: true,
+                net_worth: 836308,
+                accounts: [
+                    {
+                        id: 'a1',
+                        name: 'Nombre Apellido1',
+                        connected: true,
+                        balance: 725129,
+                    },
+                ],
+            },
+        });
+
+        await renderReveal();
+
+        expect(screen.getByText('You’re worth €8,363')).toBeInTheDocument();
+        expect(screen.queryByText('Add a current account')).toBeNull();
+        expect(screen.queryByText(/move as single numbers/)).toBeNull();
+        expect(
+            screen.getByText(/Not enough has left these accounts yet/),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Continue')).toBeInTheDocument();
     });
 });

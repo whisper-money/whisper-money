@@ -162,16 +162,23 @@ describe('StepTarget', () => {
     });
 
     /**
-     * Someone who added a pension and a mortgage has no month to build on. The
-     * screen has nothing honest to put on itself, so it does not hold them.
+     * Someone who added a pension and a mortgage has no month to build on, so
+     * there is no number to offer. Step 5 promised them this screen, though —
+     * "your first target comes out of it" — and vanishing between the step
+     * before and the step after reads as one that broke.
      */
-    it('steps aside for the user with no spending to read', async () => {
+    it('says why there is no target rather than disappearing', async () => {
         get.mockResolvedValue(summary({ monthly_spending: null }));
 
         const onContinue = await renderTarget();
 
-        expect(onContinue).toHaveBeenCalledOnce();
+        expect(onContinue).not.toHaveBeenCalled();
         expect(screen.queryByText('Set my target')).toBeNull();
+        expect(screen.getByText('Your target can wait')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(onContinue).toHaveBeenCalledOnce();
     });
 
     it('steps aside when the summary cannot be read at all', async () => {
