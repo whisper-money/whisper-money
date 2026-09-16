@@ -4,11 +4,20 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class BalanceLookup
 {
+    /**
+     * Net movement per account per day, used to carry a balance across the gap
+     * between the day it was recorded and the day being asked about.
+     *
+     * @var array<string, array<string, int>>
+     */
+    private array $dailyNetByAccount = [];
+
     /**
      * Sorted balance records grouped by account ID.
      * Each account maps to a list of ['date' => string, 'balance' => int, 'invested_amount' => ?int].
@@ -28,11 +37,13 @@ class BalanceLookup
     /**
      * Preload all balance data for a set of accounts covering the given date range.
      *
-     * Executes exactly 4 efficient queries (no correlated subqueries):
+     * Executes exactly 5 efficient queries (no correlated subqueries):
      * 1. A derived-table join to find the latest balance record before the range start per account.
      * 2. A derived-table join to find the latest non-null invested_amount before the range start per account.
      * 3. All balance records within the range.
      * 4. The accounts that only count as a share of their balance.
+     * 5. The net movement per account per day, which carries a balance from the
+     *    day it was recorded to the day being asked about.
      *
      * Those accounts get every figure scaled down to the owner's share here,
      * so every reader (net worth, evolution charts, account metrics) stays
@@ -104,6 +115,17 @@ class BalanceLookup
             ->get()
             ->keyBy('id');
 
+        // Query 5: what moved through each account on each day, so a balance
+        // recorded on one date can be carried to another. Grouped in the
+        // database rather than read row by row: a year of movements is a few
+        // hundred days, and the alternative is every transaction the user owns.
+        $dailyNet = Transaction::query()
+            ->whereIn('account_id', $accountIdList)
+            ->where('transaction_date', '<=', $endDate)
+            ->selectRaw('account_id, transaction_date, SUM(amount) as net')
+            ->groupBy('account_id', 'transaction_date')
+            ->get();
+
         // Build the per-account sorted arrays
         foreach ($accountIdList as $accountId) {
             $entries = [];
@@ -151,30 +173,127 @@ class BalanceLookup
 
             $instance->balancesByAccount[$accountId] = $entries;
             $instance->investedByAccount[$accountId] = $investedEntries;
+            $instance->dailyNetByAccount[$accountId] = self::movementsByDay(
+                $dailyNet->where('account_id', $accountId),
+                $share,
+            );
         }
 
         return $instance;
     }
 
     /**
-     * Get the balance at a given date for an account (carry-forward semantics).
-     * Returns the most recent balance on or before the given date, or 0 if none exists.
+     * One account's grouped movement rows as a date-keyed, date-sorted map,
+     * scaled to the owner's share the same way its balances are.
+     *
+     * @param  Collection<int, object>  $rows
+     * @param  callable(?int): ?int  $share
+     * @return array<string, int>
+     */
+    private static function movementsByDay(Collection $rows, callable $share): array
+    {
+        $movements = [];
+
+        foreach ($rows as $row) {
+            $date = $row->transaction_date instanceof Carbon
+                ? $row->transaction_date->toDateString()
+                : (string) $row->transaction_date;
+
+            $movements[$date] = (int) $share((int) $row->net);
+        }
+
+        ksort($movements);
+
+        return $movements;
+    }
+
+    /**
+     * The balance of an account on a given date.
+     *
+     * A balance is a photograph of one day, and banks hand over exactly one of
+     * them — today's. Carrying that one figure sideways across a year was what
+     * a freshly connected account's net worth chart was made of: twelve
+     * identical months and "+0.0% over the last 12 months" drawn over a year
+     * of movements nobody had looked at.
+     *
+     * So the nearest photograph is walked to the day asked about through the
+     * movements in between — forwards when it was taken before that day,
+     * backwards when it was taken after. Where balances are recorded daily the
+     * nearest one is that same day and nothing is walked at all, which is why
+     * this does not disturb an account that has been syncing for months.
+     *
+     * Only ever backwards, never forwards. A balance the bank sent is its own
+     * last word on the account, and adding later movements to an older one
+     * double-counts everything the bank has already settled — a sandbox that
+     * dates its balance to 2019 and its movements to this year turns a €3,333
+     * account into minus €121,000 that way. Past the newest balance on file the
+     * old carry-forward still stands, because there is nothing better to say.
+     *
+     * Returns 0 where there is genuinely nothing to say: no balance recorded,
+     * or one that only exists on the far side of a stretch with no movements to
+     * carry it across. Inventing a flat line there is the bug this method
+     * exists to avoid, not a nicer-looking version of it.
      */
     public function getBalanceAt(string $accountId, Carbon $date): int
     {
         $dateStr = $date->toDateString();
         $entries = $this->balancesByAccount[$accountId] ?? [];
 
-        $result = 0;
+        $earlier = null;
+        $later = null;
+
         foreach ($entries as $entry) {
             if ($entry['date'] <= $dateStr) {
-                $result = $entry['balance'];
+                $earlier = $entry;
             } else {
+                $later = $entry;
                 break;
             }
         }
 
-        return $result;
+        // A balance already recorded on or before that day is the answer, the
+        // way it always was. Anything after it the bank has since settled into
+        // its own later figure, so nothing is added on top.
+        if ($earlier !== null) {
+            return $earlier['balance'];
+        }
+
+        if ($later === null) {
+            return 0;
+        }
+
+        // Nothing recorded yet on that day, but the account was photographed
+        // afterwards — the shape of every account on the day it is connected —
+        // so the movements since are what say where it stood. An account with
+        // no movements at all is the one case with nothing to work from: there
+        // the later balance would simply be repeated across months nobody has
+        // any record of, which is the flat line this is here to stop drawing.
+        if (($this->dailyNetByAccount[$accountId] ?? []) === []) {
+            return 0;
+        }
+
+        return $later['balance'] - $this->netAfter($accountId, $dateStr, $later['date']);
+    }
+
+    /**
+     * What the account's movements added to its balance between two dates, so
+     * that `balance(to) - netAfter(from, to) === balance(from)`.
+     *
+     * The earlier bound is exclusive and the later one inclusive: a balance is
+     * recorded at the close of its own day, so that day's movements are already
+     * inside it and must not be counted twice.
+     */
+    private function netAfter(string $accountId, string $from, string $to): int
+    {
+        $net = 0;
+
+        foreach ($this->dailyNetByAccount[$accountId] ?? [] as $date => $amount) {
+            if ($date > $from && $date <= $to) {
+                $net += $amount;
+            }
+        }
+
+        return $net;
     }
 
     /**
