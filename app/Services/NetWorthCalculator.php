@@ -27,7 +27,11 @@ class NetWorthCalculator
     public function __construct(private ExchangeRateService $exchangeRateService) {}
 
     /**
-     * Account types the user has chosen to keep out of their net worth.
+     * Account types kept out of the user's net worth.
+     *
+     * Both start off: a mortgage or a flat they cannot spend swamps a first
+     * chart. Users who signed up before that was the default were backfilled an
+     * explicit row, so no row means a new account, not an old one.
      *
      * @return list<AccountType>
      */
@@ -36,8 +40,8 @@ class NetWorthCalculator
         $setting = $user->setting;
 
         return array_values(array_filter([
-            ($setting->include_loans_in_net_worth_chart ?? true) ? null : AccountType::Loan,
-            ($setting->include_real_estate_in_net_worth_chart ?? true) ? null : AccountType::RealEstate,
+            ($setting->include_loans_in_net_worth_chart ?? false) ? null : AccountType::Loan,
+            ($setting->include_real_estate_in_net_worth_chart ?? false) ? null : AccountType::RealEstate,
         ]));
     }
 

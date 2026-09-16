@@ -119,7 +119,10 @@ describe('netWorthContribution', () => {
 
 describe('computeNetWorthSeries', () => {
     const createAccounts = (
-        types: Record<string, 'checking' | 'savings' | 'credit_card' | 'loan'>,
+        types: Record<
+            string,
+            'checking' | 'savings' | 'credit_card' | 'loan' | 'real_estate'
+        >,
     ): Record<string, AccountInfo> => {
         const accounts: Record<string, AccountInfo> = {};
         for (const [id, type] of Object.entries(types)) {
@@ -127,6 +130,10 @@ describe('computeNetWorthSeries', () => {
         }
         return accounts;
     };
+
+    // Loans and real estate are off unless the user opted in, so the tests about
+    // how a liability is signed have to opt in to see one at all.
+    const withLoans = { includeLoanAccounts: true };
 
     it('returns empty array for empty data', () => {
         const result = computeNetWorthSeries([], {});
@@ -154,7 +161,7 @@ describe('computeNetWorthSeries', () => {
             loan: 'loan',
         });
 
-        const result = computeNetWorthSeries(data, accounts);
+        const result = computeNetWorthSeries(data, accounts, withLoans);
 
         expect(result[0].value).toBe(40000); // 50000 - 10000
     });
@@ -174,7 +181,7 @@ describe('computeNetWorthSeries', () => {
             loan: 'loan',
         });
 
-        const result = computeNetWorthSeries(data, accounts);
+        const result = computeNetWorthSeries(data, accounts, withLoans);
 
         // Net worth = 100000 + 20000 - 30000 = 90000
         expect(result[0].value).toBe(90000);
@@ -184,7 +191,7 @@ describe('computeNetWorthSeries', () => {
         const data = [{ month: '2025-01', checking: 10000, loan: 50000 }];
         const accounts = createAccounts({ checking: 'checking', loan: 'loan' });
 
-        const result = computeNetWorthSeries(data, accounts);
+        const result = computeNetWorthSeries(data, accounts, withLoans);
 
         expect(result[0].value).toBe(-40000); // 10000 - 50000
     });
@@ -193,9 +200,24 @@ describe('computeNetWorthSeries', () => {
         const data = [{ month: '2025-01', checking: 10000, loan: -50000 }];
         const accounts = createAccounts({ checking: 'checking', loan: 'loan' });
 
-        const result = computeNetWorthSeries(data, accounts);
+        const result = computeNetWorthSeries(data, accounts, withLoans);
 
         expect(result[0].value).toBe(-40000);
+    });
+
+    it('excludes loan and real estate accounts when no options are given', () => {
+        const data = [
+            { month: '2025-01', checking: 10000, loan: 50000, flat: 200000 },
+        ];
+        const accounts = createAccounts({
+            checking: 'checking',
+            loan: 'loan',
+            flat: 'real_estate',
+        });
+
+        const result = computeNetWorthSeries(data, accounts);
+
+        expect(result[0].value).toBe(10000);
     });
 
     it('can exclude loan accounts from net worth calculations', () => {

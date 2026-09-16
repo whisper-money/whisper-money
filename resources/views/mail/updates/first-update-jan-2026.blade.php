@@ -40,4 +40,5 @@ Join the Discord Comminity
 Víctor Falcón Ruíz</br></br>
 Founder & Solo Developer, Whisper Money
 
+<x-slot:subcopy>@include('mail.partials.marketing-unsubscribe')</x-slot:subcopy>
 </x-mail::message>

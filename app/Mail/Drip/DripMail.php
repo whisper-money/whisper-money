@@ -2,6 +2,7 @@
 
 namespace App\Mail\Drip;
 
+use App\Mail\Concerns\MarketingUnsubscribe;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -50,6 +51,17 @@ abstract class DripMail extends Mailable implements ShouldQueue
     }
 
     /**
+     * The signed link that switches off the category this email belongs to, or
+     * null for mail that has no switch. Marketing mail gets one by using
+     * {@see MarketingUnsubscribe}; a trait method wins over
+     * an inherited one, so opting in is a single `use` line.
+     */
+    protected function marketingUnsubscribeUrl(): ?string
+    {
+        return null;
+    }
+
+    /**
      * UTM parameters for every link in a drip email, so PostHog attributes the
      * landing pageview to the email that produced it. Merge in a `utm_content`
      * at the call site when a mail carries more than one link.
@@ -94,6 +106,7 @@ abstract class DripMail extends Mailable implements ShouldQueue
             with: [
                 'userName' => $this->user->name,
                 'emailUtm' => $this->utmParameters(),
+                'unsubscribeUrl' => $this->marketingUnsubscribeUrl(),
                 ...$this->contentData(),
             ],
         );
