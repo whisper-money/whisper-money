@@ -143,6 +143,24 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
+     * Whether this reader is holding anything the paid plan gates, and so has
+     * something to hand back before the free plan is theirs.
+     *
+     * A bank connection always counts. An AI consent only counts alongside a
+     * subscription, because the consent is recorded when the checkout *starts*
+     * — somebody who read the gate, pressed the button and then closed Stripe
+     * has consented to nothing that ever ran: `AiCategorizationGate` checks the
+     * plan before every pass, so no data was sent. Counting that consent left
+     * them on a paywall with no free plan on it and no escape hatch either for
+     * the first few hours after onboarding.
+     */
+    public function hasPaidFeaturesToGiveUp(): bool
+    {
+        return $this->bankingConnections()->exists()
+            || ($this->hasActiveAiConsent() && $this->subscriptions()->exists());
+    }
+
+    /**
      * Whether the paywall may offer the way down to the free plan, which
      * disconnects the user's banks and revokes their AI consent.
      *

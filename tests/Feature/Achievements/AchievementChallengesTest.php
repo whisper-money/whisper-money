@@ -228,3 +228,21 @@ it('sends readers still onboarding no challenges, so no toast lands on the wizar
         ->get(route('onboarding'))
         ->assertInertia(fn (AssertableInertia $page) => $page->where('challenges', null));
 });
+
+it('sends the paywall no challenges, so no toast argues with the one decision on it', function (): void {
+    // The subscription screens are no more the app's chrome than the wizard is.
+    // The "categorize your month" nudge rendered over the paywall, with a button
+    // leading away from the only choice that page exists to offer.
+    config(['subscriptions.enabled' => true]);
+
+    $user = challenged();
+    recordFor($user, 2, monthsAgo: 0);
+
+    $this->actingAs($user)
+        ->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('challenges', null)
+            ->where('achievements', null)
+        );
+});

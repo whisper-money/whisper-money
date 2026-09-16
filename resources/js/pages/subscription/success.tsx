@@ -59,8 +59,14 @@ export default function Success() {
         <SubscriptionLayout>
             <Head title={__('Your plan is active')} />
 
+            {/*
+                Not "Payment received": most checkouts start a trial and take
+                nothing today, so the reader was being thanked for a payment
+                Stripe had just told them was €0.00. What happened either way is
+                that the plan now exists.
+            */}
             <StepScreen
-                title={__('Payment received')}
+                title={__('Your plan is ready')}
                 description={
                     continueUrl
                         ? __(

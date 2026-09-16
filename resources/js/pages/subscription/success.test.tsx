@@ -99,4 +99,16 @@ describe('Success', () => {
 
         expect(screen.getByText(/Settings → Connections/)).toBeInTheDocument();
     });
+
+    // Most checkouts start a trial and take nothing today, so thanking the
+    // reader for a payment Stripe had just priced at €0.00 was answering a
+    // different transaction. What happened either way is that the plan exists.
+    it('names the plan rather than a payment that may not have happened', () => {
+        mocks.state.hasProPlan = true;
+
+        render(<Success />);
+
+        expect(screen.getByText('Your plan is ready')).toBeInTheDocument();
+        expect(screen.queryByText('Payment received')).toBeNull();
+    });
 });

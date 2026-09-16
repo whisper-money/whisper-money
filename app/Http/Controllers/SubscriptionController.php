@@ -39,7 +39,7 @@ class SubscriptionController extends Controller
         }
 
         $hasBankConnections = $user->bankingConnections()->exists();
-        $canUseFreePlan = ! $hasBankConnections && ! $user->hasActiveAiConsent();
+        $canUseFreePlan = ! $user->hasPaidFeaturesToGiveUp();
 
         // Mark the paywall as seen so the middleware stops redirecting here.
         if ($canUseFreePlan && ! $user->hasSeenPaywall()) {
@@ -76,7 +76,7 @@ class SubscriptionController extends Controller
 
         $connections = $user->bankingConnections()->pluck('aspsp_name')->filter()->unique()->values();
 
-        if ($connections->isEmpty() && ! $user->hasActiveAiConsent()) {
+        if (! $user->hasPaidFeaturesToGiveUp()) {
             return redirect()->route('dashboard');
         }
 
