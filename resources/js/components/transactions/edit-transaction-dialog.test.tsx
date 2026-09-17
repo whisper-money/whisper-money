@@ -303,12 +303,33 @@ describe('EditTransactionDialog', () => {
         });
     }
 
-    it('does not auto-select an account when no initialAccountId is given', () => {
+    it('falls back to the first account when nothing else names one', () => {
         render(
             <EditTransactionDialog
                 transaction={null}
                 categories={[]}
                 accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+            />,
+        );
+
+        expect(screen.getByTestId('account-value')).toHaveAttribute(
+            'data-value',
+            'account-1',
+        );
+    });
+
+    it('leaves the account empty when there is none to pick', () => {
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[]}
                 banks={[]}
                 labels={[]}
                 open

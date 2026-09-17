@@ -295,8 +295,10 @@ export function EditTransactionDialog({
             setShowDateField(false);
             defaultDate.current = today;
             const availableAccounts = filterTransactionalAccounts(accounts);
-            // The page being read wins; otherwise the account the last manual
-            // transaction went to, so the chip opens already filled in.
+            // The chip always opens filled in: the account being read wins,
+            // then the one the last manual transaction went to, then simply
+            // the first. Pre-filling is fine because the chip shows what it
+            // picked — it is hiding it that would not be.
             const initialAccount =
                 availableAccounts.find(
                     (account) => account.id === initialAccountId,
@@ -305,7 +307,8 @@ export function EditTransactionDialog({
                     (account) =>
                         account.id ===
                         readStoredValue(STORAGE_KEY_LAST_ACCOUNT),
-                );
+                ) ??
+                availableAccounts[0];
             setAccountId(initialAccount?.id ?? '');
             defaultAccountId.current = initialAccount?.id ?? '';
             setCurrencyCode(initialAccount?.currency_code ?? userCurrencyCode);
