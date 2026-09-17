@@ -4,6 +4,7 @@ import {
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
+    isOutlookSafeLinksNoise,
     isPostMessageDataCloneNoise,
     isSafariCashbackExtensionNoise,
 } from './sentry';
@@ -242,6 +243,28 @@ describe('isSafariCashbackExtensionNoise', () => {
         };
 
         expect(isSafariCashbackExtensionNoise(event)).toBe(false);
+    });
+});
+
+describe('isOutlookSafeLinksNoise', () => {
+    it('drops the Outlook Safe Links scanner rejection', () => {
+        // Arrives with no stacktrace: the scanner's bridge object rejects, and
+        // Sentry's global handler only has the stringified value to report.
+        const event = exceptionEvent(
+            'UnhandledRejection',
+            'Non-Error promise rejection captured with value: Object Not Found Matching Id:2, MethodName:update, ParamCount:4',
+        );
+
+        expect(isOutlookSafeLinksNoise(event)).toBe(true);
+    });
+
+    it('keeps other non-Error promise rejections', () => {
+        const event = exceptionEvent(
+            'UnhandledRejection',
+            'Non-Error promise rejection captured with value: [object Object]',
+        );
+
+        expect(isOutlookSafeLinksNoise(event)).toBe(false);
     });
 });
 
