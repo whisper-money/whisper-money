@@ -269,6 +269,40 @@ it('does not flag an upgrade for subscribed users', function () {
         ->assertJson(['requires_upgrade' => false]);
 });
 
+/**
+ * The consent screen asks differently the second time round ("you switched this
+ * off, or we changed what we send"), so it has to know a consent once existed.
+ */
+it('tells a returning user apart from one who was never asked', function () {
+    $this->actingAs($this->user)
+        ->getJson(route('ai.rule-suggestions.show'))
+        ->assertOk()
+        ->assertJson(['consented' => false, 'previously_consented' => false]);
+
+    $this->user->recordAiConsent();
+    $this->user->revokeAiConsent();
+
+    $this->actingAs($this->user)
+        ->getJson(route('ai.rule-suggestions.show'))
+        ->assertOk()
+        ->assertJson(['consented' => false, 'previously_consented' => true]);
+});
+
+it('counts the merchants of a run in flight, for the generating screen', function () {
+    $run = SuggestionRun::factory()->for($this->user)->create([
+        'status' => SuggestionRunStatus::Processing,
+        'merchants_considered' => 147,
+        'suggestions_count' => 0,
+    ]);
+
+    $this->actingAs($this->user)
+        ->getJson(route('ai.rule-suggestions.show'))
+        ->assertOk()
+        ->assertJsonPath('run.id', $run->id)
+        ->assertJsonPath('run.merchants_considered', 147)
+        ->assertJsonPath('run.suggestions_count', 0);
+});
+
 it('records and revokes consent', function () {
     $this->actingAs($this->user)
         ->postJson(route('ai.consent.store'))

@@ -30,7 +30,13 @@ class GenerateRuleSuggestions
         try {
             $groups = $this->aggregator->groupsFor($run->user);
 
-            $run->transactions_considered = array_sum(array_column($groups, 'count'));
+            // Saved before the model is called, not with the terminal status:
+            // the generating screen polls this run and counts merchants out
+            // loud while the slow half is still in flight.
+            $run->forceFill([
+                'transactions_considered' => array_sum(array_column($groups, 'count')),
+                'merchants_considered' => count($groups),
+            ])->save();
 
             if ($groups === []) {
                 return $this->finishEmpty($run);

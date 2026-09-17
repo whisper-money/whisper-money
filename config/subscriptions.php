@@ -18,6 +18,42 @@ use App\Support\PriceTiers;
 
 $tier = PriceTiers::plansFor(env('SUBSCRIPTION_PRICE_TIER', PriceTiers::DEFAULT));
 
+/*
+|--------------------------------------------------------------------------
+| Pay Now
+|--------------------------------------------------------------------------
+|
+| Whether the paid plan is charged in full at signup. Off, which is the
+| default, the plans carry the trial they have always carried and the checkout
+| takes no money today. On, the trial is 0 on both plans, the charge lands
+| immediately and the way back out is the self-service refund window declared
+| below — the three days and the button that spends them.
+|
+| It is a switch on `trial_days` and nothing else, because `trial_days` is what
+| every other part reads: `ExperimentOffer` calls a variant upfront when it
+| zeroes the trial, the checkout screens say "charged today" or "free for N
+| days" off the selected plan, and the refund button appears only for someone
+| who was actually charged. One value to flip, and no second source of truth to
+| disagree with it.
+|
+| It is only the *default*: `STRIPE_PRO_*_TRIAL_DAYS` still wins where it is
+| set, and an experiment variant still overrides both. There is deliberately no
+| `subscriptions.pay_now` key to read — code that wants to know whether a user
+| pays upfront asks `ExperimentOffer`, which answers for that user's variant
+| rather than for the environment.
+|
+*/
+
+$payNow = filter_var(env('SUBSCRIPTION_PAY_NOW', false), FILTER_VALIDATE_BOOLEAN);
+
+/*
+| A trial of 0 is a real value, so `env()`'s own default cannot be used: it only
+| applies when the variable is absent, and `?:` would swallow the deliberate 0
+| as well. Present-but-blank counts as absent, the way clearing a value in a
+| hosting panel is meant to.
+*/
+$trialDays = static fn (string $key, int $default): int => is_numeric($raw = env($key)) ? (int) $raw : $default;
+
 return [
 
     /*
@@ -41,9 +77,9 @@ return [
     | A/B test on how the paid plan is offered. Users who register on or after
     | `started_at` are split evenly across `variants` by a stable hash of their
     | id; everyone who registered earlier stays "legacy" and keeps the plan
-    | defaults. While `started_at` is null, or no variant is declared, the
-    | experiment is off and every user is legacy — this block is inert until an
-    | experiment fills it in.
+    | defaults. While `started_at` is null or blank, or no variant is declared,
+    | the experiment is off and every user is legacy — this block is inert until
+    | an experiment fills it in.
     |
     | Each variant may override `trial_days` per plan. A variant whose trial is
     | 0 on every plan charges upfront, which is what opens the self-service
@@ -52,21 +88,35 @@ return [
     | The split is positional: adding, removing or reordering a variant
     | reassigns existing users, so only change `variants` between experiments.
     |
-    |   'variants' => [
-    |       'control' => [],
-    |       'short_trial' => ['trial_days' => ['monthly' => 3, 'yearly' => 7]],
-    |       'pay_now' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
-    |   ],
+    | The declared experiment is the one the pay-now redesign asks for: two
+    | branches, `pay_now` (the plan defaults below, charged in full at signup)
+    | against `trial`, which restores the free trial the plans used to carry.
+    | The primary metric is subscribed -> still active, read per variant by
+    | `stats:experiment-funnel`.
+    |
+    | It is declared but NOT running: `started_at` is unset, which leaves every
+    | user legacy and every user on the plan defaults. Turn it on only once the
+    | redesign has been live for weeks — starting it while the flow is still
+    | changing splits the cohort across two different products and the result
+    | cannot be read.
     |
     */
 
     'experiment' => [
-        'started_at' => env('SUBSCRIPTION_EXPERIMENT_STARTED_AT'),
+        // `?:`, not `env()`'s default: a variable that is present but blank
+        // yields '' rather than null, and '' would read as a declared start
+        // date — every user assigned to an arm the moment the key exists in a
+        // hosting panel. Blanking the value is the ordinary way to leave the
+        // experiment off, so it has to mean the same as removing the line.
+        'started_at' => env('SUBSCRIPTION_EXPERIMENT_STARTED_AT') ?: null,
         // Once a winner is chosen, set this to one of the variant keys to give
         // every user that variant and end the split (env-only, no deploy).
         'force_variant' => env('SUBSCRIPTION_EXPERIMENT_FORCE_VARIANT'),
         'refund_window_days' => (int) env('SUBSCRIPTION_EXPERIMENT_REFUND_WINDOW_DAYS', 3),
-        'variants' => [],
+        'variants' => [
+            'pay_now' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
+            'trial' => ['trial_days' => ['monthly' => 7, 'yearly' => 15]],
+        ],
     ],
 
     /*
@@ -81,6 +131,12 @@ return [
     | their AI consent. The delay is what keeps a brand new user from being
     | invited to throw away what they just connected. Set it to 0 to offer the
     | free plan straight away.
+    |
+    | Dead for anyone onboarding now: a bank cannot be connected and AI cannot
+    | be switched on without a subscription, so nobody finishes onboarding with
+    | something to throw away and no plan to lose it from. It still governs the
+    | legacy users who reached that state under the old rules, which is why it
+    | stays.
     |
     */
 
@@ -114,8 +170,11 @@ return [
     |
     | Supported billing_period values: 'month', 'year', null (for lifetime)
     |
-    | `trial_days` is per plan: the longer commitment gets the longer trial.
-    | Set it to 0 to charge that plan immediately, with no free trial.
+    | `trial_days` comes from the `SUBSCRIPTION_PAY_NOW` switch above: the trial
+    | the plans have always carried while it is off, 0 while it is on. Setting
+    | `STRIPE_PRO_*_TRIAL_DAYS` pins a plan's trial regardless of the switch, and
+    | the `trial` experiment variant is how to put a trial in front of half the
+    | signups instead of all of them.
     |
     | `price`, `original_price` and `stripe_lookup_key` all come from the tier
     | selected above and move as one unit — never hardcode one of them here, or
@@ -144,7 +203,7 @@ return [
             'original_price' => $tier['monthly']['original_price'],
             'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY') ?: $tier['monthly']['stripe_lookup_key'],
             'billing_period' => 'month',
-            'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 7),
+            'trial_days' => $trialDays('STRIPE_PRO_MONTHLY_TRIAL_DAYS', $payNow ? 0 : 7),
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',
@@ -163,7 +222,7 @@ return [
             'original_price' => $tier['yearly']['original_price'],
             'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY') ?: $tier['yearly']['stripe_lookup_key'],
             'billing_period' => 'year',
-            'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 15),
+            'trial_days' => $trialDays('STRIPE_PRO_YEARLY_TRIAL_DAYS', $payNow ? 0 : 14),
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',

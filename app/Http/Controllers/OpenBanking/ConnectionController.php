@@ -90,7 +90,7 @@ class ConnectionController extends Controller
             abort(403);
         }
 
-        if ($this->shouldBlockOpenBankingAccess(Auth::user(), false)) {
+        if ($this->shouldBlockOpenBankingAccess(Auth::user())) {
             return $this->subscribeRedirectResponse();
         }
 
@@ -128,7 +128,7 @@ class ConnectionController extends Controller
      */
     public function updateCredentials(UpdateConnectionCredentialsRequest $request, BankingConnection $connection): RedirectResponse
     {
-        if ($this->shouldBlockOpenBankingAccess($request->user(), false)) {
+        if ($this->shouldBlockOpenBankingAccess($request->user())) {
             return $this->subscribeRedirectResponse();
         }
 

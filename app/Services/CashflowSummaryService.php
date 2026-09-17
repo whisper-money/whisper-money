@@ -16,6 +16,15 @@ class CashflowSummaryService
     public function __construct(private ExchangeRateService $exchangeRateService) {}
 
     /**
+     * Nobody keeps more than everything that came in. The formula can say
+     * otherwise once expenses go negative — a month of refunds, or a row whose
+     * sign the bank got the wrong way round — and "savings rate 488.1%" reads
+     * as a broken screen rather than as the good news it is dressed up as. The
+     * floor stays open: spending three times your income is a real -200%.
+     */
+    private const MAX_SAVINGS_RATE = 100;
+
+    /**
      * Derive the summary from signed income and expense totals, in minor units.
      * Either side can be negative when a period's reversals outweigh what they
      * reverse, and the net says so rather than hiding it.
@@ -28,7 +37,9 @@ class CashflowSummaryService
             'income' => $income,
             'expense' => $expense,
             'net' => $income - $expense,
-            'savings_rate' => $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0,
+            'savings_rate' => $income > 0
+                ? min(self::MAX_SAVINGS_RATE, round((($income - $expense) / $income) * 100, 1))
+                : 0,
         ];
     }
 

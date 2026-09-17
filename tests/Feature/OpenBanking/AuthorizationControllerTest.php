@@ -63,10 +63,16 @@ test('free tier users cannot start bank authorization when subscriptions are ena
     ]);
 });
 
-test('users can start bank authorization during onboarding when subscriptions are enabled', function () {
+test('a subscriber can start bank authorization during onboarding', function () {
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->notOnboarded()->create();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_test_onboarding',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('startAuthorization')
         ->once()
@@ -94,10 +100,17 @@ test('users can start bank authorization during onboarding when subscriptions ar
     ]);
 });
 
-test('a free-plan signup cannot start bank authorization during onboarding', function () {
+/**
+ * A connection costs us money with the provider from the moment it is
+ * authorized, so onboarding is no longer an exception to the plan: the wizard
+ * sells the plan at the gate in front of the bank picker, and this is the same
+ * rule where it cannot be talked past. Which card the user signed up from stops
+ * mattering — what they have does.
+ */
+test('an unsubscribed signup cannot start bank authorization during onboarding', function () {
     config(['subscriptions.enabled' => true]);
 
-    $user = User::factory()->notOnboarded()->create(['signup_plan' => 'free']);
+    $user = User::factory()->notOnboarded()->create();
 
     $response = $this->actingAs($user)->postJson('/open-banking/authorize', [
         'aspsp_name' => 'Test Bank',
@@ -177,7 +190,13 @@ test('callback with error during onboarding redirects to the accounts step', fun
     $response = $this->actingAs($user)
         ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access&state=state-token-onboarding-denied');
 
-    $response->assertRedirect(route('onboarding', ['step' => 'create-account']));
+    // The bank travels back on the URL because the row that knew which bank it
+    // was has just been deleted, and the hub's failure screen names it.
+    $response->assertRedirect(route('onboarding', [
+        'step' => 'create-account',
+        'connect_error' => $connection->aspsp_name,
+        'connect_country' => $connection->aspsp_country,
+    ]));
     $response->assertSessionHas('error', 'User denied access');
 
     $connection->refresh();
@@ -468,6 +487,61 @@ test('callback during onboarding redirects a logged-in user directly to the conn
         'user_id' => $user->id,
         'banking_connection_id' => $connection->id,
     ]);
+});
+
+// Open banking hands back whatever the bank has, and a first picture muddied by
+// a joint account or a card nobody uses is hard to undo later. More than one
+// account is therefore a question, and the hub is where it gets asked.
+test('callback during onboarding leaves a multi-account bank for the user to choose from', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-onboarding-many',
+            'accounts' => [
+                [
+                    'uid' => 'ext-account-1',
+                    'currency' => 'EUR',
+                    'name' => 'Cuenta Nomina',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+                [
+                    'uid' => 'ext-account-2',
+                    'currency' => 'EUR',
+                    'name' => 'Cuenta Comunidad',
+                    'account_id' => ['iban' => 'ES9876543210987654321098'],
+                ],
+            ],
+            'aspsp' => ['name' => 'Test Bank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)
+        ->get('/open-banking/callback?code=test-code')
+        ->assertRedirect(route('onboarding', ['step' => 'create-account']));
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->pending_accounts_data)->toHaveCount(2);
+
+    $this->assertDatabaseMissing('accounts', [
+        'banking_connection_id' => $connection->id,
+    ]);
+
+    // Nothing to sync until the user has said what they want synced.
+    Queue::assertNotPushed(SyncBankingConnectionJob::class);
 });
 
 // Reauthorize tests

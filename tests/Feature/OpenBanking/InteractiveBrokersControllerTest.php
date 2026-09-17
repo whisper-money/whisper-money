@@ -100,7 +100,7 @@ test('auto-creates accounts during onboarding', function () {
     config(['subscriptions.enabled' => true]);
     Queue::fake();
 
-    $user = User::factory()->notOnboarded()->create();
+    $user = User::factory()->notOnboarded()->subscribed()->create();
     ibFakeFlex(['U1111111', 'U2222222']);
 
     $response = $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect());

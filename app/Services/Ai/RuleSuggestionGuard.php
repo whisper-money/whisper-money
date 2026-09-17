@@ -16,7 +16,11 @@ use Illuminate\Support\Collection;
  */
 class RuleSuggestionGuard
 {
-    private const MIN_TOKEN_LENGTH = 3;
+    /**
+     * Enough for a token matched whole: a payee that *is* "H&M" is precise, and
+     * refusing it would cost the user a rule they would have wanted.
+     */
+    private const MIN_EXACT_TOKEN_LENGTH = 3;
 
     private const SAMPLE_LIMIT = 3;
 
@@ -74,15 +78,7 @@ class RuleSuggestionGuard
         $token = mb_strtolower(trim((string) ($raw['match_token'] ?? '')));
         $confidence = (float) ($raw['confidence'] ?? 0);
 
-        if (! in_array($field, UncategorizedTransactionMatcher::ALLOWED_FIELDS, true)) {
-            return null;
-        }
-
-        if (mb_strlen($token) < self::MIN_TOKEN_LENGTH) {
-            return null;
-        }
-
-        if ($confidence < $floor) {
+        if (! $this->isMatcherUsable($field, $operator, $token, $confidence, $floor)) {
             return null;
         }
 
@@ -162,6 +158,37 @@ class RuleSuggestionGuard
             'new_category_name' => $newName,
             'new_category_direction' => $newDirection,
         ];
+    }
+
+    /**
+     * Whether the matcher the model proposed is one we would ever write a rule
+     * on, judged on the suggestion alone — before any of the user's own
+     * transactions are counted against it.
+     */
+    private function isMatcherUsable(string $field, string $operator, string $token, float $confidence, float $floor): bool
+    {
+        return in_array($field, UncategorizedTransactionMatcher::ALLOWED_FIELDS, true)
+            && mb_strlen($token) >= $this->minimumTokenLength($operator)
+            && $confidence >= $floor;
+    }
+
+    /**
+     * How long a token has to be to earn a rule, which depends entirely on how
+     * it is matched.
+     *
+     * A `contains` token is a substring that files every future transaction it
+     * turns up in, and the over-broad check can only weigh it against the
+     * movements imported so far — "abn" and "test" each matched a handful of
+     * today's transfers and passed, then sat in the rule waiting for anything
+     * that happens to spell them. `AiRuleLearner` already refuses a lone token
+     * this short when it writes a rule from a correction; a rule the model
+     * drafts is no safer, so it answers to the same floor.
+     */
+    private function minimumTokenLength(string $operator): int
+    {
+        return $operator === 'equals'
+            ? self::MIN_EXACT_TOKEN_LENGTH
+            : AiRuleLearner::MIN_SOLE_TOKEN_LENGTH;
     }
 
     private function conflictsWithDirection(string $direction, string $categoryType): bool

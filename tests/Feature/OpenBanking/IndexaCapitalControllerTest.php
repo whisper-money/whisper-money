@@ -141,7 +141,7 @@ test('indexa capital auto-creates accounts during onboarding', function () {
 
     Queue::fake();
 
-    $user = User::factory()->notOnboarded()->create();
+    $user = User::factory()->notOnboarded()->subscribed()->create();
     Http::fake([
         'api.indexacapital.com/users/me' => Http::response([
             'accounts' => [

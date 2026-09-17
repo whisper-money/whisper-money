@@ -329,6 +329,8 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', null)
                 ->where('stripe_lookup_key', 'whisper_pro_monthly_high')
                 ->where('billing_period', 'month')
+                // What ships: `SUBSCRIPTION_PAY_NOW` is off by default, so the
+                // plans carry their trial and the checkout takes nothing today.
                 ->where('trial_days', 7)
                 ->has('features')
             )
@@ -338,7 +340,7 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', 107.88)
                 ->where('stripe_lookup_key', 'whisper_pro_yearly_high')
                 ->where('billing_period', 'year')
-                ->where('trial_days', 15)
+                ->where('trial_days', 14)
                 ->has('features')
             )
             ->has('pricing.promo', fn ($promo) => $promo
@@ -403,9 +405,16 @@ test('paywall shows canUseFreePlan false when user has a bank connection', funct
         );
 });
 
-test('users with active ai consent are forced to the paywall even after seeing it', function () {
+test('users whose ai consent was used under a plan are forced to the paywall even after seeing it', function () {
     $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
     $user->recordAiConsent();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_ai_consent_lapsed123',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_test123',
+        'ends_at' => now()->subDay(),
+    ]);
 
     $this->actingAs($user);
 
@@ -413,9 +422,16 @@ test('users with active ai consent are forced to the paywall even after seeing i
     $this->get(route('accounts.list'))->assertRedirect(route('subscribe'));
 });
 
-test('paywall shows canUseFreePlan false when user has active ai consent', function () {
+test('paywall shows canUseFreePlan false when ai consent was used under a plan', function () {
     $user = User::factory()->onboarded()->create();
     $user->recordAiConsent();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_ai_consent_free_plan123',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_test123',
+        'ends_at' => now()->subDay(),
+    ]);
 
     $this->actingAs($user);
 
@@ -425,6 +441,41 @@ test('paywall shows canUseFreePlan false when user has active ai consent', funct
             ->component('subscription/paywall')
             ->where('canUseFreePlan', false)
         );
+});
+
+/*
+ * The gate records the AI consent when the checkout *starts* — the reader has
+ * read the row and pressed the button by then. Someone who closes Stripe at the
+ * card form has consented to nothing that ever ran, because every AI path
+ * checks the plan first, and counting it stranded them: no free plan on the
+ * paywall, and `canEscapeToFreePlan()` withheld for the first hours after
+ * onboarding, so there was no way out of it at all.
+ */
+test('abandoning the checkout does not cost the reader the free plan', function () {
+    $user = User::factory()->onboarded()->create();
+    $user->recordAiConsent();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('canUseFreePlan', true)
+        );
+
+    // The paywall stamps itself as seen for anyone it offers the free plan to,
+    // so the middleware lets them through from here on.
+    $this->get(route('dashboard'))->assertOk();
+});
+
+test('the free plan confirmation has nothing to take from an abandoned checkout', function () {
+    $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subDay()]);
+    $user->recordAiConsent();
+
+    $this->actingAs($user)
+        ->get(route('subscribe.free-plan.confirm'))
+        ->assertRedirect(route('dashboard'));
 });
 
 test('subscribed users with active ai consent can access protected routes', function () {
@@ -537,7 +588,13 @@ test('checkout applies each plan its own trial days', function (string $planKey,
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
-    $builder->shouldReceive('trialDays')->once()->with($trialDays)->andReturnSelf();
+    // Whole days still left, not an instant exactly N days out: Stripe's
+    // checkout prints the floor of what remains when the page renders, so a
+    // trial that expires to the second reads one day short of the one sold.
+    $builder->shouldReceive('trialUntil')
+        ->once()
+        ->with(Mockery::on(fn ($trialEnd) => now()->diffInDays($trialEnd, absolute: false) >= $trialDays))
+        ->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn($checkout);
 
     $user = Mockery::mock(User::class)->shouldIgnoreMissing();
@@ -554,7 +611,7 @@ test('checkout applies each plan its own trial days', function (string $planKey,
     $this->get(route('subscribe.checkout', ['plan' => $planKey]))->assertRedirect();
 })->with([
     'monthly' => ['monthly', 7],
-    'yearly' => ['yearly', 15],
+    'yearly' => ['yearly', 14],
 ]);
 
 test('checkout tags the subscription with a valid upsell source', function () {

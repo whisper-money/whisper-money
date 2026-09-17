@@ -21,6 +21,8 @@ export interface PricingConfig {
     bestValuePlan: string | null;
     promo: PromoConfig;
     currency: string;
+    /** Days after the charge in which the refund can still be self-served. */
+    refundWindowDays: number;
 }
 
 /**

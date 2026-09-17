@@ -106,3 +106,31 @@ it('keeps only the highest-confidence suggestion per identical matcher', functio
     expect($result)->toHaveCount(1)
         ->and($result[0]['confidence'])->toBe(0.97);
 });
+
+/**
+ * A `contains` token is a substring that files everything it ever turns up in,
+ * and the over-broad check can only weigh it against what is imported today.
+ * `AiRuleLearner` refuses a lone token this short when it writes a rule from a
+ * correction; one the model drafts answers to the same floor.
+ */
+it('rejects a short substring token and keeps the same length matched whole', function () {
+    for ($i = 0; $i < 3; $i++) {
+        Transaction::factory()->for($this->user)->create([
+            'account_id' => $this->account->id,
+            'category_id' => null,
+            'description_iv' => null,
+            'creditor_name' => 'ABN',
+            'debtor_name' => null,
+            'description' => "TRANSFERENCIA A ABN {$i}",
+            'amount' => -500,
+        ]);
+    }
+
+    $result = $this->guard->validate($this->user, [
+        ['group_key' => 'abn', 'match_field' => 'description', 'match_operator' => 'contains', 'match_token' => 'abn', 'category_id' => $this->groceries->id, 'confidence' => 0.95],
+        ['group_key' => 'abn', 'match_field' => 'creditor_name', 'match_operator' => 'equals', 'match_token' => 'abn', 'category_id' => $this->groceries->id, 'confidence' => 0.95],
+    ], $this->categoryOptions);
+
+    expect($result)->toHaveCount(1)
+        ->and($result[0]['match_operator'])->toBe('equals');
+});

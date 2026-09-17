@@ -96,7 +96,7 @@ return [
     |
     */
 
-    'eligibility_min_transactions' => (int) env('AI_SUGGESTIONS_MIN_TRANSACTIONS', 50),
+    'eligibility_min_transactions' => (int) env('AI_SUGGESTIONS_MIN_TRANSACTIONS', 40),
 
     'throttle_days' => (int) env('AI_SUGGESTIONS_THROTTLE_DAYS', 30),
 

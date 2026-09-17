@@ -3,12 +3,14 @@ import { StepButton } from '@/components/onboarding/step-button';
 import {
     StepBadge,
     StepCheck,
+    StepChevron,
     StepList,
     StepRow,
+    StepSectionLabel,
 } from '@/components/onboarding/step-list';
 import {
     StepError,
-    StepField,
+    StepNote,
     StepScreen,
     stepControlClass,
 } from '@/components/onboarding/step-screen';
@@ -16,39 +18,98 @@ import {
     BetaConnectorBadge,
     BetaConnectorNotice,
 } from '@/components/open-banking/beta-connector';
+import {
+    BrokerRows,
+    ConnectBrokerInline,
+} from '@/components/open-banking/connect-broker-inline';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Input } from '@/components/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { useConnectCountries, useConnectFlow } from '@/hooks/use-connect-flow';
+    rememberConnectCountry,
+    useConnectCountries,
+    useConnectFlow,
+    useGuessedCountry,
+} from '@/hooks/use-connect-flow';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
-import { ProviderCredentialFields } from '@/lib/connect-providers';
+import { hasLiveConnectionForProvider } from '@/lib/banking-connections';
+import {
+    providersForCountry,
+    type ConnectProvider,
+} from '@/lib/connect-providers';
 import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
-import type { BankingConnection } from '@/types/banking';
+import type {
+    BankingConnection,
+    EnableBankingInstitution,
+} from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { Search } from 'lucide-react';
-import { useCallback } from 'react';
+import {
+    ChevronDown,
+    Eye,
+    Lock,
+    RefreshCw,
+    Search,
+    Shield,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+/** A bank a previous attempt failed on, offered as a one-tap retry. */
+export interface RetryBank {
+    name: string;
+    country: string;
+}
 
 interface ConnectAccountInlineProps {
     onBack: () => void;
+    /** Where "my bank isn't in the list" goes — the hub's manual account form. */
+    onManual?: () => void;
+    retryBank?: RetryBank | null;
     connections?: BankingConnection[];
+}
+
+/** Search input with its magnifier, the one control both list screens share. */
+function StepSearch({
+    placeholder,
+    value,
+    onChange,
+    autoFocus = false,
+}: {
+    placeholder: string;
+    value: string;
+    onChange: (value: string) => void;
+    autoFocus?: boolean;
+}) {
+    return (
+        <div className="relative flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-muted-foreground" />
+            <Input
+                placeholder={placeholder}
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                autoFocus={autoFocus}
+                className={cn(stepControlClass, 'pl-11')}
+            />
+        </div>
+    );
 }
 
 export function ConnectAccountInline({
     onBack,
+    onManual,
+    retryBank = null,
     connections = [],
 }: ConnectAccountInlineProps) {
+    const guessedCountry = useGuessedCountry();
+    // A retry knows which country the failed attempt was in, and it is a fact
+    // rather than a guess, so it wins.
+    const openOn = retryBank?.country ?? guessedCountry;
+
     const {
         step,
         setStep,
         country,
         setCountry,
+        institutions,
         filteredInstitutions,
         searchQuery,
         setSearchQuery,
@@ -57,9 +118,6 @@ export function ConnectAccountInline({
         isLoading,
         isSubmitting,
         error,
-        credentials,
-        setCredential,
-        provider,
         connectedBankNames,
         isAlreadyConnected,
         acknowledgedReplace,
@@ -68,22 +126,117 @@ export function ConnectAccountInline({
         fetchInstitutions,
         handleAuthorize,
         clearBankSelection,
-    } = useConnectFlow(connections);
+    } = useConnectFlow(connections, {
+        initialCountry: openOn,
+        separateProviders: true,
+    });
+
+    /**
+     * The broker the user tapped in the section below the banks. It is a screen
+     * of its own rather than this one's confirm step: there is no redirect to
+     * warn about, and what comes back is a position, not a statement.
+     */
+    const [broker, setBroker] = useState<ConnectProvider | null>(null);
 
     const countries = useConnectCountries();
+    const [countryQuery, setCountryQuery] = useState('');
 
     const { trigger } = useWebHaptics();
 
-    const handleBack = useCallback(() => {
-        if (step === 'country') {
-            onBack();
-        } else if (step === 'bank') {
-            setStep('country');
-            clearBankSelection();
-        } else if (step === 'confirm') {
-            setStep('bank');
+    const countryName = useMemo(
+        () => countries.find((c) => c.code === country)?.name ?? country,
+        [countries, country],
+    );
+
+    /**
+     * The brokers, filtered by the same search box as the banks. They used to be
+     * rows in the bank list, so a user who types "Binance" has to keep finding
+     * it — having its own section must not make it unsearchable.
+     */
+    const brokers = useMemo(
+        () =>
+            providersForCountry(country).filter(
+                (p) =>
+                    !hasLiveConnectionForProvider(connections, p.providerKey) &&
+                    p.institution.name
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()),
+            ),
+        [connections, country, searchQuery],
+    );
+
+    const filteredCountries = useMemo(
+        () =>
+            countryQuery
+                ? countries.filter((c) =>
+                      c.name.toLowerCase().includes(countryQuery.toLowerCase()),
+                  )
+                : countries,
+        [countries, countryQuery],
+    );
+
+    /**
+     * Carry the user straight back to the bank that just failed, with the real
+     * catalogue entry rather than a name we echoed back: only the fetched one
+     * carries the logo and the beta flag the handoff screen reads.
+     */
+    const hasRetried = useRef(false);
+
+    useEffect(() => {
+        if (!retryBank || hasRetried.current || institutions.length === 0) {
+            return;
         }
-    }, [step, onBack, setStep, clearBankSelection]);
+
+        const match = institutions.find(
+            (institution) => institution.name === retryBank.name,
+        );
+
+        hasRetried.current = true;
+
+        if (match) {
+            setSelectedBank(match);
+            setStep('confirm');
+        }
+    }, [retryBank, institutions, setSelectedBank, setStep]);
+
+    const openBank = useCallback(
+        (institution: EnableBankingInstitution) => {
+            trigger('light');
+            setSelectedBank(institution);
+            setStep('confirm');
+        },
+        [trigger, setSelectedBank, setStep],
+    );
+
+    const chooseCountry = useCallback(
+        (code: string) => {
+            trigger('light');
+            setCountry(code);
+            // Their own answer, kept for the next visit: the guess off the
+            // locale sends an English-reading Spaniard to an empty United
+            // Kingdom list, and without this it does so every single time.
+            rememberConnectCountry(code);
+            clearBankSelection();
+            setCountryQuery('');
+            void fetchInstitutions(code);
+        },
+        [trigger, setCountry, clearBankSelection, fetchInstitutions],
+    );
+
+    const handleBack = useCallback(() => {
+        trigger('light');
+
+        // Nothing fetched yet means the flow opened on the country list, because
+        // the guess found no country we connect in. There is no bank list behind
+        // it to go back to, so back means out.
+        if (step === 'bank' || institutions.length === 0) {
+            onBack();
+
+            return;
+        }
+
+        setStep('bank');
+    }, [step, institutions.length, onBack, setStep, trigger]);
 
     /**
      * The last thing that happens inside our app before the bank takes over, and
@@ -94,192 +247,300 @@ export function ConnectAccountInline({
     const startConnect = useCallback(() => {
         captureEvent('onboarding_bank_connect_started', {
             country,
-            provider: provider?.providerKey ?? 'enable_banking',
+            provider: 'enable_banking',
         });
         handleAuthorize();
-    }, [country, provider, handleAuthorize]);
+    }, [country, handleAuthorize]);
 
     const back = (
-        <StepButton
-            text={__('Back')}
-            variant="ghost"
-            onClick={() => {
-                trigger('light');
-                handleBack();
-            }}
-        />
+        <StepButton text={__('Back')} variant="ghost" onClick={handleBack} />
     );
 
-    // Owning the whole screen (not just its middle) is what puts this flow's
-    // primary action in the same pinned footer as every other step.
-    const { body, action } = {
-        country: {
-            body: (
-                <StepField label={__('Country')}>
-                    <Select value={country} onValueChange={setCountry}>
-                        <SelectTrigger className={stepControlClass}>
-                            <SelectValue placeholder={__('Select country')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {countries.map((c) => (
-                                <SelectItem key={c.code} value={c.code}>
-                                    {c.name}
-                                </SelectItem>
+    if (broker) {
+        return (
+            <ConnectBrokerInline
+                initialProvider={broker}
+                initialCountry={country}
+                onBack={() => setBroker(null)}
+            />
+        );
+    }
+
+    if (step === 'country') {
+        return (
+            <StepScreen
+                title={__('Which country is the account in?')}
+                description={__(
+                    'Not where you live — where the bank is. A Santander account in Spain and one in Portugal are two different connections.',
+                )}
+                footer={back}
+            >
+                {error && <StepError>{error}</StepError>}
+
+                <div className="flex flex-col">
+                    <StepSearch
+                        placeholder={__('Search :count countries', {
+                            count: countries.length,
+                        })}
+                        value={countryQuery}
+                        onChange={setCountryQuery}
+                        autoFocus
+                    />
+
+                    {guessedCountry && !countryQuery && (
+                        <>
+                            <StepSectionLabel>
+                                {__('Guessed from your settings')}
+                            </StepSectionLabel>
+                            <StepList>
+                                <StepRow
+                                    title={
+                                        countries.find(
+                                            (c) => c.code === guessedCountry,
+                                        )?.name ?? guessedCountry
+                                    }
+                                    trailing={
+                                        country === guessedCountry ? (
+                                            <StepCheck />
+                                        ) : (
+                                            <StepChevron />
+                                        )
+                                    }
+                                    onClick={() =>
+                                        chooseCountry(guessedCountry)
+                                    }
+                                />
+                            </StepList>
+                        </>
+                    )}
+
+                    <StepSectionLabel>{__('All countries')}</StepSectionLabel>
+                    {filteredCountries.length > 0 ? (
+                        <StepList className="max-h-[42vh] overflow-y-auto">
+                            {filteredCountries.map((option) => (
+                                <StepRow
+                                    key={option.code}
+                                    title={option.name}
+                                    trailing={
+                                        country === option.code ? (
+                                            <StepCheck />
+                                        ) : (
+                                            <StepChevron />
+                                        )
+                                    }
+                                    onClick={() => chooseCountry(option.code)}
+                                />
                             ))}
-                        </SelectContent>
-                    </Select>
-                </StepField>
-            ),
-            action: (
-                <StepButton
-                    text={isLoading ? __('Loading...') : __('Continue')}
-                    disabled={!country || isLoading}
-                    onClick={() => fetchInstitutions(country)}
-                />
-            ),
-        },
-        bank: {
-            body: (
-                <>
-                    {/* Sticky so refining the search stays possible part-way
-                        down a 300-bank country list. */}
-                    <div className="sticky top-0 z-10 -mx-1 bg-background px-1 pb-2">
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder={__('Search banks...')}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                autoFocus
-                                className={cn(stepControlClass, 'pl-11')}
-                            />
-                        </div>
-                    </div>
-
-                    {filteredInstitutions.length > 0 ? (
-                        // ~300 banks in some countries; 35vh keeps the last
-                        // rows clear of the pinned footer on short phones.
-                        <StepList className="max-h-[35vh] overflow-y-auto">
-                            {filteredInstitutions.map((institution, index) => {
-                                const isSelected =
-                                    selectedBank?.name === institution.name;
-
-                                return (
-                                    <StepRow
-                                        key={`${institution.name}-${institution.country}-${index}`}
-                                        leading={
-                                            <BankLogo
-                                                src={institution.logo}
-                                                name={institution.name}
-                                                fallback="letter"
-                                                className="size-7 rounded-md text-xs"
-                                            />
-                                        }
-                                        title={institution.name}
-                                        badge={
-                                            institution.beta ? (
-                                                <BetaConnectorBadge />
-                                            ) : undefined
-                                        }
-                                        trailing={
-                                            isSelected ? (
-                                                <StepCheck />
-                                            ) : connectedBankNames.has(
-                                                  institution.name,
-                                              ) ? (
-                                                <StepBadge>
-                                                    {__('Already connected')}
-                                                </StepBadge>
-                                            ) : undefined
-                                        }
-                                        onClick={() =>
-                                            setSelectedBank(institution)
-                                        }
-                                    />
-                                );
-                            })}
                         </StepList>
                     ) : (
                         <p className="py-6 text-center text-sm text-muted-foreground">
-                            {__('No banks found.')}
+                            {__('No countries found.')}
                         </p>
                     )}
-                </>
-            ),
-            action: (
-                <StepButton
-                    text={__('Continue')}
-                    disabled={!selectedBank}
-                    onClick={() => setStep('confirm')}
-                />
-            ),
-        },
-        confirm: {
-            body: selectedBank && (
-                <>
-                    <div className="flex items-center gap-3.5 rounded-lg border p-4">
-                        <BankLogo
-                            src={selectedBank.logo}
-                            name={selectedBank.name}
-                            fallback="letter"
-                            className="size-11 shrink-0 rounded-md p-1"
-                        />
-                        <div className="flex flex-col gap-0.5">
-                            <p className="text-base font-medium">
-                                {selectedBank.name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                {provider
-                                    ? __(provider.cardDescription)
-                                    : __(
-                                          'You will be redirected to authorize access to your account data.',
-                                      )}
-                            </p>
-                        </div>
-                    </div>
+                </div>
+            </StepScreen>
+        );
+    }
 
-                    {selectedBank.beta && <BetaConnectorNotice />}
-
-                    {isAlreadyConnected && (
-                        <ReplaceConnectionWarning
-                            acknowledged={acknowledgedReplace}
-                            onAcknowledgedChange={setAcknowledgedReplace}
+    if (step === 'confirm' && selectedBank) {
+        return (
+            <StepScreen
+                icon={
+                    <BankLogo
+                        src={selectedBank.logo}
+                        name={selectedBank.name}
+                        fallback="letter"
+                        className="size-11 rounded-lg text-base"
+                    />
+                }
+                title={__('You’re about to log in at :bank', {
+                    bank: selectedBank.name,
+                })}
+                description={__(
+                    'Their page, their login, the same one you always use. Then you land straight back here.',
+                )}
+                footer={
+                    <>
+                        <StepButton
+                            text={__('Continue to :bank', {
+                                bank: selectedBank.name,
+                            })}
+                            loading={isSubmitting}
+                            loadingText={__('Connecting...')}
+                            onClick={startConnect}
+                            disabled={!canSubmit}
                         />
-                    )}
+                        <StepNote>
+                            {__('About 40 seconds. We’ll hold your place.')}
+                        </StepNote>
+                        {back}
+                    </>
+                }
+            >
+                {error && <StepError>{error}</StepError>}
 
-                    {provider && (
-                        <ProviderCredentialFields
-                            provider={provider}
-                            values={credentials}
-                            onChange={setCredential}
-                            idPrefix="inline"
-                        />
-                    )}
-                </>
-            ),
-            action: (
-                <StepButton
-                    text={isSubmitting ? __('Connecting...') : __('Connect')}
-                    onClick={startConnect}
-                    disabled={!canSubmit}
-                />
-            ),
-        },
-    }[step];
+                <StepList>
+                    <StepRow
+                        icon={Lock}
+                        title={__('Your password stays at your bank')}
+                        description={__(
+                            'It is never typed into Whisper and never reaches us.',
+                        )}
+                    />
+                    <StepRow
+                        icon={Eye}
+                        title={__('We can read, never touch')}
+                        description={__(
+                            'The permission you grant cannot move money, even by accident.',
+                        )}
+                    />
+                    <StepRow
+                        icon={RefreshCw}
+                        title={__('Once now, then it keeps itself current')}
+                        description={__(
+                            'Twelve months today, and every new movement after.',
+                        )}
+                    />
+                </StepList>
+
+                {selectedBank.beta && <BetaConnectorNotice />}
+
+                {isAlreadyConnected && (
+                    <ReplaceConnectionWarning
+                        acknowledged={acknowledgedReplace}
+                        onAcknowledgedChange={setAcknowledgedReplace}
+                    />
+                )}
+            </StepScreen>
+        );
+    }
 
     return (
         <StepScreen
-            title={__('Connect Your Bank')}
-            description={__('Select your country and bank to get started.')}
+            title={__('Where do you bank?')}
+            description={__(
+                'You sign in at your bank, not here. Whisper never sees your password, and can never move money.',
+            )}
             footer={
                 <>
-                    {action}
+                    {onManual && (
+                        <StepButton
+                            text={__('My bank isn’t in the list')}
+                            variant="outline"
+                            onClick={() => {
+                                trigger('light');
+                                onManual();
+                            }}
+                        />
+                    )}
                     {back}
                 </>
             }
         >
             {error && <StepError>{error}</StepError>}
-            {body}
+
+            <div className="flex flex-col">
+                {/* Sticky so refining the search stays possible part-way down a
+                    300-bank country list. */}
+                <div className="sticky top-0 z-10 -mx-1 flex gap-2 bg-background px-1 pb-2">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            trigger('light');
+                            setStep('country');
+                        }}
+                        className={cn(
+                            stepControlClass,
+                            'flex w-[38%] shrink-0 cursor-pointer items-center justify-between gap-2 border bg-transparent px-3.5 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                        )}
+                    >
+                        <span className="truncate">
+                            {countryName || __('Country')}
+                        </span>
+                        <ChevronDown className="size-[18px] shrink-0 text-muted-foreground" />
+                    </button>
+
+                    <StepSearch
+                        placeholder={
+                            isLoading
+                                ? __('Loading banks...')
+                                : __('Search :count banks', {
+                                      count: institutions.length,
+                                  })
+                        }
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                    />
+                </div>
+
+                {filteredInstitutions.length > 0 ? (
+                    // ~300 banks in some countries; 35vh keeps the last rows
+                    // clear of the pinned footer on short phones.
+                    <StepList className="max-h-[35vh] overflow-y-auto">
+                        {filteredInstitutions.map((institution, index) => (
+                            <StepRow
+                                key={`${institution.name}-${institution.country}-${index}`}
+                                leading={
+                                    <BankLogo
+                                        src={institution.logo}
+                                        name={institution.name}
+                                        fallback="letter"
+                                        className="size-7 rounded-md text-xs"
+                                    />
+                                }
+                                title={institution.name}
+                                badge={
+                                    institution.beta ? (
+                                        <BetaConnectorBadge />
+                                    ) : undefined
+                                }
+                                trailing={
+                                    connectedBankNames.has(institution.name) ? (
+                                        <StepBadge>
+                                            {__('Already connected')}
+                                        </StepBadge>
+                                    ) : (
+                                        <StepChevron />
+                                    )
+                                }
+                                onClick={() => openBank(institution)}
+                            />
+                        ))}
+                    </StepList>
+                ) : (
+                    <p className="py-6 text-center text-sm text-muted-foreground">
+                        {isLoading
+                            ? __('Loading banks...')
+                            : __('No banks found.')}
+                    </p>
+                )}
+
+                {brokers.length > 0 && (
+                    <>
+                        <StepSectionLabel>
+                            {__('Brokers and exchanges')}
+                        </StepSectionLabel>
+                        {/* Folded after the first two while the user is
+                            searching for a bank, and opened whole by a search
+                            that has already narrowed the list. */}
+                        <BrokerRows
+                            providers={brokers}
+                            collapsedAfter={searchQuery ? undefined : 2}
+                            onSelect={(provider) => {
+                                trigger('light');
+                                setBroker(provider);
+                            }}
+                        />
+                    </>
+                )}
+
+                <p className="flex items-start gap-2.5 pt-4 text-[13px] leading-normal text-pretty text-muted-foreground">
+                    <Shield className="mt-0.5 size-4 shrink-0" />
+                    {__(
+                        'Through regulated open banking (PSD2), via a licensed provider. Revoke it from your bank or from Whisper whenever you like.',
+                    )}
+                </p>
+            </div>
         </StepScreen>
     );
 }

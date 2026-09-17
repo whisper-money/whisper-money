@@ -1,18 +1,21 @@
-import { StepAccountTypes } from '@/components/onboarding/step-account-types';
+import {
+    StepAccountsHub,
+    type ExistingAccount,
+} from '@/components/onboarding/step-accounts-hub';
 import { StepAiSuggestions } from '@/components/onboarding/step-ai-suggestions';
 import { StepCategorizeTransactions } from '@/components/onboarding/step-categorize-transactions';
-import { StepCategoryTypes } from '@/components/onboarding/step-category-types';
 import { StepComplete } from '@/components/onboarding/step-complete';
-import {
-    StepCreateAccount,
-    type ExistingAccount,
-} from '@/components/onboarding/step-create-account';
-import { StepCustomizeCategories } from '@/components/onboarding/step-customize-categories';
+import { goalLabel, StepGoal } from '@/components/onboarding/step-goal';
+import { StepGuess } from '@/components/onboarding/step-guess';
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
 import { StepImportTransactions } from '@/components/onboarding/step-import-transactions';
-import { StepSmartRules } from '@/components/onboarding/step-smart-rules';
+import { type PendingMapping } from '@/components/onboarding/step-map-accounts';
+import { StepPlan } from '@/components/onboarding/step-plan';
+import { StepPromise } from '@/components/onboarding/step-promise';
+import { StepReveal } from '@/components/onboarding/step-reveal';
 import { StepSyncing } from '@/components/onboarding/step-syncing';
-import { StepWelcome } from '@/components/onboarding/step-welcome';
+import { StepTarget } from '@/components/onboarding/step-target';
+import { StepToday } from '@/components/onboarding/step-today';
 import { useSyncContext } from '@/contexts/sync-context';
 import {
     BACKABLE_STEPS,
@@ -20,6 +23,7 @@ import {
     OnboardingStep,
     useOnboardingState,
     validStepsFor,
+    type OnboardingAnswers,
 } from '@/hooks/use-onboarding-state';
 import OnboardingLayout from '@/layouts/onboarding-layout';
 import { type SharedData } from '@/types';
@@ -37,7 +41,9 @@ interface OnboardingProps {
     categories: Category[];
     transactions: Transaction[];
     initialStep?: OnboardingStep | null;
+    onboardingAnswers?: OnboardingAnswers;
     signupPlan?: SignupPlan | null;
+    pendingMapping?: PendingMapping | null;
 }
 
 export default function Onboarding({
@@ -46,7 +52,9 @@ export default function Onboarding({
     categories,
     transactions,
     initialStep: initialStepProp,
+    onboardingAnswers = {},
     signupPlan = null,
+    pendingMapping = null,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
     const { auth } = usePage<SharedData>().props;
@@ -88,6 +96,8 @@ export default function Onboarding({
         currentStep,
         stepIndex,
         totalSteps,
+        answers,
+        saveAnswer,
         createdAccounts,
         isFirstAccount,
         hasSelectedConnectedAccount,
@@ -97,12 +107,13 @@ export default function Onboarding({
         addCreatedAccount,
         markConnectedAccountSelected,
     } = useOnboardingState({
-        existingAccountsCount: accounts.length,
+        existingAccountIds: accounts.map((account) => account.id),
         initialStep,
         hasConnectedAccount,
         skipAiSuggestions: isFreePlan,
         userId: auth.user.id,
         signupPlan,
+        initialAnswers: onboardingAnswers,
     });
 
     // While on the connections step, poll for connections finalized elsewhere
@@ -110,7 +121,7 @@ export default function Onboarding({
     // connection server-side in a different browser without a session here).
     const { start, stop } = usePoll(
         4000,
-        { only: ['accounts'] },
+        { only: ['accounts', 'pendingMapping'] },
         { autoStart: false },
     );
 
@@ -147,9 +158,15 @@ export default function Onboarding({
 
         if (needsTransactionImport) {
             goToStep('import-transactions');
-        } else {
-            goToStep('import-balances');
+
+            return;
         }
+
+        // The balance step exists for accounts that are a balance and nothing
+        // else. The form offers that balance too, and someone who filled it in
+        // has already answered — asking again on the next screen reads as the
+        // first answer having gone nowhere.
+        goToStep(account.hasBalance ? 'create-account' : 'import-balances');
     };
 
     const handleImportComplete = async () => {
@@ -164,15 +181,53 @@ export default function Onboarding({
         const lastAccount = createdAccounts[createdAccounts.length - 1];
 
         switch (currentStep) {
-            case 'welcome':
-                return <StepWelcome onContinue={goNext} />;
+            case 'promise':
+                return <StepPromise onContinue={goNext} />;
 
-            case 'account-types':
-                return <StepAccountTypes onContinue={goNext} />;
+            case 'goal':
+                return (
+                    <StepGoal
+                        value={answers.goal}
+                        onSelect={(value) => saveAnswer('goal', value)}
+                        onContinue={goNext}
+                    />
+                );
+
+            case 'today':
+                return (
+                    <StepToday
+                        value={answers.today}
+                        onSelect={(value) => saveAnswer('today', value)}
+                        onContinue={goNext}
+                    />
+                );
+
+            case 'guess':
+                return (
+                    <StepGuess
+                        currencyCode={auth.user.currency_code}
+                        value={answers.spending_guess}
+                        onContinue={(spendingGuess) => {
+                            saveAnswer('spending_guess', spendingGuess);
+                            goNext();
+                        }}
+                    />
+                );
+
+            case 'plan':
+                return (
+                    <StepPlan
+                        goal={goalLabel(answers.goal)}
+                        spendingGuess={answers.spending_guess}
+                        currencyCode={auth.user.currency_code}
+                        isFreePlan={isFreePlan}
+                        onContinue={goNext}
+                    />
+                );
 
             case 'create-account':
                 return (
-                    <StepCreateAccount
+                    <StepAccountsHub
                         key={createdAccounts.length}
                         banks={banks}
                         isFirstAccount={isFirstAccount}
@@ -181,33 +236,34 @@ export default function Onboarding({
                         hasSelectedConnectedAccount={
                             hasSelectedConnectedAccount
                         }
+                        pendingMapping={pendingMapping}
                         onAccountCreated={handleAccountCreated}
                         onConnectedAccountSelected={
                             markConnectedAccountSelected
                         }
                         signupPlan={signupPlan}
-                        onContinue={goNext}
+                        onContinue={() => goToStep('syncing')}
                     />
                 );
 
-            case 'category-types':
-                return <StepCategoryTypes onContinue={goNext} />;
-
-            case 'customize-categories':
-                return <StepCustomizeCategories onContinue={goNext} />;
-
-            case 'smart-rules':
-                return <StepSmartRules onContinue={goNext} />;
-
             case 'syncing':
-                return <StepSyncing onComplete={goNext} />;
+                return <StepSyncing onComplete={() => goToStep('reveal')} />;
+
+            case 'reveal':
+                return (
+                    <StepReveal
+                        spendingGuess={answers.spending_guess}
+                        onContinue={goNext}
+                        onAddAccount={() => goToStep('create-account')}
+                    />
+                );
 
             case 'ai-suggestions':
                 return (
                     <StepAiSuggestions
                         categories={categories}
                         hasConnectedAccount={hasConnectedAccount}
-                        signupPlan={signupPlan}
+                        onAddAccount={() => goToStep('create-account')}
                         onComplete={goNext}
                     />
                 );
@@ -216,6 +272,7 @@ export default function Onboarding({
                 return (
                     <StepImportTransactions
                         account={lastAccount}
+                        canConnectBank={!isFreePlan}
                         onComplete={handleImportComplete}
                     />
                 );
@@ -239,12 +296,22 @@ export default function Onboarding({
                     />
                 );
 
+            case 'target':
+                return (
+                    <StepTarget
+                        goal={answers.goal}
+                        spendingGuess={answers.spending_guess}
+                        onContinue={goNext}
+                    />
+                );
+
             case 'complete':
                 return (
                     <StepComplete
                         accountsCreated={createdAccounts.length}
                         hasConnectedAccount={hasConnectedAccount}
                         signupPlan={signupPlan}
+                        spendingGuess={answers.spending_guess}
                     />
                 );
 
@@ -255,17 +322,21 @@ export default function Onboarding({
 
     const getStepTitle = (step: OnboardingStep): string => {
         const titles: Record<OnboardingStep, string> = {
-            welcome: __('Welcome'),
-            'account-types': __('Account Types'),
-            'create-account': __('Create Account'),
-            'category-types': __('Categories'),
-            'customize-categories': __('Customize Categories'),
-            'smart-rules': __('Smart Rules'),
+            promise: __('Welcome'),
+            goal: __('Your Goal'),
+            today: __('How You Track'),
+            guess: __('Your Guess'),
+            plan: __('Your Plan'),
+            // The step stopped being a form and became the accounts hub; the
+            // tab was the last place still calling it "Create Account".
+            'create-account': __('Your Accounts'),
             syncing: __('Syncing'),
+            reveal: __('Last Month'),
             'ai-suggestions': __('AI Suggestions'),
             'import-transactions': __('Import Transactions'),
             'import-balances': __('Set Balance'),
             'categorize-transactions': __('Categorize Transactions'),
+            target: __('Your First Target'),
             complete: __('All Set!'),
         };
         return titles[step];

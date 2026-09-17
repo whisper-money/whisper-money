@@ -21,7 +21,7 @@ beforeEach(function () {
         'subscriptions.experiment.started_at' => '2026-06-01',
         'subscriptions.experiment.refund_window_days' => 3,
         'subscriptions.experiment.variants' => [
-            'baseline' => [],
+            'baseline' => ['trial_days' => ['monthly' => 7, 'yearly' => 15]],
             'upfront' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
         ],
     ]);
@@ -75,23 +75,30 @@ it('blocks a self-refund for variants that still get a trial', function () {
     expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
 });
 
-it('blocks a self-refund for a legacy user', function () {
+/**
+ * A user with no variant follows the plans, and the plans follow
+ * `SUBSCRIPTION_PAY_NOW`. Off, they carry a trial and nobody has been charged
+ * yet, so there is nothing to give back; on, the charge landed at signup and
+ * the money-back window is what the gates promised. Both directions are here
+ * because the switch is what decides which one ships.
+ */
+it('refuses a legacy user while the plans still carry their trial', function () {
     $user = payNowSubscriber();
     Feature::for($user)->activate(SubscriptionExperiment::class, SubscriptionExperiment::LEGACY);
 
     expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
 });
 
-it('does not open the refund window for a legacy user just because a plan has no trial', function () {
-    // "Charges upfront" is a property of the variant, not of the plan config. A
-    // plan set to trial_days 0 for everyone is a pricing decision that comes with
-    // no money-back promise, so it must not hand the whole user base a refund.
-    config(['subscriptions.plans.monthly.trial_days' => 0, 'subscriptions.plans.yearly.trial_days' => 0]);
+it('opens the refund window for a legacy user once pay-now zeroes the trial', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 0,
+        'subscriptions.plans.yearly.trial_days' => 0,
+    ]);
 
     $user = payNowSubscriber();
     Feature::for($user)->activate(SubscriptionExperiment::class, SubscriptionExperiment::LEGACY);
 
-    expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
+    expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeTrue();
 });
 
 it('runs the refund action when eligible and reports it on the billing screen', function () {
