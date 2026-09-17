@@ -239,4 +239,60 @@ return [
             'allows_account' => true,
         ],
     ],
+
+    /*
+     * Which currency a reader is quoted in before they have created a single
+     * account, keyed by the region half of their `format_locale`. A Spanish
+     * signup used to read "unos 1.200 US$ al mes" on step 5, because the column
+     * default is USD and nothing set it until the first account at step 6.
+     *
+     * Spelled out rather than read off ICU for the same reason `decimals`
+     * above is: money behaviour must not change with the host's ICU version.
+     * Only currencies `options` offers appear here; anything unmapped — a
+     * region we hold no currency for, or `es-419`, which is not a country —
+     * keeps the USD the column already defaulted to.
+     */
+    'by_region' => [
+        'AR' => 'ARS',
+        'AU' => 'AUD',
+        'BO' => 'BOB',
+        'BR' => 'BRL',
+        'CA' => 'CAD',
+        'CH' => 'CHF',
+        'CL' => 'CLP',
+        'CN' => 'CNY',
+        'CO' => 'COP',
+        'CZ' => 'CZK',
+        'DE' => 'EUR',
+        'DK' => 'DKK',
+        'DO' => 'DOP',
+        'ES' => 'EUR',
+        'FR' => 'EUR',
+        'GB' => 'GBP',
+        'GH' => 'GHS',
+        'GT' => 'GTQ',
+        'HK' => 'HKD',
+        'HN' => 'HNL',
+        'IE' => 'EUR',
+        'IN' => 'INR',
+        'IT' => 'EUR',
+        'JP' => 'JPY',
+        'KW' => 'KWD',
+        'MX' => 'MXN',
+        'NG' => 'NGN',
+        'NL' => 'EUR',
+        'NZ' => 'NZD',
+        'PE' => 'PEN',
+        'PK' => 'PKR',
+        'PT' => 'EUR',
+        'PY' => 'PYG',
+        'RS' => 'RSD',
+        'SA' => 'SAR',
+        'SE' => 'SEK',
+        'SG' => 'SGD',
+        'TH' => 'THB',
+        'US' => 'USD',
+        'UY' => 'UYU',
+        'VE' => 'VES',
+    ],
 ];

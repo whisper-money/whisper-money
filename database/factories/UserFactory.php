@@ -83,4 +83,24 @@ class UserFactory extends Factory
             'onboarded_at' => null,
         ]);
     }
+
+    /**
+     * Give the user an active paid plan.
+     *
+     * Every paid feature is now gated from the first tap — a bank, a broker,
+     * the AI — so a test that exercises one of them needs a subscriber, and
+     * writing the row by hand in each of them is how the four of them drifted
+     * apart. The `stripe_id` is deliberately not one of the seeded prefixes
+     * (`sub_demo_` and friends), which `cannotUseStripe()` reads as an account
+     * that must never be handed to Stripe.
+     */
+    public function subscribed(string $status = 'active'): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->subscriptions()->create([
+            'type' => 'default',
+            'stripe_id' => 'sub_factory_'.fake()->unique()->numerify('##########'),
+            'stripe_status' => $status,
+            'stripe_price' => 'price_factory',
+        ]));
+    }
 }

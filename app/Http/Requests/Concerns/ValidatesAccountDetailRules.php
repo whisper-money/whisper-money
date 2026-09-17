@@ -50,17 +50,28 @@ trait ValidatesAccountDetailRules
     /**
      * Validation rules for loan detail fields.
      *
+     * The three columns behind a loan detail are NOT NULL and the amortization
+     * projection needs all three, so a partial set cannot be stored at all.
+     * `$requireCompleteSet` says so out loud instead of letting the rate and
+     * the term a user typed be dropped on the floor with the account created
+     * and no error shown. Pass it wherever there is no detail row yet; an
+     * existing one takes a partial update fine.
+     *
      * @return array<string, array<mixed>>
      */
-    protected function loanDetailRules(): array
+    protected function loanDetailRules(bool $requireCompleteSet = false): array
     {
+        $completeSet = fn (string ...$others): array => $requireCompleteSet
+            ? ['required_with:'.implode(',', [...$others, 'loan_start_date'])]
+            : [];
+
         return [
-            'annual_interest_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'loan_term_months' => ['nullable', 'integer', 'min:1', 'max:600'],
+            'annual_interest_rate' => ['nullable', ...$completeSet('loan_term_months', 'original_amount'), 'numeric', 'min:0', 'max:100'],
+            'loan_term_months' => ['nullable', ...$completeSet('annual_interest_rate', 'original_amount'), 'integer', 'min:1', 'max:600'],
             // Floor the date for the same reason as purchase_date above: an
             // ancient loan start date OOMs the balance generator (PHP-LARAVEL-49).
             'loan_start_date' => ['nullable', 'date', 'after_or_equal:1900-01-01'],
-            'original_amount' => ['nullable', 'integer', 'min:0'],
+            'original_amount' => ['nullable', ...$completeSet('annual_interest_rate', 'loan_term_months'), 'integer', 'min:0'],
         ];
     }
 

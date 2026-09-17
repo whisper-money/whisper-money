@@ -1,7 +1,4 @@
-import {
-    index as indexBalances,
-    store as storeBalance,
-} from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { index as indexBalances } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { categorize } from '@/actions/App/Http/Controllers/TransactionController';
 import AlertError from '@/components/alert-error';
 import { ImportStepUpload } from '@/components/import-step-upload';
@@ -13,22 +10,17 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import { Progress } from '@/components/ui/progress';
-import { importKey } from '@/lib/crypto';
-import { getCsrfToken } from '@/lib/csrf';
 import {
-    autoDetectColumns,
     calculateBalancesFromTransactions,
-    collectBalancesToImport,
     convertRowsToTransactions,
     isInAccountCurrency,
-    parseFile,
 } from '@/lib/file-parser';
+import { saveImportConfig } from '@/lib/import-config-storage';
 import {
-    loadImportConfig,
-    saveImportConfig,
-} from '@/lib/import-config-storage';
-import { getStoredKey } from '@/lib/key-storage';
-import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
+    applyStoredImportConfig,
+    importTransactions,
+    parseImportFile,
+} from '@/lib/transaction-import';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
@@ -42,7 +34,6 @@ import {
     type ParsedTransaction,
 } from '@/types/import';
 import { type UUID } from '@/types/uuid';
-import { toMajorUnits } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -60,7 +51,6 @@ interface ImportTransactionsDrawerProps {
     onOpenChange: (open: boolean) => void;
     /** Receives how many transactions actually made it in (0 when all failed). */
     onImportComplete?: (importedCount: number) => void;
-    autoSelectSingleAccount?: boolean;
 }
 
 const EMPTY_STATE: ImportState = {
@@ -107,7 +97,6 @@ export function ImportTransactionsDrawer({
     open,
     onOpenChange,
     onImportComplete,
-    autoSelectSingleAccount = false,
 }: ImportTransactionsDrawerProps) {
     const { locale, features, currencies } = usePage<SharedData>().props;
     const supportedCurrencies = useMemo(
@@ -119,8 +108,6 @@ export function ImportTransactionsDrawer({
     const [importTotal, setImportTotal] = useState(0);
     const [importErrors, setImportErrors] = useState<ImportError[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [wasSingleAccountAutoSelected, setWasSingleAccountAutoSelected] =
-        useState(false);
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(
         null,
     );
@@ -142,18 +129,12 @@ export function ImportTransactionsDrawer({
             setState(EMPTY_STATE);
             setIsImporting(false);
             setError(null);
-            setWasSingleAccountAutoSelected(false);
             setSelectedAccount(null);
         }
     }, [open]);
 
     const handleAccountSelect = (accountId: UUID) => {
         setState((prev) => ({ ...prev, selectedAccountId: accountId }));
-    };
-
-    const handleSingleAccountAutoSelect = (accountId: UUID) => {
-        setWasSingleAccountAutoSelected(true);
-        handleAccountSelect(accountId);
     };
 
     const handleFileSelect = async (file: File) => {
@@ -173,50 +154,7 @@ export function ImportTransactionsDrawer({
         }
 
         try {
-            const { headers, data, rowNumbers, columns, headerRowIndex } =
-                await parseFile(file);
-            const autoMapping = autoDetectColumns(headers);
-
-            const columnOptions = headers.map((header, index) => {
-                const columnData = columns[index] || [];
-                const middleIndex = Math.floor(columnData.length / 2);
-                const examples = columnData
-                    .slice(
-                        Math.max(headerRowIndex + 1, middleIndex),
-                        Math.max(headerRowIndex + 1, middleIndex) + 3,
-                    )
-                    .filter(
-                        (cell) =>
-                            cell !== null &&
-                            cell !== undefined &&
-                            String(cell).trim() !== '',
-                    )
-                    .map((cell) => String(cell))
-                    .slice(0, 3);
-
-                return {
-                    value: header,
-                    label: header,
-                    examples,
-                };
-            });
-
-            let detectedFormat = DateFormat.YearMonthDay;
-            let formatDetected = false;
-            let formatAmbiguous = false;
-            if (autoMapping.transaction_date) {
-                const { detectDateFormat } = await import('@/lib/file-parser');
-                const detected = detectDateFormat(
-                    data,
-                    autoMapping.transaction_date,
-                    locale,
-                );
-                if (detected) {
-                    detectedFormat = detected.format;
-                    formatAmbiguous = detected.ambiguous;
-                    formatDetected = !detected.ambiguous;
-                }
-            }
+            const parsed = await parseImportFile(file, locale);
 
             // Show the parsed file immediately with auto-detected columns; the
             // saved per-account config is fetched off the critical path so a
@@ -224,58 +162,39 @@ export function ImportTransactionsDrawer({
             setState((prev) => ({
                 ...prev,
                 file,
-                parsedData: data,
-                rowNumbers,
-                columnHeaders: headers,
-                columnOptions,
-                columnMapping: autoMapping,
-                dateFormat: detectedFormat,
-                dateFormatDetected: formatDetected,
+                parsedData: parsed.rows,
+                rowNumbers: parsed.rowNumbers,
+                columnHeaders: parsed.headers,
+                columnOptions: parsed.columnOptions,
+                columnMapping: parsed.mapping,
+                dateFormat: parsed.dateFormat,
+                dateFormatDetected: parsed.dateFormatDetected,
             }));
 
             const accountId = state.selectedAccountId;
-            if (accountId) {
-                const savedConfig = await loadImportConfig(accountId);
 
-                if (savedConfig) {
-                    const isValidMapping = (
-                        mapping: ColumnMapping,
-                    ): boolean => {
-                        const values = Object.values(mapping).filter(
-                            (v) => v !== null,
-                        );
-                        return values.every((value) => {
-                            if (Array.isArray(value)) {
-                                return value.every((v) =>
-                                    headers.includes(v as string),
-                                );
-                            }
-                            return headers.includes(value as string);
-                        });
-                    };
-
-                    if (isValidMapping(savedConfig.columnMapping)) {
-                        // Only apply if this file is still the selected one, so a
-                        // slow load can't clobber a file picked afterwards. Keep
-                        // the saved format as the default, but still show the
-                        // selector when the dates are ambiguous so a
-                        // previously-saved wrong format can be corrected.
-                        setState((prev) =>
-                            prev.file === file
-                                ? {
-                                      ...prev,
-                                      columnMapping: {
-                                          ...autoMapping,
-                                          ...savedConfig.columnMapping,
-                                      },
-                                      dateFormat: savedConfig.dateFormat,
-                                      dateFormatDetected: !formatAmbiguous,
-                                  }
-                                : prev,
-                        );
-                    }
-                }
+            if (!accountId) {
+                return;
             }
+
+            const stored = await applyStoredImportConfig(parsed, accountId);
+
+            if (!stored) {
+                return;
+            }
+
+            // Only apply if this file is still the selected one, so a slow load
+            // can't clobber a file picked afterwards.
+            setState((prev) =>
+                prev.file === file
+                    ? {
+                          ...prev,
+                          columnMapping: stored.mapping,
+                          dateFormat: stored.dateFormat,
+                          dateFormatDetected: stored.dateFormatDetected,
+                      }
+                    : prev,
+            );
         } catch (err) {
             setError(
                 __(err instanceof Error ? err.message : 'Failed to parse file'),
@@ -509,11 +428,9 @@ export function ImportTransactionsDrawer({
         const selectedIndexes = state.transactions
             .map((transaction, index) => (transaction.selected ? index : -1))
             .filter((index) => index !== -1);
-        const newTransactions = selectedIndexes.map(
-            (index) => state.transactions[index],
-        );
-        const total = newTransactions.length;
-        setImportTotal(total);
+        const rows = selectedIndexes.map((index) => state.transactions[index]);
+
+        setImportTotal(rows.length);
         setImportProgress(0);
 
         if (!selectedAccount) {
@@ -522,187 +439,24 @@ export function ImportTransactionsDrawer({
             return;
         }
 
-        const createdTransactions: unknown[] = [];
-        const importedIndexes = new Set<number>();
-        const errors: ImportError[] = [];
-        const keyString = getStoredKey();
-        const key = keyString ? await importKey(keyString) : null;
-        const rules = key ? automationRules : [];
-
-        const BATCH_SIZE = 20;
-        let processedCount = 0;
-        let uncategorizedCount = 0;
-
-        for (let i = 0; i < newTransactions.length; i += BATCH_SIZE) {
-            const batch = newTransactions.slice(i, i + BATCH_SIZE);
-
-            const batchResults = await Promise.allSettled(
-                batch.map(async (transaction, batchIndex) => {
-                    const rowNumber = i + batchIndex + 1;
-
-                    const encrypted: string = transaction.description;
-                    const iv: string | null = null;
-
-                    let categoryId: string | null = null;
-                    let notes: string | null = null;
-                    let notesIv: string | null = null;
-                    let labelIds: string[] = [];
-
-                    if (key && rules.length > 0) {
-                        const ruleMatch = await evaluateRulesForNewTransaction(
-                            {
-                                description: transaction.description,
-                                // A mapped CSV can carry a per-row currency, and
-                                // the parser already scaled the amount to it —
-                                // so read it back the same way the save below
-                                // does, or a row in a different-scale currency
-                                // matches the wrong rules.
-                                amount: toMajorUnits(
-                                    transaction.amount,
-                                    transaction.currency_code ??
-                                        selectedAccount.currency_code,
-                                ),
-                                transaction_date: transaction.transaction_date,
-                                account_id: selectedAccount.id,
-                                creditor_name: transaction.creditor_name,
-                                debtor_name: transaction.debtor_name,
-                            },
-                            rules,
-                            categories,
-                            accounts,
-                            banks,
-                            key,
-                        );
-
-                        if (ruleMatch) {
-                            if (ruleMatch.categoryId) {
-                                categoryId = ruleMatch.categoryId;
-                            }
-                            if (ruleMatch.note && ruleMatch.noteIv) {
-                                const { decrypt } =
-                                    await import('@/lib/crypto');
-                                notes = await decrypt(
-                                    ruleMatch.note,
-                                    key,
-                                    ruleMatch.noteIv,
-                                );
-                                notesIv = null;
-                            }
-                            if (
-                                ruleMatch.labelIds &&
-                                ruleMatch.labelIds.length > 0
-                            ) {
-                                labelIds = ruleMatch.labelIds;
-                            }
-                        }
-                    }
-
-                    const transactionData = {
-                        user_id:
-                            (selectedAccount as Account & { user_id?: string })
-                                .user_id ||
-                            '00000000-0000-0000-0000-000000000000',
-                        account_id: selectedAccount.id,
-                        category_id: categoryId,
-                        description: encrypted,
-                        description_iv: iv,
-                        transaction_date: transaction.transaction_date,
-                        amount: transaction.amount,
-                        currency_code:
-                            transaction.currency_code ??
-                            selectedAccount.currency_code,
-                        notes: notes,
-                        notes_iv: notesIv,
-                        creditor_name: transaction.creditor_name ?? null,
-                        debtor_name: transaction.debtor_name ?? null,
-                        source: 'imported' as const,
-                        label_ids: labelIds.length > 0 ? labelIds : undefined,
-                    };
-
-                    const createdTransaction =
-                        await transactionSyncService.create(transactionData);
-
-                    return {
-                        success: true,
-                        transaction: createdTransaction,
-                        rowNumber,
-                        hasCategory: categoryId !== null,
-                    };
-                }),
-            );
-
-            batchResults.forEach((result, batchIndex) => {
-                const transaction = batch[batchIndex];
-                const rowNumber = i + batchIndex + 1;
-
-                if (result.status === 'fulfilled') {
-                    createdTransactions.push(result.value.transaction);
-                    importedIndexes.add(selectedIndexes[i + batchIndex]);
-                    if (!result.value.hasCategory) {
-                        uncategorizedCount++;
-                    }
-                } else {
-                    const errorMessage =
-                        result.reason instanceof Error
-                            ? result.reason.message
-                            : __('Unknown error');
-
-                    console.error(`Transaction ${rowNumber} failed:`, {
-                        transaction,
-                        error: result.reason,
-                        errorMessage,
-                        stack:
-                            result.reason instanceof Error
-                                ? result.reason.stack
-                                : undefined,
-                    });
-
-                    errors.push({
-                        rowNumber,
-                        transaction: {
-                            date: transaction.transaction_date,
-                            description: transaction.description,
-                            amount: transaction.amount.toString(),
-                        },
-                        error: errorMessage,
-                    });
-                }
+        const { imported, errors, successCount, uncategorizedCount } =
+            await importTransactions({
+                account: selectedAccount,
+                rows,
+                categories,
+                accounts,
+                banks,
+                automationRules,
+                onProgress: setImportProgress,
             });
-
-            processedCount += batch.length;
-            setImportProgress(processedCount);
-        }
-
-        const balancesToImport = collectBalancesToImport(newTransactions);
-
-        if (balancesToImport.size > 0) {
-            try {
-                const xsrfToken = getCsrfToken();
-
-                const balanceRecords = Array.from(balancesToImport.entries());
-
-                for (const [date, balance] of balanceRecords) {
-                    await fetch(storeBalance.url(selectedAccount.id), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-XSRF-TOKEN': xsrfToken,
-                            Accept: 'application/json',
-                        },
-                        body: JSON.stringify({
-                            balance_date: date,
-                            balance,
-                        }),
-                    });
-                }
-            } catch (err) {
-                console.error('Failed to import balances:', err);
-            }
-        }
 
         // A partial import keeps the drawer open on the same preview, so the
         // rows already created have to be taken out of the selection: pressing
         // Import again would otherwise create every one of them a second time.
+        const importedIndexes = new Set(
+            selectedIndexes.filter((_, position) => imported[position]),
+        );
+
         if (importedIndexes.size > 0) {
             setState((prev) => ({
                 ...prev,
@@ -717,10 +471,7 @@ export function ImportTransactionsDrawer({
         setImportErrors(errors);
         setIsImporting(false);
 
-        const successCount = createdTransactions.length;
         const errorCount = errors.length;
-
-        console.log('Import complete:', { successCount, errorCount, total });
 
         if (errorCount === 0 && successCount > 0) {
             const message =
@@ -838,8 +589,6 @@ export function ImportTransactionsDrawer({
                         onNext={() => {
                             moveToStep(ImportStep.UploadFile);
                         }}
-                        autoSelectSingleAccount={autoSelectSingleAccount}
-                        onAutoSelect={handleSingleAccountAutoSelect}
                     />
                 );
 
@@ -852,7 +601,6 @@ export function ImportTransactionsDrawer({
                             moveToStep(ImportStep.MapColumns);
                         }}
                         onBack={() => moveToStep(ImportStep.SelectAccount)}
-                        showBackButton={!wasSingleAccountAutoSelected}
                     />
                 );
 

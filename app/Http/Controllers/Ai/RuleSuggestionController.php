@@ -165,6 +165,10 @@ class RuleSuggestionController extends Controller
         return [
             'available' => true,
             'consented' => $user->hasActiveAiConsent(),
+            // Tells the consent screen whether it is asking or asking again:
+            // a user who revoked it, or consented to an older version of the
+            // copy, is owed the reason they are being asked twice.
+            'previously_consented' => $user->aiConsents()->exists(),
             'requires_upgrade' => $this->requiresUpgrade($user),
             'eligible' => $this->availability->isEligible($user),
             'transaction_count' => $this->availability->transactionCount($user),
@@ -175,6 +179,7 @@ class RuleSuggestionController extends Controller
             'run' => $run === null ? null : [
                 'id' => $run->id,
                 'status' => $run->status->value,
+                'merchants_considered' => $run->merchants_considered,
                 'suggestions_count' => $run->suggestions_count,
             ],
             'suggestions' => $run !== null && $run->status === SuggestionRunStatus::Completed

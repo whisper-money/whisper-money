@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import type { EnableBankingInstitution } from '@/types/banking';
 import { __ } from '@/utils/i18n';
@@ -16,7 +17,7 @@ import { __ } from '@/utils/i18n';
  * handled as the default redirect flow by the consumers.
  */
 
-type CredentialField = {
+export type CredentialField = {
     /** Doubles as the POST body key and the form-state key. */
     key: string;
     /** i18n key for the field label. */
@@ -38,6 +39,14 @@ export type ConnectProvider = {
     endpoint: string;
     /** Whether the connect request also sends the selected `country`. */
     sendsCountry?: boolean;
+    /**
+     * Whether the provider hands over movements as well as balances. False for
+     * every broker and exchange here — they report what you hold, not what you
+     * bought — and true only for Wise, which is a current account wearing an
+     * API key. It decides what the connect screen promises, so a user is never
+     * left waiting for transactions that are not coming.
+     */
+    sendsTransactions?: boolean;
     /** Only offered when connecting from this country (e.g. Indexa: ES). */
     onlyCountry?: string;
     /** Confirm-step header copy (i18n key). */
@@ -75,6 +84,44 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
             before: 'You can generate your API token from your Indexa Capital dashboard under',
             href: 'https://indexacapital.com/es/u/user#settings-apps',
             link: 'Settings > Applications',
+        },
+    },
+    {
+        providerKey: 'coinbase',
+        institution: {
+            name: 'Coinbase',
+            country: 'ALL',
+            logo: 'https://whisper.money/storage/banks/logos/coinbase.png',
+            maximum_consent_validity: null,
+        },
+        endpoint: '/open-banking/coinbase/connect',
+        sendsCountry: true,
+        headerDescription:
+            'Enter your CDP App Key ID and Secret to connect your Coinbase account.',
+        cardDescription: 'Connect your Coinbase account using a CDP API key.',
+        fields: [
+            {
+                key: 'api_key_name',
+                label: 'App Key ID',
+                type: 'text',
+                placeholderExample: '00000000-0000-0000-0000-000000000000',
+                mono: true,
+                small: true,
+            },
+            {
+                key: 'private_key',
+                label: 'Secret',
+                type: 'textarea',
+                placeholderExample: 'Paste your CDP API key secret',
+                mono: true,
+                small: true,
+            },
+        ],
+        help: {
+            before: 'Create a CDP API key (Ed25519 recommended) in the Coinbase Developer Platform under',
+            href: 'https://portal.cdp.coinbase.com/access/api',
+            link: 'API Keys',
+            after: 'Use a view-only key, and tick "Opt-out of IP allowlisting" so the key works from our servers.',
         },
     },
     {
@@ -139,44 +186,6 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
         },
     },
     {
-        providerKey: 'coinbase',
-        institution: {
-            name: 'Coinbase',
-            country: 'ALL',
-            logo: 'https://whisper.money/storage/banks/logos/coinbase.png',
-            maximum_consent_validity: null,
-        },
-        endpoint: '/open-banking/coinbase/connect',
-        sendsCountry: true,
-        headerDescription:
-            'Enter your CDP App Key ID and Secret to connect your Coinbase account.',
-        cardDescription: 'Connect your Coinbase account using a CDP API key.',
-        fields: [
-            {
-                key: 'api_key_name',
-                label: 'App Key ID',
-                type: 'text',
-                placeholderExample: '00000000-0000-0000-0000-000000000000',
-                mono: true,
-                small: true,
-            },
-            {
-                key: 'private_key',
-                label: 'Secret',
-                type: 'textarea',
-                placeholderExample: 'Paste your CDP API key secret',
-                mono: true,
-                small: true,
-            },
-        ],
-        help: {
-            before: 'Create a CDP API key (Ed25519 recommended) in the Coinbase Developer Platform under',
-            href: 'https://portal.cdp.coinbase.com/access/api',
-            link: 'API Keys',
-            after: 'Use a view-only key, and tick "Opt-out of IP allowlisting" so the key works from our servers.',
-        },
-    },
-    {
         providerKey: 'wise',
         institution: {
             name: 'Wise',
@@ -185,6 +194,7 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
             maximum_consent_validity: null,
         },
         endpoint: '/open-banking/wise/connect',
+        sendsTransactions: true,
         headerDescription:
             'Enter your Wise Personal API token to connect your account.',
         cardDescription:
@@ -246,6 +256,13 @@ export function connectProviderForBank(
     return CONNECT_PROVIDERS.find((p) => p.institution.name === name);
 }
 
+/** The providers offered when connecting from this country. */
+export function providersForCountry(country: string): ConnectProvider[] {
+    return CONNECT_PROVIDERS.filter(
+        (p) => !p.onlyCountry || p.onlyCountry === country,
+    );
+}
+
 /** Find a provider by its `banking_connections.provider` value. */
 export function connectProviderByKey(
     providerKey: string,
@@ -261,6 +278,49 @@ export function credentialPayload(
     return Object.fromEntries(
         provider.fields.map((f) => [f.key, values[f.key] ?? '']),
     );
+}
+
+/** The connect request body for a provider: its credentials, plus the country
+ * when it asks for one. */
+export function providerConnectBody(
+    provider: ConnectProvider,
+    values: Record<string, string>,
+    country: string,
+): Record<string, string> {
+    return {
+        ...credentialPayload(provider, values),
+        ...(provider.sendsCountry ? { country } : {}),
+    };
+}
+
+/**
+ * POST a connect request and hand back where the server wants the browser to
+ * go next. Shared by the bank flow and the broker flow, which differ only in
+ * the endpoint and the body they send.
+ */
+export async function postConnectRequest(
+    url: string,
+    body: Record<string, unknown>,
+): Promise<string> {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': getCsrfToken(),
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        const failure = await response.json().catch(() => ({}));
+
+        throw new Error(failure.message || 'Failed to start authorization');
+    }
+
+    const data = await response.json();
+
+    return data.redirect_url;
 }
 
 /** Whether every credential field has been filled in. */
@@ -296,6 +356,61 @@ export function ProviderHelp({ help }: { help: ConnectProvider['help'] }) {
 }
 
 /**
+ * The element id of one credential input. Exported so a caller that supplies
+ * its own label — the onboarding step uses `StepField`, not `Label` — can point
+ * it at the right control. `idPrefix` keeps ids unique between surfaces.
+ */
+export function credentialFieldId(
+    idPrefix: string,
+    provider: ConnectProvider,
+    field: CredentialField,
+): string {
+    return `${idPrefix}-${provider.providerKey}-${field.key}`;
+}
+
+/** One credential control, unlabelled: the label belongs to the surface. */
+export function ProviderCredentialInput({
+    id,
+    field,
+    value,
+    onChange,
+}: {
+    id: string;
+    field: CredentialField;
+    value: string;
+    onChange: (value: string) => void;
+}) {
+    const placeholder =
+        field.placeholderExample ??
+        (field.placeholder ? __(field.placeholder) : undefined);
+    const className = cn(field.mono && 'font-mono', field.small && 'text-xs');
+
+    if (field.type === 'textarea') {
+        return (
+            <Textarea
+                id={id}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                rows={6}
+                className={className}
+                placeholder={placeholder}
+            />
+        );
+    }
+
+    return (
+        <Input
+            id={id}
+            type={field.type}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={className}
+            placeholder={placeholder}
+        />
+    );
+}
+
+/**
  * Renders a provider's credential inputs, bound to a flat values record.
  * `idPrefix` keeps element ids unique between the connect and update dialogs.
  */
@@ -313,42 +428,17 @@ export function ProviderCredentialFields({
     return (
         <div className="space-y-4">
             {provider.fields.map((field) => {
-                const id = `${idPrefix}-${provider.providerKey}-${field.key}`;
-                const placeholder =
-                    field.placeholderExample ??
-                    (field.placeholder ? __(field.placeholder) : undefined);
-                const className = cn(
-                    'mt-1',
-                    field.mono && 'font-mono',
-                    field.small && 'text-xs',
-                );
+                const id = credentialFieldId(idPrefix, provider, field);
 
                 return (
                     <div key={field.key} className="space-y-2">
                         <Label htmlFor={id}>{__(field.label)}</Label>
-                        {field.type === 'textarea' ? (
-                            <Textarea
-                                id={id}
-                                value={values[field.key] ?? ''}
-                                onChange={(e) =>
-                                    onChange(field.key, e.target.value)
-                                }
-                                rows={6}
-                                className={className}
-                                placeholder={placeholder}
-                            />
-                        ) : (
-                            <Input
-                                id={id}
-                                type={field.type}
-                                value={values[field.key] ?? ''}
-                                onChange={(e) =>
-                                    onChange(field.key, e.target.value)
-                                }
-                                className={className}
-                                placeholder={placeholder}
-                            />
-                        )}
+                        <ProviderCredentialInput
+                            id={id}
+                            field={field}
+                            value={values[field.key] ?? ''}
+                            onChange={(value) => onChange(field.key, value)}
+                        />
                     </div>
                 );
             })}

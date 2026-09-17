@@ -217,13 +217,13 @@ class AuthorizationController extends Controller
 
         // query() hands back an array for ?code[]=, which is truthy but not a code.
         if (! $code || ! is_string($code)) {
-            return $this->finishWithError($user, 'No authorization code received.');
+            return $this->finishWithError($user, 'No authorization code received.', $connection);
         }
 
         $sessionData = $this->createProviderSession($provider, $code, $connection);
 
         if ($sessionData === null) {
-            return $this->finishWithError($user, 'Failed to connect to your bank. Please try again.');
+            return $this->finishWithError($user, 'Failed to connect to your bank. Please try again.', $connection);
         }
 
         $connection ??= $this->findPendingConnectionForSession($user, $sessionData);
@@ -292,7 +292,7 @@ class AuthorizationController extends Controller
 
         SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Reconnect);
 
-        return $this->finishRedirect('settings.connections.index', [], 'success', __('Bank account reconnected successfully.'));
+        return $this->finishRedirect('settings.connections.index', [], 'success', __('Bank account reconnected successfully.'), $connection);
     }
 
     /**
@@ -314,13 +314,23 @@ class AuthorizationController extends Controller
         ]);
 
         if (! $user->isOnboarded()) {
+            // One account is not a choice, so onboarding does not stop to ask
+            // about it. More than one is: a joint account or a card nobody uses
+            // is exactly what muddies a first picture, and the accounts hub has
+            // a screen for picking. The connection stays AwaitingMapping until
+            // they answer, which is what `OnboardingController::pendingMapping`
+            // reads it from.
+            if (count($connection->mappablePendingAccounts()) > 1) {
+                return $this->finishRedirect('onboarding', ['step' => 'create-account'], connection: $connection);
+            }
+
             $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
             SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Connect);
 
-            return $this->finishRedirect('onboarding', ['step' => 'create-account'], 'success', 'Bank account connected successfully.');
+            return $this->finishRedirect('onboarding', ['step' => 'create-account'], 'success', 'Bank account connected successfully.', $connection);
         }
 
-        return $this->finishRedirect('open-banking.map-accounts', ['connection' => $connection]);
+        return $this->finishRedirect('open-banking.map-accounts', ['connection' => $connection], connection: $connection);
     }
 
     /**
@@ -373,7 +383,7 @@ class AuthorizationController extends Controller
             }
         }
 
-        return $this->finishWithError($user, $errorMessage);
+        return $this->finishWithError($user, $errorMessage, $connection);
     }
 
     /**
@@ -401,11 +411,25 @@ class AuthorizationController extends Controller
      *
      * A user still onboarding has no connections screen to land on yet.
      */
-    private function finishWithError(User $user, string $message): RedirectResponse|Response
+    private function finishWithError(User $user, string $message, ?BankingConnection $connection = null): RedirectResponse|Response
     {
-        return $user->isOnboarded()
-            ? $this->finishRedirect('settings.connections.index', [], 'error', $message)
-            : $this->finishRedirect('onboarding', ['step' => 'create-account'], 'error', $message);
+        if ($user->isOnboarded()) {
+            return $this->finishRedirect('settings.connections.index', [], 'error', $message);
+        }
+
+        // The onboarding hub has a screen for this, and it can only name the
+        // bank if we name it here: an unfinished connection has just been
+        // deleted, so there is no row left to read it off. The country goes with
+        // it because the provider keys a bank by the (name, country) pair, which
+        // is what makes the retry one tap rather than a fresh search.
+        $params = ['step' => 'create-account'];
+
+        if ($connection?->aspsp_name && $connection->aspsp_country) {
+            $params['connect_error'] = $connection->aspsp_name;
+            $params['connect_country'] = $connection->aspsp_country;
+        }
+
+        return $this->finishRedirect('onboarding', $params, 'error', $message, $connection);
     }
 
     /**
@@ -439,12 +463,17 @@ class AuthorizationController extends Controller
      *
      * @param  array<string, mixed>  $params
      */
-    private function finishRedirect(string $route, array $params, ?string $flashKey = null, ?string $flashMessage = null): RedirectResponse|Response
+    private function finishRedirect(string $route, array $params, ?string $flashKey = null, ?string $flashMessage = null, ?BankingConnection $connection = null): RedirectResponse|Response
     {
         if (! Auth::check()) {
             return Inertia::render('open-banking/connection-complete', [
                 'status' => $flashKey === 'error' ? 'error' : 'success',
                 'message' => $flashMessage ?? __('Your bank account is connected.'),
+                // Naming the bank is what tells the user this page is about the
+                // thing they just did, rather than a stray tab they should worry
+                // about. It is the only thing they can recognise here: this
+                // browser has no session, so the page knows nothing else.
+                'bank' => $connection?->aspsp_name,
             ]);
         }
 

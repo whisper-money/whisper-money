@@ -39,6 +39,7 @@ const suggestion: AiSuggestion = {
 const stateWith = (overrides: Record<string, unknown>) => ({
     available: true,
     consented: true,
+    previously_consented: true,
     requires_upgrade: false,
     eligible: true,
     transaction_count: 4000,
@@ -60,6 +61,7 @@ async function renderStep(overrides: Record<string, unknown>) {
         <StepAiSuggestions
             categories={[]}
             hasConnectedAccount={false}
+            onAddAccount={vi.fn()}
             onComplete={onComplete}
         />,
     );
@@ -109,7 +111,12 @@ describe('StepAiSuggestions exits', () => {
 
     it('starts categorization when the run found no patterns', async () => {
         await renderStep({
-            run: { id: 'run-1', status: 'empty', suggestions_count: 0 },
+            run: {
+                id: 'run-1',
+                status: 'empty',
+                merchants_considered: 12,
+                suggestions_count: 0,
+            },
         });
 
         await click('Continue');
@@ -119,7 +126,12 @@ describe('StepAiSuggestions exits', () => {
 
     it('starts categorization when the run failed', async () => {
         await renderStep({
-            run: { id: 'run-1', status: 'failed', suggestions_count: 0 },
+            run: {
+                id: 'run-1',
+                status: 'failed',
+                merchants_considered: 12,
+                suggestions_count: 0,
+            },
         });
 
         await click('Skip for now');
@@ -129,7 +141,12 @@ describe('StepAiSuggestions exits', () => {
 
     it('starts categorization once the suggested rules are created', async () => {
         await renderStep({
-            run: { id: 'run-1', status: 'completed', suggestions_count: 1 },
+            run: {
+                id: 'run-1',
+                status: 'completed',
+                merchants_considered: 12,
+                suggestions_count: 1,
+            },
             suggestions: [suggestion],
         });
         post.mockResolvedValue({
@@ -142,7 +159,7 @@ describe('StepAiSuggestions exits', () => {
             options.onFinish(),
         );
 
-        await click('Create 1 rules & apply');
+        await click('Apply 1 rule');
         await click('Continue');
 
         expectCategorizationStarted();
@@ -150,7 +167,12 @@ describe('StepAiSuggestions exits', () => {
 
     it('starts categorization when the suggestions are skipped', async () => {
         await renderStep({
-            run: { id: 'run-1', status: 'completed', suggestions_count: 1 },
+            run: {
+                id: 'run-1',
+                status: 'completed',
+                merchants_considered: 12,
+                suggestions_count: 1,
+            },
             suggestions: [suggestion],
         });
 

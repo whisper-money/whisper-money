@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Models\Concerns\BelongsToSpace;
+use App\Services\Banking\Formatters\AccountNameFormatter;
 use Carbon\Carbon;
 use Database\Factories\BankingConnectionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -208,7 +209,7 @@ class BankingConnection extends Model
     public function unmappablePendingAccountNames(): array
     {
         return array_values(array_map(
-            fn (array $account): string => $account['name'] ?? $account['account_id']['iban'] ?? __('Bank Account'),
+            fn (array $account): string => AccountNameFormatter::format($account, __('Bank Account')),
             array_filter(
                 $this->pending_accounts_data ?? [],
                 fn (array $account): bool => empty($account['uid']),

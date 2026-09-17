@@ -11,6 +11,7 @@ use App\Models\Account;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Services\AccountUserCurrencyService;
+use App\Services\Banking\Formatters\AccountNameFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -169,7 +170,7 @@ class ConnectionAccountController extends Controller
 
             return [
                 'uid' => $uid,
-                'name' => $details['name'] ?? $details['account_id']['iban'] ?? null,
+                'name' => AccountNameFormatter::format($details, __('Bank Account')),
                 'currency' => $details['currency'],
                 'iban' => $details['account_id']['iban'] ?? null,
             ];

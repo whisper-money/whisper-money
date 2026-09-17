@@ -56,6 +56,10 @@ class UpdateAccountRequest extends FormRequest
         $isLoan = $this->input('type') === AccountType::Loan->value;
 
         if ($isLoan) {
+            // Not requireCompleteSet: an account that already has a detail row
+            // takes a single field on its own, and one that does not is told
+            // what it is missing by the controller, from what the write
+            // reported back.
             $rules = array_merge($rules, $this->loanDetailRules());
         }
 

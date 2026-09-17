@@ -23,7 +23,10 @@ beforeEach(function () {
         'subscriptions.experiment.started_at' => '2026-06-01',
         'subscriptions.experiment.refund_window_days' => 3,
         'subscriptions.experiment.variants' => [
-            'baseline' => [],
+            // Spelled out rather than left to the plan defaults, which are 0 and
+            // so would make the "trialling" arm an upfront one — and hand it the
+            // refund window the test is here to prove it does not get.
+            'baseline' => ['trial_days' => ['monthly' => 7, 'yearly' => 15]],
             'upfront' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
         ],
     ]);

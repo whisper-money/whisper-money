@@ -10,15 +10,12 @@ import {
 } from '@/types/account';
 import type { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
-import { useEffect } from 'react';
 
 interface ImportStepAccountProps {
     accounts?: Account[];
     selectedAccountId: UUID | null;
     onAccountSelect: (accountId: UUID) => void;
     onNext: () => void;
-    autoSelectSingleAccount?: boolean;
-    onAutoSelect?: (accountId: UUID) => void;
 }
 
 export function ImportStepAccount({
@@ -26,35 +23,8 @@ export function ImportStepAccount({
     selectedAccountId,
     onAccountSelect,
     onNext,
-    autoSelectSingleAccount = false,
-    onAutoSelect,
 }: ImportStepAccountProps) {
     const accounts = filterTransactionalAccounts(rawAccounts);
-
-    useEffect(() => {
-        if (
-            autoSelectSingleAccount &&
-            accounts.length === 1 &&
-            !selectedAccountId
-        ) {
-            const accountId = accounts[0].id;
-
-            if (onAutoSelect) {
-                onAutoSelect(accountId);
-            } else {
-                onAccountSelect(accountId);
-            }
-
-            onNext();
-        }
-    }, [
-        accounts,
-        autoSelectSingleAccount,
-        onAccountSelect,
-        onAutoSelect,
-        onNext,
-        selectedAccountId,
-    ]);
 
     if (accounts.length === 0) {
         return (

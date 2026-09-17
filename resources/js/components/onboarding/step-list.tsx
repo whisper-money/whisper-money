@@ -49,6 +49,11 @@ interface StepRowProps {
      * billing), where onboarding-tall rows read as a flow leaking in.
      */
     size?: 'default' | 'compact';
+    /**
+     * Makes the row a toggle rather than a link: the check on the right is then
+     * a state a screen reader has to be told about, not decoration.
+     */
+    pressed?: boolean;
     onClick?: () => void;
 }
 
@@ -61,6 +66,7 @@ export function StepRow({
     badge,
     trailing,
     size = 'default',
+    pressed,
     onClick,
 }: StepRowProps) {
     const compact = size === 'compact';
@@ -123,6 +129,7 @@ export function StepRow({
     return (
         <button
             type="button"
+            aria-pressed={pressed}
             onClick={onClick}
             className={cn(
                 shared,
@@ -131,6 +138,32 @@ export function StepRow({
         >
             {content}
         </button>
+    );
+}
+
+/**
+ * A row lifted out of the hairline list and onto its own tinted card — the one
+ * line on a screen that is in the user's favour rather than a condition on it.
+ * Only the money-back window uses it, and it is meant to stay that way: a
+ * second highlight on the same screen makes both of them ordinary.
+ */
+export function StepHighlight({
+    icon: Icon,
+    title,
+    children,
+}: PropsWithChildren<{ icon: LucideIcon; title: string }>) {
+    return (
+        <div className="flex items-center gap-3.5 rounded-lg border border-success-border bg-success-fill px-4 py-3.5">
+            <Icon className="size-5 shrink-0 text-success" />
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-base leading-tight font-semibold text-success">
+                    {title}
+                </span>
+                <span className="text-sm leading-snug text-pretty text-muted-foreground">
+                    {children}
+                </span>
+            </span>
+        </div>
     );
 }
 

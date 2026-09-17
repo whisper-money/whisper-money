@@ -45,6 +45,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property int $visit_week_streak
  * @property int $longest_visit_week_streak
  * @property ?Carbon $onboarded_at
+ * @property ?array<string, mixed> $onboarding_answers
  * @property ?string $price_arm
  * @property ?string $signup_plan
  */
@@ -64,6 +65,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'password',
         'encryption_salt',
         'onboarded_at',
+        'onboarding_answers',
         'paywall_seen_at',
         'currency_code',
         'locale',
@@ -108,6 +110,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'trial_ends_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'onboarded_at' => 'datetime',
+            'onboarding_answers' => 'array',
             'paywall_seen_at' => 'datetime',
             'last_logged_in_at' => 'datetime',
             'last_active_at' => 'datetime',
@@ -137,6 +140,24 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function hasSeenPaywall(): bool
     {
         return $this->paywall_seen_at !== null;
+    }
+
+    /**
+     * Whether this reader is holding anything the paid plan gates, and so has
+     * something to hand back before the free plan is theirs.
+     *
+     * A bank connection always counts. An AI consent only counts alongside a
+     * subscription, because the consent is recorded when the checkout *starts*
+     * — somebody who read the gate, pressed the button and then closed Stripe
+     * has consented to nothing that ever ran: `AiCategorizationGate` checks the
+     * plan before every pass, so no data was sent. Counting that consent left
+     * them on a paywall with no free plan on it and no escape hatch either for
+     * the first few hours after onboarding.
+     */
+    public function hasPaidFeaturesToGiveUp(): bool
+    {
+        return $this->bankingConnections()->exists()
+            || ($this->hasActiveAiConsent() && $this->subscriptions()->exists());
     }
 
     /**

@@ -27,6 +27,7 @@ vi.mock('@/lib/session-expiry-recovery', () => ({
 const readyState = {
     available: true,
     consented: true,
+    previously_consented: true,
     requires_upgrade: false,
     eligible: true,
     transaction_count: 4000,
@@ -34,7 +35,12 @@ const readyState = {
     auto_select_confidence: 0.8,
     throttled: false,
     throttled_until: null,
-    run: { id: 'run-1', status: 'completed', suggestions_count: 1 },
+    run: {
+        id: 'run-1',
+        status: 'completed',
+        merchants_considered: 12,
+        suggestions_count: 1,
+    },
     suggestions: [
         {
             id: 'suggestion-1',
@@ -61,6 +67,7 @@ async function renderReviewScreen() {
         <StepAiSuggestions
             categories={[]}
             hasConnectedAccount={false}
+            onAddAccount={vi.fn()}
             onComplete={vi.fn()}
         />,
     );
@@ -69,7 +76,7 @@ async function renderReviewScreen() {
         await Promise.resolve();
     });
 
-    return screen.getByRole('button', { name: /Create 1 rules & apply/ });
+    return screen.getByRole('button', { name: /Apply 1 rule/ });
 }
 
 describe('StepAiSuggestions submit failures', () => {

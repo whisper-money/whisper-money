@@ -3,24 +3,23 @@
 namespace App\Http\Controllers\OpenBanking\Concerns;
 
 use App\Enums\PlanFeature;
-use App\Enums\SignupPlan;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 
 trait HandlesSubscriptionGate
 {
-    private function shouldBlockOpenBankingAccess(User $user, bool $allowDuringOnboarding = true): bool
+    /**
+     * A bank connection costs us money with the provider from the moment it is
+     * authorized, so it is never opened without a plan behind it — onboarding
+     * included. The wizard says so before it gets here: the gate in front of the
+     * bank picker sells the plan, and the checkout returns to the picker. This
+     * is the same rule enforced where it cannot be talked past.
+     */
+    private function shouldBlockOpenBankingAccess(User $user): bool
     {
         if (! config('subscriptions.enabled')) {
             return false;
-        }
-
-        if ($allowDuringOnboarding && ! $user->isOnboarded()) {
-            // Onboarding is open to everyone still choosing a plan, except the
-            // user who came in from the free card: the wizard offers them no
-            // bank connections, so the endpoint has to refuse them too.
-            return SignupPlan::fromRequest($user->signup_plan) === SignupPlan::Free;
         }
 
         return ! $user->canUseFeature(PlanFeature::ConnectedAccounts);

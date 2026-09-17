@@ -22,6 +22,7 @@ class SuggestionRun extends Model
         'user_id',
         'status',
         'transactions_considered',
+        'merchants_considered',
         'suggestions_count',
         'error',
     ];
@@ -31,6 +32,7 @@ class SuggestionRun extends Model
         return [
             'status' => SuggestionRunStatus::class,
             'transactions_considered' => 'integer',
+            'merchants_considered' => 'integer',
             'suggestions_count' => 'integer',
         ];
     }

@@ -1088,3 +1088,38 @@ it('reports the missing fields when adding loan details to an account that has n
 
     assertDatabaseMissing('loan_details', ['account_id' => $account->id]);
 });
+
+// The onboarding form offers the four loan fields as optional, and a user who
+// fills in the two they know by heart used to get an account created with the
+// rate and the term thrown away, no error, nothing to retry.
+it('refuses a new loan carrying only part of the detail it needs', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Prestamo coche',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+        'annual_interest_rate' => 5.9,
+        'loan_term_months' => 48,
+    ]);
+
+    $response->assertSessionHasErrors(['original_amount']);
+
+    expect(Account::where('user_id', $this->user->id)->count())->toBe(0);
+});
+
+it('still takes a new loan that brings no detail fields at all', function () {
+    actingAs($this->user);
+
+    $this->post(route('accounts.store'), [
+        'name' => 'Prestamo coche',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+    ])->assertSessionHasNoErrors();
+
+    $account = Account::where('user_id', $this->user->id)->sole();
+
+    assertDatabaseMissing('loan_details', ['account_id' => $account->id]);
+});

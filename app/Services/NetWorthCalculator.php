@@ -59,7 +59,7 @@ class NetWorthCalculator
         $total = 0;
 
         foreach ($accounts as $account) {
-            if (! $this->counts($account, $excludedTypes, $date)) {
+            if (! $this->countsOn($account, $excludedTypes, $date)) {
                 continue;
             }
 
@@ -70,9 +70,13 @@ class NetWorthCalculator
     }
 
     /**
+     * Whether an account is part of the total on that date. Public because the
+     * onboarding reveal lists the accounts behind the figure it prints, and a
+     * list built on its own rules would sooner or later disagree with the sum.
+     *
      * @param  list<AccountType>  $excludedTypes
      */
-    private function counts(Account $account, array $excludedTypes, Carbon $date): bool
+    public function countsOn(Account $account, array $excludedTypes, Carbon $date): bool
     {
         return $account->type->countsInNetWorth()
             && ! in_array($account->type, $excludedTypes, true)
@@ -80,11 +84,12 @@ class NetWorthCalculator
     }
 
     /**
-     * Liabilities are stored as positive magnitudes, so they always subtract.
-     * Assets keep their real sign, so an overdrawn checking account correctly
-     * reduces net worth instead of being flipped positive.
+     * What one account adds to, or takes off, the total. Liabilities are stored
+     * as positive magnitudes, so they always subtract. Assets keep their real
+     * sign, so an overdrawn checking account correctly reduces net worth instead
+     * of being flipped positive.
      */
-    private function contributionOf(Account $account, BalanceLookup $lookup, Carbon $date, string $userCurrency): int
+    public function contributionOf(Account $account, BalanceLookup $lookup, Carbon $date, string $userCurrency): int
     {
         $converted = $this->exchangeRateService->convert(
             $account->currency_code,

@@ -159,6 +159,20 @@ class Account extends Model
             : null);
     }
 
+    /**
+     * The last four of the IBAN, which is as much of it as a screen ever needs
+     * and all it may have: `iban` itself is hidden. Not appended by default —
+     * the onboarding hub asks for it explicitly, because it is the only thing
+     * telling apart seven accounts a Spanish bank returned under the holder's
+     * name.
+     */
+    protected function ibanTail(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->iban === null
+            ? null
+            : substr($this->iban, -4));
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

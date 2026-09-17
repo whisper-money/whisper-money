@@ -1,7 +1,7 @@
 import { type AccountFormData } from '@/components/accounts/account-form';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { StepCreateAccount } from './step-create-account';
+import { StepAccountsHub } from './step-accounts-hub';
 
 const { captureEvent } = vi.hoisted(() => ({ captureEvent: vi.fn() }));
 
@@ -39,7 +39,7 @@ vi.mock('@/components/accounts/account-form', () => ({
 
 async function submitManualAccount() {
     const { container } = render(
-        <StepCreateAccount
+        <StepAccountsHub
             banks={[]}
             isFirstAccount
             signupPlan="free"
@@ -52,7 +52,20 @@ async function submitManualAccount() {
     });
 }
 
-describe('StepCreateAccount analytics', () => {
+const EXISTING_ACCOUNT = {
+    id: 'account-1',
+    name: 'Cuenta Nómina',
+    name_iv: null,
+    encrypted: false,
+    type: 'checking' as const,
+    currency_code: 'EUR',
+    iban_tail: null,
+    bank_id: 'bank-1',
+    banking_connection_id: 'connection-1',
+    bank: { id: 'bank-1', name: 'BBVA', logo: null },
+};
+
+describe('StepAccountsHub analytics', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -84,5 +97,44 @@ describe('StepCreateAccount analytics', () => {
 
         expect(screen.getByText('Nope')).toBeInTheDocument();
         expect(captureEvent).not.toHaveBeenCalled();
+    });
+
+    // Which way out of the hub was taken is the one thing the step event cannot
+    // say, and the whole question this screen asks.
+    it('reports the route out of an empty hub', () => {
+        render(
+            <StepAccountsHub
+                banks={[]}
+                isFirstAccount
+                onAccountCreated={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByText('Add one myself'));
+
+        expect(captureEvent).toHaveBeenCalledWith(
+            'onboarding_accounts_hub_route',
+            { option: 'manual', accounts: 0 },
+        );
+    });
+
+    // The suggestions are what the hub is for, so a tap on one has to be
+    // distinguishable from adding an account the user already had in mind.
+    it('reports which missing account a suggestion was taken up on', () => {
+        render(
+            <StepAccountsHub
+                banks={[]}
+                isFirstAccount={false}
+                existingAccounts={[EXISTING_ACCOUNT]}
+                onAccountCreated={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByText('A mortgage or a loan'));
+
+        expect(captureEvent).toHaveBeenCalledWith(
+            'onboarding_accounts_hub_route',
+            { option: 'mortgage', accounts: 1 },
+        );
     });
 });

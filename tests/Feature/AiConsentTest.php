@@ -1,7 +1,11 @@
 <?php
 
+use App\Jobs\CategorizeUncategorizedTransactionsJob;
+use App\Models\Account;
 use App\Models\AiConsent;
+use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\actingAs;
 
@@ -76,4 +80,35 @@ it('dismisses the prompt without granting consent', function () {
 
     expect($user->refresh()->hasDismissedAiConsentPrompt())->toBeTrue()
         ->and($user->hasActiveAiConsent())->toBeFalse();
+});
+
+it('does not start the AI backfill while the user is still onboarding', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create();
+    $account = Account::factory()->for($user)->create();
+    Transaction::factory()->count(3)->for($user)->for($account)->plaintext()->create(['category_id' => null]);
+
+    actingAs($user)->postJson(route('ai.consent.store'))
+        ->assertOk()
+        ->assertJson(['consented' => true, 'categorization' => null]);
+
+    // The onboarding pass is `POST /onboarding/categorize`, fired when the user
+    // leaves the AI step — after the rules that step drafted have been seen.
+    Queue::assertNotPushed(CategorizeUncategorizedTransactionsJob::class);
+});
+
+it('still starts the AI backfill for a user who has finished onboarding', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $user->dismissAiConsentPrompt();
+    $account = Account::factory()->for($user)->create();
+    Transaction::factory()->count(3)->for($user)->for($account)->plaintext()->create(['category_id' => null]);
+
+    actingAs($user)->postJson(route('ai.consent.store'))
+        ->assertOk()
+        ->assertJsonPath('categorization.total', 3);
+
+    Queue::assertPushed(CategorizeUncategorizedTransactionsJob::class);
 });

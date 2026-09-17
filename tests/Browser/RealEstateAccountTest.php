@@ -10,7 +10,10 @@ use Carbon\Carbon;
 use function Pest\Laravel\actingAs;
 
 beforeEach(function () {
-    $this->user = User::factory()->onboarded()->create();
+    // The form opens on the currency the reader already keeps their money in,
+    // so there is no currency to pick here and no placeholder to click: it is
+    // set on the user instead, and every figure below is in it.
+    $this->user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     actingAs($this->user);
 });
 
@@ -44,10 +47,6 @@ it('auto-calculates revaluation percentage from purchase data and current value'
         ->click('Select account type')
         ->wait(1)
         ->click('[role="option"]:has-text("Real Estate")')
-        ->wait(1)
-        ->click('Select currency')
-        ->wait(1)
-        ->click('[role="option"]:has-text("EUR")')
         ->wait(1);
 
     // Fill current value (balance) — source input for CAGR calculation
@@ -81,10 +80,6 @@ it('manual revaluation percentage is preserved when balance changes', function (
         ->click('Select account type')
         ->wait(1)
         ->click('[role="option"]:has-text("Real Estate")')
-        ->wait(1)
-        ->click('Select currency')
-        ->wait(1)
-        ->click('[role="option"]:has-text("EUR")')
         ->wait(1);
 
     // Set purchase data so auto-calc fires initially
@@ -126,10 +121,6 @@ it('creates real estate account and generates historical balances', function () 
         ->click('Select account type')
         ->wait(1)
         ->click('[role="option"]:has-text("Real Estate")')
-        ->wait(1)
-        ->click('Select currency')
-        ->wait(1)
-        ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
         ->click('Select property type')
         ->wait(1)
@@ -230,10 +221,6 @@ it('redirects back to settings after creating an account', function () {
         ->click('Select account type')
         ->wait(1)
         ->click('[role="option"]:has-text("Real Estate")')
-        ->wait(1)
-        ->click('Select currency')
-        ->wait(1)
-        ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
         ->click('Select property type')
         ->wait(1)

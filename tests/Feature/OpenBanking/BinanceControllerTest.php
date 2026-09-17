@@ -141,7 +141,7 @@ test('binance auto-creates accounts during onboarding', function () {
 
     Queue::fake();
 
-    $user = User::factory()->notOnboarded()->create(['currency_code' => 'EUR']);
+    $user = User::factory()->notOnboarded()->subscribed()->create(['currency_code' => 'EUR']);
     Http::fake([
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [

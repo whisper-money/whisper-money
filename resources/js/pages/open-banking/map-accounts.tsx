@@ -16,22 +16,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { usableCurrency } from '@/lib/banking-connections';
 import type { Account } from '@/types/account';
 import type { BankingConnection, PendingBankAccount } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-/**
- * Banks don't always report a usable currency: EnableBanking sends XXX, the ISO 4217
- * code for "no currency". Treat that as unknown rather than as a real code.
- */
-function usableCurrency(reported: string | null | undefined): string | null {
-    const currency = (reported ?? '').trim().toUpperCase();
-
-    return currency === '' || currency === 'XXX' ? null : currency;
-}
 
 interface Mapping {
     bank_account_uid: string;

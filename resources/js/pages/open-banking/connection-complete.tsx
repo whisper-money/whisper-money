@@ -1,54 +1,117 @@
+import { StepButton } from '@/components/onboarding/step-button';
+import { StepList, StepRow } from '@/components/onboarding/step-list';
+import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { Check, RefreshCw, RotateCcw } from 'lucide-react';
 
 interface ConnectionCompleteProps {
     status: 'success' | 'error';
     message: string;
+    bank?: string | null;
 }
 
+/**
+ * Where an iOS PWA's bank redirect lands: Safari gets the return URL, the app
+ * session does not exist there, and `AuthorizationController::finishRedirect`
+ * has nowhere behind auth to send the user.
+ *
+ * The connection itself is already finished server-side by the time this
+ * renders, so the page's whole job is to say so and give the user a way back —
+ * which until now it did not have, not even a link.
+ */
 export default function ConnectionComplete({
     status,
     message,
+    bank = null,
 }: ConnectionCompleteProps) {
     const isSuccess = status === 'success';
+
     const title = isSuccess
-        ? __('Bank account connected')
+        ? bank
+            ? __(':bank sent you here', { bank })
+            : __('Your bank sent you here')
         : __('Connection unsuccessful');
 
     return (
-        <>
+        <div className="flex min-h-svh flex-col bg-background">
             <Head title={title} />
 
-            <div className="flex min-h-svh flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
-                <main className="flex flex-1 items-center justify-center px-6 py-32">
-                    <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-8 text-center">
-                        {isSuccess ? (
-                            <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/60">
-                                <CheckCircle2 className="size-8 text-emerald-600 dark:text-emerald-300" />
-                            </div>
-                        ) : (
-                            <div className="flex size-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/60">
-                                <XCircle className="size-8 text-red-600 dark:text-red-300" />
-                            </div>
-                        )}
+            {/* The bank opens this page in a browser of its own choosing, so it
+                gets none of the onboarding chrome — including the header that
+                would otherwise keep the title off the top edge. */}
+            <div className="pt-safe min-h-14 shrink-0 md:min-h-18" />
 
-                        <div className="flex flex-col gap-3">
-                            <h1 className="font-heading text-3xl font-semibold sm:text-4xl">
-                                {title}
-                            </h1>
-                            <p className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
-                                {message}
-                            </p>
-                            <p className="text-base text-[#706f6c] dark:text-[#A1A09A]">
-                                {__(
-                                    'You can close this window and go back to the app to continue.',
+            <StepScreen
+                title={title}
+                description={
+                    isSuccess
+                        ? __(
+                              'Your bank opened this in a different browser than the one you started in, so we can’t see your session from here.',
+                          )
+                        : message
+                }
+                footer={
+                    <>
+                        <StepButton text={__('Open Whisper')} href="/" />
+                        <StepNote>
+                            {isSuccess
+                                ? __('Same account, same progress.')
+                                : __(
+                                      'Nothing was created, and nothing was charged.',
+                                  )}
+                        </StepNote>
+                    </>
+                }
+            >
+                {isSuccess && (
+                    <>
+                        <StepList>
+                            <StepRow
+                                icon={Check}
+                                title={__('The connection worked')}
+                                description={
+                                    bank
+                                        ? __(
+                                              ':bank confirmed it. Nothing to redo.',
+                                              { bank },
+                                          )
+                                        : __(
+                                              'Your bank confirmed it. Nothing to redo.',
+                                          )
+                                }
+                            />
+                            <StepRow
+                                icon={RefreshCw}
+                                title={__(
+                                    'Your history is already downloading',
                                 )}
-                            </p>
-                        </div>
-                    </div>
-                </main>
-            </div>
-        </>
+                                description={__(
+                                    'It keeps going in the background, whether this tab is open or not.',
+                                )}
+                            />
+                        </StepList>
+
+                        <p className="rounded-lg bg-muted px-4.5 py-4 text-sm leading-normal text-pretty text-muted-foreground">
+                            {__(
+                                'Go back to the Whisper tab or app you started in — everything is there, already moving. This tab can be closed.',
+                            )}
+                        </p>
+                    </>
+                )}
+
+                {!isSuccess && (
+                    <StepList>
+                        <StepRow
+                            icon={RotateCcw}
+                            title={__('You can try again')}
+                            description={__(
+                                'Open Whisper in the tab or app you started in and connect your bank from there.',
+                            )}
+                        />
+                    </StepList>
+                )}
+            </StepScreen>
+        </div>
     );
 }

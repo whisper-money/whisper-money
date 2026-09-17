@@ -175,11 +175,11 @@ export function AiSuggestionCard({
 
     const previewSummary = (() => {
         if (previewFailed) {
-            return __('We couldn’t check which transactions match.');
+            return __('We couldn’t check which movements match.');
         }
 
         if (previewData) {
-            return __(':count of :total uncategorized transactions match', {
+            return __(':count of :total uncategorized movements match', {
                 count: previewData.match_count,
                 total: previewData.total_uncategorized,
             });
@@ -275,8 +275,8 @@ export function AiSuggestionCard({
                     </span>
                     <span className="shrink-0 text-[13px] text-muted-foreground">
                         {previewFailed
-                            ? __('? matches')
-                            : __(':count matches', { count: matchCount })}
+                            ? __('? movements')
+                            : __(':count movements', { count: matchCount })}
                     </span>
                     <ChevronDown
                         className={`size-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -379,7 +379,7 @@ export function AiSuggestionCard({
                     >
                         <TextSearch className="size-4 shrink-0" />
                         <span className="truncate">
-                            {__('Preview :count matching transactions', {
+                            {__('Preview :count matching movements', {
                                 count: matchCount,
                             })}
                         </span>
@@ -390,7 +390,7 @@ export function AiSuggestionCard({
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-h-[85vh] gap-0 overflow-hidden p-0 sm:max-w-2xl">
                     <DialogHeader className="space-y-1 p-6 pb-4">
-                        <DialogTitle>{__('Matching transactions')}</DialogTitle>
+                        <DialogTitle>{__('Matching movements')}</DialogTitle>
                         <DialogDescription>{previewSummary}</DialogDescription>
                     </DialogHeader>
 
@@ -402,9 +402,7 @@ export function AiSuggestionCard({
                             </div>
                         ) : previewFailed ? (
                             <p className="p-8 text-center text-sm text-muted-foreground">
-                                {__(
-                                    'We couldn’t check which transactions match.',
-                                )}
+                                {__('We couldn’t check which movements match.')}
                             </p>
                         ) : (
                             <Table>

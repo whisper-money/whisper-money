@@ -1,39 +1,31 @@
 import { StepButton } from '@/components/onboarding/step-button';
+import { StepList, StepRow } from '@/components/onboarding/step-list';
+import { StepScreen } from '@/components/onboarding/step-screen';
+import { PlanPicker } from '@/components/subscription/plan-picker';
 import {
-    StepChevron,
-    StepList,
-    StepRow,
-    StepSectionLabel,
-} from '@/components/onboarding/step-list';
-import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
-import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
+    SubscriptionOffer,
+    useOffer,
+} from '@/components/subscription/subscription-offer';
 import { SupportDialog } from '@/components/support-dialog';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { useLocale } from '@/hooks/use-locale';
 import SubscriptionLayout from '@/layouts/subscription-layout';
 import { captureEvent } from '@/lib/posthog';
 import { dashboard } from '@/routes';
-import { index as connectionsIndex } from '@/routes/settings/connections';
-import { checkout, freePlan } from '@/routes/subscribe';
+import { confirm as freePlanConfirm } from '@/routes/subscribe/free-plan';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Landmark, LifeBuoy, Plug, Sparkles } from 'lucide-react';
+import { Check, CircleAlert, LifeBuoy, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 
 interface PaywallStats {
     accountsCount: number;
     transactionsCount: number;
     categoriesCount: number;
+    rulesCount: number;
+    connectionsCount: number;
+    /** When the plan ended, for the screen that is about a plan that ended. */
+    endedAt: string | null;
 }
 
 interface PaywallPageProps extends SharedData {
@@ -50,16 +42,18 @@ interface PaywallPageProps extends SharedData {
 }
 
 /**
- * Which of the three screens the user gets. The two server flags are mutually
- * exclusive today, but reading them at seven separate sites left the incoherent
- * combination renderable; collapsing them once makes it unrepresentable.
+ * Which of the three screens the user gets.
+ *
+ * `soft` is the only one a signup reaching this today can land on: a bank and
+ * the AI both now require a plan before they can be switched on, so nobody
+ * finishes onboarding owing us anything. The other two are the users who got
+ * into that state under the old rules, and the users who paid and stopped.
  */
 type PaywallGate = 'former-subscriber' | 'soft' | 'hard';
 
 export default function Paywall() {
     const {
         auth,
-        locale,
         pricing,
         stats,
         canUseFreePlan,
@@ -67,9 +61,9 @@ export default function Paywall() {
         canManageConnectionsForFreePlan,
     } = usePage<PaywallPageProps>().props;
 
-    const [selectedPlan, setSelectedPlan] = useState(pricing.defaultPlan);
+    const locale = useLocale();
     const [supportOpen, setSupportOpen] = useState(false);
-    const [freePlanOpen, setFreePlanOpen] = useState(false);
+    const { selectedPlan, setSelectedPlan, hasPlans, button } = useOffer();
 
     const gate: PaywallGate = canManageConnectionsForFreePlan
         ? 'former-subscriber'
@@ -78,8 +72,8 @@ export default function Paywall() {
           : 'hard';
 
     // The gates that have something to disconnect, once the delay after
-    // onboarding is up. Derived once so the button and the confirmation it
-    // opens cannot drift apart.
+    // onboarding is up. Derived once so the button and the screen it opens
+    // cannot drift apart.
     const freeDoorOpen = gate !== 'soft' && canEscapeToFreePlan;
 
     // This is the highest-leverage screen in the product and it carried no
@@ -90,20 +84,15 @@ export default function Paywall() {
         captureEvent('paywall_viewed', { gate });
     }, [gate]);
 
-    if (Object.keys(pricing.plans).length === 0) {
+    if (!hasPlans) {
         return null;
     }
 
-    const title =
-        gate === 'former-subscriber'
-            ? __('Your plan has ended')
-            : __('Choose your plan');
+    const isFormer = gate !== 'soft';
 
-    const terms = planTerms(
-        pricing.plans[selectedPlan],
-        pricing.currency,
-        locale,
-    );
+    const title = isFormer
+        ? __('Your plan ended')
+        : __('One thing left to decide');
 
     const continueFree = () => {
         captureEvent('paywall_free_plan_chosen');
@@ -112,7 +101,7 @@ export default function Paywall() {
 
     const openFreePlanConfirmation = () => {
         captureEvent('paywall_free_plan_confirm_opened', { gate });
-        setFreePlanOpen(true);
+        router.visit(freePlanConfirm().url);
     };
 
     return (
@@ -122,51 +111,38 @@ export default function Paywall() {
             <StepScreen
                 title={title}
                 description={gateDescription(gate, stats, locale)}
-                // Not pinned: a 229px sticky footer painted over both plan
-                // rows on any window under ~900px tall.
+                // Not pinned: a tall sticky footer painted over both plan rows
+                // on any window under ~900px tall.
                 footer={
                     <>
-                        {gate !== 'former-subscriber' && (
-                            <StepNote>
-                                {__(
-                                    '4,000+ people have signed up. We never sell your data.',
-                                )}
-                            </StepNote>
-                        )}
+                        {button}
 
-                        {terms && <StepNote emphasis>{terms}</StepNote>}
-
-                        <StepButton
-                            text={__('Start a plan')}
-                            href={checkout.url({
-                                query: { plan: selectedPlan },
-                            })}
-                        />
-
-                        {/* On the soft gate the way out is here from the
-                            first paint: there is nothing to disconnect and
-                            nothing to warn about, so a timed reveal would only
-                            hide a choice the user is entitled to make. The
-                            other two gates are asking the user to give up the
-                            bank they just connected, which is a consequence
-                            that has to be explained rather than offered in
-                            passing — so the door waits out the delay after
-                            onboarding, leaving room to choose a plan first.
-                            The wait itself is never named on screen: the button
-                            is simply there or it is not. */}
+                        {/* On the soft gate the way out is here from the first
+                            paint: there is nothing to disconnect and nothing to
+                            warn about, so a timed reveal would only hide a
+                            choice the user is entitled to make. The other two
+                            gates are asking the user to give up the bank they
+                            connected, which is a consequence that has to be
+                            explained rather than offered in passing — so the
+                            door waits out the delay after onboarding, leaving
+                            room to choose a plan first. The wait itself is never
+                            named on screen: the button is simply there or it is
+                            not. */}
                         {gate === 'soft' ? (
                             <StepButton
-                                text={__('Continue with the free plan')}
+                                text={__('Carry on free')}
                                 variant="ghost"
                                 onClick={continueFree}
+                                data-testid="carry-on-free"
                             />
                         ) : (
                             <>
                                 {freeDoorOpen && (
                                     <StepButton
-                                        text={__('Continue with the free plan')}
+                                        text={__('Stay on the free plan')}
                                         variant="ghost"
                                         onClick={openFreePlanConfirmation}
+                                        data-testid="carry-on-free"
                                     />
                                 )}
 
@@ -181,57 +157,47 @@ export default function Paywall() {
                     </>
                 }
             >
-                {gate !== 'former-subscriber' && <PaidFeatures />}
-
-                <PlanPicker
-                    plans={pricing.plans}
-                    currency={pricing.currency}
-                    selectedPlan={selectedPlan}
-                    onSelect={setSelectedPlan}
-                />
-
-                {/* The manual route through Settings is the way out only
-                    while the confirmed one is still held back: two ways to
-                    reach the same free plan, on the same screen, is a choice
-                    the user has no way to make. */}
-                {gate === 'former-subscriber' && !freeDoorOpen && (
-                    <div>
-                        <StepSectionLabel>{__('Or go free')}</StepSectionLabel>
+                {isFormer ? (
+                    <>
+                        <WhatIsLeft stats={stats} locale={locale} />
+                        <PlanPicker
+                            plans={pricing.plans}
+                            currency={pricing.currency}
+                            selectedPlan={selectedPlan}
+                            onSelect={setSelectedPlan}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <SubscriptionOffer
+                            selectedPlan={selectedPlan}
+                            onSelect={setSelectedPlan}
+                        />
                         <StepList>
                             <StepRow
-                                icon={Landmark}
-                                title={__('Disconnect your banks')}
+                                icon={Check}
+                                title={__('Free keeps working')}
                                 description={__(
-                                    'In Settings, under Connections.',
+                                    'Manual accounts, imports, categories, budgets, reports',
                                 )}
-                                meta={__(
-                                    'Your accounts stop updating. Every transaction already imported stays.',
+                            />
+                            <StepRow
+                                icon={Sparkles}
+                                title={__('Standard adds the tedious part')}
+                                description={__(
+                                    'Bank sync, AI sorting, unlimited accounts',
                                 )}
-                                trailing={<StepChevron />}
-                                onClick={() =>
-                                    router.visit(connectionsIndex().url)
-                                }
                             />
                         </StepList>
-                    </div>
+                    </>
                 )}
             </StepScreen>
 
-            {gate !== 'soft' && (
+            {isFormer && (
                 <SupportDialog
                     open={supportOpen}
                     onOpenChange={setSupportOpen}
                     user={auth.user}
-                />
-            )}
-
-            {freeDoorOpen && (
-                <FreePlanDialog
-                    open={freePlanOpen}
-                    onOpenChange={setFreePlanOpen}
-                    onConfirm={() =>
-                        captureEvent('paywall_free_plan_confirmed', { gate })
-                    }
                 />
             )}
         </SubscriptionLayout>
@@ -239,183 +205,101 @@ export default function Paywall() {
 }
 
 /**
- * The confirmation behind the way down to the free plan. It names the three
- * paid features that switch off — the same three the screen sells above — and
- * says outright that the imported data stays, because "we disconnect your
- * banks" reads as "we delete my transactions" to most people.
+ * What a former subscriber still has, and what stopped. The first line is the
+ * reassurance the screen exists to give — "your plan ended" reads as "you lost
+ * your data" to most people — and the two below it are what starting again
+ * would turn back on.
  */
-function FreePlanDialog({
-    open,
-    onOpenChange,
-    onConfirm,
+function WhatIsLeft({
+    stats,
+    locale,
 }: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    /** Fired as the request goes out, so the choice can be measured. */
-    onConfirm: () => void;
+    stats: PaywallStats;
+    locale: string;
 }) {
-    const [isLeaving, setIsLeaving] = useState(false);
-
-    const chooseFreePlan = () => {
-        onConfirm();
-        setIsLeaving(true);
-
-        // The server redirects to the dashboard on success, so there is nothing
-        // to do here but report a refusal — a rejected request that left the
-        // dialog sitting there would read as "it worked".
-        router.post(
-            freePlan.url(),
-            {},
-            {
-                onError: () =>
-                    toast.error(
-                        __(
-                            'We could not move you to the free plan. Try again.',
-                        ),
-                    ),
-                onFinish: () => setIsLeaving(false),
-            },
-        );
-    };
-
-    return (
-        <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>
-                        {__('Continue with the free plan?')}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                        {__(
-                            'The free plan does not include the paid features, so they are switched off:',
-                        )}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-
-                <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-                    <li>
-                        {__(
-                            'Connected banks are disconnected and stop syncing.',
-                        )}
-                    </li>
-                    <li>{__('AI suggestions are switched off.')}</li>
-                    <li>
-                        {__('The AI assistant loses access to your finances.')}
-                    </li>
-                    <li className="font-medium text-foreground">
-                        {__(
-                            'Your accounts and every transaction already imported stay. You can start a plan again whenever you want.',
-                        )}
-                    </li>
-                </ul>
-
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isLeaving}>
-                        {__('Cancel')}
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={(event) => {
-                            // Without this the dialog closes before the request
-                            // goes out, taking the pending state with it.
-                            event.preventDefault();
-                            chooseFreePlan();
-                        }}
-                        disabled={isLeaving}
-                    >
-                        {isLeaving
-                            ? __('Disconnecting...')
-                            : __('Disconnect and continue')}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    );
-}
-
-/**
- * What a paid plan actually adds — the three features `App\Enums\PlanFeature`
- * gates. Not the config `features` array, most of which the free plan already
- * does: there is no account or transaction limit anywhere in the app, and the
- * landing page correctly lists "unlimited" as a free-plan property.
- */
-function PaidFeatures() {
     return (
         <StepList>
             <StepRow
-                icon={Landmark}
-                title={__('Connected banks')}
-                description={__('Transactions and balances sync themselves.')}
+                icon={Check}
+                title={
+                    stats.transactionsCount === 1
+                        ? __('1 movement')
+                        : __(':count movements', {
+                              count: stats.transactionsCount.toLocaleString(
+                                  locale,
+                              ),
+                          })
+                }
+                description={__('Still here, still categorised')}
             />
-            <StepRow
-                icon={Sparkles}
-                title={__('AI suggestions')}
-                description={__(
-                    'Rules learned from how you already categorize.',
-                )}
-            />
-            <StepRow
-                icon={Plug}
-                title={__('Your AI assistant')}
-                description={__('Ask Claude or ChatGPT about your finances.')}
-            />
+            {stats.accountsCount > 0 && (
+                <StepRow
+                    icon={CircleAlert}
+                    title={
+                        stats.accountsCount === 1
+                            ? __('1 account')
+                            : __(':count accounts', {
+                                  count: stats.accountsCount,
+                              })
+                    }
+                    description={__('No longer syncing')}
+                />
+            )}
+            {stats.rulesCount > 0 && (
+                <StepRow
+                    icon={CircleAlert}
+                    title={
+                        stats.rulesCount === 1
+                            ? __('1 rule')
+                            : __(':count rules', { count: stats.rulesCount })
+                    }
+                    description={__('Paused until you come back')}
+                />
+            )}
         </StepList>
     );
 }
 
 /**
- * Each gate argues the one thing that is true for it. The hard gate names what
- * the user already has here, because that is what is being withheld; the soft
- * gate does not, because nothing is.
+ * Each gate argues the one thing that is true for it. The soft gate is the only
+ * one that can say nothing is locked, and it says so first: a user who reached
+ * the end of onboarding without a bank and without the AI is being offered
+ * something, not cut off.
  */
 function gateDescription(
     gate: PaywallGate,
     stats: PaywallStats,
     locale: string,
 ): string {
-    if (gate === 'former-subscriber') {
-        return __(
-            'Your connected banks stopped syncing. Start a plan to turn them back on, or disconnect them and keep going for free.',
-        );
-    }
-
     if (gate === 'soft') {
         return __(
-            'Bank syncing, AI suggestions and the AI assistant need a paid plan. Everything else in Whisper Money stays free.',
+            'Nothing is locked and nothing is about to be cut off — you got here without a bank or the AI. This is just the offer.',
         );
-    }
-
-    const opening = __('Bank syncing and AI suggestions need a paid plan.');
-    const snapshot = snapshotSentence(stats, locale);
-
-    return snapshot ? `${opening} ${snapshot}` : opening;
-}
-
-/**
- * The one personal, honest argument on the page: the data the user has already
- * put in. Both counts have to be there for the sentence to read, so it is
- * dropped whole rather than degrading into "0 transactions".
- */
-function snapshotSentence(stats: PaywallStats, locale: string): string | null {
-    if (stats.accountsCount === 0 || stats.transactionsCount === 0) {
-        return null;
     }
 
     const accounts =
-        stats.accountsCount === 1
-            ? __('1 account')
-            : __(':count accounts', {
-                  count: stats.accountsCount.toLocaleString(locale),
+        stats.connectionsCount === 1
+            ? __('Your account stopped syncing')
+            : __('Your :count accounts stopped syncing', {
+                  count: stats.connectionsCount,
               });
 
-    const transactions =
-        stats.transactionsCount === 1
-            ? __('1 transaction')
-            : __(':count transactions', {
-                  count: stats.transactionsCount.toLocaleString(locale),
-              });
+    return __(
+        ':accounts:on. Everything you imported before that is still here and still yours.',
+        { accounts, on: endedOn(stats.endedAt, locale) },
+    );
+}
 
-    return __('Your :accounts and :transactions are already here.', {
-        accounts,
-        transactions,
+/** " on 12 August", or nothing at all when there is no date to name. */
+function endedOn(endedAt: string | null, locale: string): string {
+    if (endedAt === null) {
+        return '';
+    }
+
+    return __(' on :date', {
+        date: new Date(endedAt).toLocaleDateString(locale, {
+            day: 'numeric',
+            month: 'long',
+        }),
     });
 }

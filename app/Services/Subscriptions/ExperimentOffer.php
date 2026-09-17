@@ -55,13 +55,15 @@ class ExperimentOffer
      * Whether the variant charges upfront: no trial on any plan. That is what
      * earns the money-back window — the user has already been charged, so the
      * only way back out is a refund.
+     *
+     * Legacy is answered the same way as any variant rather than refused
+     * outright: the plans themselves now charge in full at signup, so a user
+     * with no variant is an upfront payer and has the same refund to claim. A
+     * `trial` variant, or a trial put back on the plans, takes it away again
+     * for whoever it applies to.
      */
     private function paysUpfront(string $variant): bool
     {
-        if ($variant === SubscriptionExperiment::LEGACY) {
-            return false;
-        }
-
         foreach (self::PLAN_KEYS as $planKey) {
             if ($this->trialDaysForVariant($variant, $planKey) > 0) {
                 return false;

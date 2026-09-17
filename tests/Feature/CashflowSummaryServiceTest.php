@@ -65,6 +65,28 @@ it('avoids division by zero when income is zero', function () {
         ->and($summary['net'])->toBe(0);
 });
 
+it('never reports keeping more than everything that came in', function () {
+    $user = User::factory()->create(['currency_code' => 'EUR']);
+    record($user, CategoryType::Income, 341800);
+    // An expense row that credits the account: a refund month, or a bank whose
+    // rows all arrive as credits. The net keeps saying so; the rate does not.
+    record($user, CategoryType::Expense, 1326400);
+
+    $summary = thisMonthsSummary($user);
+
+    expect($summary['savings_rate'])->toBe(100)
+        ->and($summary['expense'])->toBe(-1326400)
+        ->and($summary['net'])->toBe(1668200);
+});
+
+it('still reports overspending as the negative rate it is', function () {
+    $user = User::factory()->create(['currency_code' => 'EUR']);
+    record($user, CategoryType::Income, 100000);
+    record($user, CategoryType::Expense, -300000);
+
+    expect(thisMonthsSummary($user)['savings_rate'])->toBe(-200.0);
+});
+
 it('rounds the savings rate to one decimal place', function () {
     $user = User::factory()->create(['currency_code' => 'EUR']);
     record($user, CategoryType::Income, 100000);

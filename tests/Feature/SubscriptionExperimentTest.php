@@ -36,12 +36,27 @@ it('treats a null (guest) scope as legacy', function () {
     expect((new SubscriptionExperiment)->resolve(null))->toBe(SubscriptionExperiment::LEGACY);
 });
 
-it('treats everyone as legacy while the experiment is off', function () {
+/**
+ * The variants are declared long before the experiment starts — they are in
+ * config right now, with no start date. Storing a legacy assignment for every
+ * user met in the meantime would split the cohort the moment the date is set,
+ * because a stored assignment is never resolved again.
+ */
+it('treats everyone as legacy, and stores nothing, while the start date is unset', function () {
     config(['subscriptions.experiment.started_at' => null]);
 
     $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
 
     expect(app(ExperimentOffer::class)->variantFor($user))->toBe(SubscriptionExperiment::LEGACY);
+    expect(DB::table('features')->where('name', SubscriptionExperiment::class)->count())->toBe(0);
+});
+
+it('ships with the declared experiment dormant', function () {
+    // Straight off config/subscriptions.php: two branches, declared and off.
+    $this->refreshApplication();
+
+    expect(SubscriptionExperiment::variants())->toBe(['pay_now', 'trial'])
+        ->and(config('subscriptions.experiment.started_at'))->toBeNull();
 });
 
 it('treats everyone as legacy, and stores nothing, while no variant is declared', function () {
@@ -117,7 +132,10 @@ it('applies the assigned variant trial at checkout', function () {
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
-    $builder->shouldReceive('trialDays')->once()->with(3)->andReturnSelf();
+    $builder->shouldReceive('trialUntil')
+        ->once()
+        ->with(Mockery::on(fn ($trialEnd) => now()->diffInDays($trialEnd, absolute: false) >= 3))
+        ->andReturnSelf();
     $checkout = Mockery::mock(Checkout::class);
     $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
     $builder->shouldReceive('checkout')->once()->andReturn($checkout);

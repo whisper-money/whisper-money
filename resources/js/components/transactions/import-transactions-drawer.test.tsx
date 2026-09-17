@@ -117,10 +117,11 @@ async function reachPreview() {
             open
             onOpenChange={vi.fn()}
             accounts={[account]}
-            autoSelectSingleAccount
         />,
     );
 
+    fireEvent.click(await screen.findByRole('radio'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     fireEvent.click(await screen.findByText('leave upload'));
     fireEvent.click(await screen.findByText('leave mapping'));
 

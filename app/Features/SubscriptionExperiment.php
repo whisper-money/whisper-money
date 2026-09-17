@@ -29,14 +29,20 @@ class SubscriptionExperiment
      * to the winning variant once the experiment is decided, so flipping
      * SUBSCRIPTION_EXPERIMENT_FORCE_VARIANT rolls the winner out to everyone
      * without a deploy and without rewriting stored assignments. It also answers
-     * "legacy" while no experiment is declared, so a dormant instrument writes no
+     * "legacy" while no experiment is running, so a dormant instrument writes no
      * assignment rows at all.
+     *
+     * "Not running" is both halves: no variant declared, and no start date. The
+     * variants are declared long before the experiment starts, and without the
+     * start date in here every user met in the meantime would be stored as
+     * legacy — which is exactly the split the start date exists to avoid, since
+     * a stored assignment is never resolved again.
      */
     public function before(?User $user): ?string
     {
         $variants = self::variants();
 
-        if ($variants === []) {
+        if ($variants === [] || config('subscriptions.experiment.started_at') === null) {
             return self::LEGACY;
         }
 
