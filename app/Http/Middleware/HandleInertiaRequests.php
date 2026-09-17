@@ -124,7 +124,7 @@ class HandleInertiaRequests extends Middleware
             ...$this->userCollectionProps($user),
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
             'hasEncryptionSetup' => $user?->encryption_salt !== null,
-            'hasTransactionalAccounts' => $this->hasTransactionalAccounts($user),
+            'hasTransactionalAccounts' => fn (): bool => $this->hasTransactionalAccounts($user),
             'hasEncryptedTransactions' => $hasEncryptedTransactions,
             'locale' => $this->formatLocaleFor($request, $user),
             'translations' => $this->getTranslations(),
@@ -153,6 +153,13 @@ class HandleInertiaRequests extends Middleware
      *
      * Mirrors the frontend `filterTransactionalAccounts`: the types that carry
      * a ledger, minus anything archived.
+     *
+     * Shared as a closure so it costs an `exists()` on a page render and
+     * nothing at all on the JSON endpoints that pass through this middleware
+     * without ever building an Inertia response. Reading it off the shared
+     * `accounts` list instead would be worse, not better: every page that
+     * renders a list of its own overrides that prop, so the shared one is
+     * never resolved and asking for it would add three queries, not save one.
      */
     private function hasTransactionalAccounts(?User $user): bool
     {

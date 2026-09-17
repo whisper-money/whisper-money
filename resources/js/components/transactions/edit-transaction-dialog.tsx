@@ -1302,10 +1302,16 @@ export function EditTransactionDialog({
                                     <FormLabel htmlFor="amount">
                                         {__('Amount')}
                                     </FormLabel>
-                                    <div className="flex items-stretch gap-3">
+                                    {/* Side by side is too tight for the
+                                        number on a phone: the toggle, the
+                                        currency picker and the amount cannot
+                                        share 390px without clipping it, so
+                                        they stack until there is room. */}
+                                    <div className="flex flex-col items-stretch gap-3 sm:flex-row">
                                         <ToggleGroup
                                             type="single"
                                             variant="outline"
+                                            className="w-full sm:w-fit"
                                             value={transactionType}
                                             onValueChange={(value) => {
                                                 if (value) {
@@ -1320,14 +1326,14 @@ export function EditTransactionDialog({
                                         >
                                             <ToggleGroupItem
                                                 value="expense"
-                                                className="h-11 px-4"
+                                                className="h-11 flex-1 px-4"
                                                 data-testid="transaction-type-expense"
                                             >
                                                 {__('Expense')}
                                             </ToggleGroupItem>
                                             <ToggleGroupItem
                                                 value="income"
-                                                className="h-11 px-4"
+                                                className="h-11 flex-1 px-4"
                                                 data-testid="transaction-type-income"
                                             >
                                                 {__('Income')}
