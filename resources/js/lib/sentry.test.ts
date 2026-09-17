@@ -266,6 +266,17 @@ describe('isOutlookSafeLinksNoise', () => {
 
         expect(isOutlookSafeLinksNoise(event)).toBe(false);
     });
+
+    it('keeps a rejection that only echoes the scanner wording', () => {
+        // Without the Id/ParamCount numbers it is not the scanner's fingerprint,
+        // so the filter must stay out of the way rather than match the words.
+        const event = exceptionEvent(
+            'UnhandledRejection',
+            'Non-Error promise rejection captured with value: Object Not Found Matching Id, MethodName, ParamCount',
+        );
+
+        expect(isOutlookSafeLinksNoise(event)).toBe(false);
+    });
 });
 
 describe('isPostMessageDataCloneNoise', () => {
