@@ -1212,6 +1212,9 @@ describe('EditTransactionDialog', () => {
             'whisper_money_last_transaction_account',
             'account-1',
         );
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText('0.00')).toHaveFocus();
+        });
     });
 
     // `storedKey` stays null on purpose: an account off the legacy encryption

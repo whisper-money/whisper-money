@@ -224,6 +224,7 @@ export function EditTransactionDialog({
     const defaultAccountId = useRef('');
     const defaultDate = useRef('');
     const amountInputRef = useRef<HTMLInputElement>(null);
+    const [focusAmountAfterSave, setFocusAmountAfterSave] = useState(false);
     const [accountId, setAccountId] = useState<string>('');
     const [currencyCode, setCurrencyCode] =
         useState<CurrencyCode>(userCurrencyCode);
@@ -366,6 +367,18 @@ export function EditTransactionDialog({
 
         decryptAccountNames();
     }, [open, accounts]);
+
+    useEffect(() => {
+        if (!focusAmountAfterSave || isSubmitting) {
+            return;
+        }
+
+        // The amount is disabled while the save is in flight, and focusing a
+        // disabled input does nothing, so this waits for the render that
+        // enables it again.
+        amountInputRef.current?.focus();
+        setFocusAmountAfterSave(false);
+    }, [focusAmountAfterSave, isSubmitting]);
 
     async function checkAndApplyAutomationRules() {
         if (mode !== 'create' || automationRules.length === 0) {
@@ -673,7 +686,7 @@ export function EditTransactionDialog({
                     // the category is a bucket a batch tends to share.
                     setNotes('');
                     setShowNotes(false);
-                    amountInputRef.current?.focus();
+                    setFocusAmountAfterSave(true);
                 } else {
                     onOpenChange(false);
                 }
