@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
@@ -123,6 +124,7 @@ class HandleInertiaRequests extends Middleware
             ...$this->userCollectionProps($user),
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
             'hasEncryptionSetup' => $user?->encryption_salt !== null,
+            'hasTransactionalAccounts' => $this->hasTransactionalAccounts($user),
             'hasEncryptedTransactions' => $hasEncryptedTransactions,
             'locale' => $this->formatLocaleFor($request, $user),
             'translations' => $this->getTranslations(),
@@ -140,6 +142,33 @@ class HandleInertiaRequests extends Middleware
             // the list never exists twice, once in PHP and once in TypeScript.
             'formatLocales' => $this->formatLocales->codes(),
         ];
+    }
+
+    /**
+     * Whether the reader has anywhere to file a manual transaction.
+     *
+     * The add-transaction button lives in the app chrome, so it is drawn for
+     * someone who signed up a minute ago and owns no account yet: it needs to
+     * say why it is off rather than open a dialog with an empty account picker.
+     *
+     * Mirrors the frontend `filterTransactionalAccounts`: the types that carry
+     * a ledger, minus anything archived.
+     */
+    private function hasTransactionalAccounts(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        $ledgerTypes = array_filter(
+            AccountType::cases(),
+            fn (AccountType $type): bool => $type->hasTransactionLedger(),
+        );
+
+        return $user->accounts()
+            ->whereNull('archived_at')
+            ->whereIn('type', array_values($ledgerTypes))
+            ->exists();
     }
 
     /**

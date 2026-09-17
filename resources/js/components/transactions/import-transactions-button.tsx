@@ -1,4 +1,3 @@
-import { index as importDataRoute } from '@/actions/App/Http/Controllers/Api/ImportDataController';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -6,43 +5,19 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { type Account, type Bank } from '@/types/account';
-import { type AutomationRule } from '@/types/automation-rule';
-import { type Category } from '@/types/category';
+import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
 import { __ } from '@/utils/i18n';
 import { Upload } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
-
-interface ImportData {
-    accounts: Account[];
-    categories: Category[];
-    banks: Bank[];
-    automationRules: AutomationRule[];
-}
 
 export function ImportTransactionsButton() {
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [importData, setImportData] = useState<ImportData | null>(null);
-    const [loading, setLoading] = useState(false);
+    const { data: importData, loading, load } = useTransactionDialogData();
 
     const handleOpenDrawer = async () => {
-        // Fetch data on-demand when drawer opens
-        setLoading(true);
-        try {
-            const response = await fetch(importDataRoute.url());
-            if (!response.ok) {
-                throw new Error('Failed to load import data');
-            }
-            const data = await response.json();
-            setImportData(data);
+        if (await load()) {
             setDrawerOpen(true);
-        } catch (error) {
-            toast.error(__('Failed to load import data'));
-            console.error(error);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -53,19 +28,16 @@ export function ImportTransactionsButton() {
                     <TooltipTrigger asChild>
                         <Button
                             variant="ghost"
-                            // Icon only until the sidebar takes over at `md`: the
-                            // mobile header also holds the lock, the bell and the
-                            // account, and the label was the one thing there that
-                            // was not an icon.
-                            className={`h-9 w-9 px-0 has-[>svg]:px-0 md:w-auto md:px-4 md:has-[>svg]:px-3 ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
+                            // Icon only at every width: adding a transaction is
+                            // the header's labelled action now, and two labels
+                            // next to each other read as a pair of equals when
+                            // importing is the rarer of the two.
+                            className={`h-9 w-9 px-0 has-[>svg]:px-0 ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
                             onClick={handleOpenDrawer}
                             disabled={loading}
                             aria-label={__('Import transactions')}
                         >
                             <Upload className="h-5 w-5" />
-                            <span className="hidden md:inline">
-                                {loading ? __('Loading...') : __('Import')}
-                            </span>
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>

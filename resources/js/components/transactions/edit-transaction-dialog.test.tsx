@@ -1,3 +1,4 @@
+import { captureEvent } from '@/lib/posthog';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
@@ -27,6 +28,10 @@ vi.mock('@/lib/key-storage', () => ({
 vi.mock('@/lib/crypto', () => ({
     decrypt: vi.fn(),
     importKey: vi.fn(),
+}));
+
+vi.mock('@/lib/posthog', () => ({
+    captureEvent: vi.fn(),
 }));
 
 vi.mock('@/lib/rule-engine', () => ({
@@ -95,8 +100,8 @@ vi.mock('@/components/ui/select', () => ({
             {children}
         </div>
     ),
-    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
-        <div>{children}</div>
+    SelectTrigger: ({ children, ...props }: React.ComponentProps<'div'>) => (
+        <div {...props}>{children}</div>
     ),
     SelectContent: ({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
@@ -254,6 +259,41 @@ describe('EditTransactionDialog', () => {
         linked_at: null,
     };
 
+    function renderCreateDialog(
+        props: Partial<React.ComponentProps<typeof EditTransactionDialog>> = {},
+    ) {
+        return render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+                initialAccountId="account-1"
+                {...props}
+            />,
+        );
+    }
+
+    async function fillAndSubmit(testId: string) {
+        fireEvent.change(
+            screen.getByPlaceholderText('Transaction description'),
+            { target: { value: 'Dinner' } },
+        );
+        const amountInput = screen.getByPlaceholderText('0.00');
+        fireEvent.change(amountInput, { target: { value: '25' } });
+        fireEvent.blur(amountInput);
+        fireEvent.click(screen.getByTestId(testId));
+
+        await waitFor(() => {
+            expect(transactionSyncService.create).toHaveBeenCalled();
+        });
+    }
+
     it('does not auto-select an account when no initialAccountId is given', () => {
         render(
             <EditTransactionDialog
@@ -346,21 +386,15 @@ describe('EditTransactionDialog', () => {
         );
     });
 
-    it('checks "update account balance" by default in create mode', () => {
-        render(
-            <EditTransactionDialog
-                transaction={null}
-                categories={[]}
-                accounts={[checkingAccount]}
-                banks={[]}
-                labels={[]}
-                open
-                onOpenChange={vi.fn()}
-                onSuccess={vi.fn()}
-                mode="create"
-                initialAccountId="account-1"
-            />,
+    it('offers to update the balance by default in create mode', () => {
+        renderCreateDialog();
+
+        expect(screen.getByTestId('balance-chip')).toHaveAttribute(
+            'aria-pressed',
+            'true',
         );
+
+        fireEvent.click(screen.getByTestId('toggle-more-options'));
 
         expect(screen.getByRole('checkbox')).toBeChecked();
     });
@@ -489,6 +523,10 @@ describe('EditTransactionDialog', () => {
                 initialAccountId="account-connected"
             />,
         );
+
+        expect(screen.queryByTestId('balance-chip')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByTestId('toggle-more-options'));
 
         expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
         expect(
@@ -1053,5 +1091,136 @@ describe('EditTransactionDialog', () => {
         expect(
             screen.queryByRole('button', { name: 'Delete' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('opens the create form collapsed, with the rest behind More options', () => {
+        renderCreateDialog();
+
+        expect(screen.queryByText('Category')).not.toBeInTheDocument();
+        expect(screen.queryByText('Labels')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Date')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Add note/ }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByTestId('date-chip')).toBeInTheDocument();
+        expect(screen.getByTestId('balance-chip')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByTestId('toggle-more-options'));
+
+        expect(screen.getByText('Category')).toBeInTheDocument();
+        expect(screen.getByText('Labels')).toBeInTheDocument();
+        expect(screen.getByLabelText('Date')).toBeInTheDocument();
+        expect(screen.queryByTestId('date-chip')).not.toBeInTheDocument();
+    });
+
+    it('leaves edit mode showing every field, with nothing to expand', () => {
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(screen.getByText('Category')).toBeInTheDocument();
+        expect(screen.getByLabelText('Date')).toBeInTheDocument();
+        expect(
+            screen.queryByTestId('toggle-more-options'),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId('date-chip')).not.toBeInTheDocument();
+    });
+
+    it('opens on the account the last manual transaction went to', () => {
+        vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+            key === 'whisper_money_last_transaction_account'
+                ? 'account-2'
+                : null,
+        );
+
+        renderCreateDialog({
+            accounts: [
+                checkingAccount,
+                { ...checkingAccount, id: 'account-2' },
+            ],
+            initialAccountId: null,
+        });
+
+        expect(screen.getByTestId('account-chip')).toBeInTheDocument();
+        expect(screen.getByTestId('account-value')).toHaveAttribute(
+            'data-value',
+            'account-2',
+        );
+    });
+
+    it('reveals the date field from the date chip', () => {
+        renderCreateDialog();
+
+        expect(screen.getByTestId('date-chip')).toHaveTextContent('Today');
+
+        fireEvent.click(screen.getByTestId('date-chip'));
+
+        expect(screen.getByLabelText('Date')).toBeInTheDocument();
+    });
+
+    it('turns the balance off from the chip and remembers the choice', () => {
+        renderCreateDialog();
+
+        fireEvent.click(screen.getByTestId('balance-chip'));
+
+        const chip = screen.getByTestId('balance-chip');
+        expect(chip).toHaveAttribute('aria-pressed', 'false');
+        expect(chip).toHaveTextContent('Leaves the balance alone');
+        expect(localStorage.setItem).toHaveBeenCalledWith(
+            'whisper_money_update_balance_on_transaction',
+            'false',
+        );
+    });
+
+    it('keeps the dialog open and the account when adding another', async () => {
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+        const onOpenChange = vi.fn();
+
+        renderCreateDialog({ onOpenChange });
+        await fillAndSubmit('submit-and-add-another');
+
+        expect(onOpenChange).not.toHaveBeenCalled();
+        expect(
+            screen.getByPlaceholderText('Transaction description'),
+        ).toHaveValue('');
+        expect(screen.getByTestId('account-value')).toHaveAttribute(
+            'data-value',
+            'account-1',
+        );
+        expect(localStorage.setItem).toHaveBeenCalledWith(
+            'whisper_money_last_transaction_account',
+            'account-1',
+        );
+    });
+
+    it('reports every created transaction with how it was entered', async () => {
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        renderCreateDialog({ origin: 'quick_add' });
+        await fillAndSubmit('submit-transaction');
+
+        expect(captureEvent).toHaveBeenCalledWith('transaction_created', {
+            source: 'manually_created',
+            origin: 'quick_add',
+            expanded: false,
+            saved_and_added_another: false,
+            account_chip_changed: false,
+            date_chip_changed: false,
+            rule_applied_category: false,
+        });
     });
 });
