@@ -25,6 +25,16 @@ const INERTIA_NETWORK_ERROR_PATTERN = /^network error \((.+)\)$/i;
 const FACEBOOK_IAB_JAVA_OBJECT_GONE_PATTERN =
     /Error invoking .+: Java object is gone/i;
 const SAFARI_CASHBACK_EXTENSION_PATTERN = /response\.cashbackReminder/i;
+// Office 365 / Outlook "Safe Links" scans links before a user follows them, and
+// its injected bridge object rejects a promise with this literal string. The
+// `Id:`/`MethodName:`/`ParamCount:` triple is the whole fingerprint — the event
+// arrives as an `UnhandledRejection` with no stacktrace, so the message is all
+// there is to match on. Anchoring on the triple rather than on "Non-Error promise
+// rejection captured" keeps our own rejected non-Error values reportable; if the
+// scanner ever changes the format this stops matching and the noise comes back,
+// which is the safe direction.
+const OUTLOOK_SAFE_LINKS_PATTERN =
+    /Object Not Found Matching Id:\d+, MethodName:\w+, ParamCount:\d+/i;
 const BROWSER_EXTENSION_URL_PATTERN =
     /^(chrome-extension|moz-extension|safari-web-extension|safari-extension|ms-browser-extension):\/\//i;
 
@@ -160,5 +170,13 @@ export function isSafariCashbackExtensionNoise(event: Event): boolean {
                 )
             );
         }) ?? false
+    );
+}
+
+export function isOutlookSafeLinksNoise(event: Event): boolean {
+    return (
+        event.exception?.values?.some((exception) =>
+            OUTLOOK_SAFE_LINKS_PATTERN.test(exception.value ?? ''),
+        ) ?? false
     );
 }
