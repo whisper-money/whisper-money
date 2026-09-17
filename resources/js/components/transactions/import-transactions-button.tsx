@@ -6,8 +6,8 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
+import { refreshPageAfterWrite } from '@/lib/refresh-page';
 import { __ } from '@/utils/i18n';
-import { router } from '@inertiajs/react';
 import { Upload } from 'lucide-react';
 import { useState } from 'react';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
@@ -52,8 +52,8 @@ export function ImportTransactionsButton() {
                     open={drawerOpen}
                     onOpenChange={setDrawerOpen}
                     // The page underneath was rendered before the import, so
-                    // it only learns about the new rows by reloading.
-                    onImportComplete={() => router.reload()}
+                    // it only learns about the new rows by re-rendering.
+                    onImportComplete={refreshPageAfterWrite}
                     accounts={importData.accounts}
                     categories={importData.categories}
                     banks={importData.banks}

@@ -7,12 +7,13 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
+import { refreshPageAfterWrite } from '@/lib/refresh-page';
 import { type SharedData } from '@/types';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { router, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 /**
  * Adding a transaction by hand from anywhere in the app. A quarter of active
@@ -26,7 +27,9 @@ export function AddTransactionButton() {
     // Set only by the toast's "Change category", which reopens the same dialog
     // on the transaction a rule just filed away out of sight.
     const [editing, setEditing] = useState<DecryptedTransaction | null>(null);
-    const [savedSomething, setSavedSomething] = useState(false);
+    // A ref, not state: the dialog reports the save and closes in the same
+    // batch, so a state flag would still read false in the close handler.
+    const savedSomething = useRef(false);
 
     const isDisabled = !hasTransactionalAccounts;
 
@@ -51,9 +54,9 @@ export function AddTransactionButton() {
 
         // The page underneath was rendered before any of this existed, so it
         // only learns about the new rows once the dialog is out of the way.
-        if (savedSomething) {
-            setSavedSomething(false);
-            router.reload();
+        if (savedSomething.current) {
+            savedSomething.current = false;
+            refreshPageAfterWrite();
         }
     }
 
@@ -93,7 +96,9 @@ export function AddTransactionButton() {
                     automationRules={data.automationRules}
                     open={open}
                     onOpenChange={handleOpenChange}
-                    onSuccess={() => setSavedSomething(true)}
+                    onSuccess={() => {
+                        savedSomething.current = true;
+                    }}
                     mode={editing ? 'edit' : 'create'}
                     origin="quick_add"
                     onRequestEdit={(created) => {

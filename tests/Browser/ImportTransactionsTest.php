@@ -14,9 +14,7 @@ it('can open import transactions drawer', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
+        ->click('button[aria-label="Import transactions"]')
         ->wait(0.5)
         ->assertSee('No accounts found')
         ->assertNoJavascriptErrors();
@@ -31,9 +29,7 @@ it('shows no accounts message when none exist', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
+        ->click('button[aria-label="Import transactions"]')
         ->wait(0.5)
         ->assertSee('No accounts found')
         ->assertNoJavascriptErrors();
@@ -48,9 +44,7 @@ it('can select account for import', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
+        ->click('button[aria-label="Import transactions"]')
         ->wait(0.5)
         // Test that drawer opens and shows appropriate message
         ->assertSee('No accounts found')
@@ -66,9 +60,7 @@ it('can upload a CSV file for import', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
+        ->click('button[aria-label="Import transactions"]')
         ->wait(0.5)
         // Test that drawer opens properly (shows no accounts state)
         ->assertSee('No accounts found')
@@ -84,9 +76,7 @@ it('can complete full import flow', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
+        ->click('button[aria-label="Import transactions"]')
         ->wait(0.5)
         // Test that import drawer opens (shows no accounts state)
         ->assertSee('No accounts found')
@@ -102,9 +92,7 @@ it('shows column mapping step after file upload', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
+        ->click('button[aria-label="Import transactions"]')
         ->wait(0.5)
         // Test that import drawer opens
         ->assertSee('No accounts found')
@@ -120,9 +108,7 @@ it('can navigate back through import steps', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
+        ->click('button[aria-label="Import transactions"]')
         ->wait(0.5)
         // Test that import drawer opens
         ->assertSee('No accounts found')
@@ -138,9 +124,7 @@ it('applies automation rules when importing transactions', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
+        ->click('button[aria-label="Import transactions"]')
         ->wait(0.5)
         // Test that import drawer opens
         ->assertSee('No accounts found')

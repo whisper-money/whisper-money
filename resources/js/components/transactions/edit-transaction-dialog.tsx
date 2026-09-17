@@ -31,6 +31,7 @@ import { decrypt, importKey } from '@/lib/crypto';
 import { fetchJson } from '@/lib/fetch-json';
 import { getStoredKey } from '@/lib/key-storage';
 import { captureEvent } from '@/lib/posthog';
+import { refreshPageAfterWrite } from '@/lib/refresh-page';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { canSplit } from '@/lib/transaction-splits';
@@ -521,7 +522,7 @@ export function EditTransactionDialog({
                         updateBalance: balanceWasUpdated,
                     });
                     sync();
-                    router.reload();
+                    refreshPageAfterWrite();
                 },
             },
         });
