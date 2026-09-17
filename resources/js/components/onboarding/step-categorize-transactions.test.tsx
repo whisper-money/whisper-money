@@ -78,13 +78,13 @@ const categories = [
     { id: 'category-1', name: 'Food' },
 ] as unknown as Category[];
 
-function renderStep(onComplete = vi.fn()) {
+function renderStep(onComplete = vi.fn(), queue = transactions) {
     render(
         <StepCategorizeTransactions
             categories={categories}
             accounts={[]}
             banks={[]}
-            transactions={transactions}
+            transactions={queue}
             onComplete={onComplete}
         />,
     );
@@ -122,6 +122,16 @@ describe('StepCategorizeTransactions gate', () => {
     afterEach(() => {
         vi.useRealTimers();
         update.mockReset();
+    });
+
+    // The minimum is min(5, what is left), so one is an ordinary case — the
+    // AI step often leaves exactly one behind — and it read "File 1 movements".
+    it('asks for a single movement in the singular', async () => {
+        renderStep(vi.fn(), transactions.slice(0, 1));
+        await act(async () => {});
+
+        expect(screen.queryByText(/File 1 movements/)).toBeNull();
+        expect(screen.getByText('File one movement to carry on')).toBeTruthy();
     });
 
     it('opens only once the minimum has really been categorized', async () => {

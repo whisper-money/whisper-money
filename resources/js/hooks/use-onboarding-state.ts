@@ -198,7 +198,12 @@ export interface CreatedAccount {
 }
 
 interface UseOnboardingStateOptions {
-    existingAccountsCount?: number;
+    /**
+     * The accounts the server already knows about, by id rather than by count:
+     * an account created in here is both in `createdAccounts` and in the prop
+     * once it refreshes, and adding the two up reported twice what the user had.
+     */
+    existingAccountIds?: string[];
     initialStep?: OnboardingStep;
     hasConnectedAccount?: boolean;
     skipAiSuggestions?: boolean;
@@ -212,7 +217,7 @@ interface UseOnboardingStateOptions {
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
     const {
-        existingAccountsCount = 0,
+        existingAccountIds = [],
         initialStep,
         hasConnectedAccount = false,
         skipAiSuggestions = false,
@@ -302,7 +307,10 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
      * separates someone who dropped out facing an empty screen from someone who
      * dropped out having already connected a bank.
      */
-    const accountsCount = createdAccounts.length + existingAccountsCount;
+    const accountsCount = new Set([
+        ...existingAccountIds,
+        ...createdAccounts.map((account) => account.id),
+    ]).size;
 
     useEffect(() => {
         // The effect re-runs whenever the counter changes and React StrictMode
@@ -373,6 +381,12 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
                 {
                     preserveState: true,
                     preserveScroll: true,
+                    // The endpoint answers with back(), which points at the step
+                    // the request left from. A user who moves on before it lands
+                    // gets ?step= rewritten to the step behind them, and since
+                    // the URL outranks the stored resume point, the next reload
+                    // walks them backwards over a question they already answered.
+                    preserveUrl: true,
                     only: ['onboardingAnswers'],
                 },
             );
@@ -408,8 +422,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         setHasSelectedConnectedAccount(true);
     }, []);
 
-    const isFirstAccount =
-        createdAccounts.length === 0 && existingAccountsCount === 0;
+    const isFirstAccount = accountsCount === 0;
 
     return {
         currentStep,

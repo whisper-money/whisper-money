@@ -361,13 +361,74 @@ describe('useOnboardingState', () => {
             renderHook(() =>
                 useOnboardingState({
                     initialStep: 'create-account',
-                    existingAccountsCount: 3,
+                    existingAccountIds: ['one', 'two', 'three'],
                 }),
             );
 
             expect(stepEvents()[0][1]).toMatchObject({
                 step: 'create-account',
                 accounts_count: 3,
+            });
+        });
+
+        // An account made in here lands in both lists as soon as the server
+        // props refresh, and adding the lists up counted it twice: five
+        // accounts were reported as nine.
+        it('counts an account made in here once, not once per list', () => {
+            const { result, rerender } = renderHook(
+                ({ ids }: { ids: string[] }) =>
+                    useOnboardingState({
+                        initialStep: 'create-account',
+                        existingAccountIds: ids,
+                    }),
+                { initialProps: { ids: ['bank-1'] } },
+            );
+
+            act(() => {
+                result.current.addCreatedAccount({
+                    id: 'manual-1',
+                    name: 'Hipoteca',
+                    type: 'loan',
+                    currencyCode: 'EUR',
+                });
+            });
+
+            // The props catch up with what the form already reported.
+            rerender({ ids: ['bank-1', 'manual-1'] });
+
+            act(() => {
+                result.current.goToStep('reveal');
+            });
+
+            expect(stepEvents().at(-1)?.[1]).toMatchObject({
+                step: 'reveal',
+                accounts_count: 2,
+            });
+        });
+
+        // The other half of the same sum: the form reports the account before
+        // the props know about it, and that one still has to be counted.
+        it('counts an account the server props have not caught up with yet', () => {
+            const { result } = renderHook(() =>
+                useOnboardingState({
+                    initialStep: 'create-account',
+                    existingAccountIds: [],
+                }),
+            );
+
+            act(() => {
+                result.current.addCreatedAccount({
+                    id: 'manual-1',
+                    name: 'Cuenta corriente',
+                    type: 'checking',
+                    currencyCode: 'EUR',
+                });
+                result.current.goToStep('import-transactions');
+            });
+
+            expect(stepEvents().at(-1)?.[1]).toMatchObject({
+                step: 'import-transactions',
+                accounts_count: 1,
             });
         });
 
@@ -497,6 +558,23 @@ describe('useOnboardingState', () => {
                     preserveState: true,
                     only: ['onboardingAnswers'],
                 }),
+            );
+        });
+
+        // back() answers with the URL the request left from, so a late reply
+        // would rewrite ?step= to the step behind the user — and the URL is
+        // what a reload resumes from.
+        it('leaves the URL alone while the answer is in flight', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.saveAnswer('goal', 'understand');
+            });
+
+            expect(post).toHaveBeenCalledWith(
+                '/onboarding/answers',
+                { goal: 'understand' },
+                expect.objectContaining({ preserveUrl: true }),
             );
         });
 

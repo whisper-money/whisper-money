@@ -256,9 +256,15 @@ export function StepCategorizeTransactions({
                         <>
                             <div className="flex items-baseline justify-between gap-3">
                                 <p className="text-[15px] font-medium">
-                                    {__('File :count movements to carry on', {
-                                        count: minimumRequired,
-                                    })}
+                                    {/* The minimum is min(5, what is left), so
+                                        one is an ordinary case and needs a
+                                        sentence that reads in the singular. */}
+                                    {minimumRequired === 1
+                                        ? __('File one movement to carry on')
+                                        : __(
+                                              'File :count movements to carry on',
+                                              { count: minimumRequired },
+                                          )}
                                 </p>
                                 <span className="shrink-0 text-sm font-semibold tabular-nums">
                                     {categorizedCount}/{minimumRequired}

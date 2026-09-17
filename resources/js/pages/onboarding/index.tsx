@@ -107,7 +107,7 @@ export default function Onboarding({
         addCreatedAccount,
         markConnectedAccountSelected,
     } = useOnboardingState({
-        existingAccountsCount: accounts.length,
+        existingAccountIds: accounts.map((account) => account.id),
         initialStep,
         hasConnectedAccount,
         skipAiSuggestions: isFreePlan,

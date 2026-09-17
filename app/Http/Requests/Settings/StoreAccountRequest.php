@@ -58,7 +58,13 @@ class StoreAccountRequest extends FormRequest
         $isLoan = $this->input('type') === AccountType::Loan->value;
 
         if ($isLoan) {
-            $rules = array_merge($rules, $this->loanDetailRules(), $this->linkedRealEstateAccountRules());
+            $rules = array_merge(
+                $rules,
+                // A brand new account has no detail row to update, so the loan
+                // fields are all or nothing.
+                $this->loanDetailRules(requireCompleteSet: true),
+                $this->linkedRealEstateAccountRules(),
+            );
         }
 
         return $rules;
