@@ -1,7 +1,12 @@
+import { importKey } from '@/lib/crypto';
 import { captureEvent } from '@/lib/posthog';
+import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type AutomationRule } from '@/types/automation-rule';
+import { type Category } from '@/types/category';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
+import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditTransactionDialog } from './edit-transaction-dialog';
 
@@ -21,8 +26,10 @@ vi.mock('@/hooks/use-locale', () => ({
     useLocale: () => 'en-US',
 }));
 
+let storedKey: string | null = null;
+
 vi.mock('@/lib/key-storage', () => ({
-    getStoredKey: () => null,
+    getStoredKey: () => storedKey,
 }));
 
 vi.mock('@/lib/crypto', () => ({
@@ -43,6 +50,7 @@ vi.mock('@/services/transaction-sync', () => ({
         create: vi.fn(),
         update: vi.fn(),
         getById: vi.fn(),
+        delete: vi.fn(),
     },
 }));
 
@@ -50,6 +58,7 @@ vi.mock('@inertiajs/react', () => ({
     router: {
         visit: vi.fn(),
         reload: vi.fn(),
+        delete: vi.fn(),
     },
     usePage: () => ({
         props: {
@@ -149,6 +158,7 @@ vi.mock('@/components/ui/dialog', () => ({
 
 describe('EditTransactionDialog', () => {
     beforeEach(() => {
+        storedKey = null;
         globalThis.ResizeObserver = class {
             observe() {}
             unobserve() {}
@@ -1202,6 +1212,50 @@ describe('EditTransactionDialog', () => {
         expect(localStorage.setItem).toHaveBeenCalledWith(
             'whisper_money_last_transaction_account',
             'account-1',
+        );
+    });
+
+    it('names the category a rule picked while the form was collapsed', async () => {
+        storedKey = 'a-key';
+        vi.mocked(importKey).mockResolvedValue({} as CryptoKey);
+        vi.mocked(evaluateRulesForNewTransaction).mockResolvedValue({
+            categoryId: 'category-1',
+            labelIds: [],
+            labels: [],
+            note: null,
+            noteIv: null,
+            rule: { title: 'Supermarkets' },
+        } as never);
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+        const onRequestEdit = vi.fn();
+
+        renderCreateDialog({
+            categories: [{ id: 'category-1', name: 'Groceries' } as Category],
+            automationRules: [{ id: 'rule-1' } as AutomationRule],
+            onRequestEdit,
+        });
+        await fillAndSubmit('submit-transaction');
+
+        const [message, options] = vi.mocked(toast.success).mock.calls.at(-1)!;
+        expect(message).toBe('Transaction saved');
+        expect(options!.description).toBe('A rule categorized it as Groceries');
+
+        options!.action!.onClick!(
+            null as unknown as React.MouseEvent<HTMLButtonElement>,
+        );
+        expect(onRequestEdit).toHaveBeenCalled();
+
+        await options!.cancel!.onClick!(
+            null as unknown as React.MouseEvent<HTMLButtonElement>,
+        );
+        expect(transactionSyncService.delete).toHaveBeenCalledWith('tx-new', {
+            updateBalance: true,
+        });
+        expect(captureEvent).toHaveBeenCalledWith(
+            'transaction_created',
+            expect.objectContaining({ rule_applied_category: true }),
         );
     });
 

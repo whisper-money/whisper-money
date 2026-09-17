@@ -217,8 +217,12 @@ export function EditTransactionDialog({
     // answer it for them. `transaction_created.expanded` carries the answer.
     const [expanded, setExpanded] = useState(false);
     const [showDateField, setShowDateField] = useState(false);
-    const [accountChipChanged, setAccountChipChanged] = useState(false);
-    const [dateChipChanged, setDateChipChanged] = useState(false);
+    // What the chips were filled with when the dialog opened, so a correction
+    // is told apart from a default that was already right. They deliberately
+    // survive "Save and add another": a default that was wrong for the first
+    // entry of a batch was wrong for the rest of it too.
+    const defaultAccountId = useRef('');
+    const defaultDate = useRef('');
     const amountInputRef = useRef<HTMLInputElement>(null);
     const [accountId, setAccountId] = useState<string>('');
     const [currencyCode, setCurrencyCode] =
@@ -288,8 +292,7 @@ export function EditTransactionDialog({
             setShowNotes(false);
             setExpanded(false);
             setShowDateField(false);
-            setAccountChipChanged(false);
-            setDateChipChanged(false);
+            defaultDate.current = today;
             const availableAccounts = filterTransactionalAccounts(accounts);
             // The page being read wins; otherwise the account the last manual
             // transaction went to, so the chip opens already filled in.
@@ -303,6 +306,7 @@ export function EditTransactionDialog({
                         readStoredValue(STORAGE_KEY_LAST_ACCOUNT),
                 );
             setAccountId(initialAccount?.id ?? '');
+            defaultAccountId.current = initialAccount?.id ?? '';
             setCurrencyCode(initialAccount?.currency_code ?? userCurrencyCode);
             setCategoryId('null');
             setSelectedLabelIds([]);
@@ -464,24 +468,12 @@ export function EditTransactionDialog({
     function handleAccountChange(nextAccountId: string) {
         setAccountId(nextAccountId);
 
-        if (mode === 'create') {
-            setAccountChipChanged(true);
-        }
-
         const nextCurrencyCode = accounts.find(
             (account) => account.id === nextAccountId,
         )?.currency_code;
 
         if (nextCurrencyCode) {
             handleCurrencyChange(nextCurrencyCode);
-        }
-    }
-
-    function handleDateChange(nextDate: string) {
-        setTransactionDate(nextDate);
-
-        if (mode === 'create') {
-            setDateChipChanged(true);
         }
     }
 
@@ -673,8 +665,9 @@ export function EditTransactionDialog({
                     origin,
                     expanded,
                     saved_and_added_another: addAnother,
-                    account_chip_changed: accountChipChanged,
-                    date_chip_changed: dateChipChanged,
+                    account_chip_changed:
+                        accountId !== defaultAccountId.current,
+                    date_chip_changed: transactionDate !== defaultDate.current,
                     rule_applied_category: ruleAppliedCategory,
                 });
 
@@ -1047,7 +1040,7 @@ export function EditTransactionDialog({
                 id="date"
                 type="date"
                 value={transactionDate}
-                onChange={(e) => handleDateChange(e.target.value)}
+                onChange={(e) => setTransactionDate(e.target.value)}
                 disabled={isSubmitting}
                 autoFocus={showDateField}
                 required
@@ -1138,7 +1131,11 @@ export function EditTransactionDialog({
             >
                 <CalendarDays className="size-3.5" />
                 {dateChipLabel}
-                <ChevronDown className="size-3.5" />
+                {showDateField ? (
+                    <ChevronUp className="size-3.5" />
+                ) : (
+                    <ChevronDown className="size-3.5" />
+                )}
             </Button>
 
             {/* The bank owns a connected account's balance, so there is
@@ -1170,6 +1167,33 @@ export function EditTransactionDialog({
                         : __('Leaves the balance alone')}
                 </Button>
             )}
+        </div>
+    );
+
+    // The collapsed form says this with the balance chip instead.
+    const balanceControl = selectedAccount?.banking_connection_id ? (
+        <p className="text-sm text-muted-foreground">
+            {__(
+                "This account's balance comes from your bank, so it won't change.",
+            )}
+        </p>
+    ) : (
+        <div className="flex items-center gap-2 pt-1">
+            <Checkbox
+                id="update-balance"
+                checked={updateAccountBalance}
+                onCheckedChange={(checked) =>
+                    handleUpdateBalanceChange(checked === true)
+                }
+                disabled={isSubmitting}
+            />
+
+            <FormLabel
+                htmlFor="update-balance"
+                className="cursor-pointer font-normal text-muted-foreground"
+            >
+                {__('Update account balance')}
+            </FormLabel>
         </div>
     );
 
@@ -1333,33 +1357,7 @@ export function EditTransactionDialog({
                                             )}
                                         </p>
                                     )}
-                                    {isMinimal ? null : selectedAccount?.banking_connection_id ? (
-                                        <p className="text-sm text-muted-foreground">
-                                            {__(
-                                                "This account's balance comes from your bank, so it won't change.",
-                                            )}
-                                        </p>
-                                    ) : (
-                                        <div className="flex items-center gap-2 pt-1">
-                                            <Checkbox
-                                                id="update-balance"
-                                                checked={updateAccountBalance}
-                                                onCheckedChange={(checked) =>
-                                                    handleUpdateBalanceChange(
-                                                        checked === true,
-                                                    )
-                                                }
-                                                disabled={isSubmitting}
-                                            />
-
-                                            <FormLabel
-                                                htmlFor="update-balance"
-                                                className="cursor-pointer font-normal text-muted-foreground"
-                                            >
-                                                {__('Update account balance')}
-                                            </FormLabel>
-                                        </div>
-                                    )}
+                                    {!isMinimal && balanceControl}
                                 </div>
 
                                 {descriptionField}

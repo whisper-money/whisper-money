@@ -59,6 +59,20 @@ enum AccountType: string
     }
 
     /**
+     * Every type that surfaces a transaction ledger, for the queries that have
+     * to name them rather than ask one case at a time.
+     *
+     * @return list<self>
+     */
+    public static function withTransactionLedger(): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            fn (self $type): bool => $type->hasTransactionLedger(),
+        ));
+    }
+
+    /**
      * Whether a bank connection can sync transactions into this account type.
      * Excludes balance/value-tracking types (loan, investment, retirement, real estate).
      */

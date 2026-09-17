@@ -160,14 +160,9 @@ class HandleInertiaRequests extends Middleware
             return false;
         }
 
-        $ledgerTypes = array_filter(
-            AccountType::cases(),
-            fn (AccountType $type): bool => $type->hasTransactionLedger(),
-        );
-
         return $user->accounts()
             ->whereNull('archived_at')
-            ->whereIn('type', array_values($ledgerTypes))
+            ->whereIn('type', AccountType::withTransactionLedger())
             ->exists();
     }
 

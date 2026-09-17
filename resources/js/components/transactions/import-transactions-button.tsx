@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
 import { __ } from '@/utils/i18n';
+import { router } from '@inertiajs/react';
 import { Upload } from 'lucide-react';
 import { useState } from 'react';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
@@ -50,6 +51,9 @@ export function ImportTransactionsButton() {
                 <ImportTransactionsDrawer
                     open={drawerOpen}
                     onOpenChange={setDrawerOpen}
+                    // The page underneath was rendered before the import, so
+                    // it only learns about the new rows by reloading.
+                    onImportComplete={() => router.reload()}
                     accounts={importData.accounts}
                     categories={importData.categories}
                     banks={importData.banks}
