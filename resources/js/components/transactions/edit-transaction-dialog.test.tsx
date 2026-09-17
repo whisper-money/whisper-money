@@ -1,4 +1,3 @@
-import { importKey } from '@/lib/crypto';
 import { captureEvent } from '@/lib/posthog';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -1215,9 +1214,9 @@ describe('EditTransactionDialog', () => {
         );
     });
 
+    // `storedKey` stays null on purpose: an account off the legacy encryption
+    // has none, and rules still have to run for it.
     it('names the category a rule picked while the form was collapsed', async () => {
-        storedKey = 'a-key';
-        vi.mocked(importKey).mockResolvedValue({} as CryptoKey);
         vi.mocked(evaluateRulesForNewTransaction).mockResolvedValue({
             categoryId: 'category-1',
             labelIds: [],

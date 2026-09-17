@@ -379,19 +379,12 @@ export function EditTransactionDialog({
             };
         }
 
+        // A key only exists for the accounts still on the legacy encryption, and
+        // the engine takes a null one: it is needed to read an encrypted account
+        // name, not to match a rule. Bailing out without one switched automation
+        // rules off entirely for every manually created transaction.
         const keyString = getStoredKey();
-        if (!keyString) {
-            return {
-                categoryId: null,
-                labelIds: [] as string[],
-                matchedLabels: [] as Label[],
-                notes: null,
-                notesIv: null,
-                ruleName: null,
-            };
-        }
-
-        const key = await importKey(keyString);
+        const key = keyString ? await importKey(keyString) : null;
 
         const result = await evaluateRulesForNewTransaction(
             {
@@ -426,7 +419,7 @@ export function EditTransactionDialog({
         let finalNotes = notes.trim();
         const finalNotesIv = null;
 
-        if (result.note && result.noteIv) {
+        if (result.note && result.noteIv && key) {
             const decryptedRuleNote = await decrypt(
                 result.note,
                 key,
