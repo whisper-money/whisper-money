@@ -18,7 +18,8 @@ interface ColumnMeta {
     cellClassName?: string;
 }
 
-function cellClassName(meta: unknown): string | undefined {
+/** Exported so pages rendering their own rows can style cells the same way. */
+export function cellClassName(meta: unknown): string | undefined {
     return (meta as ColumnMeta | undefined)?.cellClassName;
 }
 
