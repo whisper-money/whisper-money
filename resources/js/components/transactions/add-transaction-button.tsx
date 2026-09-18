@@ -9,7 +9,7 @@ import {
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
 import { refreshPageAfterWrite } from '@/lib/refresh-page';
 import { type SharedData } from '@/types';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
@@ -26,7 +26,7 @@ export function AddTransactionButton() {
     const [open, setOpen] = useState(false);
     // Set only by the toast's "Change category", which reopens the same dialog
     // on the transaction a rule just filed away out of sight.
-    const [editing, setEditing] = useState<DecryptedTransaction | null>(null);
+    const [editing, setEditing] = useState<ServerTransaction | null>(null);
     // A ref, not state: the dialog reports the save and closes in the same
     // batch, so a state flag would still read false in the close handler.
     const savedSomething = useRef(false);

@@ -136,8 +136,6 @@ class AccountMetricsService
             $config = [
                 'id' => $account->id,
                 'name' => $account->name,
-                'name_iv' => $account->name_iv,
-                'encrypted' => $account->encrypted,
                 'type' => $account->type,
                 'currency_code' => $account->currency_code,
                 'bank' => $account->bank,
@@ -217,8 +215,6 @@ class AccountMetricsService
                 $account->id => [
                     'id' => $account->id,
                     'name' => $account->name,
-                    'name_iv' => $account->name_iv,
-                    'encrypted' => $account->encrypted,
                     'type' => $account->type,
                     'currency_code' => $account->currency_code,
                     'bank' => $account->bank,

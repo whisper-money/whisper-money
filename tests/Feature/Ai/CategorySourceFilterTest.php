@@ -9,15 +9,15 @@ use function Pest\Laravel\actingAs;
 it('filters transactions to only AI-categorized ones', function () {
     $user = User::factory()->create();
 
-    $ai = Transaction::factory()->plaintext()->create([
+    $ai = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_source' => CategorySource::Ai,
     ]);
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_source' => CategorySource::Manual,
     ]);
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_source' => null,
     ]);
@@ -33,11 +33,11 @@ it('filters transactions to only AI-categorized ones', function () {
 
 it('applies and echoes the AI filter through the index route', function () {
     $user = User::factory()->onboarded()->create();
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_source' => CategorySource::Ai,
     ]);
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_source' => CategorySource::Manual,
     ]);

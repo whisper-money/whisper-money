@@ -17,7 +17,6 @@ class LoginResponse implements LoginResponseContract
      */
     public function toResponse($request): JsonResponse|RedirectResponse
     {
-        session()->flash('show_encryption_prompt', true);
         $this->authEntryPointService->queueReturningUserCookie();
 
         return $request->wantsJson()

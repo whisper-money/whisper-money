@@ -23,8 +23,6 @@ function existingAccount(
     overrides: Partial<ExistingAccount> & Pick<ExistingAccount, 'id' | 'name'>,
 ): ExistingAccount {
     return {
-        name_iv: null,
-        encrypted: false,
         type: 'checking',
         currency_code: 'EUR',
         iban_tail: null,

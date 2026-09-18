@@ -24,7 +24,7 @@ beforeEach(function () {
 
 function splittableTransaction(int $amount = -5340, ?string $description = null): Transaction
 {
-    return Transaction::factory()->plaintext()->create([
+    return Transaction::factory()->create([
         'user_id' => test()->user->id,
         'account_id' => test()->account->id,
         'category_id' => null,
@@ -312,7 +312,7 @@ it('lists the parts and not the original, with the other parts loaded', function
 });
 
 it('moves the budget from the original to the parts, and back again on merge', function () {
-    $original = Transaction::factory()->plaintext()->create([
+    $original = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $this->category->id,

@@ -25,7 +25,7 @@ it('learns a forward rule from an inline correction and lets the user undo it', 
     ]);
 
     // A supermarket purchase the AI mislabeled as Fuel — the exact complaint.
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $fuel->id,

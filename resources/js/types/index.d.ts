@@ -228,9 +228,6 @@ export interface SharedData {
     /** Null for guests. */
     challenges: Challenges | null;
     expiredBankingConnections: ExpiredBankingConnectionNotification[];
-    hasEncryptedAccounts: boolean;
-    hasEncryptedTransactions: boolean;
-    hasEncryptionSetup: boolean;
     /** Whether the user owns an account a manual transaction can be filed in. */
     hasTransactionalAccounts: boolean;
     locale: string;

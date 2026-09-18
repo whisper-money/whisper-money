@@ -134,7 +134,7 @@ export default function Privacy() {
                                 </li>
                                 <li>
                                     {__(
-                                        'To enable cloud synchronization of your\n                                    encrypted financial data across devices',
+                                        'To enable cloud synchronization of your\n                                    financial data across devices',
                                     )}
                                 </li>
                                 <li>

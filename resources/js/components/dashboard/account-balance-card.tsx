@@ -1,5 +1,4 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
-import { AccountName } from '@/components/accounts/account-name';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { BankLogo } from '@/components/bank-logo';
 import { AmountDisplay } from '@/components/ui/amount-display';
@@ -167,10 +166,7 @@ export function AccountBalanceCard({
                                 className="mr-2 inline-block size-5"
                             />
 
-                            <AccountName
-                                account={account}
-                                length={{ min: 5, max: 15 }}
-                            />
+                            {account.name}
                         </Link>
                     </CardTitle>
                     {hasMortgage && linkedLoanMetrics.loanAccount && (

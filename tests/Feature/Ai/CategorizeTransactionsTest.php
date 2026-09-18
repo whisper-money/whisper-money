@@ -37,7 +37,7 @@ function groceries(User $user): Category
 
 function uncategorized(User $user): Transaction
 {
-    return Transaction::factory()->plaintext()->create([
+    return Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'category_source' => null,
@@ -115,24 +115,6 @@ it('returns nothing when the user has no leaf categories', function () {
     $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
 
     expect($outcomes)->toBe([]);
-});
-
-it('never sends client-side encrypted transactions to the model', function () {
-    $user = User::factory()->create();
-    groceries($user);
-
-    $encrypted = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'category_id' => null,
-        'description_iv' => str_repeat('a', 16),
-    ]);
-
-    $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$encrypted]));
-
-    $encrypted->refresh();
-
-    expect($outcomes)->toBe([])
-        ->and($encrypted->category_id)->toBeNull();
 });
 
 it('drops the chunk, skips reporting and schedules a retry on a transient provider failure', function (Closure $makeFailure) {

@@ -13,8 +13,6 @@ describe('deriveAccountMetrics', () => {
                 loan_1: {
                     id: 'loan_1',
                     name: 'Mortgage',
-                    name_iv: null,
-                    encrypted: false,
                     type: 'loan',
                     currency_code: 'EUR',
                     bank: {
@@ -50,8 +48,6 @@ describe('deriveAccountMetrics', () => {
                 btc_1: {
                     id: 'btc_1',
                     name: 'Bitcoin Wallet',
-                    name_iv: null,
-                    encrypted: false,
                     type: 'investment',
                     currency_code: 'BTC',
                     bank: {
@@ -65,8 +61,6 @@ describe('deriveAccountMetrics', () => {
                 eur_1: {
                     id: 'eur_1',
                     name: 'Savings',
-                    name_iv: null,
-                    encrypted: false,
                     type: 'savings',
                     currency_code: 'EUR',
                     bank: {
@@ -128,8 +122,6 @@ describe('deriveAccountMetrics', () => {
                 inv_1: {
                     id: 'inv_1',
                     name: 'Portfolio',
-                    name_iv: null,
-                    encrypted: false,
                     type: 'investment',
                     currency_code: 'USD',
                     bank: {

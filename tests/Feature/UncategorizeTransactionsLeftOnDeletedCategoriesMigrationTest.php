@@ -13,7 +13,7 @@ function runUncategorizeTransactionsLeftOnDeletedCategoriesMigration(): void
 
 function transactionUnderRepair(Category $category): Transaction
 {
-    return Transaction::factory()->plaintext()->create([
+    return Transaction::factory()->create([
         'user_id' => $category->user_id,
         'account_id' => Account::factory()->create(['user_id' => $category->user_id])->id,
         'category_id' => $category->id,

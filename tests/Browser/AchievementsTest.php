@@ -165,7 +165,7 @@ it('asks for the uncategorized month, and stops asking once it is snoozed', func
 
     // The month in progress, which is the pile the nudge is about: the sweep
     // reads closed months, this asks about the one nobody has tidied yet.
-    Transaction::factory()->plaintext()->count(2)->create([
+    Transaction::factory()->count(2)->create([
         'user_id' => $user->id,
         'space_id' => $user->activeSpace()->id,
         'account_id' => Account::factory()->create([

@@ -10,7 +10,7 @@ use App\Models\User;
 it('casts the AI categorization fields on a transaction', function () {
     $rule = AutomationRule::factory()->ai()->for(User::factory())->create();
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'category_source' => CategorySource::Ai,
         'ai_confidence' => 0.873,
         'categorized_by_rule_id' => $rule->id,
@@ -24,7 +24,7 @@ it('casts the AI categorization fields on a transaction', function () {
 });
 
 it('hides the categorizing rule id from serialization but exposes the source', function () {
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'category_source' => CategorySource::Ai,
         'ai_confidence' => 0.5,
     ]);
@@ -65,7 +65,7 @@ it('records a category correction with casted fields', function () {
 });
 
 it('reports ai_categorized for a direct AI label', function () {
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'category_source' => CategorySource::Ai,
     ]);
 
@@ -76,7 +76,7 @@ it('reports ai_categorized when categorized by an AI-origin rule', function () {
     $user = User::factory()->create();
     $rule = AutomationRule::factory()->ai()->for($user)->create();
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_source' => CategorySource::Rule,
         'categorized_by_rule_id' => $rule->id,
@@ -90,7 +90,7 @@ it('does not report ai_categorized for a user-owned rule', function () {
     $user = User::factory()->create();
     $rule = AutomationRule::factory()->for($user)->create();
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_source' => CategorySource::Rule,
         'categorized_by_rule_id' => $rule->id,
@@ -101,7 +101,7 @@ it('does not report ai_categorized for a user-owned rule', function () {
 });
 
 it('does not report ai_categorized for a manual category', function () {
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'category_source' => CategorySource::Manual,
     ]);
 

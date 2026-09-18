@@ -1,5 +1,5 @@
 import {
-    type DecryptedTransaction,
+    type ServerTransaction,
     type TransactionFilters,
 } from '@/types/transaction';
 import { fireEvent, render, screen, within } from '@testing-library/react';
@@ -47,7 +47,7 @@ const emptyFilters: TransactionFilters = {
 
 function renderMenu(
     filters: TransactionFilters,
-    transactions: DecryptedTransaction[] = [],
+    transactions: ServerTransaction[] = [],
 ) {
     return render(
         <TransactionActionsMenu
@@ -57,8 +57,8 @@ function renderMenu(
     );
 }
 
-function uncategorized(id: string): DecryptedTransaction {
-    return { id, category_id: null } as DecryptedTransaction;
+function uncategorized(id: string): ServerTransaction {
+    return { id, category_id: null } as ServerTransaction;
 }
 
 function openMoreActionsMenu() {

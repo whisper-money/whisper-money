@@ -1,5 +1,5 @@
 import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
-import type { DecryptedTransaction } from '@/types/transaction';
+import type { ServerTransaction } from '@/types/transaction';
 import type { CellContext, ColumnDef } from '@tanstack/react-table';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -9,7 +9,7 @@ vi.mock('@/hooks/use-locale', () => ({
     useLocale: () => 'en-US',
 }));
 
-function categoryClassName(columns: ColumnDef<DecryptedTransaction>[]): string {
+function categoryClassName(columns: ColumnDef<ServerTransaction>[]): string {
     const category = columns.find(
         (column) =>
             'accessorKey' in column && column.accessorKey === 'category_id',
@@ -64,20 +64,20 @@ describe('createTransactionColumns amount', () => {
             // The account is in euros; the row is not, and the table shows the
             // row as it stands rather than converting it.
             currency_code: 'USD',
-        } as DecryptedTransaction;
+        } as ServerTransaction;
 
         render(
             <PrivacyModeProvider>
                 {(
                     amount?.cell as (
-                        context: CellContext<DecryptedTransaction, unknown>,
+                        context: CellContext<ServerTransaction, unknown>,
                     ) => React.ReactNode
                 )?.({
                     row: {
                         getValue: () => transaction.amount,
                         original: transaction,
                     },
-                } as unknown as CellContext<DecryptedTransaction, unknown>)}
+                } as unknown as CellContext<ServerTransaction, unknown>)}
             </PrivacyModeProvider>,
         );
 

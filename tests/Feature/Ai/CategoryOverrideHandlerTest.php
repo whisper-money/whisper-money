@@ -25,7 +25,7 @@ function cohCategory(User $user): Category
 
 function cohMerchantTxn(User $user, string $creditor): Transaction
 {
-    return Transaction::factory()->plaintext()->create([
+    return Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'amount' => -4300,
@@ -90,7 +90,7 @@ it('logs a correction for a direct ai label without any rule', function () {
     $from = cohCategory($user);
     $to = cohCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $from->id,
         'category_source' => CategorySource::Ai,
@@ -111,7 +111,7 @@ it('ignores corrections to a user-owned rule', function () {
     $to = cohCategory($user);
 
     $rule = AutomationRule::factory()->for($user)->create(['action_category_id' => $from->id]);
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $from->id,
         'category_source' => CategorySource::Rule,
@@ -129,7 +129,7 @@ it('ignores corrections to a manual category', function () {
     $from = cohCategory($user);
     $to = cohCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $from->id,
         'category_source' => CategorySource::Manual,
@@ -144,7 +144,7 @@ it('does nothing when the category is unchanged', function () {
     $user = User::factory()->create();
     $category = cohCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $category->id,
         'category_source' => CategorySource::Ai,
@@ -184,7 +184,7 @@ it('learns a description rule when there is no merchant key', function () {
     $user = User::factory()->create();
     $to = cohCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => cohCategory($user)->id,
         'category_source' => CategorySource::Ai,
@@ -205,7 +205,7 @@ it('learns a description rule when there is no merchant key', function () {
             ],
         ]);
 
-    $next = Transaction::factory()->plaintext()->create([
+    $next = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'creditor_name' => null,
@@ -224,7 +224,7 @@ it('does not learn an over-broad description rule', function () {
     $to = cohCategory($user);
 
     foreach (range(1, 5) as $ignored) {
-        Transaction::factory()->plaintext()->create([
+        Transaction::factory()->create([
             'user_id' => $user->id,
             'category_id' => null,
             'creditor_name' => null,
@@ -233,7 +233,7 @@ it('does not learn an over-broad description rule', function () {
         ]);
     }
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => cohCategory($user)->id,
         'category_source' => CategorySource::Ai,
@@ -316,7 +316,7 @@ it('learns a debtor_name rule when only the debtor is present', function () {
     $user = User::factory()->create();
     $to = cohCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => cohCategory($user)->id,
         'category_source' => CategorySource::Ai,
@@ -330,7 +330,7 @@ it('learns a debtor_name rule when only the debtor is present', function () {
 
     expect($learned->rules_json)->toBe(['==' => [['var' => 'debtor_name'], 'juan perez']]);
 
-    $next = Transaction::factory()->plaintext()->create([
+    $next = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'creditor_name' => null,
@@ -346,7 +346,7 @@ it('learns a single-token description rule as a bare contains clause', function 
     $user = User::factory()->create();
     $to = cohCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => cohCategory($user)->id,
         'category_source' => CategorySource::Ai,
@@ -359,27 +359,6 @@ it('learns a single-token description rule as a bare contains clause', function 
     $learned = app(CategoryOverrideHandler::class)->record($transaction, $to->id);
 
     expect($learned->rules_json)->toBe(['in' => ['spotify', ['var' => 'description']]]);
-});
-
-it('learns nothing from an encrypted-description transaction without a merchant', function () {
-    $user = User::factory()->create();
-    $to = cohCategory($user);
-
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'category_id' => cohCategory($user)->id,
-        'category_source' => CategorySource::Ai,
-        'ai_confidence' => 0.9,
-        'creditor_name' => null,
-        'debtor_name' => null,
-    ]);
-
-    expect($transaction->description_iv)->not->toBeNull();
-
-    $learned = app(CategoryOverrideHandler::class)->record($transaction, $to->id);
-
-    expect($learned)->toBeNull()
-        ->and(AutomationRule::query()->origin(RuleOrigin::Correction)->count())->toBe(0);
 });
 
 it('still applies the correction when learning blows up', function () {

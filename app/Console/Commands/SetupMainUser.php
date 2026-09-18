@@ -174,7 +174,6 @@ class SetupMainUser extends Command
                 'rules_json' => $ruleData['rules_json'],
                 'action_category_id' => $category->id,
                 'action_note' => $ruleData['action_note'] ?? null,
-                'action_note_iv' => $ruleData['action_note_iv'] ?? null,
                 'created_at' => $ruleData['created_at'] ?? now(),
                 'updated_at' => $ruleData['updated_at'] ?? now(),
             ]);

@@ -96,22 +96,17 @@ class AccountWriteService
     }
 
     /**
-     * The account's own columns. Encryption is gone, so every write clears the
-     * legacy flags rather than leaving stale ones behind.
+     * The account's own columns.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function accountAttributes(array $data): array
     {
-        return [
-            ...collect($data)->only([
-                'name', 'bank_id', 'currency_code', 'type',
-                'ownership_percentage', 'ownership_applies_to_balance',
-            ])->toArray(),
-            'encrypted' => false,
-            'name_iv' => null,
-        ];
+        return collect($data)->only([
+            'name', 'bank_id', 'currency_code', 'type',
+            'ownership_percentage', 'ownership_applies_to_balance',
+        ])->toArray();
     }
 
     /**

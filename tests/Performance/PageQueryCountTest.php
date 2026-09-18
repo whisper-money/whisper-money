@@ -157,7 +157,7 @@ test('dashboard query count does not scale with number of accounts', function ()
 
     $extraAccounts = Account::factory(7)->create(['user_id' => $this->user->id]);
     foreach ($extraAccounts as $index => $account) {
-        Transaction::factory(10)->plaintext()->create([
+        Transaction::factory(10)->create([
             'user_id' => $this->user->id,
             'account_id' => $account->id,
             'category_id' => $categories->random()->id,
@@ -182,7 +182,7 @@ test('transactions page query count does not scale with number of transactions',
     $category = $this->user->categories()->first();
 
     // Add 90 more transactions (120 total)
-    Transaction::factory(90)->plaintext()->create([
+    Transaction::factory(90)->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,

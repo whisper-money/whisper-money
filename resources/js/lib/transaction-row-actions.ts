@@ -1,5 +1,5 @@
 import { canSplit, isSplitPart } from '@/lib/transaction-splits';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 
 export interface TransactionRowAction {
@@ -12,13 +12,13 @@ export interface TransactionRowAction {
 }
 
 interface TransactionRowActionsOptions {
-    transaction: DecryptedTransaction;
-    onEdit: (transaction: DecryptedTransaction) => void;
-    onReEvaluateRules: (transaction: DecryptedTransaction) => void;
-    onAutomate: (transaction: DecryptedTransaction) => void;
-    onDelete: (transaction: DecryptedTransaction) => void;
-    onSplit: (transaction: DecryptedTransaction) => void;
-    onUnsplit: (transaction: DecryptedTransaction) => void;
+    transaction: ServerTransaction;
+    onEdit: (transaction: ServerTransaction) => void;
+    onReEvaluateRules: (transaction: ServerTransaction) => void;
+    onAutomate: (transaction: ServerTransaction) => void;
+    onDelete: (transaction: ServerTransaction) => void;
+    onSplit: (transaction: ServerTransaction) => void;
+    onUnsplit: (transaction: ServerTransaction) => void;
 }
 
 /**

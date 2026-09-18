@@ -6,7 +6,6 @@ use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
-use App\Jobs\PurgeResidualEncryptionArtifactsJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\Achievements\Catalog;
@@ -62,20 +61,6 @@ class HandleInertiaRequests extends Middleware
 
         $user = $request->user();
 
-        // Cache encryption checks to avoid duplicate queries
-        $hasEncryptedAccounts = $user?->accounts()->where('encrypted', true)->exists() ?? false;
-        $hasEncryptedTransactions = $user?->transactions()
-            ->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
-            ->exists() ?? false;
-
-        // A shared-data provider must stay read-only, so hand the residual
-        // encryption cleanup off to a queued job instead of mutating the user
-        // inline during the render. The job re-checks the condition and is
-        // idempotent, so dispatching it on repeat requests is harmless.
-        if ($this->hasResidualEncryptionArtifacts($request, $user, $hasEncryptedAccounts, $hasEncryptedTransactions)) {
-            PurgeResidualEncryptionArtifactsJob::dispatch($user);
-        }
-
         return [
             ...parent::share($request),
             'flash' => [
@@ -122,10 +107,7 @@ class HandleInertiaRequests extends Middleware
             'achievements' => fn (): ?array => $this->achievementsFor($request, $user),
             'challenges' => fn (): ?array => $this->challengesFor($request, $user),
             ...$this->userCollectionProps($user),
-            'hasEncryptedAccounts' => $hasEncryptedAccounts,
-            'hasEncryptionSetup' => $user?->encryption_salt !== null,
             'hasTransactionalAccounts' => fn (): bool => $this->hasTransactionalAccounts($user),
-            'hasEncryptedTransactions' => $hasEncryptedTransactions,
             'locale' => $this->formatLocaleFor($request, $user),
             'translations' => $this->getTranslations(),
             'currencies' => [
@@ -329,19 +311,6 @@ class HandleInertiaRequests extends Middleware
             'email' => config('app.demo.email'),
             'password' => config('app.demo.password'),
         ];
-    }
-
-    /**
-     * True when the user finished decrypting their data but the encryption salt
-     * and other artifacts are still on the row, so the cleanup job has work.
-     * Skipped for API requests, which are not a render path.
-     */
-    private function hasResidualEncryptionArtifacts(Request $request, ?User $user, bool $hasEncryptedAccounts, bool $hasEncryptedTransactions): bool
-    {
-        return ! $request->is('api/*')
-            && $user?->encryption_salt !== null
-            && ! $hasEncryptedAccounts
-            && ! $hasEncryptedTransactions;
     }
 
     /**

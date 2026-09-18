@@ -1,6 +1,5 @@
 import { update as updateLoanPreference } from '@/actions/App/Http/Controllers/Settings/NetWorthChartLoanPreferenceController';
 import { update as updateRealEstatePreference } from '@/actions/App/Http/Controllers/Settings/NetWorthChartRealEstatePreferenceController';
-import { AccountName } from '@/components/accounts/account-name';
 import {
     type ChartGranularity,
     ChartGranularityToggle,
@@ -123,14 +122,6 @@ function calculateTrend(
         previousAmount: previousTotal,
         currentAmount: currentTotal,
     };
-}
-
-interface EncryptedLabelProps {
-    account: { name: string; name_iv: string | null; encrypted: boolean };
-}
-
-function EncryptedLabel({ account }: EncryptedLabelProps) {
-    return <AccountName account={account} length={{ min: 5, max: 20 }} />;
 }
 
 export function NetWorthChart({
@@ -271,7 +262,7 @@ export function NetWorthChart({
         chartAccountIds.forEach((id) => {
             const account = assetAccounts[id];
             config[id] = {
-                label: account ? <EncryptedLabel account={account} /> : id,
+                label: account ? account.name : id,
             };
             if (account?.currency_code) {
                 currencies[id] = account.currency_code;

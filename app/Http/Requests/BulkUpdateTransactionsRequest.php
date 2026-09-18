@@ -36,7 +36,6 @@ class BulkUpdateTransactionsRequest extends FormRequest
             'filters.search_text' => ['nullable', 'string'],
             'category_id' => ['nullable', $this->userOwned('categories')],
             'notes' => ['nullable', 'string'],
-            'notes_iv' => ['nullable', 'string', 'size:16'],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['required', 'string', 'uuid', $this->userOwned('labels')],
         ];
@@ -50,7 +49,6 @@ class BulkUpdateTransactionsRequest extends FormRequest
             'filters.category_ids.*.exists' => 'One or more filter categories do not exist or do not belong to you.',
             'filters.label_ids.*.exists' => 'One or more filter labels do not exist or do not belong to you.',
             'label_ids.*.exists' => 'One or more selected labels do not exist or do not belong to you.',
-            'notes_iv.size' => 'The notes IV must be exactly 16 characters.',
         ];
     }
 }

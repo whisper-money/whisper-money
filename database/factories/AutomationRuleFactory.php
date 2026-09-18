@@ -29,7 +29,6 @@ class AutomationRuleFactory extends Factory
             ],
             'action_category_id' => null,
             'action_note' => null,
-            'action_note_iv' => null,
             'origin' => RuleOrigin::User,
         ];
     }

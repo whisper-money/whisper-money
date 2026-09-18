@@ -1,5 +1,4 @@
 import { store as storeBalance } from '@/actions/App/Http/Controllers/AccountBalanceController';
-import { importKey } from '@/lib/crypto';
 import { getCsrfToken } from '@/lib/csrf';
 import {
     autoDetectColumns,
@@ -8,7 +7,6 @@ import {
     parseFile,
 } from '@/lib/file-parser';
 import { loadImportConfig } from '@/lib/import-config-storage';
-import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
@@ -242,24 +240,19 @@ interface ImportTransactionsOptions {
 /** Rows are created this many at a time, in parallel within the batch. */
 const BATCH_SIZE = 20;
 
-/**
- * Apply the user's automation rules to a row about to be created. Rules run
- * client-side against the decryption key, so an account without one imports
- * uncategorized rather than not at all.
- */
-async function categorizeRow(
+/** Apply the user's automation rules to a row about to be created. */
+function categorizeRow(
     row: ParsedTransaction,
     options: ImportTransactionsOptions,
     rules: AutomationRule[],
-    key: CryptoKey,
-): Promise<{
+): {
     categoryId: string | null;
     notes: string | null;
     labelIds: string[];
-}> {
+} {
     const { account, categories, accounts, banks } = options;
 
-    const match = await evaluateRulesForNewTransaction(
+    const match = evaluateRulesForNewTransaction(
         {
             description: row.description,
             // A mapped CSV can carry a per-row currency, and the parser already
@@ -279,23 +272,15 @@ async function categorizeRow(
         categories,
         accounts,
         banks,
-        key,
     );
 
     if (!match) {
         return { categoryId: null, notes: null, labelIds: [] };
     }
 
-    let notes: string | null = null;
-
-    if (match.note && match.noteIv) {
-        const { decrypt } = await import('@/lib/crypto');
-        notes = await decrypt(match.note, key, match.noteIv);
-    }
-
     return {
         categoryId: match.categoryId ?? null,
-        notes,
+        notes: match.note ?? null,
         labelIds: match.labelIds ?? [],
     };
 }
@@ -343,9 +328,6 @@ export async function importTransactions(
 
     const imported = rows.map(() => false);
     const errors: ImportRowError[] = [];
-    const keyString = getStoredKey();
-    const key = keyString ? await importKey(keyString) : null;
-    const rules = key ? automationRules : [];
 
     let successCount = 0;
     let uncategorizedCount = 0;
@@ -357,8 +339,8 @@ export async function importTransactions(
         const results = await Promise.allSettled(
             batch.map(async (row) => {
                 const { categoryId, notes, labelIds } =
-                    key && rules.length > 0
-                        ? await categorizeRow(row, options, rules, key)
+                    automationRules.length > 0
+                        ? categorizeRow(row, options, automationRules)
                         : { categoryId: null, notes: null, labelIds: [] };
 
                 await transactionSyncService.create({
@@ -368,12 +350,10 @@ export async function importTransactions(
                     account_id: account.id,
                     category_id: categoryId,
                     description: row.description,
-                    description_iv: null,
                     transaction_date: row.transaction_date,
                     amount: row.amount,
                     currency_code: row.currency_code ?? account.currency_code,
                     notes,
-                    notes_iv: null,
                     creditor_name: row.creditor_name ?? null,
                     debtor_name: row.debtor_name ?? null,
                     source: 'imported' as const,

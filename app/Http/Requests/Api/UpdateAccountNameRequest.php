@@ -24,7 +24,6 @@ class UpdateAccountNameRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string'],
-            'encrypted' => ['required', 'boolean'],
         ];
     }
 }

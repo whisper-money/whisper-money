@@ -29,10 +29,6 @@ class CategorizeTransactions
      */
     public function forTransactions(User $user, Collection $transactions): array
     {
-        $transactions = $transactions->filter(
-            fn (Transaction $transaction): bool => $transaction->description_iv === null,
-        )->values();
-
         if ($transactions->isEmpty()) {
             return [];
         }

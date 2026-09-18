@@ -120,7 +120,6 @@ it('lets the last line clear the pinned footer at 390px', function () {
         ->count(903)
         ->for($user)
         ->for($account)
-        ->plaintext()
         ->sequence(fn ($sequence): array => [
             'creditor_name' => sprintf('COMERCIO %03d', $sequence->index % 40),
         ])

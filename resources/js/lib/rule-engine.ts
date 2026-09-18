@@ -1,12 +1,9 @@
-import { decrypt } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
 import type { Account, Bank } from '@/types/account';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
 import type { Label } from '@/types/label';
-import type { DecryptedTransaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
-import { toMajorUnits } from '@/utils/currency';
 import jsonLogic from 'json-logic-js';
 
 export interface RuleEvaluationResult {
@@ -15,7 +12,6 @@ export interface RuleEvaluationResult {
     labelIds: UUID[];
     labels: Label[];
     note: string | null;
-    noteIv: string | null;
 }
 
 export interface TransactionData {
@@ -74,166 +70,9 @@ function normalizeRuleJson(rulesJson: unknown): unknown {
     return rulesJson;
 }
 
-async function decryptAccountName(
-    account: Account,
-    key: CryptoKey | null,
-): Promise<string> {
-    if (!account.encrypted) {
-        return account.name.trim();
-    }
-
-    if (!key || !account.name_iv) {
-        return '';
-    }
-
-    try {
-        const decryptedAccountName = await decrypt(
-            account.name,
-            key,
-            account.name_iv,
-        );
-        return decryptedAccountName.trim();
-    } catch (error) {
-        console.error('Failed to decrypt account name:', account.id, error);
-        return '';
-    }
-}
-
 const normalizeWhitespace = (str: string): string => {
     return str.trim().replace(/\s+/g, ' ');
 };
-
-export async function prepareTransactionData(
-    transaction: DecryptedTransaction,
-    accounts: Account[],
-    banks: Bank[],
-    categories: Category[],
-    encryptionKey: CryptoKey | null,
-): Promise<TransactionData> {
-    const account = accounts.find((a) => a.id === transaction.account_id);
-    const bank = account?.bank?.id
-        ? banks.find((b) => b.id === account.bank.id)
-        : undefined;
-    const category = transaction.category_id
-        ? categories.find((c) => c.id === transaction.category_id)
-        : null;
-    const accountName = account
-        ? await decryptAccountName(account, encryptionKey)
-        : '';
-
-    return {
-        description: normalizeWhitespace(
-            (transaction.decryptedDescription || '').toLowerCase(),
-        ),
-        amount: toMajorUnits(transaction.amount, transaction.currency_code),
-        transaction_date: transaction.transaction_date,
-        bank_name: (bank?.name || '').toLowerCase(),
-        account_name: accountName.toLowerCase(),
-        category: category?.name || null,
-        notes: transaction.decryptedNotes
-            ? normalizeWhitespace(transaction.decryptedNotes.toLowerCase())
-            : null,
-        creditor_name: transaction.creditor_name
-            ? normalizeWhitespace(transaction.creditor_name.toLowerCase())
-            : null,
-        debtor_name: transaction.debtor_name
-            ? normalizeWhitespace(transaction.debtor_name.toLowerCase())
-            : null,
-    };
-}
-
-export async function evaluateRules(
-    transaction: DecryptedTransaction,
-    rules: AutomationRule[],
-    categories: Category[],
-    accounts: Account[],
-    banks: Bank[],
-    encryptionKey: CryptoKey | null,
-): Promise<RuleEvaluationResult | null> {
-    const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
-
-    const transactionData = await prepareTransactionData(
-        transaction,
-        accounts,
-        banks,
-        categories,
-        encryptionKey,
-    );
-
-    consoleDebug('[Rule Engine] Transaction data prepared:', transactionData);
-    consoleDebug(`[Rule Engine] Evaluating ${sortedRules.length} rules`);
-
-    for (const rule of sortedRules) {
-        try {
-            consoleDebug(
-                `[Rule Engine] Evaluating rule #${rule.id}: "${rule.title}"`,
-            );
-            consoleDebug('[Rule Engine] Rule JSON:', rule.rules_json);
-
-            const normalizedRulesJson = normalizeRuleJson(rule.rules_json);
-            consoleDebug(
-                '[Rule Engine] Normalized Rule JSON:',
-                normalizedRulesJson,
-            );
-
-            const result = jsonLogic.apply(
-                normalizedRulesJson,
-                transactionData,
-            );
-
-            consoleDebug(`[Rule Engine] Rule #${rule.id} result:`, result);
-
-            if (result === true) {
-                consoleDebug(`[Rule Engine] ✓ Rule #${rule.id} matched!`);
-                return {
-                    rule,
-                    categoryId: rule.action_category_id,
-                    labelIds: rule.labels?.map((l) => l.id) || [],
-                    labels: rule.labels || [],
-                    note: rule.action_note,
-                    noteIv: rule.action_note_iv,
-                };
-            }
-        } catch (error) {
-            consoleDebug(
-                `[Rule Engine] ❌ Error evaluating rule ${rule.id}:`,
-                error,
-            );
-            console.error(`Error evaluating rule ${rule.id}:`, error);
-        }
-    }
-
-    consoleDebug('[Rule Engine] No rules matched');
-    return null;
-}
-
-export async function evaluateRulesForTransactions(
-    transactions: DecryptedTransaction[],
-    rules: AutomationRule[],
-    categories: Category[],
-    accounts: Account[],
-    banks: Bank[],
-    encryptionKey: CryptoKey | null,
-): Promise<Map<string, RuleEvaluationResult>> {
-    const results = new Map<string, RuleEvaluationResult>();
-
-    for (const transaction of transactions) {
-        const result = await evaluateRules(
-            transaction,
-            rules,
-            categories,
-            accounts,
-            banks,
-            encryptionKey,
-        );
-
-        if (result) {
-            results.set(transaction.id, result);
-        }
-    }
-
-    return results;
-}
 
 export interface NewTransactionData {
     description: string;
@@ -245,14 +84,13 @@ export interface NewTransactionData {
     debtor_name?: string | null;
 }
 
-export async function evaluateRulesForNewTransaction(
+export function evaluateRulesForNewTransaction(
     transactionData: NewTransactionData,
     rules: AutomationRule[],
     categories: Category[],
     accounts: Account[],
     banks: Bank[],
-    encryptionKey: CryptoKey | null,
-): Promise<RuleEvaluationResult | null> {
+): RuleEvaluationResult | null {
     if (!rules || !categories || !accounts || !banks) {
         consoleDebug(
             '[Rule Engine] Missing required data for rule evaluation',
@@ -277,9 +115,7 @@ export async function evaluateRulesForNewTransaction(
         ? banks.find((b) => b.id === account.bank.id)
         : undefined;
 
-    const accountName = account
-        ? await decryptAccountName(account, encryptionKey)
-        : '';
+    const accountName = account ? account.name.trim() : '';
 
     const preparedData: TransactionData = {
         description: normalizeWhitespace(
@@ -332,7 +168,6 @@ export async function evaluateRulesForNewTransaction(
                     labelIds: rule.labels?.map((l) => l.id) || [],
                     labels: rule.labels || [],
                     note: rule.action_note,
-                    noteIv: rule.action_note_iv,
                 };
             }
         } catch (error) {

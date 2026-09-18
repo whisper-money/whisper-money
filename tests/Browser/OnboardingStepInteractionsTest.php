@@ -70,7 +70,6 @@ function onboardingStepCharges(
         ->count($times)
         ->for($account->user)
         ->for($account)
-        ->plaintext()
         ->create([
             'category_id' => null,
             'creditor_name' => $merchant,
@@ -260,7 +259,7 @@ it('files the minimum by hand and keeps a skipped movement waiting', function ()
     $lastMonth = now()->startOfMonth()->subMonth();
 
     foreach ($descriptions as $index => $description) {
-        Transaction::factory()->for($user)->for($account)->plaintext()->create([
+        Transaction::factory()->for($user)->for($account)->create([
             'category_id' => null,
             'description' => $description,
             'creditor_name' => null,
@@ -332,7 +331,7 @@ it('stores the target the stepper landed on and closes with it', function () {
     $lastMonth = now()->startOfMonth()->subMonth();
 
     foreach ([20000, 20000, 20000, 20000, 10000, 10000] as $index => $amount) {
-        Transaction::factory()->for($user)->for($account)->plaintext()->create([
+        Transaction::factory()->for($user)->for($account)->create([
             'category_id' => null,
             'creditor_name' => sprintf('COMERCIO %02d', $index + 1),
             'amount' => -$amount,
@@ -389,7 +388,7 @@ it('leaves the syncing step on its own once the bank is done', function () {
     $lastMonth = now()->startOfMonth()->subMonth();
 
     foreach (['MERCADONA', 'MERCADONA', 'MERCADONA', 'REPSOL', 'REPSOL', 'ZARA'] as $index => $merchant) {
-        Transaction::factory()->for($user)->for($account)->plaintext()->create([
+        Transaction::factory()->for($user)->for($account)->create([
             'category_id' => null,
             'creditor_name' => $merchant,
             'amount' => -21400,

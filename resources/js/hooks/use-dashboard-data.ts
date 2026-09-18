@@ -5,8 +5,6 @@ import { formatMonthFromYearMonth } from '@/utils/date';
 export interface NetWorthEvolutionAccount {
     id: string;
     name: string;
-    name_iv: string | null;
-    encrypted: boolean;
     type: AccountType;
     currency_code: string;
     bank: Bank;
@@ -76,7 +74,6 @@ export function deriveAccountMetrics(
         return {
             id: account.id,
             name: account.name,
-            name_iv: account.name_iv,
             type: account.type,
             currency_code: account.currency_code,
             bank: account.bank,

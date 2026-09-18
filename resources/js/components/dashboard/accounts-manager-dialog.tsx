@@ -1,4 +1,3 @@
-import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import { SortableGrid } from '@/components/sortable-grid';
 import {
@@ -59,13 +58,14 @@ export function AccountsManagerDialog({
                                         hidden && 'opacity-40',
                                     )}
                                 />
-                                <AccountName
-                                    account={account}
+                                <span
                                     className={cn(
                                         'flex-1 truncate text-sm',
                                         hidden && 'text-muted-foreground',
                                     )}
-                                />
+                                >
+                                    {account.name}
+                                </span>
                                 <button
                                     type="button"
                                     onClick={() =>

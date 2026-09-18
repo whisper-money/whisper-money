@@ -12,7 +12,6 @@ function taggedTransaction(array $attributes = []): Transaction
     return Transaction::factory()->create([
         'description' => '/TXT/D|BAR CONO',
         'original_description' => null,
-        'description_iv' => null,
         ...$attributes,
     ]);
 }
@@ -36,14 +35,6 @@ test('leaves untagged descriptions alone', function () {
     artisan('banking:backfill-descriptions')->assertSuccessful();
 
     expect($transaction->refresh()->description)->toBe('Cafe de la Plaza');
-});
-
-test('skips transactions the server cannot read', function () {
-    $transaction = taggedTransaction(['description_iv' => 'abcdefghijklmnop']);
-
-    artisan('banking:backfill-descriptions')->assertSuccessful();
-
-    expect($transaction->refresh()->description)->toBe('/TXT/D|BAR CONO');
 });
 
 test('keeps an original description that was already stored', function () {

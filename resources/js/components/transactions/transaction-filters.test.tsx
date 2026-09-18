@@ -8,8 +8,6 @@ const accounts: Account[] = [
     {
         id: 'acc-1',
         name: 'Checking',
-        name_iv: null,
-        encrypted: false,
         bank: {
             id: 'bank-1',
             user_id: null,
@@ -25,8 +23,6 @@ const accounts: Account[] = [
     {
         id: 'acc-2',
         name: 'Savings',
-        name_iv: null,
-        encrypted: false,
         bank: null,
         type: 'savings',
         currency_code: 'USD',

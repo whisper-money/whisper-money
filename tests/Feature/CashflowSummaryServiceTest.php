@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 
 function record(User $user, CategoryType $type, int $amount, string $currency = 'EUR'): Transaction
 {
-    return Transaction::factory()->plaintext()->create([
+    return Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => Account::factory()->create([
             'user_id' => $user->id,

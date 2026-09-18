@@ -54,7 +54,7 @@ test('users can disconnect a banking connection and keep accounts as manual', fu
         'banking_connection_id' => $connection->id,
         'external_account_id' => 'ext-123',
     ]);
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
     ]);
@@ -94,7 +94,7 @@ test('users can disconnect a banking connection and delete accounts', function (
         'banking_connection_id' => $connection->id,
         'external_account_id' => 'ext-123',
     ]);
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
     ]);

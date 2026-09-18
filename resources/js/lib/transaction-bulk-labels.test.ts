@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { type Label } from '@/types/label';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { applyBulkLabels } from './transaction-bulk-labels';
 
 function label(id: string, name: string): Label {
@@ -17,26 +17,22 @@ function label(id: string, name: string): Label {
 }
 
 function transaction(
-    overrides: Partial<DecryptedTransaction> = {},
-): DecryptedTransaction {
+    overrides: Partial<ServerTransaction> = {},
+): ServerTransaction {
     return {
         id: 'transaction-1',
         user_id: 'user-1',
         account_id: 'account-1',
         category_id: null,
         description: 'Coffee',
-        description_iv: null,
         transaction_date: '2026-05-11',
         amount: -450,
         currency_code: 'EUR',
         notes: null,
-        notes_iv: null,
         source: 'imported',
         label_ids: [],
         created_at: '2026-05-11T00:00:00.000000Z',
         updated_at: '2026-05-11T00:00:00.000000Z',
-        decryptedDescription: 'Coffee',
-        decryptedNotes: null,
         ...overrides,
     };
 }

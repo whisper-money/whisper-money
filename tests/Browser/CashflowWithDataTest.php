@@ -63,7 +63,7 @@ function seedCashflowReader(User $user): void
     }
 
     $book = function (string $category, int $amount, string $date) use ($user, $checking, $categories): void {
-        Transaction::factory()->plaintext()->create([
+        Transaction::factory()->create([
             'user_id' => $user->id,
             'account_id' => $checking->id,
             'category_id' => $categories[$category]->id,

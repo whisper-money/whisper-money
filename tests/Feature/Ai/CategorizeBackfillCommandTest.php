@@ -39,7 +39,7 @@ it('categorizes a user\'s uncategorized transactions and learns rules', function
     $user->recordAiConsent();
     $category = bfCategory($user);
 
-    $transactions = collect(range(1, 3))->map(fn (): Transaction => Transaction::factory()->plaintext()->create([
+    $transactions = collect(range(1, 3))->map(fn (): Transaction => Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'amount' => -4300,
@@ -61,7 +61,7 @@ it('categorizes a user\'s uncategorized transactions and learns rules', function
 it('refuses to backfill an ineligible user', function () {
     $user = User::factory()->create();
     bfCategory($user);
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'creditor_name' => 'mercadona',

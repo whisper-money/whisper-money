@@ -6,8 +6,6 @@ import { ImportStepAccount } from './import-step-account';
 const account: Account = {
     id: 'account-1',
     name: 'Checking',
-    name_iv: null,
-    encrypted: false,
     bank: null,
     type: 'checking',
     currency_code: 'USD',

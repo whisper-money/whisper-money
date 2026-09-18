@@ -16,12 +16,12 @@ it('returns categories and transactions props on onboarding index', function () 
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     // One uncategorized and one categorized transaction
-    $uncategorized = Transaction::factory()->plaintext()->create([
+    $uncategorized = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,
     ]);
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
@@ -44,12 +44,12 @@ it('returns only uncategorized transactions in the transactions prop', function 
     $account = Account::factory()->create(['user_id' => $user->id, 'bank_id' => $bank->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
-    Transaction::factory()->plaintext()->count(3)->create([
+    Transaction::factory()->count(3)->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,
     ]);
-    Transaction::factory()->plaintext()->count(2)->create([
+    Transaction::factory()->count(2)->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
@@ -69,7 +69,7 @@ it('does not return transactions belonging to other users', function () {
     $bank = Bank::factory()->create();
     $account = Account::factory()->create(['user_id' => $other->id, 'bank_id' => $bank->id]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $other->id,
         'account_id' => $account->id,
         'category_id' => null,
