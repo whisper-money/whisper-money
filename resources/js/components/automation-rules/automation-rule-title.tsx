@@ -21,7 +21,7 @@ export function AutomationRuleTitle({ rule }: { rule: AutomationRule }) {
             : __('Created by AI');
 
     return (
-        <div className="flex items-center gap-1.5 font-medium">
+        <div className="flex min-w-0 items-center gap-1.5 font-medium">
             {isAiRelated && (
                 <TooltipProvider>
                     <Tooltip>
@@ -37,7 +37,9 @@ export function AutomationRuleTitle({ rule }: { rule: AutomationRule }) {
                     </Tooltip>
                 </TooltipProvider>
             )}
-            {rule.title}
+            <span className="truncate" title={rule.title}>
+                {rule.title}
+            </span>
         </div>
     );
 }

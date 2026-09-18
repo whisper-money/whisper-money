@@ -3511,5 +3511,6 @@
     "Save and add another": "Guardar y añadir otra",
     "Transaction saved": "Transacción guardada",
     "A rule categorized it as :category": "Una regla la ha categorizado como :category",
-    "You need an account to record transactions": "Necesitas una cuenta para registrar movimientos"
+    "You need an account to record transactions": "Necesitas una cuenta para registrar movimientos",
+    "Rules with a lower priority are evaluated first": "Las reglas con menor prioridad se evalúan primero"
 }

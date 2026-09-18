@@ -12,7 +12,7 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
@@ -24,7 +24,10 @@ import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete
 import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
 import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import HeadingSmall from '@/components/heading-small';
-import { SettingsTable } from '@/components/shared/settings-table';
+import {
+    cellClassName,
+    SettingsTable,
+} from '@/components/shared/settings-table';
 import { Button } from '@/components/ui/button';
 import {
     ContextMenu,
@@ -44,6 +47,7 @@ import { Input } from '@/components/ui/input';
 import { TableCell, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -151,7 +155,12 @@ function AutomationRuleRow({
                             .map((cell: Cell<AutomationRule, unknown>) => (
                                 <TableCell
                                     key={cell.id}
-                                    className="align-middle"
+                                    className={cn(
+                                        'align-middle',
+                                        cellClassName(
+                                            cell.column.columnDef.meta,
+                                        ),
+                                    )}
                                 >
                                     {flexRender(
                                         cell.column.columnDef.cell,
@@ -200,7 +209,9 @@ function AutomationRuleRow({
 }
 
 export default function AutomationRules() {
-    const [sorting, setSorting] = useState<SortingState>([]);
+    const [sorting, setSorting] = useState<SortingState>([
+        { id: 'priority', desc: false },
+    ]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
@@ -226,11 +237,40 @@ export default function AutomationRules() {
 
     const columns: ColumnDef<AutomationRule>[] = [
         {
+            accessorKey: 'priority',
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === 'asc')
+                        }
+                    >
+                        {__('Priority')}
+
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            },
+            // Most rules sit at the default 0, so the title keeps rows in a
+            // stable order instead of leaving them at the data's whim.
+            sortingFn: (a, b) =>
+                a.original.priority - b.original.priority ||
+                a.original.title.localeCompare(b.original.title),
+            cell: ({ row }) => (
+                <div className="pl-3 tabular-nums">
+                    {row.getValue('priority')}
+                </div>
+            ),
+            meta: { cellClassName: 'w-24' },
+        },
+        {
             accessorKey: 'title',
             header: __('Title'),
             cell: ({ row }) => {
                 return <AutomationRuleTitle rule={row.original} />;
             },
+            meta: { cellClassName: 'max-w-[220px] md:max-w-[420px]' },
         },
         {
             id: 'actions_display',

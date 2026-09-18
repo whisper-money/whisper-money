@@ -2886,5 +2886,6 @@
     "Transaction saved": "Transaction enregistrée",
     "A rule categorized it as :category": "Une règle l'a catégorisée comme :category",
     "Undo": "Annuler",
-    "You need an account to record transactions": "Vous avez besoin d'un compte pour enregistrer des mouvements"
+    "You need an account to record transactions": "Vous avez besoin d'un compte pour enregistrer des mouvements",
+    "Rules with a lower priority are evaluated first": "Les règles avec une priorité inférieure sont évaluées en premier"
 }
