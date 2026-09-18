@@ -458,6 +458,7 @@ export default function AccountShow({
                 onSuccess={handleTransactionCreated}
                 mode="create"
                 initialAccountId={account.id}
+                origin="account_page"
             />
 
             <BalancesModal

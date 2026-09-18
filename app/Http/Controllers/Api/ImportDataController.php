@@ -25,6 +25,9 @@ class ImportDataController extends Controller
             'banks' => $user->banks()
                 ->orderBy('name')
                 ->get(),
+            'labels' => $user->labels()
+                ->orderBy('name')
+                ->get(),
             'automationRules' => $user->automationRules()
                 ->with(['category', 'labels'])
                 ->orderBy('priority')

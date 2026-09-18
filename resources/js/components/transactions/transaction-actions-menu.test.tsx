@@ -27,10 +27,6 @@ vi.mock('@inertiajs/react', () => ({
     ),
 }));
 
-vi.mock('./import-transactions-drawer', () => ({
-    ImportTransactionsDrawer: () => null,
-}));
-
 vi.mock('./transaction-analysis-drawer', () => ({
     TransactionAnalysisDrawer: ({ open }: { open: boolean }) =>
         open ? <div data-testid="analysis-drawer" /> : null,
@@ -55,10 +51,6 @@ function renderMenu(
 ) {
     return render(
         <TransactionActionsMenu
-            categories={[]}
-            accounts={[]}
-            banks={[]}
-            onAddTransaction={vi.fn()}
             transactions={transactions}
             filters={filters}
         />,
@@ -110,12 +102,11 @@ describe('TransactionActionsMenu analysis button', () => {
 });
 
 describe('TransactionActionsMenu action bar layout', () => {
-    it('shows analysis, add transaction and categorize in that order on desktop', () => {
+    it('shows analysis and categorize in that order on desktop', () => {
         const { container } = renderMenu(emptyFilters, [uncategorized('t-1')]);
 
         expect(actionBarLabels(container)).toEqual([
             'Analysis',
-            'Add transaction',
             'Categorize1',
             'More actions',
         ]);
@@ -126,13 +117,25 @@ describe('TransactionActionsMenu action bar layout', () => {
 
         expect(actionBarLabels(container)).toEqual([
             'Analysis',
-            'Add transaction',
             'Categorize',
             'More actions',
         ]);
     });
 
-    it('keeps add transaction in the bar and moves categorize to the dropdown on mobile', async () => {
+    it('leaves creating and importing to the app header', async () => {
+        renderMenu(emptyFilters);
+
+        expect(
+            screen.queryByRole('button', { name: 'Add transaction' }),
+        ).not.toBeInTheDocument();
+
+        const menu = await openMoreActionsMenu();
+        expect(
+            within(menu).queryByText('Import Transactions'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('moves categorize to the dropdown on mobile', async () => {
         isMobile = true;
         const { container } = renderMenu(emptyFilters, [
             uncategorized('t-1'),
@@ -141,7 +144,6 @@ describe('TransactionActionsMenu action bar layout', () => {
 
         expect(actionBarLabels(container)).toEqual([
             'Analysis',
-            'Add transaction',
             'More actions',
         ]);
 
@@ -150,11 +152,7 @@ describe('TransactionActionsMenu action bar layout', () => {
             [...menu.querySelectorAll('[role="menuitem"]')].map(
                 (item) => item.textContent,
             ),
-        ).toEqual([
-            'Categorize2',
-            'Import Transactions',
-            'Update categories automatically',
-        ]);
+        ).toEqual(['Categorize2', 'Update categories automatically']);
         expect(
             within(menu).getByText('Categorize').closest('a'),
         ).toHaveAttribute('href', '/transactions/categorize');

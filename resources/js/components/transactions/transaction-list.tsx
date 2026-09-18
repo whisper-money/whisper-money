@@ -1079,12 +1079,6 @@ export function TransactionList({
                         <div className="flex justify-end gap-2">
                             {showActionsMenu && (
                                 <TransactionActionsMenu
-                                    categories={categories}
-                                    accounts={accounts}
-                                    banks={banks}
-                                    onAddTransaction={() =>
-                                        setCreateDialogOpen(true)
-                                    }
                                     transactions={transactions}
                                     onReEvaluateComplete={() => {
                                         setRowSelection({});

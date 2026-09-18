@@ -2878,5 +2878,13 @@
     ":accounts, syncing daily": ":accounts, synchronisation quotidienne",
     "Everything new sorted from now on": "Tout ce qui arrive, classé à partir de maintenant",
     ":amount a month put aside": ":amount par mois mis de côté",
-    "Connect a bank or import a file whenever you like, and the rest of this list fills itself in.": "Connectez une banque ou importez un fichier quand vous voulez, et le reste de cette liste se remplit tout seul."
+    "Connect a bank or import a file whenever you like, and the rest of this list fills itself in.": "Connectez une banque ou importez un fichier quand vous voulez, et le reste de cette liste se remplit tout seul.",
+    "Updates the balance": "Met à jour le solde",
+    "Leaves the balance alone": "Sans toucher au solde",
+    "Fewer options": "Moins d'options",
+    "Save and add another": "Enregistrer et en ajouter une autre",
+    "Transaction saved": "Transaction enregistrée",
+    "A rule categorized it as :category": "Une règle l'a catégorisée comme :category",
+    "Undo": "Annuler",
+    "You need an account to record transactions": "Vous avez besoin d'un compte pour enregistrer des mouvements"
 }
