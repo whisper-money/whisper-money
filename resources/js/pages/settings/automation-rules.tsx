@@ -12,7 +12,7 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
@@ -248,7 +248,13 @@ export default function AutomationRules() {
                     >
                         {__('Priority')}
 
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        {column.getIsSorted() === 'desc' ? (
+                            <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : column.getIsSorted() === 'asc' ? (
+                            <ArrowUp className="ml-2 h-4 w-4" />
+                        ) : (
+                            <ArrowUpDown className="ml-2 h-4 w-4 opacity-40" />
+                        )}
                     </Button>
                 );
             },
