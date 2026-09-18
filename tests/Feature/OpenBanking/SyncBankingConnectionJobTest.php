@@ -130,7 +130,7 @@ test('linked accounts sync from the transaction watermark and skip historical ba
         'external_account_id' => 'ext-123',
     ]);
 
-    Transaction::factory()->enableBanking()->plaintext()->create([
+    Transaction::factory()->enableBanking()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2025-12-15',
@@ -164,7 +164,7 @@ test('a manual transaction does not move the sync window', function () {
         'external_account_id' => 'ext-123',
     ]);
 
-    Transaction::factory()->enableBanking()->plaintext()->create([
+    Transaction::factory()->enableBanking()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2025-12-15',
@@ -172,7 +172,7 @@ test('a manual transaction does not move the sync window', function () {
 
     // Hand-entered and dated later than anything the bank has sent. It must not
     // shrink the window, or the bank rows in between are skipped for good.
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2025-12-28',
@@ -206,7 +206,7 @@ test('clamps the fetch window to today when the last transaction is in the futur
         'external_account_id' => 'ext-123',
     ]);
 
-    Transaction::factory()->enableBanking()->plaintext()->create([
+    Transaction::factory()->enableBanking()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2026-05-10',
@@ -244,7 +244,7 @@ test('an account with bank transactions syncs from the watermark instead of a ye
         'external_account_id' => 'ext-123',
     ]);
 
-    Transaction::factory()->enableBanking()->plaintext()->create([
+    Transaction::factory()->enableBanking()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2026-04-28',
@@ -280,7 +280,7 @@ test('a bank transaction the user moved forward does not shrink the next window'
         'external_account_id' => 'ext-123',
     ]);
 
-    $transaction = Transaction::factory()->enableBanking()->plaintext()->create([
+    $transaction = Transaction::factory()->enableBanking()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2026-04-28',
@@ -322,7 +322,7 @@ test('a failing balance call does not fail the whole sync', function () {
 
     $transactionSync = Mockery::mock(TransactionSyncService::class);
     $transactionSync->shouldReceive('sync')->once()->andReturnUsing(function () use ($user, $account) {
-        Transaction::factory()->enableBanking()->plaintext()->create([
+        Transaction::factory()->enableBanking()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
         ]);
@@ -366,7 +366,7 @@ test('a rate limited balance call keeps the transactions and still backs off', f
 
     $transactionSync = Mockery::mock(TransactionSyncService::class);
     $transactionSync->shouldReceive('sync')->once()->andReturnUsing(function () use ($user, $account) {
-        Transaction::factory()->enableBanking()->plaintext()->create([
+        Transaction::factory()->enableBanking()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
         ]);
@@ -784,8 +784,6 @@ test('daily bank sync email job sends pending transactions once per day', functi
         'user_id' => $user->id,
         'account_id' => $accountB->id,
         'source' => TransactionSource::EnableBanking,
-        'description_iv' => null,
-        'notes_iv' => null,
         'created_at' => now()->subMinutes(5),
         'updated_at' => now()->subMinutes(5),
     ]);
@@ -1376,7 +1374,7 @@ test('fullSync flag forces first-sync behavior on already-synced connection', fu
 
     // --full is the operator remedy for a gap in the history, so it must beat
     // the watermark that would otherwise keep the window to a few days.
-    Transaction::factory()->enableBanking()->plaintext()->create([
+    Transaction::factory()->enableBanking()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'transaction_date' => '2026-04-28',

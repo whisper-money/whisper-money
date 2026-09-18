@@ -3,10 +3,7 @@ import { captureEvent } from '@/lib/posthog';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
-import {
-    type DecryptedTransaction,
-    type Transaction,
-} from '@/types/transaction';
+import { type ServerTransaction, type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { parseISO } from 'date-fns';
 import {
@@ -102,7 +99,7 @@ export function useCategorizeTransactions({
     recycleSkipped = false,
 }: UseCategorizeTransactionsOptions) {
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
-        DecryptedTransaction[]
+        ServerTransaction[]
     >([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -155,12 +152,12 @@ export function useCategorizeTransactions({
 
                 return {
                     ...transaction,
-                    decryptedDescription: transaction.description,
-                    decryptedNotes: transaction.notes || null,
+                    description: transaction.description,
+                    notes: transaction.notes || null,
                     account,
                     category: null,
                     bank,
-                } as DecryptedTransaction;
+                } as ServerTransaction;
             });
 
             processed.sort((a, b) => {

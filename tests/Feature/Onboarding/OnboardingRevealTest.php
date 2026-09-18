@@ -17,7 +17,7 @@ function revealUser(): User
 /** A movement on a given month, named and priced. */
 function outgoing(Account $account, string $month, int $amount, ?string $merchant = null, int $day = 5): Transaction
 {
-    return Transaction::factory()->for($account->user)->for($account)->plaintext()->create([
+    return Transaction::factory()->for($account->user)->for($account)->create([
         'category_id' => null,
         'transaction_date' => $month.'-'.str_pad((string) $day, 2, '0', STR_PAD_LEFT),
         'amount' => $amount,

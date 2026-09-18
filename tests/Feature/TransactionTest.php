@@ -112,15 +112,13 @@ test('users can update transaction notes', function () {
     ]);
 
     $response = actingAs($user)->patchJson(route('transactions.update', $transaction), [
-        'notes' => 'encrypted_notes_content',
-        'notes_iv' => str_repeat('c', 16),
+        'notes' => 'Trip expenses',
     ]);
 
     $response->assertSuccessful();
     $this->assertDatabaseHas('transactions', [
         'id' => $transaction->id,
-        'notes' => 'encrypted_notes_content',
-        'notes_iv' => str_repeat('c', 16),
+        'notes' => 'Trip expenses',
     ]);
 });
 
@@ -148,7 +146,7 @@ test('users can clear transaction category', function () {
 
 test('users cannot update other users transactions', function () {
     $user = User::factory()->onboarded()->create();
-    $otherUser = User::factory()->create(['encryption_salt' => str_repeat('b', 24)]);
+    $otherUser = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $otherUser->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
@@ -179,24 +177,6 @@ test('category_id must exist when updating transaction', function () {
 
     $response->assertUnprocessable();
     $response->assertJsonValidationErrors(['category_id']);
-});
-
-test('notes_iv must be exactly 16 characters', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $account->id,
-    ]);
-
-    $response = actingAs($user)->patchJson(route('transactions.update', $transaction), [
-        'notes' => 'encrypted_notes',
-        'notes_iv' => 'invalid',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['notes_iv']);
 });
 
 test('users can edit the amount, date and account of a manually created transaction', function () {
@@ -361,7 +341,7 @@ test('users can soft delete their own transactions', function () {
 
 test('users cannot delete other users transactions', function () {
     $user = User::factory()->onboarded()->create();
-    $otherUser = User::factory()->create(['encryption_salt' => str_repeat('b', 24)]);
+    $otherUser = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $otherUser->id]);
 
     $transaction = Transaction::factory()->create([
@@ -526,7 +506,7 @@ test('creating a transaction updates the balance on its date when one exists', f
 
     actingAs($user)->postJson(route('transactions.store'), [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 2500,
         'currency_code' => 'USD',
@@ -553,7 +533,7 @@ test('creating a transaction creates a balance on its date from the closest earl
 
     actingAs($user)->postJson(route('transactions.store'), [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => -1500,
         'currency_code' => 'USD',
@@ -577,7 +557,7 @@ test('creating a past-dated transaction updates that date and every later balanc
 
     actingAs($user)->postJson(route('transactions.store'), [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-10',
         'amount' => -500,
         'currency_code' => 'USD',
@@ -603,7 +583,7 @@ test('creating the first transaction on an account creates a balance equal to it
 
     actingAs($user)->postJson(route('transactions.store'), [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 7500,
         'currency_code' => 'USD',
@@ -624,7 +604,7 @@ test('creating a transaction does not change the balance when not requested', fu
 
     actingAs($user)->postJson(route('transactions.store'), [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 7500,
         'currency_code' => 'USD',
@@ -645,7 +625,7 @@ test('creating a connected account transaction never changes the balance', funct
 
     actingAs($user)->postJson(route('transactions.store'), [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 2500,
         'currency_code' => 'USD',
@@ -955,8 +935,8 @@ test('transactions index page passes user accounts', function () {
     $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->create();
 
-    Account::factory()->create(['user_id' => $user->id, 'name' => 'encrypted_name_1', 'name_iv' => str_repeat('a', 16)]);
-    Account::factory()->create(['user_id' => $otherUser->id, 'name' => 'encrypted_name_2', 'name_iv' => str_repeat('b', 16)]);
+    Account::factory()->create(['user_id' => $user->id, 'name' => 'Checking']);
+    Account::factory()->create(['user_id' => $otherUser->id, 'name' => 'Savings']);
 
     $response = actingAs($user)->get(route('transactions.index'));
 
@@ -975,13 +955,11 @@ test('users can create a new transaction', function () {
     $transactionData = [
         'account_id' => $account->id,
         'category_id' => $category->id,
-        'description' => 'encrypted_description',
-        'description_iv' => str_repeat('d', 16),
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 15050,
         'currency_code' => 'USD',
-        'notes' => 'encrypted_notes',
-        'notes_iv' => str_repeat('n', 16),
+        'notes' => 'Trip expenses',
         'source' => 'manually_created',
     ];
 
@@ -995,12 +973,10 @@ test('users can create a new transaction', function () {
             'account_id',
             'category_id',
             'description',
-            'description_iv',
             'transaction_date',
             'amount',
             'currency_code',
             'notes',
-            'notes_iv',
             'source',
             'created_at',
             'updated_at',
@@ -1011,7 +987,7 @@ test('users can create a new transaction', function () {
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
-        'description' => 'encrypted_description',
+        'description' => 'Card payment',
         'amount' => 15050,
         'currency_code' => 'USD',
         'source' => 'manually_created',
@@ -1025,8 +1001,7 @@ test('users can create a transaction without category', function () {
     $transactionData = [
         'account_id' => $account->id,
         'category_id' => null,
-        'description' => 'encrypted_description',
-        'description_iv' => str_repeat('d', 16),
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 7525,
         'currency_code' => 'EUR',
@@ -1040,7 +1015,7 @@ test('users can create a transaction without category', function () {
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,
-        'description' => 'encrypted_description',
+        'description' => 'Card payment',
         'amount' => 7525,
     ]);
 });
@@ -1051,8 +1026,7 @@ test('users can create a transaction without notes', function () {
 
     $transactionData = [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
-        'description_iv' => str_repeat('d', 16),
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 10000,
         'currency_code' => 'USD',
@@ -1066,7 +1040,6 @@ test('users can create a transaction without notes', function () {
         'user_id' => $user->id,
         'account_id' => $account->id,
         'notes' => null,
-        'notes_iv' => null,
     ]);
 });
 
@@ -1074,8 +1047,7 @@ test('account_id is required when creating transaction', function () {
     $user = User::factory()->onboarded()->create();
 
     $transactionData = [
-        'description' => 'encrypted_description',
-        'description_iv' => str_repeat('d', 16),
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 10000,
         'currency_code' => 'USD',
@@ -1093,7 +1065,6 @@ test('description is required when creating transaction', function () {
 
     $transactionData = [
         'account_id' => $account->id,
-        'description_iv' => str_repeat('d', 16),
         'transaction_date' => '2025-11-11',
         'amount' => 10000,
         'currency_code' => 'USD',
@@ -1111,8 +1082,7 @@ test('amount is required when creating transaction', function () {
 
     $transactionData = [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
-        'description_iv' => str_repeat('d', 16),
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'currency_code' => 'USD',
     ];
@@ -1129,8 +1099,7 @@ test('transaction_date is required when creating transaction', function () {
 
     $transactionData = [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
-        'description_iv' => str_repeat('d', 16),
+        'description' => 'Card payment',
         'amount' => 10000,
         'currency_code' => 'USD',
     ];
@@ -1147,8 +1116,7 @@ test('currency_code is required when creating transaction', function () {
 
     $transactionData = [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
-        'description_iv' => str_repeat('d', 16),
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 10000,
     ];
@@ -1167,8 +1135,7 @@ test('users can create a transaction with labels', function () {
 
     $transactionData = [
         'account_id' => $account->id,
-        'description' => 'encrypted_description',
-        'description_iv' => str_repeat('d', 16),
+        'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 5000,
         'currency_code' => 'USD',
@@ -1506,8 +1473,8 @@ test('transactions index hides internal columns and keeps the standard field set
     $tx = $response->viewData('page')['props']['transactions']['data'][0];
 
     expect(array_keys($tx))->toContain(
-        'id', 'user_id', 'account_id', 'category_id', 'description', 'description_iv',
-        'transaction_date', 'amount', 'currency_code', 'notes', 'notes_iv',
+        'id', 'user_id', 'account_id', 'category_id', 'description',
+        'transaction_date', 'amount', 'currency_code', 'notes',
         'source', 'creditor_name', 'debtor_name', 'created_at', 'updated_at', 'account', 'labels',
     );
     expect($tx)->not->toHaveKeys([

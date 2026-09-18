@@ -18,7 +18,6 @@ beforeEach(function () {
         Transaction::factory()->for($this->user)->create([
             'account_id' => $this->account->id,
             'category_id' => null,
-            'description_iv' => null,
             'creditor_name' => $creditor,
             'debtor_name' => null,
             'description' => $description,
@@ -118,7 +117,6 @@ it('rejects a short substring token and keeps the same length matched whole', fu
         Transaction::factory()->for($this->user)->create([
             'account_id' => $this->account->id,
             'category_id' => null,
-            'description_iv' => null,
             'creditor_name' => 'ABN',
             'debtor_name' => null,
             'description' => "TRANSFERENCIA A ABN {$i}",

@@ -25,13 +25,13 @@ function seedTransactions(User $user, Account $account, int $mercadona = 6, int 
 {
     for ($i = 0; $i < $mercadona; $i++) {
         Transaction::factory()->for($user)->create([
-            'account_id' => $account->id, 'category_id' => null, 'description_iv' => null,
+            'account_id' => $account->id, 'category_id' => null,
             'creditor_name' => 'MERCADONA', 'description' => "MERCADONA {$i}", 'amount' => -4000,
         ]);
     }
     for ($i = 0; $i < $filler; $i++) {
         Transaction::factory()->for($user)->create([
-            'account_id' => $account->id, 'category_id' => null, 'description_iv' => null,
+            'account_id' => $account->id, 'category_id' => null,
             'creditor_name' => null, 'description' => "UNIQUE MERCHANT {$i}", 'amount' => -1000,
         ]);
     }

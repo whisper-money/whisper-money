@@ -2,7 +2,6 @@ import {
     accountBalanceEvolution,
     accountDailyBalanceEvolution,
 } from '@/actions/App/Http/Controllers/Api/DashboardAnalyticsController';
-import { AccountName } from '@/components/accounts/account-name';
 import {
     type ChartCurrencyMode,
     type ChartGranularity,
@@ -246,7 +245,6 @@ interface AccountBalanceData {
     account: {
         id: string;
         name: string;
-        name_iv: string;
         type: string;
         currency_code: string;
     };
@@ -269,7 +267,6 @@ interface AccountDailyBalanceData {
     account: {
         id: string;
         name: string;
-        name_iv: string;
         type: string;
         currency_code: string;
     };
@@ -663,9 +660,7 @@ export function AccountBalanceChart({
 
     const chartConfig: ChartConfig = {
         value: {
-            label: (
-                <AccountName account={account} length={{ min: 5, max: 20 }} />
-            ),
+            label: account.name,
 
             color: accountMainLineColor,
         },

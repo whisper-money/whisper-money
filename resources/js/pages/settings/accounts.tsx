@@ -18,7 +18,6 @@ import { useState } from 'react';
 
 import { updateArchived } from '@/actions/App/Http/Controllers/AccountController';
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
-import { AccountName } from '@/components/accounts/account-name';
 import { ArchiveAccountDialog } from '@/components/accounts/archive-account-dialog';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
@@ -266,10 +265,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
             cell: ({ row }) => {
                 return (
                     <div className="flex items-center gap-2 pl-3 font-medium">
-                        <AccountName
-                            account={row.original}
-                            length={{ min: 10, max: 20 }}
-                        />
+                        <span>{row.original.name}</span>
                         {row.original.archived_at && (
                             <Badge variant="secondary">{__('Archived')}</Badge>
                         )}

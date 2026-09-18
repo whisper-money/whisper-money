@@ -87,7 +87,7 @@ it('does not start the AI backfill while the user is still onboarding', function
 
     $user = User::factory()->notOnboarded()->create();
     $account = Account::factory()->for($user)->create();
-    Transaction::factory()->count(3)->for($user)->for($account)->plaintext()->create(['category_id' => null]);
+    Transaction::factory()->count(3)->for($user)->for($account)->create(['category_id' => null]);
 
     actingAs($user)->postJson(route('ai.consent.store'))
         ->assertOk()
@@ -104,7 +104,7 @@ it('still starts the AI backfill for a user who has finished onboarding', functi
     $user = User::factory()->onboarded()->create();
     $user->dismissAiConsentPrompt();
     $account = Account::factory()->for($user)->create();
-    Transaction::factory()->count(3)->for($user)->for($account)->plaintext()->create(['category_id' => null]);
+    Transaction::factory()->count(3)->for($user)->for($account)->create(['category_id' => null]);
 
     actingAs($user)->postJson(route('ai.consent.store'))
         ->assertOk()

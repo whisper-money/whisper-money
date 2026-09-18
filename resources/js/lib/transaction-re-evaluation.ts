@@ -1,9 +1,9 @@
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 
 export function mergeReEvaluatedTransaction(
-    transaction: DecryptedTransaction,
-    updated: DecryptedTransaction,
-): DecryptedTransaction {
+    transaction: ServerTransaction,
+    updated: ServerTransaction,
+): ServerTransaction {
     const labels = updated.labels ?? transaction.labels;
     const labelIds = updated.labels
         ? updated.labels.map((label) => label.id)
@@ -15,11 +15,6 @@ export function mergeReEvaluatedTransaction(
         category: updated.category,
         labels,
         label_ids: labelIds,
-        notes: updated.notes,
-        notes_iv: updated.notes_iv,
-        decryptedNotes:
-            updated.notes_iv === null
-                ? (updated.notes ?? null)
-                : transaction.decryptedNotes,
+        notes: updated.notes ?? null,
     };
 }

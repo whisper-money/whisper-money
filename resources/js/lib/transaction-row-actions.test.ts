@@ -1,31 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
-import type { DecryptedTransaction } from '@/types/transaction';
+import type { ServerTransaction } from '@/types/transaction';
 
 function transaction(
-    overrides: Partial<DecryptedTransaction> = {},
-): DecryptedTransaction {
+    overrides: Partial<ServerTransaction> = {},
+): ServerTransaction {
     return {
         id: 'txn-1',
         user_id: 'user-1',
         account_id: 'account-1',
         category_id: null,
         description: 'MERCADONA S.A.',
-        description_iv: null,
         transaction_date: '2026-08-22',
         amount: -5340,
         currency_code: 'EUR',
         notes: null,
-        notes_iv: null,
         source: 'enablebanking',
         created_at: '2026-08-22T00:00:00Z',
         updated_at: '2026-08-22T00:00:00Z',
-        decryptedDescription: 'MERCADONA S.A.',
-        decryptedNotes: null,
         label_ids: [],
         ...overrides,
-    } as DecryptedTransaction;
+    } as ServerTransaction;
 }
 
 const handlers = {

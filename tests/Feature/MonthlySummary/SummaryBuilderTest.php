@@ -47,7 +47,7 @@ function monthlyTransaction(User $user, Account $account, int $amount, CategoryT
         'name' => $categoryName ?? fake()->unique()->word(),
     ]);
 
-    return Transaction::factory()->plaintext()->create([
+    return Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
@@ -145,7 +145,7 @@ it('picks the biggest drop in money rather than in percent', function (): void {
 
     foreach ([[$small, -1000, -10000], [$big, -80000, -100000]] as [$category, $now, $before]) {
         foreach ([[$this->month, $now], [$previous, $before]] as [$month, $amount]) {
-            Transaction::factory()->plaintext()->create([
+            Transaction::factory()->create([
                 'user_id' => $user->id,
                 'account_id' => $account->id,
                 'category_id' => $category->id,
@@ -240,7 +240,7 @@ it('counts a streak that runs past the twelve months the payload carries', funct
     $rent = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense, 'name' => 'Rent']);
 
     $book = function (Category $category, int $amount, Carbon\Carbon $month) use ($user, $account): void {
-        Transaction::factory()->plaintext()->create([
+        Transaction::factory()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
             'category_id' => $category->id,
@@ -381,7 +381,7 @@ it('measures the top categories against everything spent, not just what was cate
     // Spending the category service cannot see, because it joins `categories`.
     // The cashflow screen shows it as an "Unknown Expense" row and counts it, so
     // a share taken over the categorised sum alone reads far too high.
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,

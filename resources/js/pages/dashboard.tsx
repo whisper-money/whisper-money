@@ -17,8 +17,6 @@ import {
 import HeadingSmall from '@/components/heading-small';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import { Button } from '@/components/ui/button';
-import UnlockMessageDialog from '@/components/unlock-message-dialog';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
     deriveAccountMetrics,
     type AccountWithMetrics,
@@ -32,7 +30,7 @@ import { Category } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 interface CashflowSummary {
     income: number;
@@ -42,7 +40,6 @@ interface CashflowSummary {
 }
 
 interface DashboardProps extends SharedData {
-    showEncryptionPrompt: boolean;
     netWorthEvolution?: NetWorthEvolutionData;
     topCategories?: Array<{
         category: Category | null;
@@ -65,9 +62,6 @@ interface DashboardProps extends SharedData {
 export default function Dashboard() {
     const { props } = usePage<DashboardProps>();
     const locale = useLocale();
-    const { isKeySet, encryptedMessageData, fetchEncryptedMessage } =
-        useEncryptionKey();
-    const [showUnlockDialog, setShowUnlockDialog] = useState(false);
     const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(
         !!props.openIntegrationRequests,
     );
@@ -145,13 +139,15 @@ export default function Dashboard() {
         setOrder(ids);
         // Persist only; keep the deferred netWorthEvolution prop in place by
         // requesting an unrelated cheap prop so it isn't refetched (skeleton).
+        // `name` is the shared `config('app.name')` string: a constant, so
+        // asking for it costs nothing and touches no user data.
         router.patch(
             reorder.url(),
             { ids },
             {
                 preserveScroll: true,
                 preserveState: true,
-                only: ['showEncryptionPrompt'],
+                only: ['name'],
             },
         );
     }, []);
@@ -165,7 +161,7 @@ export default function Dashboard() {
                 {
                     preserveScroll: true,
                     preserveState: true,
-                    only: ['showEncryptionPrompt'],
+                    only: ['name'],
                 },
             );
         },
@@ -232,30 +228,6 @@ export default function Dashboard() {
         },
     ];
 
-    useEffect(() => {
-        // Fetch encrypted message data if not already loaded
-        if (!encryptedMessageData) {
-            fetchEncryptedMessage();
-        }
-
-        // Auto-open the unlock dialog only if:
-        // 1. User just logged in (showEncryptionPrompt is true)
-        // 2. Encryption key is not set
-        // 3. Encrypted message data is available
-        if (props.showEncryptionPrompt && !isKeySet && encryptedMessageData) {
-            setShowUnlockDialog(true);
-        }
-    }, [
-        isKeySet,
-        encryptedMessageData,
-        fetchEncryptedMessage,
-        props.showEncryptionPrompt,
-    ]);
-
-    function handleUnlock() {
-        setShowUnlockDialog(false);
-    }
-
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Dashboard')} />
@@ -269,17 +241,6 @@ export default function Dashboard() {
                     }
                 }}
             />
-
-            {encryptedMessageData && (
-                <UnlockMessageDialog
-                    open={showUnlockDialog}
-                    onOpenChange={setShowUnlockDialog}
-                    onUnlock={handleUnlock}
-                    encryptedContent={encryptedMessageData.encrypted_content}
-                    iv={encryptedMessageData.iv}
-                    salt={encryptedMessageData.salt}
-                />
-            )}
 
             <div className="space-y-6 p-6">
                 <HeadingSmall

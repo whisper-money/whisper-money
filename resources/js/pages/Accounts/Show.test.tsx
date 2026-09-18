@@ -99,8 +99,6 @@ vi.mock('@/components/mobile-back-button', () => ({
 const baseAccount = {
     id: 'account-1',
     name: 'Checking',
-    name_iv: null,
-    encrypted: false,
     bank: null,
     type: 'checking' as const,
     currency_code: 'EUR',

@@ -115,7 +115,7 @@ export default function Terms() {
                                 </li>
                                 <li>
                                     {__(
-                                        'Sync your encrypted financial data across\n                                    multiple devices via cloud storage',
+                                        'Sync your financial data across multiple\n                                    devices via cloud storage',
                                     )}
                                 </li>
                                 <li>

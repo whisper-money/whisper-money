@@ -33,7 +33,7 @@ function previewSource(): User
     $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
 
     foreach ([0, 1] as $ago) {
-        Transaction::factory()->plaintext()->create([
+        Transaction::factory()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
             'category_id' => $category->id,

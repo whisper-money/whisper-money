@@ -34,10 +34,6 @@ vi.mock('@/layouts/auth-layout', () => ({
     default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('@/lib/key-storage', () => ({
-    clearKey: vi.fn(),
-}));
-
 vi.mock('@/utils/i18n', () => ({
     __: (key: string) => key,
 }));

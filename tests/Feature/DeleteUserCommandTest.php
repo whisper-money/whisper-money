@@ -8,7 +8,6 @@ use App\Models\AutomationRule;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\Category;
-use App\Models\EncryptedMessage;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
@@ -28,11 +27,6 @@ test('marks user as deleted, preserves data, and prefixes email with timestamp w
     app()->instance(BankingProviderInterface::class, $mockProvider);
 
     // Create associated data
-    EncryptedMessage::query()->create([
-        'user_id' => $user->id,
-        'encrypted_content' => 'test-content',
-        'iv' => 'test-iv',
-    ]);
     Transaction::factory()->count(3)->create(['user_id' => $user->id]);
     $account = Account::factory()->create(['user_id' => $user->id]);
     AccountBalance::factory()->count(2)->create(['account_id' => $account->id]);
@@ -55,7 +49,6 @@ test('marks user as deleted, preserves data, and prefixes email with timestamp w
     expect($deletedUser?->deleted_at)->not->toBeNull();
     expect($deletedUser?->email)->toBe('20260422105124_test@example.com');
 
-    expect(EncryptedMessage::query()->where('user_id', $user->id)->exists())->toBeTrue();
     expect(Transaction::query()->where('user_id', $user->id)->exists())->toBeTrue();
     expect(Account::query()->where('user_id', $user->id)->exists())->toBeTrue();
     expect(AccountBalance::query()->where('account_id', $account->id)->exists())->toBeTrue();

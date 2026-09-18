@@ -48,8 +48,6 @@ function makeAccount(): Account {
     return {
         id: 'account-1',
         name: 'Checking',
-        name_iv: null,
-        encrypted: false,
         bank: {
             id: 'bank-1',
             user_id: null,

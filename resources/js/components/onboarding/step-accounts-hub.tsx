@@ -153,8 +153,6 @@ interface HubSuggestion {
 export interface ExistingAccount {
     id: string;
     name: string;
-    name_iv: string | null;
-    encrypted: boolean;
     type: AccountType;
     currency_code: string;
     /** Last four of the IBAN, when the bank gave one. */

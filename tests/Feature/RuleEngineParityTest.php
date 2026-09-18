@@ -10,7 +10,6 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->account = Account::factory()->create([
         'user_id' => $this->user->id,
-        'encrypted' => false,
     ]);
     $this->service = app(AutomationRuleService::class);
 });

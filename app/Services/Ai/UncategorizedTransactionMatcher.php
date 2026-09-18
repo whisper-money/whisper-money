@@ -11,8 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 class UncategorizedTransactionMatcher implements TransactionMatcher
 {
     /**
-     * Fields a suggested rule is allowed to match against (server-readable,
-     * never the encrypted description/notes blobs).
+     * Fields a suggested rule is allowed to match against.
      */
     public const ALLOWED_FIELDS = ['description', 'creditor_name', 'debtor_name'];
 
@@ -83,8 +82,7 @@ class UncategorizedTransactionMatcher implements TransactionMatcher
     {
         return Transaction::query()
             ->where('user_id', $user->id)
-            ->whereNull('category_id')
-            ->whereNull('description_iv');
+            ->whereNull('category_id');
     }
 
     /**

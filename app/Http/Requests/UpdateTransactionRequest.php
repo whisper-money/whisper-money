@@ -21,9 +21,7 @@ class UpdateTransactionRequest extends FormRequest
         $rules = [
             'category_id' => ['nullable', $this->userOwned('categories')],
             'description' => ['sometimes', 'string'],
-            'description_iv' => ['nullable', 'string', 'size:16'],
             'notes' => ['nullable', 'string'],
-            'notes_iv' => ['nullable', 'string', 'size:16'],
             'creditor_name' => ['nullable', 'string', 'max:255'],
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'label_ids' => ['nullable', 'array'],
@@ -54,8 +52,6 @@ class UpdateTransactionRequest extends FormRequest
     {
         return [
             'category_id.exists' => 'The selected category does not exist.',
-            'description_iv.size' => 'The description IV must be exactly 16 characters.',
-            'notes_iv.size' => 'The notes IV must be exactly 16 characters.',
             'label_ids.*.exists' => 'One or more selected labels do not exist or do not belong to you.',
         ];
     }

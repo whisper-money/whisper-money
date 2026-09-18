@@ -164,7 +164,7 @@ it('can filter transactions by search text', function () {
         'type' => 'checking',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
@@ -172,7 +172,7 @@ it('can filter transactions by search text', function () {
         'amount' => -4500,
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
@@ -213,7 +213,7 @@ it('can edit an existing transaction from the list', function () {
         'type' => 'checking',
     ]);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
@@ -265,7 +265,7 @@ it('can delete a transaction from the actions menu', function () {
         'type' => 'checking',
     ]);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,

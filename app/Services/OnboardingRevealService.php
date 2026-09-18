@@ -149,9 +149,9 @@ class OnboardingRevealService
     private function topMerchants(Collection $transactions, string $currency): array
     {
         return $transactions
-            ->groupBy(fn (Transaction $transaction): string => $this->merchantOf($transaction) ?? '')
-            // Rows nobody can name: no counterparty, and a description we hold
-            // only as ciphertext. They still count towards the total.
+            ->groupBy(fn (Transaction $transaction): string => $this->merchantOf($transaction))
+            // Rows nobody can name: no counterparty and no description. They
+            // still count towards the total.
             ->forget('')
             ->map(fn (Collection $rows): int => -$this->sumConvertedAmounts($rows, $currency))
             ->sortDesc()
@@ -165,16 +165,13 @@ class OnboardingRevealService
      * Who a movement was paid to, in the words the row itself carries.
      *
      * A bank names the counterparty; a file usually does not, so the description
-     * stands in — the same text step 8 writes its rules from, and skipped for
-     * the same reason when it is encrypted at rest.
+     * stands in — the same text step 8 writes its rules from, and the same
+     * fallback `merchantCount()` counts over. Empty when the row carries
+     * neither, which is what the callers filter on.
      */
-    private function merchantOf(Transaction $transaction): ?string
+    private function merchantOf(Transaction $transaction): string
     {
-        if ($transaction->creditor_name) {
-            return $transaction->creditor_name;
-        }
-
-        return $transaction->description_iv === null ? $transaction->description : null;
+        return $transaction->creditor_name ?: $transaction->description;
     }
 
     /**

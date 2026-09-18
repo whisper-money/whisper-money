@@ -27,9 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
-import { decrypt, importKey } from '@/lib/crypto';
 import { fetchJson } from '@/lib/fetch-json';
-import { getStoredKey } from '@/lib/key-storage';
 import { captureEvent } from '@/lib/posthog';
 import { refreshPageAfterWrite } from '@/lib/refresh-page';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
@@ -48,7 +46,7 @@ import {
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { formatCurrency, toMajorUnits, toMinorUnits } from '@/utils/currency';
 import { formatDate, todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -78,7 +76,7 @@ export type TransactionCreateOrigin =
     | 'account_page';
 
 interface EditTransactionDialogProps {
-    transaction: DecryptedTransaction | null;
+    transaction: ServerTransaction | null;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
@@ -86,15 +84,15 @@ interface EditTransactionDialogProps {
     automationRules?: AutomationRule[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSuccess: (transaction: DecryptedTransaction) => void;
+    onSuccess: (transaction: ServerTransaction) => void;
     onCategorized?: (
-        transaction: DecryptedTransaction,
+        transaction: ServerTransaction,
         category: Category,
         source: 'edit_transaction_modal',
     ) => void;
     onLabelCreated?: (label: Label) => void;
-    onDelete?: (transaction: DecryptedTransaction) => void;
-    onSplit?: (transaction: DecryptedTransaction) => void;
+    onDelete?: (transaction: ServerTransaction) => void;
+    onSplit?: (transaction: ServerTransaction) => void;
     mode: 'create' | 'edit';
     initialAccountId?: string | null;
     /** Which surface opened the dialog, for `transaction_created`. */
@@ -104,7 +102,7 @@ interface EditTransactionDialogProps {
      * "Change category" way out of a rule that categorized it unseen. Without
      * it the toast offers only the undo.
      */
-    onRequestEdit?: (transaction: DecryptedTransaction) => void;
+    onRequestEdit?: (transaction: ServerTransaction) => void;
 }
 
 const STORAGE_KEY_UPDATE_BALANCE =
@@ -233,9 +231,6 @@ export function EditTransactionDialog({
     const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [decryptedAccountNames, setDecryptedAccountNames] = useState<
-        Map<string, string>
-    >(new Map());
     const [updateAccountBalance, setUpdateAccountBalance] = useState(() => {
         if (typeof window !== 'undefined') {
             const stored = readStoredValue(STORAGE_KEY_UPDATE_BALANCE);
@@ -272,7 +267,7 @@ export function EditTransactionDialog({
     useEffect(() => {
         if (mode === 'edit' && transaction) {
             setTransactionDate(transaction.transaction_date);
-            setDescription(transaction.decryptedDescription);
+            setDescription(transaction.description);
             setUnsignedAmount(Math.abs(transaction.amount));
             setTransactionType(transaction.amount > 0 ? 'income' : 'expense');
             setAccountId(transaction.account_id);
@@ -283,8 +278,8 @@ export function EditTransactionDialog({
                     transaction.labels?.map((l) => l.id) ||
                     [],
             );
-            setNotes(transaction.decryptedNotes || '');
-            setShowNotes(!!transaction.decryptedNotes);
+            setNotes(transaction.notes || '');
+            setShowNotes(!!transaction.notes);
         } else if (mode === 'create' && open) {
             const today = todayDateString();
             setTransactionDate(today);
@@ -320,59 +315,6 @@ export function EditTransactionDialog({
     }, [mode, transaction, open, accounts, initialAccountId, userCurrencyCode]);
 
     useEffect(() => {
-        if (!open) return;
-
-        async function decryptAccountNames() {
-            const keyString = getStoredKey();
-
-            try {
-                let key: CryptoKey | null = null;
-                if (keyString) {
-                    key = await importKey(keyString);
-                }
-
-                const decryptedNames = new Map<string, string>();
-
-                await Promise.all(
-                    accounts.map(async (account) => {
-                        if (!account.encrypted) {
-                            decryptedNames.set(account.id, account.name);
-                            return;
-                        }
-
-                        if (!key || !account.name_iv) {
-                            decryptedNames.set(account.id, '[Encrypted]');
-                            return;
-                        }
-
-                        try {
-                            const decryptedName = await decrypt(
-                                account.name,
-                                key,
-                                account.name_iv,
-                            );
-                            decryptedNames.set(account.id, decryptedName);
-                        } catch (error) {
-                            console.error(
-                                'Failed to decrypt account name:',
-                                account.id,
-                                error,
-                            );
-                            decryptedNames.set(account.id, '[Encrypted]');
-                        }
-                    }),
-                );
-
-                setDecryptedAccountNames(decryptedNames);
-            } catch (error) {
-                console.error('Failed to decrypt account names:', error);
-            }
-        }
-
-        decryptAccountNames();
-    }, [open, accounts]);
-
-    useEffect(() => {
         if (!focusAmountAfterSave || isSubmitting) {
             return;
         }
@@ -384,26 +326,18 @@ export function EditTransactionDialog({
         setFocusAmountAfterSave(false);
     }, [focusAmountAfterSave, isSubmitting]);
 
-    async function checkAndApplyAutomationRules() {
+    function checkAndApplyAutomationRules() {
         if (mode !== 'create' || automationRules.length === 0) {
             return {
                 categoryId: null,
                 labelIds: [] as string[],
                 matchedLabels: [] as Label[],
                 notes: null,
-                notesIv: null,
                 ruleName: null,
             };
         }
 
-        // A key only exists for the accounts still on the legacy encryption, and
-        // the engine takes a null one: it is needed to read an encrypted account
-        // name, not to match a rule. Bailing out without one switched automation
-        // rules off entirely for every manually created transaction.
-        const keyString = getStoredKey();
-        const key = keyString ? await importKey(keyString) : null;
-
-        const result = await evaluateRulesForNewTransaction(
+        const result = evaluateRulesForNewTransaction(
             {
                 description: description.trim(),
                 amount: toMajorUnits(
@@ -419,7 +353,6 @@ export function EditTransactionDialog({
             categories,
             accounts,
             banks,
-            key,
         );
 
         if (!result) {
@@ -428,24 +361,16 @@ export function EditTransactionDialog({
                 labelIds: [] as string[],
                 matchedLabels: [] as Label[],
                 notes: null,
-                notesIv: null,
                 ruleName: null,
             };
         }
 
         let finalNotes = notes.trim();
-        const finalNotesIv = null;
 
-        if (result.note && result.noteIv && key) {
-            const decryptedRuleNote = await decrypt(
-                result.note,
-                key,
-                result.noteIv,
-            );
-
+        if (result.note) {
             finalNotes = appendNoteIfNotPresent(
                 finalNotes || undefined,
-                decryptedRuleNote,
+                result.note,
             );
         }
 
@@ -454,7 +379,6 @@ export function EditTransactionDialog({
             labelIds: result.labelIds || [],
             matchedLabels: result.labels || [],
             notes: finalNotes || null,
-            notesIv: finalNotesIv,
             ruleName: result.rule.title,
         };
     }
@@ -497,7 +421,7 @@ export function EditTransactionDialog({
      * toast names the category it picked and carries both ways out of it.
      */
     function notifyRuleCategorized(
-        created: DecryptedTransaction,
+        created: ServerTransaction,
         category: Category,
         balanceWasUpdated: boolean,
     ) {
@@ -563,7 +487,7 @@ export function EditTransactionDialog({
             const trimmedDescription = description.trim();
 
             if (mode === 'create') {
-                const ruleResult = await checkAndApplyAutomationRules();
+                const ruleResult = checkAndApplyAutomationRules();
 
                 let finalCategoryId = categoryId === 'null' ? null : categoryId;
                 let finalNotes = notes.trim();
@@ -583,9 +507,7 @@ export function EditTransactionDialog({
                 }
 
                 const finalDescription = trimmedDescription;
-                const finalDescriptionIv = null;
-                const encryptedNotes = finalNotes || null;
-                const notesIv = null;
+                const finalNotesValue = finalNotes || null;
 
                 const selectedAccount = accounts.find(
                     (acc) => acc.id === accountId,
@@ -606,12 +528,10 @@ export function EditTransactionDialog({
                         account_id: accountId,
                         category_id: finalCategoryId,
                         description: finalDescription,
-                        description_iv: finalDescriptionIv,
                         transaction_date: transactionDate,
                         amount: signedAmount,
                         currency_code: currencyCode,
-                        notes: encryptedNotes,
-                        notes_iv: notesIv,
+                        notes: finalNotesValue,
                         creditor_name: null,
                         debtor_name: null,
                         source: 'manually_created' as const,
@@ -633,10 +553,10 @@ export function EditTransactionDialog({
                     finalLabelIds.includes(l.id),
                 );
 
-                const newTransaction: DecryptedTransaction = {
+                const newTransaction: ServerTransaction = {
                     ...createdTransaction,
-                    decryptedDescription: trimmedDescription,
-                    decryptedNotes: finalNotes || null,
+                    description: trimmedDescription,
+                    notes: finalNotes || null,
                     category: updatedCategory,
                     account: selectedAccount,
                     bank: selectedAccount.bank?.id
@@ -707,18 +627,10 @@ export function EditTransactionDialog({
                 const trimmedNotes = notes.trim();
                 const trimmedDescription = description.trim();
 
-                let encryptedNotes: string | null = null;
-                let notesIv: string | null = null;
-
-                encryptedNotes = trimmedNotes || null;
-                notesIv = null;
-
                 const updateData: {
                     category_id: string | null;
                     notes: string | null;
-                    notes_iv: string | null;
                     description?: string;
-                    description_iv?: string | null;
                     label_ids?: string[];
                     amount?: number;
                     transaction_date?: string;
@@ -726,13 +638,9 @@ export function EditTransactionDialog({
                     currency_code?: string;
                 } = {
                     category_id: selectedCategoryId,
-                    notes: encryptedNotes,
-                    notes_iv: notesIv,
+                    notes: trimmedNotes || null,
                     label_ids: selectedLabelIds,
                 };
-
-                let finalDecryptedDescription =
-                    transaction.decryptedDescription;
 
                 const editedAccount = accounts.find(
                     (acc) => acc.id === accountId,
@@ -744,8 +652,6 @@ export function EditTransactionDialog({
 
                 if (canEditDescription) {
                     updateData.description = trimmedDescription;
-                    updateData.description_iv = null;
-                    finalDecryptedDescription = trimmedDescription;
                 }
 
                 if (canEditAllFields) {
@@ -783,18 +689,13 @@ export function EditTransactionDialog({
                     selectedLabelIds.includes(label.id),
                 );
 
-                const updatedTransaction: DecryptedTransaction = {
+                const updatedTransaction: ServerTransaction = {
                     ...transaction,
                     category_id: selectedCategoryId,
                     category: updatedCategory,
-                    decryptedDescription: finalDecryptedDescription,
                     description:
                         updateData.description ?? transaction.description,
-                    description_iv:
-                        updateData.description_iv ?? transaction.description_iv,
-                    decryptedNotes: trimmedNotes || null,
-                    notes: encryptedNotes,
-                    notes_iv: notesIv,
+                    notes: trimmedNotes || null,
                     label_ids: selectedLabelIds,
                     labels: selectedLabels,
                     updated_at:
@@ -954,7 +855,8 @@ export function EditTransactionDialog({
           : __('Update the category and notes for this transaction.');
 
     const accountName = transaction
-        ? decryptedAccountNames.get(transaction.account_id)
+        ? accounts.find((account) => account.id === transaction.account_id)
+              ?.name
         : undefined;
 
     const headerCategory =
@@ -1077,7 +979,7 @@ export function EditTransactionDialog({
 
     const accountSelectItems = accountOptions.map((account) => (
         <SelectItem key={account.id} value={String(account.id)}>
-            {`${decryptedAccountNames.get(account.id) || __('[Loading...]')} · ${account.currency_code}`}
+            {`${account.name} · ${account.currency_code}`}
         </SelectItem>
     ));
 
@@ -1123,8 +1025,8 @@ export function EditTransactionDialog({
                 >
                     <CreditCard />
                     <SelectValue placeholder={__('Select account')}>
-                        {decryptedAccountNames.get(accountId) ||
-                            __('Select account')}
+                        {accounts.find((account) => account.id === accountId)
+                            ?.name ?? __('Select account')}
                     </SelectValue>
                 </SelectTrigger>
                 <SelectContent>{accountSelectItems}</SelectContent>

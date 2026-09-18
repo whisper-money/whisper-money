@@ -15,7 +15,7 @@ import {
 } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { type RefObject, useMemo } from 'react';
@@ -23,7 +23,7 @@ import { type RefObject, useMemo } from 'react';
 interface CategorizerCommandProps {
     sortedCategories: Category[];
     animationState: AnimationState;
-    currentTransaction: DecryptedTransaction | undefined;
+    currentTransaction: ServerTransaction | undefined;
     searchValue: string;
     onSearchChange: (value: string) => void;
     onCategorySelect: (category: Category) => void;

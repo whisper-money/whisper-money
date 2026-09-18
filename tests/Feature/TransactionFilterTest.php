@@ -14,7 +14,7 @@ beforeEach(function () {
 });
 
 test('index returns paginated transactions as Inertia props', function () {
-    Transaction::factory()->plaintext()->count(3)->create([
+    Transaction::factory()->count(3)->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
     ]);
@@ -34,7 +34,7 @@ test('transactions include eager-loaded relationships', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
     $label = Label::factory()->create(['user_id' => $this->user->id]);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $category->id,
@@ -52,13 +52,13 @@ test('transactions include eager-loaded relationships', function () {
 });
 
 test('filter by date range', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'transaction_date' => '2025-06-15',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'transaction_date' => '2025-01-01',
@@ -94,13 +94,13 @@ test('rejects a date filter that is not a plain Y-m-d date', function (string $d
 ]);
 
 test('filter by amount range', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'amount' => -5000, // -$50.00
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'amount' => -20000, // -$200.00
@@ -119,13 +119,13 @@ test('filter by amount range', function () {
 test('filter by category', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $category->id,
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => null,
@@ -147,7 +147,7 @@ test('filtering by a parent category includes transactions from its descendants'
     $unrelated = Category::factory()->create(['user_id' => $this->user->id]);
 
     foreach ([$parent, $child, $grandchild, $unrelated] as $category) {
-        Transaction::factory()->plaintext()->create([
+        Transaction::factory()->create([
             'user_id' => $this->user->id,
             'account_id' => $this->account->id,
             'category_id' => $category->id,
@@ -167,13 +167,13 @@ test('filtering by a parent category includes transactions from its descendants'
 test('filter by uncategorized', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $category->id,
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => null,
@@ -192,12 +192,12 @@ test('filter by uncategorized', function () {
 test('filter by account', function () {
     $otherAccount = Account::factory()->create(['user_id' => $this->user->id]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $otherAccount->id,
     ]);
@@ -214,13 +214,13 @@ test('filter by account', function () {
 test('filter by label', function () {
     $label = Label::factory()->create(['user_id' => $this->user->id]);
 
-    $txWithLabel = Transaction::factory()->plaintext()->create([
+    $txWithLabel = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
     ]);
     $txWithLabel->labels()->attach($label->id);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
     ]);
@@ -238,20 +238,20 @@ test('category and label filters combine with OR', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
     $label = Label::factory()->create(['user_id' => $this->user->id]);
 
-    $txWithCategory = Transaction::factory()->plaintext()->create([
+    $txWithCategory = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $category->id,
     ]);
 
-    $txWithLabel = Transaction::factory()->plaintext()->create([
+    $txWithLabel = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => null,
     ]);
     $txWithLabel->labels()->attach($label->id);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => null,
@@ -270,13 +270,13 @@ test('category and label filters combine with OR', function () {
 });
 
 test('search matches description', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Grocery Store Purchase',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Gas Station',
@@ -293,13 +293,13 @@ test('search matches description', function () {
 });
 
 test('filter by creditor name', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'creditor_name' => 'Amazon EU',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'creditor_name' => 'Coffee Shop',
@@ -317,13 +317,13 @@ test('filter by creditor name', function () {
 });
 
 test('filter by debtor name', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'debtor_name' => 'Payroll GmbH',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'debtor_name' => 'Other Sender',
@@ -341,14 +341,14 @@ test('filter by debtor name', function () {
 });
 
 test('search matches counterparty names', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Card payment',
         'creditor_name' => 'Amazon EU',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Card payment',
@@ -366,14 +366,14 @@ test('search matches counterparty names', function () {
 });
 
 test('search matches notes', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Some purchase',
         'notes' => 'weekly groceries for the family',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Another purchase',
@@ -393,7 +393,7 @@ test('combined filters work', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
     // Matches all filters
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $category->id,
@@ -403,7 +403,7 @@ test('combined filters work', function () {
     ]);
 
     // Wrong date
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $category->id,
@@ -413,7 +413,7 @@ test('combined filters work', function () {
     ]);
 
     // Wrong category
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => null,
@@ -435,13 +435,13 @@ test('combined filters work', function () {
 });
 
 test('sort by date ascending', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'transaction_date' => '2025-06-15',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'transaction_date' => '2025-01-01',
@@ -458,13 +458,13 @@ test('sort by date ascending', function () {
 });
 
 test('sort by date descending (default)', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'transaction_date' => '2025-06-15',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'transaction_date' => '2025-01-01',
@@ -479,13 +479,13 @@ test('sort by date descending (default)', function () {
 });
 
 test('sort by amount', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'amount' => -10000,
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'amount' => 5000,
@@ -502,13 +502,13 @@ test('sort by amount', function () {
 });
 
 test('sort by description', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Zebra Store',
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Apple Store',
@@ -527,7 +527,7 @@ test('sort by description', function () {
 test('cursor pagination returns correct results', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    Transaction::factory()->plaintext()->count(25)->create([
+    Transaction::factory()->count(25)->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $category->id,
@@ -560,7 +560,7 @@ test('cursor pagination returns correct results', function () {
 });
 
 test('empty results when no matches', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'description' => 'Coffee Shop',
@@ -579,12 +579,12 @@ test('user scoping - cannot see other users transactions', function () {
     $otherUser = User::factory()->create();
     $otherAccount = Account::factory()->create(['user_id' => $otherUser->id]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $otherUser->id,
         'account_id' => $otherAccount->id,
     ]);
@@ -613,13 +613,13 @@ test('applied filters are returned in response', function () {
 test('filter by multiple categories including uncategorized', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => $category->id,
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => null,
@@ -635,13 +635,13 @@ test('filter by multiple categories including uncategorized', function () {
 });
 
 test('paginates across pages when sorting by a nullable column with null values', function () {
-    Transaction::factory()->plaintext()->count(12)->create([
+    Transaction::factory()->count(12)->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'creditor_name' => null,
     ]);
 
-    Transaction::factory()->plaintext()->count(5)->create([
+    Transaction::factory()->count(5)->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'creditor_name' => 'ACME',
@@ -662,7 +662,7 @@ test('paginates across pages when sorting by a nullable column with null values'
 });
 
 test('does not expose the sort alias attribute when sorting by a nullable column', function () {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'creditor_name' => null,
@@ -684,13 +684,13 @@ test('filter by amount compares each currency at its own scale', function () {
     $copAccount = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'COP']);
     $eurAccount = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $copAccount->id,
         'currency_code' => 'COP',
         'amount' => 60, // 60 COP
     ]);
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $eurAccount->id,
         'currency_code' => 'EUR',
@@ -699,7 +699,7 @@ test('filter by amount compares each currency at its own scale', function () {
     // Below the threshold in its own currency, and a decoy: read at the old
     // fixed scale of 2 it would look like 40.00 and be excluded either way,
     // so the row that proves the point is the 60 COP one above.
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $copAccount->id,
         'currency_code' => 'COP',
@@ -716,7 +716,7 @@ test('filter by amount compares each currency at its own scale', function () {
 test('filter by amount still covers a currency the config no longer offers', function () {
     $account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
         'currency_code' => 'ZWL',

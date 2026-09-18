@@ -48,7 +48,7 @@ beforeEach(function () {
 
     // Created before it carries the label, so it lands in the catch-all — the
     // exact state each of the three label paths used to leave behind.
-    $this->transaction = Transaction::factory()->plaintext()->create([
+    $this->transaction = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => Account::factory()->create(['user_id' => $this->user->id])->id,
         'category_id' => $category->id,

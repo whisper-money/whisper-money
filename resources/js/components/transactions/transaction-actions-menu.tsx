@@ -18,7 +18,7 @@ import { useReEvaluateAllTransactions } from '@/hooks/use-re-evaluate-all-transa
 import { hasActiveFilters } from '@/lib/transaction-filter-serialization';
 
 import {
-    type DecryptedTransaction,
+    type ServerTransaction,
     type TransactionFilters,
 } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
@@ -28,7 +28,7 @@ import { useState, type ReactNode } from 'react';
 import { TransactionAnalysisDrawer } from './transaction-analysis-drawer';
 
 interface TransactionActionsMenuProps {
-    transactions: DecryptedTransaction[];
+    transactions: ServerTransaction[];
     onReEvaluateComplete?: () => void;
     filters: TransactionFilters;
 }

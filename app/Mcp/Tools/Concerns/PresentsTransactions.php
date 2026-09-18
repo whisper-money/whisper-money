@@ -33,9 +33,7 @@ trait PresentsTransactions
             'creditor_name' => $transaction->creditor_name,
             'debtor_name' => $transaction->debtor_name,
             // Plain text, and editable on any transaction through
-            // update_transaction. Rows the old client-side encryption never
-            // migrated still hold ciphertext here; they are returned as they
-            // are, because only the browser holds the key.
+            // update_transaction.
             'notes' => $transaction->notes,
             // Set when this row is one part of a split. Every part of the same
             // split carries the same value, and merge_transaction_splits takes

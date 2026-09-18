@@ -20,7 +20,7 @@ import {
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -31,7 +31,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface SplitTransactionDialogProps {
-    transaction: DecryptedTransaction | null;
+    transaction: ServerTransaction | null;
     categories: Category[];
     labels: Label[];
     open: boolean;
@@ -177,7 +177,7 @@ export function SplitTransactionDialog({
                     <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
                         <div className="flex items-center justify-between gap-3">
                             <span className="truncate font-medium">
-                                {transaction.decryptedDescription}
+                                {transaction.description}
                             </span>
                             <span className="shrink-0 font-mono font-medium tabular-nums">
                                 {formatCurrency(

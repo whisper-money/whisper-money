@@ -37,7 +37,7 @@ function spend(Account $account, Carbon $month, array $byMerchant): void
 
     foreach ($byMerchant as $merchant => $amounts) {
         foreach ($amounts as $amount) {
-            Transaction::factory()->for($account->user)->for($account)->plaintext()->create([
+            Transaction::factory()->for($account->user)->for($account)->create([
                 'category_id' => null,
                 'transaction_date' => $month->copy()->addDays($day++ % 27),
                 'amount' => -$amount,
@@ -113,7 +113,6 @@ it('captures the answer to the guess the flow opened with', function () {
         ->count(118)
         ->for($user)
         ->for($account)
-        ->plaintext()
         ->sequence(fn ($sequence): array => [
             'creditor_name' => sprintf('COMERCIO %03d', $sequence->index + 1),
             'amount' => -1000 - $sequence->index,

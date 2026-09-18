@@ -151,8 +151,6 @@ test('banking:sync --sync fails for auth errors instead of reporting success', f
 
     $user->accounts()->create([
         'name' => 'Indexa Capital Account',
-        'name_iv' => null,
-        'encrypted' => false,
         'bank_id' => null,
         'currency_code' => 'EUR',
         'type' => 'investment',

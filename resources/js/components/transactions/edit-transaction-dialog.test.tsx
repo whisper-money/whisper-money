@@ -25,17 +25,6 @@ vi.mock('@/hooks/use-locale', () => ({
     useLocale: () => 'en-US',
 }));
 
-let storedKey: string | null = null;
-
-vi.mock('@/lib/key-storage', () => ({
-    getStoredKey: () => storedKey,
-}));
-
-vi.mock('@/lib/crypto', () => ({
-    decrypt: vi.fn(),
-    importKey: vi.fn(),
-}));
-
 vi.mock('@/lib/posthog', () => ({
     captureEvent: vi.fn(),
 }));
@@ -157,7 +146,6 @@ vi.mock('@/components/ui/dialog', () => ({
 
 describe('EditTransactionDialog', () => {
     beforeEach(() => {
-        storedKey = null;
         globalThis.ResizeObserver = class {
             observe() {}
             unobserve() {}
@@ -181,19 +169,15 @@ describe('EditTransactionDialog', () => {
                     account_id: 'account-1',
                     category_id: null,
                     description: 'Card payment',
-                    description_iv: null,
                     transaction_date: '2026-05-27',
                     amount: -1200,
                     currency_code: 'EUR',
                     notes: null,
-                    notes_iv: null,
                     creditor_name: 'Amazon EU',
                     debtor_name: 'Victor Falcon',
                     source: 'imported',
                     created_at: '2026-05-27T00:00:00Z',
                     updated_at: '2026-05-27T00:00:00Z',
-                    decryptedDescription: 'Card payment',
-                    decryptedNotes: null,
                     label_ids: [],
                 }}
                 categories={[]}
@@ -225,17 +209,13 @@ describe('EditTransactionDialog', () => {
                     account_id: 'account-1',
                     category_id: null,
                     description: longDescription,
-                    description_iv: null,
                     transaction_date: '2026-05-27',
                     amount: -1200,
                     currency_code: 'EUR',
                     notes: null,
-                    notes_iv: null,
                     source: 'imported',
                     created_at: '2026-05-27T00:00:00Z',
                     updated_at: '2026-05-27T00:00:00Z',
-                    decryptedDescription: longDescription,
-                    decryptedNotes: null,
                     label_ids: [],
                 }}
                 categories={[]}
@@ -258,8 +238,6 @@ describe('EditTransactionDialog', () => {
     const checkingAccount = {
         id: 'account-1',
         name: 'Checking',
-        name_iv: null,
-        encrypted: false,
         bank: null,
         type: 'checking' as const,
         currency_code: 'EUR',
@@ -438,19 +416,15 @@ describe('EditTransactionDialog', () => {
                     account_id: 'account-1',
                     category_id: null,
                     description: 'Groceries',
-                    description_iv: null,
                     transaction_date: '2026-05-27',
                     amount: -1200,
                     currency_code: 'EUR',
                     notes: null,
-                    notes_iv: null,
                     creditor_name: null,
                     debtor_name: null,
                     source: 'manually_created',
                     created_at: '2026-05-27T00:00:00Z',
                     updated_at: '2026-05-27T00:00:00Z',
-                    decryptedDescription: 'Groceries',
-                    decryptedNotes: null,
                     label_ids: [],
                 }}
                 categories={[]}
@@ -483,19 +457,15 @@ describe('EditTransactionDialog', () => {
                     account_id: 'account-1',
                     category_id: null,
                     description: 'Card payment',
-                    description_iv: null,
                     transaction_date: '2026-05-27',
                     amount: -1200,
                     currency_code: 'EUR',
                     notes: null,
-                    notes_iv: null,
                     creditor_name: null,
                     debtor_name: null,
                     source: 'imported',
                     created_at: '2026-05-27T00:00:00Z',
                     updated_at: '2026-05-27T00:00:00Z',
-                    decryptedDescription: 'Card payment',
-                    decryptedNotes: null,
                     label_ids: [],
                 }}
                 categories={[]}
@@ -572,19 +542,15 @@ describe('EditTransactionDialog', () => {
         account_id: 'account-1',
         category_id: null,
         description: 'Groceries',
-        description_iv: null,
         transaction_date: '2026-05-27',
         amount: -1200,
         currency_code: 'EUR',
         notes: null,
-        notes_iv: null,
         creditor_name: null,
         debtor_name: null,
         source: 'manually_created' as const,
         created_at: '2026-05-27T00:00:00Z',
         updated_at: '2026-05-27T00:00:00Z',
-        decryptedDescription: 'Groceries',
-        decryptedNotes: null,
         label_ids: [],
     };
 
@@ -672,19 +638,15 @@ describe('EditTransactionDialog', () => {
         account_id: 'account-1',
         category_id: null,
         description: 'Card payment',
-        description_iv: null,
         transaction_date: '2026-05-27',
         amount: -1200,
         currency_code: 'EUR',
         notes: null,
-        notes_iv: null,
         creditor_name: null,
         debtor_name: null,
         source: 'imported' as const,
         created_at: '2026-05-27T00:00:00Z',
         updated_at: '2026-05-27T00:00:00Z',
-        decryptedDescription: 'Card payment',
-        decryptedNotes: null,
         label_ids: [],
     };
 
@@ -1238,15 +1200,12 @@ describe('EditTransactionDialog', () => {
         });
     });
 
-    // `storedKey` stays null on purpose: an account off the legacy encryption
-    // has none, and rules still have to run for it.
     it('names the category a rule picked while the form was collapsed', async () => {
-        vi.mocked(evaluateRulesForNewTransaction).mockResolvedValue({
+        vi.mocked(evaluateRulesForNewTransaction).mockReturnValue({
             categoryId: 'category-1',
             labelIds: [],
             labels: [],
             note: null,
-            noteIv: null,
             rule: { title: 'Supermarkets' },
         } as never);
         vi.mocked(transactionSyncService.create).mockResolvedValue({

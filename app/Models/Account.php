@@ -32,11 +32,9 @@ class Account extends Model
         'user_id',
         'space_id',
         'name',
-        'name_iv',
         'bank_id',
         'currency_code',
         'type',
-        'encrypted',
         'banking_connection_id',
         'external_account_id',
         'transactions_paginate_before',
@@ -87,7 +85,6 @@ class Account extends Model
     {
         return [
             'type' => AccountType::class,
-            'encrypted' => 'boolean',
             'linked_at' => 'datetime',
             'transactions_paginate_before' => 'date',
             'position' => 'integer',

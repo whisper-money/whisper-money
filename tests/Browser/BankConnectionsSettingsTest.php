@@ -167,7 +167,7 @@ it('only deletes the accounts once the confirmation text matches', function () {
     $user = connectionsUser();
     $connection = connectionsBankConnection($user);
     $account = connectionsAccount($user, $connection, 'Sabadell Main', 'ext-delete-1');
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
     ]);

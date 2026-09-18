@@ -62,10 +62,7 @@ final class PlanningFixtures
         ]);
     }
 
-    /**
-     * A transaction whose description is readable on screen: the factory
-     * encrypts it by default, and the browser cannot decrypt it without a key.
-     */
+    /** A transaction in the shape the planning screens read it. */
     public static function transaction(
         User $user,
         Account $account,
@@ -73,7 +70,7 @@ final class PlanningFixtures
         int $amountInCents,
         ?string $categoryId = null,
     ): Transaction {
-        return Transaction::factory()->plaintext()->create([
+        return Transaction::factory()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
             'category_id' => $categoryId,
@@ -84,7 +81,6 @@ final class PlanningFixtures
             // enough back that it always falls inside the goal's window.
             'transaction_date' => now()->subDays(3)->toDateString(),
             'notes' => null,
-            'notes_iv' => null,
         ]);
     }
 

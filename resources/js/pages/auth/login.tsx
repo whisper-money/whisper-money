@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
-import { clearKey } from '@/lib/key-storage';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -32,8 +31,6 @@ export default function Login({
     const [password, setPassword] = useState('');
 
     useEffect(() => {
-        clearKey();
-
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('demo') === '1' && demoCredentials) {
             setEmail(demoCredentials.email);
@@ -48,11 +45,7 @@ export default function Login({
         >
             <Head title={__('Log in')} />
 
-            <Form
-                {...store.form()}
-                onSuccess={clearKey}
-                className="flex flex-col gap-6"
-            >
+            <Form {...store.form()} className="flex flex-col gap-6">
                 {({ processing, errors }) => (
                     <>
                         <div className="grid gap-6">

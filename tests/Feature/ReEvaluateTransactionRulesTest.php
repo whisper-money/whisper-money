@@ -20,7 +20,6 @@ beforeEach(function () {
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
         'name' => 'Checking Account',
-        'encrypted' => false,
     ]);
     $this->category = Category::factory()->create(['user_id' => $this->user->id]);
 });
@@ -87,7 +86,6 @@ test('single endpoint applies plain action_note from matching rule', function ()
         'rules_json' => ['in' => ['spotify', ['var' => 'description']]],
         'action_category_id' => null,
         'action_note' => 'Streaming service',
-        'action_note_iv' => null,
     ]);
 
     $transaction = Transaction::factory()->enableBanking()->create([
@@ -112,7 +110,6 @@ test('single endpoint does not duplicate a note already present', function () {
         'rules_json' => ['in' => ['spotify', ['var' => 'description']]],
         'action_category_id' => null,
         'action_note' => 'Streaming service',
-        'action_note_iv' => null,
     ]);
 
     $transaction = Transaction::factory()->enableBanking()->create([
@@ -128,31 +125,6 @@ test('single endpoint does not duplicate a note already present', function () {
         ->assertOk();
 
     expect($transaction->fresh()->notes)->toBe('Streaming service');
-});
-
-test('single endpoint skips encrypted transactions silently', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'encrypted-blob',
-        'description_iv' => 'a1b2c3d4e5f60001',
-        'amount' => -5000,
-        'category_id' => null,
-    ]);
-
-    $this->actingAs($this->user)
-        ->postJson(route('transactions.re-evaluate-rules.single', $transaction))
-        ->assertOk();
-
-    // Category should remain null because the backend skips encrypted transactions
-    expect($transaction->fresh()->category_id)->toBeNull();
 });
 
 test('single endpoint returns 403 for another user\'s transaction', function () {
@@ -268,7 +240,7 @@ test('status endpoint does not leak another user\'s job progress', function () {
 // Job execution
 // ──────────────────────────────────────────────
 
-test('job applies rules to non-encrypted transactions and tracks progress', function () {
+test('job applies rules to transactions and tracks progress', function () {
     // Create transactions BEFORE the rule so the creation listener has no rules to apply
     $matchingTransaction = Transaction::factory()->enableBanking()->create([
         'user_id' => $this->user->id,
@@ -353,33 +325,6 @@ test('job marks cache as failed and preserves counts', function () {
         ->and($progress['processed'])->toBe(4)
         ->and($progress['total'])->toBe(20)
         ->and($progress['updated'])->toBe(2);
-});
-
-test('job skips encrypted transactions', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'encrypted-blob',
-        'description_iv' => 'a1b2c3d4e5f60001',
-        'amount' => -5000,
-        'category_id' => null,
-    ]);
-
-    $jobId = 'test-job-'.uniqid();
-    $job = new ReEvaluateTransactionRulesJob($this->user, $jobId);
-    $job->handle(app(AutomationRuleService::class));
-
-    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId));
-    // 0 processed because the encrypted transaction is excluded from the query
-    expect($progress['processed'])->toBe(0);
-    expect($progress['updated'])->toBe(0);
 });
 
 test('job only processes provided transaction_ids', function () {

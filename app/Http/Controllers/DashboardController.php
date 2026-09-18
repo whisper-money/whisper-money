@@ -27,7 +27,6 @@ class DashboardController extends Controller
     public function __invoke(Request $request): Response
     {
         return Inertia::render('dashboard', [
-            'showEncryptionPrompt' => session('show_encryption_prompt', false),
             'monthlySummary' => Inertia::defer(fn () => $this->latestSummary($request), 'dashboard'),
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),

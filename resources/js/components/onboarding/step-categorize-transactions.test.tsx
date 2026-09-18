@@ -38,8 +38,8 @@ vi.mock('@/components/transactions/categorizer-card', () => ({
     CategorizerCard: ({
         transaction,
     }: {
-        transaction: { decryptedDescription?: string } | undefined;
-    }) => <div data-testid="card">{transaction?.decryptedDescription}</div>,
+        transaction: { description?: string } | undefined;
+    }) => <div data-testid="card">{transaction?.description}</div>,
 }));
 
 vi.mock('@/components/transactions/categorizer-command', () => ({
@@ -63,12 +63,10 @@ const transactions = Array.from({ length: 5 }, (_, index) => ({
     account_id: 'account-1',
     category_id: null,
     description: `MOVEMENT ${index}`,
-    description_iv: null,
     transaction_date: `2026-03-0${index + 1}`,
     amount: -1000 - index,
     currency_code: 'EUR',
     notes: null,
-    notes_iv: null,
     source: 'imported',
     created_at: '2026-03-01T00:00:00Z',
     updated_at: '2026-03-01T00:00:00Z',

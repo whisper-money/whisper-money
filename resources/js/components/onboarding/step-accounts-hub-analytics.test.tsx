@@ -55,8 +55,6 @@ async function submitManualAccount() {
 const EXISTING_ACCOUNT = {
     id: 'account-1',
     name: 'Cuenta Nómina',
-    name_iv: null,
-    encrypted: false,
     type: 'checking' as const,
     currency_code: 'EUR',
     iban_tail: null,

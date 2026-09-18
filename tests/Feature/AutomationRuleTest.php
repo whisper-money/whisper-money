@@ -31,7 +31,6 @@ test('user can create an automation rule with category action', function () {
             'rules_json' => json_encode(['in' => ['grocery', ['var' => 'description']]]),
             'action_category_id' => $category->id,
             'action_note' => null,
-            'action_note_iv' => null,
         ]);
 
     $response->assertRedirect(route('automation-rules.index'));
@@ -55,7 +54,6 @@ test('user can create an automation rule with labels action only', function () {
             'rules_json' => json_encode(['==' => [['var' => 'amount'], 100]]),
             'action_category_id' => null,
             'action_note' => null,
-            'action_note_iv' => null,
             'action_label_ids' => [$label->id],
         ]);
 
@@ -80,8 +78,7 @@ test('user can create an automation rule with both actions', function () {
             'priority' => 0,
             'rules_json' => json_encode(['>' => [['var' => 'amount'], 50]]),
             'action_category_id' => $category->id,
-            'action_note' => 'encrypted_note',
-            'action_note_iv' => 'test_iv',
+            'action_note' => 'Reimbursable',
         ]);
 
     $response->assertRedirect(route('automation-rules.index'));
@@ -89,7 +86,7 @@ test('user can create an automation rule with both actions', function () {
         'user_id' => $user->id,
         'title' => 'Combined Rule',
         'action_category_id' => $category->id,
-        'action_note' => 'encrypted_note',
+        'action_note' => 'Reimbursable',
     ]);
 });
 
@@ -102,7 +99,6 @@ test('user cannot create rule without at least one action', function () {
         'rules_json' => json_encode(['>' => [['var' => 'amount'], 50]]),
         'action_category_id' => null,
         'action_note' => null,
-        'action_note_iv' => null,
     ]);
 
     $response->assertSessionHasErrors('action_category_id');
@@ -138,7 +134,6 @@ test('user can update their automation rule', function () {
             'rules_json' => json_encode(['==' => [['var' => 'bank_name'], 'Chase']]),
             'action_category_id' => $category->id,
             'action_note' => null,
-            'action_note_iv' => null,
         ]);
 
     $response->assertRedirect(route('automation-rules.index'));
@@ -233,7 +228,6 @@ test('rules with description filter are case insensitive with lowercase rule', f
             'rules_json' => json_encode(['in' => ['m3 sport', ['var' => 'description']]]),
             'action_category_id' => $category->id,
             'action_note' => null,
-            'action_note_iv' => null,
         ]);
 
     $response->assertRedirect(route('automation-rules.index'));
@@ -255,7 +249,6 @@ test('rules with description filter are case insensitive with uppercase rule', f
             'rules_json' => json_encode(['in' => ['M3 SPORT', ['var' => 'description']]]),
             'action_category_id' => $category->id,
             'action_note' => null,
-            'action_note_iv' => null,
         ]);
 
     $response->assertRedirect(route('automation-rules.index'));
@@ -277,7 +270,6 @@ test('rules with description filter are case insensitive with mixed case rule', 
             'rules_json' => json_encode(['in' => ['M3 Sport Academy', ['var' => 'description']]]),
             'action_category_id' => $category->id,
             'action_note' => null,
-            'action_note_iv' => null,
         ]);
 
     $response->assertRedirect(route('automation-rules.index'));
@@ -299,7 +291,6 @@ test('rules with notes filter are case insensitive', function () {
             'rules_json' => json_encode(['in' => ['IMPORTANT NOTE', ['var' => 'notes']]]),
             'action_category_id' => $category->id,
             'action_note' => null,
-            'action_note_iv' => null,
         ]);
 
     $response->assertRedirect(route('automation-rules.index'));
@@ -322,7 +313,6 @@ test('user can create an automation rule with labels action', function () {
             'rules_json' => json_encode(['in' => ['grocery', ['var' => 'description']]]),
             'action_category_id' => null,
             'action_note' => null,
-            'action_note_iv' => null,
             'action_label_ids' => [$label1->id, $label2->id],
         ]);
 
@@ -346,7 +336,6 @@ test('user can create an automation rule with category and labels', function () 
             'rules_json' => json_encode(['>' => [['var' => 'amount'], 100]]),
             'action_category_id' => $category->id,
             'action_note' => null,
-            'action_note_iv' => null,
             'action_label_ids' => [$label->id],
         ]);
 
@@ -373,7 +362,6 @@ test('user can update automation rule labels', function () {
             'rules_json' => json_encode($rule->rules_json),
             'action_category_id' => null,
             'action_note' => null,
-            'action_note_iv' => null,
             'action_label_ids' => [$label2->id],
         ]);
 
@@ -394,7 +382,6 @@ test('user cannot use another users label in rule', function () {
         'rules_json' => json_encode(['==' => [1, 1]]),
         'action_category_id' => null,
         'action_note' => null,
-        'action_note_iv' => null,
         'action_label_ids' => [$otherLabel->id],
     ]);
 
@@ -420,7 +407,6 @@ test('updating labels touches automation rule updated_at timestamp', function ()
             'rules_json' => json_encode($rule->rules_json),
             'action_category_id' => $rule->action_category_id,
             'action_note' => null,
-            'action_note_iv' => null,
             'action_label_ids' => [$label2->id],
         ]);
 
@@ -445,7 +431,7 @@ test('automation rules serialize full nested category and labels', function () {
 
     expect(array_keys($serialized))->toContain(
         'id', 'user_id', 'title', 'priority', 'rules_json',
-        'action_category_id', 'action_note', 'action_note_iv',
+        'action_category_id', 'action_note',
         'category', 'labels', 'created_at', 'updated_at', 'deleted_at',
     );
     expect(array_keys($serialized['category']))

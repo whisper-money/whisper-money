@@ -1,4 +1,3 @@
-import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -56,10 +55,7 @@ export function ImportBalanceStepAccount({
                             />
                             <div className="flex flex-1 flex-col gap-1">
                                 <span className="font-medium">
-                                    <AccountName
-                                        account={account}
-                                        length={19}
-                                    />
+                                    {account.name}
                                 </span>
                                 <span className="text-sm text-muted-foreground">
                                     {account.bank?.name ??

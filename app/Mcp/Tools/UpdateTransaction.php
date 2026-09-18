@@ -91,8 +91,6 @@ class UpdateTransaction extends WriteTool
             'debtor_name' => fn () => $this->nullableString($request, 'debtor_name'),
         ]);
 
-        $this->retireLegacyIvs($request, $transaction);
-
         // A new category is always a manual assignment: reset any AI/rule
         // provenance so the row is not later treated as machine-categorized.
         // ponytail: unlike the web edit path this does not learn a correction
@@ -125,22 +123,6 @@ class UpdateTransaction extends WriteTool
             'transaction' => $this->presentTransaction($transaction->refresh()),
             'balance_updated' => $balanceUpdated,
         ]);
-    }
-
-    /**
-     * Writing one of the legacy encrypted fields in the clear retires its iv:
-     * one left behind would have the browser try to decrypt plain text and
-     * render the field as broken. The web edit dialog clears them for the same
-     * reason, and the client-side encryption they belong to is being migrated
-     * away.
-     */
-    private function retireLegacyIvs(Request $request, Transaction $transaction): void
-    {
-        foreach (['description' => 'description_iv', 'notes' => 'notes_iv'] as $field => $iv) {
-            if ($request->has($field)) {
-                $transaction->{$iv} = null;
-            }
-        }
     }
 
     /**

@@ -25,7 +25,7 @@ it('categorizes the still-pending transactions when run for a consenting user', 
         $index++;
     }
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'category_source' => null,
@@ -59,7 +59,7 @@ it('does nothing when the user has not consented to AI', function () {
         'cashflow_direction' => CategoryCashflowDirection::Outflow,
     ]);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'creditor_name' => 'mercadona',

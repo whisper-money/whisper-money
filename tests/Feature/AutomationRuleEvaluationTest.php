@@ -20,7 +20,6 @@ beforeEach(function () {
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
         'name' => 'Checking Account',
-        'encrypted' => false,
     ]);
     $this->category = Category::factory()->create(['user_id' => $this->user->id]);
 });
@@ -211,27 +210,6 @@ test('assigns both category and labels', function () {
     $fresh = $transaction->fresh();
     expect($fresh->category_id)->toBe($this->category->id)
         ->and($fresh->labels)->toHaveCount(1);
-});
-
-test('skips encrypted transactions', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Grocery Store',
-        'description_iv' => 'some-iv-value',
-        'amount' => -5000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->not->toBe($this->category->id);
 });
 
 test('uses first-match-wins with priority ordering', function () {
@@ -475,34 +453,6 @@ test('normalizes whitespace in description', function () {
         'account_id' => $this->account->id,
         'description' => '  Grocery   Store  Purchase  ',
         'amount' => -5000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
-
-test('treats encrypted account names as empty string', function () {
-    $encryptedAccount = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-        'name' => 'encrypted-data',
-        'name_iv' => 'some-iv',
-        'encrypted' => true,
-    ]);
-
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['==' => [['var' => 'account_name'], '']],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $encryptedAccount->id,
-        'description' => 'Some payment',
-        'amount' => -1000,
     ]);
 
     app(AutomationRuleService::class)->applyRules($transaction);

@@ -1,5 +1,5 @@
 import { type Label } from '@/types/label';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 
 /**
  * Optimistic state for a bulk label change.
@@ -14,11 +14,11 @@ import { type DecryptedTransaction } from '@/types/transaction';
  * re-render.
  */
 export function applyBulkLabels(
-    transactions: DecryptedTransaction[],
+    transactions: ServerTransaction[],
     selectedIds: string[],
     labelIds: string[],
     allLabels: Label[],
-): DecryptedTransaction[] {
+): ServerTransaction[] {
     const selected = new Set(selectedIds);
     const labels = allLabels.filter((label) => labelIds.includes(label.id));
 

@@ -48,7 +48,6 @@ function merchant(Account $account, string $name, int $times, int $amount): void
         ->count($times)
         ->for($account->user)
         ->for($account)
-        ->plaintext()
         ->sequence(fn ($sequence): array => [
             'description' => sprintf('%s %04d', $name, $sequence->index + 1),
         ])
@@ -68,7 +67,6 @@ function oneOffs(Account $account, int $count): void
         ->count($count)
         ->for($account->user)
         ->for($account)
-        ->plaintext()
         ->sequence(fn ($sequence): array => [
             'description' => sprintf('COMERCIO %03d', $sequence->index + 1),
             'creditor_name' => sprintf('COMERCIO %03d', $sequence->index + 1),

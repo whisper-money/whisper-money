@@ -57,7 +57,7 @@ it('categorizes an eligible uncategorized transaction on creation', function () 
 
     fakeCategorizes(new Transaction, $index);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'amount' => -4300,
@@ -74,7 +74,7 @@ it('does nothing when the user is not eligible', function () {
     $user = User::factory()->create();
     leaf($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'amount' => -4300,
@@ -89,7 +89,7 @@ it('does not categorize transactions created while onboarding', function () {
     $user->update(['onboarded_at' => null]);
     leaf($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'amount' => -4300,
@@ -103,7 +103,7 @@ it('does not categorize a transaction that already has a category', function () 
     $user = eligible();
     $category = leaf($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $category->id,
         'category_source' => CategorySource::Manual,
@@ -111,18 +111,4 @@ it('does not categorize a transaction that already has a category', function () 
     ]);
 
     expect($transaction->refresh()->category_source)->toBe(CategorySource::Manual);
-});
-
-it('never categorizes a client-side encrypted transaction', function () {
-    $user = eligible();
-    leaf($user);
-
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'category_id' => null,
-        'description_iv' => str_repeat('a', 16),
-        'amount' => -4300,
-    ]);
-
-    expect($transaction->refresh()->category_id)->toBeNull();
 });

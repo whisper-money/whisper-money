@@ -10,8 +10,6 @@ function account(overrides: Partial<Account>): Account {
     return {
         id: 'account-1',
         name: 'Everyday account',
-        name_iv: null,
-        encrypted: false,
         bank: null,
         type: 'checking',
         currency_code: 'EUR',

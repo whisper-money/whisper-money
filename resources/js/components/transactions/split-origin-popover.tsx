@@ -7,15 +7,15 @@ import {
 } from '@/components/ui/popover';
 import { useLocale } from '@/hooks/use-locale';
 import { type Category } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Merge, Split } from 'lucide-react';
 
 interface SplitOriginPopoverProps {
-    transaction: DecryptedTransaction;
+    transaction: ServerTransaction;
     categories: Category[];
-    onUnsplit: (transaction: DecryptedTransaction) => void;
+    onUnsplit: (transaction: ServerTransaction) => void;
 }
 
 /**

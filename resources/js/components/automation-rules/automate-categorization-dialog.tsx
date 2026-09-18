@@ -16,14 +16,14 @@ import {
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
 import type { Label } from '@/types/label';
-import type { DecryptedTransaction } from '@/types/transaction';
+import type { ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { ArrowLeft, FilePlus2, ListPlus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 export interface AutomateCategorizationCandidate {
-    transaction: DecryptedTransaction;
+    transaction: ServerTransaction;
     /** Null when the transaction is not categorized yet: the user picks one in the form. */
     category: Category | null;
 }
@@ -90,8 +90,7 @@ export function AutomateCategorizationDialog({
     }
 
     const description =
-        candidate.transaction.decryptedDescription ||
-        candidate.transaction.description;
+        candidate.transaction.description || candidate.transaction.description;
     const createInitialStructure = descriptionRuleStructure(description);
     const editInitialStructure = selectedRule
         ? addDescriptionMatchToRuleStructure(

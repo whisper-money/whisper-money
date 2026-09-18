@@ -37,7 +37,6 @@ class AutomationRule extends Model
         'rules_json',
         'action_category_id',
         'action_note',
-        'action_note_iv',
     ];
 
     /** @var list<string> */

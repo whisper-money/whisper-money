@@ -3,7 +3,7 @@
 
 {{ __("Thanks for signing up — we just need you to verify your email address to get started.") }}
 
-{{ __("Once verified, you'll be able to set up your encryption key and start tracking your finances with full privacy.") }}
+{{ __("Once verified, you'll be able to start tracking your finances with full privacy.") }}
 
 <x-mail::button :url="$verificationUrl">
 {{ __('Verify Email Address') }}

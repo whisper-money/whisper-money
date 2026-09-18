@@ -22,7 +22,7 @@ function expenseCategory(User $user): Category
 
 function merchantTransaction(User $user, string $creditor): Transaction
 {
-    return Transaction::factory()->plaintext()->create([
+    return Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'amount' => -4300,
@@ -68,7 +68,7 @@ it('learns each correction correctly across a batch while loading the corpus onc
 
     // Merchant-less, plaintext transactions force the description-token path,
     // which is what loads the per-user description corpus.
-    $makeTxn = fn (string $description): Transaction => Transaction::factory()->plaintext()->create([
+    $makeTxn = fn (string $description): Transaction => Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $existing->id,
         'creditor_name' => null,
@@ -97,12 +97,11 @@ it('learns each correction correctly across a batch while loading the corpus onc
         ->and($secondRule->refresh()->rules_json)->toHaveKey('or')
         ->and($secondRule->rules_json['or'])->toHaveCount(2);
 
-    // The corpus is the pluck of the `description` column (not the matcher's
-    // count(*) probes, which also filter on description_iv), loaded once.
-    $corpusLoads = $queries->filter(fn (array $q): bool => str_starts_with(strtolower(ltrim($q['query'])), 'select')
-        && str_contains($q['query'], 'description_iv')
-        && ! str_contains(strtolower($q['query']), 'count(')
-    );
+    // The corpus is the pluck of the `description` column alone, loaded once.
+    $corpusLoads = $queries->filter(fn (array $q): bool => str_contains(
+        strtolower((string) preg_replace('/[`"]/', '', $q['query'])),
+        'select description from',
+    ));
 
     expect($corpusLoads)->toHaveCount(1);
 });
@@ -117,7 +116,7 @@ it('does not learn a description rule from a single short token', function () {
     // Merchant-less so the description-token path runs. A lone short token like
     // "suc" (sucursal) is a generic banking abbreviation and must not become a
     // rule, even when it is rare in this user's corpus.
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $existing->id,
         'creditor_name' => null,
@@ -133,7 +132,7 @@ it('learns a description rule from a single sufficiently long token', function (
     $target = expenseCategory($user);
     $existing = expenseCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $existing->id,
         'creditor_name' => null,
@@ -152,7 +151,7 @@ it('learns a description rule from two short tokens', function () {
     $target = expenseCategory($user);
     $existing = expenseCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $existing->id,
         'creditor_name' => null,
@@ -235,7 +234,7 @@ it('does not learn when the transaction has no merchant key', function () {
     $user = User::factory()->create();
     $category = expenseCategory($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'amount' => -1000,
@@ -279,7 +278,7 @@ it('keeps the generated title within the column when the bank stuffs the stateme
 
     foreach ($statementLines as $statementLine) {
         $rule = $learner->learnFromCorrection(
-            Transaction::factory()->plaintext()->create([
+            Transaction::factory()->create([
                 'user_id' => $user->id,
                 'category_id' => $existing->id,
                 'creditor_name' => $statementLine,

@@ -17,7 +17,7 @@ it('splits a transaction into two parts and merges it back', function () {
         'currency_code' => 'USD',
     ]);
 
-    $original = Transaction::factory()->plaintext()->create([
+    $original = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,
@@ -59,7 +59,7 @@ it('splits from the row menu, the entry point people actually use', function () 
         'currency_code' => 'USD',
     ]);
 
-    $original = Transaction::factory()->plaintext()->create([
+    $original = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,

@@ -32,7 +32,6 @@ class RuleSuggestionAggregator
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
             ->whereNull('category_id')
-            ->whereNull('description_iv')
             ->get(['id', 'description', 'creditor_name', 'debtor_name', 'amount', 'currency_code']);
 
         $documentFrequency = $this->descriptionDocumentFrequency($transactions);

@@ -66,7 +66,7 @@ it('categorizes the remaining uncategorized transactions when onboarding complet
 
     fakeCategorizesEachRef($index);
 
-    $pending = Transaction::factory()->plaintext()->count(3)->create([
+    $pending = Transaction::factory()->count(3)->create([
         'user_id' => $user->id,
         'category_id' => null,
         'creditor_name' => 'mercadona',
@@ -87,7 +87,7 @@ it('leaves transactions already categorized by rules untouched', function () {
 
     fakeCategorizesEachRef($index);
 
-    $alreadyCategorized = Transaction::factory()->plaintext()->create([
+    $alreadyCategorized = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $category->id,
         'category_source' => CategorySource::Rule,
@@ -102,7 +102,7 @@ it('does nothing for a user who is not eligible', function () {
     $user = User::factory()->onboarded()->create();
     expenseLeaf($user);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'creditor_name' => 'mercadona',

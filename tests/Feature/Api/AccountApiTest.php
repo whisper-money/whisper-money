@@ -31,32 +31,27 @@ it('returns all accounts for the authenticated user', function () {
     $response->assertOk();
     $response->assertJsonCount(3);
     $response->assertJsonStructure([
-        '*' => ['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code'],
+        '*' => ['id', 'name', 'bank_id', 'type', 'currency_code'],
     ]);
 });
 
-it('can update account name and set encrypted to false', function () {
+it('can update an account name', function () {
     actingAs($this->user);
 
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
-        'name' => 'encrypted_ciphertext',
-        'name_iv' => 'abcd1234efgh5678',
-        'encrypted' => true,
+        'name' => 'Old Name',
     ]);
 
     $response = $this->putJson("/api/accounts/{$account->id}", [
         'name' => 'My Checking Account',
-        'encrypted' => false,
     ]);
 
     $response->assertOk();
     assertDatabaseHas('accounts', [
         'id' => $account->id,
         'name' => 'My Checking Account',
-        'encrypted' => false,
-        'name_iv' => null,
     ]);
 });
 
@@ -67,12 +62,10 @@ it('prevents updating another users account via api', function () {
     $account = Account::factory()->create([
         'user_id' => $otherUser->id,
         'bank_id' => $this->bank->id,
-        'encrypted' => true,
     ]);
 
     $response = $this->putJson("/api/accounts/{$account->id}", [
         'name' => 'Hacked Name',
-        'encrypted' => false,
     ]);
 
     $response->assertForbidden();
@@ -89,7 +82,7 @@ it('validates required fields when updating via api', function () {
     $response = $this->putJson("/api/accounts/{$account->id}", []);
 
     $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['name', 'encrypted']);
+    $response->assertJsonValidationErrors(['name']);
 });
 
 it('requires authentication for api endpoints', function () {

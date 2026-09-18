@@ -21,7 +21,7 @@ use function Pest\Laravel\actingAs;
 it('dispatches a backfill and returns job progress when consent is granted', function () {
     Bus::fake();
     $user = User::factory()->onboarded()->create();
-    Transaction::factory()->plaintext()->count(2)->create([
+    Transaction::factory()->count(2)->create([
         'user_id' => $user->id,
         'category_id' => null,
     ]);
@@ -40,7 +40,7 @@ it('does not dispatch a backfill when nothing is uncategorized', function () {
     Bus::fake();
     $user = User::factory()->onboarded()->create();
     $category = Category::factory()->for($user)->create();
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $category->id,
     ]);
@@ -56,7 +56,7 @@ it('does not dispatch a backfill for a user without a paid plan', function () {
     config(['subscriptions.enabled' => true]);
     Bus::fake();
     $user = User::factory()->onboarded()->create();
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
     ]);
@@ -74,7 +74,7 @@ it('does not dispatch a backfill when AI categorization is disabled', function (
     config(['ai_categorization.enabled' => false]);
     Bus::fake();
     $user = User::factory()->onboarded()->create();
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
     ]);
@@ -148,7 +148,7 @@ it('records progress while categorizing the uncategorized transactions', functio
         ], $matches[1])];
     });
 
-    Transaction::factory()->plaintext()->count(2)->create([
+    Transaction::factory()->count(2)->create([
         'user_id' => $user->id,
         'category_id' => null,
         'creditor_name' => 'mercadona',
@@ -191,17 +191,17 @@ it('categorizes the most recent transactions first', function () {
     $user = User::factory()->create();
     $user->recordAiConsent();
 
-    $oldest = Transaction::factory()->plaintext()->create([
+    $oldest = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'transaction_date' => '2026-01-01',
     ]);
-    $newest = Transaction::factory()->plaintext()->create([
+    $newest = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'transaction_date' => '2026-06-01',
     ]);
-    $middle = Transaction::factory()->plaintext()->create([
+    $middle = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'transaction_date' => '2026-03-01',

@@ -159,10 +159,6 @@ class AiRuleLearner
      */
     private function descriptionClause(Transaction $transaction): ?array
     {
-        if ($transaction->description_iv !== null) {
-            return null;
-        }
-
         $tokens = $this->distinctiveDescriptionTokens($transaction);
 
         if ($tokens === []) {
@@ -212,7 +208,6 @@ class AiRuleLearner
         return $this->descriptionCorpus[$userId] ??= (function () use ($userId): array {
             $descriptions = Transaction::query()
                 ->where('user_id', $userId)
-                ->whereNull('description_iv')
                 ->pluck('description')
                 ->all();
 

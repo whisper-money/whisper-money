@@ -56,7 +56,6 @@ function makeRule(title: string, priority: number): AutomationRule {
         rules_json: {},
         action_category_id: null,
         action_note: null,
-        action_note_iv: null,
         labels: [],
         created_at: '2026-06-15T00:00:00Z',
         updated_at: '2026-06-15T00:00:00Z',

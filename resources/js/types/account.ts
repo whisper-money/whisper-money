@@ -43,8 +43,6 @@ export interface Bank {
 export interface Account {
     id: UUID;
     name: string;
-    name_iv: string | null;
-    encrypted: boolean;
     bank: Bank | null;
     type: AccountType;
     currency_code: CurrencyCode;

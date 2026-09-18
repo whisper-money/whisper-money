@@ -98,7 +98,7 @@ function seedSmokeReader(): User
     $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Smoke Label']);
 
     foreach ([['Smoke weekly shop', -4210, $groceries->id], ['Smoke payday', 300000, $salary->id]] as [$description, $amount, $categoryId]) {
-        $transaction = Transaction::factory()->plaintext()->create([
+        $transaction = Transaction::factory()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
             'category_id' => $categoryId,
@@ -112,7 +112,7 @@ function seedSmokeReader(): User
     }
 
     // The one row the categorize screen exists for.
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,

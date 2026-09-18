@@ -111,11 +111,7 @@ test('demo:reset --press seeds a history that automation rules can actually matc
     $user = User::where('email', 'prensa@whisper.money')->first();
     $savings = $user->accounts()->where('type', AccountType::Savings)->first();
 
-    // Server-side rule evaluation blanks account_name for encrypted accounts,
-    // so a seeded account left on the column default (true) with a plaintext
-    // name can never be matched by a rule keyed on the account it belongs to.
-    expect($user->accounts()->where('encrypted', true)->count())->toBe(0)
-        ->and($savings->transactions()->count())->toBeGreaterThan(0);
+    expect($savings->transactions()->count())->toBeGreaterThan(0);
 
     $label = $user->labels()->create(['name' => 'Objetivo', 'color' => '#10b981']);
     $rule = $user->automationRules()->create([

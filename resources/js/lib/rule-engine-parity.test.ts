@@ -44,7 +44,6 @@ function makeRule(rulesJson: Record<string, unknown>): AutomationRule {
         rules_json: rulesJson,
         action_category_id: 'cat-1' as UUID,
         action_note: null,
-        action_note_iv: null,
         labels: [],
         created_at: '2026-01-01T00:00:00.000Z',
         updated_at: '2026-01-01T00:00:00.000Z',
@@ -53,7 +52,7 @@ function makeRule(rulesJson: Record<string, unknown>): AutomationRule {
 }
 
 describe('rule engine PHP/TS parity', () => {
-    it.each(fixtures)('$name', async (fixture) => {
+    it.each(fixtures)('$name', (fixture) => {
         const transactionData: NewTransactionData = {
             description: fixture.transaction.description,
             // Fixture amounts are already in dollars, the unit the client engine
@@ -66,13 +65,12 @@ describe('rule engine PHP/TS parity', () => {
             debtor_name: fixture.transaction.debtor_name,
         };
 
-        const result = await evaluateRulesForNewTransaction(
+        const result = evaluateRulesForNewTransaction(
             transactionData,
             [makeRule(fixture.rule)],
             [],
             [],
             [],
-            null,
         );
 
         expect(result !== null).toBe(fixture.expected);

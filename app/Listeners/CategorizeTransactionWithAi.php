@@ -62,10 +62,6 @@ class CategorizeTransactionWithAi implements ShouldQueue
             return false;
         }
 
-        if ($transaction->description_iv !== null) {
-            return false;
-        }
-
         $user = $transaction->user;
 
         if ($user === null) {

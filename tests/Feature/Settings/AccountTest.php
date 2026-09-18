@@ -49,8 +49,6 @@ it('can create a new account with plaintext name', function () {
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
         'name' => 'My Checking Account',
-        'name_iv' => null,
-        'encrypted' => false,
         'currency_code' => 'USD',
         'type' => AccountType::Checking->value,
     ]);
@@ -325,8 +323,6 @@ it('can update an account', function () {
     assertDatabaseHas('accounts', [
         'id' => $account->id,
         'name' => 'Updated Account Name',
-        'encrypted' => false,
-        'name_iv' => null,
         'bank_id' => $newBank->id,
         'currency_code' => 'EUR',
         'type' => AccountType::Savings->value,

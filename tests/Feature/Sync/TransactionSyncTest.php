@@ -22,7 +22,6 @@ it('can fetch user transactions', function () {
                     'account_id',
                     'category_id',
                     'description',
-                    'description_iv',
                     'transaction_date',
                     'amount',
                     'currency_code',

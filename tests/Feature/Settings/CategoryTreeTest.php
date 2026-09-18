@@ -139,7 +139,7 @@ test('deleting a parent with the cascade strategy removes the subtree and uncate
     $root = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
     $child = Category::factory()->childOf($root)->create(['user_id' => $user->id]);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $child->id,
@@ -160,7 +160,7 @@ test('deleting a category uncategorizes its transactions whatever happens to its
     $parent = Category::factory()->childOf($root)->create(['user_id' => $user->id]);
     $child = Category::factory()->childOf($parent)->create(['user_id' => $user->id]);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $parent->id,

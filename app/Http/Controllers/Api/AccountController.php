@@ -18,8 +18,7 @@ class AccountController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // The decryption-migration flow needs bank_id, which Account hides by
-        // default; opt it back in explicitly here.
+        // Account hides bank_id by default; opt it back in explicitly here.
         $accounts = $request->user()
             ->accounts()
             ->get()
@@ -29,7 +28,7 @@ class AccountController extends Controller
     }
 
     /**
-     * Update an account's name (used for decryption migration).
+     * Update an account's name.
      */
     public function update(UpdateAccountNameRequest $request, Account $account): JsonResponse
     {
@@ -37,11 +36,7 @@ class AccountController extends Controller
 
         $validated = $request->validated();
 
-        $account->update([
-            'name' => $validated['name'],
-            'encrypted' => $validated['encrypted'],
-            'name_iv' => $validated['encrypted'] ? $account->name_iv : null,
-        ]);
+        $account->update(['name' => $validated['name']]);
 
         return response()->json($account);
     }

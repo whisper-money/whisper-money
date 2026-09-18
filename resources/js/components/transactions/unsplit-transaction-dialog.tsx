@@ -12,7 +12,7 @@ import {
 import { useLocale } from '@/hooks/use-locale';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Category } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Merge } from 'lucide-react';
@@ -20,7 +20,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface UnsplitTransactionDialogProps {
-    transaction: DecryptedTransaction | null;
+    transaction: ServerTransaction | null;
     categories: Category[];
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
@@ -87,8 +87,7 @@ export function UnsplitTransactionDialog({
                             : __(
                                   ':description goes back to being a single transaction of :amount.',
                                   {
-                                      description:
-                                          transaction.decryptedDescription,
+                                      description: transaction.description,
                                       amount: formatCurrency(
                                           originalAmount,
                                           transaction.currency_code,

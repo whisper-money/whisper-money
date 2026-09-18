@@ -164,7 +164,7 @@ function performanceSeedUser(): User
     ]);
 
     foreach ($accounts as $index => $account) {
-        Transaction::factory(10)->plaintext()->create([
+        Transaction::factory(10)->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
             'category_id' => $categories->random()->id,

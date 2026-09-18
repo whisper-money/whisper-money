@@ -27,7 +27,7 @@ it('queues an AI categorization job for an eligible, uncategorized transaction',
 
     Queue::fake();
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
     ]);
@@ -40,7 +40,7 @@ it('does not queue an AI categorization job when the user has no AI consent', fu
 
     Queue::fake();
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
     ]);
@@ -54,7 +54,7 @@ it('does not queue an AI categorization job when the transaction is already cate
 
     Queue::fake();
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $category->id,
     ]);

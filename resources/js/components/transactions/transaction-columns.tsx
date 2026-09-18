@@ -5,15 +5,11 @@ import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { Fragment } from 'react';
 
-import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
 import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
-import {
-    ENCRYPTED_PLACEHOLDER,
-    TransactionDescription,
-} from '@/components/transactions/transaction-description';
+import { TransactionDescription } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,7 +26,7 @@ import { isSplitPart } from '@/lib/transaction-splits';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 
 interface CreateColumnsOptions {
     categories: Category[];
@@ -38,18 +34,18 @@ interface CreateColumnsOptions {
     banks: Bank[];
     labels: Label[];
     locale: string;
-    onEdit: (transaction: DecryptedTransaction) => void;
-    onDelete: (transaction: DecryptedTransaction) => void;
-    onUpdate: (transaction: DecryptedTransaction) => void;
+    onEdit: (transaction: ServerTransaction) => void;
+    onDelete: (transaction: ServerTransaction) => void;
+    onUpdate: (transaction: ServerTransaction) => void;
     onCategorized?: (
-        transaction: DecryptedTransaction,
+        transaction: ServerTransaction,
         category: Category,
         source: 'transaction_table',
     ) => void;
-    onReEvaluateRules: (transaction: DecryptedTransaction) => void;
-    onAutomate: (transaction: DecryptedTransaction) => void;
-    onSplit: (transaction: DecryptedTransaction) => void;
-    onUnsplit: (transaction: DecryptedTransaction) => void;
+    onReEvaluateRules: (transaction: ServerTransaction) => void;
+    onAutomate: (transaction: ServerTransaction) => void;
+    onSplit: (transaction: ServerTransaction) => void;
+    onUnsplit: (transaction: ServerTransaction) => void;
     isDateHidden?: boolean;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
@@ -74,7 +70,7 @@ export function createTransactionColumns({
     isDateHidden = false,
     categorizingIds,
     hiddenLabelId,
-}: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
+}: CreateColumnsOptions): ColumnDef<ServerTransaction>[] {
     return [
         {
             id: 'select',
@@ -198,18 +194,16 @@ export function createTransactionColumns({
                             name={transaction.bank?.name}
                             className="h-5 w-5"
                         />
-                        <AccountName
-                            account={transaction.account}
-                            length={{ min: 5, max: 15 }}
-                            className="truncate"
-                        />
+                        <span className="truncate">
+                            {transaction.account.name}
+                        </span>
                     </div>
                 );
             },
             enableHiding: true,
         },
         {
-            accessorKey: 'decryptedDescription',
+            accessorKey: 'description',
             meta: {
                 label: __('Description'),
                 cellClassName:
@@ -248,7 +242,6 @@ export function createTransactionColumns({
                                 <div className="flex-grow truncate">
                                     <TransactionDescription
                                         text={transaction.description}
-                                        encrypted={!!transaction.description_iv}
                                     />
                                 </div>
                                 {showLabels && hasLabels && (
@@ -261,11 +254,7 @@ export function createTransactionColumns({
                             {showNotes && hasNotes && (
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                                     <div className="truncate text-muted-foreground/80">
-                                        <span>
-                                            {transaction.notes_iv
-                                                ? ENCRYPTED_PLACEHOLDER
-                                                : transaction.notes}
-                                        </span>
+                                        <span>{transaction.notes}</span>
                                     </div>
                                 </div>
                             )}
@@ -438,7 +427,7 @@ export function createTransactionColumns({
         },
         {
             id: 'notes',
-            accessorKey: 'decryptedNotes',
+            accessorKey: 'notes',
             meta: { label: __('Notes'), isVirtual: true },
             header: () => null,
             cell: () => null,

@@ -4,7 +4,6 @@ import * as Icons from 'lucide-react';
 import { ChevronsUpDown, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import { LabelIcon } from '@/components/shared/label-icon';
 import { SavedFilters } from '@/components/transactions/saved-filters';
@@ -735,12 +734,11 @@ export function TransactionFilters({
                                                                                     fallback="icon"
                                                                                     className="h-5 w-5 shrink-0 rounded-full"
                                                                                 />
-                                                                                <AccountName
-                                                                                    account={
-                                                                                        account
+                                                                                <span className="truncate">
+                                                                                    {
+                                                                                        account.name
                                                                                     }
-                                                                                    className="truncate"
-                                                                                />
+                                                                                </span>
                                                                             </div>
                                                                         </CommandItem>
                                                                     );

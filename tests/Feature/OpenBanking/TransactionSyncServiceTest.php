@@ -59,7 +59,6 @@ test('sync creates transactions from provider data', function () {
     expect($debit->amount)->toBe(-5000);
     expect($debit->description)->toBe('Grocery Store Purchase');
     expect($debit->source)->toBe(TransactionSource::EnableBanking);
-    expect($debit->description_iv)->toBeNull();
     expect($debit->raw_data)->toEqual([
         'booking_date' => '2025-01-15',
         'transaction_id' => 'txn-001',

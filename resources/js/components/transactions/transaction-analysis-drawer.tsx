@@ -1,4 +1,3 @@
-import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import {
     CategoryBreakdownRow,
@@ -1664,14 +1663,9 @@ function LargestTransactions({
                                                     }
                                                     className="h-4 w-4"
                                                 />
-                                                <AccountName
-                                                    account={{
-                                                        name: item.account.name,
-                                                        name_iv: null,
-                                                        encrypted: false,
-                                                    }}
-                                                    className="truncate"
-                                                />
+                                                <span className="truncate">
+                                                    {item.account.name}
+                                                </span>
                                             </div>
                                         ) : (
                                             <span className="text-muted-foreground">

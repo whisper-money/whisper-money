@@ -465,10 +465,8 @@ class TransactionController extends Controller
             $updateData['categorized_by_rule_id'] = null;
         }
 
-        foreach (['notes', 'notes_iv'] as $field) {
-            if ($request->has($field)) {
-                $updateData[$field] = $request->input($field);
-            }
+        if ($request->has('notes')) {
+            $updateData['notes'] = $request->input('notes');
         }
 
         return $updateData;

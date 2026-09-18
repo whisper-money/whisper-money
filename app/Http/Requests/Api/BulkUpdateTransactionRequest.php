@@ -27,8 +27,6 @@ class BulkUpdateTransactionRequest extends FormRequest
             'transactions.*.id' => ['required', 'uuid'],
             'transactions.*.description' => ['sometimes', 'string'],
             'transactions.*.notes' => ['sometimes', 'nullable', 'string'],
-            'transactions.*.description_iv' => ['sometimes', 'nullable', 'string'],
-            'transactions.*.notes_iv' => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

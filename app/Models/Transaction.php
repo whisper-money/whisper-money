@@ -66,13 +66,11 @@ class Transaction extends Model
         'ai_suggested_category_at',
         'ai_model',
         'description',
-        'description_iv',
         'original_description',
         'transaction_date',
         'amount',
         'currency_code',
         'notes',
-        'notes_iv',
         'source',
         'external_transaction_id',
         'dedup_fingerprint',
@@ -340,15 +338,14 @@ class Transaction extends Model
     }
 
     /**
-     * Transactions the AI backfill can act on: still uncategorized and stored
-     * in plaintext (encrypted descriptions are never sent to the AI provider).
+     * Transactions the AI backfill can act on: still uncategorized.
      *
      * @param  Builder<Transaction>  $query
      * @return Builder<Transaction>
      */
     public function scopePendingAiCategorization(Builder $query): Builder
     {
-        return $query->whereNull('category_id')->whereNull('description_iv');
+        return $query->whereNull('category_id');
     }
 
     /**

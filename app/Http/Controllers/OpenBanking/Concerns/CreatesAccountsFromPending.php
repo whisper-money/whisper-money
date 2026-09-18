@@ -39,8 +39,6 @@ trait CreatesAccountsFromPending
 
             $account = $user->accounts()->create([
                 'name' => $name,
-                'name_iv' => null,
-                'encrypted' => false,
                 'bank_id' => $bank->id,
                 'currency_code' => $currency,
                 'type' => $accountType->value,

@@ -30,7 +30,7 @@ it('records provenance when an automation rule categorizes a transaction', funct
         'rules_json' => ['==' => [['var' => 'creditor_name'], 'mercadona']],
     ]);
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
         'creditor_name' => 'mercadona',
@@ -51,13 +51,13 @@ it('self-heals and logs a correction when the user overrides an ai category via 
 
     // Learn an ai rule, then categorize a matching transaction through it.
     app(AiRuleLearner::class)->learn(new CategorizationOutcome(
-        Transaction::factory()->plaintext()->create([
+        Transaction::factory()->create([
             'user_id' => $user->id, 'category_id' => null, 'creditor_name' => 'Mercadona', 'amount' => -1000,
         ]),
         $from->id, 0.95, true, true,
     ));
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id, 'category_id' => null, 'creditor_name' => 'Mercadona', 'amount' => -2000,
     ]);
     app(AutomationRuleService::class)->applyRules($transaction);

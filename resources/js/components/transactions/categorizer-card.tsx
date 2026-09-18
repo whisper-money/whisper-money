@@ -1,17 +1,16 @@
-import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { type AnimationState } from '@/hooks/use-categorize-transactions';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { formatDateLong } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { CheckCircle2 } from 'lucide-react';
 
 interface CategorizerCardProps {
-    transaction: DecryptedTransaction | undefined;
+    transaction: ServerTransaction | undefined;
     animationState: AnimationState;
     lastSelectedCategory: Category | null;
 }
@@ -76,8 +75,7 @@ export function CategorizerCard({
                                     </p>
 
                                     <h2 className="text-2xl whitespace-pre-wrap text-zinc-900 dark:text-zinc-100">
-                                        {transaction.decryptedDescription ||
-                                            'Encrypted'}
+                                        {transaction.description}
                                     </h2>
 
                                     {transaction.account && (
@@ -87,10 +85,9 @@ export function CategorizerCard({
                                                 name={transaction.bank?.name}
                                                 className="size-5"
                                             />
-                                            <AccountName
-                                                account={transaction.account}
-                                                className="text-sm text-zinc-600 dark:text-zinc-400"
-                                            />
+                                            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                                                {transaction.account.name}
+                                            </span>
                                         </div>
                                     )}
 
@@ -126,9 +123,9 @@ export function CategorizerCard({
                                 </div>
                             </div>
 
-                            {transaction.decryptedNotes && (
+                            {transaction.notes && (
                                 <p className="text-sm text-muted-foreground">
-                                    {transaction.decryptedNotes}
+                                    {transaction.notes}
                                 </p>
                             )}
                         </div>
