@@ -37,9 +37,6 @@ it('creates a savings goal from the planning page and opens it', function () {
         ->click('Create')
         ->click('[role="menuitem"]:has-text("Savings Goal")')
         ->assertSee('Create Savings Goal')
-        // The year cap the picker got with #963, so a mistyped 20026 never
-        // leaves the browser in the first place.
-        ->assertAttribute('#goal-target-date', 'max', '2100-01-01')
         // The amount goes in first: AmountInput only reports its value when it
         // loses focus, and filling the next field is what takes focus from it.
         ->fill('#goal-target', '1000')
@@ -63,6 +60,37 @@ it('creates a savings goal from the planning page and opens it', function () {
         ->assertSee('Trip to Japan')
         ->assertSee('0%')
         ->assertNoJavascriptErrors();
+});
+
+// The typo behind #963. A five-digit year is a date the field accepts happily,
+// and before the fix it travelled on to be mangled into a plausible year and
+// then rejected by the column, losing the goal the user had just filled in. The
+// year cap added there is what turns it away, and it does so here in the
+// browser: the form never submits and no goal is created.
+it('refuses a savings goal whose target year was mistyped', function () {
+    $user = PlanningFixtures::user();
+
+    actingAs($user);
+
+    $page = visit('/budgets');
+
+    $page->assertSee('Planning')
+        ->click('Create')
+        ->click('[role="menuitem"]:has-text("Savings Goal")')
+        ->assertSee('Create Savings Goal')
+        ->fill('#goal-target', '1000')
+        ->fill('#goal-target-date', '20026-11-10')
+        ->fill('#goal-name', 'Typo')
+        ->click('[role="dialog"] button[type="submit"]')
+        // The field itself reports the year as out of range, which is what
+        // blocks the submit.
+        ->assertScript("document.querySelector('#goal-target-date').validity.rangeOverflow === true")
+        // So the dialog is still sitting there with what was typed in it.
+        ->assertSee('Create Savings Goal')
+        ->assertValue('#goal-name', 'Typo')
+        ->assertNoJavascriptErrors();
+
+    expect(SavingsGoal::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
 it('links transactions to a goal and moves its progress', function () {
