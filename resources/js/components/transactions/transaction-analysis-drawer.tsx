@@ -660,7 +660,10 @@ export function TransactionAnalysisDrawer({
 
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
-            <DrawerContent className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]">
+            <DrawerContent
+                className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]"
+                data-testid="analysis-drawer"
+            >
                 <div className="mx-auto w-full max-w-5xl overflow-y-auto p-6">
                     <DrawerHeader className="gap-0 px-0">
                         <div className="-mt-8 flex min-h-9 justify-end">

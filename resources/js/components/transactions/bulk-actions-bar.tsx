@@ -90,6 +90,7 @@ export function BulkActionsBar({
                                             onClick={onSelectAll}
                                             disabled={isUpdating}
                                             className="h-6 w-6 text-primary hover:text-primary/80"
+                                            data-testid="bulk-select-all"
                                         >
                                             <CheckCheck className="h-3 w-3" />
                                         </Button>
