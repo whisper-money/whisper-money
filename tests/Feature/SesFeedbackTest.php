@@ -6,15 +6,17 @@ use App\Mail\Drip\WelcomeEmail;
 use App\Models\SuppressedEmailAddress;
 use App\Models\User;
 use App\Models\UserMailLog;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Testing\TestResponse;
 
-const TOPIC_ARN = 'arn:aws:sns:eu-west-1:123456789012:whisper-ses-feedback';
+const SES_FEEDBACK_TOPIC_ARN = 'arn:aws:sns:eu-west-1:123456789012:whisper-ses-feedback';
 
 beforeEach(function () {
-    config(['services.ses.topic_arn' => TOPIC_ARN]);
+    config(['services.ses.topic_arn' => SES_FEEDBACK_TOPIC_ARN]);
 });
 
 /**
@@ -37,7 +39,7 @@ function snsNotification(array $message): array
 {
     return [
         'Type' => 'Notification',
-        'TopicArn' => TOPIC_ARN,
+        'TopicArn' => SES_FEEDBACK_TOPIC_ARN,
         'Message' => json_encode($message),
     ];
 }
@@ -108,7 +110,7 @@ it('ignores deliveries and anything else SNS sends', function () {
         'delivery' => ['recipients' => ['fine@example.com']],
     ]))->assertOk();
 
-    postToSnsWebhook(['Type' => 'UnsubscribeConfirmation', 'TopicArn' => TOPIC_ARN])
+    postToSnsWebhook(['Type' => 'UnsubscribeConfirmation', 'TopicArn' => SES_FEEDBACK_TOPIC_ARN])
         ->assertOk();
 
     expect(SuppressedEmailAddress::count())->toBe(0);
@@ -146,7 +148,7 @@ it('confirms a subscription by visiting the URL SNS sent', function () {
 
     postToSnsWebhook([
         'Type' => 'SubscriptionConfirmation',
-        'TopicArn' => TOPIC_ARN,
+        'TopicArn' => SES_FEEDBACK_TOPIC_ARN,
         'SubscribeURL' => 'https://sns.eu-west-1.amazonaws.com/?Action=ConfirmSubscription&Token=abc',
     ])->assertOk();
 
@@ -158,7 +160,7 @@ it('refuses to fetch a confirmation URL that is not an AWS host', function (stri
 
     postToSnsWebhook([
         'Type' => 'SubscriptionConfirmation',
-        'TopicArn' => TOPIC_ARN,
+        'TopicArn' => SES_FEEDBACK_TOPIC_ARN,
         'SubscribeURL' => $subscribeUrl,
     ])->assertOk();
 
@@ -233,4 +235,17 @@ it('drops only the suppressed recipient when a message has several', function ()
     expect($messages)->toHaveCount(1);
     expect($messages[0]->getOriginalMessage()->getTo())->toHaveCount(1)
         ->and($messages[0]->getOriginalMessage()->getTo()[0]->getAddress())->toBe('fine@example.com');
+});
+
+it('lets other MessageSending listeners run', function () {
+    $reached = false;
+    Event::listen(MessageSending::class, function () use (&$reached) {
+        $reached = true;
+    });
+
+    $user = User::factory()->create(['email' => 'fine@example.com']);
+
+    Mail::to($user->email)->send(new WelcomeEmail($user));
+
+    expect($reached)->toBeTrue();
 });

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\SuppressionReason;
-use App\Http\Controllers\SesFeedbackController;
 use Carbon\Carbon;
 use Database\Factories\SuppressedEmailAddressFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -13,7 +12,7 @@ use Illuminate\Support\Str;
 
 /**
  * An address SES told us to stop mailing, through the bounce and complaint
- * feedback SNS publishes to {@see SesFeedbackController}.
+ * feedback SNS delivers to the SES feedback webhook.
  *
  * Keyed by the address rather than by the user on purpose: bounces also arrive
  * for addresses that were never users (report recipients, deleted accounts), and

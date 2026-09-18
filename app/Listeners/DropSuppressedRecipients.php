@@ -13,10 +13,18 @@ use Symfony\Component\Mime\Address;
  *
  * Deliberately not queued: a queued listener cannot cancel the send, and
  * returning false here is the whole point.
+ *
+ * Only `To` is filtered, because nothing in `app/Mail` sets `Cc` or `Bcc`. The
+ * first mailable that does needs this widened.
  */
 class DropSuppressedRecipients
 {
-    public function handle(MessageSending $event): bool
+    /**
+     * Null rather than true when the message is fine: `MessageSending` is
+     * dispatched through `Event::until()`, which stops at the first listener to
+     * answer with anything, and only `false` cancels the send.
+     */
+    public function handle(MessageSending $event): ?bool
     {
         $recipients = $event->message->getTo();
 
@@ -26,7 +34,7 @@ class DropSuppressedRecipients
         ));
 
         if (count($kept) === count($recipients)) {
-            return true;
+            return null;
         }
 
         if ($kept === []) {
@@ -35,6 +43,6 @@ class DropSuppressedRecipients
 
         $event->message->to(...$kept);
 
-        return true;
+        return null;
     }
 }

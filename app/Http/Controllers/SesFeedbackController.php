@@ -59,13 +59,14 @@ class SesFeedbackController extends Controller
             return;
         }
 
-        Http::get($subscribeUrl);
+        Http::timeout(10)->get($subscribeUrl);
     }
 
     /**
-     * Only permanent bounces and complaints suppress. SES retries transient ones
-     * itself, and an `Undetermined` bounce is a guess — suppressing on either
-     * would silence mailboxes that are working.
+     * Only permanent bounces and complaints suppress. Everything else — a
+     * delivery, a transient bounce, an `Undetermined` one — is left alone: SES
+     * retries the transient ones itself, and suppressing on a guess would
+     * silence mailboxes that are working.
      *
      * @param  array<string, mixed>  $message
      */
@@ -73,18 +74,19 @@ class SesFeedbackController extends Controller
     {
         $type = $message['notificationType'] ?? $message['eventType'] ?? null;
 
-        [$recipients, $reason] = match (true) {
-            $type === 'Bounce' && data_get($message, 'bounce.bounceType') === 'Permanent' => [
-                data_get($message, 'bounce.bouncedRecipients', []),
-                SuppressionReason::Bounce,
-            ],
-            $type === 'Complaint' => [
-                data_get($message, 'complaint.complainedRecipients', []),
-                SuppressionReason::Complaint,
-            ],
-            default => [[], SuppressionReason::Bounce],
-        };
+        if ($type === 'Complaint') {
+            $this->suppressAll(data_get($message, 'complaint.complainedRecipients'), SuppressionReason::Complaint);
 
+            return;
+        }
+
+        if ($type === 'Bounce' && data_get($message, 'bounce.bounceType') === 'Permanent') {
+            $this->suppressAll(data_get($message, 'bounce.bouncedRecipients'), SuppressionReason::Bounce);
+        }
+    }
+
+    private function suppressAll(mixed $recipients, SuppressionReason $reason): void
+    {
         foreach ((array) $recipients as $recipient) {
             SuppressedEmailAddress::suppress((string) data_get($recipient, 'emailAddress', ''), $reason);
         }
