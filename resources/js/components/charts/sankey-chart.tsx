@@ -606,7 +606,10 @@ export function SankeyChart({
     };
 
     return (
-        <div className={cn('w-full overflow-x-auto', className)}>
+        <div
+            className={cn('w-full overflow-x-auto', className)}
+            data-testid="cashflow-sankey"
+        >
             <div ref={containerRef} style={{ minWidth: minChartWidth }}>
                 <ResponsiveContainer width="100%" height={chartHeight}>
                     <Sankey
