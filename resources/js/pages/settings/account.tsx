@@ -60,7 +60,10 @@ function PreferenceSelect({
             <Label htmlFor={name}>{label}</Label>
 
             <Select name={name} defaultValue={defaultValue} required={required}>
-                <SelectTrigger className="mt-1 w-full">
+                <SelectTrigger
+                    className="mt-1 w-full"
+                    data-testid={`${name.replaceAll('_', '-')}-select`}
+                >
                     <SelectValue placeholder={placeholder} />
                 </SelectTrigger>
                 <SelectContent>
