@@ -53,6 +53,7 @@ export function AutomationRuleForm({
             groupOperator: 'or',
         },
     );
+    const [priority, setPriority] = useState(String(rule?.priority ?? 0));
     const [categoryId, setCategoryId] = useState<string>(initialCategoryId);
     const [labelIds, setLabelIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,6 +62,7 @@ export function AutomationRuleForm({
     useEffect(() => {
         if (mode === 'edit' && rule) {
             setTitle(initialTitle || rule.title);
+            setPriority(String(rule.priority ?? 0));
             setRuleStructure(
                 initialRuleStructure ?? parseJsonLogic(rule.rules_json),
             );
@@ -77,6 +79,7 @@ export function AutomationRuleForm({
         }
 
         setTitle(initialTitle);
+        setPriority('0');
         setRuleStructure(
             initialRuleStructure ?? {
                 groups: [createEmptyGroup()],
@@ -120,7 +123,7 @@ export function AutomationRuleForm({
             const jsonLogic = buildJsonLogic(ruleStructure);
             const payload = {
                 title: title.trim(),
-                priority: rule?.priority ?? 0,
+                priority: Number(priority) || 0,
                 rules_json: JSON.stringify(jsonLogic),
                 action_category_id: categoryId || null,
                 action_note: null,
@@ -172,6 +175,24 @@ export function AutomationRuleForm({
                 />
 
                 <InputError message={errors.title} />
+            </div>
+
+            <div className="space-y-2">
+                <FormLabel htmlFor="priority">{__('Priority')}</FormLabel>
+                <Input
+                    id="priority"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    className="max-w-32"
+                />
+                <p className="text-sm text-muted-foreground">
+                    {__('Rules with a lower priority are evaluated first')}
+                </p>
+
+                <InputError message={errors.priority} />
             </div>
 
             <RuleBuilder
