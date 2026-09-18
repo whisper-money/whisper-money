@@ -26,14 +26,19 @@ it('can view transactions page', function () {
 it('can open add transaction dialog', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
-    Account::factory()->create(['user_id' => $user->id]);
+    // Pinned: the factory picks a random type, and the header's add button is
+    // off for a user whose only account cannot hold a transaction.
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'type' => 'checking',
+    ]);
 
     actingAs($user);
 
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('Transaction')
+        ->click('[data-testid="add-transaction-button"]')
         ->wait(0.5)
         ->assertSee('Create Transaction')
         ->assertNoJavascriptErrors();
@@ -59,8 +64,11 @@ it('shows newly created labels in the transaction label dropdown without refresh
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('Transaction')
+        ->click('[data-testid="add-transaction-button"]')
         ->waitForText('Create Transaction', 5)
+        // The account, category and label fields open behind the reveal.
+        ->click('[data-testid="toggle-more-options"]')
+        ->wait(0.5)
         ->click('[data-testid="label-combobox-trigger"]')
         ->fill('input[placeholder="Search or create labels..."]', 'Padel')
         ->waitForText('Create "Padel"', 5)
@@ -98,11 +106,14 @@ it('can create a transaction', function () {
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
-        ->click('Transaction')
+        ->click('[data-testid="add-transaction-button"]')
         ->wait(2)
         ->assertSee('Create Transaction')
         ->fill('description', 'Test Transaction')
         ->wait(1)
+        // The account, category and label fields open behind the reveal.
+        ->click('[data-testid="toggle-more-options"]')
+        ->wait(0.5)
         ->click('[data-testid="account-select"]')
         ->wait(2)
         ->waitForText('My Checking', 5)

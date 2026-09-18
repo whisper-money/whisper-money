@@ -25,3 +25,14 @@ test('import data endpoint includes automation rules with labels', function () {
     $response->assertJsonPath('automationRules.0.labels.0.id', $label->id);
     $response->assertJsonPath('automationRules.0.labels.0.name', $label->name);
 });
+
+test('import data endpoint includes the labels the transaction dialog offers', function () {
+    $user = User::factory()->onboarded()->create();
+    $label = Label::factory()->create(['user_id' => $user->id]);
+
+    $response = actingAs($user)->getJson('/api/import/data');
+
+    $response->assertSuccessful();
+    $response->assertJsonPath('labels.0.id', $label->id);
+    $response->assertJsonPath('labels.0.name', $label->name);
+});

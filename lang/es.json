@@ -3504,5 +3504,12 @@
     "Once a month of movements is in, this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.": "Cuando haya un mes de movimientos, esta pantalla cambia de forma: tendrás también el lado del gasto, y podremos decirte si ese número sube o baja cada mes.",
     "The export your bank already offers, read in one go.": "La exportación que tu banco ya ofrece, leída de una vez.",
     "You sort a handful; each one becomes a rule that sorts the rest.": "Ordenas unos pocos; cada uno se convierte en una regla que ordena el resto.",
-    "Your target can wait": "Tu objetivo puede esperar"
+    "Your target can wait": "Tu objetivo puede esperar",
+    "Updates the balance": "Actualiza el saldo",
+    "Leaves the balance alone": "Sin tocar el saldo",
+    "Fewer options": "Menos opciones",
+    "Save and add another": "Guardar y añadir otra",
+    "Transaction saved": "Transacción guardada",
+    "A rule categorized it as :category": "Una regla la ha categorizado como :category",
+    "You need an account to record transactions": "Necesitas una cuenta para registrar movimientos"
 }

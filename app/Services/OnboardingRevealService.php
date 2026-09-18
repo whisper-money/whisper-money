@@ -137,10 +137,7 @@ class OnboardingRevealService
      */
     private function spendingTypes(): array
     {
-        return array_values(array_filter(
-            AccountType::cases(),
-            fn (AccountType $type): bool => $type->hasTransactionLedger(),
-        ));
+        return AccountType::withTransactionLedger();
     }
 
     /**

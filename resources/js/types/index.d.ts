@@ -231,6 +231,8 @@ export interface SharedData {
     hasEncryptedAccounts: boolean;
     hasEncryptedTransactions: boolean;
     hasEncryptionSetup: boolean;
+    /** Whether the user owns an account a manual transaction can be filed in. */
+    hasTransactionalAccounts: boolean;
     locale: string;
     translations: Record<string, string>;
     currencies: {
