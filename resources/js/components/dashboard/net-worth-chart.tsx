@@ -609,7 +609,10 @@ export function NetWorthChart({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="relative min-w-0 overflow-hidden">
+            <CardContent
+                className="relative min-w-0 overflow-hidden"
+                data-testid="net-worth-chart"
+            >
                 {chartViews.currentView === 'stacked' &&
                     (granularity === 'daily' ? (
                         <StackedAreaChart

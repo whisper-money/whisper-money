@@ -71,6 +71,8 @@ export function AccountsManagerDialog({
                                     onClick={() =>
                                         onToggleVisibility(account.id, !hidden)
                                     }
+                                    data-testid="account-visibility-toggle"
+                                    data-account-id={account.id}
                                     aria-label={
                                         hidden
                                             ? __('Show on dashboard')
