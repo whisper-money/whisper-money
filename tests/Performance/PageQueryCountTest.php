@@ -14,9 +14,9 @@ use App\Models\Transaction;
 | pages. If a page exceeds its threshold, it means new queries were added
 | (likely N+1 regressions or unnecessary eager loads).
 |
-| Each threshold includes a small buffer above the current count so that
-| minor legitimate changes don't cause false failures, while N+1 issues
-| (which typically add dozens of queries) are reliably caught.
+| Each ceiling equals the number of queries that page actually runs, so any
+| query a change adds fails this suite. A ceiling only moves when someone
+| decides it should — and says below why it moved.
 |
 | Several ceilings went up by exactly one when the notification bell landed:
 | it is drawn in the app shell, so every screen pays one query for the rows
@@ -41,6 +41,11 @@ use App\Models\Transaction;
 | queries rather than one, because every page that renders its own list
 | overrides that prop and the shared one is then never resolved.
 |
+| Every ceiling then came down by two when the legacy client-side encryption
+| feature was removed: the shared props no longer ask whether the reader has
+| encrypted accounts or encrypted transactions, and those were two `exists()`
+| calls on every rendered page.
+|
 | Run this suite in isolation:
 |   php artisan test --testsuite=Performance
 |
@@ -56,13 +61,13 @@ beforeEach(function () {
 // ──────────────────────────────────────────────────────────────────────────
 
 test('dashboard page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('dashboard'))->assertOk();
     }, 'Dashboard');
 });
 
 test('accounts index page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('accounts.list'))->assertOk();
     }, 'Accounts Index');
 });
@@ -74,13 +79,13 @@ test('account show page does not exceed query threshold', function () {
         'type' => AccountType::Checking,
     ]);
 
-    assertMaxQueries(22, function () use ($account) {
+    assertMaxQueries(20, function () use ($account) {
         $this->get(route('accounts.show', $account))->assertOk();
     }, 'Account Show');
 });
 
 test('transactions index page does not exceed query threshold', function () {
-    assertMaxQueries(26, function () {
+    assertMaxQueries(24, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions Index');
 });
@@ -88,7 +93,7 @@ test('transactions index page does not exceed query threshold', function () {
 test('budgets index page does not exceed query threshold', function () {
     // Savings goals load unconditionally since the SavingsGoals flag was
     // removed: the goals themselves plus their stats aggregate.
-    assertMaxQueries(27, function () {
+    assertMaxQueries(25, function () {
         $this->get(route('budgets.index'))->assertOk();
     }, 'Budgets Index');
 });
@@ -96,13 +101,13 @@ test('budgets index page does not exceed query threshold', function () {
 test('budget show page does not exceed query threshold', function () {
     $budget = $this->user->budgets()->first();
 
-    assertMaxQueries(26, function () use ($budget) {
+    assertMaxQueries(24, function () use ($budget) {
         $this->get(route('budgets.show', $budget))->assertOk();
     }, 'Budget Show');
 });
 
 test('cashflow page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('cashflow'))->assertOk();
     }, 'Cashflow');
 });
@@ -112,37 +117,37 @@ test('cashflow page does not exceed query threshold', function () {
 // ──────────────────────────────────────────────────────────────────────────
 
 test('settings accounts page does not exceed query threshold', function () {
-    assertMaxQueries(21, function () {
+    assertMaxQueries(19, function () {
         $this->get(route('accounts.index'))->assertOk();
     }, 'Settings Accounts');
 });
 
 test('settings categories page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('categories.index'))->assertOk();
     }, 'Settings Categories');
 });
 
 test('settings labels page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('labels.index'))->assertOk();
     }, 'Settings Labels');
 });
 
 test('settings automation rules page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('automation-rules.index'))->assertOk();
     }, 'Settings Automation Rules');
 });
 
 test('settings account/profile page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('account.edit'))->assertOk();
     }, 'Settings Account/Profile');
 });
 
 test('settings appearance page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('appearance.edit'))->assertOk();
     }, 'Settings Appearance');
 });
@@ -172,7 +177,7 @@ test('dashboard query count does not scale with number of accounts', function ()
     }
 
     // Same threshold as 3 accounts — query count must not grow with data
-    assertMaxQueries(20, function () {
+    assertMaxQueries(18, function () {
         $this->get(route('dashboard'))->assertOk();
     }, 'Dashboard with 10 accounts');
 });
@@ -189,7 +194,7 @@ test('transactions page query count does not scale with number of transactions',
     ]);
 
     // Same threshold — paginated queries should not scale
-    assertMaxQueries(26, function () {
+    assertMaxQueries(24, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions with 120 records');
 });
