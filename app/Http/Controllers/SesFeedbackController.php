@@ -25,11 +25,11 @@ class SesFeedbackController extends Controller
 {
     public function __invoke(Request $request): Response
     {
+        // SNS posts `text/plain`, so the body is read through json() rather than
+        // the usual input bag, which only decodes JSON content types.
         $payload = $request->json()->all();
         $topicArn = (string) config('services.ses.topic_arn');
 
-        // SNS posts `text/plain`, so the body is read through json() rather than
-        // the usual input bag, which only decodes JSON content types.
         if ($topicArn === '' || ($payload['TopicArn'] ?? '') !== $topicArn) {
             abort(403);
         }
