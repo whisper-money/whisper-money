@@ -260,6 +260,10 @@ export function AiSuggestionCard({
                         onChange({ ...draft, include: checked === true })
                     }
                     aria-label={__('Include this rule')}
+                    // Every card carries the same label, so the tests need one
+                    // handle per card. The id is the category the rule files
+                    // into, which is what tells the cards apart.
+                    data-testid={`suggestion-toggle-${suggestion.id}`}
                     className="size-5 shrink-0 rounded-md"
                 />
                 <button
