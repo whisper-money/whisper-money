@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AccountBalanceController;
-use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AccountImportConfigController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\CategoryMonthlyBreakdownController;
@@ -34,10 +33,6 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
 
     // Category analysis
     Route::get('categories/{category}/monthly-breakdown', CategoryMonthlyBreakdownController::class)->name('api.categories.monthly-breakdown');
-
-    // Accounts
-    Route::get('accounts', [AccountController::class, 'index'])->name('api.accounts.index');
-    Route::put('accounts/{account}', [AccountController::class, 'update'])->name('api.accounts.update');
 
     // Account import configuration (per-account column mapping, synced across devices)
     Route::get('accounts/{account}/import-config', [AccountImportConfigController::class, 'show'])->name('api.accounts.import-config.show');
