@@ -74,7 +74,7 @@ export default function MonthlySummariesIndex({ summaries }: Props) {
                 ) : (
                     <ul className="divide-y rounded-lg border">
                         {summaries.map((summary) => (
-                            <li key={summary.id}>
+                            <li key={summary.id} data-testid="summary-row">
                                 <Link
                                     href={show(summary.id).url}
                                     className="flex items-center gap-4 p-4 transition-colors hover:bg-accent"
