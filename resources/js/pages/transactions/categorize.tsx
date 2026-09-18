@@ -283,7 +283,10 @@ export default function CategorizeTransactions({
                         </div>
                     </div>
                     <div className="hidden flex-1 items-center gap-2 text-sm text-zinc-600 sm:flex dark:text-zinc-400">
-                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        <span
+                            className="font-medium text-zinc-900 dark:text-zinc-100"
+                            data-testid="remaining-count"
+                        >
                             {remainingCount}
                         </span>
                         remaining

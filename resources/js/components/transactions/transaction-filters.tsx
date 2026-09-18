@@ -287,6 +287,7 @@ export function TransactionFilters({
                                     <div className="grid grid-cols-2 gap-2 pt-2">
                                         <Input
                                             type="date"
+                                            data-testid="filter-date-from"
                                             value={
                                                 filters.dateFrom
                                                     ? formatLocalDate(
@@ -309,6 +310,7 @@ export function TransactionFilters({
 
                                         <Input
                                             type="date"
+                                            data-testid="filter-date-to"
                                             value={
                                                 filters.dateTo
                                                     ? formatLocalDate(
@@ -393,6 +395,7 @@ export function TransactionFilters({
                                                     variant="outline"
                                                     role="combobox"
                                                     className="w-full justify-between"
+                                                    data-testid="filter-categories"
                                                 >
                                                     {filters.categoryIds
                                                         .length > 0 ? (
@@ -544,6 +547,7 @@ export function TransactionFilters({
                                                     variant="outline"
                                                     role="combobox"
                                                     className="w-full justify-between"
+                                                    data-testid="filter-labels"
                                                 >
                                                     {filters.labelIds.length >
                                                     0 ? (
@@ -654,6 +658,7 @@ export function TransactionFilters({
                                                         variant="outline"
                                                         role="combobox"
                                                         className="w-full justify-between"
+                                                        data-testid="filter-accounts"
                                                     >
                                                         {filters.accountIds
                                                             .length > 0 ? (
