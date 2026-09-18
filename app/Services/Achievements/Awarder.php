@@ -127,11 +127,16 @@ class Awarder
             // Oldest first, so a backfill reads as a life in order and the row
             // ids sort the same way the screen does.
             ->sortBy(fn (Unlock $unlock): string => $unlock->month)
-            ->map(fn (Unlock $unlock, string $key): Achievement => $user->achievements()->create([
-                'space_id' => $spaceId,
-                'key' => $key,
-                ...$unlock->attributes(),
-            ]))
+            ->map(fn (Unlock $unlock, string $key): Achievement => $user->achievements()->createOrFirst(
+                ['key' => $key],
+                ['space_id' => $spaceId, ...$unlock->attributes()],
+            ))
+            // A second request for the same reader can write the same medal
+            // between the read above and this insert — two tabs, a prefetch
+            // alongside a real navigation. The unique index settles who wins;
+            // only the request that actually wrote the row announces it, or the
+            // loser sends the bell row and the email a second time.
+            ->filter(fn (Achievement $achievement): bool => $achievement->wasRecentlyCreated)
             ->values();
     }
 }
