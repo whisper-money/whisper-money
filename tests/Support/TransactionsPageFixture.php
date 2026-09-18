@@ -74,7 +74,7 @@ final class TransactionsPageFixture
         ?Category $category = null,
         ?Account $account = null,
     ): Transaction {
-        return Transaction::factory()->plaintext()->create([
+        return Transaction::factory()->create([
             'user_id' => $this->user->id,
             'account_id' => ($account ?? $this->checking)->id,
             'category_id' => $category?->id,

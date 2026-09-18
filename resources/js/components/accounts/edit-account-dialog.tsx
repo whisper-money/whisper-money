@@ -12,9 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { decrypt, importKey } from '@/lib/crypto';
 import { getCsrfToken } from '@/lib/csrf';
-import { getStoredKey } from '@/lib/key-storage';
 import type { Account, LoanDetail, RealEstateDetail } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
@@ -49,7 +47,6 @@ export function EditAccountDialog({
     redirectTo,
     deleteRedirectTo,
 }: EditAccountDialogProps) {
-    const [decryptedName, setDecryptedName] = useState('');
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -69,34 +66,6 @@ export function EditAccountDialog({
         realEstate: null,
         loan: null,
     });
-
-    useEffect(() => {
-        if (!open) return;
-
-        if (!account.encrypted) {
-            setDecryptedName(account.name);
-            return;
-        }
-
-        async function decryptName() {
-            const keyString = getStoredKey();
-            if (!keyString) {
-                setDecryptedName('[Encrypted]');
-                return;
-            }
-
-            try {
-                const key = await importKey(keyString);
-                const name = await decrypt(account.name, key, account.name_iv!);
-                setDecryptedName(name);
-            } catch (err) {
-                console.error('Failed to decrypt account name:', err);
-                setDecryptedName('[Encrypted]');
-            }
-        }
-
-        decryptName();
-    }, [open, account.name, account.name_iv, account.encrypted]);
 
     const loanInitialData: LoanFormData | null = useMemo(() => {
         const detail = account.loan_detail;
@@ -130,19 +99,16 @@ export function EditAccountDialog({
     }, [account.real_estate_detail]);
 
     const initialValues = useMemo(
-        () =>
-            decryptedName && decryptedName !== '[Encrypted]'
-                ? {
-                      displayName: decryptedName,
-                      bank: account.bank,
-                      type: account.type,
-                      currencyCode: account.currency_code,
-                      loan: loanInitialData,
-                      realEstate: realEstateInitialData,
-                  }
-                : undefined,
+        () => ({
+            displayName: account.name,
+            bank: account.bank,
+            type: account.type,
+            currencyCode: account.currency_code,
+            loan: loanInitialData,
+            realEstate: realEstateInitialData,
+        }),
         [
-            decryptedName,
+            account.name,
             account.bank,
             account.type,
             account.currency_code,
@@ -339,78 +305,63 @@ export function EditAccountDialog({
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-2">
-                    {initialValues ? (
-                        <>
-                            <AccountForm
-                                initialValues={initialValues}
-                                isConnected={!!account.banking_connection_id}
-                                onChange={handleFormChange}
-                                errors={errors}
-                            />
+                    <AccountForm
+                        initialValues={initialValues}
+                        isConnected={!!account.banking_connection_id}
+                        onChange={handleFormChange}
+                        errors={errors}
+                    />
 
-                            <div className="grid gap-2 pt-2">
-                                <Label htmlFor="ownership-percentage">
-                                    {__('My share of this account (%)')}
-                                </Label>
-                                <Input
-                                    id="ownership-percentage"
-                                    type="number"
-                                    min={1}
-                                    max={100}
-                                    step={1}
-                                    value={ownershipPercentage}
-                                    aria-describedby="ownership-percentage-hint"
-                                    onChange={(event) =>
-                                        setOwnershipPercentage(
-                                            event.target.value,
+                    <div className="grid gap-2 pt-2">
+                        <Label htmlFor="ownership-percentage">
+                            {__('My share of this account (%)')}
+                        </Label>
+                        <Input
+                            id="ownership-percentage"
+                            type="number"
+                            min={1}
+                            max={100}
+                            step={1}
+                            value={ownershipPercentage}
+                            aria-describedby="ownership-percentage-hint"
+                            onChange={(event) =>
+                                setOwnershipPercentage(event.target.value)
+                            }
+                            disabled={isSubmitting}
+                        />
+                        <p
+                            id="ownership-percentage-hint"
+                            className="text-xs text-muted-foreground"
+                        >
+                            {__(
+                                'For accounts you share with someone else. Income and expenses only count towards your figures by this percentage. Changing it also rewrites what this account has already spent in your budgets, past periods included.',
+                            )}
+                        </p>
+                        <InputError message={errors.ownership_percentage} />
+
+                        {sharePercentage < 100 && (
+                            <div className="flex items-start gap-2 pt-1">
+                                <Checkbox
+                                    id="ownership-applies-to-balance"
+                                    checked={ownershipAppliesToBalance}
+                                    onCheckedChange={(checked) =>
+                                        setOwnershipAppliesToBalance(
+                                            checked === true,
                                         )
                                     }
                                     disabled={isSubmitting}
                                 />
-                                <p
-                                    id="ownership-percentage-hint"
-                                    className="text-xs text-muted-foreground"
+                                <Label
+                                    htmlFor="ownership-applies-to-balance"
+                                    className="cursor-pointer font-normal"
                                 >
                                     {__(
-                                        'For accounts you share with someone else. Income and expenses only count towards your figures by this percentage. Changing it also rewrites what this account has already spent in your budgets, past periods included.',
+                                        'Apply it to the balance too, so only my share counts towards net worth',
                                     )}
-                                </p>
-                                <InputError
-                                    message={errors.ownership_percentage}
-                                />
-
-                                {sharePercentage < 100 && (
-                                    <div className="flex items-start gap-2 pt-1">
-                                        <Checkbox
-                                            id="ownership-applies-to-balance"
-                                            checked={ownershipAppliesToBalance}
-                                            onCheckedChange={(checked) =>
-                                                setOwnershipAppliesToBalance(
-                                                    checked === true,
-                                                )
-                                            }
-                                            disabled={isSubmitting}
-                                        />
-                                        <Label
-                                            htmlFor="ownership-applies-to-balance"
-                                            className="cursor-pointer font-normal"
-                                        >
-                                            {__(
-                                                'Apply it to the balance too, so only my share counts towards net worth',
-                                            )}
-                                        </Label>
-                                    </div>
-                                )}
+                                </Label>
                             </div>
-                        </>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="h-10 animate-pulse rounded bg-muted" />
-                            <div className="h-10 animate-pulse rounded bg-muted" />
-                            <div className="h-10 animate-pulse rounded bg-muted" />
-                            <div className="h-10 animate-pulse rounded bg-muted" />
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     <div className="flex items-center justify-between gap-2 pt-4">
                         {deleteRedirectTo ? (
@@ -436,10 +387,7 @@ export function EditAccountDialog({
                             >
                                 {__('Cancel')}
                             </Button>
-                            <Button
-                                type="submit"
-                                disabled={isSubmitting || !initialValues}
-                            >
+                            <Button type="submit" disabled={isSubmitting}>
                                 {isSubmitting
                                     ? __('Updating...')
                                     : __('Update')}

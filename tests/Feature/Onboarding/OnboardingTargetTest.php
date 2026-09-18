@@ -25,7 +25,7 @@ function spentEachMonth(Account $account, array $charges, int $months = 1): void
 {
     foreach (range(1, $months) as $back) {
         foreach ($charges as $index => [$merchant, $amount]) {
-            Transaction::factory()->for($account->user)->for($account)->plaintext()->create([
+            Transaction::factory()->for($account->user)->for($account)->create([
                 'category_id' => null,
                 'transaction_date' => now()->startOfMonth()->subMonths($back)->addDays($index + 1),
                 'amount' => -$amount,

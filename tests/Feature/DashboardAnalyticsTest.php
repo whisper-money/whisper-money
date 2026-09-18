@@ -639,7 +639,6 @@ test('net worth evolution returns account metadata including bank', function () 
         'user_id' => $this->user->id,
         'type' => AccountType::CreditCard,
         'name' => 'My Credit Card',
-        'name_iv' => 'test_iv_1234567',
         'currency_code' => 'USD',
     ]);
 
@@ -654,7 +653,6 @@ test('net worth evolution returns account metadata including bank', function () 
     expect($data['accounts'][$account->id])->toMatchArray([
         'id' => $account->id,
         'name' => 'My Credit Card',
-        'name_iv' => 'test_iv_1234567',
         'type' => 'credit_card',
     ]);
     expect($data['accounts'][$account->id])->toHaveKey('bank');
@@ -1128,7 +1126,6 @@ test('net worth daily evolution returns account metadata including bank', functi
         'user_id' => $this->user->id,
         'type' => AccountType::CreditCard,
         'name' => 'My Daily CC',
-        'name_iv' => 'test_iv_daily',
         'currency_code' => 'USD',
     ]);
 
@@ -1143,7 +1140,6 @@ test('net worth daily evolution returns account metadata including bank', functi
     expect($data['accounts'][$account->id])->toMatchArray([
         'id' => $account->id,
         'name' => 'My Daily CC',
-        'name_iv' => 'test_iv_daily',
         'type' => 'credit_card',
     ]);
     expect($data['accounts'][$account->id])->toHaveKey('bank');

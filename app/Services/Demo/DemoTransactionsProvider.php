@@ -160,7 +160,7 @@ class DemoTransactionsProvider
      * every date forward, which is how the seeded accounts stay current.
      *
      * @param  array<int, array{description: string, amount_min: int, amount_max: int, category_name: string, frequency: string, account?: string}>|null  $templates  the merchant set to draw from, defaulting to the demo account's
-     * @return array<int, array{description: string, transaction_date: string, amount: int, currency_code: string, notes: string|null, notes_iv: string|null, source: TransactionSource, category_name: string, account_name: string|null}>
+     * @return array<int, array{description: string, transaction_date: string, amount: int, currency_code: string, notes: string|null, source: TransactionSource, category_name: string, account_name: string|null}>
      */
     public function getTransactions(?array $templates = null, string $currency = 'USD'): array
     {
@@ -185,7 +185,6 @@ class DemoTransactionsProvider
                     'amount' => $amount,
                     'currency_code' => $currency,
                     'notes' => null,
-                    'notes_iv' => null,
                     'source' => TransactionSource::ManuallyCreated,
                     'category_name' => $template['category_name'],
                     // The account this merchant is actually charged to, when the

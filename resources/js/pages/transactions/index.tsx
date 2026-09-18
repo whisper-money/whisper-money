@@ -114,7 +114,6 @@ import {
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
-    type DecryptedTransaction,
     type TransactionFilters as Filters,
     type ServerTransaction,
 } from '@/types/transaction';
@@ -260,12 +259,16 @@ function clientFiltersToBackendFilters(
     return result;
 }
 
-function toDecryptedTransaction(tx: ServerTransaction): DecryptedTransaction {
+/**
+ * Everything the table reads that the payload does not carry ready to use: a
+ * date trimmed to its day, the account's bank hoisted onto the row, and labels
+ * present as both the objects and the ids the columns filter on.
+ */
+function normalizeTransaction(tx: ServerTransaction): ServerTransaction {
     return {
         ...tx,
         transaction_date: String(tx.transaction_date).slice(0, 10),
-        decryptedDescription: tx.description_iv ? '' : tx.description,
-        decryptedNotes: tx.notes_iv ? null : tx.notes || null,
+        notes: tx.notes || null,
         bank: tx.account?.bank || undefined,
         labels: tx.labels || [],
         label_ids: tx.labels?.map((l) => l.id) || [],
@@ -273,16 +276,16 @@ function toDecryptedTransaction(tx: ServerTransaction): DecryptedTransaction {
 }
 
 interface TransactionRowProps {
-    row: Row<DecryptedTransaction>;
+    row: Row<ServerTransaction>;
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
     isNew: boolean;
-    onEdit: (transaction: DecryptedTransaction) => void;
-    onReEvaluateRules: (transaction: DecryptedTransaction) => void;
-    onAutomate: (transaction: DecryptedTransaction) => void;
-    onDelete: (transaction: DecryptedTransaction) => void;
-    onSplit: (transaction: DecryptedTransaction) => void;
-    onUnsplit: (transaction: DecryptedTransaction) => void;
+    onEdit: (transaction: ServerTransaction) => void;
+    onReEvaluateRules: (transaction: ServerTransaction) => void;
+    onAutomate: (transaction: ServerTransaction) => void;
+    onDelete: (transaction: ServerTransaction) => void;
+    onSplit: (transaction: ServerTransaction) => void;
+    onUnsplit: (transaction: ServerTransaction) => void;
 }
 
 function TransactionRowComponent({
@@ -328,7 +331,7 @@ function TransactionRowComponent({
                 >
                     {row
                         .getVisibleCells()
-                        .filter((cell: Cell<DecryptedTransaction, unknown>) => {
+                        .filter((cell: Cell<ServerTransaction, unknown>) => {
                             const meta = cell.column.columnDef.meta as
                                 | {
                                       isVirtual?: boolean;
@@ -340,7 +343,7 @@ function TransactionRowComponent({
                         })
                         .map(
                             (
-                                cell: Cell<DecryptedTransaction, unknown>,
+                                cell: Cell<ServerTransaction, unknown>,
                                 cellIndex: number,
                             ) => {
                                 const meta = cell.column.columnDef.meta as
@@ -494,10 +497,9 @@ export default function Transactions({
         });
     }, []);
 
-    // Convert server transactions to DecryptedTransaction for column compatibility
-    const [allTransactions, setAllTransactions] = useState<
-        DecryptedTransaction[]
-    >(() => serverTransactions.data.map(toDecryptedTransaction));
+    const [allTransactions, setAllTransactions] = useState<ServerTransaction[]>(
+        () => serverTransactions.data.map(normalizeTransaction),
+    );
     const [nextCursor, setNextCursor] = useState<string | null>(
         serverTransactions.next_cursor,
     );
@@ -537,14 +539,14 @@ export default function Transactions({
     );
     const [rowSelection, setRowSelection] = useState({});
     const [editTransaction, setEditTransaction] =
-        useState<DecryptedTransaction | null>(null);
+        useState<ServerTransaction | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [splitTransaction, setSplitTransaction] =
-        useState<DecryptedTransaction | null>(null);
+        useState<ServerTransaction | null>(null);
     const [unsplitTransaction, setUnsplitTransaction] =
-        useState<DecryptedTransaction | null>(null);
+        useState<ServerTransaction | null>(null);
     const [deleteTransaction, setDeleteTransaction] =
-        useState<DecryptedTransaction | null>(null);
+        useState<ServerTransaction | null>(null);
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
     const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
     const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState('');
@@ -587,9 +589,7 @@ export default function Transactions({
                             return;
                         }
 
-                        setAllTransactions(
-                            txns.data.map(toDecryptedTransaction),
-                        );
+                        setAllTransactions(txns.data.map(normalizeTransaction));
                         setNextCursor(txns.next_cursor);
                     },
                     onFinish: () => setIsNavigating(false),
@@ -664,7 +664,7 @@ export default function Transactions({
                     return;
                 }
 
-                setAllTransactions(txns.data.map(toDecryptedTransaction));
+                setAllTransactions(txns.data.map(normalizeTransaction));
                 setNextCursor(txns.next_cursor);
             },
         });
@@ -844,7 +844,7 @@ export default function Transactions({
 
             setAllTransactions((prev) => [
                 ...prev,
-                ...next.data.map(toDecryptedTransaction),
+                ...next.data.map(normalizeTransaction),
             ]);
             setNextCursor(next.next_cursor);
         } catch (error) {
@@ -891,7 +891,7 @@ export default function Transactions({
     }, [columnVisibility]);
 
     const updateTransaction = useCallback(
-        (updatedTransaction: DecryptedTransaction) => {
+        (updatedTransaction: ServerTransaction) => {
             setAllTransactions((previous) =>
                 previous.map((transaction) => {
                     if (transaction.id !== updatedTransaction.id) {
@@ -921,13 +921,13 @@ export default function Transactions({
     );
 
     const handleReEvaluateRules = useCallback(
-        async (transaction: DecryptedTransaction) => {
+        async (transaction: ServerTransaction) => {
             consoleDebug('=== Re-evaluating rules for single transaction ===');
 
             setIsReEvaluating(true);
             try {
                 const response = await axios.post<{
-                    data: DecryptedTransaction;
+                    data: ServerTransaction;
                 }>(reEvaluateSingle({ transaction: transaction.id }).url);
 
                 const updated = response.data.data;
@@ -1030,7 +1030,7 @@ export default function Transactions({
 
     const showAutomatizeToast = useCallback(
         (
-            transaction: DecryptedTransaction,
+            transaction: ServerTransaction,
             category: Category,
             source: 'transaction_table' | 'edit_transaction_modal',
         ) => {
@@ -1064,19 +1064,16 @@ export default function Transactions({
         [],
     );
 
-    const openAutomateDialog = useCallback(
-        (transaction: DecryptedTransaction) => {
-            captureEvent('automation_rule_toast_automatize_clicked', {
-                source: 'row_menu',
-            });
-            setAutomateCandidate({
-                transaction,
-                category: transaction.category ?? null,
-            });
-            setAutomateDialogOpen(true);
-        },
-        [],
-    );
+    const openAutomateDialog = useCallback((transaction: ServerTransaction) => {
+        captureEvent('automation_rule_toast_automatize_clicked', {
+            source: 'row_menu',
+        });
+        setAutomateCandidate({
+            transaction,
+            category: transaction.category ?? null,
+        });
+        setAutomateDialogOpen(true);
+    }, []);
 
     const columns = useMemo(
         () =>
@@ -1377,7 +1374,7 @@ export default function Transactions({
 
     const renderTransactionRow = useCallback(
         (
-            row: Row<DecryptedTransaction>,
+            row: Row<ServerTransaction>,
             virtualRow: VirtualItem,
             rowVirtualizer: Virtualizer<HTMLDivElement, Element>,
         ) => {

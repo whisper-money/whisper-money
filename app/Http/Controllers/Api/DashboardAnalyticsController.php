@@ -468,8 +468,6 @@ class DashboardAnalyticsController extends Controller
             'account' => [
                 'id' => $account->id,
                 'name' => $account->name,
-                'name_iv' => $account->name_iv,
-                'encrypted' => $account->encrypted,
                 'type' => $account->type,
                 'currency_code' => $account->currency_code,
             ],

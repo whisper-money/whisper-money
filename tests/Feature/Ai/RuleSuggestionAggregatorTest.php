@@ -17,11 +17,10 @@ function makeTxn(User $user, Account $account, array $attributes): void
     Transaction::factory()->for($user)->create(array_merge([
         'account_id' => $account->id,
         'category_id' => null,
-        'description_iv' => null,
     ], $attributes));
 }
 
-it('groups by counterparty and description, filtering rare and encrypted', function () {
+it('groups by counterparty and description, filtering rare groups', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();
 
@@ -52,15 +51,6 @@ it('groups by counterparty and description, filtering rare and encrypted', funct
             'amount' => -500,
         ]);
     }
-
-    // Encrypted transaction — must be ignored.
-    Transaction::factory()->for($user)->create([
-        'account_id' => $account->id,
-        'category_id' => null,
-        'description_iv' => str_repeat('a', 16),
-        'creditor_name' => 'MERCADONA',
-        'amount' => -1000,
-    ]);
 
     $groups = collect($this->aggregator->groupsFor($user));
 

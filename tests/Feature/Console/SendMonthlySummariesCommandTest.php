@@ -47,7 +47,7 @@ function readerWithClosedMonth(string $timezone = 'Europe/Madrid'): User
     $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
     $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
@@ -65,7 +65,7 @@ function readerWithClosedMonth(string $timezone = 'Europe/Madrid'): User
  */
 function withActivityInTheNewMonth(User $user): void
 {
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $user->accounts()->first()->id,
         'currency_code' => 'EUR',

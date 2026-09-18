@@ -9,7 +9,6 @@ import {
 import { UserInfo } from '@/components/user-info';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
-import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
 import { index as progress } from '@/routes/achievements';
@@ -51,7 +50,6 @@ export function UserMenuContent({
     const { auth, version, achievements } = usePage<SharedData>().props;
 
     const handleLogout = () => {
-        clearKey();
         cleanup();
         router.flushAll();
     };

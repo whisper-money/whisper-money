@@ -102,8 +102,8 @@ class OnboardingSummaryService
 
         return [
             'transactions' => (int) $totals->transactions,
-            // Counterparty names are the only plaintext description we hold:
-            // `description` is encrypted at rest, so it cannot be counted here.
+            // Counted off `creditor_name`, the one column that actually names a
+            // counterparty; `description` is free-form bank text, not a merchant.
             'merchants' => (int) $totals->merchants,
             'accounts' => $accountIds->count(),
             // Inclusive: a January-to-January import covers one month, not zero.

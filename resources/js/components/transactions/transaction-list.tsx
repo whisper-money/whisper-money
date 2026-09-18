@@ -81,8 +81,8 @@ import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
-    type DecryptedTransaction,
     type TransactionFilters as Filters,
+    type ServerTransaction,
     type Transaction,
 } from '@/types/transaction';
 import { UUID } from '@/types/uuid';
@@ -126,15 +126,15 @@ export function TransactionListSkeleton() {
 }
 
 interface TransactionRowProps {
-    row: Row<DecryptedTransaction>;
+    row: Row<ServerTransaction>;
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
-    onEdit: (transaction: DecryptedTransaction) => void;
-    onReEvaluateRules: (transaction: DecryptedTransaction) => void;
-    onAutomate: (transaction: DecryptedTransaction) => void;
-    onDelete: (transaction: DecryptedTransaction) => void;
-    onSplit: (transaction: DecryptedTransaction) => void;
-    onUnsplit: (transaction: DecryptedTransaction) => void;
+    onEdit: (transaction: ServerTransaction) => void;
+    onReEvaluateRules: (transaction: ServerTransaction) => void;
+    onAutomate: (transaction: ServerTransaction) => void;
+    onDelete: (transaction: ServerTransaction) => void;
+    onSplit: (transaction: ServerTransaction) => void;
+    onUnsplit: (transaction: ServerTransaction) => void;
 }
 
 function TransactionRowComponent({
@@ -176,7 +176,7 @@ function TransactionRowComponent({
                 >
                     {row
                         .getVisibleCells()
-                        .filter((cell: Cell<DecryptedTransaction, unknown>) => {
+                        .filter((cell: Cell<ServerTransaction, unknown>) => {
                             const meta = cell.column.columnDef.meta as
                                 | {
                                       isVirtual?: boolean;
@@ -186,7 +186,7 @@ function TransactionRowComponent({
                                 | undefined;
                             return !meta?.isVirtual;
                         })
-                        .map((cell: Cell<DecryptedTransaction, unknown>) => {
+                        .map((cell: Cell<ServerTransaction, unknown>) => {
                             const meta = cell.column.columnDef.meta as
                                 | {
                                       cellClassName?: string;
@@ -335,9 +335,7 @@ export function TransactionList({
         });
     }, []);
 
-    const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
-        [],
-    );
+    const [transactions, setTransactions] = useState<ServerTransaction[]>([]);
     const [isLoading, setIsLoading] = useState(
         providedTransactions === undefined,
     );
@@ -362,14 +360,14 @@ export function TransactionList({
         searchText: '',
     });
     const [editTransaction, setEditTransaction] =
-        useState<DecryptedTransaction | null>(null);
+        useState<ServerTransaction | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [deleteTransaction, setDeleteTransaction] =
-        useState<DecryptedTransaction | null>(null);
+        useState<ServerTransaction | null>(null);
     const [splitTransaction, setSplitTransaction] =
-        useState<DecryptedTransaction | null>(null);
+        useState<ServerTransaction | null>(null);
     const [unsplitTransaction, setUnsplitTransaction] =
-        useState<DecryptedTransaction | null>(null);
+        useState<ServerTransaction | null>(null);
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
     const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -383,7 +381,7 @@ export function TransactionList({
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     const updateTransaction = useCallback(
-        (updatedTransaction: DecryptedTransaction) => {
+        (updatedTransaction: ServerTransaction) => {
             setTransactions((previous) =>
                 previous.map((transaction) => {
                     if (transaction.id !== updatedTransaction.id) {
@@ -419,13 +417,13 @@ export function TransactionList({
                 (transaction) =>
                     ({
                         ...transaction,
-                        decryptedDescription: transaction.description,
-                        decryptedNotes: transaction.notes || null,
+                        description: transaction.description,
+                        notes: transaction.notes || null,
                         label_ids:
                             transaction.label_ids ??
                             transaction.labels?.map((label) => label.id) ??
                             [],
-                    }) as DecryptedTransaction,
+                    }) as ServerTransaction,
             );
 
             setTransactions(processed);
@@ -468,11 +466,11 @@ export function TransactionList({
 
         for (const tx of transactions) {
             const description = (
-                tx.decryptedDescription ??
+                tx.description ??
                 tx.description ??
                 ''
             ).toLowerCase();
-            const notes = (tx.decryptedNotes ?? tx.notes ?? '').toLowerCase();
+            const notes = (tx.notes ?? tx.notes ?? '').toLowerCase();
 
             if (
                 description.includes(searchLower) ||
@@ -602,9 +600,7 @@ export function TransactionList({
                 } else if (id === 'amount') {
                     comparison = parseFloat(a.amount) - parseFloat(b.amount);
                 } else if (id === 'description') {
-                    comparison = a.decryptedDescription.localeCompare(
-                        b.decryptedDescription,
-                    );
+                    comparison = a.description.localeCompare(b.description);
                 } else if (id === 'account') {
                     const accountA = a.account?.name || '';
                     const accountB = b.account?.name || '';
@@ -638,13 +634,13 @@ export function TransactionList({
     }, [sortedTransactions, displayedCount]);
 
     const handleReEvaluateRules = useCallback(
-        async (transaction: DecryptedTransaction) => {
+        async (transaction: ServerTransaction) => {
             consoleDebug('=== Re-evaluating rules for single transaction ===');
 
             setIsReEvaluating(true);
             try {
                 const response = await axios.post<{
-                    data: DecryptedTransaction;
+                    data: ServerTransaction;
                 }>(reEvaluateSingle({ transaction: transaction.id }).url);
 
                 const updated = response.data.data;
@@ -741,7 +737,7 @@ export function TransactionList({
 
     const showAutomatizeToast = useCallback(
         (
-            transaction: DecryptedTransaction,
+            transaction: ServerTransaction,
             category: Category,
             source: 'transaction_table' | 'edit_transaction_modal',
         ) => {
@@ -775,19 +771,16 @@ export function TransactionList({
         [],
     );
 
-    const openAutomateDialog = useCallback(
-        (transaction: DecryptedTransaction) => {
-            captureEvent('automation_rule_toast_automatize_clicked', {
-                source: 'row_menu',
-            });
-            setAutomateCandidate({
-                transaction,
-                category: transaction.category ?? null,
-            });
-            setAutomateDialogOpen(true);
-        },
-        [],
-    );
+    const openAutomateDialog = useCallback((transaction: ServerTransaction) => {
+        captureEvent('automation_rule_toast_automatize_clicked', {
+            source: 'row_menu',
+        });
+        setAutomateCandidate({
+            transaction,
+            category: transaction.category ?? null,
+        });
+        setAutomateDialogOpen(true);
+    }, []);
 
     const columns = useMemo(() => {
         const allColumns = createTransactionColumns({
@@ -1043,7 +1036,7 @@ export function TransactionList({
 
     const renderTransactionRow = useCallback(
         (
-            row: Row<DecryptedTransaction>,
+            row: Row<ServerTransaction>,
             virtualRow: VirtualItem,
             rowVirtualizer: Virtualizer<HTMLDivElement, Element>,
         ) => {

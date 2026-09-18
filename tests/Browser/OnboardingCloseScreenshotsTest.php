@@ -54,7 +54,7 @@ function closeSubscriptions(Account $account): void
 
     foreach ($charges as $index => [$merchant, $amount]) {
         foreach (range(1, 3) as $back) {
-            Transaction::factory()->for($account->user)->for($account)->plaintext()->create([
+            Transaction::factory()->for($account->user)->for($account)->create([
                 'category_id' => null,
                 'creditor_name' => $merchant,
                 'amount' => -$amount,
@@ -78,7 +78,6 @@ function closeYear(Account $account, int $months = 12): void
             ->count(74)
             ->for($account->user)
             ->for($account)
-            ->plaintext()
             ->sequence(fn ($sequence): array => [
                 'creditor_name' => sprintf('COMERCIO %02d-%03d', $back, $sequence->index + 1),
                 // 73 charges of €22 and one of €31 come to €1,637, which the

@@ -44,7 +44,6 @@ class ApplySingleAutomationRuleJob implements ShouldQueue
         Transaction::query()
             ->where('user_id', $rule->user_id)
             ->whereIn('id', $this->transactionIds)
-            ->whereNull('description_iv')
             ->with(['account.bank', 'category', 'labels'])
             ->chunkById(100, function ($transactions) use ($service, $rule, $total, &$processed, &$applied, &$changed) {
                 $changed += $service->applyRuleActionsToTransactions($transactions, $rule, $this->onlyUncategorized);

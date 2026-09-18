@@ -127,7 +127,6 @@ export function AutomationRuleForm({
                 rules_json: JSON.stringify(jsonLogic),
                 action_category_id: categoryId || null,
                 action_note: null,
-                action_note_iv: null,
                 action_label_ids: labelIds,
             };
             const options = {

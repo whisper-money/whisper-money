@@ -16,20 +16,20 @@ import { transactionSyncService } from '@/services/transaction-sync';
 import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface CategoryCellProps {
-    transaction: DecryptedTransaction;
+    transaction: ServerTransaction;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
-    onUpdate: (transaction: DecryptedTransaction) => void;
+    onUpdate: (transaction: ServerTransaction) => void;
     onCategorized?: (
-        transaction: DecryptedTransaction,
+        transaction: ServerTransaction,
         category: Category,
         source: 'transaction_table',
     ) => void;
@@ -90,7 +90,7 @@ export function CategoryCell({
                 ? banks.find((b) => b.id === account.bank!.id)
                 : undefined;
 
-            const updatedTransaction: DecryptedTransaction = {
+            const updatedTransaction: ServerTransaction = {
                 ...transaction,
                 category_id: categoryId,
                 category: updatedCategory,

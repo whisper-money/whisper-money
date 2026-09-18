@@ -41,7 +41,6 @@ class StoreAutomationRuleRequest extends FormRequest
                 $this->userOwned('categories'),
             ],
             'action_note' => ['nullable', 'string'],
-            'action_note_iv' => ['nullable', 'string', 'required_with:action_note'],
             'action_label_ids' => ['nullable', 'array'],
             'action_label_ids.*' => [
                 'required',

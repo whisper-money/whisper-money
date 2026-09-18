@@ -77,7 +77,7 @@ it('sends no update campaign once the category is off', function (): void {
 it('still sends an operational update once the category is off', function (): void {
     Mail::fake();
 
-    (new SendUpdateEmailJob(userWithoutMarketing(), 'encrypted-data-removal', 'encrypted-data-removal', marketing: false))->handle();
+    (new SendUpdateEmailJob(userWithoutMarketing(), 'mcp-launch-aug-2026', 'mcp-launch-aug-2026', marketing: false))->handle();
 
     Mail::assertQueued(UpdateEmail::class);
 });
@@ -122,7 +122,7 @@ it('carries the same link on an update campaign', function (): void {
 });
 
 it('offers no unsubscribe on an operational update', function (): void {
-    $mail = new UpdateEmail(User::factory()->create(), 'encrypted-data-removal', marketing: false);
+    $mail = new UpdateEmail(User::factory()->create(), 'mcp-launch-aug-2026', marketing: false);
 
     expect($mail->headers()->text)->toBeEmpty();
 });
@@ -183,7 +183,7 @@ it('queues a campaign as a notice when told it is operational', function (): voi
     Queue::fake();
     User::factory()->create();
 
-    $this->artisan('email:update', ['view' => 'encrypted-data-removal', '--operational' => true, '--force' => true])
+    $this->artisan('email:update', ['view' => 'mcp-launch-aug-2026', '--operational' => true, '--force' => true])
         ->assertSuccessful();
 
     Queue::assertPushed(SendUpdateEmailJob::class, fn (SendUpdateEmailJob $job): bool => ! $job->marketing);

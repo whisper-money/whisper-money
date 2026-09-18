@@ -273,7 +273,6 @@ class ResetDemoAccountCommand extends Command
         $user->automationRules()->forceDelete();
         $user->categories()->forceDelete();
         $user->budgets()->forceDelete();
-        $user->encryptedMessage()->delete();
 
         $this->info('  Deleted existing data');
     }
@@ -324,14 +323,6 @@ class ResetDemoAccountCommand extends Command
 
             $account = $user->accounts()->create([
                 'name' => $accountData['name'],
-                'name_iv' => null,
-                // The column defaults to true, but a seeded name is plaintext.
-                // Leaving the flag set is the exact mismatch the
-                // align_accounts_encrypted_flag_with_plaintext_names migration
-                // had to repair, and it blanks `account_name` for server-side
-                // rule evaluation, so no rule keyed on the account can ever
-                // match the seeded history.
-                'encrypted' => false,
                 'bank_id' => $this->bankId($accountData['bank'] ?? null),
                 'currency_code' => $this->dataset['currency'],
                 'type' => $type,
@@ -530,8 +521,6 @@ class ResetDemoAccountCommand extends Command
 
             $account = $accounts[$accountName] ?? $accounts[$accountNames[array_rand($accountNames)]];
 
-            $transactionData['description_iv'] = null;
-
             $transaction = $account->transactions()->create([
                 'user_id' => $account->user_id,
                 'category_id' => $category->id,
@@ -581,7 +570,6 @@ class ResetDemoAccountCommand extends Command
                 'rules_json' => $ruleData['rules_json'],
                 'action_category_id' => $category?->id,
                 'action_note' => $ruleData['action_note'],
-                'action_note_iv' => $ruleData['action_note'] ? 'demo_iv' : null,
             ]);
 
             if (rand(0, 1) && ! empty($labels)) {

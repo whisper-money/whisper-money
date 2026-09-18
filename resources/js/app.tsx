@@ -16,7 +16,6 @@ import { MedalUnlockedToast } from './components/achievements/medal-unlocked-toa
 import { UncategorizedToast } from './components/achievements/uncategorized-toast';
 import { AppErrorBoundary } from './components/app-error-boundary';
 import { AppToaster } from './components/app-toaster';
-import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
@@ -171,12 +170,6 @@ createInertiaApp({
             | undefined;
         const initialUser = initialPageProps?.auth?.user ?? null;
         const initialIsAuthenticated = Boolean(initialUser);
-        const hasEncryptionSetup =
-            (initialPageProps?.hasEncryptionSetup as boolean) ?? false;
-        const hasEncryptedAccounts =
-            (initialPageProps?.hasEncryptedAccounts as boolean) ?? false;
-        const hasEncryptedTransactions =
-            (initialPageProps?.hasEncryptedTransactions as boolean) ?? false;
         const initialExpiredConnections =
             (initialPageProps?.expiredBankingConnections as
                 | ExpiredBankingConnectionNotification[]
@@ -225,34 +218,27 @@ createInertiaApp({
         root.render(
             <StrictMode>
                 <AppErrorBoundary>
-                    <EncryptionKeyProvider
-                        hasEncryptionSetup={
-                            hasEncryptionSetup &&
-                            (hasEncryptedAccounts || hasEncryptedTransactions)
-                        }
-                    >
-                        <PrivacyModeProvider>
-                            <SyncProvider
-                                initialIsAuthenticated={initialIsAuthenticated}
-                                initialUser={initialUser}
-                            >
-                                <App {...props} />
-                                <ExpiredConnectionsToast
-                                    initialExpiredConnections={
-                                        initialExpiredConnections
-                                    }
-                                />
-                                <UncategorizedToast
-                                    initialChallenges={initialChallenges}
-                                />
-                                <MedalUnlockedToast
-                                    initialChallenges={initialChallenges}
-                                    userId={initialUser?.id}
-                                />
-                                <AppToaster />
-                            </SyncProvider>
-                        </PrivacyModeProvider>
-                    </EncryptionKeyProvider>
+                    <PrivacyModeProvider>
+                        <SyncProvider
+                            initialIsAuthenticated={initialIsAuthenticated}
+                            initialUser={initialUser}
+                        >
+                            <App {...props} />
+                            <ExpiredConnectionsToast
+                                initialExpiredConnections={
+                                    initialExpiredConnections
+                                }
+                            />
+                            <UncategorizedToast
+                                initialChallenges={initialChallenges}
+                            />
+                            <MedalUnlockedToast
+                                initialChallenges={initialChallenges}
+                                userId={initialUser?.id}
+                            />
+                            <AppToaster />
+                        </SyncProvider>
+                    </PrivacyModeProvider>
                 </AppErrorBoundary>
             </StrictMode>,
         );

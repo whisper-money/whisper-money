@@ -111,7 +111,7 @@ function seedDashboardReader(User $user): array
         'Salary' => 300000,
         'Savings Pot' => -50000,
     ] as $category => $amount) {
-        Transaction::factory()->plaintext()->create([
+        Transaction::factory()->create([
             'user_id' => $user->id,
             'account_id' => $created['checking']->id,
             'category_id' => $categories[$category]->id,
@@ -124,7 +124,7 @@ function seedDashboardReader(User $user): array
     // Spending on the archived account, dated after the day it was archived. It
     // counts towards nothing — not this month's expenses, not the top
     // categories — which is the half of WM-60CF that balances do not cover.
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $created['archived']->id,
         'category_id' => $categories['Closed Account Fees']->id,
@@ -137,7 +137,7 @@ function seedDashboardReader(User $user): array
     // the one day of the month where the 30-day window reaches back into them.
     foreach ([1, 2] as $monthsAgo) {
         foreach (['Groceries' => -30000, 'Dining Out' => -12000, 'Salary' => 300000] as $category => $amount) {
-            Transaction::factory()->plaintext()->create([
+            Transaction::factory()->create([
                 'user_id' => $user->id,
                 'account_id' => $created['checking']->id,
                 'category_id' => $categories[$category]->id,

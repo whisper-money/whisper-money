@@ -21,10 +21,6 @@ class TransactionController extends Controller
             ->transactions()
             ->with('labels');
 
-        if ($request->query('encrypted') === 'true') {
-            $query->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'));
-        }
-
         if ($accountId = $request->query('account_id')) {
             $query->where('account_id', $accountId)
                 ->orderBy('transaction_date', 'desc')

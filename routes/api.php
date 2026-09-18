@@ -11,14 +11,10 @@ use App\Http\Controllers\Api\ImportDataController;
 use App\Http\Controllers\Api\SavedFilterController;
 use App\Http\Controllers\Api\TransactionAnalysisController;
 use App\Http\Controllers\Api\TransactionController;
-use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\Sync\TransactionSyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
-    // Encryption (legacy decrypt-migration support only)
-    Route::get('encryption/message', [EncryptionController::class, 'getMessage']);
-
     // Import Data (for import drawers)
     Route::get('import/data', [ImportDataController::class, 'index']);
 

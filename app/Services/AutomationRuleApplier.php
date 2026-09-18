@@ -132,16 +132,14 @@ class AutomationRuleApplier
     }
 
     /**
-     * The candidate transactions a rule may touch. Encrypted rows are excluded
-     * because rule evaluation reads the plaintext description.
+     * The candidate transactions a rule may touch.
      *
      * @return Builder<Transaction>
      */
     private function transactions(AutomationRule $rule, ?Space $space): Builder
     {
         $query = Transaction::query()
-            ->where('user_id', $rule->user_id)
-            ->whereNull('description_iv');
+            ->where('user_id', $rule->user_id);
 
         if ($space !== null) {
             $query->forSpace($space);

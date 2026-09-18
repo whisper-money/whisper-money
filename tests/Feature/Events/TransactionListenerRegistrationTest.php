@@ -19,7 +19,7 @@ function queuedListenerCount(string $listener): int
 
 it('registers each transaction listener exactly once', function (string $event, string $listener): void {
     $user = User::factory()->onboarded()->create();
-    $transaction = Transaction::factory()->plaintext()->create(['user_id' => $user->id]);
+    $transaction = Transaction::factory()->create(['user_id' => $user->id]);
 
     Queue::fake();
 

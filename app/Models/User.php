@@ -63,7 +63,6 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'name',
         'email',
         'password',
-        'encryption_salt',
         'onboarded_at',
         'onboarding_answers',
         'paywall_seen_at',
@@ -89,7 +88,6 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'pm_type',
         'pm_last_four',
         'trial_ends_at',
-        'encryption_salt',
         'price_arm',
         'signup_plan',
     ];
@@ -185,12 +183,6 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function setting(): HasOne
     {
         return $this->hasOne(UserSetting::class);
-    }
-
-    /** @return HasOne<EncryptedMessage, $this> */
-    public function encryptedMessage(): HasOne
-    {
-        return $this->hasOne(EncryptedMessage::class);
     }
 
     /** @return HasMany<Transaction, $this> */

@@ -17,7 +17,7 @@ beforeEach(function () {
 
     for ($i = 0; $i < 6; $i++) {
         Transaction::factory()->for($this->user)->create([
-            'account_id' => $this->account->id, 'category_id' => null, 'description_iv' => null,
+            'account_id' => $this->account->id, 'category_id' => null,
             'creditor_name' => 'MERCADONA', 'description' => "MERCADONA {$i}", 'amount' => -4000,
         ]);
     }
@@ -25,7 +25,7 @@ beforeEach(function () {
     // Filler so the "mercadona" token matches well under the over-broad threshold.
     for ($i = 0; $i < 20; $i++) {
         Transaction::factory()->for($this->user)->create([
-            'account_id' => $this->account->id, 'category_id' => null, 'description_iv' => null,
+            'account_id' => $this->account->id, 'category_id' => null,
             'creditor_name' => null, 'description' => "UNIQUE MERCHANT {$i}", 'amount' => -1000,
         ]);
     }

@@ -6,8 +6,6 @@ import { SyncedBalanceNotice } from './synced-balance-notice';
 const manualAccount = {
     id: 'account-1',
     name: 'Checking',
-    name_iv: null,
-    encrypted: false,
     bank: null,
     type: 'checking' as const,
     currency_code: 'EUR',

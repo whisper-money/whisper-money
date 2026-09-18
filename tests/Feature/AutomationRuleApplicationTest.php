@@ -26,7 +26,6 @@ beforeEach(function () {
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
         'name' => 'Checking Account',
-        'encrypted' => false,
     ]);
     $this->category = Category::factory()->create(['user_id' => $this->user->id]);
     $this->rule = AutomationRule::factory()->create([
@@ -514,7 +513,6 @@ test('store flashes saved automation rule id and token', function () {
         'rules_json' => json_encode(['in' => ['amazon', ['var' => 'description']]]),
         'action_category_id' => $this->category->id,
         'action_note' => null,
-        'action_note_iv' => null,
         'action_label_ids' => [],
     ];
 
@@ -537,7 +535,6 @@ test('updating labels flashes a new saved automation rule token', function () {
         'rules_json' => json_encode($this->rule->rules_json),
         'action_category_id' => $this->rule->action_category_id,
         'action_note' => null,
-        'action_note_iv' => null,
         'action_label_ids' => [$secondLabel->id],
     ];
 

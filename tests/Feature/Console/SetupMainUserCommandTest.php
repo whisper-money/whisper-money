@@ -96,7 +96,6 @@ it('imports automation rules from json file', function () {
             'priority' => 10,
             'rules_json' => '{"in":["MERCADONA",{"var":"description"}]}',
             'action_note' => null,
-            'action_note_iv' => null,
             'created_at' => '2025-11-14T09:10:05.000000Z',
             'updated_at' => '2025-11-14T14:26:10.000000Z',
             'category' => [
@@ -132,7 +131,6 @@ it('skips automation rules when category is not found', function () {
             'priority' => 10,
             'rules_json' => '{"in":["TEST",{"var":"description"}]}',
             'action_note' => null,
-            'action_note_iv' => null,
             'created_at' => '2025-11-14T09:10:05.000000Z',
             'updated_at' => '2025-11-14T14:26:10.000000Z',
             'category' => [

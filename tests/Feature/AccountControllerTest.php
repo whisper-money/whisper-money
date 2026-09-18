@@ -799,7 +799,7 @@ test('accounts index serializes the standard account field set without sensitive
     $account = $response->viewData('page')['props']['accounts'][0];
 
     expect(array_keys($account))->toEqualCanonicalizing([
-        'id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code',
+        'id', 'name', 'type', 'currency_code',
         'banking_connection_id', 'external_account_id', 'linked_at',
         'bank', 'linked_loan_account_id', 'archived_at',
         'ownership_percentage', 'ownership_applies_to_balance',

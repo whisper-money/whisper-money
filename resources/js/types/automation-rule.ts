@@ -23,7 +23,6 @@ export interface AutomationRule {
     rules_json: Record<string, unknown>;
     action_category_id: UUID | null;
     action_note: string | null;
-    action_note_iv: string | null;
     category?: Category;
     labels?: Label[];
     created_at: string;

@@ -30,8 +30,7 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
     public function handle(AutomationRuleService $service): void
     {
         $query = Transaction::query()
-            ->where('user_id', $this->user->id)
-            ->whereNull('description_iv');
+            ->where('user_id', $this->user->id);
 
         if ($this->transactionIds !== null) {
             $query->whereIn('id', $this->transactionIds);

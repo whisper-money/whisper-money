@@ -1,5 +1,4 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
-import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import { AccountTypeIcon } from '@/components/dashboard/account-type-icon';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
@@ -159,11 +158,9 @@ export function AccountListCard({
                                                 fallback="letter"
                                             />
                                         )}
-                                        <AccountName
-                                            account={account}
-                                            length={{ min: 8, max: 25 }}
-                                            className="truncate"
-                                        />
+                                        <span className="truncate">
+                                            {account.name}
+                                        </span>
                                     </h3>
                                 </Link>
                                 <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">

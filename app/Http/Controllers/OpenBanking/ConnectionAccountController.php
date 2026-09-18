@@ -77,8 +77,6 @@ class ConnectionAccountController extends Controller
         if ($validated['action'] === 'create') {
             $account = $connection->user->accounts()->create([
                 'name' => $validated['name'] ?? $iban ?? $connection->aspsp_name.' Account',
-                'name_iv' => null,
-                'encrypted' => false,
                 'bank_id' => $bank->id,
                 'currency_code' => $validated['currency'] ?? 'EUR',
                 'type' => $connection->provider->defaultAccountType()->value,

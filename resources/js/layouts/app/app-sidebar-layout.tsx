@@ -3,8 +3,6 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { SubscriptionPaymentIssueBanner } from '@/components/subscription/payment-issue-banner';
-import { useDecryptAccountNames } from '@/hooks/use-decrypt-account-names';
-import { useDecryptTransactions } from '@/hooks/use-decrypt-transactions';
 import { type BreadcrumbItem } from '@/types';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
@@ -16,9 +14,6 @@ export default function AppSidebarLayout({
     breadcrumbs?: BreadcrumbItem[];
     mobileLeading?: ReactNode;
 }>) {
-    useDecryptAccountNames();
-    useDecryptTransactions();
-
     return (
         <AppShell variant="sidebar">
             <AppSidebar />

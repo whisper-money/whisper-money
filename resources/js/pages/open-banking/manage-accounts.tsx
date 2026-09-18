@@ -1,4 +1,3 @@
-import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import {
     AlertDialog,
@@ -279,7 +278,7 @@ function SyncedAccountCard({
                     />
                     <div>
                         <CardTitle className="text-base">
-                            <AccountName account={account} />
+                            <span>{account.name}</span>
                         </CardTitle>
                         <CardDescription>
                             {account.currency_code} &middot; {__('Syncing')}
@@ -348,7 +347,7 @@ function SyncedAccountCard({
                         <SelectContent>
                             {otherTargets.map((target) => (
                                 <SelectItem key={target.id} value={target.id}>
-                                    <AccountName account={target} />
+                                    <span>{target.name}</span>
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -408,7 +407,7 @@ function DiscoveredAccountCard({
                         {targets.length > 0 && <SelectSeparator />}
                         {targets.map((target) => (
                             <SelectItem key={target.id} value={target.id}>
-                                <AccountName account={target} />
+                                <span>{target.name}</span>
                             </SelectItem>
                         ))}
                     </SelectContent>

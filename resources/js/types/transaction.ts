@@ -34,14 +34,12 @@ export interface Transaction {
     split_siblings?: TransactionSplitSibling[];
     category_id: UUID | null;
     description: string;
-    description_iv: string | null;
     transaction_date: string;
     /** Where the bank or the import file dated this row, kept once the user moved it. Null when never moved. */
     source_date?: string | null;
     amount: number;
     currency_code: string;
     notes: string | null;
-    notes_iv: string | null;
     creditor_name?: string | null;
     debtor_name?: string | null;
     source: TransactionSource;
@@ -54,14 +52,6 @@ export interface Transaction {
 }
 
 export interface ServerTransaction extends Transaction {
-    account?: Account;
-    category?: Category | null;
-    labels?: Label[];
-}
-
-export interface DecryptedTransaction extends Transaction {
-    decryptedDescription: string;
-    decryptedNotes: string | null;
     account?: Account;
     category?: Category | null;
     bank?: Bank;

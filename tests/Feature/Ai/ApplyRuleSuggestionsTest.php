@@ -16,7 +16,6 @@ beforeEach(function () {
         return Transaction::factory()->for($this->user)->create(array_merge([
             'account_id' => $this->account->id,
             'category_id' => null,
-            'description_iv' => null,
         ], $attributes));
     };
 

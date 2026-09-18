@@ -175,9 +175,6 @@ it('writes notes on a bank-synced transaction and returns them', function () {
     ])->assertOk()->assertSee('Migrated from the old spreadsheet');
 
     expect($transaction->fresh()->notes)->toBe('Migrated from the old spreadsheet');
-    // notes_iv belongs to the client-side encryption being migrated away, so a
-    // plain-text note must never claim to be encrypted.
-    expect($transaction->fresh()->notes_iv)->toBeNull();
 });
 
 it('writes notes on an imported transaction and clears them again', function () {
@@ -202,53 +199,6 @@ it('writes notes on an imported transaction and clears them again', function () 
     ])->assertOk();
 
     expect($transaction->fresh()->notes)->toBeNull();
-});
-
-it('retires the legacy iv of every field it overwrites in the clear', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $account->id,
-        'description' => 'B2l0ZXh0cGQ9',
-        'description_iv' => 'MTIzNDU2Nzg5MGFi',
-        'notes' => 'k5rXcipherPQ==',
-        'notes_iv' => 'YWJjZGVmZ2hpamts',
-    ]);
-
-    callWriteTool($user, UpdateTransaction::class, [
-        'transaction_id' => $transaction->id,
-        'description' => 'Rewritten in the clear',
-        'notes' => 'So are the notes',
-    ])->assertOk();
-
-    // A stale iv would have the browser decrypt plain text and render the
-    // field as broken, so it goes along with the ciphertext it described.
-    $transaction = $transaction->fresh();
-
-    expect($transaction->description)->toBe('Rewritten in the clear');
-    expect($transaction->description_iv)->toBeNull();
-    expect($transaction->notes)->toBe('So are the notes');
-    expect($transaction->notes_iv)->toBeNull();
-});
-
-it('leaves the iv of a field it did not touch alone', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $account->id,
-        'description' => 'B2l0ZXh0cGQ9',
-        'description_iv' => 'MTIzNDU2Nzg5MGFi',
-    ]);
-
-    callWriteTool($user, UpdateTransaction::class, [
-        'transaction_id' => $transaction->id,
-        'notes' => 'Only the notes change',
-    ])->assertOk();
-
-    // The description is still ciphertext, so the browser still needs its iv.
-    expect($transaction->fresh()->description_iv)->toBe('MTIzNDU2Nzg5MGFi');
 });
 
 it('writes notes on one part of a split', function () {
@@ -618,7 +568,7 @@ it('creates, updates and deletes a category', function () {
 
     expect($category->fresh()->name)->toBe('Holidays');
 
-    $transaction = Transaction::factory()->plaintext()->create([
+    $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => Account::factory()->create(['user_id' => $user->id])->id,
         'category_id' => $category->id,
@@ -1066,13 +1016,11 @@ it('tells the agent which id was missing and where to find valid ones', function
  */
 function groceryRuleOverHistory(User $user, int $matchingCount = 2): array
 {
-    $account = Account::factory()->create(['user_id' => $user->id, 'encrypted' => false]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
     $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Essentials']);
 
-    // plaintext(), because rule evaluation reads the description and skips
-    // every row the legacy encryption columns still mark as encrypted.
-    Transaction::factory()->plaintext()->count($matchingCount)->create([
+    Transaction::factory()->count($matchingCount)->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,
@@ -1080,7 +1028,7 @@ function groceryRuleOverHistory(User $user, int $matchingCount = 2): array
         'amount' => -1_000,
     ]);
 
-    Transaction::factory()->plaintext()->create([
+    Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,

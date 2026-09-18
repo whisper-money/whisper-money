@@ -36,10 +36,6 @@ vi.mock('@/hooks/use-mobile-navigation', () => ({
     useMobileNavigation: () => vi.fn(),
 }));
 
-vi.mock('@/lib/key-storage', () => ({
-    clearKey: vi.fn(),
-}));
-
 vi.mock('@inertiajs/react', () => ({
     Link: ({
         children,

@@ -43,10 +43,6 @@ class AutomationRuleService
      */
     public function applyRules(Transaction $transaction, bool $reassignBudgets = true): bool
     {
-        if ($transaction->description_iv !== null) {
-            return false;
-        }
-
         $rules = $this->rulesForUser($transaction->user_id);
 
         if ($rules->isEmpty()) {
@@ -67,16 +63,9 @@ class AutomationRuleService
 
     /**
      * Determine whether a single rule's conditions match the transaction.
-     *
-     * Encrypted transactions are skipped because rule evaluation reads the
-     * plaintext description and notes which the server cannot access.
      */
     public function ruleMatches(AutomationRule $rule, Transaction $transaction): bool
     {
-        if ($transaction->description_iv !== null) {
-            return false;
-        }
-
         $transactionData = $this->prepareTransactionData($transaction, $rule);
 
         try {
@@ -183,15 +172,14 @@ class AutomationRuleService
     }
 
     /**
-     * Append the rule's note where it is not already present. Encrypted notes are
-     * skipped because applying them requires the user's key.
+     * Append the rule's note where it is not already present.
      *
      * @param  EloquentCollection<int, Transaction>  $transactions
      * @return array<int, string> ids of the transactions changed
      */
     private function applyNoteInBulk(EloquentCollection $transactions, AutomationRule $rule): array
     {
-        if (! $rule->action_note || $rule->action_note_iv !== null) {
+        if (! $rule->action_note) {
             return [];
         }
 
@@ -311,10 +299,7 @@ class AutomationRuleService
         $bank = $account?->relationLoaded('bank') ? $account->bank : null;
         $category = $transaction->relationLoaded('category') ? $transaction->category : null;
 
-        $accountName = '';
-        if ($account && ! $account->encrypted) {
-            $accountName = trim($account->name);
-        }
+        $accountName = $account ? trim($account->name) : '';
 
         return [
             'description' => $this->normalizeWhitespace(mb_strtolower($transaction->description ?? '')),
@@ -414,8 +399,7 @@ class AutomationRuleService
             $affectsBudgets = true;
         }
 
-        // Only apply plain (unencrypted) notes — encrypted notes require the user's key
-        if ($rule->action_note && $rule->action_note_iv === null) {
+        if ($rule->action_note) {
             $existingNotes = $transaction->notes ?? '';
             $ruleNote = $rule->action_note;
 

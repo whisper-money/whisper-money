@@ -24,8 +24,6 @@ class AccountFactory extends Factory
         return [
             'user_id' => User::factory(),
             'name' => fake()->words(2, true).' Account',
-            'name_iv' => null,
-            'encrypted' => false,
             'bank_id' => Bank::factory(),
             'currency_code' => fake()->randomElement(['USD', 'EUR', 'GBP', 'CHF']),
             'type' => fake()->randomElement(AccountType::cases()),

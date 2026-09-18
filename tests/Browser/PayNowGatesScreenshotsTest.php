@@ -55,7 +55,6 @@ function gateHistory(User $user, int $count = 903): Account
         ->count($count)
         ->for($user)
         ->for($account)
-        ->plaintext()
         ->sequence(fn ($sequence): array => [
             'creditor_name' => sprintf('COMERCIO %03d', $sequence->index % 40),
             'amount' => -2200,

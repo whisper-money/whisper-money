@@ -56,7 +56,6 @@ class BackfillTransactionDescriptions extends Command
     {
         $query = Transaction::query()
             ->with('account.bank')
-            ->whereNull('description_iv')
             ->where('description', 'like', RemittanceTagFormatter::TAG.'%')
             ->when($userId, fn ($q) => $q->where('user_id', $userId));
 
