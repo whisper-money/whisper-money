@@ -10,7 +10,7 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserLead;
 use App\Services\Discord\DiscordWebhook;
-use App\Services\Subscriptions\ExperimentOffer;
+use App\Services\Subscriptions\RefundWindow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -25,7 +25,7 @@ class SubscriptionController extends Controller
     private const RETURN_SESSION_KEY = 'subscription.onboarding_return';
 
     public function __construct(
-        private ExperimentOffer $experimentOffer,
+        private RefundWindow $refundWindow,
         private DiscordWebhook $discord,
     ) {}
 
@@ -160,7 +160,7 @@ class SubscriptionController extends Controller
             $subscriptionBuilder->allowPromotionCodes();
         }
 
-        $trialDays = $this->experimentOffer->trialDaysFor($request->user(), $planKey);
+        $trialDays = (int) ($plan['trial_days'] ?? 0);
         if ($trialDays > 0) {
             // End of day, not `trialDays()`. Cashier turns that call into an
             // absolute `trial_end` fixed the moment this URL is built, and
@@ -298,14 +298,14 @@ class SubscriptionController extends Controller
         }
 
         $user = $request->user();
-        $canSelfRefund = $this->experimentOffer->canSelfRefund($user);
+        $canSelfRefund = $this->refundWindow->isOpenFor($user);
 
         return Inertia::render('settings/billing', [
             'hasAiConsent' => $user->hasActiveAiConsent(),
             'refund' => [
                 'canSelfRefund' => $canSelfRefund,
                 'deadline' => $canSelfRefund
-                    ? $this->experimentOffer->refundDeadlineFor($user->subscription('default'))->toIso8601String()
+                    ? $this->refundWindow->deadlineFor($user->subscription('default'))->toIso8601String()
                     : null,
             ],
         ]);
@@ -315,7 +315,7 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
 
-        if (! $this->experimentOffer->canSelfRefund($user)) {
+        if (! $this->refundWindow->isOpenFor($user)) {
             return redirect()->route('settings.billing')
                 ->withErrors(['refund' => __('This subscription is no longer eligible for a self-service refund.')]);
         }

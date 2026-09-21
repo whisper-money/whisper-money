@@ -1,10 +1,8 @@
 <?php
 
 use App\Actions\Subscription\RefundSelfServe;
-use App\Features\SubscriptionExperiment;
 use App\Models\User;
 use Illuminate\Support\Str;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -20,28 +18,24 @@ use function Pest\Laravel\actingAs;
 beforeEach(function () {
     config([
         'subscriptions.enabled' => true,
-        'subscriptions.experiment.started_at' => '2026-06-01',
-        'subscriptions.experiment.refund_window_days' => 3,
-        'subscriptions.experiment.variants' => [
-            // Spelled out rather than left to the plan defaults, which are 0 and
-            // so would make the "trialling" arm an upfront one — and hand it the
-            // refund window the test is here to prove it does not get.
-            'baseline' => ['trial_days' => ['monthly' => 7, 'yearly' => 15]],
-            'upfront' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
-        ],
+        'subscriptions.refund_window_days' => 3,
     ]);
 });
 
+/**
+ * A subscriber charged in full at signup — no `trial_ends_at` on the
+ * subscription, which is what opens the refund window.
+ */
 function browserPayNowUser(array $subscriptionOverrides = []): User
 {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(SubscriptionExperiment::class, 'upfront');
 
     $user->subscriptions()->create(array_merge([
         'type' => 'default',
         'stripe_id' => 'sub_'.Str::random(12),
         'stripe_status' => 'active',
         'stripe_price' => 'price_test',
+        'trial_ends_at' => null,
         'created_at' => now(),
     ], $subscriptionOverrides));
 
@@ -105,9 +99,8 @@ it('hides the refund control once the window has passed', function () {
         ->assertNoJavascriptErrors();
 });
 
-it('does not offer a refund to subscribers on a trialling variant', function () {
-    $user = browserPayNowUser();
-    Feature::for($user)->activate(SubscriptionExperiment::class, 'baseline');
+it('does not offer a refund to a subscriber who got a trial', function () {
+    $user = browserPayNowUser(['trial_ends_at' => now()->addDays(7)]);
 
     actingAs($user);
 

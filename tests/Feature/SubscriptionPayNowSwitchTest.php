@@ -8,10 +8,9 @@ declare(strict_types=1);
  * it is exercised by evaluating that file again with the environment set, not by
  * setting a config key a booted app would already be past.
  *
- * Everything downstream hangs off the `trial_days` this produces: `ExperimentOffer`
- * calls a variant upfront when both plans are 0, the checkout screens pick
- * "charged today" or "free for N days" from it, and the refund button follows.
- * Pin the two numbers and the rest cannot drift on its own.
+ * Everything downstream hangs off the `trial_days` this produces: the checkout
+ * sends it to Stripe and the checkout screens pick "charged today" or "free for
+ * N days" from it. Pin the two numbers and the rest cannot drift on its own.
  *
  * @param  array<string, string|null>  $env
  * @return array{monthly: int, yearly: int}
@@ -58,7 +57,7 @@ function trialDaysWith(array $env): array
     }
 }
 
-it('sells the trial while the switch is off', function () {
+it('sells the trial while the switch is absent', function () {
     expect(trialDaysWith([]))->toBe(['monthly' => 7, 'yearly' => 14]);
 });
 
@@ -67,7 +66,7 @@ it('charges in full at signup while the switch is on', function () {
         ->toBe(['monthly' => 0, 'yearly' => 0]);
 });
 
-it('reads anything but a true as off', function (string $value) {
+it('reads an explicit false, and anything else that is not a true, as off', function (string $value) {
     expect(trialDaysWith(['SUBSCRIPTION_PAY_NOW' => $value]))
         ->toBe(['monthly' => 7, 'yearly' => 14]);
 })->with(['false', '0', '', 'nonsense']);
