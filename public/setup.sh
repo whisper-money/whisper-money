@@ -924,7 +924,7 @@ upgrade() {
         echo -e "${GREEN}Bun dependencies updated.${NC}"
     elif command_exists npm; then
         echo -e "${BLUE}Updating npm dependencies...${NC}"
-        npm ci
+        npm install
         echo -e "${GREEN}npm dependencies updated.${NC}"
     fi
     echo ""
