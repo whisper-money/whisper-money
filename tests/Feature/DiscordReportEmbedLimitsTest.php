@@ -16,12 +16,6 @@ use function Pest\Laravel\artisan;
 beforeEach(function () {
     config([
         'subscriptions.enabled' => true,
-        'subscriptions.experiment.started_at' => '2026-06-01',
-        'subscriptions.experiment.variants' => [
-            'baseline' => [],
-            'short' => ['trial_days' => ['monthly' => 3, 'yearly' => 7]],
-            'upfront' => ['trial_days' => ['monthly' => 0, 'yearly' => 0]],
-        ],
         'services.discord.webhook_url' => 'https://discord.test/hook',
         'services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook',
     ]);
@@ -56,7 +50,6 @@ it('keeps every scheduled report inside Discord\'s embed limits', function (stri
 })->with([
     'stats:daily-report',
     'stats:subscription-funnel',
-    'stats:experiment-funnel',
     'stats:ai-cohort-report',
 ]);
 

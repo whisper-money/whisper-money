@@ -96,7 +96,7 @@ class HandleInertiaRequests extends Middleware
                 'currency' => strtoupper(config('cashier.currency', 'eur')),
                 // The way back out of an upfront charge, and so part of every
                 // screen that asks for one — the gates, the paywall and billing.
-                'refundWindowDays' => (int) config('subscriptions.experiment.refund_window_days', 3),
+                'refundWindowDays' => (int) config('subscriptions.refund_window_days', 3),
             ],
             'chartColorScheme' => $user?->setting?->chart_color_scheme->value ?? 'colorful',
             'includeLoansInNetWorthChart' => $user?->setting->include_loans_in_net_worth_chart ?? false,
