@@ -69,6 +69,7 @@ export function CreateAccountDialog({
         currencyCode: null,
         customBank: null,
         balance: null,
+        investedAmount: null,
         realEstate: null,
         loan: null,
     });
@@ -161,6 +162,12 @@ export function CreateAccountDialog({
                     currency_code: currencyCode,
                     ...(formDataRef.current.balance
                         ? { balance: formDataRef.current.balance }
+                        : {}),
+                    ...(formDataRef.current.investedAmount !== null
+                        ? {
+                              invested_amount:
+                                  formDataRef.current.investedAmount,
+                          }
                         : {}),
                     ...(formDataRef.current.realEstate
                         ? {

@@ -43,10 +43,18 @@ class AccountWriteService
             ...$spaceId !== null ? ['space_id' => $spaceId] : [],
         ]);
 
-        if ($balance !== null) {
+        $investedAmount = $account->type->supportsInvestedAmount()
+            ? $data['invested_amount'] ?? null
+            : null;
+
+        if ($balance !== null || $investedAmount !== null) {
             $account->balances()->create([
                 'balance_date' => now()->toDateString(),
-                'balance' => $balance,
+                // Told only what went in, read it as what the account is worth
+                // for now: a gain of zero beats dropping the figure because a
+                // balance column cannot be left empty.
+                'balance' => $balance ?? $investedAmount,
+                'invested_amount' => $investedAmount,
             ]);
         }
 

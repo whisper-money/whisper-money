@@ -61,6 +61,7 @@ import {
     formatPropertyType,
     isTransactionalAccount,
     PROPERTY_TYPES,
+    supportsInvestedAmount,
     type AreaUnit,
     type LoanDetail,
     type PropertyType,
@@ -367,6 +368,18 @@ export default function AccountShow({
                         />
                     )}
 
+                {supportsInvestedAmount(account) &&
+                    chartComputedData?.currentInvestedAmount != null && (
+                        <InvestmentSummaryCards
+                            chartData={chartComputedData.chartData}
+                            currentBalance={chartComputedData.currentBalance}
+                            currentInvestedAmount={
+                                chartComputedData.currentInvestedAmount
+                            }
+                            currencyCode={chartComputedData.currencyCode}
+                        />
+                    )}
+
                 {isRealEstate && realEstateDetail && (
                     <PropertyDetailsCard
                         detail={realEstateDetail}
@@ -501,6 +514,64 @@ export default function AccountShow({
     );
 }
 
+type SparklinePoint = { date: string; value: number };
+
+/**
+ * A history's first point read against its last, in the shape `SparklineCard`
+ * takes. Null when there is nothing to compare against or the start is zero.
+ */
+function historyTrend(history: SparklinePoint[]) {
+    if (history.length < 2) {
+        return null;
+    }
+
+    const previous = history[0].value;
+    const current = history[history.length - 1].value;
+
+    if (previous === 0) {
+        return null;
+    }
+
+    return { diff: current - previous, previous, current };
+}
+
+/**
+ * The three series a summary card row draws: what the account is worth, the
+ * companion figure recorded beside it (mortgage owed, amount invested) and
+ * what is left once the companion comes off the value (equity, gain).
+ *
+ * @param companionOf reads the companion figure off a point, null where the
+ *                    month has none recorded.
+ */
+function splitHistories(
+    chartData: BalanceDataPoint[],
+    companionOf: (point: BalanceDataPoint) => number | null | undefined,
+): {
+    valueHistory: SparklinePoint[];
+    companionHistory: SparklinePoint[];
+    remainderHistory: SparklinePoint[];
+} {
+    const recorded = chartData.filter(
+        (point) =>
+            companionOf(point) !== null && companionOf(point) !== undefined,
+    );
+
+    return {
+        valueHistory: chartData.map((point) => ({
+            date: point.month,
+            value: point.value,
+        })),
+        companionHistory: recorded.map((point) => ({
+            date: point.month,
+            value: companionOf(point)!,
+        })),
+        remainderHistory: recorded.map((point) => ({
+            date: point.month,
+            value: point.value - companionOf(point)!,
+        })),
+    };
+}
+
 interface EquitySummaryCardsProps {
     chartData: BalanceDataPoint[];
     currentBalance: number;
@@ -517,66 +588,15 @@ function EquitySummaryCards({
     const { accountMainLineColor, mortgageLineColor, equityLineColor } =
         useChartColors();
 
-    const { marketHistory, mortgageHistory, equityHistory, equity } =
-        useMemo(() => {
-            const market = chartData.map((d) => ({
-                date: d.month,
-                value: d.value,
-            }));
-            const mortgage = chartData
-                .filter(
-                    (d) =>
-                        d.mortgage_balance !== null &&
-                        d.mortgage_balance !== undefined,
-                )
-                .map((d) => ({ date: d.month, value: d.mortgage_balance! }));
-            const equityArr = chartData
-                .filter(
-                    (d) =>
-                        d.mortgage_balance !== null &&
-                        d.mortgage_balance !== undefined,
-                )
-                .map((d) => ({
-                    date: d.month,
-                    value: d.value - d.mortgage_balance!,
-                }));
+    const { valueHistory, companionHistory, remainderHistory } = useMemo(
+        () => splitHistories(chartData, (point) => point.mortgage_balance),
+        [chartData],
+    );
 
-            const currentEquity =
-                currentMortgageBalance !== null
-                    ? currentBalance - currentMortgageBalance
-                    : null;
-
-            return {
-                marketHistory: market,
-                mortgageHistory: mortgage,
-                equityHistory: equityArr,
-                equity: currentEquity,
-            };
-        }, [chartData, currentBalance, currentMortgageBalance]);
-
-    const marketTrend = useMemo(() => {
-        if (marketHistory.length < 2) return null;
-        const prev = marketHistory[0].value;
-        const curr = marketHistory[marketHistory.length - 1].value;
-        if (prev === 0) return null;
-        return { diff: curr - prev, previous: prev, current: curr };
-    }, [marketHistory]);
-
-    const mortgageTrend = useMemo(() => {
-        if (mortgageHistory.length < 2) return null;
-        const prev = mortgageHistory[0].value;
-        const curr = mortgageHistory[mortgageHistory.length - 1].value;
-        if (prev === 0) return null;
-        return { diff: curr - prev, previous: prev, current: curr };
-    }, [mortgageHistory]);
-
-    const equityTrend = useMemo(() => {
-        if (equityHistory.length < 2) return null;
-        const prev = equityHistory[0].value;
-        const curr = equityHistory[equityHistory.length - 1].value;
-        if (prev === 0) return null;
-        return { diff: curr - prev, previous: prev, current: curr };
-    }, [equityHistory]);
+    const equity =
+        currentMortgageBalance !== null
+            ? currentBalance - currentMortgageBalance
+            : null;
 
     return (
         <div className="grid gap-4 md:grid-cols-3">
@@ -584,25 +604,91 @@ function EquitySummaryCards({
                 title={__('Market Value')}
                 amountInCents={currentBalance}
                 currencyCode={currencyCode}
-                history={marketHistory}
+                history={valueHistory}
                 lineColor={accountMainLineColor}
-                trend={marketTrend}
+                trend={historyTrend(valueHistory)}
             />
             <SparklineCard
                 title={__('Mortgage Owed')}
                 amountInCents={currentMortgageBalance ?? 0}
                 currencyCode={currencyCode}
-                history={mortgageHistory}
+                history={companionHistory}
                 lineColor={mortgageLineColor}
-                trend={mortgageTrend}
+                trend={historyTrend(companionHistory)}
             />
             <SparklineCard
                 title={__('Equity')}
                 amountInCents={equity ?? 0}
                 currencyCode={currencyCode}
-                history={equityHistory}
+                history={remainderHistory}
                 lineColor={equityLineColor}
-                trend={equityTrend}
+                trend={historyTrend(remainderHistory)}
+            />
+        </div>
+    );
+}
+
+interface InvestmentSummaryCardsProps {
+    chartData: BalanceDataPoint[];
+    currentBalance: number;
+    currentInvestedAmount: number;
+    currencyCode: string;
+}
+
+function InvestmentSummaryCards({
+    chartData,
+    currentBalance,
+    currentInvestedAmount,
+    currencyCode,
+}: InvestmentSummaryCardsProps) {
+    const { accountMainLineColor, accountGainLineColor, equityLineColor } =
+        useChartColors();
+
+    const { valueHistory, companionHistory, remainderHistory } = useMemo(
+        () => splitHistories(chartData, (point) => point.invested_amount),
+        [chartData],
+    );
+
+    const gain = currentBalance - currentInvestedAmount;
+    // Plain return on the money put in, not annualised: annualising needs the
+    // date of the first contribution, which is not something we store.
+    const gainPercent =
+        currentInvestedAmount !== 0
+            ? (gain / Math.abs(currentInvestedAmount)) * 100
+            : null;
+
+    return (
+        <div className="grid gap-4 md:grid-cols-3">
+            <SparklineCard
+                title={__('Current Value')}
+                amountInCents={currentBalance}
+                currencyCode={currencyCode}
+                history={valueHistory}
+                lineColor={accountMainLineColor}
+                trend={historyTrend(valueHistory)}
+            />
+            <SparklineCard
+                title={__('Invested')}
+                amountInCents={currentInvestedAmount}
+                currencyCode={currencyCode}
+                history={companionHistory}
+                lineColor={accountGainLineColor}
+                trend={historyTrend(companionHistory)}
+            />
+            <SparklineCard
+                title={__('Gain')}
+                amountInCents={gain}
+                currencyCode={currencyCode}
+                history={remainderHistory}
+                lineColor={equityLineColor}
+                trend={null}
+                subtitle={
+                    gainPercent !== null
+                        ? __(':percent% of invested', {
+                              percent: `${gainPercent >= 0 ? '+' : ''}${gainPercent.toFixed(1)}`,
+                          })
+                        : undefined
+                }
             />
         </div>
     );
@@ -615,6 +701,7 @@ function SparklineCard({
     history,
     lineColor,
     trend,
+    subtitle,
 }: {
     title: string;
     amountInCents: number;
@@ -622,6 +709,7 @@ function SparklineCard({
     history: Array<{ date: string; value: number }>;
     lineColor: string;
     trend: { diff: number; previous: number; current: number } | null;
+    subtitle?: string;
 }) {
     return (
         <Card>
@@ -652,6 +740,11 @@ function SparklineCard({
                                 tooltipSide="bottom"
                                 currencyCode={currencyCode}
                             />
+                        )}
+                        {subtitle && (
+                            <p className="text-sm text-muted-foreground">
+                                {subtitle}
+                            </p>
                         )}
                     </div>
                     {history.length > 1 && (
