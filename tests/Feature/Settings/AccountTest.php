@@ -572,6 +572,82 @@ it('creates account without balance record when balance is not provided', functi
     ]);
 });
 
+it('records the invested amount on the opening balance of an investment account', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'My Index Fund',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Investment->value,
+        'balance' => 150000,
+        'invested_amount' => 120000,
+    ]);
+
+    $response->assertRedirect();
+
+    $account = Account::where('user_id', $this->user->id)
+        ->where('name', 'My Index Fund')
+        ->first();
+
+    assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 150000,
+        'invested_amount' => 120000,
+    ]);
+
+    expect($account->balances()->count())->toBe(1);
+});
+
+it('opens the balance at the invested amount when only that is known', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'My Pension Plan',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Retirement->value,
+        'invested_amount' => 120000,
+    ]);
+
+    $response->assertRedirect();
+
+    $account = Account::where('user_id', $this->user->id)
+        ->where('name', 'My Pension Plan')
+        ->first();
+
+    assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 120000,
+        'invested_amount' => 120000,
+    ]);
+});
+
+it('ignores an invested amount on a type that does not track one', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'My Current Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Checking->value,
+        'balance' => 150000,
+        'invested_amount' => 120000,
+    ]);
+
+    $response->assertRedirect();
+
+    $account = Account::where('user_id', $this->user->id)
+        ->where('name', 'My Current Account')
+        ->first();
+
+    assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 150000,
+        'invested_amount' => null,
+    ]);
+});
+
 it('validates balance must be an integer when provided', function () {
     actingAs($this->user);
 

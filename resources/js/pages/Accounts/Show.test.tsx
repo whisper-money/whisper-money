@@ -1,13 +1,16 @@
+import { type ChartComputedData } from '@/components/accounts/account-balance-chart';
+import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
 import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { type ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { useEffect, type ReactNode } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import AccountShow from './Show';
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     router: { reload: vi.fn(), patch: vi.fn() },
+    usePage: () => ({ props: { chartColorScheme: 'default' } }),
     Deferred: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
@@ -31,8 +34,24 @@ vi.mock('@/layouts/app/app-sidebar-layout', () => ({
     default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+const { chartComputedData } = vi.hoisted(() => ({
+    chartComputedData: { current: null as ChartComputedData | null },
+}));
+
 vi.mock('@/components/accounts/account-balance-chart', () => ({
-    AccountBalanceChart: () => null,
+    AccountBalanceChart: ({
+        onDataLoaded,
+    }: {
+        onDataLoaded?: (data: ChartComputedData) => void;
+    }) => {
+        useEffect(() => {
+            if (chartComputedData.current) {
+                onDataLoaded?.(chartComputedData.current);
+            }
+        }, [onDataLoaded]);
+
+        return null;
+    },
 }));
 
 vi.mock('@/components/accounts/archive-account-dialog', () => ({
@@ -112,16 +131,51 @@ const connectedAccount = {
     banking_connection_id: 'connection-1',
 };
 
+const investmentAccount = {
+    ...baseAccount,
+    name: 'Index Fund',
+    type: 'investment' as const,
+};
+
+const investmentChartData = (
+    currentValue: number,
+    invested: number,
+): ChartComputedData => ({
+    chartData: [
+        {
+            month: 'Jan 2026',
+            timestamp: 1,
+            value: 100000,
+            invested_amount: invested,
+        },
+        {
+            month: 'Feb 2026',
+            timestamp: 2,
+            value: currentValue,
+            invested_amount: invested,
+        },
+    ],
+    currentBalance: currentValue,
+    currentInvestedAmount: invested,
+    currentMortgageBalance: null,
+    currencyCode: 'EUR',
+    hasMortgageData: false,
+    shortTrend: null,
+    longTrend: null,
+});
+
 const renderPage = (account = baseAccount) =>
     render(
-        <AccountShow
-            account={account}
-            categories={[]}
-            accounts={[account]}
-            banks={[]}
-            labels={[]}
-            automationRules={[]}
-        />,
+        <PrivacyModeProvider>
+            <AccountShow
+                account={account}
+                categories={[]}
+                accounts={[account]}
+                banks={[]}
+                labels={[]}
+                automationRules={[]}
+            />
+        </PrivacyModeProvider>,
     );
 
 function openMoreOptionsMenu() {
@@ -134,6 +188,44 @@ function openMoreOptionsMenu() {
 }
 
 describe('AccountShow', () => {
+    afterEach(() => {
+        chartComputedData.current = null;
+    });
+
+    /**
+     * A manual investment account recorded what went in and what it is worth,
+     * and the difference was readable nowhere but a chart tooltip.
+     */
+    it('reads out the gain of an investment account over what was invested', () => {
+        chartComputedData.current = investmentChartData(150000, 120000);
+
+        renderPage(investmentAccount);
+
+        expect(screen.getByText('Invested')).toBeInTheDocument();
+        expect(screen.getByText('Gain')).toBeInTheDocument();
+        expect(screen.getByText('+25.0% of invested')).toBeInTheDocument();
+    });
+
+    it('reads out a loss when the account is worth less than what went in', () => {
+        chartComputedData.current = investmentChartData(90000, 120000);
+
+        renderPage(investmentAccount);
+
+        expect(screen.getByText('-25.0% of invested')).toBeInTheDocument();
+    });
+
+    it('leaves out the gain cards when no invested amount was ever recorded', () => {
+        chartComputedData.current = {
+            ...investmentChartData(150000, 120000),
+            currentInvestedAmount: null,
+        };
+
+        renderPage(investmentAccount);
+
+        expect(screen.queryByText('Invested')).not.toBeInTheDocument();
+        expect(screen.queryByText('Gain')).not.toBeInTheDocument();
+    });
+
     it('opens create transaction dialog for disconnected transactional accounts', () => {
         renderPage();
 

@@ -63,6 +63,7 @@ export function EditAccountDialog({
         currencyCode: account.currency_code,
         customBank: null,
         balance: null,
+        investedAmount: null,
         realEstate: null,
         loan: null,
     });

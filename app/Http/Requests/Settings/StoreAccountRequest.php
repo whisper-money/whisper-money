@@ -49,6 +49,7 @@ class StoreAccountRequest extends FormRequest
                 Rule::in(array_map(fn ($type) => $type->value, AccountType::cases())),
             ],
             'balance' => ['nullable', 'integer'],
+            'invested_amount' => ['nullable', 'integer'],
         ];
 
         if ($isRealEstate) {
