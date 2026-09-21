@@ -674,9 +674,16 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         });
     }
 
+    /**
+     * Suppression is what the mailbox told us — it hard-bounced or reported us
+     * as spam — and it outranks anything the user chose, unlike the `notify_*`
+     * settings. Callers that skip on this write no mail log, so the email is
+     * still pending if the address is ever fixed.
+     */
     public function canReceiveEmails(): bool
     {
-        return ! $this->isDeleted();
+        return ! $this->isDeleted()
+            && ! SuppressedEmailAddress::isSuppressed((string) $this->email);
     }
 
     public function wantsBankTransactionsSyncedEmail(): bool

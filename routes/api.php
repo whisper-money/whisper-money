@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ImportDataController;
 use App\Http\Controllers\Api\SavedFilterController;
 use App\Http\Controllers\Api\TransactionAnalysisController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\SesFeedbackController;
 use App\Http\Controllers\Sync\TransactionSyncController;
 use Illuminate\Support\Facades\Route;
 
@@ -71,3 +72,10 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     Route::patch('saved-filters/{savedFilter}/analysis-mode', [SavedFilterController::class, 'updateAnalysisMode'])->name('api.saved-filters.analysis-mode');
     Route::delete('saved-filters/{savedFilter}', [SavedFilterController::class, 'destroy'])->name('api.saved-filters.destroy');
 });
+
+// SES bounce and complaint feedback, delivered by SNS. Outside the group above
+// because SNS arrives with no session and no CSRF token: the signature in the
+// URL is what authenticates it, and the controller also checks the topic ARN.
+Route::post('ses/feedback', SesFeedbackController::class)
+    ->middleware('signed')
+    ->name('ses.feedback');

@@ -27,6 +27,12 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
         'token' => env('AWS_SESSION_TOKEN'),
+
+        /**
+         * The SNS topic SES publishes bounce and complaint feedback to. The
+         * webhook rejects anything published by another topic.
+         */
+        'topic_arn' => env('AWS_SES_TOPIC_ARN'),
     ],
 
     'slack' => [
