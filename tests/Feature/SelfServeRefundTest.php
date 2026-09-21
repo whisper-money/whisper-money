@@ -189,6 +189,31 @@ it('refunds the charge, cancels the subscription and disconnects connections', f
     (new RefundSelfServe($disconnect))->handle($user);
 });
 
+/**
+ * The page gate is a cheap predicate over our own columns — a null trial inside
+ * the window — so it can let through someone who was never actually charged.
+ * Stripe is the authority on that, and it is asked here. Carrying on would take
+ * the plan and the bank connections away and hand back nothing, silently.
+ */
+it('refuses to refund, cancel or disconnect when Stripe has no payment', function () {
+    $subscription = Mockery::mock(Subscription::class);
+    $subscription->shouldReceive('getAttribute')->with('refunded_at')->andReturn(null);
+    $subscription->shouldReceive('latestPayment')->once()->andReturn(null);
+    $subscription->shouldNotReceive('forceFill');
+    $subscription->shouldNotReceive('save');
+    $subscription->shouldNotReceive('cancelNow');
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('subscription')->with('default')->andReturn($subscription);
+    $user->shouldNotReceive('refund');
+
+    $disconnect = Mockery::mock(DisconnectBankingConnection::class);
+    $disconnect->shouldNotReceive('handle');
+
+    expect(fn () => (new RefundSelfServe($disconnect))->handle($user))
+        ->toThrow(RuntimeException::class);
+});
+
 it('records the refund before cleanup so a cleanup failure cannot double-refund', function () {
     $payment = new Payment(new PaymentIntent('pi_test_123'));
 

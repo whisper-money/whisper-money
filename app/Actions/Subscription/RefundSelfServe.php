@@ -12,7 +12,11 @@ use Illuminate\Support\Facades\Log;
  * at signup: refund the charge, cancel the subscription immediately, and revoke
  * the user's bank connections (keeping the data they already imported).
  *
- * Eligibility is enforced by the caller via RefundWindow::isOpenFor().
+ * The page gate (RefundWindow::isOpenFor()) is a cheap predicate over our own
+ * columns, so it can let through someone who was never actually charged. Stripe
+ * holds the truth about the money, and this is the one moment it matters, so it
+ * is asked here: no payment means no refund and nothing else happens either.
+ *
  * The refund is stamped before the cancel/disconnect steps run so that a
  * failure in those steps can never leave a refunded-but-active subscription
  * that could be refunded a second time; the cleanup is best-effort and logged.
@@ -31,9 +35,15 @@ class RefundSelfServe
 
         $payment = $subscription->latestPayment();
 
-        if ($payment !== null) {
-            $user->refund($payment->asStripePaymentIntent()->id);
+        // Nothing to give back. Carrying on would stamp the refund, cancel the
+        // plan and disconnect the banks for someone who was never charged —
+        // taking away what they have and returning nothing, silently. Stop
+        // before anything is touched and let the caller report it.
+        if ($payment === null) {
+            throw new \RuntimeException('No Stripe payment found for this subscription; refusing to refund.');
         }
+
+        $user->refund($payment->asStripePaymentIntent()->id);
 
         $subscription->forceFill(['refunded_at' => now()])->save();
 
