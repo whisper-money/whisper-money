@@ -240,6 +240,51 @@ export interface BalanceDataPoint {
     display_mortgage_balance?: number;
 }
 
+/**
+ * Restate a series in whichever currency the toggle is asking for.
+ *
+ * Every raw field on a point — `value`, `invested_amount`, `mortgage_balance` —
+ * is stored in the account's own currency, and each `display_*` twin is that
+ * same figure already converted by the backend. So user-currency mode swaps all
+ * of them together and account-currency mode leaves the point untouched.
+ * Swapping only some of them would put a balance and its invested amount on one
+ * axis in two currencies, and the gain/loss between them would be meaningless.
+ *
+ * `display_invested_amount` and `display_mortgage_balance` are absent rather
+ * than null when there is nothing to convert, hence the `undefined` checks.
+ */
+export function chartDataForCurrencyMode(
+    points: BalanceDataPoint[],
+    currencyMode: ChartCurrencyMode,
+    hasCurrencyToggle: boolean,
+): BalanceDataPoint[] {
+    if (currencyMode !== 'user' || !hasCurrencyToggle) {
+        return points;
+    }
+
+    return points.map((point) => ({
+        ...point,
+        value: point.display_value ?? point.value,
+        invested_amount:
+            point.display_invested_amount !== undefined
+                ? point.display_invested_amount
+                : point.invested_amount,
+        mortgage_balance:
+            point.display_mortgage_balance !== undefined
+                ? point.display_mortgage_balance
+                : point.mortgage_balance,
+        projected_value:
+            'projected_value' in point && point.display_value !== undefined
+                ? point.display_value
+                : point.projected_value,
+        projected_mortgage_balance:
+            'projected_mortgage_balance' in point &&
+            point.display_mortgage_balance !== undefined
+                ? point.display_mortgage_balance
+                : point.projected_mortgage_balance,
+    }));
+}
+
 interface AccountBalanceData {
     data: BalanceDataPoint[];
     account: {
@@ -527,44 +572,15 @@ export function AccountBalanceChart({
             ? displayCurrencyCode
             : account.currency_code;
 
-    const activeChartData = useMemo(() => {
-        if (currencyMode === 'user' && hasCurrencyToggle) {
-            // User currency mode: swap balance to display_value (account→user),
-            // but invested_amount is already in user currency — keep as-is
-            return chartData.map((point) => ({
-                ...point,
-                value: point.display_value ?? point.value,
-                mortgage_balance:
-                    point.display_mortgage_balance !== undefined
-                        ? point.display_mortgage_balance
-                        : point.mortgage_balance,
-                projected_value:
-                    'projected_value' in point &&
-                    point.display_value !== undefined
-                        ? point.display_value
-                        : point.projected_value,
-                projected_mortgage_balance:
-                    'projected_mortgage_balance' in point &&
-                    point.display_mortgage_balance !== undefined
-                        ? point.display_mortgage_balance
-                        : point.projected_mortgage_balance,
-            }));
-        }
-
-        if (currencyMode === 'account' && hasCurrencyToggle) {
-            // Account currency mode: balance is already in account currency,
-            // but invested_amount is in user currency — swap to display_invested_amount (user→account)
-            return chartData.map((point) => ({
-                ...point,
-                invested_amount:
-                    point.display_invested_amount !== undefined
-                        ? point.display_invested_amount
-                        : point.invested_amount,
-            }));
-        }
-
-        return chartData;
-    }, [chartData, currencyMode, hasCurrencyToggle]);
+    const activeChartData = useMemo(
+        () =>
+            chartDataForCurrencyMode(
+                chartData,
+                currencyMode,
+                hasCurrencyToggle,
+            ),
+        [chartData, currencyMode, hasCurrencyToggle],
+    );
 
     const activeCurrentBalance = useMemo(() => {
         if (currencyMode !== 'user' || !hasCurrencyToggle) {
@@ -596,7 +612,8 @@ export function AccountBalanceChart({
         if (!hasCurrencyToggle) {
             return currentInvestedAmount;
         }
-        // In both currency modes, activeChartData has the correctly-swapped invested_amount
+        // activeChartData already carries invested_amount in activeCurrencyCode,
+        // whichever mode we are in.
         for (let i = activeChartData.length - 1; i >= 0; i--) {
             const ia = activeChartData[i].invested_amount;
             if (ia !== null && ia !== undefined) return ia;
