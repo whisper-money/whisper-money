@@ -300,6 +300,63 @@ describe('SankeyChart', () => {
         expect(screen.getByText('19% of income')).toBeInTheDocument();
     });
 
+    it('shows a negative savings rate when the month overspent', () => {
+        render(
+            <SankeyChart
+                data={{
+                    income_categories: [
+                        {
+                            category: category('salary', 'Salary'),
+                            category_id: 'salary',
+                            amount: 1000,
+                        },
+                    ],
+                    expense_categories: [
+                        {
+                            category: category('rent', 'Rent'),
+                            category_id: 'rent',
+                            amount: 1200,
+                        },
+                    ],
+                    total_income: 1000,
+                    total_expense: 1200,
+                }}
+                period={period}
+            />,
+        );
+
+        expect(screen.getByText('-20% of income')).toBeInTheDocument();
+    });
+
+    it('does not read a sliver of a deficit as having broken even', () => {
+        render(
+            <SankeyChart
+                data={{
+                    income_categories: [
+                        {
+                            category: category('salary', 'Salary'),
+                            category_id: 'salary',
+                            amount: 100000,
+                        },
+                    ],
+                    expense_categories: [
+                        {
+                            category: category('rent', 'Rent'),
+                            category_id: 'rent',
+                            amount: 100010,
+                        },
+                    ],
+                    total_income: 100000,
+                    total_expense: 100010,
+                }}
+                period={period}
+            />,
+        );
+
+        // -0.01% would round to `0%`, which is what an exact break-even reads.
+        expect(screen.getByText('>-1% of income')).toBeInTheDocument();
+    });
+
     it('divides a subcategory by its parent, not by the side total', async () => {
         render(<SankeyChart data={data} period={period} />);
 
