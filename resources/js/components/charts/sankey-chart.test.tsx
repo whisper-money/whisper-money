@@ -144,6 +144,9 @@ const period = {
 
 describe('SankeyChart', () => {
     beforeEach(() => {
+        // clearAllMocks() keeps return values, so a privacy-mode test would
+        // otherwise leave privacy on for everything that runs after it.
+        vi.mocked(usePrivacyMode).mockReturnValue(privacyMode);
         global.fetch = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
@@ -278,5 +281,113 @@ describe('SankeyChart', () => {
         // No raw digits leak into the labels when privacy mode is on.
         expect(screen.getByText('Salary')).toBeInTheDocument();
         expect(document.body.textContent).not.toMatch(/1,?000/);
+    });
+
+    it('shows each category as a share of its own side total', () => {
+        render(<SankeyChart data={data} period={period} />);
+
+        // Expenses divide by total_expense (810), not by income.
+        // Amounts are minor units, so 500 renders as $5.
+        expect(screen.getByText('$5 · 62%')).toBeInTheDocument();
+        expect(screen.getByText('$3 · 38%')).toBeInTheDocument();
+        expect(screen.getByText('$10 · 100%')).toBeInTheDocument();
+    });
+
+    it('shows the savings rate on the net node', () => {
+        render(<SankeyChart data={data} period={period} />);
+
+        // 1000 - 810 = 190, which is 19% of income.
+        expect(screen.getByText('19% of income')).toBeInTheDocument();
+    });
+
+    it('divides a subcategory by its parent, not by the side total', async () => {
+        render(<SankeyChart data={data} period={period} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand Food' }));
+
+        await waitFor(() => {
+            expect(screen.getByText('Groceries')).toBeInTheDocument();
+        });
+
+        // 200 of Food's 310, not 200 of the 810 spent overall.
+        expect(screen.getByText('$2 · 65%')).toBeInTheDocument();
+        expect(screen.getByText('$1 · 35%')).toBeInTheDocument();
+    });
+
+    it('shows <1% instead of rounding a tiny share down to nothing', () => {
+        render(
+            <SankeyChart
+                data={{
+                    income_categories: [
+                        {
+                            category: category('salary', 'Salary'),
+                            category_id: 'salary',
+                            amount: 100000,
+                        },
+                    ],
+                    expense_categories: [
+                        {
+                            category: category('rent', 'Rent'),
+                            category_id: 'rent',
+                            amount: 99900,
+                        },
+                        {
+                            category: category('stamps', 'Stamps'),
+                            category_id: 'stamps',
+                            amount: 100,
+                        },
+                    ],
+                    total_income: 100000,
+                    total_expense: 100000,
+                }}
+                period={period}
+            />,
+        );
+
+        expect(screen.getByText('$1 · <1%')).toBeInTheDocument();
+    });
+
+    it('omits the percentage when the total is zero', () => {
+        render(
+            <SankeyChart
+                data={{
+                    income_categories: [
+                        {
+                            category: category('salary', 'Salary'),
+                            category_id: 'salary',
+                            amount: 1000,
+                        },
+                    ],
+                    expense_categories: [
+                        {
+                            category: category('rent', 'Rent'),
+                            category_id: 'rent',
+                            amount: 500,
+                        },
+                    ],
+                    total_income: 1000,
+                    // Inconsistent totals must degrade to the bare amount
+                    // rather than `0%` or `NaN%`.
+                    total_expense: 0,
+                }}
+                period={period}
+            />,
+        );
+
+        expect(screen.getByText('$5')).toBeInTheDocument();
+    });
+
+    it('keeps the percentage readable while privacy mode masks the amount', () => {
+        vi.mocked(usePrivacyMode).mockReturnValue({
+            ...privacyMode,
+            isPrivacyModeEnabled: true,
+        });
+
+        render(<SankeyChart data={data} period={period} />);
+
+        // The share gives no amount away, and it is what keeps the chart
+        // worth looking at with the numbers masked.
+        expect(screen.getByText('$* · 62%')).toBeInTheDocument();
+        expect(screen.getByText('19% of income')).toBeInTheDocument();
     });
 });
