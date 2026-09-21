@@ -17,7 +17,6 @@ import { __ } from '@/utils/i18n';
 interface ImportBalanceStepPreviewProps {
     balances: ParsedBalance[];
     currencyCode: string;
-    investedAmountCurrencyCode: string;
     showInvestedAmount: boolean;
     isLoan?: boolean;
     onConfirm: () => void;
@@ -28,7 +27,6 @@ interface ImportBalanceStepPreviewProps {
 export function ImportBalanceStepPreview({
     balances,
     currencyCode,
-    investedAmountCurrencyCode,
     showInvestedAmount,
     isLoan = false,
     onConfirm,
@@ -40,9 +38,6 @@ export function ImportBalanceStepPreview({
 
     const formatBalance = (valueInCents: number): string =>
         formatCurrency(valueInCents, currencyCode, locale);
-
-    const formatInvestedAmount = (valueInCents: number): string =>
-        formatCurrency(valueInCents, investedAmountCurrencyCode, locale);
 
     const hasInvestedData =
         showInvestedAmount && balances.some((b) => b.invested_amount !== null);
@@ -105,7 +100,7 @@ export function ImportBalanceStepPreview({
                                     {hasInvestedData && (
                                         <TableCell className="text-right font-mono text-muted-foreground">
                                             {balance.invested_amount !== null
-                                                ? formatInvestedAmount(
+                                                ? formatBalance(
                                                       balance.invested_amount,
                                                   )
                                                 : '—'}
