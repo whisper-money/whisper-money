@@ -8,10 +8,9 @@ declare(strict_types=1);
  * it is exercised by evaluating that file again with the environment set, not by
  * setting a config key a booted app would already be past.
  *
- * Everything downstream hangs off the `trial_days` this produces: `ExperimentOffer`
- * calls a variant upfront when both plans are 0, the checkout screens pick
- * "charged today" or "free for N days" from it, and the refund button follows.
- * Pin the two numbers and the rest cannot drift on its own.
+ * Everything downstream hangs off the `trial_days` this produces: the checkout
+ * sends it to Stripe and the checkout screens pick "charged today" or "free for
+ * N days" from it. Pin the two numbers and the rest cannot drift on its own.
  *
  * @param  array<string, string|null>  $env
  * @return array{monthly: int, yearly: int}

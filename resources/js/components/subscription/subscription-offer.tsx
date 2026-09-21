@@ -150,8 +150,8 @@ function checkoutLabel(
 /**
  * The commitment under the button. A plan with a trial in front of it is not
  * charged today and has no refund window to promise, so it says so instead —
- * the `trial` experiment variant is the only thing that produces one now, but
- * the line has to be right when it does.
+ * which of the two ships is `SUBSCRIPTION_PAY_NOW`, read here as the plan's own
+ * `trial_days`.
  */
 function CheckoutTerms({ plan }: { plan: Plan | undefined }) {
     const { pricing } = usePage<SharedData>().props;

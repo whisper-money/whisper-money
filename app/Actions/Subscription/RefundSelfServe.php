@@ -8,11 +8,11 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Self-service "money-back guarantee" for an upfront-paying experiment variant:
- * refund the charge, cancel the subscription immediately, and revoke the user's
- * bank connections (keeping the data they already imported).
+ * Self-service "money-back guarantee" for a subscriber who was charged in full
+ * at signup: refund the charge, cancel the subscription immediately, and revoke
+ * the user's bank connections (keeping the data they already imported).
  *
- * Eligibility is enforced by the caller via ExperimentOffer::canSelfRefund().
+ * Eligibility is enforced by the caller via RefundWindow::isOpenFor().
  * The refund is stamped before the cancel/disconnect steps run so that a
  * failure in those steps can never leave a refunded-but-active subscription
  * that could be refunded a second time; the cleanup is best-effort and logged.
