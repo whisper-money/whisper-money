@@ -3459,5 +3459,6 @@
     "Sync your financial data across multiple\\n                                    devices via cloud storage": "Sincroniza tus datos financieros en varios dispositivos a través del almacenamiento en la nube",
     "To enable cloud synchronization of your\\n                                    financial data across devices": "Para habilitar la sincronización en la nube de tus datos financieros entre dispositivos",
     "Once verified, you'll be able to start tracking your finances with full privacy.": "Una vez verificado, podrás empezar a rastrear tus finanzas con total privacidad.",
-    "Rules with a lower priority are evaluated first": "Las reglas con menor prioridad se evalúan primero"
+    "Rules with a lower priority are evaluated first": "Las reglas con menor prioridad se evalúan primero",
+    ":percent of income": ":percent del ingreso"
 }
