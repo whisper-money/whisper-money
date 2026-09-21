@@ -57,7 +57,7 @@ function trialDaysWith(array $env): array
     }
 }
 
-it('sells the trial while the switch is off', function () {
+it('sells the trial while the switch is absent', function () {
     expect(trialDaysWith([]))->toBe(['monthly' => 7, 'yearly' => 14]);
 });
 
@@ -66,7 +66,7 @@ it('charges in full at signup while the switch is on', function () {
         ->toBe(['monthly' => 0, 'yearly' => 0]);
 });
 
-it('reads anything but a true as off', function (string $value) {
+it('reads an explicit false, and anything else that is not a true, as off', function (string $value) {
     expect(trialDaysWith(['SUBSCRIPTION_PAY_NOW' => $value]))
         ->toBe(['monthly' => 7, 'yearly' => 14]);
 })->with(['false', '0', '', 'nonsense']);
