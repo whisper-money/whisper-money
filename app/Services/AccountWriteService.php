@@ -47,6 +47,12 @@ class AccountWriteService
             $account->balances()->create([
                 'balance_date' => now()->toDateString(),
                 'balance' => $balance,
+                // What went in, beside what it is worth today: the two columns
+                // of one opening row are what the gain is read from. Both are
+                // stored in the account's own currency, unconverted.
+                'invested_amount' => $account->type->supportsInvestedAmount()
+                    ? $data['invested_amount'] ?? null
+                    : null,
             ]);
         }
 

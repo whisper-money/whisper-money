@@ -21,6 +21,7 @@ import {
     formatAccountType,
     formatAreaUnit,
     formatPropertyType,
+    supportsInvestedAmount,
     type AccountType,
     type AreaUnit,
     type Bank,
@@ -61,6 +62,7 @@ export interface AccountFormData {
     currencyCode: CurrencyCode | null;
     customBank: CustomBankData | null;
     balance: number | null;
+    investedAmount: number | null;
     realEstate: RealEstateFormData | null;
     loan: LoanFormData | null;
 }
@@ -151,6 +153,7 @@ export function AccountForm({
         initialCustomBankData,
     );
     const [balance, setBalance] = useState<number | null>(null);
+    const [investedAmount, setInvestedAmount] = useState<number | null>(null);
     const [realEstateData, setRealEstateData] = useState<RealEstateFormData>(
         initialValues?.realEstate ?? initialRealEstateData,
     );
@@ -166,6 +169,10 @@ export function AccountForm({
     // balance they add up to. A loan and a property keep their own wording
     // (`balanceTermCapitalized`) and their own follow-up questions.
     const showBalanceField = selectedType !== null;
+    // What the account is worth is only half the story on the types that grow:
+    // without what went in there is no gain to read anywhere.
+    const showInvestedAmountField =
+        selectedType !== null && supportsInvestedAmount({ type: selectedType });
     const isRealEstate = selectedType === 'real_estate';
     const isLoan = selectedType === 'loan';
     const availableRealEstateAccounts = availableLoanAccounts.filter(
@@ -228,6 +235,7 @@ export function AccountForm({
             currencyCode: selectedCurrency,
             customBank: isCreatingCustomBank ? customBankData : null,
             balance: showBalanceField ? balance : null,
+            investedAmount: showInvestedAmountField ? investedAmount : null,
             realEstate: isRealEstate ? realEstateData : null,
             loan: isLoan ? loanData : null,
         });
@@ -240,6 +248,8 @@ export function AccountForm({
         customBankData,
         balance,
         showBalanceField,
+        investedAmount,
+        showInvestedAmountField,
         isRealEstate,
         isLoan,
         realEstateData,
@@ -442,6 +452,27 @@ export function AccountForm({
                     <p className="pl-1 text-xs text-muted-foreground">
                         {__(
                             'Optional. Set the current balance for this account.',
+                        )}
+                    </p>
+                </div>
+            )}
+
+            {showInvestedAmountField && selectedCurrency && !initialValues && (
+                <div className="space-y-2">
+                    <Label htmlFor="invested_amount">
+                        {__('Invested amount')}
+                    </Label>
+                    <div className="mt-1">
+                        <AmountInput
+                            id="invested_amount"
+                            value={investedAmount ?? 0}
+                            onChange={setInvestedAmount}
+                            currencyCode={selectedCurrency}
+                        />
+                    </div>
+                    <p className="pl-1 text-xs text-muted-foreground">
+                        {__(
+                            'Total money you put into this account. Used to calculate gains/losses.',
                         )}
                     </p>
                 </div>
