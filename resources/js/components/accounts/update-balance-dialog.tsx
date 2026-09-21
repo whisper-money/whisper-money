@@ -16,7 +16,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getCsrfToken } from '@/lib/csrf';
-import type { SharedData } from '@/types';
 import {
     type Account,
     type AccountBalance,
@@ -25,7 +24,6 @@ import {
 } from '@/types/account';
 import { todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 interface UpdateBalanceDialogProps {
@@ -60,8 +58,6 @@ export function UpdateBalanceDialog({
     const countsPartially =
         (account.ownership_applies_to_balance ?? false) &&
         (account.ownership_percentage ?? 100) < 100;
-    const userCurrencyCode =
-        usePage<SharedData>().props.auth.user.currency_code;
 
     useEffect(() => {
         async function fetchLastBalance() {
@@ -244,7 +240,7 @@ export function UpdateBalanceDialog({
                                             value === 0 ? null : value,
                                         )
                                     }
-                                    currencyCode={userCurrencyCode}
+                                    currencyCode={account.currency_code}
                                 />
                             )}
                         </div>

@@ -26,7 +26,6 @@ interface ImportBalanceStepMappingProps {
     dateFormatDetected: boolean;
     parsedData: ParsedRow[];
     currencyCode: string;
-    investedAmountCurrencyCode: string;
     showInvestedAmount: boolean;
     isLoan?: boolean;
     onMappingChange: (field: keyof BalanceColumnMapping, value: string) => void;
@@ -42,7 +41,6 @@ export function ImportBalanceStepMapping({
     dateFormatDetected,
     parsedData,
     currencyCode,
-    investedAmountCurrencyCode,
     showInvestedAmount,
     isLoan = false,
     onMappingChange,
@@ -57,14 +55,6 @@ export function ImportBalanceStepMapping({
         new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: currencyCode,
-        })
-            .format(value)
-            .replace(/\s/g, '\u202F');
-
-    const formatRawInvestedAmount = (value: number) =>
-        new Intl.NumberFormat(locale, {
-            style: 'currency',
-            currency: investedAmountCurrencyCode,
         })
             .format(value)
             .replace(/\s/g, '\u202F');
@@ -87,7 +77,7 @@ export function ImportBalanceStepMapping({
             );
             investedAmount =
                 invested !== null
-                    ? formatRawInvestedAmount(invested)
+                    ? formatRawAmount(invested)
                     : 'Invalid amount';
         }
 
