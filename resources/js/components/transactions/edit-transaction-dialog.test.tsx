@@ -14,7 +14,31 @@ vi.mock('@/components/shared/label-combobox', () => ({
 }));
 
 vi.mock('@/components/transactions/category-select', () => ({
-    CategorySelect: () => <div />,
+    // Stands in for the combobox: it reports what it holds and offers every
+    // category as a button, so a pick is one click.
+    CategorySelect: ({
+        value,
+        onValueChange,
+        categories,
+        'data-testid': dataTestId,
+    }: {
+        value: string;
+        onValueChange: (value: string) => void;
+        categories: Category[];
+        'data-testid'?: string;
+    }) => (
+        <div data-testid={dataTestId} data-value={value}>
+            {categories.map((category) => (
+                <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => onValueChange(category.id)}
+                >
+                    {category.name}
+                </button>
+            ))}
+        </div>
+    ),
 }));
 
 vi.mock('@/contexts/sync-context', () => ({
@@ -1256,7 +1280,81 @@ describe('EditTransactionDialog', () => {
             saved_and_added_another: false,
             account_chip_changed: false,
             date_chip_changed: false,
+            category_chip_changed: false,
             rule_applied_category: false,
         });
+    });
+
+    const groceries = { id: 'category-1', name: 'Groceries' } as Category;
+
+    it('sets the category from the chip without expanding the form', async () => {
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        renderCreateDialog({ categories: [groceries] });
+
+        const chip = screen.getByTestId('category-chip');
+        expect(chip).toHaveAttribute('data-value', 'null');
+        expect(screen.queryByTestId('category-select')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Groceries'));
+        await fillAndSubmit('submit-transaction');
+
+        expect(transactionSyncService.create).toHaveBeenCalledWith(
+            expect.objectContaining({ category_id: 'category-1' }),
+            expect.anything(),
+        );
+        expect(captureEvent).toHaveBeenCalledWith(
+            'transaction_created',
+            expect.objectContaining({ category_chip_changed: true }),
+        );
+    });
+
+    it('keeps the category the chip holds when adding another', async () => {
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        renderCreateDialog({ categories: [groceries] });
+
+        fireEvent.click(screen.getByText('Groceries'));
+        await fillAndSubmit('submit-and-add-another');
+
+        expect(screen.getByTestId('category-chip')).toHaveAttribute(
+            'data-value',
+            'category-1',
+        );
+    });
+
+    it('keeps a rule from overwriting what the chip picked', async () => {
+        vi.mocked(evaluateRulesForNewTransaction).mockReturnValue({
+            categoryId: 'category-2',
+            labelIds: [],
+            labels: [],
+            note: null,
+            rule: { title: 'Supermarkets' },
+        } as never);
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        renderCreateDialog({
+            categories: [groceries],
+            automationRules: [{ id: 'rule-1' } as AutomationRule],
+        });
+
+        fireEvent.click(screen.getByText('Groceries'));
+        await fillAndSubmit('submit-transaction');
+
+        // The chip's pick wins: the rule only fills a category nobody chose.
+        expect(transactionSyncService.create).toHaveBeenCalledWith(
+            expect.objectContaining({ category_id: 'category-1' }),
+            expect.anything(),
+        );
+        expect(captureEvent).toHaveBeenCalledWith(
+            'transaction_created',
+            expect.objectContaining({ rule_applied_category: false }),
+        );
     });
 });

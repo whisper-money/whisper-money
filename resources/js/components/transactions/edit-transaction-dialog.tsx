@@ -598,6 +598,9 @@ export function EditTransactionDialog({
                     account_chip_changed:
                         accountId !== defaultAccountId.current,
                     date_chip_changed: transactionDate !== defaultDate.current,
+                    // The chip always opens on Uncategorized, so anything else
+                    // is the user's own pick.
+                    category_chip_changed: categoryId !== 'null',
                     rule_applied_category: ruleAppliedCategory,
                 });
 
@@ -1006,8 +1009,8 @@ export function EditTransactionDialog({
             ? __('Today')
             : formatTransactionDate(transactionDate, locale);
 
-    // The collapsed form's three defaults. The account one is the select
-    // itself wearing a pill, so picking from it stays one tap.
+    // The collapsed form's defaults. The account and category ones are the
+    // select itself wearing a pill, so picking from them stays one tap.
     const chipsRow = (
         <div className="flex flex-wrap items-center gap-2">
             <Select
@@ -1049,6 +1052,21 @@ export function EditTransactionDialog({
                     <ChevronDown className="size-3.5" />
                 )}
             </Button>
+
+            {/* Deliberately opens on Uncategorized: a pre-filled category
+                would count as the user's own pick and switch the automation
+                rules' categorization off for every hand-typed transaction. */}
+            <CategorySelect
+                value={categoryId}
+                onValueChange={setCategoryId}
+                categories={categories}
+                disabled={isSubmitting}
+                placeholder={__('Uncategorized')}
+                // Capped so a long category name truncates inside the pill
+                // instead of stretching it into a full-width bar.
+                triggerClassName={cn(CHIP_CLASS, 'max-w-40')}
+                data-testid="category-chip"
+            />
 
             {/* The bank owns a connected account's balance, so there is
                 nothing here to switch off. */}
