@@ -4,7 +4,7 @@ import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
 import { fetchJson } from '@/lib/fetch-json';
-import { groupSmallCategories } from '@/lib/sankey-utils';
+import { formatShare, groupSmallCategories } from '@/lib/sankey-utils';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
@@ -41,6 +41,9 @@ interface FlowNode {
     color: string;
     kind: FlowKind;
     labelSide: LabelSide;
+    // Pre-formatted share of this node's denominator (its side total, or its
+    // parent's amount when it is a drill-down child). Null when there is none.
+    share: string | null;
     categoryId?: string;
     expandable?: boolean;
     expanded?: boolean;
@@ -59,9 +62,10 @@ const LABEL_HEIGHT = 30;
 // bars end up NODE_PADDING apart regardless of the canvas height. Keep it above
 // LABEL_HEIGHT (+ breathing room) so two adjacent labels can never overlap.
 const NODE_PADDING = LABEL_HEIGHT + 6;
-// On-bar labels (the hub, and an expanded parent) are bordered pills with two
-// lines, so they need a little more room than the plain side labels.
-const PILL_LABEL_HEIGHT = 44;
+// On-bar labels (the hub, and an expanded parent) are bordered pills, so they
+// need a little more room than the plain side labels — and the hub carries a
+// third line with the savings rate.
+const PILL_LABEL_HEIGHT = 58;
 // A Sankey is inherently horizontal, so on narrow screens we let it scroll
 // sideways (same pattern as the trend chart) rather than crushing the flows.
 const MIN_CHART_WIDTH = 560;
@@ -209,6 +213,7 @@ export function SankeyChart({
                 kind === 'income' ? 'left' : 'right';
             const childrenKey =
                 kind === 'income' ? 'income_categories' : 'expense_categories';
+            const sideTotal = kind === 'income' ? total_income : total_expense;
 
             items.forEach((item, index) => {
                 if (item.amount <= 0) {
@@ -232,6 +237,7 @@ export function SankeyChart({
                     color: categoryBarColor(item.category.color, index),
                     kind,
                     labelSide: childrenLoaded ? 'onbar' : collapsedSide,
+                    share: formatShare(item.amount, sideTotal),
                     categoryId: item.category.id,
                     expandable: !!item.has_children,
                     expanded: isExpanded,
@@ -247,6 +253,7 @@ export function SankeyChart({
                 color: MUTED_COLOR,
                 kind: 'income',
                 labelSide: 'left',
+                share: formatShare(groupedIncome.other.total, total_income),
             });
         }
 
@@ -259,6 +266,9 @@ export function SankeyChart({
             color: CENTER_COLOR,
             kind: 'center',
             labelSide: 'onbar',
+            // The hub's share is the savings rate, so it reads against income
+            // rather than against a side total.
+            share: formatShare(total_income - total_expense, total_income),
         });
 
         const groupedExpense = groupSmallCategories(
@@ -274,6 +284,7 @@ export function SankeyChart({
                 color: MUTED_COLOR,
                 kind: 'expense',
                 labelSide: 'right',
+                share: formatShare(groupedExpense.other.total, total_expense),
             });
         }
 
@@ -327,6 +338,13 @@ export function SankeyChart({
                         color: categoryBarColor(kid.category.color, index),
                         kind: expandedKind,
                         labelSide: expandedKind === 'income' ? 'left' : 'right',
+                        // A subcategory answers "how much of this parent",
+                        // not "how much of everything", so the parent's
+                        // amount is the denominator.
+                        share: formatShare(
+                            kid.amount,
+                            nodes[parentIndex].amount,
+                        ),
                         categoryId: kid.category.id,
                     });
                     links.push(
@@ -436,6 +454,7 @@ export function SankeyChart({
     }) => {
         const node = payload;
         const isPill = node.labelSide === 'onbar';
+        const isNet = node.kind === 'center';
         const expandable = !!node.expandable && !!node.categoryId && !!period;
         const navigable = !expandable && !!node.categoryId && !!period;
         const interactive = expandable || navigable;
@@ -558,7 +577,18 @@ export function SankeyChart({
                         </div>
                         <span className="text-[11px] text-muted-foreground">
                             {maskIfPrivate(node.amount)}
+                            {/* A share gives no amount away, so privacy mode
+                                leaves it readable — it is what keeps the chart
+                                useful with the numbers masked. */}
+                            {!isNet && node.share && ` · ${node.share}`}
                         </span>
+                        {isNet && node.share && (
+                            <span className="text-[11px] text-muted-foreground">
+                                {__(':percent of income', {
+                                    percent: node.share,
+                                })}
+                            </span>
+                        )}
                     </div>
                 </foreignObject>
             </Layer>

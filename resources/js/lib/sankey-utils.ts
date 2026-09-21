@@ -74,3 +74,30 @@ export function groupSmallCategories(
     // Don't group - return all categories as main
     return { main: sortedCategories, other: null };
 }
+
+/**
+ * Formats an amount as its whole-number share of a total, e.g. `40%`.
+ *
+ * Shares are rounded independently, so a set can land on 99% or 101% — that
+ * reads better than redistributing remainders onto an arbitrary slice. Returns
+ * null when there is no usable denominator, so the caller shows the amount
+ * alone instead of `0%` or `NaN%`.
+ *
+ * The amount may be negative (the hub's net in a month that overspent), in
+ * which case so is the share.
+ */
+export function formatShare(amount: number, total: number): string | null {
+    if (!total || total < 0) {
+        return null;
+    }
+
+    const percent = (amount / total) * 100;
+
+    // A share too small to round to a whole percent still exists; `0%` would
+    // deny it, and on the hub it would read a deficit as having broken even.
+    if (percent !== 0 && Math.abs(percent) < 0.5) {
+        return percent > 0 ? '<1%' : '>-1%';
+    }
+
+    return `${Math.round(percent)}%`;
+}
