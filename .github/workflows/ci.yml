@@ -426,7 +426,6 @@ jobs:
               - 'composer.json'
               - 'composer.lock'
               - 'package.json'
-              - 'package-lock.json'
               - 'bun.lock'
               - 'bun.lockb'
               - 'vite.config.*'

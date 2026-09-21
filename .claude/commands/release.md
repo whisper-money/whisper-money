@@ -32,8 +32,8 @@ always fails at the push step. Do it via a release branch and a PR instead.
 
    This bumps `package.json`, regenerates `CHANGELOG.md` (conventional-changelog,
    angular preset), runs `scripts/enrich-changelog.js` and commits
-   `chore: release vX.Y.Z`. Verify the commit touches only `package.json`,
-   `package-lock.json` and `CHANGELOG.md`, then `git push`.
+   `chore: release vX.Y.Z`. Verify the commit touches only
+   `package.json` and `CHANGELOG.md`, then `git push`.
 
 4. **Open the PR** against `main`. Title must be `chore: release vX.Y.Z` (the
    conventional-commit check is required). Body in English: what was bumped, and a
