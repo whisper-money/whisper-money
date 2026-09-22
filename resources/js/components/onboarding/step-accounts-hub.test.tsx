@@ -58,6 +58,7 @@ function renderHub(props: Partial<Parameters<typeof StepAccountsHub>[0]> = {}) {
 describe('StepAccountsHub', () => {
     beforeEach(() => {
         pageProps.auth.hasProPlan = false;
+        pageProps.openBankingEnabled = true;
     });
 
     it('asks for the first account with both ways in and no list', () => {
@@ -90,6 +91,35 @@ describe('StepAccountsHub', () => {
         expect(screen.getByText('A mortgage or a loan')).toBeInTheDocument();
         expect(screen.getByText('A pension or a broker')).toBeInTheDocument();
         expect(screen.getByText('Another bank')).toBeInTheDocument();
+    });
+
+    // A self-hosted install can ship without EnableBanking credentials. The bank
+    // is then the one thing on offer that cannot be delivered — the brokers
+    // authenticate with their own API key and are untouched.
+    it('offers the broker instead of the bank when open banking is off', () => {
+        pageProps.openBankingEnabled = false;
+
+        renderHub({ isFirstAccount: true });
+
+        expect(screen.queryByText('Connect a bank')).not.toBeInTheDocument();
+        expect(screen.getByText('Connect a broker')).toBeInTheDocument();
+        expect(screen.getByText('Add one myself')).toBeInTheDocument();
+    });
+
+    it('sends the bank row to the manual form when open banking is off', () => {
+        pageProps.openBankingEnabled = false;
+        pageProps.auth.hasProPlan = true;
+
+        renderHub({
+            existingAccounts: [existingAccount({ id: 'a1', name: 'Nómina' })],
+        });
+
+        expect(screen.getByText('A pension or a broker')).toBeInTheDocument();
+        expect(screen.getByText('Another bank, by hand')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Another bank, by hand'));
+
+        expect(screen.getByTestId('account-form')).toBeInTheDocument();
     });
 
     // A Spanish bank routinely returns the holder's name for every account, so

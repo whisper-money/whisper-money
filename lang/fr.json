@@ -2838,5 +2838,8 @@
     "To enable cloud synchronization of your\\n                                    financial data across devices": "Pour activer la synchronisation cloud de vos données financières entre appareils",
     "Once verified, you'll be able to start tracking your finances with full privacy.": "Une fois vérifié, vous pouvez commencer à suivre vos finances en toute confidentialité.",
     "Rules with a lower priority are evaluated first": "Les règles avec une priorité inférieure sont évaluées en premier",
-    ":percent of income": ":percent des revenus"
+    ":percent of income": ":percent des revenus",
+    "Connect a broker": "Connecter un courtier",
+    "Indexa and Coinbase connect with a token — no bank needed.": "Indexa et Coinbase se connectent avec un jeton : pas besoin de banque.",
+    "Add what you want to follow, one at a time — you can mix as many as you like.": "Ajoutez ce que vous voulez suivre, un par un : vous pouvez en mélanger autant que vous voulez."
 }
