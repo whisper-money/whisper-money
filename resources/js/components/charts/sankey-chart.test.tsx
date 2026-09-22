@@ -339,6 +339,29 @@ describe('SankeyChart', () => {
         expect(screen.getByText('Net')).toBeInTheDocument();
     });
 
+    it('keeps an expanded label inside the canvas', () => {
+        const { container } = render(
+            <SankeyChart data={expenseOtherData} period={period} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand Other' }));
+
+        // "Other" is always the last node of its column, so its on-bar label —
+        // a pill twice the height of a plain one — would hang off the bottom
+        // of the chart and get clipped.
+        const canvasHeight = Number(
+            container.querySelector('svg')?.getAttribute('height'),
+        );
+
+        for (const label of container.querySelectorAll('foreignObject')) {
+            const top = Number(label.getAttribute('y'));
+            const bottom = top + Number(label.getAttribute('height'));
+
+            expect(top).toBeGreaterThanOrEqual(0);
+            expect(bottom).toBeLessThanOrEqual(canvasHeight);
+        }
+    });
+
     it('expands the income side\'s "Other" node', () => {
         render(<SankeyChart data={incomeOtherData} period={period} />);
 

@@ -496,7 +496,15 @@ export function SankeyChart({
         };
 
         const labelBoxHeight = isPill ? PILL_LABEL_HEIGHT : LABEL_HEIGHT;
-        const labelY = y + nodeHeight / 2 - labelBoxHeight / 2;
+        // Centred on its bar, except at the very edges: the first and last
+        // node of a column sit flush against the canvas, so half of a label
+        // taller than the bar would hang outside it and get clipped. "Other"
+        // is always the last of its column, and expanding it makes its label
+        // a pill, so that is the rule rather than the exception.
+        const labelY = Math.min(
+            Math.max(0, y + nodeHeight / 2 - labelBoxHeight / 2),
+            chartHeight - labelBoxHeight,
+        );
         let labelX: number;
         let labelBoxWidth: number;
         let alignClass: string;
