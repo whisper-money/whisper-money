@@ -25,8 +25,10 @@ import {
 } from '@/components/ui/select';
 import { useConnectCountries, useConnectFlow } from '@/hooks/use-connect-flow';
 import { ProviderCredentialFields } from '@/lib/connect-providers';
+import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 interface ConnectAccountDialogProps {
@@ -67,6 +69,9 @@ export function ConnectAccountDialog({
     } = useConnectFlow(connections);
 
     const countries = useConnectCountries();
+    // With open banking off the list this dialog offers is only the API-key
+    // providers, so promising a bank picker would be a promise it cannot keep.
+    const { openBankingEnabled } = usePage<SharedData>().props;
 
     const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(false);
 
@@ -81,13 +86,22 @@ export function ConnectAccountDialog({
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>{__('Connect Bank Account')}</DialogTitle>
+                        <DialogTitle>
+                            {openBankingEnabled
+                                ? __('Connect Bank Account')
+                                : __('Connect an account')}
+                        </DialogTitle>
                         <DialogDescription>
                             {step === 'country' &&
-                                __(
-                                    'Select the country where your bank is located.',
-                                )}
-                            {step === 'bank' && __('Select your bank.')}
+                                (openBankingEnabled
+                                    ? __(
+                                          'Select the country where your bank is located.',
+                                      )
+                                    : __('Select the country you are in.'))}
+                            {step === 'bank' &&
+                                (openBankingEnabled
+                                    ? __('Select your bank.')
+                                    : __('Select a provider.'))}
                             {step === 'confirm' &&
                                 (provider
                                     ? __(provider.headerDescription)

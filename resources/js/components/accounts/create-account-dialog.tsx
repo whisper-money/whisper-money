@@ -35,6 +35,7 @@ export function CreateAccountDialog({
     const {
         auth,
         subscriptionsEnabled,
+        openBankingEnabled,
         accounts: sharedAccounts,
         bankingConnections: sharedConnections,
     } = usePage<SharedData>().props;
@@ -298,9 +299,13 @@ export function CreateAccountDialog({
                                         {__('Connected')}
                                     </p>
                                     <p className="text-xs text-balance text-muted-foreground">
-                                        {__(
-                                            'Connect your bank and sync transactions automatically.',
-                                        )}
+                                        {openBankingEnabled
+                                            ? __(
+                                                  'Connect your bank and sync transactions automatically.',
+                                              )
+                                            : __(
+                                                  'Connect a broker or an exchange and sync it automatically.',
+                                              )}
                                     </p>
                                 </div>
                             </button>

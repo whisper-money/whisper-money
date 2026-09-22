@@ -3466,5 +3466,12 @@
     ":percent of income": ":percent del ingreso",
     "Connect a broker": "Conectar un bróker",
     "Indexa and Coinbase connect with a token — no bank needed.": "Indexa y Coinbase se conectan con un token: no hace falta banco.",
-    "Add what you want to follow, one at a time — you can mix as many as you like.": "Añade lo que quieras seguir, de uno en uno: puedes mezclar tantos como quieras."
+    "Add what you want to follow, one at a time — you can mix as many as you like.": "Añade lo que quieras seguir, de uno en uno: puedes mezclar tantos como quieras.",
+    "Manage your connected accounts for automatic transaction syncing.": "Gestiona tus cuentas conectadas para sincronizar movimientos automáticamente.",
+    "Connect account": "Conectar cuenta",
+    "No connections yet. Connect a broker or an exchange to automatically sync your balances.": "Aún no hay conexiones. Conecta un bróker o un exchange para sincronizar automáticamente tus saldos.",
+    "Connect a broker or an exchange and sync it automatically.": "Conecta un bróker o un exchange y sincronízalo automáticamente.",
+    "Connect an account": "Conectar una cuenta",
+    "Select the country you are in.": "Selecciona el país en el que estás.",
+    "Select a provider.": "Selecciona un proveedor."
 }
