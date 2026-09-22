@@ -2849,5 +2849,6 @@
     "Connect an account": "Connecter un compte",
     "Select the country you are in.": "Sélectionnez le pays où vous vous trouvez.",
     "Select a provider.": "Sélectionnez un fournisseur.",
-    "Import a file whenever you like, and the rest of this list fills itself in.": "Importez un fichier quand vous voulez, et le reste de cette liste se remplit tout seul."
+    "Import a file whenever you like, and the rest of this list fills itself in.": "Importez un fichier quand vous voulez, et le reste de cette liste se remplit tout seul.",
+    "Search providers...": "Rechercher des fournisseurs..."
 }

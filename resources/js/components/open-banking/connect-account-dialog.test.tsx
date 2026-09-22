@@ -9,8 +9,10 @@ globalThis.ResizeObserver ??= class {
     disconnect() {}
 };
 
+const pageProps = { features: {}, locale: 'es', openBankingEnabled: true };
+
 vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: { features: {}, locale: 'es' } }),
+    usePage: () => ({ props: pageProps }),
 }));
 
 vi.mock('@/utils/i18n', () => ({
@@ -105,9 +107,15 @@ async function reachBankStep(
     });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
+    // The search box is what the bank step is; its placeholder names whatever
+    // the dialog is offering, which is not the same with open banking off.
     await waitFor(() =>
         expect(
-            screen.getByPlaceholderText('Search banks...'),
+            screen.getByPlaceholderText(
+                pageProps.openBankingEnabled
+                    ? 'Search banks...'
+                    : 'Search providers...',
+            ),
         ).toBeInTheDocument(),
     );
 }
@@ -115,6 +123,7 @@ async function reachBankStep(
 describe('ConnectAccountDialog', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        pageProps.openBankingEnabled = true;
     });
 
     it('names the countries in the active locale', () => {
@@ -255,6 +264,22 @@ describe('ConnectAccountDialog', () => {
         ).toBeInTheDocument();
         // Still connectable: beta informs, it does not gate.
         expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled();
+    });
+
+    // With no open-banking credentials the catalogue comes back empty, so the
+    // dialog offers only the API-key providers — and stops calling them banks.
+    it('offers the providers and drops the bank wording when open banking is off', async () => {
+        pageProps.openBankingEnabled = false;
+
+        await reachBankStep([], []);
+
+        expect(
+            screen.getByPlaceholderText('Search providers...'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Select a provider.')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Coinbase/ }),
+        ).toBeInTheDocument();
     });
 
     it('says nothing about beta for a stable connector', async () => {

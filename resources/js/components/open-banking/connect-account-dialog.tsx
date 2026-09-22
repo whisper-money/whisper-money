@@ -163,7 +163,11 @@ export function ConnectAccountDialog({
                     {step === 'bank' && (
                         <div className="space-y-4">
                             <Input
-                                placeholder={__('Search banks...')}
+                                placeholder={
+                                    openBankingEnabled
+                                        ? __('Search banks...')
+                                        : __('Search providers...')
+                                }
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
