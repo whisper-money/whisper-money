@@ -204,13 +204,24 @@ export function StepAccountsHub({
     onConnectedAccountSelected,
     onContinue,
 }: StepAccountsHubProps) {
-    const { auth, pricing, subscriptionsEnabled, locale, flash } =
-        usePage<SharedData>().props;
+    const {
+        auth,
+        pricing,
+        subscriptionsEnabled,
+        openBankingEnabled,
+        locale,
+        flash,
+    } = usePage<SharedData>().props;
     const hasProPlan = auth.hasProPlan;
     const cheapestMonthlyPrice = useCheapestMonthlyPrice();
-    // Someone who signed up from the free card gets no bank connections, so an
-    // empty hub would have a single row on it: open the manual form instead.
     const isFreePlan = signupPlan === 'free';
+    // No bank connection to offer, for either of the two reasons there are: the
+    // free card buys none, and a self-hosted install may carry no open-banking
+    // credentials at all. Either way the "Another bank" row would promise a
+    // bank picker that never comes, so it opens the manual form and says so.
+    // The two part ways over the broker, which is an API key rather than open
+    // banking: the free plan still cannot have one, an unconfigured install can.
+    const noBankToOffer = isFreePlan || !openBankingEnabled;
     const hasAccounts =
         createdAccounts.length > 0 || existingAccounts.length > 0;
     const [failedBank] = useState(readFailedBank);
@@ -227,6 +238,8 @@ export function StepAccountsHub({
             return returnedTo;
         }
 
+        // A free signup gets no connection of any kind, so its hub would be a
+        // single row: open the manual form instead.
         return isFreePlan && !hasAccounts ? 'manual' : 'hub';
     });
 
@@ -384,23 +397,23 @@ export function StepAccountsHub({
             },
             {
                 key: 'bank',
-                // The one row that survives having no connections to offer, so
-                // it is also the one that has to say what it does instead: on
-                // the free plan it opens the manual form, and a row titled
-                // "Another bank" was promising a bank picker that never came.
+                // The one row that survives having no bank to offer, so it is
+                // also the one that has to say what it does instead: it opens
+                // the manual form, and a row titled "Another bank" was
+                // promising a bank picker that never came.
                 icon: Landmark,
-                title: isFreePlan
+                title: noBankToOffer
                     ? __('Another bank, by hand')
                     : __('Another bank'),
                 description: __('A second account, a joint one, one abroad'),
-                route: isFreePlan ? 'manual' : 'connected',
+                route: noBankToOffer ? 'manual' : 'connected',
             },
         ];
 
         return all.filter(
             (suggestion) => !isFreePlan || suggestion.route === 'manual',
         );
-    }, [isFreePlan]);
+    }, [isFreePlan, noBankToOffer]);
 
     /** The plan disclosure belongs above the first commitment, and only there. */
     const firstConnectKey = suggestions.find(
@@ -486,22 +499,43 @@ export function StepAccountsHub({
         return (
             <StepScreen
                 title={__("Let's build the picture")}
-                description={__(
-                    "Start with the bank your salary lands in. You'll add the rest right after — you can mix as many as you like.",
-                )}
+                description={
+                    openBankingEnabled
+                        ? __(
+                              "Start with the bank your salary lands in. You'll add the rest right after — you can mix as many as you like.",
+                          )
+                        : __(
+                              'Add what you want to follow, one at a time — you can mix as many as you like.',
+                          )
+                }
             >
                 <div className="flex flex-col gap-6">
                     <StepList>
-                        <StepRow
-                            icon={Landmark}
-                            title={__('Connect a bank')}
-                            description={__(
-                                'Twelve months of movements, read-only, about forty seconds. Keeps itself current afterwards.',
-                            )}
-                            meta={connectedPlanNotice}
-                            trailing={<StepChevron />}
-                            onClick={() => openRoute('connected', 'connect')}
-                        />
+                        {openBankingEnabled ? (
+                            <StepRow
+                                icon={Landmark}
+                                title={__('Connect a bank')}
+                                description={__(
+                                    'Twelve months of movements, read-only, about forty seconds. Keeps itself current afterwards.',
+                                )}
+                                meta={connectedPlanNotice}
+                                trailing={<StepChevron />}
+                                onClick={() =>
+                                    openRoute('connected', 'connect')
+                                }
+                            />
+                        ) : (
+                            <StepRow
+                                icon={ChartLine}
+                                title={__('Connect a broker')}
+                                description={__(
+                                    'Indexa and Coinbase connect with a token — no bank needed.',
+                                )}
+                                meta={connectedPlanNotice}
+                                trailing={<StepChevron />}
+                                onClick={() => openRoute('broker', 'broker')}
+                            />
+                        )}
                         <StepRow
                             icon={Plus}
                             title={__('Add one myself')}
@@ -513,14 +547,16 @@ export function StepAccountsHub({
                         />
                     </StepList>
 
-                    <StepCallout>
-                        <StepEmphasis
-                            sentence={__(
-                                'Most people end up with :both: a bank for the day-to-day, and a couple added by hand for the mortgage and the pension. Open banking almost never returns those.',
-                            )}
-                            word={__('both')}
-                        />
-                    </StepCallout>
+                    {openBankingEnabled && (
+                        <StepCallout>
+                            <StepEmphasis
+                                sentence={__(
+                                    'Most people end up with :both: a bank for the day-to-day, and a couple added by hand for the mortgage and the pension. Open banking almost never returns those.',
+                                )}
+                                word={__('both')}
+                            />
+                        </StepCallout>
+                    )}
                 </div>
             </StepScreen>
         );

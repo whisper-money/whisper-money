@@ -36,5 +36,12 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="EMAIL_VERIFICATION_ENABLED" value="true"/>
+        <!-- Open banking is optional in production, and CI copies an .env.example
+             that leaves it blank. The suite covers the configured install, so the
+             credentials are pinned here; the tests for a bare install switch
+             `services.enablebanking.enabled` off themselves. -->
+        <env name="ENABLEBANKING_APP_ID" value="testing-app-id"/>
+        <env name="ENABLEBANKING_PRIVATE_KEY_PATH" value="storage/keys/enablebanking.pem"/>
+        <env name="ENABLEBANKING_REDIRECT_URL" value="http://localhost/open-banking/callback"/>
     </php>
 </phpunit>

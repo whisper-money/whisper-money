@@ -25,7 +25,7 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 ## Features
 
 - 🔐 **Privacy-first** — You own your data and we never sell it. Self-host it and point the AI at a [local model](#ai-provider) to keep it entirely on your own infrastructure
-- 🏦 **Bank account management** — Track multiple accounts in one place
+- 🏦 **Bank account management** — Track multiple accounts in one place, by hand, from an import, or synced straight from your bank with [open banking](#bank-connections-open-banking)
 - 📊 **Transaction categorization** — Automatic and manual categorization
 - 🤖 **Automation rules** — Set up rules to auto-categorize transactions
 - 📈 **Financial insights** — Understand your spending patterns
@@ -167,6 +167,35 @@ The template includes:
 | `STRIPE_SECRET`         | -       | Stripe secret key                                  |
 | `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret                      |
 | `AI_PROVIDER`           | `gemini`| AI provider for every AI feature (`gemini`, `ollama`, `openai`, ...) |
+| `ENABLEBANKING_APP_ID`  | -       | Enables [bank connections](#bank-connections-open-banking); blank leaves them off |
+
+## Bank Connections (Open Banking)
+
+Connecting a bank — the flow that pulls a year of movements in and keeps them
+current by itself — goes through [EnableBanking](https://enablebanking.com), a
+licensed open-banking aggregator. It is **optional** and a paid third-party
+service, so a self-hosted install ships with it switched off.
+
+Without it the app runs perfectly well: accounts are created by hand or filled
+from a CSV import, and the brokers and exchanges (Indexa Capital, Coinbase,
+Binance, Bitpanda, Wise, Interactive Brokers) connect with their own API key
+and never touch EnableBanking. The bank connection is simply not offered
+anywhere in the UI.
+
+To switch it on you need two things from EnableBanking: an **application id**,
+and an **RSA key pair** whose public half is registered against that application
+— every API call is a JWT signed with the private half (`RS256`, the
+application id as `kid`). The application's redirect URL has to be
+`<APP_URL>/open-banking/callback`, which is where the bank sends the user back.
+
+| Variable                         | Default | Description                                                                                          |
+| -------------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `ENABLEBANKING_APP_ID`           | -       | The application id                                                                                   |
+| `ENABLEBANKING_PRIVATE_KEY_PATH` | -       | Path to the RSA private key, relative to the project root (e.g. `storage/keys/enablebanking.pem`)    |
+| `ENABLEBANKING_REDIRECT_URL`     | -       | `${APP_URL}/open-banking/callback`                                                                   |
+
+All three are required together. With any of them missing, open banking stays
+off and nothing else is affected.
 
 ## AI Provider
 
