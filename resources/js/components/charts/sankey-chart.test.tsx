@@ -137,6 +137,58 @@ const salaryChildren: SankeyData = {
     total_expense: 0,
 };
 
+// Three big categories plus five that fall under the 3% threshold and get
+// folded into "Other".
+const SIDE_TOTAL = 92500;
+
+function sideWithOther(prefix: string) {
+    return [
+        ...[0, 1, 2].map((i) => ({
+            category: category(`${prefix}-${i}`, `${prefix} ${i}`),
+            category_id: `${prefix}-${i}`,
+            amount: 30000,
+        })),
+        ...[1000, 800, 400, 200, 100].map((amount, i) => ({
+            category: category(`${prefix}-small-${i}`, `${prefix} small ${i}`),
+            category_id: `${prefix}-small-${i}`,
+            amount,
+        })),
+    ];
+}
+
+const expenseOtherData: SankeyData = {
+    income_categories: [
+        {
+            category: category('salary', 'Salary'),
+            category_id: 'salary',
+            amount: SIDE_TOTAL,
+        },
+    ],
+    expense_categories: sideWithOther('Expense'),
+    total_income: SIDE_TOTAL,
+    total_expense: SIDE_TOTAL,
+};
+
+const incomeOtherData: SankeyData = {
+    income_categories: sideWithOther('Income'),
+    expense_categories: [
+        {
+            category: category('rent', 'Rent'),
+            category_id: 'rent',
+            amount: 50000,
+        },
+    ],
+    total_income: SIDE_TOTAL,
+    total_expense: 50000,
+};
+
+const bothSidesOtherData: SankeyData = {
+    income_categories: sideWithOther('Income'),
+    expense_categories: sideWithOther('Expense'),
+    total_income: SIDE_TOTAL,
+    total_expense: SIDE_TOTAL,
+};
+
 const period = {
     from: new Date('2026-06-01'),
     to: new Date('2026-06-30'),
@@ -268,6 +320,49 @@ describe('SankeyChart', () => {
         // The rest of the chart stays in place.
         expect(screen.getByText('Rent')).toBeInTheDocument();
         expect(screen.getByText('Net')).toBeInTheDocument();
+    });
+
+    it('expands an "Other" node into the categories it grouped', () => {
+        render(<SankeyChart data={expenseOtherData} period={period} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand Other' }));
+
+        expect(screen.getByText('Expense small 0')).toBeInTheDocument();
+        expect(screen.getByText('Expense small 4')).toBeInTheDocument();
+        // Its children were already in memory, so nothing is fetched — the
+        // endpoint only takes a uuid and would reject the sentinel id.
+        expect(global.fetch).not.toHaveBeenCalled();
+        // 1000 of the 2500 grouped into "Other", not of the 92500 spent.
+        expect(screen.getByText('$10 · 40%')).toBeInTheDocument();
+        // The rest of the chart stays in place.
+        expect(screen.getByText('Expense 0')).toBeInTheDocument();
+        expect(screen.getByText('Net')).toBeInTheDocument();
+    });
+
+    it('expands the income side\'s "Other" node', () => {
+        render(<SankeyChart data={incomeOtherData} period={period} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand Other' }));
+
+        expect(screen.getByText('Income small 0')).toBeInTheDocument();
+        expect(screen.getByText('Income small 4')).toBeInTheDocument();
+        // An income expansion shares the leftmost column with its siblings;
+        // miscounting those rows breaks the whole chart, not just the node.
+        expect(screen.getByText('Rent')).toBeInTheDocument();
+        expect(screen.getByText('Net')).toBeInTheDocument();
+    });
+
+    it('keeps each side\'s "Other" node independent', () => {
+        render(<SankeyChart data={bothSidesOtherData} period={period} />);
+
+        const [, expenseOther] = screen.getAllByRole('button', {
+            name: 'Expand Other',
+        });
+
+        fireEvent.click(expenseOther);
+
+        expect(screen.getByText('Expense small 0')).toBeInTheDocument();
+        expect(screen.queryByText('Income small 0')).not.toBeInTheDocument();
     });
 
     it('masks amounts in privacy mode', () => {
