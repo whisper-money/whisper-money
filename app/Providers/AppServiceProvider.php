@@ -29,10 +29,15 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
 
-        $this->app->bind(BankingProviderInterface::class, function ($app) {
+        $this->app->bind(BankingProviderInterface::class, function () {
             return new EnableBankingProvider(
-                config('services.enablebanking.app_id'),
-                base_path(config('services.enablebanking.private_key_path')),
+                // Cast rather than refuse: open banking is optional, and the
+                // container builds this for paths that never call it — closing
+                // a Coinbase connection, listing its accounts. An unconfigured
+                // install used to get a TypeError out of the container instead.
+                // The routes that do call it are gated by `open-banking`.
+                (string) config('services.enablebanking.app_id'),
+                base_path((string) config('services.enablebanking.private_key_path')),
             );
         });
 

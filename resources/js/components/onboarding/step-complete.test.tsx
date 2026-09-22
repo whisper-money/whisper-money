@@ -16,9 +16,11 @@ vi.mock('axios', () => ({
     default: { get, isAxiosError: () => false },
 }));
 
+const pageProps = { locale: 'en-US', openBankingEnabled: true };
+
 vi.mock('@inertiajs/react', () => ({
     router: { post: (...args: unknown[]) => post(...args) },
-    usePage: () => ({ props: { locale: 'en-US' } }),
+    usePage: () => ({ props: pageProps }),
 }));
 
 const renderStep = async (props: Record<string, unknown> = {}) => {
@@ -149,6 +151,25 @@ describe('StepComplete', () => {
                 'Connect a bank or import a file whenever you like, and the rest of this list fills itself in.',
             ),
         ).toBeInTheDocument();
+    });
+
+    // An install with no open-banking credentials cannot offer the bank half
+    // of that sentence, and this is the last screen of the flow to say so.
+    it('names only the import when open banking is off', async () => {
+        get.mockResolvedValue(
+            onboardingSummaryResponse({ accounts: 1, transactions: 0 }),
+        );
+        pageProps.openBankingEnabled = false;
+
+        await renderStep();
+
+        expect(
+            screen.getByText(
+                'Import a file whenever you like, and the rest of this list fills itself in.',
+            ),
+        ).toBeInTheDocument();
+
+        pageProps.openBankingEnabled = true;
     });
 
     it('sets the guess against the real number it answered', async () => {

@@ -46,6 +46,16 @@ return [
         'app_id' => env('ENABLEBANKING_APP_ID'),
         'private_key_path' => env('ENABLEBANKING_PRIVATE_KEY_PATH'),
         'redirect_url' => env('ENABLEBANKING_REDIRECT_URL'),
+
+        /**
+         * Open banking is optional. A self-hosted install without these
+         * credentials still runs: manual accounts and the API-key brokers are
+         * untouched, and the bank connection is simply not offered. Every
+         * EnableBanking route and every screen that leads to one reads this.
+         */
+        'enabled' => filled(env('ENABLEBANKING_APP_ID'))
+            && filled(env('ENABLEBANKING_PRIVATE_KEY_PATH'))
+            && filled(env('ENABLEBANKING_REDIRECT_URL')),
     ],
 
     'openai' => [

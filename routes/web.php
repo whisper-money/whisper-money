@@ -276,7 +276,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 // redirect back to Safari where the app session does not exist. The connection is
 // resolved from the signed state token EnableBanking echoes back instead.
 Route::get('open-banking/callback', [AuthorizationController::class, 'callback'])
-    ->middleware('throttle:30,1')
+    ->middleware(['throttle:30,1', 'open-banking'])
     ->name('open-banking.callback');
 
 // Open-banking routes are accessible without the onboarded/subscribed middleware
@@ -286,10 +286,18 @@ Route::get('open-banking/callback', [AuthorizationController::class, 'callback']
 // whoever authorised it would leave their own movements on display to everybody
 // else holding them, and it burns paid EnableBanking quota.
 Route::middleware(['auth', 'verified', 'block-shared'])->prefix('open-banking')->group(function () {
+    // Only EnableBanking can serve these, so they are off on an install with no
+    // credentials for it. Everything outside this inner group — the mapping
+    // screens and the API-key providers below — is provider-agnostic and stays.
+    // `institutions` is deliberately not in here: it answers with an empty
+    // catalogue instead, which is what keeps the brokers listed in the picker.
+    Route::middleware('open-banking')->group(function () {
+        Route::post('authorize', [AuthorizationController::class, 'store'])->name('open-banking.authorize');
+        Route::post('connections/{connection}/reauthorize', [AuthorizationController::class, 'reauthorize'])->name('open-banking.reauthorize');
+        Route::get('connections/{connection}/reconnect', [AuthorizationController::class, 'reconnect'])->name('open-banking.reconnect');
+    });
+
     Route::get('institutions', [InstitutionController::class, 'index'])->name('open-banking.institutions');
-    Route::post('authorize', [AuthorizationController::class, 'store'])->name('open-banking.authorize');
-    Route::post('connections/{connection}/reauthorize', [AuthorizationController::class, 'reauthorize'])->name('open-banking.reauthorize');
-    Route::get('connections/{connection}/reconnect', [AuthorizationController::class, 'reconnect'])->name('open-banking.reconnect');
     Route::get('connections/{connection}/map-accounts', [AccountMappingController::class, 'show'])->name('open-banking.map-accounts');
     Route::post('connections/{connection}/map-accounts', [AccountMappingController::class, 'store'])->name('open-banking.map-accounts.store');
     Route::get('connections/{connection}/accounts', [ConnectionAccountController::class, 'index'])->name('open-banking.connection-accounts.index');

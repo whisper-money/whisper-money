@@ -85,6 +85,7 @@ class HandleInertiaRequests extends Middleware
                 'action_url' => route('settings.billing.portal'),
             ] : null,
             'demoEnabled' => (bool) config('app.demo.enabled'),
+            'openBankingEnabled' => (bool) config('services.enablebanking.enabled'),
             'demoCredentials' => $this->demoCredentials($request, $user),
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),

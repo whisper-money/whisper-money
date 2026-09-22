@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\BlockSharedAccountActions;
 use App\Http\Middleware\EnsureOnboardingComplete;
+use App\Http\Middleware\EnsureOpenBankingConfigured;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
@@ -58,6 +59,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => EnsureOnboardingComplete::class,
+            'open-banking' => EnsureOpenBankingConfigured::class,
             'block-demo' => BlockSharedAccountActions::class.':demo',
             'block-shared' => BlockSharedAccountActions::class,
             'abilities' => CheckAbilities::class,

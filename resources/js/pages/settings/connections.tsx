@@ -97,7 +97,8 @@ function ReconnectButton({
 }
 
 export default function ConnectionsPage({ connections }: Props) {
-    const { auth, flash, subscriptionsEnabled } = usePage<SharedData>().props;
+    const { auth, flash, subscriptionsEnabled, openBankingEnabled } =
+        usePage<SharedData>().props;
     const isSharedAccount = auth?.isSharedAccount ?? false;
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
@@ -233,12 +234,18 @@ export default function ConnectionsPage({ connections }: Props) {
                     <div className="flex items-center justify-between gap-4">
                         <div>
                             <h3 className="text-lg font-medium">
-                                {__('Bank Connections')}
+                                {openBankingEnabled
+                                    ? __('Bank Connections')
+                                    : __('Connections')}
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                                {__(
-                                    'Manage your connected bank accounts for automatic transaction syncing.',
-                                )}
+                                {openBankingEnabled
+                                    ? __(
+                                          'Manage your connected bank accounts for automatic transaction syncing.',
+                                      )
+                                    : __(
+                                          'Manage your connected accounts for automatic transaction syncing.',
+                                      )}
                             </p>
                         </div>
                         <CreateButton
@@ -249,7 +256,9 @@ export default function ConnectionsPage({ connections }: Props) {
                             }
                             disabled={isSharedAccount}
                         >
-                            {__('Connect Bank')}
+                            {openBankingEnabled
+                                ? __('Connect Bank')
+                                : __('Connect account')}
                         </CreateButton>
                     </div>
 
@@ -257,9 +266,13 @@ export default function ConnectionsPage({ connections }: Props) {
                         <Card>
                             <CardContent className="flex flex-col items-center justify-center py-12">
                                 <p className="text-sm text-muted-foreground">
-                                    {__(
-                                        'No bank connections yet. Connect a bank to automatically sync your transactions.',
-                                    )}
+                                    {openBankingEnabled
+                                        ? __(
+                                              'No bank connections yet. Connect a bank to automatically sync your transactions.',
+                                          )
+                                        : __(
+                                              'No connections yet. Connect a broker or an exchange to automatically sync your balances.',
+                                          )}
                                 </p>
                             </CardContent>
                         </Card>

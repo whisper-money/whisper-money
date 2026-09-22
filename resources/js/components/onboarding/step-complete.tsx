@@ -18,10 +18,11 @@ import {
     type OnboardingSummary,
 } from '@/hooks/use-onboarding-summary';
 import { captureEvent } from '@/lib/posthog';
+import type { SharedData } from '@/types';
 import { type SignupPlan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 /**
@@ -254,17 +255,28 @@ function Closing({
     locale: string;
 }) {
     if (summary.transactions === 0) {
-        return (
-            <StepCallout>
-                {__(
-                    'Connect a bank or import a file whenever you like, and the rest of this list fills itself in.',
-                )}
-            </StepCallout>
-        );
+        return <NothingInYet />;
     }
 
     return (
         <Gap summary={summary} spendingGuess={spendingGuess} locale={locale} />
+    );
+}
+
+/** The one way in left to name, which is not the same on every install. */
+function NothingInYet() {
+    const { openBankingEnabled } = usePage<SharedData>().props;
+
+    return (
+        <StepCallout>
+            {openBankingEnabled
+                ? __(
+                      'Connect a bank or import a file whenever you like, and the rest of this list fills itself in.',
+                  )
+                : __(
+                      'Import a file whenever you like, and the rest of this list fills itself in.',
+                  )}
+        </StepCallout>
     );
 }
 

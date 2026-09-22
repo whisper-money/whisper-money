@@ -216,6 +216,8 @@ export interface SharedData {
     includeRealEstateInNetWorthChart: boolean;
     subscriptionsEnabled: boolean;
     demoEnabled: boolean;
+    /** False when the install carries no EnableBanking credentials. */
+    openBankingEnabled: boolean;
     aiCategorizationUpsellRate: number;
     subscriptionPaymentIssue: SubscriptionPaymentIssueNotification | null;
     pricing: PricingConfig;
