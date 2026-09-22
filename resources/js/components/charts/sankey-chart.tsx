@@ -66,10 +66,12 @@ const LABEL_HEIGHT = 30;
 // bars end up NODE_PADDING apart regardless of the canvas height. Keep it above
 // LABEL_HEIGHT (+ breathing room) so two adjacent labels can never overlap.
 const NODE_PADDING = LABEL_HEIGHT + 6;
-// On-bar labels (the hub, and an expanded parent) are bordered pills, so they
-// need a little more room than the plain side labels — and the hub carries a
-// third line with the savings rate.
+// On-bar labels are bordered pills, so they need a little more room than the
+// plain side labels. The hub carries a third line with the savings rate; an
+// expanded parent is the plain label plus the pill's border and padding, and
+// keeping it to that is what stops it from covering the node below.
 const PILL_LABEL_HEIGHT = 58;
+const PARENT_PILL_HEIGHT = LABEL_HEIGHT + 10;
 // A Sankey is inherently horizontal, so on narrow screens we let it scroll
 // sideways (same pattern as the trend chart) rather than crushing the flows.
 const MIN_CHART_WIDTH = 560;
@@ -495,7 +497,8 @@ export function SankeyChart({
             }
         };
 
-        const labelBoxHeight = isPill ? PILL_LABEL_HEIGHT : LABEL_HEIGHT;
+        const pillHeight = isNet ? PILL_LABEL_HEIGHT : PARENT_PILL_HEIGHT;
+        const labelBoxHeight = isPill ? pillHeight : LABEL_HEIGHT;
         // Centred on its bar, except at the very edges: the first and last
         // node of a column sit flush against the canvas, so half of a label
         // taller than the bar would hang outside it and get clipped. "Other"
