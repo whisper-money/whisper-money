@@ -66,6 +66,7 @@ return [
          */
         'key' => env('TYPESAFE_API_KEY'),
         'model' => env('TYPESAFE_MODEL', 'jev-latest'),
+        'enabled' => filled(env('TYPESAFE_API_KEY')),
     ],
 
     'openai' => [

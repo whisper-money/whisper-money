@@ -2,6 +2,7 @@
 
 namespace App\Exceptions\Ai;
 
+use Illuminate\Contracts\Debug\ShouldntReport;
 use RuntimeException;
 
 /**
@@ -9,7 +10,7 @@ use RuntimeException;
  * transient provider failure (rate limit, overload, unreachable). It carries
  * the results that did succeed so the chunk is not discarded with it.
  */
-class TransientCategorizationException extends RuntimeException
+class TransientCategorizationException extends RuntimeException implements ShouldntReport
 {
     /**
      * @param  list<array<string, mixed>>  $results

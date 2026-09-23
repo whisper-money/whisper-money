@@ -254,6 +254,7 @@ function jevAnswer(string $choice, float $confidence = 0.9, float $noul = 0.8): 
 describe('Jev backend', function () {
     beforeEach(function () {
         config()->set('services.typesafe.key', 'test-key');
+        config()->set('services.typesafe.enabled', true);
         Http::preventStrayRequests();
         TransactionCategorizationAgent::fake()->preventStrayPrompts();
 
@@ -360,6 +361,7 @@ describe('Jev backend', function () {
     })->with([
         'rate limited' => fn () => fn () => Http::response([], 429),
         'overloaded' => fn () => fn () => Http::response([], 529),
+        'server error' => fn () => fn () => Http::response([], 503),
         'unreachable' => fn () => fn () => Http::failedConnection(),
     ]);
 
@@ -388,7 +390,7 @@ describe('Jev backend', function () {
     });
 
     it('falls back to gemini when the flag is on but no key is set', function () {
-        config()->set('services.typesafe.key', null);
+        config()->set('services.typesafe.enabled', false);
         TransactionCategorizationAgent::fake([['results' => [[
             'ref' => $this->transaction->id,
             'category_index' => $this->index,

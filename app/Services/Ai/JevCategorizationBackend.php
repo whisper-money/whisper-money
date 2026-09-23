@@ -20,7 +20,7 @@ use Throwable;
  * limited to the categories of the transaction's direction, which both keeps
  * the model from crossing spending and income and trims the billed criteria.
  *
- * A rate-limited, overloaded or unreachable request drops only its own
+ * A rate-limited, overloaded (529 or any other 5xx) or unreachable request drops only its own
  * transaction and surfaces as a {@see TransientCategorizationException} carrying
  * the rest; any other failed request is reported and dropped.
  */
@@ -29,9 +29,6 @@ class JevCategorizationBackend implements CategorizationBackend
     private const string ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
 
     private const string NO_CATEGORY = 'none';
-
-    /** Jev's "overloaded" status. */
-    private const int OVERLOADED = 529;
 
     public function categorize(Collection $chunk, CategoryCatalog $catalog): array
     {
@@ -158,6 +155,6 @@ class JevCategorizationBackend implements CategorizationBackend
     private function isTransient(mixed $response): bool
     {
         return $response instanceof ConnectionException
-            || ($response instanceof Response && ($response->tooManyRequests() || $response->status() === self::OVERLOADED));
+            || ($response instanceof Response && ($response->tooManyRequests() || $response->serverError()));
     }
 }

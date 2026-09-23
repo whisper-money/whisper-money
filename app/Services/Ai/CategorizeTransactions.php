@@ -92,7 +92,7 @@ class CategorizeTransactions
      */
     private function backendFor(User $user): CategorizationBackend
     {
-        if (filled(config('services.typesafe.key')) && Feature::for($user)->active(JevCategorization::class)) {
+        if (config('services.typesafe.enabled') && Feature::for($user)->active(JevCategorization::class)) {
             return $this->jev;
         }
 
