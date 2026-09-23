@@ -49,6 +49,12 @@ export type ConnectProvider = {
     sendsTransactions?: boolean;
     /** Only offered when connecting from this country (e.g. Indexa: ES). */
     onlyCountry?: string;
+    /**
+     * ISO date (YYYY-MM-DD) until which our own integration is flagged as beta
+     * in the picker and on the confirm step. A test fails once it has passed,
+     * so the flag gets removed instead of lingering.
+     */
+    betaUntil?: string;
     /** Confirm-step header copy (i18n key). */
     headerDescription: string;
     /** Confirm-card copy (i18n key). */
@@ -186,6 +192,42 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
         },
     },
     {
+        providerKey: 'kraken',
+        institution: {
+            name: 'Kraken',
+            country: 'ALL',
+            logo: '/images/banks/logos/kraken.png',
+            maximum_consent_validity: null,
+        },
+        endpoint: '/open-banking/kraken/connect',
+        sendsCountry: true,
+        betaUntil: '2026-11-23',
+        headerDescription:
+            'Enter your API Key and Private Key to connect your Kraken account.',
+        cardDescription:
+            'Connect your Kraken account using your API Key and Private Key.',
+        fields: [
+            {
+                key: 'api_key',
+                label: 'API Key',
+                type: 'password',
+                placeholder: 'Paste your Kraken API Key',
+            },
+            {
+                key: 'api_secret',
+                label: 'Private Key',
+                type: 'password',
+                placeholder: 'Paste your Kraken Private Key',
+            },
+        ],
+        help: {
+            before: 'Create an API key in Kraken under',
+            href: 'https://pro.kraken.com/app/settings/api',
+            link: 'Settings → API',
+            after: 'Enable only the "Query Funds" and "Query Ledger Entries" permissions: both are required, and nothing else is needed.',
+        },
+    },
+    {
         providerKey: 'wise',
         institution: {
             name: 'Wise',
@@ -248,6 +290,26 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
         },
     },
 ];
+
+/** Whether our own integration is still flagged as beta on `today`. */
+export function isProviderInBeta(
+    provider: ConnectProvider,
+    today: Date = new Date(),
+): boolean {
+    return (
+        provider.betaUntil !== undefined &&
+        today.toISOString().slice(0, 10) < provider.betaUntil
+    );
+}
+
+/** The provider's picker entry, carrying its beta flag while it lasts. */
+export function providerInstitution(
+    provider: ConnectProvider,
+): EnableBankingInstitution {
+    return isProviderInBeta(provider)
+        ? { ...provider.institution, beta: true }
+        : provider.institution;
+}
 
 /** Find a provider by the selected institution name. */
 export function connectProviderForBank(

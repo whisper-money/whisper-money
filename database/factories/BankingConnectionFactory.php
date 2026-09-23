@@ -118,6 +118,21 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function kraken(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => BankingProvider::Kraken,
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'test-kraken-api-key-'.fake()->uuid(),
+            'api_secret' => base64_encode('test-kraken-api-secret-'.fake()->uuid()),
+            'aspsp_name' => 'Kraken',
+            'aspsp_country' => 'ES',
+            'aspsp_logo' => '/images/banks/logos/kraken.png',
+            'valid_until' => null,
+        ]);
+    }
+
     public function coinbase(): static
     {
         return $this->state(fn (array $attributes) => [

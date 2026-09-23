@@ -3475,5 +3475,16 @@
     "Select the country you are in.": "Selecciona el país en el que estás.",
     "Select a provider.": "Selecciona un proveedor.",
     "Import a file whenever you like, and the rest of this list fills itself in.": "Importa un fichero cuando quieras, y el resto de esta lista se completa solo.",
-    "Search providers...": "Buscar proveedores..."
+    "Search providers...": "Buscar proveedores...",
+    "Enter your API Key and Private Key to connect your Kraken account.": "Introduce tu Clave API y tu Clave Privada para conectar tu cuenta de Kraken.",
+    "Connect your Kraken account using your API Key and Private Key.": "Conecta tu cuenta de Kraken usando tu Clave API y tu Clave Privada.",
+    "Paste your Kraken API Key": "Pega tu Clave API de Kraken",
+    "Paste your Kraken Private Key": "Pega tu Clave Privada de Kraken",
+    "Create an API key in Kraken under": "Crea una clave API en Kraken en",
+    "Settings → API": "Ajustes → API",
+    "Enable only the \"Query Funds\" and \"Query Ledger Entries\" permissions: both are required, and nothing else is needed.": "Activa solo los permisos \"Query Funds\" y \"Query Ledger Entries\": los dos son obligatorios y no hace falta ninguno más.",
+    "New integration in beta": "Integración nueva en beta",
+    "We have just built this integration, so syncing may fail more often while we fine-tune it. You can reconnect or disconnect whenever you want.": "Acabamos de construir esta integración, así que la sincronización puede fallar más a menudo mientras la afinamos. Puedes reconectar o desconectar cuando quieras.",
+    "Your Kraken API key is missing the \":permission\" permission. Enable it and try again.": "A tu clave API de Kraken le falta el permiso \":permission\". Actívalo y vuelve a intentarlo.",
+    "Invalid API key or failed to connect to Kraken.": "Clave API no válida o no se pudo conectar con Kraken."
 }
