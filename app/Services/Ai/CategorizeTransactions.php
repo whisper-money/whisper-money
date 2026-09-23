@@ -62,6 +62,30 @@ class CategorizeTransactions
             }
 
             $confidence = (float) ($result['confidence'] ?? 0.0);
+
+            if ($confidence < 0.0 || $confidence > 1.0) {
+                // The model is asked for a 0..1 probability and answered off
+                // that scale: a percentage-style 200 reached production,
+                // overflowed decimal(4,3) and killed the job mid-backfill.
+                //
+                // An off-scale answer is untrustworthy in either direction, so
+                // it scores zero instead of being pulled to the nearest bound.
+                // Pulling 200 up to 1.0 would clear the label bar AND the
+                // higher rule bar, so one malformed response would auto-apply
+                // the category and teach a permanent merchant rule off it (see
+                // {@see AiRuleLearner::learn()}) — a worse outcome than the
+                // crash. At zero the transaction simply stays uncategorized
+                // with the suggestion kept, and the warning keeps a provider
+                // that answers in percent visible instead of silently normal.
+                Log::warning('AI categorization returned an out-of-range confidence', [
+                    'transaction_id' => $transaction->id,
+                    'confidence' => $confidence,
+                    'model' => $model,
+                ]);
+
+                $confidence = 0.0;
+            }
+
             $applied = $confidence >= $labelBar;
 
             $this->recordOutcome($transaction, $categoryId, $confidence, $applied, $model);
