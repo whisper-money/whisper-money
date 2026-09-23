@@ -436,6 +436,55 @@ test('users can update bitpanda credentials with valid api key', function () {
     expect($connection->api_token)->toBe('new-valid-bitpanda-key-12345');
 });
 
+test('users can update kraken credentials and the ledger is walked again', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->kraken()->error()->create([
+        'user_id' => $user->id,
+        'ledger_synced_until' => now()->subDay(),
+    ]);
+
+    Http::fake([
+        'api.kraken.com/0/private/Balance' => Http::response(['error' => [], 'result' => []]),
+        'api.kraken.com/0/private/Ledgers' => Http::response(['error' => [], 'result' => ['ledger' => [], 'count' => 0]]),
+    ]);
+
+    $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_key' => 'new-valid-kraken-key-12345',
+        'api_secret' => base64_encode('new-valid-kraken-secret'),
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active)
+        ->and($connection->api_token)->toBe('new-valid-kraken-key-12345')
+        ->and($connection->ledger_synced_until)->toBeNull();
+    Http::assertSentCount(2);
+});
+
+test('updating kraken credentials without the ledger permission names it', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->kraken()->error()->create(['user_id' => $user->id]);
+    $originalToken = $connection->api_token;
+
+    Http::fake([
+        'api.kraken.com/0/private/Balance' => Http::response(['error' => [], 'result' => []]),
+        'api.kraken.com/0/private/Ledgers' => Http::response(['error' => ['EGeneral:Permission denied']]),
+    ]);
+
+    $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_key' => 'new-valid-kraken-key-12345',
+        'api_secret' => base64_encode('new-valid-kraken-secret'),
+    ])->assertSessionHasErrors([
+        'credentials' => 'Your Kraken API key is missing the "Query Ledger Entries" permission. Enable it and try again.',
+    ]);
+
+    expect($connection->refresh()->api_token)->toBe($originalToken);
+    Queue::assertNothingPushed();
+});
+
 test('users can update wise credentials with valid api token', function () {
     Queue::fake();
 

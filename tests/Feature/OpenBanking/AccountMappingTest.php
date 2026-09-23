@@ -260,6 +260,7 @@ test('store creates investment accounts for crypto provider connections', functi
     Queue::assertPushed(SyncBankingConnectionJob::class);
 })->with([
     'bitpanda' => ['bitpanda', 'Bitpanda', 'bitpanda-portfolio'],
+    'kraken' => ['kraken', 'Kraken', 'kraken-portfolio'],
     'coinbase' => ['coinbase', 'Coinbase', 'coinbase-portfolio'],
 ]);
 

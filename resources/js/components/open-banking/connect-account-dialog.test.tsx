@@ -266,6 +266,30 @@ describe('ConnectAccountDialog', () => {
         expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled();
     });
 
+    it('flags a native integration in beta with its own caveat', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-10-01T12:00:00Z'));
+
+        try {
+            await reachBankStep([], [institution('BBVA')]);
+
+            const kraken = screen.getByRole('button', { name: /Kraken/ });
+            expect(kraken).toHaveTextContent('Beta');
+
+            fireEvent.click(kraken);
+            fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+            expect(
+                screen.getByText('New integration in beta'),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByText('This bank is still in beta'),
+            ).not.toBeInTheDocument();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     // With no open-banking credentials the catalogue comes back empty, so the
     // dialog offers only the API-key providers — and stops calling them banks.
     it('offers the providers and drops the bank wording when open banking is off', async () => {

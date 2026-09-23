@@ -18,6 +18,7 @@ use App\Services\Banking\BitpandaClient;
 use App\Services\Banking\CoinbaseClient;
 use App\Services\Banking\IndexaCapitalClient;
 use App\Services\Banking\InteractiveBrokersClient;
+use App\Services\Banking\KrakenClient;
 use App\Services\Banking\WiseClient;
 use Carbon\Carbon;
 use Illuminate\Console\Scheduling\Event;
@@ -145,6 +146,9 @@ class ConnectionController extends Controller
             'status' => BankingConnectionStatus::Active,
             'error_message' => null,
             'consecutive_sync_failures' => 0,
+            // New credentials may belong to another account at the provider, so
+            // its ledger is walked again from the start.
+            'ledger_synced_until' => null,
         ]);
 
         SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::CredentialsUpdated);
@@ -158,15 +162,7 @@ class ConnectionController extends Controller
     private function validateProviderCredentials(BankingConnection $connection, array $validated): ?string
     {
         try {
-            match ($connection->provider) {
-                BankingProvider::IndexaCapital => (new IndexaCapitalClient($validated['api_token']))->getUser(),
-                BankingProvider::Binance => (new BinanceClient($validated['api_key'], $validated['api_secret']))->getAccount(),
-                BankingProvider::Bitpanda => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
-                BankingProvider::Coinbase => (new CoinbaseClient($validated['api_key_name'], $validated['private_key']))->getAccounts(limit: 1),
-                BankingProvider::InteractiveBrokers => (new InteractiveBrokersClient($validated['token'], $validated['query_id']))->fetchStatement(),
-                BankingProvider::Wise => (new WiseClient($validated['api_token']))->getProfiles(),
-                default => throw new \InvalidArgumentException('Unsupported provider for credential update.'),
-            };
+            $this->callProviderWithCredentials($connection->provider, $validated);
         } catch (\InvalidArgumentException $e) {
             return $e->getMessage();
         } catch (\Throwable $e) {
@@ -180,6 +176,26 @@ class ConnectionController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Make one cheap authenticated call to the provider, throwing when the
+     * credentials do not work.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function callProviderWithCredentials(BankingProvider $provider, array $validated): void
+    {
+        match ($provider) {
+            BankingProvider::IndexaCapital => (new IndexaCapitalClient($validated['api_token']))->getUser(),
+            BankingProvider::Binance => (new BinanceClient($validated['api_key'], $validated['api_secret']))->getAccount(),
+            BankingProvider::Bitpanda => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
+            BankingProvider::Kraken => (new KrakenClient($validated['api_key'], $validated['api_secret']))->verifyPermissions(),
+            BankingProvider::Coinbase => (new CoinbaseClient($validated['api_key_name'], $validated['private_key']))->getAccounts(limit: 1),
+            BankingProvider::InteractiveBrokers => (new InteractiveBrokersClient($validated['token'], $validated['query_id']))->fetchStatement(),
+            BankingProvider::Wise => (new WiseClient($validated['api_token']))->getProfiles(),
+            default => throw new \InvalidArgumentException('Unsupported provider for credential update.'),
+        };
     }
 
     /**

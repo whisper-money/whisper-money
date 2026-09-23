@@ -90,6 +90,7 @@ final class MarketingContent
         'Indexa Capital' => ['country' => 'ES', 'logo' => '/images/banks/logos/indexa-capital.jpg'],
         'Binance' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/t1h5rqi19dJTPl6ZadziPjNwm0lrcdTFBRzB3iCy.png'],
         'Bitpanda' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png'],
+        'Kraken' => ['country' => self::WORLDWIDE, 'logo' => '/images/banks/logos/kraken.png'],
         'Coinbase' => ['country' => self::WORLDWIDE, 'logo' => 'https://whisper.money/storage/banks/logos/coinbase.png'],
         'Wise' => ['country' => self::WORLDWIDE, 'logo' => '/images/banks/logos/wise.png'],
         'Interactive Brokers' => ['country' => self::WORLDWIDE, 'logo' => '/images/banks/logos/interactive-brokers.png'],
@@ -161,7 +162,7 @@ final class MarketingContent
             'sections' => [
                 'Qué hace' => [
                     'Agrega cuentas de bancos españoles y europeos por PSD2, la normativa europea de banca abierta. La autorización se firma en la web de tu propio banco: no vemos ni almacenamos tus credenciales.',
-                    'Integra brokers y exchanges con claves de API que generas tú: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda y Coinbase.',
+                    'Integra brokers y exchanges con claves de API que generas tú: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase.',
                     'Importa extractos en CSV, XLS y XLSX con detección automática de columnas (incluidas las cabeceras en español), cuatro formatos de fecha, detección de duplicados y mapeo guardado por cuenta.',
                     'Categoriza con reglas de automatización propias y, de forma opcional y con consentimiento explícito, con IA que aprende de tus correcciones.',
                     'Presupuestos por categoría con periodo semanal, quincenal, mensual o anual, arrastre del sobrante y avisos.',
@@ -187,7 +188,7 @@ final class MarketingContent
             'sections' => [
                 'What it does' => [
                     'Aggregates Spanish and European bank accounts over PSD2, the European open banking regulation. You sign the authorisation on your own bank\'s website: we never see or store your credentials.',
-                    'Integrates brokers and exchanges through API keys you generate yourself: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda and Coinbase.',
+                    'Integrates brokers and exchanges through API keys you generate yourself: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase.',
                     'Imports statements in CSV, XLS and XLSX with automatic column detection (Spanish headers included), four date formats, duplicate detection and per-account saved mapping.',
                     'Categorises with your own automation rules and, optionally and only with explicit consent, with AI that learns from your corrections.',
                     'Category budgets on a weekly, biweekly, monthly or yearly period, with rollover and alerts.',
@@ -229,7 +230,7 @@ final class MarketingContent
     {
         return $locale === 'es' ? [
             'title' => 'Bancos y apps compatibles',
-            'description' => 'Comprueba antes de registrarte si podemos conectar tu banco: :count entidades y apps de :countries países, más Binance, Bitpanda, Coinbase, Wise e Interactive Brokers. Busca la tuya en la lista.',
+            'description' => 'Comprueba antes de registrarte si podemos conectar tu banco: :count entidades y apps de :countries países, más Binance, Bitpanda, Kraken, Coinbase, Wise e Interactive Brokers. Busca la tuya en la lista.',
             'heading' => 'Qué bancos y apps puedes conectar',
             'intro' => 'Conectas una cuenta una vez y sus movimientos y saldos siguen llegando solos: tus cuentas, tus inversiones y tu cripto en un mismo sitio, sin apuntar nada a mano. El permiso lo das en la web de tu propio banco, así que tus claves nunca pasan por nosotros. Busca abajo lo que quieras seguir.',
             'banks_title' => 'Todo lo que puedes conectar',
@@ -255,7 +256,7 @@ final class MarketingContent
             'closing_body' => 'El plan gratuito no pide tarjeta. Si tu banco está en la lista, tenerlo conectado es cuestión de un par de minutos.',
         ] : [
             'title' => 'Supported Banks and Apps',
-            'description' => 'Check before you sign up whether we can connect your bank: :count banks and apps across :countries countries, plus Binance, Bitpanda, Coinbase, Wise and Interactive Brokers. Search the list for yours.',
+            'description' => 'Check before you sign up whether we can connect your bank: :count banks and apps across :countries countries, plus Binance, Bitpanda, Kraken, Coinbase, Wise and Interactive Brokers. Search the list for yours.',
             'heading' => 'Which banks and apps you can connect',
             'intro' => 'Connect an account once and its balances and transactions keep arriving on their own: your accounts, your investments and your crypto in one place, with nothing typed in by hand. You give permission on your own bank\'s website, so your login details never pass through us. Search below for whatever you want to track.',
             'banks_title' => 'Everything you can connect',
@@ -327,7 +328,7 @@ final class MarketingContent
                     [
                         'dimension' => 'What you can aggregate',
                         'rival' => 'Accounts and cards at Spanish banks.',
-                        'whisper' => 'Banks over PSD2, plus brokers (Indexa Capital, Interactive Brokers), crypto (Binance, Bitpanda, Coinbase) and Wise, all inside the same net worth.',
+                        'whisper' => 'Banks over PSD2, plus brokers (Indexa Capital, Interactive Brokers), crypto (Binance, Bitpanda, Kraken, Coinbase) and Wise, all inside the same net worth.',
                     ],
                     [
                         'dimension' => 'What you can verify',
@@ -345,7 +346,7 @@ final class MarketingContent
                     'Bank connections over PSD2 with Spanish and European banks, the same standard Fintonic uses.',
                     'Not one financial product for sale inside the app.',
                     'Consolidated net worth: current accounts, savings, brokers, crypto, property and loans in a single number.',
-                    'Direct integrations with Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda and Coinbase, on top of the banks.',
+                    'Direct integrations with Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase, on top of the banks.',
                     'Category budgets on a weekly, biweekly, monthly or yearly period, with the leftover rolling into the next one.',
                     'Your own automation rules: define once how a merchant gets categorised and it applies to everything that arrives.',
                     'Optional AI categorisation, which only runs if you give explicit consent.',
@@ -398,7 +399,7 @@ final class MarketingContent
                     [
                         'dimension' => 'Qué puedes agregar',
                         'rival' => 'Cuentas y tarjetas de bancos españoles.',
-                        'whisper' => 'Bancos por PSD2, más brokers (Indexa Capital, Interactive Brokers), cripto (Binance, Bitpanda, Coinbase) y Wise, todo dentro del mismo patrimonio neto.',
+                        'whisper' => 'Bancos por PSD2, más brokers (Indexa Capital, Interactive Brokers), cripto (Binance, Bitpanda, Kraken, Coinbase) y Wise, todo dentro del mismo patrimonio neto.',
                     ],
                     [
                         'dimension' => 'Qué puedes comprobar',
@@ -416,7 +417,7 @@ final class MarketingContent
                     'Conexión bancaria por PSD2 con bancos españoles y europeos, el mismo estándar que usa Fintonic.',
                     'Ni un solo producto financiero a la venta dentro de la aplicación.',
                     'Patrimonio neto consolidado: cuentas corrientes, ahorro, brokers, cripto, inmuebles y préstamos en un único número.',
-                    'Integraciones directas con Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda y Coinbase, además de la banca.',
+                    'Integraciones directas con Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase, además de la banca.',
                     'Presupuestos por categoría con periodo semanal, quincenal, mensual o anual, y arrastre del sobrante al periodo siguiente.',
                     'Reglas de automatización propias: defines una vez cómo se categoriza un comercio y se aplica a todo lo que entra.',
                     'Categorización con IA opcional, que solo funciona si das tu consentimiento explícito.',
@@ -519,7 +520,7 @@ final class MarketingContent
                     'A budget that catches everything the others do not, so no spending slips through unclassified.',
                     'Automation rules to categorise by merchant, amount or text, without redoing the work every month.',
                     'Optional AI categorisation that learns from your corrections, if you consent to it.',
-                    'Investments and crypto inside the same net worth: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda and Coinbase.',
+                    'Investments and crypto inside the same net worth: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase.',
                     'CSV, XLS and XLSX import with column mapping for the accounts that do not connect.',
                 ],
                 'migration_intro' => 'YNAB exports your data, so the move is direct. In its web app, click the plan name in the left sidebar and choose "Export Plan": you get two files, one with the plan and its categories and one with the transaction history. The second is the one we want. You can also select one account\'s transactions and export just those.',
@@ -591,7 +592,7 @@ final class MarketingContent
                     'Un presupuesto que recoge lo que no encaja en ningún otro, para que no se te escape gasto sin clasificar.',
                     'Reglas de automatización para categorizar por comercio, importe o texto, sin repetir el trabajo cada mes.',
                     'Categorización con IA opcional que aprende de tus correcciones, si das tu consentimiento.',
-                    'Inversiones y cripto en el mismo patrimonio neto: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda y Coinbase.',
+                    'Inversiones y cripto en el mismo patrimonio neto: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase.',
                     'Importación de CSV, XLS y XLSX con mapeo de columnas para las cuentas que no conectan.',
                 ],
                 'migration_intro' => 'YNAB exporta tus datos, así que la mudanza es directa. En su aplicación web pulsas el nombre del plan en la barra lateral izquierda y eliges «Export Plan»: obtienes dos ficheros, uno con el plan y las categorías y otro con el histórico de movimientos. El segundo es el que vamos a usar. También puedes seleccionar los movimientos de una cuenta y exportar solo esos.',
@@ -854,7 +855,7 @@ final class MarketingContent
                 'bullets' => [
                     'Every bank on one screen, over the same PSD2 standard your bank uses to let you in.',
                     "We never ask for your bank credentials: you sign the authorisation on the institution's own website and can revoke it there.",
-                    'Brokers, crypto and Wise in the same net worth: Indexa Capital, Interactive Brokers, Binance, Bitpanda and Coinbase.',
+                    'Brokers, crypto and Wise in the same net worth: Indexa Capital, Interactive Brokers, Binance, Bitpanda, Kraken and Coinbase.',
                     'Property and loans included, so net worth is the real figure and not just the liquid part.',
                     'Your own categories and automation rules, instead of whatever classification the bank decides on.',
                     'Budgets that cross institutions: groceries are groceries even when you pay with three different cards.',
@@ -926,7 +927,7 @@ final class MarketingContent
                 'bullets' => [
                     'Todos los bancos en una pantalla, por el mismo estándar PSD2 que tu banco usa para dejarte entrar.',
                     'Nunca te pedimos las credenciales de tu banco: la autorización se firma en la web de la propia entidad y se puede revocar allí.',
-                    'Brokers, cripto y Wise en el mismo patrimonio neto: Indexa Capital, Interactive Brokers, Binance, Bitpanda y Coinbase.',
+                    'Brokers, cripto y Wise en el mismo patrimonio neto: Indexa Capital, Interactive Brokers, Binance, Bitpanda, Kraken y Coinbase.',
                     'Inmuebles y préstamos incluidos, para que el patrimonio neto sea el real y no solo el líquido.',
                     'Categorías propias y reglas de automatización, en lugar de la clasificación que decida el banco.',
                     'Presupuestos que cruzan entidades: el gasto en supermercado es el mismo aunque pagues con tres tarjetas distintas.',
@@ -1007,7 +1008,7 @@ final class MarketingContent
                     [
                         'dimension' => 'Investments and crypto',
                         'rival' => 'Focused on accounts, cards and budgeting.',
-                        'whisper' => 'Brokers and exchanges inside net worth: Indexa Capital, Interactive Brokers, Binance, Bitpanda, Coinbase and Wise.',
+                        'whisper' => 'Brokers and exchanges inside net worth: Indexa Capital, Interactive Brokers, Binance, Bitpanda, Kraken, Coinbase and Wise.',
                     ],
                     [
                         'dimension' => 'What you can verify',
@@ -1080,7 +1081,7 @@ final class MarketingContent
                     [
                         'dimension' => 'Inversiones y cripto',
                         'rival' => 'Centrada en cuentas, tarjetas y presupuesto.',
-                        'whisper' => 'Brokers y exchanges dentro del patrimonio neto: Indexa Capital, Interactive Brokers, Binance, Bitpanda, Coinbase y Wise.',
+                        'whisper' => 'Brokers y exchanges dentro del patrimonio neto: Indexa Capital, Interactive Brokers, Binance, Bitpanda, Kraken, Coinbase y Wise.',
                     ],
                     [
                         'dimension' => 'Qué puedes comprobar',
@@ -1351,7 +1352,7 @@ final class MarketingContent
                     [
                         'dimension' => 'What connects',
                         'rival' => 'BBVA, Santander, CaixaBank, Sabadell, ING, Trade Republic and Revolut, plus "AI import from any bank" on Premium.',
-                        'whisper' => 'Spanish and European banks over PSD2, plus Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda and Coinbase.',
+                        'whisper' => 'Spanish and European banks over PSD2, plus Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase.',
                     ],
                     [
                         'dimension' => 'What you can verify',
@@ -1370,7 +1371,7 @@ final class MarketingContent
                     'Runs in a desktop browser, where two hundred transactions can actually be worked through.',
                     'Also installable on your phone, on both iPhone and Android.',
                     'PSD2 connections against the catalogue of Spanish and European banks, not a closed list of institutions.',
-                    'Our own integrations with Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda and Coinbase.',
+                    'Our own integrations with Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase.',
                     'Property and loans inside net worth.',
                     'Category budgets with alerts, on top of the net worth figure.',
                     'Monthly cash flow of income against spending.',
@@ -1386,7 +1387,7 @@ final class MarketingContent
                     ],
                     [
                         'title' => 'Add brokers and exchanges',
-                        'body' => 'Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda and Coinbase connect with API keys you generate yourself at each service, and which you can create with read-only permissions. This is where net worth gets completed.',
+                        'body' => 'Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase connect with API keys you generate yourself at each service, and which you can create with read-only permissions. This is where net worth gets completed.',
                     ],
                     [
                         'title' => 'Download the long history from your bank',
@@ -1424,7 +1425,7 @@ final class MarketingContent
                     [
                         'dimension' => 'Qué se conecta',
                         'rival' => 'BBVA, Santander, CaixaBank, Sabadell, ING, Trade Republic y Revolut, más «importación con IA de cualquier banco» en Premium.',
-                        'whisper' => 'Bancos españoles y europeos por PSD2, más Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda y Coinbase.',
+                        'whisper' => 'Bancos españoles y europeos por PSD2, más Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase.',
                     ],
                     [
                         'dimension' => 'Qué puedes comprobar',
@@ -1443,7 +1444,7 @@ final class MarketingContent
                     'Funciona en el navegador del ordenador, donde se puede trabajar de verdad con doscientas transacciones.',
                     'Instalable también en el móvil, tanto en iPhone como en Android.',
                     'Conexión PSD2 contra el catálogo de bancos españoles y europeos, no una lista cerrada de entidades.',
-                    'Integraciones propias con Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda y Coinbase.',
+                    'Integraciones propias con Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase.',
                     'Inmuebles y préstamos dentro del patrimonio neto.',
                     'Presupuestos por categoría con avisos, además del patrimonio neto.',
                     'Flujo de caja mensual de ingresos contra gastos.',
@@ -1459,7 +1460,7 @@ final class MarketingContent
                     ],
                     [
                         'title' => 'Añade brokers y exchanges',
-                        'body' => 'Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda y Coinbase se conectan con claves de API que generas tú en cada servicio, y que puedes crear con permisos de solo lectura. Aquí es donde el patrimonio neto se completa.',
+                        'body' => 'Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase se conectan con claves de API que generas tú en cada servicio, y que puedes crear con permisos de solo lectura. Aquí es donde el patrimonio neto se completa.',
                     ],
                     [
                         'title' => 'Descarga el histórico largo de tu banco',
@@ -1543,7 +1544,7 @@ final class MarketingContent
                     'You can work without connecting any bank, exactly as in Dinerio, and still load years of statements in minutes.',
                     "If you do decide to connect, the authorisation is signed on your bank's website and revoked from there.",
                     'CSV, XLS and XLSX import with column mapping, duplicate detection and per-account saved mapping.',
-                    'Brokers and exchanges integrated: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda and Coinbase.',
+                    'Brokers and exchanges integrated: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase.',
                     'Property and loans, for the complete net worth figure.',
                     'Category budgets, cash flow and net worth in the same application.',
                     'Automation rules and optional AI categorisation that learns from your corrections.',
@@ -1616,7 +1617,7 @@ final class MarketingContent
                     'Puedes trabajar sin conectar ningún banco, igual que en Dinerio, y aun así cargar años de extractos en minutos.',
                     'Si decides conectar, la autorización se firma en la web de tu banco y se revoca desde allí.',
                     'Importación de CSV, XLS y XLSX con mapeo de columnas, detección de duplicados y mapeo guardado por cuenta.',
-                    'Brokers y exchanges integrados: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda y Coinbase.',
+                    'Brokers y exchanges integrados: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase.',
                     'Inmuebles y préstamos, para el patrimonio neto completo.',
                     'Presupuestos por categoría, flujo de caja y patrimonio neto en la misma aplicación.',
                     'Reglas de automatización y categorización con IA opcional que aprende de tus correcciones.',

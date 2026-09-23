@@ -9,6 +9,7 @@ it('uses an API key for non-EnableBanking providers', function (BankingProvider 
     'indexa capital' => BankingProvider::IndexaCapital,
     'binance' => BankingProvider::Binance,
     'bitpanda' => BankingProvider::Bitpanda,
+    'kraken' => BankingProvider::Kraken,
     'coinbase' => BankingProvider::Coinbase,
     'interactive brokers' => BankingProvider::InteractiveBrokers,
     'wise' => BankingProvider::Wise,
@@ -24,6 +25,7 @@ it('defaults investment providers to an investment account', function (BankingPr
     'indexa capital' => BankingProvider::IndexaCapital,
     'binance' => BankingProvider::Binance,
     'bitpanda' => BankingProvider::Bitpanda,
+    'kraken' => BankingProvider::Kraken,
     'coinbase' => BankingProvider::Coinbase,
     'interactive brokers' => BankingProvider::InteractiveBrokers,
 ]);
@@ -51,6 +53,15 @@ it('maps credential inputs onto the encrypted connection columns', function () {
     ]))->toBe([
         'api_token' => 'flex-token',
         'api_secret' => '123456',
+    ]);
+
+    expect(BankingProvider::Kraken->credentialColumns([
+        'api_key' => 'key',
+        'api_secret' => 'secret',
+        'country' => 'ES',
+    ]))->toBe([
+        'api_token' => 'key',
+        'api_secret' => 'secret',
     ]);
 
     expect(BankingProvider::EnableBanking->credentialColumns([]))->toBe([]);
