@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { CONNECT_PROVIDERS } from './connect-providers';
+import { CONNECT_PROVIDERS, isProviderInBeta } from './connect-providers';
 
 /**
  * The registry's copy reaches __() through variables, so the Spanish
@@ -25,6 +25,29 @@ const copyStrings = CONNECT_PROVIDERS.flatMap((provider) => [
         ...(field.placeholder ? [field.placeholder] : []),
     ]),
 ]);
+
+describe('connect provider beta flags', () => {
+    // Fails on the day a beta period ends, so the stale `betaUntil` is removed
+    // from the registry instead of silently doing nothing.
+    it.each(
+        CONNECT_PROVIDERS.filter((provider) => provider.betaUntil).map(
+            (provider) => [provider.providerKey, provider] as const,
+        ),
+    )('%s is still within its beta period', (_key, provider) => {
+        expect(isProviderInBeta(provider)).toBe(true);
+    });
+
+    it('ends the beta on the betaUntil date', () => {
+        const provider = { ...CONNECT_PROVIDERS[0], betaUntil: '2026-11-23' };
+
+        expect(
+            isProviderInBeta(provider, new Date('2026-11-22T23:00:00Z')),
+        ).toBe(true);
+        expect(
+            isProviderInBeta(provider, new Date('2026-11-23T00:00:00Z')),
+        ).toBe(false);
+    });
+});
 
 describe('connect provider copy', () => {
     it('is fully translated into Spanish', () => {

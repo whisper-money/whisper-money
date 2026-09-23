@@ -9,6 +9,7 @@ import {
     isProviderComplete,
     postConnectRequest,
     providerConnectBody,
+    providerInstitution,
     providersForCountry,
 } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
@@ -265,7 +266,7 @@ export function useConnectFlow(
                                       p.providerKey,
                                   ),
                           )
-                          .map((p) => p.institution);
+                          .map(providerInstitution);
 
                 // A provider we integrate natively (e.g. Wise) must surface only
                 // through its own entry, never the bank-aggregator's duplicate.
