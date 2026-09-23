@@ -173,7 +173,7 @@ class KrakenBalanceSyncService
         $amount = (float) $entry['amount'];
         $date = Carbon::createFromTimestamp((float) $entry['time'])->toDateString();
 
-        $value = $this->currencyConverter->convert(self::CONVERTER_CODES[$asset] ?? $asset, $currency, $amount, $date);
+        $value = $this->currencyConverter->convert($this->converterCode($asset), $currency, $amount, $date);
 
         if ($value != 0.0 || $amount == 0.0) {
             return $value;
@@ -207,7 +207,7 @@ class KrakenBalanceSyncService
 
         $value = $usdPrice !== null
             ? $this->currencyConverter->convert(self::USD_CURRENCY, $currency, $quantity * $usdPrice, $today)
-            : $this->currencyConverter->convert(self::CONVERTER_CODES[$asset] ?? $asset, $currency, $quantity, $today);
+            : $this->currencyConverter->convert($this->converterCode($asset), $currency, $quantity, $today);
 
         return $value != 0.0 ? $value : null;
     }
@@ -228,6 +228,11 @@ class KrakenBalanceSyncService
         }
 
         return null;
+    }
+
+    private function converterCode(string $asset): string
+    {
+        return self::CONVERTER_CODES[$asset] ?? $asset;
     }
 
     private function lastInvestedAmount(Account $account): ?int

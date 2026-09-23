@@ -25,11 +25,11 @@ class KrakenClient
     /** Kraken's fixed Ledgers page size. */
     private const LEDGER_PAGE_SIZE = 50;
 
-    private const AUTH_ERRORS = ['EAPI:Invalid key', 'EAPI:Invalid signature', 'EGeneral:Permission denied'];
+    private const PERMISSION_DENIED = 'EGeneral:Permission denied';
+
+    private const AUTH_ERRORS = ['EAPI:Invalid key', 'EAPI:Invalid signature', self::PERMISSION_DENIED];
 
     private const RATE_LIMIT_ERRORS = ['EAPI:Rate limit exceeded', 'EGeneral:Too many requests'];
-
-    private const PERMISSION_DENIED = 'EGeneral:Permission denied';
 
     /** Last nonce handed out in this process: Kraken rejects one that does not increase. */
     private static int $lastNonce = 0;
