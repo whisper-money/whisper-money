@@ -20,9 +20,10 @@ use Throwable;
  * limited to the categories of the transaction's direction, which both keeps
  * the model from crossing spending and income and trims the billed criteria.
  *
- * A rate-limited, overloaded (529 or any other 5xx) or unreachable request drops only its own
- * transaction and surfaces as a {@see TransientCategorizationException} carrying
- * the rest; any other failed request is reported and dropped.
+ * A rate-limited (429), overloaded (529 or any other 5xx) or unreachable
+ * request drops only its own transaction and surfaces as a
+ * {@see TransientCategorizationException} carrying the rest; any other failed
+ * request (401, 422) is reported and dropped.
  */
 class JevCategorizationBackend implements CategorizationBackend
 {
