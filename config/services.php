@@ -58,6 +58,16 @@ return [
             && filled(env('ENABLEBANKING_REDIRECT_URL')),
     ],
 
+    'typesafe' => [
+        /**
+         * TypeSafe AI's Jev, the alternative categorization backend. Only users
+         * with the JevCategorization flag reach it, and without a key they stay
+         * on the default provider.
+         */
+        'key' => env('TYPESAFE_API_KEY'),
+        'model' => env('TYPESAFE_MODEL', 'jev-latest'),
+    ],
+
     'openai' => [
         /**
          * Domain-ownership token for the ChatGPT app directory submission,

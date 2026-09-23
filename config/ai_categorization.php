@@ -21,6 +21,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Jev merchant threshold
+    |--------------------------------------------------------------------------
+    |
+    | Jev answers "is this merchant unambiguous?" as a 0-1 score rather than a
+    | boolean. A score at or above this bar counts as unambiguous, which is what
+    | lets the rule learner generalise the categorization into a rule.
+    |
+    */
+
+    'jev_unambiguous_threshold' => (float) env('AI_CATEGORIZATION_JEV_UNAMBIGUOUS_THRESHOLD', 0.5),
+
+    /*
+    |--------------------------------------------------------------------------
     | Master switch
     |--------------------------------------------------------------------------
     |

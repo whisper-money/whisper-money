@@ -2,17 +2,18 @@
 
 namespace App\Services\Ai;
 
-use App\Ai\Agents\TransactionCategorizationAgent;
 use App\Enums\CategorySource;
+use App\Exceptions\Ai\TransientCategorizationException;
+use App\Features\JevCategorization;
 use App\Jobs\RetryTransientAiCategorizationJob;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Support\Money;
+use App\Services\Ai\Contracts\CategorizationBackend;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Exceptions\FailoverableException;
+use Laravel\Pennant\Feature;
 use Throwable;
 
 /**
@@ -23,6 +24,11 @@ use Throwable;
  */
 class CategorizeTransactions
 {
+    public function __construct(
+        private readonly GeminiCategorizationBackend $gemini,
+        private readonly JevCategorizationBackend $jev,
+    ) {}
+
     /**
      * @param  Collection<int, Transaction>  $transactions
      * @return list<CategorizationOutcome>
@@ -39,11 +45,12 @@ class CategorizeTransactions
             return [];
         }
 
+        $backend = $this->backendFor($user);
         $byRef = $transactions->keyBy(fn (Transaction $transaction): string => $transaction->id);
-        $results = $this->resolve($user, $transactions, $catalog);
+        $results = $this->resolve($user, $transactions, $catalog, $backend);
 
         $labelBar = (float) config('ai_categorization.label_confidence');
-        $model = (string) config('ai_categorization.model');
+        $model = $backend->model();
         $outcomes = [];
 
         foreach ($results as $result) {
@@ -76,6 +83,20 @@ class CategorizeTransactions
         }
 
         return $outcomes;
+    }
+
+    /**
+     * Users in the JevCategorization rollout go to Jev, everyone else to the
+     * default provider. Without an API key the flag is ignored, so enabling it
+     * ahead of the key cannot stop categorization.
+     */
+    private function backendFor(User $user): CategorizationBackend
+    {
+        if (filled(config('services.typesafe.key')) && Feature::for($user)->active(JevCategorization::class)) {
+            return $this->jev;
+        }
+
+        return $this->gemini;
     }
 
     /**
@@ -115,17 +136,19 @@ class CategorizeTransactions
      * @param  Collection<int, Transaction>  $transactions
      * @return list<array<string, mixed>>
      */
-    private function resolve(User $user, Collection $transactions, CategoryCatalog $catalog): array
+    private function resolve(User $user, Collection $transactions, CategoryCatalog $catalog, CategorizationBackend $backend): array
     {
         $batchSize = max(1, (int) config('ai_categorization.group_batch_size'));
         $results = [];
 
         foreach ($transactions->chunk($batchSize) as $chunk) {
             try {
-                foreach ($this->resolveChunkWithRetry($chunk, $catalog) as $result) {
-                    $results[] = $result;
+                array_push($results, ...$this->resolveChunkWithRetry($chunk, $catalog, $backend));
+            } catch (ConnectionException|FailoverableException|TransientCategorizationException $exception) {
+                if ($exception instanceof TransientCategorizationException) {
+                    array_push($results, ...$exception->results);
                 }
-            } catch (ConnectionException|FailoverableException $exception) {
+
                 Log::warning('AI categorization chunk dropped: provider transient failure.', [
                     'exception' => $exception->getMessage(),
                 ]);
@@ -141,46 +164,20 @@ class CategorizeTransactions
     }
 
     /**
+     * A partial transient failure is not retried in place: its results already
+     * came back (and were billed), and the deferred retry picks up the rest.
+     *
      * @param  Collection<int, Transaction>  $chunk
      * @return list<array<string, mixed>>
      */
-    private function resolveChunkWithRetry(Collection $chunk, CategoryCatalog $catalog): array
+    private function resolveChunkWithRetry(Collection $chunk, CategoryCatalog $catalog, CategorizationBackend $backend): array
     {
         try {
-            return $this->resolveChunk($chunk, $catalog);
+            return $backend->categorize($chunk, $catalog);
+        } catch (TransientCategorizationException $exception) {
+            throw $exception;
         } catch (Throwable) {
-            return $this->resolveChunk($chunk, $catalog);
+            return $backend->categorize($chunk, $catalog);
         }
-    }
-
-    /**
-     * @param  Collection<int, Transaction>  $chunk
-     * @return list<array<string, mixed>>
-     */
-    private function resolveChunk(Collection $chunk, CategoryCatalog $catalog): array
-    {
-        $items = $chunk->map(fn (Transaction $transaction): array => [
-            'ref' => $transaction->id,
-            'text' => (string) $transaction->description,
-            'amount' => Money::toMajor($transaction->amount, $transaction->currency_code),
-            'direction' => $transaction->amount < 0 ? 'outflow' : 'inflow',
-            'creditor_name' => $transaction->creditor_name,
-            'debtor_name' => $transaction->debtor_name,
-        ])->values()->all();
-
-        $payload = json_encode([
-            'transactions' => $items,
-            'categories' => $catalog->options(),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        $response = (new TransactionCategorizationAgent)->prompt(
-            $payload,
-            provider: Lab::from((string) config('ai_categorization.provider')),
-            model: (string) config('ai_categorization.model'),
-        );
-
-        $results = $response['results'] ?? [];
-
-        return is_array($results) ? array_values($results) : [];
     }
 }
