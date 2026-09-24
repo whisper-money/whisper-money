@@ -1,13 +1,13 @@
 {{-- The second and last reminder for users who cancelled but are still inside
      their paid period, on the low price. Follow-up to
      price-increase-cancelling-oct-2026, with a new identifier so everyone in
-     the audience gets it. Sent by hand on 26 September. Send it with exactly
-     this subject, which doubles as the lang/es.json key, or Spanish readers get
-     an English subject:
+     the audience gets it. Sent by hand on Friday 25 September at 17:00
+     Europe/Madrid. Send it with exactly this subject, which doubles as the
+     lang/es.json key, or Spanish readers get an English subject:
 
      php artisan email:update price-increase-last-days-cancelling-oct-2026 --audience=cancelling-low-price --subject="Your subscription still has the old price" --exclude-demo
 
-     No "four days" here, unlike the other two in this wave. This audience has
+     No day count here, unlike the other two in this wave. This audience has
      no constraint on how much period is left, so someone who cancelled an
      annual plan in August still has months: their deadline is the day their own
      period runs out, not 30 September. What 1 October does change for them is
@@ -17,7 +17,7 @@
 
 {{ __('Hi :name,', ['name' => $user->name]) }}
 
-{{ __('You cancelled your subscription, but it is still running until the end of your current period, and it is still on the old price.') }}
+{{ __('You cancelled your subscription, but it keeps running until the end of your current period, and it is still on the old price.') }}
 
 <x-mail::table>
 | {{ __('Plan') }}        | {{ __('Today') }}  | {{ __('From 1 October') }} |

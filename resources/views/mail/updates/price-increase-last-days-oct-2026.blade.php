@@ -1,19 +1,23 @@
 {{-- The second and last reminder before the price goes up, to the same audience
      as price-increase-oct-2026. A new identifier, so everyone in the audience
      gets it, including those who already read the first one. Sent by hand on
-     26 September. Send it with exactly this subject, which doubles as the
-     lang/es.json key, or Spanish readers get an English subject:
+     Friday 25 September at 17:00 Europe/Madrid. Send it with exactly this
+     subject, which doubles as the lang/es.json key, or Spanish readers get an
+     English subject:
 
-     php artisan email:update price-increase-last-days-oct-2026 --audience=unsubscribed --subject="Four days left at €3.99" --exclude-demo
+     php artisan email:update price-increase-last-days-oct-2026 --audience=unsubscribed --subject="Five days left at €3.99" --exclude-demo
+
+     "Five days" counts Saturday to Wednesday 30 September at 23:59 CEST, plus
+     what is left of Friday. Sent any later, the count in the subject is wrong.
 
      The audience is recomputed at send time, so anyone who subscribed after the
      first email drops out on their own. --}}
 <x-mail::message>
-# {{ __('Four days left at the old price') }}
+# {{ __('The old price ends on Wednesday') }}
 
 {{ __('Hi :name,', ['name' => $user->name]) }}
 
-{{ __('On 1 October the price of Whisper Money goes up, so this is the last reminder I will send you about it. You have until 30 September to subscribe at the price you see today.') }}
+{{ __('The price of Whisper Money goes up on 1 October, and this is the last time I will write to you about it. You have until Wednesday 30 September to subscribe at the price you see today.') }}
 
 <x-mail::table>
 | {{ __('Plan') }}        | {{ __('Today') }}  | {{ __('From 1 October') }} |

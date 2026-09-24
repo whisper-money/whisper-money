@@ -1,8 +1,9 @@
 {{-- The second and last reminder for users with a live subscription on the low
      price. Follow-up to price-increase-subscribers-oct-2026, with a new
-     identifier so everyone in the audience gets it. Sent by hand on
-     26 September. Send it with exactly this subject, which doubles as the
-     lang/es.json key, or Spanish readers get an English subject:
+     identifier so everyone in the audience gets it. Sent by hand on Friday
+     25 September at 17:00 Europe/Madrid. Send it with exactly this subject,
+     which doubles as the lang/es.json key, or Spanish readers get an English
+     subject:
 
      php artisan email:update price-increase-last-days-subscribers-oct-2026 --audience=active-low-price --subject="The price changes on 1 October, yours does not" --exclude-demo
 
@@ -20,7 +21,7 @@
 
 {{ __('There is nothing for you to do here, and nothing to click. I just did not want to leave you wondering.') }}
 
-{{ __('Thank you for supporting us. It helps us keep Whisper Money going and carry on making it better.') }}
+{{ __('Thank you for supporting us. Subscriptions like yours are what keep Whisper Money going.') }}
 
 Víctor Falcón Ruíz<br>
 {{ __('Co-founder and solo developer, Whisper Money') }}

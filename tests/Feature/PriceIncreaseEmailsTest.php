@@ -15,7 +15,7 @@ const SUBSCRIBERS_VIEW = 'price-increase-subscribers-oct-2026';
 const SUBSCRIBERS_SUBJECT = 'Your price is not going up';
 
 const LAST_DAYS_VIEW = 'price-increase-last-days-oct-2026';
-const LAST_DAYS_SUBJECT = 'Four days left at €3.99';
+const LAST_DAYS_SUBJECT = 'Five days left at €3.99';
 
 const LAST_DAYS_CANCELLING_VIEW = 'price-increase-last-days-cancelling-oct-2026';
 const LAST_DAYS_CANCELLING_SUBJECT = 'Your subscription still has the old price';
@@ -195,7 +195,7 @@ it('renders the last days email in English', function () {
 
     $mail->assertHasSubject(LAST_DAYS_SUBJECT);
     $mail->assertSeeInHtml('Hi Ada,');
-    $mail->assertSeeInHtml('Four days left at the old price');
+    $mail->assertSeeInHtml('The old price ends on Wednesday');
 
     $mail->assertSeeInHtml('<table', escape: false);
     $mail->assertSeeInHtml('From 1 October');
@@ -204,7 +204,7 @@ it('renders the last days email in English', function () {
 
     // What the reader has to act on: the deadline, and why the price they lock
     // in is theirs to keep.
-    $mail->assertSeeInHtml('You have until 30 September to subscribe');
+    $mail->assertSeeInHtml('You have until Wednesday 30 September to subscribe');
     $mail->assertSeeInHtml('Your price lives inside your subscription, not on the pricing page.');
     $mail->assertSeeInHtml('After 30 September at 23:59 CEST the old price is gone');
 
@@ -224,23 +224,23 @@ it('renders the last days email in English', function () {
 it('renders the last days email in Spanish', function () {
     $mail = queuePriceIncreaseEmail(LAST_DAYS_VIEW, LAST_DAYS_SUBJECT, 'es');
 
-    $mail->assertHasSubject('Quedan cuatro días a 3,99 €');
+    $mail->assertHasSubject('Quedan cinco días a 3,99 €');
     $mail->assertSeeInHtml('Hola Ada,');
-    $mail->assertSeeInHtml('Cuatro días al precio de siempre');
+    $mail->assertSeeInHtml('El precio de siempre se acaba el miércoles');
 
     $mail->assertSeeInHtml('<table', escape: false);
     $mail->assertSeeInHtml('Desde el 1 de octubre');
     $mail->assertSeeInHtml('8,99 €');
     $mail->assertSeeInHtml('53,94 €');
 
-    $mail->assertSeeInHtml('Tienes hasta el 30 de septiembre para suscribirte');
+    $mail->assertSeeInHtml('Tienes hasta el miércoles 30 de septiembre para suscribirte');
     $mail->assertSeeInHtml('Tu precio vive dentro de tu suscripción, no en la página de precios.');
     $mail->assertSeeInHtml('a las 23:59 (hora peninsular española)');
 
     $mail->assertSeeInHtml('Quedarme con el precio de 3,99 €');
     $mail->assertSeeInHtml('Sube porque las conexiones bancarias');
 
-    $mail->assertDontSeeInHtml('Four days left at the old price');
+    $mail->assertDontSeeInHtml('The old price ends on Wednesday');
 });
 
 it('renders the last days cancelling email in English', function () {
@@ -259,7 +259,7 @@ it('renders the last days cancelling email in English', function () {
     // months away, so the email must not promise them a 1 October one.
     $mail->assertSeeInHtml('The day it ends, the price goes with it.');
     $mail->assertSeeInHtml('there stops being a cheaper subscription to come back to');
-    $mail->assertDontSeeInHtml('four days');
+    $mail->assertDontSeeInHtml('days left');
 
     $mail->assertSeeInHtml('Reactivate my subscription');
     $mail->assertSeeInHtml(route('settings.billing'), escape: false);
@@ -287,7 +287,7 @@ it('renders the last days cancelling email in Spanish', function () {
 
     $mail->assertSeeInHtml('El día que termine, el precio se va con ella.');
     $mail->assertSeeInHtml('deja de haber una suscripción más barata a la que volver');
-    $mail->assertDontSeeInHtml('cuatro días');
+    $mail->assertDontSeeInHtml('quedan');
 
     $mail->assertSeeInHtml('Reactivar mi suscripción');
     $mail->assertSeeInHtml('Gracias por haber apoyado Whisper Money');
