@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AccountType;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
 use App\Enums\RuleOrigin;
@@ -286,6 +287,21 @@ class Transaction extends Model
     {
         return $this->categoryType() === CategoryType::Expense
             || ($this->category_id === null && $this->amount < 0);
+    }
+
+    /**
+     * Whether this is a savings or investment row booked on a savings
+     * account, in either direction. That money is already counted by the leg
+     * on the other account, so cashflow skips this one — interest booked here
+     * included; that belongs in an income category.
+     *
+     * Reads the category and account relations, so eager-load both when
+     * classifying a collection.
+     */
+    public function isSavingsAccountLeg(): bool
+    {
+        return $this->categoryType()?->isSetAside() === true
+            && $this->account?->type === AccountType::Savings;
     }
 
     /** @return BelongsTo<AutomationRule, $this> */

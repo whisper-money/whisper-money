@@ -306,6 +306,8 @@ class CashflowAnalyticsController extends Controller
     /**
      * Every transaction in the window, with the exchange rates its conversion
      * needs already primed so the callers never hit the rate service per row.
+     * Savings and investment rows on a savings account are left out: the leg
+     * on the other account already counts that money.
      *
      * @return Collection<int, Transaction>
      */
@@ -316,7 +318,9 @@ class CashflowAnalyticsController extends Controller
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->countingTowardsTotals()
             ->with(['account', 'category'])
-            ->get();
+            ->get()
+            ->reject(fn (Transaction $transaction): bool => $transaction->isSavingsAccountLeg())
+            ->values();
 
         $this->preloadExchangeRates($transactions, $userCurrency);
 
@@ -378,9 +382,11 @@ class CashflowAnalyticsController extends Controller
         }
 
         return (clone $category)->forceFill([
-            'name' => $side === CategoryType::Income
-                ? __(':name (refund)', ['name' => $category->name])
-                : __(':name (reversal)', ['name' => $category->name]),
+            'name' => match (true) {
+                $side === CategoryType::Expense => __(':name (reversal)', ['name' => $category->name]),
+                $category->type->isSetAside() => __(':name (withdrawal)', ['name' => $category->name]),
+                default => __(':name (refund)', ['name' => $category->name]),
+            },
         ]);
     }
 

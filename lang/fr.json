@@ -2652,6 +2652,7 @@
     "Select a region": "Sélectionner une région",
     ":name (refund)": ":name (remboursement)",
     ":name (reversal)": ":name (annulation)",
+    ":name (withdrawal)": ":name (retrait)",
     ":bank account": "Compte :bank",
     ":bank confirmed it. Nothing to redo.": ":bank l’a confirmé. Rien à refaire.",
     ":bank didn’t let us in": ":bank ne nous a pas laissés entrer",

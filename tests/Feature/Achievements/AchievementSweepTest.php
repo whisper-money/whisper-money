@@ -41,6 +41,7 @@ function recordMonth(User $user, string $month, int $income, int $saved): void
         'user_id' => $user->id,
         'space_id' => $user->activeSpace()->id,
         'currency_code' => 'EUR',
+        'type' => AccountType::Checking,
     ]);
 
     $categories = collect([CategoryType::Income, CategoryType::Savings])
@@ -104,6 +105,7 @@ function withForeignAccount(User $user): void
         'user_id' => $user->id,
         'space_id' => $user->activeSpace()->id,
         'currency_code' => 'BTC',
+        'type' => AccountType::Checking,
     ]);
 }
 
@@ -226,6 +228,7 @@ it('records nothing when a foreign balance cannot be converted', function (): vo
         'user_id' => $user->id,
         'space_id' => $user->activeSpace()->id,
         'currency_code' => 'BTC',
+        'type' => AccountType::Checking,
     ]);
 
     // A milestone dated from a half-converted history would be wrong forever,

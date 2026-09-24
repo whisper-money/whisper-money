@@ -20,4 +20,10 @@ enum CategoryType: string
             self::Investment => 'Investment',
         };
     }
+
+    /** Whether this category sets money aside rather than spending or earning it. */
+    public function isSetAside(): bool
+    {
+        return $this === self::Savings || $this === self::Investment;
+    }
 }
