@@ -1,26 +1,29 @@
 {{-- The second and last reminder for users with a live subscription on the low
      price. Follow-up to price-increase-subscribers-oct-2026, with a new
-     identifier so everyone in the audience gets it. Sent by hand on
-     26 September. Send it with exactly this subject, which doubles as the
-     lang/es.json key, or Spanish readers get an English subject:
+     identifier so everyone in the audience gets it. Sent by hand on Friday
+     25 September at 17:00 Europe/Madrid. Send it with exactly this subject,
+     which doubles as the lang/es.json key, or Spanish readers get an English
+     subject:
 
-     php artisan email:update price-increase-last-days-subscribers-oct-2026 --audience=active-low-price --subject="The price changes on 1 October, yours does not" --exclude-demo
+     php artisan email:update price-increase-last-days-subscribers-oct-2026 --audience=active-low-price --subject="After 1 October, nobody else can get your price" --exclude-demo
 
-     Nothing is at stake for them, so there is no table and no CTA: this only
-     exists so the new price on the site during launch week does not read as
-     something that happened to them. --}}
+     The goal is that they stay subscribed: their price will never be offered
+     again, and cancelling loses it for good. No table and no CTA, since they
+     already know what they pay and the only thing to ask of them is to stay. --}}
 <x-mail::message>
-# {{ __('Nothing changes for you') }}
+# {{ __('Keep your subscription, keep your price') }}
 
 {{ __('Hi :name,', ['name' => $user->name]) }}
 
-{{ __('On 1 October Whisper Money goes to €8.99 a month, or €53.94 a year. You will probably see the new price around the site over the next few days, so here is what it means for you: nothing.') }}
+{{ __('On 1 October Whisper Money goes to €8.99 a month, or €53.94 a year. From that day on, nobody who subscribes can get the price you pay now.') }}
 
-**{{ __('Your subscription keeps the price you signed up at, for as long as you keep it.') }}** {{ __('The increase only applies to subscriptions created from 1 October onwards.') }}
+**{{ __('Your subscription keeps the price you signed up at, for as long as you keep it.') }}**
 
-{{ __('There is nothing for you to do here, and nothing to click. I just did not want to leave you wondering.') }}
+{{ __('But if you cancel and your subscription ends, that price is gone for good. Coming back later would mean paying the new one, and I will not be able to give you the old one back.') }}
 
-{{ __('Thank you for supporting us. It helps us keep Whisper Money going and carry on making it better.') }}
+{{ __('So if you ever think about cancelling, reply to this email first. If something is not working for you, I would rather fix it.') }}
+
+{{ __('Thank you for supporting us. Subscriptions like yours are what keep Whisper Money going.') }}
 
 Víctor Falcón Ruíz<br>
 {{ __('Co-founder and solo developer, Whisper Money') }}
