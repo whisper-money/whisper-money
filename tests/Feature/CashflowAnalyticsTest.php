@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Models\Account;
@@ -207,7 +208,7 @@ test('cashflow summary includes actual saved and invested amounts', function () 
         'type' => CategoryType::Investment,
     ]);
 
-    $account = Account::factory()->create(['user_id' => $this->user->id]);
+    $account = Account::factory()->create(['user_id' => $this->user->id, 'type' => AccountType::Checking]);
 
     Transaction::factory()->create([
         'user_id' => $this->user->id,
@@ -255,7 +256,7 @@ test('cashflow summary includes actual saved and invested amounts', function () 
         ->assertJsonPath('current.expense', 40000)
         ->assertJsonPath('current.net', 60000)
         ->assertJsonPath('current.savings_rate', 60)
-        ->assertJsonPath('current.savings', 25000)
+        ->assertJsonPath('current.savings', 20000)
         ->assertJsonPath('current.investments', 15000);
 });
 
@@ -1126,7 +1127,7 @@ test('sankey includes savings and investment categories on the expense side', fu
         'name' => 'Brokerage',
     ]);
 
-    $account = Account::factory()->create(['user_id' => $this->user->id]);
+    $account = Account::factory()->create(['user_id' => $this->user->id, 'type' => AccountType::Checking]);
 
     Transaction::factory()->create([
         'user_id' => $this->user->id,
@@ -1614,4 +1615,68 @@ test('a refund booked to a later month nets that month consistently across every
     $this->getJson('/api/cashflow/summary?'.http_build_query(['from' => '2025-05-01', 'to' => '2025-05-31']))
         ->assertOk()
         ->assertJsonPath('current.expense', 6000);
+});
+
+describe('savings legs by account type', function () {
+    beforeEach(function () {
+        $this->savingsCategory = Category::factory()->create([
+            'user_id' => $this->user->id,
+            'type' => CategoryType::Savings,
+            'name' => 'Ahorros',
+        ]);
+        $this->checking = Account::factory()->create(['user_id' => $this->user->id, 'type' => AccountType::Checking]);
+        $this->savingsAccount = Account::factory()->create(['user_id' => $this->user->id, 'type' => AccountType::Savings]);
+
+        $this->bookSavings = fn (Account $account, int $amount) => Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'account_id' => $account->id,
+            'category_id' => $this->savingsCategory->id,
+            'amount' => $amount,
+            'transaction_date' => now(),
+        ]);
+
+        $this->fetch = fn (string $endpoint) => $this->getJson("/api/cashflow/{$endpoint}?".http_build_query([
+            'from' => now()->startOfMonth()->toDateString(),
+            'to' => now()->endOfMonth()->toDateString(),
+        ]))->assertOk()->json();
+    });
+
+    test('a transfer booked on both legs counts once', function () {
+        ($this->bookSavings)($this->checking, -100000);
+        ($this->bookSavings)($this->savingsAccount, 100000);
+
+        $sankey = ($this->fetch)('sankey');
+
+        expect($sankey['expense_categories'])->toHaveCount(1)
+            ->and($sankey['expense_categories'][0]['category']['name'])->toBe('Ahorros')
+            ->and($sankey['expense_categories'][0]['amount'])->toBe(100000)
+            ->and($sankey['income_categories'])->toBe([]);
+
+        expect(($this->fetch)('summary')['current']['savings'])->toBe(100000);
+    });
+
+    test('interest booked on a savings account is left out of cashflow', function () {
+        ($this->bookSavings)($this->savingsAccount, 1200);
+
+        $sankey = ($this->fetch)('sankey');
+
+        expect($sankey['income_categories'])->toBe([])
+            ->and($sankey['expense_categories'])->toBe([]);
+
+        expect(($this->fetch)('summary')['current']['savings'])->toBe(0);
+    });
+
+    test('a withdrawal to a checking account subtracts and shows as a withdrawal when it outweighs', function () {
+        ($this->bookSavings)($this->checking, -20000);
+        ($this->bookSavings)($this->checking, 50000);
+
+        $sankey = ($this->fetch)('sankey');
+
+        expect($sankey['expense_categories'])->toBe([])
+            ->and($sankey['income_categories'])->toHaveCount(1)
+            ->and($sankey['income_categories'][0]['category']['name'])->toBe('Ahorros (withdrawal)')
+            ->and($sankey['income_categories'][0]['amount'])->toBe(30000);
+
+        expect(($this->fetch)('summary')['current']['savings'])->toBe(-30000);
+    });
 });
