@@ -3141,6 +3141,7 @@
     "Select a region": "Seleccionar región",
     ":name (refund)": ":name (devolución)",
     ":name (reversal)": ":name (reintegro)",
+    ":name (withdrawal)": ":name (retirada)",
     " on :date": " el :date",
     "1 month of history": "1 mes de histórico",
     "1 movement": "1 movimiento",

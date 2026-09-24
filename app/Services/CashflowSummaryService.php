@@ -121,8 +121,8 @@ class CashflowSummaryService
 
         return [
             ...self::summarize($income, $expense),
-            'savings' => $this->sumOutflowTransactions($transactions, $userCurrency, CategoryType::Savings),
-            'investments' => $this->sumOutflowTransactions($transactions, $userCurrency, CategoryType::Investment),
+            'savings' => $this->sumSetAside($transactions, $userCurrency, CategoryType::Savings),
+            'investments' => $this->sumSetAside($transactions, $userCurrency, CategoryType::Investment),
         ];
     }
 
@@ -141,15 +141,20 @@ class CashflowSummaryService
     }
 
     /**
+     * What was set aside into $type, net: an outflow adds, a withdrawal back
+     * subtracts, so a period of net withdrawals comes out negative. Legs on a
+     * savings account are skipped, since the one on the other account already
+     * counts that money.
+     *
      * @param  Collection<int, Transaction>  $transactions
      */
-    private function sumOutflowTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
+    private function sumSetAside(Collection $transactions, string $userCurrency, CategoryType $type): int
     {
-        return abs($this->sumConvertedAmounts(
+        return -$this->sumConvertedAmounts(
             $transactions->filter(fn (Transaction $transaction): bool => $transaction->categoryType() === $type
-                && $transaction->amount < 0),
+                && ! $transaction->isSavingsAccountLeg()),
             $userCurrency,
-        ));
+        );
     }
 
     /**
