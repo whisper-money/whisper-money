@@ -5,19 +5,20 @@
      subject, which doubles as the lang/es.json key, or Spanish readers get an
      English subject:
 
-     php artisan email:update price-increase-last-days-oct-2026 --audience=unsubscribed --subject="Five days left at €3.99" --exclude-demo
+     php artisan email:update price-increase-last-days-oct-2026 --audience=unsubscribed --subject="Your last chance at €3.99 ends on Wednesday" --exclude-demo
 
-     "Five days" counts Saturday to Wednesday 30 September at 23:59 CEST, plus
-     what is left of Friday. Sent any later, the count in the subject is wrong.
+     The goal is one thing: subscribe before the price changes. "Five days"
+     counts Saturday to Wednesday 30 September at 23:59 CEST, plus what is left
+     of Friday. Sent any later, the count in the heading is wrong.
 
      The audience is recomputed at send time, so anyone who subscribed after the
      first email drops out on their own. --}}
 <x-mail::message>
-# {{ __('The old price ends on Wednesday') }}
+# {{ __('Five days left at the old price') }}
 
 {{ __('Hi :name,', ['name' => $user->name]) }}
 
-{{ __('The price of Whisper Money goes up on 1 October, and this is the last time I will write to you about it. You have until Wednesday 30 September to subscribe at the price you see today.') }}
+{{ __('On 1 October Whisper Money goes from €3.99 to €8.99 a month. This is the last email I will send you about it, and your last chance to subscribe at the price you see today: you have until Wednesday 30 September.') }}
 
 <x-mail::table>
 | {{ __('Plan') }}        | {{ __('Today') }}  | {{ __('From 1 October') }} |
