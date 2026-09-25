@@ -603,6 +603,35 @@ describe('EditTransactionDialog', () => {
         expect(onDelete).toHaveBeenCalledWith(manualTransaction);
     });
 
+    it('closes the dialog and asks the parent to split when the split row is clicked', () => {
+        const onSplit = vi.fn();
+        const onOpenChange = vi.fn();
+
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={onOpenChange}
+                onSuccess={vi.fn()}
+                onSplit={onSplit}
+                mode="edit"
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'Cancel' }),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByTestId('split-transaction'));
+
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+        expect(onSplit).toHaveBeenCalledWith(manualTransaction);
+    });
+
     it('hides the Delete button when no onDelete handler is provided', () => {
         render(
             <EditTransactionDialog

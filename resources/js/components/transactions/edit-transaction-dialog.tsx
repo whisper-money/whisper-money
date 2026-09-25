@@ -25,6 +25,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
 import { fetchJson } from '@/lib/fetch-json';
@@ -55,6 +60,7 @@ import { getYear, parseISO } from 'date-fns';
 import {
     CalendarDays,
     ChevronDown,
+    ChevronRight,
     ChevronUp,
     CircleDollarSign,
     CircleSlash,
@@ -934,6 +940,35 @@ export function EditTransactionDialog({
           ? FileText
           : Landmark;
 
+    const splitRow = mode === 'edit' &&
+        onSplit &&
+        transaction &&
+        canSplit(transaction) && (
+            <button
+                type="button"
+                onClick={() => {
+                    onOpenChange(false);
+                    onSplit(transaction);
+                }}
+                disabled={isSubmitting}
+                data-testid="split-transaction"
+                className="flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-colors outline-none hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-accent/50"
+            >
+                <Split className="size-4 shrink-0" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="font-medium">
+                        {__('Split into parts')}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        {__('Divide :amount across categories', {
+                            amount: formattedAmount,
+                        })}
+                    </span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+        );
+
     const descriptionField = (
         <div className="space-y-2">
             <FormLabel htmlFor="description">{__('Description')}</FormLabel>
@@ -1201,7 +1236,19 @@ export function EditTransactionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[525px]">
+            <DialogContent
+                className="focus:outline-none sm:max-w-[525px]"
+                // On a read-only transaction the split row is the first
+                // tabbable element, and landing on it opened the dialog with
+                // it ringed as if selected. Focus the dialog itself instead;
+                // Tab still reaches the row.
+                onOpenAutoFocus={(event) => {
+                    if (splitRow && !canEditAllFields) {
+                        event.preventDefault();
+                        (event.currentTarget as HTMLElement).focus();
+                    }
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>
                         {mode === 'create'
@@ -1296,6 +1343,8 @@ export function EditTransactionDialog({
                                     {!isMinimal && balanceControl}
                                 </div>
 
+                                {splitRow}
+
                                 {descriptionField}
 
                                 {isMinimal ? (
@@ -1384,6 +1433,8 @@ export function EditTransactionDialog({
                                         </p>
                                     </div>
 
+                                    {splitRow}
+
                                     {canEditDate && dateField}
 
                                     {canEditDescription && descriptionField}
@@ -1398,47 +1449,31 @@ export function EditTransactionDialog({
                         {mode === 'create' && moreOptionsTrigger}
                     </div>
 
-                    <DialogFooter>
+                    {/* One row on every width in edit mode: the dialog's X,
+                        Esc and tapping outside already close it, so there is
+                        no Cancel to stack. */}
+                    <DialogFooter className={cn(mode === 'edit' && 'flex-row')}>
                         {mode === 'edit' && onDelete && transaction && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => {
-                                    onOpenChange(false);
-                                    onDelete(transaction);
-                                }}
-                                disabled={isSubmitting}
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto dark:hover:bg-destructive/20"
-                            >
-                                <Trash2 />
-                                {__('Delete')}
-                            </Button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => {
+                                            onOpenChange(false);
+                                            onDelete(transaction);
+                                        }}
+                                        disabled={isSubmitting}
+                                        aria-label={__('Delete')}
+                                        className="shrink-0"
+                                    >
+                                        <Trash2 className="text-destructive" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{__('Delete')}</TooltipContent>
+                            </Tooltip>
                         )}
-                        {mode === 'edit' &&
-                            onSplit &&
-                            transaction &&
-                            canSplit(transaction) && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => {
-                                        onOpenChange(false);
-                                        onSplit(transaction);
-                                    }}
-                                    disabled={isSubmitting}
-                                >
-                                    <Split />
-                                    {__('Split')}
-                                </Button>
-                            )}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                            disabled={isSubmitting}
-                        >
-                            {__('Cancel')}
-                        </Button>
                         {mode === 'create' && (
                             <Button
                                 type="button"
@@ -1454,6 +1489,9 @@ export function EditTransactionDialog({
                             type="submit"
                             disabled={isSubmitting}
                             data-testid="submit-transaction"
+                            className={cn(
+                                mode === 'edit' && 'flex-1 sm:flex-none',
+                            )}
                         >
                             {isSubmitting
                                 ? __('Saving...')
