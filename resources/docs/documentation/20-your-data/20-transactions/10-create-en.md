@@ -29,7 +29,7 @@ On an account connected to a bank the option is not offered: the bank is the sou
 
 ## Automation rules still run
 
-A transaction created by hand is matched against your automation rules like any other. A rule only fills what you left empty: choose a category yourself and the rule will not replace it. When a rule matches, its name is shown after saving.
+A transaction created by hand is matched against your automation rules like any other. A rule only fills what you left empty: choose a category yourself and the rule will not replace it. When a rule matches, its name is shown after saving. The exception is a [duplicated](/documentation/transactions/duplicate) transaction, which keeps what the original had.
 
 ## FAQ
 
