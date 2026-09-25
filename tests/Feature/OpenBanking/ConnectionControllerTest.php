@@ -46,6 +46,23 @@ test('connections page only shows own connections', function () {
     );
 });
 
+test('connections are badged beta from the curated list, not the stored column', function () {
+    $user = User::factory()->onboarded()->create();
+    $listed = BankingConnection::factory()->create(['user_id' => $user->id, 'aspsp_name' => 'Banco Mediolanum', 'aspsp_country' => 'ES']);
+    $kraken = BankingConnection::factory()->kraken()->create(['user_id' => $user->id]);
+    $unlisted = BankingConnection::factory()->create(['user_id' => $user->id, 'aspsp_name' => 'Openbank', 'aspsp_country' => 'ES']);
+    $unlisted->forceFill(['aspsp_beta' => true])->save();
+
+    $connections = collect($this->actingAs($user)->get('/settings/connections')
+        ->assertOk()
+        ->inertiaProps('connections'))
+        ->keyBy('id');
+
+    expect($connections[$listed->id]['is_beta'])->toBeTrue()
+        ->and($connections[$kraken->id]['is_beta'])->toBeTrue()
+        ->and($connections[$unlisted->id]['is_beta'])->toBeFalse();
+});
+
 test('users can disconnect a banking connection and keep accounts as manual', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);

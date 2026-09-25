@@ -278,15 +278,13 @@ describe('ConnectionsPage', () => {
         render(
             <ConnectionsPage
                 connections={[
-                    makeConnection({ id: 'c1', aspsp_beta: true }),
-                    makeConnection({ id: 'c2', aspsp_beta: false }),
-                    makeConnection({ id: 'c3' }),
+                    makeConnection({ id: 'c1', is_beta: true }),
+                    makeConnection({ id: 'c2', is_beta: false }),
                 ]}
             />,
         );
 
-        // Only the beta one, and neither the stable nor the not-yet-backfilled
-        // connection.
+        // Only the beta one.
         expect(screen.getAllByText('Beta')).toHaveLength(1);
     });
 
@@ -297,26 +295,26 @@ describe('ConnectionsPage', () => {
                     makeConnection({
                         status: 'error',
                         error_message: 'Something went wrong.',
-                        aspsp_beta: true,
+                        is_beta: true,
                     }),
                 ]}
             />,
         );
 
         expect(
-            screen.getByText(/still in beta at our banking provider/i),
+            screen.getByText(/its connection fails more often/i),
         ).toBeInTheDocument();
     });
 
     it('keeps the beta explanation out of a healthy connection', () => {
         render(
             <ConnectionsPage
-                connections={[makeConnection({ aspsp_beta: true })]}
+                connections={[makeConnection({ is_beta: true })]}
             />,
         );
 
         expect(
-            screen.queryByText(/still in beta at our banking provider/i),
+            screen.queryByText(/its connection fails more often/i),
         ).not.toBeInTheDocument();
     });
 });
