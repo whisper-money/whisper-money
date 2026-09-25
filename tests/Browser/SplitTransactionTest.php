@@ -36,7 +36,7 @@ it('splits a transaction into two parts and merges it back', function () {
     $page->assertSee('SUPERMARKET RUN')
         ->click('SUPERMARKET RUN')
         ->waitForText('Edit Transaction', 5)
-        ->click('Split')
+        ->click('[data-testid="split-transaction"]')
         ->waitForText('Split transaction', 5)
         ->fill('#split-amount-0', '30')
         ->fill('#split-amount-1', '20')
