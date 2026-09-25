@@ -229,6 +229,10 @@ export function EditTransactionDialog({
     // entry of a batch was wrong for the rest of it too.
     const defaultAccountId = useRef('');
     const defaultDate = useRef('');
+    const defaultCategoryId = useRef('null');
+    // Only the first save is the copy: what "Save and add another" brings next
+    // is a transaction of its own, so rules and analytics treat it as one.
+    const isDuplicate = useRef(false);
     const amountInputRef = useRef<HTMLInputElement>(null);
     const [focusAmountAfterSave, setFocusAmountAfterSave] = useState(false);
     const [accountId, setAccountId] = useState<string>('');
@@ -327,6 +331,8 @@ export function EditTransactionDialog({
             if (duplicateFrom) {
                 fillFrom(duplicateFrom);
             }
+            isDuplicate.current = !!duplicateFrom;
+            defaultCategoryId.current = duplicateFrom?.category_id || 'null';
         }
     }, [
         mode,
@@ -355,7 +361,7 @@ export function EditTransactionDialog({
         // settled on for the original, so a rule has nothing left to decide.
         if (
             mode !== 'create' ||
-            duplicateFrom ||
+            isDuplicate.current ||
             automationRules.length === 0
         ) {
             return {
@@ -622,7 +628,7 @@ export function EditTransactionDialog({
 
                 captureEvent('transaction_created', {
                     source: 'manually_created',
-                    origin: duplicateFrom ? 'duplicate' : origin,
+                    origin: isDuplicate.current ? 'duplicate' : origin,
                     expanded,
                     saved_and_added_another: addAnother,
                     account_chip_changed:
@@ -632,11 +638,13 @@ export function EditTransactionDialog({
                     // transaction's category, so anything else is the user's
                     // own pick.
                     category_chip_changed:
-                        categoryId !== (duplicateFrom?.category_id || 'null'),
+                        categoryId !== defaultCategoryId.current,
                     rule_applied_category: ruleAppliedCategory,
                 });
 
                 onSuccess(newTransaction);
+
+                isDuplicate.current = false;
 
                 if (addAnother) {
                     setUnsignedAmount(0);

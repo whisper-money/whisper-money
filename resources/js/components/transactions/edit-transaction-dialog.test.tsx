@@ -1434,4 +1434,35 @@ describe('EditTransactionDialog', () => {
             'account-1',
         );
     });
+
+    it('treats what comes after a duplicate as a transaction of its own', async () => {
+        vi.mocked(evaluateRulesForNewTransaction).mockClear();
+        vi.mocked(captureEvent).mockClear();
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        renderCreateDialog({
+            accounts: [checkingAccount, savingsAccount],
+            automationRules: [{ id: 'rule-1' } as AutomationRule],
+            duplicateFrom: monthlyRent,
+        });
+
+        fireEvent.click(screen.getByTestId('submit-and-add-another'));
+        await waitFor(() => {
+            expect(captureEvent).toHaveBeenCalledTimes(1);
+        });
+        await fillAndSubmit('submit-transaction');
+        await waitFor(() => {
+            expect(captureEvent).toHaveBeenCalledTimes(2);
+        });
+
+        expect(evaluateRulesForNewTransaction).toHaveBeenCalledTimes(1);
+        expect(
+            vi.mocked(captureEvent).mock.calls.map(([, props]) => props),
+        ).toEqual([
+            expect.objectContaining({ origin: 'duplicate' }),
+            expect.objectContaining({ origin: 'full_dialog' }),
+        ]);
+    });
 });
