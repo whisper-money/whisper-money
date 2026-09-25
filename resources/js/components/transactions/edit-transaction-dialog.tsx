@@ -1236,7 +1236,19 @@ export function EditTransactionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[525px]">
+            <DialogContent
+                className="focus:outline-none sm:max-w-[525px]"
+                // On a read-only transaction the split row is the first
+                // tabbable element, and landing on it opened the dialog with
+                // it ringed as if selected. Focus the dialog itself instead;
+                // Tab still reaches the row.
+                onOpenAutoFocus={(event) => {
+                    if (splitRow && !canEditAllFields) {
+                        event.preventDefault();
+                        (event.currentTarget as HTMLElement).focus();
+                    }
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>
                         {mode === 'create'
