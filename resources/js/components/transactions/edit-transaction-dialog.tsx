@@ -25,6 +25,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
 import { fetchJson } from '@/lib/fetch-json';
@@ -1437,21 +1442,25 @@ export function EditTransactionDialog({
                         no Cancel to stack. */}
                     <DialogFooter className={cn(mode === 'edit' && 'flex-row')}>
                         {mode === 'edit' && onDelete && transaction && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => {
-                                    onOpenChange(false);
-                                    onDelete(transaction);
-                                }}
-                                disabled={isSubmitting}
-                                aria-label={__('Delete')}
-                                title={__('Delete')}
-                                className="shrink-0"
-                            >
-                                <Trash2 className="text-destructive" />
-                            </Button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => {
+                                            onOpenChange(false);
+                                            onDelete(transaction);
+                                        }}
+                                        disabled={isSubmitting}
+                                        aria-label={__('Delete')}
+                                        className="shrink-0"
+                                    >
+                                        <Trash2 className="text-destructive" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{__('Delete')}</TooltipContent>
+                            </Tooltip>
                         )}
                         {mode === 'create' && (
                             <Button
