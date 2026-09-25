@@ -35,6 +35,7 @@ interface CreateColumnsOptions {
     labels: Label[];
     locale: string;
     onEdit: (transaction: ServerTransaction) => void;
+    onDuplicate: (transaction: ServerTransaction) => void;
     onDelete: (transaction: ServerTransaction) => void;
     onUpdate: (transaction: ServerTransaction) => void;
     onCategorized?: (
@@ -60,6 +61,7 @@ export function createTransactionColumns({
     labels,
     locale,
     onEdit,
+    onDuplicate,
     onDelete,
     onUpdate,
     onCategorized,
@@ -392,6 +394,7 @@ export function createTransactionColumns({
                                 {getTransactionRowActions({
                                     transaction,
                                     onEdit,
+                                    onDuplicate,
                                     onReEvaluateRules,
                                     onAutomate,
                                     onDelete,
