@@ -73,7 +73,8 @@ import { toast } from 'sonner';
 export type TransactionCreateOrigin =
     | 'quick_add'
     | 'full_dialog'
-    | 'account_page';
+    | 'account_page'
+    | 'duplicate';
 
 interface EditTransactionDialogProps {
     transaction: ServerTransaction | null;
@@ -95,6 +96,11 @@ interface EditTransactionDialogProps {
     onSplit?: (transaction: ServerTransaction) => void;
     mode: 'create' | 'edit';
     initialAccountId?: string | null;
+    /**
+     * Create mode only: open the form filled in from this transaction, dated
+     * today, for the recurring ones entered by hand.
+     */
+    duplicateFrom?: ServerTransaction | null;
     /** Which surface opened the dialog, for `transaction_created`. */
     origin?: TransactionCreateOrigin;
     /**
@@ -196,6 +202,7 @@ export function EditTransactionDialog({
     onSplit,
     mode,
     initialAccountId = null,
+    duplicateFrom = null,
     origin = 'full_dialog',
     onRequestEdit,
 }: EditTransactionDialogProps) {
@@ -265,21 +272,23 @@ export function EditTransactionDialog({
         transactionType === 'income' ? unsignedAmount : -unsignedAmount;
 
     useEffect(() => {
+        function fillFrom(source: ServerTransaction) {
+            setDescription(source.description);
+            setUnsignedAmount(Math.abs(source.amount));
+            setTransactionType(source.amount > 0 ? 'income' : 'expense');
+            setCurrencyCode(source.currency_code);
+            setCategoryId(source.category_id || 'null');
+            setSelectedLabelIds(
+                source.label_ids || source.labels?.map((l) => l.id) || [],
+            );
+            setNotes(source.notes || '');
+            setShowNotes(!!source.notes);
+        }
+
         if (mode === 'edit' && transaction) {
             setTransactionDate(transaction.transaction_date);
-            setDescription(transaction.description);
-            setUnsignedAmount(Math.abs(transaction.amount));
-            setTransactionType(transaction.amount > 0 ? 'income' : 'expense');
             setAccountId(transaction.account_id);
-            setCurrencyCode(transaction.currency_code);
-            setCategoryId(transaction.category_id || 'null');
-            setSelectedLabelIds(
-                transaction.label_ids ||
-                    transaction.labels?.map((l) => l.id) ||
-                    [],
-            );
-            setNotes(transaction.notes || '');
-            setShowNotes(!!transaction.notes);
+            fillFrom(transaction);
         } else if (mode === 'create' && open) {
             const today = todayDateString();
             setTransactionDate(today);
@@ -291,11 +300,15 @@ export function EditTransactionDialog({
             setShowDateField(false);
             defaultDate.current = today;
             const availableAccounts = filterTransactionalAccounts(accounts);
-            // The chip always opens filled in: the account being read wins,
-            // then the one the last manual transaction went to, then simply
-            // the first. Pre-filling is fine because the chip shows what it
-            // picked — it is hiding it that would not be.
+            // The chip always opens filled in: the duplicated transaction's
+            // account wins, then the account being read, then the one the last
+            // manual transaction went to, then simply the first. Pre-filling is
+            // fine because the chip shows what it picked — it is hiding it
+            // that would not be.
             const initialAccount =
+                availableAccounts.find(
+                    (account) => account.id === duplicateFrom?.account_id,
+                ) ??
                 availableAccounts.find(
                     (account) => account.id === initialAccountId,
                 ) ??
@@ -311,8 +324,19 @@ export function EditTransactionDialog({
             setCategoryId('null');
             setSelectedLabelIds([]);
             setNotes('');
+            if (duplicateFrom) {
+                fillFrom(duplicateFrom);
+            }
         }
-    }, [mode, transaction, open, accounts, initialAccountId, userCurrencyCode]);
+    }, [
+        mode,
+        transaction,
+        open,
+        accounts,
+        initialAccountId,
+        userCurrencyCode,
+        duplicateFrom,
+    ]);
 
     useEffect(() => {
         if (!focusAmountAfterSave || isSubmitting) {
@@ -327,7 +351,13 @@ export function EditTransactionDialog({
     }, [focusAmountAfterSave, isSubmitting]);
 
     function checkAndApplyAutomationRules() {
-        if (mode !== 'create' || automationRules.length === 0) {
+        // A duplicate already carries the category, labels and notes the user
+        // settled on for the original, so a rule has nothing left to decide.
+        if (
+            mode !== 'create' ||
+            duplicateFrom ||
+            automationRules.length === 0
+        ) {
             return {
                 categoryId: null,
                 labelIds: [] as string[],
@@ -592,15 +622,17 @@ export function EditTransactionDialog({
 
                 captureEvent('transaction_created', {
                     source: 'manually_created',
-                    origin,
+                    origin: duplicateFrom ? 'duplicate' : origin,
                     expanded,
                     saved_and_added_another: addAnother,
                     account_chip_changed:
                         accountId !== defaultAccountId.current,
                     date_chip_changed: transactionDate !== defaultDate.current,
-                    // The chip always opens on Uncategorized, so anything else
-                    // is the user's own pick.
-                    category_chip_changed: categoryId !== 'null',
+                    // The chip opens on Uncategorized, or on the duplicated
+                    // transaction's category, so anything else is the user's
+                    // own pick.
+                    category_chip_changed:
+                        categoryId !== (duplicateFrom?.category_id || 'null'),
                     rule_applied_category: ruleAppliedCategory,
                 });
 

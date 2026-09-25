@@ -26,6 +26,7 @@ function buildColumns(isDateHidden: boolean) {
         labels: [],
         locale: 'en',
         onEdit: () => {},
+        onDuplicate: () => {},
         onDelete: () => {},
         onUpdate: () => {},
         onReEvaluateRules: () => {},

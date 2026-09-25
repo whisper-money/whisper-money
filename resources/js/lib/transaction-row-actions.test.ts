@@ -26,6 +26,7 @@ function transaction(
 
 const handlers = {
     onEdit: () => {},
+    onDuplicate: () => {},
     onReEvaluateRules: () => {},
     onAutomate: () => {},
     onDelete: () => {},
@@ -34,7 +35,7 @@ const handlers = {
 };
 
 describe('getTransactionRowActions', () => {
-    it('offers splitting and deleting on an ordinary transaction', () => {
+    it('offers duplicating, splitting and deleting on an ordinary transaction', () => {
         const ids = getTransactionRowActions({
             transaction: transaction(),
             ...handlers,
@@ -42,6 +43,7 @@ describe('getTransactionRowActions', () => {
 
         expect(ids).toEqual([
             'edit',
+            'duplicate',
             'split',
             're-evaluate-rules',
             'automate',
@@ -63,6 +65,22 @@ describe('getTransactionRowActions', () => {
         ]);
         expect(ids).not.toContain('delete');
         expect(ids).not.toContain('split');
+        expect(ids).not.toContain('duplicate');
+    });
+
+    it('hands the transaction to the duplicate handler', () => {
+        const duplicated: ServerTransaction[] = [];
+        const source = transaction();
+
+        getTransactionRowActions({
+            ...handlers,
+            transaction: source,
+            onDuplicate: (selected) => duplicated.push(selected),
+        })
+            .find((action) => action.id === 'duplicate')
+            ?.onSelect();
+
+        expect(duplicated).toEqual([source]);
     });
 
     it('does not offer splitting a transaction of zero', () => {

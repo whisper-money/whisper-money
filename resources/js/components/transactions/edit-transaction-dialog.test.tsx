@@ -3,6 +3,8 @@ import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
+import { type ServerTransaction } from '@/types/transaction';
+import { todayDateString } from '@/utils/date';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
 import { toast } from 'sonner';
@@ -1355,6 +1357,81 @@ describe('EditTransactionDialog', () => {
         expect(captureEvent).toHaveBeenCalledWith(
             'transaction_created',
             expect.objectContaining({ rule_applied_category: false }),
+        );
+    });
+
+    const savingsAccount = {
+        ...checkingAccount,
+        id: 'account-2',
+        name: 'Savings',
+    };
+
+    const monthlyRent = {
+        id: 'tx-rent',
+        account_id: 'account-2',
+        description: 'Rent',
+        transaction_date: '2026-01-01',
+        amount: -85000,
+        currency_code: 'USD',
+        category_id: 'category-1',
+        label_ids: ['label-1'],
+        notes: 'Flat on Main St',
+        source: 'enablebanking',
+    } as ServerTransaction;
+
+    it('fills a duplicate in from the original, dated today', async () => {
+        vi.mocked(evaluateRulesForNewTransaction).mockClear();
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        renderCreateDialog({
+            accounts: [checkingAccount, savingsAccount],
+            categories: [groceries],
+            automationRules: [{ id: 'rule-1' } as AutomationRule],
+            duplicateFrom: monthlyRent,
+        });
+
+        expect(screen.getByTestId('account-value')).toHaveAttribute(
+            'data-value',
+            'account-2',
+        );
+
+        fireEvent.click(screen.getByTestId('submit-transaction'));
+
+        await waitFor(() => {
+            expect(transactionSyncService.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    account_id: 'account-2',
+                    description: 'Rent',
+                    amount: -85000,
+                    currency_code: 'USD',
+                    category_id: 'category-1',
+                    label_ids: ['label-1'],
+                    notes: 'Flat on Main St',
+                    transaction_date: todayDateString(),
+                    source: 'manually_created',
+                }),
+                expect.anything(),
+            );
+        });
+        // The copy keeps what the user settled on; no rule gets a say.
+        expect(evaluateRulesForNewTransaction).not.toHaveBeenCalled();
+        expect(captureEvent).toHaveBeenCalledWith(
+            'transaction_created',
+            expect.objectContaining({
+                origin: 'duplicate',
+                category_chip_changed: false,
+            }),
+        );
+    });
+
+    it('falls back to the usual account when the original one is gone', () => {
+        renderCreateDialog({ duplicateFrom: monthlyRent });
+
+        expect(screen.getByTestId('account-value')).toHaveAttribute(
+            'data-value',
+            'account-1',
         );
     });
 });
