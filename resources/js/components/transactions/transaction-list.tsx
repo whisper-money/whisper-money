@@ -130,6 +130,7 @@ interface TransactionRowProps {
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
     onEdit: (transaction: ServerTransaction) => void;
+    onDuplicate: (transaction: ServerTransaction) => void;
     onReEvaluateRules: (transaction: ServerTransaction) => void;
     onAutomate: (transaction: ServerTransaction) => void;
     onDelete: (transaction: ServerTransaction) => void;
@@ -142,6 +143,7 @@ function TransactionRowComponent({
     virtualRow,
     rowVirtualizer,
     onEdit,
+    onDuplicate,
     onReEvaluateRules,
     onAutomate,
     onDelete,
@@ -213,6 +215,7 @@ function TransactionRowComponent({
                 {getTransactionRowActions({
                     transaction,
                     onEdit,
+                    onDuplicate,
                     onReEvaluateRules,
                     onAutomate,
                     onDelete,
@@ -361,7 +364,8 @@ export function TransactionList({
     });
     const [editTransaction, setEditTransaction] =
         useState<ServerTransaction | null>(null);
-    const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [duplicateTransaction, setDuplicateTransaction] =
+        useState<ServerTransaction | null>(null);
     const [deleteTransaction, setDeleteTransaction] =
         useState<ServerTransaction | null>(null);
     const [splitTransaction, setSplitTransaction] =
@@ -790,6 +794,7 @@ export function TransactionList({
             labels,
             locale,
             onEdit: setEditTransaction,
+            onDuplicate: setDuplicateTransaction,
             onDelete: setDeleteTransaction,
             onUpdate: updateTransaction,
             onCategorized: showAutomatizeToast,
@@ -1047,6 +1052,7 @@ export function TransactionList({
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
                     onEdit={setEditTransaction}
+                    onDuplicate={setDuplicateTransaction}
                     onReEvaluateRules={handleReEvaluateRules}
                     onDelete={setDeleteTransaction}
                     onAutomate={openAutomateDialog}
@@ -1189,11 +1195,12 @@ export function TransactionList({
                 banks={banks}
                 labels={labels}
                 automationRules={automationRules}
-                open={createDialogOpen}
-                onOpenChange={setCreateDialogOpen}
-                onSuccess={() => {}}
+                open={!!duplicateTransaction}
+                onOpenChange={(open) => !open && setDuplicateTransaction(null)}
+                onSuccess={reloadPage}
                 onLabelCreated={handleLabelCreated}
                 mode="create"
+                duplicateFrom={duplicateTransaction}
             />
 
             <AutomateCategorizationDialog
