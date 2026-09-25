@@ -236,7 +236,7 @@ describe('ConnectAccountDialog', () => {
         expect(screen.getAllByText('Wise')).toHaveLength(1);
     });
 
-    it('badges the banks the provider still calls beta', async () => {
+    it('badges the banks the picker marks as beta', async () => {
         await reachBankStep(
             [],
             [institution('Openbank', '', true), institution('BBVA')],

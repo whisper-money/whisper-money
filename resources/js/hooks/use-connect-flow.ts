@@ -338,7 +338,6 @@ export function useConnectFlow(
                       aspsp_name: selectedBank.name,
                       country,
                       logo: selectedBank.logo,
-                      beta: selectedBank.beta ?? false,
                   });
 
             leavePage(redirectUrl);

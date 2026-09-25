@@ -40,6 +40,22 @@ enum BankingProvider: string
     }
 
     /**
+     * Whether a bank is on our curated beta list, `banking.beta_banks`.
+     */
+    public function isBetaBank(string $aspspName, ?string $country): bool
+    {
+        $banks = config('banking.beta_banks')[$this->value] ?? [];
+
+        if ($banks === '*') {
+            return true;
+        }
+
+        $countries = $banks[$aspspName] ?? [];
+
+        return $countries === '*' || in_array($country, $countries, true);
+    }
+
+    /**
      * The account type that this provider's pending accounts default to.
      */
     public function defaultAccountType(): AccountType

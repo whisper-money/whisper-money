@@ -19,10 +19,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * @property bool $has_pending_accounts
  * @property bool $can_sync_manually
+ * @property bool $is_beta
  * @property Carbon|null $next_sync_attempt_at
  * @property string|null $aspsp_name
  * @property string|null $aspsp_country
- * @property bool|null $aspsp_beta
  * @property BankingProvider $provider
  * @property BankingConnectionStatus $status
  * @property Carbon|null $valid_until
@@ -55,7 +55,6 @@ class BankingConnection extends Model
         'aspsp_name',
         'aspsp_country',
         'aspsp_logo',
-        'aspsp_beta',
         'status',
         'valid_until',
         'last_synced_at',
@@ -77,6 +76,8 @@ class BankingConnection extends Model
         'authorization_id',
         'state_token',
         'session_id',
+        // Superseded by `isBeta()`; kept only until the column is dropped.
+        'aspsp_beta',
     ];
 
     /**
@@ -97,12 +98,19 @@ class BankingConnection extends Model
         ];
     }
 
+    /**
+     * Whether this connection's bank is on our curated beta list.
+     */
+    public function isBeta(): bool
+    {
+        return $this->provider->isBetaBank((string) $this->aspsp_name, $this->aspsp_country);
+    }
+
     protected function casts(): array
     {
         return [
             'provider' => BankingProvider::class,
             'status' => BankingConnectionStatus::class,
-            'aspsp_beta' => 'boolean',
             'valid_until' => 'datetime',
             'last_synced_at' => 'datetime',
             'ledger_synced_until' => 'datetime',

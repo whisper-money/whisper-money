@@ -53,6 +53,7 @@ class ConnectionController extends Controller
             ->each(function (BankingConnection $connection) use ($nextScheduledSync) {
                 $connection->has_pending_accounts = $connection->hasPendingAccounts();
                 $connection->can_sync_manually = ! $connection->isRateLimited();
+                $connection->is_beta = $connection->isBeta();
                 $connection->next_sync_attempt_at = $nextScheduledSync?->max($connection->rate_limited_until);
             });
 

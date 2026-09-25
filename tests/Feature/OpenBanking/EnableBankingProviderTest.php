@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BankingProvider;
 use App\Exceptions\Banking\BankingRequestException;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
@@ -649,13 +650,15 @@ test('a 422 the bank did not raise about the period stays an application error',
     Log::shouldHaveReceived('log')->with('error', 'EnableBanking API error', Mockery::any())->once();
 });
 
-test('getInstitutions passes the provider beta flag through, defaulting to stable', function () {
+test('getInstitutions marks only the curated banks as beta, ignoring the provider flag', function () {
     Http::fake([
         'api.enablebanking.com/aspsps*' => Http::response([
             'aspsps' => [
+                ['name' => 'MyInvestor Banco', 'country' => 'ES', 'beta' => false],
                 ['name' => 'Openbank', 'country' => 'ES', 'beta' => true],
-                ['name' => 'BBVA', 'country' => 'ES', 'beta' => false],
-                ['name' => 'CaixaBank', 'country' => 'ES'],
+                ['name' => 'Trade Republic', 'country' => 'ES'],
+                // Curated for FR only, so ES stays stable despite the provider flag.
+                ['name' => 'American Express', 'country' => 'ES', 'beta' => true],
             ],
         ]),
     ]);
@@ -663,11 +666,15 @@ test('getInstitutions passes the provider beta flag through, defaulting to stabl
     $institutions = collect(enableBankingProviderForTest()->getInstitutions('ES'))
         ->keyBy('name');
 
-    expect($institutions['Openbank']['beta'])->toBeTrue()
-        ->and($institutions['BBVA']['beta'])->toBeFalse()
-        // A connector the provider says nothing about is not a beta connector.
-        ->and($institutions['CaixaBank']['beta'])->toBeFalse();
+    expect($institutions['MyInvestor Banco']['beta'])->toBeTrue()
+        ->and($institutions['Trade Republic']['beta'])->toBeTrue()
+        ->and($institutions['Openbank']['beta'])->toBeFalse()
+        ->and($institutions['American Express']['beta'])->toBeFalse();
 });
+
+test('Trade Republic is beta in every country', function (string $country) {
+    expect(BankingProvider::EnableBanking->isBetaBank('Trade Republic', $country))->toBeTrue();
+})->with(['ES', 'LT', 'DE', 'FR', 'BE']);
 
 test('startAuthorization upgrades the authorization url the provider hands back to https', function () {
     Http::fake([
