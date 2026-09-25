@@ -3,6 +3,7 @@
 namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
+use App\Enums\BankingProvider;
 use App\Exceptions\Banking\BankingRequestException;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
@@ -53,12 +54,9 @@ class EnableBankingProvider implements BankingProviderInterface
                 'country' => $aspsp['country'],
                 'logo' => $aspsp['logo'] ?? null,
                 'maximum_consent_validity' => $aspsp['maximum_consent_validity'] ?? null,
-                // The provider's own reliability signal, and by a wide margin
-                // the best one we have: over a week of calls, its beta
-                // connectors failed eleven times as often as the stable ones,
-                // and they are left out of the provider's public status page,
-                // so nobody reports their outages either.
-                'beta' => (bool) ($aspsp['beta'] ?? false),
+                // Our curated list, not the provider's `beta` flag: see
+                // `banking.beta_banks`.
+                'beta' => BankingProvider::EnableBanking->isBetaBank($aspsp['name'], $aspsp['country']),
             ])
             ->all();
     }
