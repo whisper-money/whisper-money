@@ -223,8 +223,8 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
         help: {
             before: 'Create an API key in Kraken under',
             href: 'https://pro.kraken.com/app/settings/api',
-            link: 'Settings → API',
-            after: 'Enable only the "Query Funds" and "Query Ledger Entries" permissions: both are required, and nothing else is needed.',
+            link: 'Account → Connections & APIs',
+            after: 'Enable only "Query Funds", "Query Open Orders & Trades", "Query Closed Orders & Trades" and "Query Ledger Entries". Leave everything else off.',
         },
     },
     {

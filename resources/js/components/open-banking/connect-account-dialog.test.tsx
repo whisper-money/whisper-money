@@ -285,6 +285,9 @@ describe('ConnectAccountDialog', () => {
             expect(
                 screen.queryByText('This bank is still in beta'),
             ).not.toBeInTheDocument();
+            expect(
+                screen.getByText('Account → Connections & APIs'),
+            ).toBeInTheDocument();
         } finally {
             vi.useRealTimers();
         }
