@@ -4,6 +4,7 @@ use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingProvider;
 use App\Models\BankingConnection;
 use App\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Mockery\MockInterface;
 
 /**
@@ -173,4 +174,10 @@ test('one country failing does not stop the others, and the run still fails', fu
 
     expect($german->refresh()->aspsp_beta)->toBeTrue()
         ->and($spanish->refresh()->aspsp_beta)->toBeNull();
+});
+
+it('is not scheduled, so manually curated beta flags are not overwritten', function () {
+    $commands = collect(app(Schedule::class)->events())->pluck('command')->implode("\n");
+
+    expect($commands)->not->toContain('banking:sync-aspsp-beta');
 });
