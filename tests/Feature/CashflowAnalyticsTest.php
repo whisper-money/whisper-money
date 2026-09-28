@@ -1679,4 +1679,44 @@ describe('savings legs by account type', function () {
 
         expect(($this->fetch)('summary')['current']['savings'])->toBe(-30000);
     });
+
+    test('a set-aside outflow on an investment or retirement account is left out of cashflow', function (AccountType $type, CategoryType $categoryType) {
+        $this->savingsCategory->update(['type' => $categoryType]);
+        $account = Account::factory()->create(['user_id' => $this->user->id, 'type' => $type]);
+
+        ($this->bookSavings)($account, -270500);
+
+        $sankey = ($this->fetch)('sankey');
+
+        expect($sankey['income_categories'])->toBe([])
+            ->and($sankey['expense_categories'])->toBe([]);
+
+        $summary = ($this->fetch)('summary')['current'];
+
+        expect($summary['savings'])->toBe(0)
+            ->and($summary['investments'])->toBe(0);
+    })->with([
+        'investment account' => AccountType::Investment,
+        'retirement account' => AccountType::Retirement,
+    ])->with([
+        'savings category' => CategoryType::Savings,
+        'investment category' => CategoryType::Investment,
+    ]);
+
+    test('a transfer to an investment account booked on both legs counts once', function () {
+        $this->savingsCategory->update(['type' => CategoryType::Investment, 'name' => 'Inversiones']);
+        $investmentAccount = Account::factory()->create(['user_id' => $this->user->id, 'type' => AccountType::Investment]);
+
+        ($this->bookSavings)($this->checking, -100000);
+        ($this->bookSavings)($investmentAccount, 100000);
+
+        $sankey = ($this->fetch)('sankey');
+
+        expect($sankey['expense_categories'])->toHaveCount(1)
+            ->and($sankey['expense_categories'][0]['category']['name'])->toBe('Inversiones')
+            ->and($sankey['expense_categories'][0]['amount'])->toBe(100000)
+            ->and($sankey['income_categories'])->toBe([]);
+
+        expect(($this->fetch)('summary')['current']['investments'])->toBe(100000);
+    });
 });

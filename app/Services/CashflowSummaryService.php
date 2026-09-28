@@ -143,8 +143,8 @@ class CashflowSummaryService
     /**
      * What was set aside into $type, net: an outflow adds, a withdrawal back
      * subtracts, so a period of net withdrawals comes out negative. Legs on a
-     * savings account are skipped, since the one on the other account already
-     * counts that money.
+     * savings, investment or retirement account are skipped, since the one on
+     * the other account already counts that money.
      *
      * @param  Collection<int, Transaction>  $transactions
      */
@@ -152,7 +152,7 @@ class CashflowSummaryService
     {
         return -$this->sumConvertedAmounts(
             $transactions->filter(fn (Transaction $transaction): bool => $transaction->categoryType() === $type
-                && ! $transaction->isSavingsAccountLeg()),
+                && ! $transaction->isSetAsideAccountLeg()),
             $userCurrency,
         );
     }

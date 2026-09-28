@@ -306,8 +306,9 @@ class CashflowAnalyticsController extends Controller
     /**
      * Every transaction in the window, with the exchange rates its conversion
      * needs already primed so the callers never hit the rate service per row.
-     * Savings and investment rows on a savings account are left out: the leg
-     * on the other account already counts that money.
+     * Savings and investment rows on a savings, investment or retirement
+     * account are left out: the leg on the other account already counts that
+     * money.
      *
      * @return Collection<int, Transaction>
      */
@@ -319,7 +320,7 @@ class CashflowAnalyticsController extends Controller
             ->countingTowardsTotals()
             ->with(['account', 'category'])
             ->get()
-            ->reject(fn (Transaction $transaction): bool => $transaction->isSavingsAccountLeg())
+            ->reject(fn (Transaction $transaction): bool => $transaction->isSetAsideAccountLeg())
             ->values();
 
         $this->preloadExchangeRates($transactions, $userCurrency);
