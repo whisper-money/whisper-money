@@ -21,6 +21,12 @@ enum AccountType: string
         return in_array($this, [self::Investment, self::Retirement, self::Savings], true);
     }
 
+    /** Whether money booked on this account type has been set aside rather than spent. */
+    public function isSetAside(): bool
+    {
+        return in_array($this, [self::Savings, self::Investment, self::Retirement], true);
+    }
+
     public function reducesNetWorth(): bool
     {
         return $this === self::Loan;
