@@ -40,7 +40,13 @@ class ReassignTransactionsToBudgets implements ShouldQueue
     {
         Transaction::query()
             ->whereIn('id', $this->transactionIds)
-            ->with('labels')
+            // Both relations {@see BudgetTransactionService::assignTransaction()}
+            // reaches for, so a 200-row chunk does not turn into 200 account
+            // lookups. Trashed accounts are included to match the loadMissing()
+            // there — eager loading without them would leave the relation loaded
+            // as null, and ownerShareOf() would then snapshot the full amount
+            // instead of the owner's share.
+            ->with(['labels', 'account' => fn ($query) => $query->withTrashed()])
             ->chunkById(200, function (Collection $transactions) use ($service): void {
                 foreach ($transactions as $transaction) {
                     $service->assignTransaction($transaction, notify: $this->notify);
