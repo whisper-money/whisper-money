@@ -15,6 +15,8 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleService;
+use App\Services\BudgetTransactionService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 function periodCovering(Budget $budget): BudgetPeriod
@@ -165,4 +167,49 @@ test('the MCP tool reassigns the transaction when it attaches and when it remove
     ])->assertOk();
 
     expect(budgetsOf($this->transaction))->toBe([$this->catchAllPeriod->id]);
+});
+
+it('loads each chunk\'s accounts in one query instead of one per transaction', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    $transactions = Transaction::factory()->count(5)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+    ]);
+
+    $queries = [];
+
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    (new ReassignTransactionsToBudgets($transactions->pluck('id')->all()))
+        ->handle(app(BudgetTransactionService::class));
+
+    $accountEagerLoadQueries = collect($queries)
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "accounts"') || str_contains($query, 'from `accounts`'))
+            && (str_contains($query, '"accounts"."id" in') || str_contains($query, '`accounts`.`id` in')));
+
+    // One eager load for the chunk. Without it the service's per-transaction
+    // loadMissing() fires once per row, which is the N+1 Sentry flagged.
+    expect($accountEagerLoadQueries)->toHaveCount(1);
+});
+
+it('still weighs a transaction by a soft deleted account\'s ownership share', function () {
+    $account = Account::query()->findOrFail($this->transaction->account_id);
+    $account->update(['ownership_percentage' => 50]);
+    $account->delete();
+
+    (new ReassignTransactionsToBudgets([$this->transaction->id]))
+        ->handle(app(BudgetTransactionService::class));
+
+    // ownerShareOf() falls back to the full amount when the account relation is
+    // null, so eager loading without withTrashed() would snapshot 100% here —
+    // the relation would be loaded-as-null and loadMissing() would not correct it.
+    $snapshot = BudgetTransaction::query()
+        ->where('transaction_id', $this->transaction->id)
+        ->firstOrFail();
+
+    expect($snapshot->amount)->toBe(-(int) round($this->transaction->amount * 50 / 100))
+        ->and($snapshot->amount)->not->toBe(-$this->transaction->amount);
 });
