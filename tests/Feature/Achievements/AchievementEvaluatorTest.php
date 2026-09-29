@@ -187,8 +187,11 @@ it('will not award a medal on half a window of history', function (): void {
 });
 
 it('reads a year of net worth growth as a percentage', function (): void {
+    // subMonths() overflows a short month — run on the 29th, subtracting to
+    // February lands on March 1st, so two steps collapse onto the same Y-m key
+    // and the 13-month range silently becomes 12, leaving momentum.2 unearned.
     $netWorth = collect(range(0, 12))
-        ->mapWithKeys(fn (int $i): array => [now()->subMonths(12 - $i)->format('Y-m') => $i === 12 ? 1150000 : 1000000])
+        ->mapWithKeys(fn (int $i): array => [now()->subMonthsNoOverflow(12 - $i)->format('Y-m') => $i === 12 ? 1150000 : 1000000])
         ->all();
 
     $unlocks = evaluate(monthsOf('net', array_fill_keys(array_keys($netWorth), 1)), ['netWorth' => $netWorth]);
