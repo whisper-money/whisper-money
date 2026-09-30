@@ -78,6 +78,17 @@ class CategoryCatalog
     }
 
     /**
+     * The "parent > child" path of a category in the catalog, or null when it
+     * is not one of the user's leaf categories.
+     */
+    public function pathForCategoryId(string $categoryId): ?string
+    {
+        $index = array_search($categoryId, $this->idByIndex, true);
+
+        return $index === false ? null : $this->options[$index]['path'];
+    }
+
+    /**
      * @param  Collection<string, Category>  $byId
      */
     private static function path(Category $category, Collection $byId): string

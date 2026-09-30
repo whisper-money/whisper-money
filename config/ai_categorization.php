@@ -90,6 +90,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Model pricing
+    |--------------------------------------------------------------------------
+    |
+    | USD per million tokens, keyed by model, used by `ai:categorization-eval`
+    | to price a run. Gemini bills thinking tokens as output; Jev bills input
+    | only. A model missing here is reported with an unknown cost.
+    |
+    */
+
+    'pricing' => [
+        'gemini-2.5-flash-lite' => ['input' => 0.10, 'output' => 0.40],
+        'gemini-2.5-flash' => ['input' => 0.30, 'output' => 2.50],
+        'gemini-3.5-flash' => ['input' => 1.50, 'output' => 9.00],
+        'jev-latest' => ['input' => 0.042, 'output' => 0.0],
+        'jev-1.13.0' => ['input' => 0.042, 'output' => 0.0],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Queue
     |--------------------------------------------------------------------------
     |
