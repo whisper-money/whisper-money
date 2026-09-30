@@ -1,27 +1,31 @@
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
-import { useMemo } from 'react';
+import { __ } from '@/utils/i18n';
 
-const FAKE_DESCRIPTIONS = [
-    'Coffee Shop Purchase',
-    'Grocery Store',
-    'Online Subscription',
-    'Restaurant Payment',
-    'Gas Station',
-    'Pharmacy Purchase',
-    'Utility Bill Payment',
-    'Mobile Phone Bill',
-    'Insurance Premium',
-    'Gym Membership',
-    'Streaming Service',
-    'Food Delivery',
-    'Public Transport',
-    'Parking Fee',
-    'Hardware Store',
-    'Clothing Store',
-    'Electronics Purchase',
-    'Medical Services',
-    'Dental Payment',
-    'Home Improvement',
+/**
+ * Built on every call, not at module load: translations arrive at runtime,
+ * so a module-level list would be stuck in English.
+ */
+const fakeDescriptions = (): string[] => [
+    __('Coffee Shop Purchase'),
+    __('Grocery Store'),
+    __('Online Subscription'),
+    __('Restaurant Payment'),
+    __('Gas Station'),
+    __('Pharmacy Purchase'),
+    __('Utility Bill Payment'),
+    __('Mobile Phone Bill'),
+    __('Insurance Premium'),
+    __('Gym Membership'),
+    __('Streaming Service'),
+    __('Food Delivery'),
+    __('Public Transport'),
+    __('Parking Fee'),
+    __('Hardware Store'),
+    __('Clothing Store'),
+    __('Electronics Purchase'),
+    __('Medical Services'),
+    __('Dental Payment'),
+    __('Home Improvement'),
 ];
 
 function getFakeDescription(seed: string): string {
@@ -31,8 +35,9 @@ function getFakeDescription(seed: string): string {
         hash = (hash << 5) - hash + char;
         hash = hash & hash;
     }
-    const index = Math.abs(hash) % FAKE_DESCRIPTIONS.length;
-    return FAKE_DESCRIPTIONS[index];
+    const descriptions = fakeDescriptions();
+    const index = Math.abs(hash) % descriptions.length;
+    return descriptions[index];
 }
 
 interface TransactionDescriptionProps {
@@ -46,11 +51,9 @@ export function TransactionDescription({
 }: TransactionDescriptionProps) {
     const { isPrivacyModeEnabled } = usePrivacyMode();
 
-    const fakeDescription = useMemo(() => getFakeDescription(text), [text]);
-
     return (
         <span className={className}>
-            {isPrivacyModeEnabled ? fakeDescription : text}
+            {isPrivacyModeEnabled ? getFakeDescription(text) : text}
         </span>
     );
 }
