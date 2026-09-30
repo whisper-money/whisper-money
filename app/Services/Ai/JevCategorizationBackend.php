@@ -12,6 +12,7 @@ use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Throwable;
 
 /**
@@ -21,36 +22,69 @@ use Throwable;
  * the model from crossing spending and income and trims the billed criteria.
  *
  * A rate-limited (429), overloaded (529 or any other 5xx) or unreachable
- * request drops only its own transaction and surfaces as a
+ * request is retried in place a couple of times with a short backoff, so a
+ * burst over the rate limit does not wait for the deferred retry. What still
+ * fails drops only its own transaction and surfaces as a
  * {@see TransientCategorizationException} carrying the rest; any other failed
  * request (401, 422) is reported and dropped.
  */
 class JevCategorizationBackend implements CategorizationBackend
 {
-    private const string ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
+    public const string ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
 
     private const string NO_CATEGORY = 'none';
 
+    private const int MAX_ATTEMPTS = 3;
+
     public function categorize(Collection $chunk, CategoryCatalog $catalog): array
     {
-        $transactions = $chunk->values();
+        $pending = $chunk->values();
+        $results = [];
 
+        for ($attempt = 1; ; $attempt++) {
+            [$answered, $pending] = $this->send($pending, $catalog);
+            array_push($results, ...$answered);
+
+            if ($pending->isEmpty()) {
+                return $results;
+            }
+
+            if ($attempt === self::MAX_ATTEMPTS) {
+                throw new TransientCategorizationException(
+                    "Jev dropped {$pending->count()} of {$chunk->count()} requests.",
+                    $results,
+                );
+            }
+
+            Sleep::for($attempt)->seconds();
+        }
+    }
+
+    /**
+     * Send one request per transaction, at most `services.typesafe.concurrency`
+     * at a time so a large batch stays under Jev's rate limit.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @return array{0: list<array{ref: string, category_index?: int, confidence: float, merchant_unambiguous: bool}>, 1: Collection<int, Transaction>} the results, and the transactions lost to a transient failure
+     */
+    private function send(Collection $transactions, CategoryCatalog $catalog): array
+    {
         $responses = Http::pool(fn (Pool $pool): array => $transactions
             ->map(fn (Transaction $transaction) => $pool->withToken((string) config('services.typesafe.key'))
                 ->acceptJson()
                 ->connectTimeout(5)
                 ->timeout(30)
                 ->post(self::ENDPOINT, $this->body($transaction, $catalog)))
-            ->all());
+            ->all(), max(1, (int) config('services.typesafe.concurrency')));
 
         $results = [];
-        $transientFailures = 0;
+        $transient = [];
 
         foreach ($transactions as $position => $transaction) {
             $response = $responses[$position];
 
             if ($this->isTransient($response)) {
-                $transientFailures++;
+                $transient[] = $transaction;
 
                 continue;
             }
@@ -64,14 +98,7 @@ class JevCategorizationBackend implements CategorizationBackend
             $results[] = $this->result($transaction, $response);
         }
 
-        if ($transientFailures > 0) {
-            throw new TransientCategorizationException(
-                "Jev dropped {$transientFailures} of {$transactions->count()} requests.",
-                $results,
-            );
-        }
-
-        return $results;
+        return [$results, new Collection($transient)];
     }
 
     public function model(): string

@@ -4,7 +4,6 @@ use App\Ai\Agents\TransactionCategorizationAgent;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
-use App\Features\JevCategorization;
 use App\Jobs\RetryTransientAiCategorizationJob;
 use App\Models\Category;
 use App\Models\Transaction;
@@ -16,7 +15,8 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
+use Illuminate\Support\Lottery;
+use Illuminate\Support\Sleep;
 
 function leafIndex(CategoryCatalog $catalog, string $categoryId): int
 {
@@ -256,6 +256,7 @@ describe('Jev backend', function () {
         config()->set('services.typesafe.key', 'test-key');
         config()->set('services.typesafe.enabled', true);
         Http::preventStrayRequests();
+        Sleep::fake();
         TransactionCategorizationAgent::fake()->preventStrayPrompts();
 
         $this->user = User::factory()->create();
@@ -263,7 +264,7 @@ describe('Jev backend', function () {
         $this->transaction = uncategorized($this->user);
         $this->index = leafIndex(CategoryCatalog::forUser($this->user), $this->category->id);
 
-        Feature::for($this->user)->activate(JevCategorization::class);
+        config()->set('ai_categorization.jev_ratio', 1.0);
     });
 
     it('sends one request per transaction with criteria limited to its direction', function () {
@@ -348,6 +349,8 @@ describe('Jev backend', function () {
 
         Http::fakeSequence('api.typesafe.ai/*')
             ->push(jevAnswer((string) $this->index))
+            ->pushResponse($failure())
+            ->pushResponse($failure())
             ->pushResponse($failure());
 
         $outcomes = app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction, $second]));
@@ -365,6 +368,23 @@ describe('Jev backend', function () {
         'unreachable' => fn () => fn () => Http::failedConnection(),
     ]);
 
+    it('retries a rate-limited request in place before deferring it', function () {
+        Queue::fake();
+
+        Http::fakeSequence('api.typesafe.ai/*')
+            ->push([], 429)
+            ->push(jevAnswer((string) $this->index, confidence: 0.95));
+
+        $outcomes = app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
+
+        expect($outcomes)->toHaveCount(1)
+            ->and($this->transaction->refresh()->category_id)->toBe($this->category->id);
+
+        Http::assertSentCount(2);
+        Sleep::assertSleptTimes(1);
+        Queue::assertNotPushed(RetryTransientAiCategorizationJob::class);
+    });
+
     it('reports a rejected request without scheduling a retry', function () {
         Exceptions::fake();
         Queue::fake();
@@ -379,8 +399,30 @@ describe('Jev backend', function () {
         Queue::assertNotPushed(RetryTransientAiCategorizationJob::class);
     });
 
-    it('stays on gemini when the flag is off', function () {
-        Feature::for($this->user)->deactivate(JevCategorization::class);
+    it('splits a batch between jev and gemini at random by the ratio', function () {
+        config()->set('ai_categorization.jev_ratio', 0.5);
+        Lottery::fix([true, false]);
+        $second = uncategorized($this->user);
+
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevAnswer((string) $this->index, confidence: 0.95))]);
+        TransactionCategorizationAgent::fake([['results' => [[
+            'ref' => $second->id,
+            'category_index' => $this->index,
+            'confidence' => 0.95,
+            'merchant_unambiguous' => true,
+        ]]]]);
+
+        app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction, $second]));
+
+        Http::assertSentCount(1);
+        TransactionCategorizationAgent::assertPrompted(fn ($prompt): bool => str_contains((string) $prompt->prompt, $second->id)
+            && ! str_contains((string) $prompt->prompt, $this->transaction->id));
+        expect($this->transaction->refresh()->ai_model)->toBe('jev-latest')
+            ->and($second->refresh()->ai_model)->toBe((string) config('ai_categorization.model'));
+    });
+
+    it('stays on gemini when the ratio is zero', function () {
+        config()->set('ai_categorization.jev_ratio', 0.0);
         TransactionCategorizationAgent::fake([['results' => []]]);
 
         app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
@@ -389,7 +431,7 @@ describe('Jev backend', function () {
         TransactionCategorizationAgent::assertPrompted(fn (): bool => true);
     });
 
-    it('falls back to gemini when the flag is on but no key is set', function () {
+    it('falls back to gemini when the ratio is set but no key is', function () {
         config()->set('services.typesafe.enabled', false);
         TransactionCategorizationAgent::fake([['results' => [[
             'ref' => $this->transaction->id,

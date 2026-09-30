@@ -21,6 +21,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Jev share
+    |--------------------------------------------------------------------------
+    |
+    | Fraction (0-1) of transactions sent to TypeSafe AI's Jev instead of the
+    | provider above, drawn at random per transaction: 0 keeps everything on
+    | the default provider, 0.5 sends half, 1 sends all. It only applies when
+    | TYPESAFE_API_KEY is set.
+    |
+    */
+
+    'jev_ratio' => (float) env('AI_CATEGORIZATION_JEV_RATIO', 0),
+
+    /*
+    |--------------------------------------------------------------------------
     | Jev merchant threshold
     |--------------------------------------------------------------------------
     |

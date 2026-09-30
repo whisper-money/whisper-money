@@ -4,7 +4,6 @@ namespace App\Services\Ai;
 
 use App\Enums\CategorySource;
 use App\Exceptions\Ai\TransientCategorizationException;
-use App\Features\JevCategorization;
 use App\Jobs\RetryTransientAiCategorizationJob;
 use App\Models\Transaction;
 use App\Models\User;
@@ -12,8 +11,8 @@ use App\Services\Ai\Contracts\CategorizationBackend;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Lottery;
 use Laravel\Ai\Exceptions\FailoverableException;
-use Laravel\Pennant\Feature;
 use Throwable;
 
 /**
@@ -45,58 +44,73 @@ class CategorizeTransactions
             return [];
         }
 
-        $backend = $this->backendFor($user);
         $byRef = $transactions->keyBy(fn (Transaction $transaction): string => $transaction->id);
-        $results = $this->resolve($user, $transactions, $catalog, $backend);
-
         $labelBar = (float) config('ai_categorization.label_confidence');
-        $model = $backend->model();
         $outcomes = [];
 
-        foreach ($results as $result) {
-            $transaction = $byRef->get((string) ($result['ref'] ?? ''));
+        foreach ($this->routes($transactions) as [$backend, $routed]) {
+            foreach ($this->resolve($user, $routed, $catalog, $backend) as $result) {
+                $outcome = $this->outcome($result, $byRef, $catalog, $labelBar, $backend->model());
 
-            if ($transaction === null) {
-                continue;
+                if ($outcome !== null) {
+                    $outcomes[] = $outcome;
+                }
             }
-
-            $categoryId = $catalog->categoryIdForIndex(
-                isset($result['category_index']) ? (int) $result['category_index'] : null,
-            );
-
-            if ($categoryId === null) {
-                continue;
-            }
-
-            $confidence = (float) ($result['confidence'] ?? 0.0);
-            $applied = $confidence >= $labelBar;
-
-            $this->recordOutcome($transaction, $categoryId, $confidence, $applied, $model);
-
-            $outcomes[] = new CategorizationOutcome(
-                transaction: $transaction,
-                categoryId: $categoryId,
-                confidence: $confidence,
-                merchantUnambiguous: (bool) ($result['merchant_unambiguous'] ?? false),
-                applied: $applied,
-            );
         }
 
         return $outcomes;
     }
 
     /**
-     * Users in the JevCategorization rollout go to Jev, everyone else to the
-     * default provider. Without an API key the flag is ignored, so enabling it
-     * ahead of the key cannot stop categorization.
+     * Split the transactions between Jev and the default provider: each one
+     * goes to Jev with probability `jev_ratio`. Without an API key the ratio
+     * is ignored, so raising it ahead of the key cannot stop categorization.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @return list<array{0: CategorizationBackend, 1: Collection<int, Transaction>}>
      */
-    private function backendFor(User $user): CategorizationBackend
+    private function routes(Collection $transactions): array
     {
-        if (config('services.typesafe.enabled') && Feature::for($user)->active(JevCategorization::class)) {
-            return $this->jev;
+        $ratio = config('services.typesafe.enabled') ? (float) config('ai_categorization.jev_ratio') : 0.0;
+
+        [$jev, $gemini] = $transactions->partition(fn (): bool => $ratio > 0 && Lottery::odds(min($ratio, 1.0))->choose());
+
+        return array_values(array_filter(
+            [[$this->jev, $jev->values()], [$this->gemini, $gemini->values()]],
+            fn (array $route): bool => $route[1]->isNotEmpty(),
+        ));
+    }
+
+    /**
+     * Record one model result on its transaction, or null when it names no
+     * transaction of the batch or no category of the catalog.
+     *
+     * @param  array<string, mixed>  $result
+     * @param  Collection<string, Transaction>  $byRef
+     */
+    private function outcome(array $result, Collection $byRef, CategoryCatalog $catalog, float $labelBar, string $model): ?CategorizationOutcome
+    {
+        $transaction = $byRef->get((string) ($result['ref'] ?? ''));
+        $categoryId = $catalog->categoryIdForIndex(
+            isset($result['category_index']) ? (int) $result['category_index'] : null,
+        );
+
+        if ($transaction === null || $categoryId === null) {
+            return null;
         }
 
-        return $this->gemini;
+        $confidence = (float) ($result['confidence'] ?? 0.0);
+        $applied = $confidence >= $labelBar;
+
+        $this->recordOutcome($transaction, $categoryId, $confidence, $applied, $model);
+
+        return new CategorizationOutcome(
+            transaction: $transaction,
+            categoryId: $categoryId,
+            confidence: $confidence,
+            merchantUnambiguous: (bool) ($result['merchant_unambiguous'] ?? false),
+            applied: $applied,
+        );
     }
 
     /**
