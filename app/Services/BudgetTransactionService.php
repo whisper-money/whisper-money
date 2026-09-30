@@ -9,6 +9,7 @@ use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,6 +26,37 @@ class BudgetTransactionService
      */
     public function assignTransaction(Transaction $transaction, bool $notify = true): void
     {
+        $this->assignWithCategoryTree($transaction, $notify, categoryParentMap: null);
+    }
+
+    /**
+     * {@see self::assignTransaction()} for a batch, reading each user's
+     * category tree once for the whole batch instead of walking it level by
+     * level for every transaction.
+     *
+     * The tree is only held for this call, so the next batch sees any category
+     * re-parented in the meantime.
+     *
+     * @param  iterable<int, Transaction>  $transactions
+     */
+    public function assignTransactions(iterable $transactions, bool $notify = true): void
+    {
+        $parentMaps = [];
+
+        foreach ($transactions as $transaction) {
+            $userId = $transaction->user_id;
+            $parentMap = $userId ? ($parentMaps[$userId] ??= $this->tree->parentMap($userId)) : null;
+
+            $this->assignWithCategoryTree($transaction, $notify, $parentMap);
+        }
+    }
+
+    /**
+     * @param  array<string, ?string>|null  $categoryParentMap  the user's {@see CategoryTree::parentMap()},
+     *                                                          or null to load it for this transaction
+     */
+    private function assignWithCategoryTree(Transaction $transaction, bool $notify, ?array $categoryParentMap): void
+    {
         $userId = $transaction->user_id;
 
         if (! $userId) {
@@ -38,7 +70,7 @@ class BudgetTransactionService
         $transaction->loadMissing('labels');
         $transaction->loadMissing(['account' => fn ($query) => $query->withTrashed()]);
 
-        $matchingPeriodIds = $this->trackedPeriodIds($transaction, $userId);
+        $matchingPeriodIds = $this->trackedPeriodIds($transaction, $userId, $categoryParentMap);
 
         // A catch-all budget only absorbs what nothing else counts. Any budget
         // already tracking this transaction — by category or by label — in a
@@ -142,12 +174,8 @@ class BudgetTransactionService
         Log::info("Found {$totalCount} transactions to process in date range");
 
         // Process in chunks to prevent memory issues
-        $query->chunk(500, function ($transactions) use ($period, &$assignedCount) {
-            foreach ($transactions as $transaction) {
-                if ($this->recordSnapshot($transaction, $period->id)->wasRecentlyCreated) {
-                    $assignedCount++;
-                }
-            }
+        $query->chunk(500, function (Collection $transactions) use ($period, &$assignedCount) {
+            $assignedCount += $this->recordSnapshots($transactions, $period->id);
         });
 
         return $assignedCount;
@@ -169,9 +197,61 @@ class BudgetTransactionService
                 'budget_period_id' => $budgetPeriodId,
             ],
             [
-                'amount' => -$transaction->ownerShareOf($transaction->amount),
+                'amount' => $this->snapshotAmount($transaction),
             ],
         );
+    }
+
+    /**
+     * {@see self::recordSnapshot()} for a chunk of transactions in one period,
+     * in one lookup and one upsert rather than both per transaction.
+     *
+     * Behaves as updateOrCreate() would row by row: a missing snapshot is
+     * inserted, one whose amount changed is refreshed, and one already holding
+     * the right amount is left untouched, updated_at included.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @return int the number of snapshots newly created
+     */
+    private function recordSnapshots(Collection $transactions, string $budgetPeriodId): int
+    {
+        $existingAmounts = BudgetTransaction::query()
+            ->where('budget_period_id', $budgetPeriodId)
+            ->whereIn('transaction_id', $transactions->modelKeys())
+            ->pluck('amount', 'transaction_id');
+
+        $now = now();
+        $rows = [];
+
+        foreach ($transactions as $transaction) {
+            $amount = $this->snapshotAmount($transaction);
+
+            if ($existingAmounts->get($transaction->id) === $amount) {
+                continue;
+            }
+
+            $rows[] = [
+                'id' => (new BudgetTransaction)->newUniqueId(),
+                'transaction_id' => $transaction->id,
+                'budget_period_id' => $budgetPeriodId,
+                'amount' => $amount,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        BudgetTransaction::upsert($rows, ['transaction_id', 'budget_period_id'], ['amount', 'updated_at']);
+
+        return $transactions->count() - $existingAmounts->count();
+    }
+
+    /**
+     * The owner's share of a transaction, flipped so an expense counts as
+     * positive spending: what every budget snapshot of it holds.
+     */
+    private function snapshotAmount(Transaction $transaction): int
+    {
+        return -$transaction->ownerShareOf($transaction->amount);
     }
 
     /**
@@ -236,9 +316,10 @@ class BudgetTransactionService
      * Budget periods that track this transaction by category or by label and
      * cover its date.
      *
+     * @param  array<string, ?string>|null  $categoryParentMap
      * @return array<int, string>
      */
-    private function trackedPeriodIds(Transaction $transaction, string $userId): array
+    private function trackedPeriodIds(Transaction $transaction, string $userId, ?array $categoryParentMap): array
     {
         $transactionLabelIds = $transaction->labels->pluck('id');
 
@@ -246,7 +327,7 @@ class BudgetTransactionService
         // transaction matches a budget when any of its category's ancestors
         // (or itself) is attached to that budget.
         $categoryMatchIds = $transaction->category_id
-            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id)
+            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id, $categoryParentMap)
             : [];
 
         // Find budget periods that potentially match this transaction.

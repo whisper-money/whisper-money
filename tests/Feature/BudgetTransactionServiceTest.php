@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
@@ -9,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->service = app(BudgetTransactionService::class);
@@ -838,4 +840,182 @@ test('assignTransaction matches the period on the last day of the month', functi
         ->exists())->toBeTrue();
 
     $this->travelBack();
+});
+
+/**
+ * A budget tracking the given category, with one period around today.
+ */
+function periodTracking(Category $category): BudgetPeriod
+{
+    return BudgetPeriod::factory()->create([
+        'budget_id' => Budget::factory()->forCategories($category)->create(['user_id' => $category->user_id])->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+}
+
+/**
+ * @return array<int, string>
+ */
+function periodIdsOf(Transaction $transaction): array
+{
+    return BudgetTransaction::query()
+        ->where('transaction_id', $transaction->id)
+        ->pluck('budget_period_id')
+        ->all();
+}
+
+test('reassigning a batch reads the category tree once instead of walking it per transaction', function () {
+    $root = Category::factory()->create(['user_id' => $this->user->id]);
+    $child = Category::factory()->childOf($root)->create();
+    $grandchild = Category::factory()->childOf($child)->create();
+    $period = periodTracking($root);
+
+    $transactions = Transaction::factory()->count(5)->create([
+        'user_id' => $this->user->id,
+        'category_id' => $grandchild->id,
+        'transaction_date' => now()->subDays(2),
+    ]);
+
+    // Start from no snapshots, so the ones asserted below are the job's own.
+    BudgetTransaction::query()->delete();
+
+    $result = countQueries(fn () => (new ReassignTransactionsToBudgets($transactions->modelKeys()))->handle($this->service));
+
+    $categoryTreeQueries = collect($result['queries'])
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "categories"') || str_contains($query, 'from `categories`'))
+            && str_contains($query, 'parent_id'));
+
+    // One read of the tree for the chunk. Walking it per transaction took one
+    // query per level for every row, which is the N+1 Sentry flagged.
+    expect($categoryTreeQueries)->toHaveCount(1)
+        // A budget on the root still takes in its grandchild's spending.
+        ->and($period->budgetTransactions()->pluck('transaction_id')->all())
+        ->toEqualCanonicalizing($transactions->modelKeys());
+});
+
+test('reassigning a batch stops the category walk at a trashed parent', function () {
+    $root = Category::factory()->create(['user_id' => $this->user->id]);
+    $child = Category::factory()->childOf($root)->create();
+    $grandchild = Category::factory()->childOf($child)->create();
+    $period = periodTracking($root);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $grandchild->id,
+        'transaction_date' => now()->subDays(2),
+    ]);
+
+    expect(periodIdsOf($transaction))->toBe([$period->id]);
+
+    $child->delete();
+
+    (new ReassignTransactionsToBudgets([$transaction->id]))->handle($this->service);
+
+    // The trashed parent cuts the grandchild off from the root, so the root's
+    // budget no longer counts it, exactly as a single assignment decides.
+    expect(periodIdsOf($transaction))->toBe([]);
+});
+
+test('reassigning a batch sees a category re-parented since the previous batch', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id]);
+    $housing = Category::factory()->create(['user_id' => $this->user->id]);
+    $groceries = Category::factory()->childOf($food)->create();
+    $foodPeriod = periodTracking($food);
+    $housingPeriod = periodTracking($housing);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $groceries->id,
+        'transaction_date' => now()->subDays(2),
+    ]);
+
+    (new ReassignTransactionsToBudgets([$transaction->id]))->handle($this->service);
+    expect(periodIdsOf($transaction))->toBe([$foodPeriod->id]);
+
+    // A mass update fires no model event, so only the next batch can notice.
+    Category::query()->whereKey($groceries->id)->update(['parent_id' => $housing->id]);
+
+    // Same service instance: the tree it read for the first batch must not
+    // outlive that batch.
+    (new ReassignTransactionsToBudgets([$transaction->id]))->handle($this->service);
+    expect(periodIdsOf($transaction))->toBe([$housingPeriod->id]);
+});
+
+test('assignHistoricalTransactionsToPeriod writes a chunk in bulk instead of one lookup per transaction', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->count(5)->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => -1000,
+    ]);
+
+    $period = periodTracking($category);
+    $count = null;
+
+    $result = countQueries(function () use ($period, &$count): void {
+        $count = $this->service->assignHistoricalTransactionsToPeriod($period);
+    });
+
+    $snapshotQueries = collect($result['queries'])
+        ->filter(fn (string $query): bool => str_contains($query, 'budget_transactions'));
+
+    // One lookup of the chunk's existing snapshots and one upsert. Writing them
+    // one by one ran a select and an insert per transaction, the N+1 Sentry
+    // flagged.
+    expect($snapshotQueries)->toHaveCount(2)
+        ->and($count)->toBe(5)
+        ->and($period->budgetTransactions()->pluck('amount')->all())->toBe([1000, 1000, 1000, 1000, 1000]);
+});
+
+test('assignHistoricalTransactionsToPeriod refreshes stale snapshots and only counts the new ones', function () {
+    $this->freezeSecond();
+
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    [$stale, $current, $missing] = collect([-1000, -2000, -3000])
+        ->map(fn (int $amount): Transaction => Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'category_id' => $category->id,
+            'transaction_date' => now()->subDays(2),
+            'amount' => $amount,
+        ]))
+        ->all();
+
+    $period = periodTracking($category);
+    $lastWeek = now()->subWeek();
+    $staleSnapshot = BudgetTransaction::factory()->create([
+        'transaction_id' => $stale->id,
+        'budget_period_id' => $period->id,
+        'amount' => 1,
+        'created_at' => $lastWeek,
+        'updated_at' => $lastWeek,
+    ]);
+    $currentSnapshot = BudgetTransaction::factory()->create([
+        'transaction_id' => $current->id,
+        'budget_period_id' => $period->id,
+        'amount' => 2000,
+        'created_at' => $lastWeek,
+        'updated_at' => $lastWeek,
+    ]);
+
+    $count = $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    $newSnapshot = BudgetTransaction::query()
+        ->where('transaction_id', $missing->id)
+        ->where('budget_period_id', $period->id)
+        ->sole();
+
+    expect($count)->toBe(1)
+        ->and($period->budgetTransactions()->count())->toBe(3)
+        // A stale amount is refreshed in place, keeping its row.
+        ->and($staleSnapshot->fresh()->amount)->toBe(1000)
+        ->and($staleSnapshot->fresh()->created_at->equalTo($lastWeek))->toBeTrue()
+        ->and($staleSnapshot->fresh()->updated_at->equalTo(now()))->toBeTrue()
+        // An up to date one is not written at all, as updateOrCreate() left it.
+        ->and($currentSnapshot->fresh()->updated_at->equalTo($lastWeek))->toBeTrue()
+        ->and($newSnapshot->amount)->toBe(3000)
+        ->and(Str::isUuid($newSnapshot->id))->toBeTrue()
+        ->and($newSnapshot->created_at->equalTo(now()))->toBeTrue();
 });

@@ -63,29 +63,33 @@ class CategoryTree
     }
 
     /**
+     * Every live category of a user keyed by id, pointing at its parent id.
+     *
+     * Soft-deleted categories are left out, so a walk over the map stops at a
+     * trashed ancestor just as a query walk would.
+     *
+     * @return array<string, ?string>
+     */
+    public function parentMap(string $userId): array
+    {
+        return Category::query()
+            ->where('user_id', $userId)
+            ->pluck('parent_id', 'id')
+            ->all();
+    }
+
+    /**
      * A category's id together with every ancestor id, walking up to the root.
      *
+     * The walk runs over a {@see self::parentMap()}. Resolving many categories
+     * of one user, pass the map in so it is loaded once rather than per call.
+     *
+     * @param  array<string, ?string>|null  $parentMap
      * @return array<int, string>
      */
-    public function ancestorAndSelfIds(string $userId, string $categoryId): array
+    public function ancestorAndSelfIds(string $userId, string $categoryId, ?array $parentMap = null): array
     {
-        $ids = [$categoryId];
-        $parentId = Category::query()
-            ->where('user_id', $userId)
-            ->whereKey($categoryId)
-            ->value('parent_id');
-
-        $guard = 0;
-
-        while ($parentId !== null && $guard++ < Category::MAX_DEPTH) {
-            $ids[] = $parentId;
-            $parentId = Category::query()
-                ->where('user_id', $userId)
-                ->whereKey($parentId)
-                ->value('parent_id');
-        }
-
-        return $ids;
+        return array_reverse($this->chainFromRoot($categoryId, $parentMap ?? $this->parentMap($userId)));
     }
 
     /**

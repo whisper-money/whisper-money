@@ -236,3 +236,32 @@ test('the tree service expands a parent id to include all descendants', function
     expect($expanded)->toContain($root->id, $child->id, $grandchild->id)
         ->not->toContain($unrelated->id);
 });
+
+test('the tree service walks a category up to its root, with or without a preloaded parent map', function () {
+    $user = User::factory()->create();
+    $root = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
+    $child = Category::factory()->childOf($root)->create();
+    $grandchild = Category::factory()->childOf($child)->create();
+    $tree = new CategoryTree;
+
+    expect($tree->ancestorAndSelfIds($user->id, $grandchild->id))->toBe([$grandchild->id, $child->id, $root->id])
+        ->and($tree->ancestorAndSelfIds($user->id, $grandchild->id, $tree->parentMap($user->id)))->toBe([$grandchild->id, $child->id, $root->id])
+        // Another user's category is not walked at all.
+        ->and($tree->ancestorAndSelfIds(User::factory()->create()->id, $grandchild->id))->toBe([$grandchild->id]);
+});
+
+test('the tree service stops walking up at a trashed category', function () {
+    $user = User::factory()->create();
+    $root = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
+    $child = Category::factory()->childOf($root)->create();
+    $grandchild = Category::factory()->childOf($child)->create();
+    $tree = new CategoryTree;
+
+    $child->delete();
+
+    // The trashed parent is still reached from its child, but the walk goes no
+    // further, and a trashed category on its own resolves to just itself.
+    expect($tree->ancestorAndSelfIds($user->id, $grandchild->id))->toBe([$grandchild->id, $child->id])
+        ->and($tree->ancestorAndSelfIds($user->id, $grandchild->id, $tree->parentMap($user->id)))->toBe([$grandchild->id, $child->id])
+        ->and($tree->ancestorAndSelfIds($user->id, $child->id))->toBe([$child->id]);
+});
