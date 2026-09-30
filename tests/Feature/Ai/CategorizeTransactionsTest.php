@@ -12,9 +12,14 @@ use App\Models\User;
 use App\Services\Ai\AiCategorizer;
 use App\Services\Ai\CategorizeTransactions;
 use App\Services\Ai\CategoryCatalog;
+use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Lottery;
+use Illuminate\Support\Sleep;
 
 function leafIndex(CategoryCatalog $catalog, string $categoryId): int
 {
@@ -232,6 +237,217 @@ it('skips results whose category index does not resolve', function () {
 
     expect($outcomes)->toBe([])
         ->and($transaction->category_id)->toBeNull();
+});
+
+/**
+ * @return array<string, mixed>
+ */
+function jevAnswer(string $choice, float $confidence = 0.9, float $noul = 0.8): array
+{
+    return [
+        'model' => 'jev-latest',
+        'answers' => [
+            'category' => ['type' => 'choice', 'choice' => $choice, 'probabilities' => [$choice => $confidence], 'confidence' => $confidence],
+            'merchant_unambiguous' => ['type' => 'noul', 'noul' => $noul],
+        ],
+        'usage' => [],
+    ];
+}
+
+describe('Jev backend', function () {
+    beforeEach(function () {
+        config()->set('services.typesafe.key', 'test-key');
+        config()->set('services.typesafe.enabled', true);
+        Http::preventStrayRequests();
+        Sleep::fake();
+        TransactionCategorizationAgent::fake()->preventStrayPrompts();
+
+        $this->user = User::factory()->create();
+        $this->category = groceries($this->user);
+        $this->transaction = uncategorized($this->user);
+        $this->index = leafIndex(CategoryCatalog::forUser($this->user), $this->category->id);
+
+        config()->set('ai_categorization.jev_ratio', 1.0);
+    });
+
+    it('sends one request per transaction with criteria limited to its direction', function () {
+        $income = Category::factory()->for($this->user)->create([
+            'type' => CategoryType::Income,
+            'cashflow_direction' => CategoryCashflowDirection::Inflow,
+        ]);
+        $transfers = Category::factory()->for($this->user)->create([
+            'type' => CategoryType::Transfer,
+            'cashflow_direction' => CategoryCashflowDirection::Hidden,
+        ]);
+        $second = uncategorized($this->user);
+        $catalog = CategoryCatalog::forUser($this->user);
+        $index = fn (Category $category): string => (string) leafIndex($catalog, $category->id);
+
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevAnswer('none'))]);
+
+        app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction, $second]));
+
+        $expectedCriteria = [
+            $index($this->category) => $this->category->name,
+            $index($transfers) => $transfers->name,
+            'none' => 'No category fits',
+        ];
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.typesafe.ai/v1/systemone'
+            && $request->hasHeader('Authorization', 'Bearer test-key')
+            && $request['model'] === 'jev-latest'
+            && $request['state'] === [
+                'text' => 'mercadona compra',
+                'amount' => -43.0,
+                'direction' => 'outflow',
+                'creditor_name' => 'mercadona',
+                'debtor_name' => $this->transaction->debtor_name,
+            ]
+            && $request['questions']['category']['type'] === 'choice'
+            && $request['questions']['category']['criteria'] == $expectedCriteria
+            && ! array_key_exists($index($income), $request['questions']['category']['criteria'])
+            && $request['questions']['merchant_unambiguous']['type'] === 'noul');
+    });
+
+    it('applies the chosen category and records jev as the model', function () {
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevAnswer((string) $this->index, confidence: 0.92, noul: 0.8))]);
+
+        $outcomes = app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
+
+        $this->transaction->refresh();
+
+        expect($outcomes)->toHaveCount(1)
+            ->and($outcomes[0]->applied)->toBeTrue()
+            ->and($outcomes[0]->merchantUnambiguous)->toBeTrue()
+            ->and($this->transaction->category_id)->toBe($this->category->id)
+            ->and($this->transaction->ai_confidence)->toEqual(0.92)
+            ->and($this->transaction->ai_model)->toBe('jev-latest');
+    });
+
+    it('treats a merchant score below the threshold as ambiguous', function () {
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevAnswer((string) $this->index, noul: 0.4))]);
+
+        $outcomes = app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
+
+        expect($outcomes[0]->merchantUnambiguous)->toBeFalse();
+    });
+
+    it('leaves the transaction untouched when jev picks none', function () {
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevAnswer('none', confidence: 0.99))]);
+
+        $outcomes = app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
+
+        $this->transaction->refresh();
+
+        expect($outcomes)->toBe([])
+            ->and($this->transaction->category_id)->toBeNull()
+            ->and($this->transaction->ai_suggested_category_id)->toBeNull();
+    });
+
+    it('keeps the answered transactions and schedules a retry on a transient failure', function (Closure $failure) {
+        Exceptions::fake();
+        Queue::fake();
+        $second = uncategorized($this->user);
+
+        Http::fakeSequence('api.typesafe.ai/*')
+            ->push(jevAnswer((string) $this->index))
+            ->pushResponse($failure())
+            ->pushResponse($failure())
+            ->pushResponse($failure());
+
+        $outcomes = app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction, $second]));
+
+        expect($outcomes)->toHaveCount(1)
+            ->and($outcomes[0]->transaction->is($this->transaction))->toBeTrue()
+            ->and($second->refresh()->category_id)->toBeNull();
+
+        Exceptions::assertNothingReported();
+        Queue::assertPushed(RetryTransientAiCategorizationJob::class);
+    })->with([
+        'rate limited' => fn () => fn () => Http::response([], 429),
+        'overloaded' => fn () => fn () => Http::response([], 529),
+        'server error' => fn () => fn () => Http::response([], 503),
+        'unreachable' => fn () => fn () => Http::failedConnection(),
+    ]);
+
+    it('retries a rate-limited request in place before deferring it', function () {
+        Queue::fake();
+
+        Http::fakeSequence('api.typesafe.ai/*')
+            ->push([], 429)
+            ->push(jevAnswer((string) $this->index, confidence: 0.95));
+
+        $outcomes = app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
+
+        expect($outcomes)->toHaveCount(1)
+            ->and($this->transaction->refresh()->category_id)->toBe($this->category->id);
+
+        Http::assertSentCount(2);
+        Sleep::assertSleptTimes(1);
+        Queue::assertNotPushed(RetryTransientAiCategorizationJob::class);
+    });
+
+    it('reports a rejected request without scheduling a retry', function () {
+        Exceptions::fake();
+        Queue::fake();
+
+        Http::fake(['api.typesafe.ai/*' => Http::response(['error' => 'invalid key'], 401)]);
+
+        $outcomes = app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
+
+        expect($outcomes)->toBe([]);
+
+        Exceptions::assertReported(fn (RequestException $e): bool => $e->response->status() === 401);
+        Queue::assertNotPushed(RetryTransientAiCategorizationJob::class);
+    });
+
+    it('splits a batch between jev and gemini at random by the ratio', function () {
+        config()->set('ai_categorization.jev_ratio', 0.5);
+        Lottery::fix([true, false]);
+        $second = uncategorized($this->user);
+
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevAnswer((string) $this->index, confidence: 0.95))]);
+        TransactionCategorizationAgent::fake([['results' => [[
+            'ref' => $second->id,
+            'category_index' => $this->index,
+            'confidence' => 0.95,
+            'merchant_unambiguous' => true,
+        ]]]]);
+
+        app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction, $second]));
+
+        Http::assertSentCount(1);
+        TransactionCategorizationAgent::assertPrompted(fn ($prompt): bool => str_contains((string) $prompt->prompt, $second->id)
+            && ! str_contains((string) $prompt->prompt, $this->transaction->id));
+        expect($this->transaction->refresh()->ai_model)->toBe('jev-latest')
+            ->and($second->refresh()->ai_model)->toBe((string) config('ai_categorization.model'));
+    });
+
+    it('stays on gemini when the ratio is zero', function () {
+        config()->set('ai_categorization.jev_ratio', 0.0);
+        TransactionCategorizationAgent::fake([['results' => []]]);
+
+        app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
+
+        Http::assertNothingSent();
+        TransactionCategorizationAgent::assertPrompted(fn (): bool => true);
+    });
+
+    it('falls back to gemini when the ratio is set but no key is', function () {
+        config()->set('services.typesafe.enabled', false);
+        TransactionCategorizationAgent::fake([['results' => [[
+            'ref' => $this->transaction->id,
+            'category_index' => $this->index,
+            'confidence' => 0.95,
+            'merchant_unambiguous' => true,
+        ]]]]);
+
+        app(CategorizeTransactions::class)->forTransactions($this->user, collect([$this->transaction]));
+
+        Http::assertNothingSent();
+        expect($this->transaction->refresh()->ai_model)->toBe((string) config('ai_categorization.model'));
+    });
 });
 
 it('scores an out-of-scale confidence as zero rather than as certainty', function () {

@@ -2,16 +2,16 @@
 
 namespace App\Services\Ai;
 
-use App\Ai\Agents\TransactionCategorizationAgent;
 use App\Enums\CategorySource;
+use App\Exceptions\Ai\TransientCategorizationException;
 use App\Jobs\RetryTransientAiCategorizationJob;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Support\Money;
+use App\Services\Ai\Contracts\CategorizationBackend;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
+use Illuminate\Support\Lottery;
 use Laravel\Ai\Exceptions\FailoverableException;
 use Throwable;
 
@@ -23,6 +23,11 @@ use Throwable;
  */
 class CategorizeTransactions
 {
+    public function __construct(
+        private readonly GeminiCategorizationBackend $gemini,
+        private readonly JevCategorizationBackend $jev,
+    ) {}
+
     /**
      * @param  Collection<int, Transaction>  $transactions
      * @return list<CategorizationOutcome>
@@ -40,66 +45,105 @@ class CategorizeTransactions
         }
 
         $byRef = $transactions->keyBy(fn (Transaction $transaction): string => $transaction->id);
-        $results = $this->resolve($user, $transactions, $catalog);
-
         $labelBar = (float) config('ai_categorization.label_confidence');
-        $model = (string) config('ai_categorization.model');
         $outcomes = [];
 
-        foreach ($results as $result) {
-            $transaction = $byRef->get((string) ($result['ref'] ?? ''));
+        foreach ($this->routes($transactions) as [$backend, $routed]) {
+            foreach ($this->resolve($user, $routed, $catalog, $backend) as $result) {
+                $outcome = $this->outcome($result, $byRef, $catalog, $labelBar, $backend->model());
 
-            if ($transaction === null) {
-                continue;
+                if ($outcome !== null) {
+                    $outcomes[] = $outcome;
+                }
             }
-
-            $categoryId = $catalog->categoryIdForIndex(
-                isset($result['category_index']) ? (int) $result['category_index'] : null,
-            );
-
-            if ($categoryId === null) {
-                continue;
-            }
-
-            $confidence = (float) ($result['confidence'] ?? 0.0);
-
-            if ($confidence < 0.0 || $confidence > 1.0) {
-                // The model is asked for a 0..1 probability and answered off
-                // that scale: a percentage-style 200 reached production,
-                // overflowed decimal(4,3) and killed the job mid-backfill.
-                //
-                // An off-scale answer is untrustworthy in either direction, so
-                // it scores zero instead of being pulled to the nearest bound.
-                // Pulling 200 up to 1.0 would clear the label bar AND the
-                // higher rule bar, so one malformed response would auto-apply
-                // the category and teach a permanent merchant rule off it (see
-                // {@see AiRuleLearner::learn()}) — a worse outcome than the
-                // crash. At zero the transaction simply stays uncategorized
-                // with the suggestion kept, and the warning keeps a provider
-                // that answers in percent visible instead of silently normal.
-                Log::warning('AI categorization returned an out-of-range confidence', [
-                    'transaction_id' => $transaction->id,
-                    'confidence' => $confidence,
-                    'model' => $model,
-                ]);
-
-                $confidence = 0.0;
-            }
-
-            $applied = $confidence >= $labelBar;
-
-            $this->recordOutcome($transaction, $categoryId, $confidence, $applied, $model);
-
-            $outcomes[] = new CategorizationOutcome(
-                transaction: $transaction,
-                categoryId: $categoryId,
-                confidence: $confidence,
-                merchantUnambiguous: (bool) ($result['merchant_unambiguous'] ?? false),
-                applied: $applied,
-            );
         }
 
         return $outcomes;
+    }
+
+    /**
+     * Split the transactions between Jev and the default provider: each one
+     * goes to Jev with probability `jev_ratio`. Without an API key the ratio
+     * is ignored, so raising it ahead of the key cannot stop categorization.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @return list<array{0: CategorizationBackend, 1: Collection<int, Transaction>}>
+     */
+    private function routes(Collection $transactions): array
+    {
+        $ratio = config('services.typesafe.enabled') ? (float) config('ai_categorization.jev_ratio') : 0.0;
+
+        [$jev, $gemini] = $transactions->partition(fn (): bool => $ratio > 0 && Lottery::odds(min($ratio, 1.0))->choose());
+
+        return array_values(array_filter(
+            [[$this->jev, $jev->values()], [$this->gemini, $gemini->values()]],
+            fn (array $route): bool => $route[1]->isNotEmpty(),
+        ));
+    }
+
+    /**
+     * Record one model result on its transaction, or null when it names no
+     * transaction of the batch or no category of the catalog.
+     *
+     * @param  array<string, mixed>  $result
+     * @param  Collection<string, Transaction>  $byRef
+     */
+    private function outcome(array $result, Collection $byRef, CategoryCatalog $catalog, float $labelBar, string $model): ?CategorizationOutcome
+    {
+        $transaction = $byRef->get((string) ($result['ref'] ?? ''));
+        $categoryId = $catalog->categoryIdForIndex(
+            isset($result['category_index']) ? (int) $result['category_index'] : null,
+        );
+
+        if ($transaction === null || $categoryId === null) {
+            return null;
+        }
+
+        $confidence = $this->confidence($result, $transaction, $model);
+        $applied = $confidence >= $labelBar;
+
+        $this->recordOutcome($transaction, $categoryId, $confidence, $applied, $model);
+
+        return new CategorizationOutcome(
+            transaction: $transaction,
+            categoryId: $categoryId,
+            confidence: $confidence,
+            merchantUnambiguous: (bool) ($result['merchant_unambiguous'] ?? false),
+            applied: $applied,
+        );
+    }
+
+    /**
+     * The model is asked for a 0..1 probability and answered off that scale: a
+     * percentage-style 200 reached production, overflowed decimal(4,3) and
+     * killed the job mid-backfill.
+     *
+     * An off-scale answer is untrustworthy in either direction, so it scores
+     * zero instead of being pulled to the nearest bound. Pulling 200 up to 1.0
+     * would clear the label bar AND the higher rule bar, so one malformed
+     * response would auto-apply the category and teach a permanent merchant
+     * rule off it (see {@see AiRuleLearner::learn()}) — a worse outcome than the
+     * crash. At zero the transaction simply stays uncategorized with the
+     * suggestion kept, and the warning keeps a provider that answers in percent
+     * visible instead of silently normal.
+     *
+     * @param  array<string, mixed>  $result
+     */
+    private function confidence(array $result, Transaction $transaction, string $model): float
+    {
+        $confidence = (float) ($result['confidence'] ?? 0.0);
+
+        if ($confidence >= 0.0 && $confidence <= 1.0) {
+            return $confidence;
+        }
+
+        Log::warning('AI categorization returned an out-of-range confidence', [
+            'transaction_id' => $transaction->id,
+            'confidence' => $confidence,
+            'model' => $model,
+        ]);
+
+        return 0.0;
     }
 
     /**
@@ -139,17 +183,19 @@ class CategorizeTransactions
      * @param  Collection<int, Transaction>  $transactions
      * @return list<array<string, mixed>>
      */
-    private function resolve(User $user, Collection $transactions, CategoryCatalog $catalog): array
+    private function resolve(User $user, Collection $transactions, CategoryCatalog $catalog, CategorizationBackend $backend): array
     {
         $batchSize = max(1, (int) config('ai_categorization.group_batch_size'));
         $results = [];
 
         foreach ($transactions->chunk($batchSize) as $chunk) {
             try {
-                foreach ($this->resolveChunkWithRetry($chunk, $catalog) as $result) {
-                    $results[] = $result;
+                array_push($results, ...$this->resolveChunkWithRetry($chunk, $catalog, $backend));
+            } catch (ConnectionException|FailoverableException|TransientCategorizationException $exception) {
+                if ($exception instanceof TransientCategorizationException) {
+                    array_push($results, ...$exception->results);
                 }
-            } catch (ConnectionException|FailoverableException $exception) {
+
                 Log::warning('AI categorization chunk dropped: provider transient failure.', [
                     'exception' => $exception->getMessage(),
                 ]);
@@ -165,46 +211,20 @@ class CategorizeTransactions
     }
 
     /**
+     * A partial transient failure is not retried in place: its results already
+     * came back (and were billed), and the deferred retry picks up the rest.
+     *
      * @param  Collection<int, Transaction>  $chunk
      * @return list<array<string, mixed>>
      */
-    private function resolveChunkWithRetry(Collection $chunk, CategoryCatalog $catalog): array
+    private function resolveChunkWithRetry(Collection $chunk, CategoryCatalog $catalog, CategorizationBackend $backend): array
     {
         try {
-            return $this->resolveChunk($chunk, $catalog);
+            return $backend->categorize($chunk, $catalog);
+        } catch (TransientCategorizationException $exception) {
+            throw $exception;
         } catch (Throwable) {
-            return $this->resolveChunk($chunk, $catalog);
+            return $backend->categorize($chunk, $catalog);
         }
-    }
-
-    /**
-     * @param  Collection<int, Transaction>  $chunk
-     * @return list<array<string, mixed>>
-     */
-    private function resolveChunk(Collection $chunk, CategoryCatalog $catalog): array
-    {
-        $items = $chunk->map(fn (Transaction $transaction): array => [
-            'ref' => $transaction->id,
-            'text' => (string) $transaction->description,
-            'amount' => Money::toMajor($transaction->amount, $transaction->currency_code),
-            'direction' => $transaction->amount < 0 ? 'outflow' : 'inflow',
-            'creditor_name' => $transaction->creditor_name,
-            'debtor_name' => $transaction->debtor_name,
-        ])->values()->all();
-
-        $payload = json_encode([
-            'transactions' => $items,
-            'categories' => $catalog->options(),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        $response = (new TransactionCategorizationAgent)->prompt(
-            $payload,
-            provider: Lab::from((string) config('ai_categorization.provider')),
-            model: (string) config('ai_categorization.model'),
-        );
-
-        $results = $response['results'] ?? [];
-
-        return is_array($results) ? array_values($results) : [];
     }
 }

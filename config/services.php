@@ -58,6 +58,22 @@ return [
             && filled(env('ENABLEBANKING_REDIRECT_URL')),
     ],
 
+    'typesafe' => [
+        /**
+         * TypeSafe AI's Jev, the alternative categorization backend. It gets
+         * the share of transactions set by ai_categorization.jev_ratio; without
+         * a key every transaction stays on the default provider.
+         */
+        'key' => env('TYPESAFE_API_KEY'),
+        'model' => env('TYPESAFE_MODEL', 'jev-latest'),
+        /**
+         * Requests in flight at once. Jev allows 40 requests per second and
+         * answers in ~0.3s, so 20 keeps a large batch under the limit.
+         */
+        'concurrency' => (int) env('TYPESAFE_CONCURRENCY', 20),
+        'enabled' => filled(env('TYPESAFE_API_KEY')),
+    ],
+
     'openai' => [
         /**
          * Domain-ownership token for the ChatGPT app directory submission,

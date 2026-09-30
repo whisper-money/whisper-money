@@ -21,6 +21,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Jev share
+    |--------------------------------------------------------------------------
+    |
+    | Fraction (0-1) of transactions sent to TypeSafe AI's Jev instead of the
+    | provider above, drawn at random per transaction: 0 keeps everything on
+    | the default provider, 0.5 sends half, 1 sends all. It only applies when
+    | TYPESAFE_API_KEY is set.
+    |
+    */
+
+    'jev_ratio' => (float) env('AI_CATEGORIZATION_JEV_RATIO', 0),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Jev merchant threshold
+    |--------------------------------------------------------------------------
+    |
+    | Jev answers "is this merchant unambiguous?" as a 0-1 score rather than a
+    | boolean. A score at or above this bar counts as unambiguous, which is what
+    | lets the rule learner generalise the categorization into a rule.
+    |
+    */
+
+    'jev_unambiguous_threshold' => (float) env('AI_CATEGORIZATION_JEV_UNAMBIGUOUS_THRESHOLD', 0.5),
+
+    /*
+    |--------------------------------------------------------------------------
     | Master switch
     |--------------------------------------------------------------------------
     |
@@ -60,6 +87,25 @@ return [
     */
 
     'group_batch_size' => (int) env('AI_CATEGORIZATION_GROUP_BATCH_SIZE', 50),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Model pricing
+    |--------------------------------------------------------------------------
+    |
+    | USD per million tokens, keyed by model, used by `ai:categorization-eval`
+    | to price a run. Gemini bills thinking tokens as output; Jev bills input
+    | only. A model missing here is reported with an unknown cost.
+    |
+    */
+
+    'pricing' => [
+        'gemini-2.5-flash-lite' => ['input' => 0.10, 'output' => 0.40],
+        'gemini-2.5-flash' => ['input' => 0.30, 'output' => 2.50],
+        'gemini-3.5-flash' => ['input' => 1.50, 'output' => 9.00],
+        'jev-latest' => ['input' => 0.042, 'output' => 0.0],
+        'jev-1.13.0' => ['input' => 0.042, 'output' => 0.0],
+    ],
 
     /*
     |--------------------------------------------------------------------------
