@@ -25,7 +25,7 @@ const LAST_DAYS_SUBSCRIBERS_VIEW = 'price-increase-last-days-subscribers-oct-202
 const LAST_DAYS_SUBSCRIBERS_SUBJECT = 'After 1 October, nobody else can get your price';
 
 const EXTENSION_VIEW = 'price-increase-extension-oct-2026';
-const EXTENSION_SUBJECT = 'My mistake: €3.99 lasts until Thursday';
+const EXTENSION_SUBJECT = 'My mistake: the €3.99 price is extended to Thursday';
 
 /**
  * Queue one of the price increase emails to a user with the given locale and
@@ -373,6 +373,7 @@ it('renders the extension email in English', function () {
     $mail->assertSeeInHtml('Yesterday and today, Whisper Money showed the wrong price.');
     $mail->assertSeeInHtml('It said €8.99 a month');
     $mail->assertSeeInHtml('That was a bug, and it was mine. I am sorry.');
+    $mail->assertSeeInHtml('To make up for it, the old price gets one more day');
     $mail->assertSeeInHtml('until tomorrow, Thursday 1 October, at 23:59 CEST');
     $mail->assertSeeInHtml('reply to this email and I will sort it out');
 
@@ -384,13 +385,14 @@ it('renders the extension email in English', function () {
 it('renders the extension email in Spanish', function () {
     $mail = queuePriceIncreaseEmail(EXTENSION_VIEW, EXTENSION_SUBJECT, 'es');
 
-    $mail->assertHasSubject('Culpa mía: los 3,99 € siguen hasta el jueves');
+    $mail->assertHasSubject('Culpa mía: el precio de 3,99 € se alarga hasta el jueves');
     $mail->assertSeeInHtml('Hola Ada,');
     $mail->assertSeeInHtml('Un día más con el precio de siempre');
 
     $mail->assertSeeInHtml('Ayer y hoy, Whisper Money ha estado mostrando un precio equivocado.');
     $mail->assertSeeInHtml('Ponía 8,99 € al mes');
     $mail->assertSeeInHtml('Fue un fallo, y el fallo es mío. Lo siento.');
+    $mail->assertSeeInHtml('Para compensarlo, el precio de siempre dura un día más');
     $mail->assertSeeInHtml('hasta mañana, jueves 1 de octubre, a las 23:59 (hora peninsular española)');
     $mail->assertSeeInHtml('Suscribirme a 3,99 €');
     $mail->assertSeeInHtml('responde a este correo y lo arreglo');
@@ -414,10 +416,12 @@ it('gives each reader of the extension email the action that fits them', functio
     ];
 
     foreach ($actions as $line => $url) {
-        $line === $action ? $mail->assertSeeInHtml($line) : $mail->assertDontSeeInHtml($line);
+        $assertion = $line === $action ? 'assertSeeInHtml' : 'assertDontSeeInHtml';
+
+        $mail->{$assertion}($line);
 
         if ($url !== null) {
-            $line === $action ? $mail->assertSeeInHtml($url, escape: false) : $mail->assertDontSeeInHtml($url, escape: false);
+            $mail->{$assertion}($url, escape: false);
         }
     }
 })->with([
@@ -425,6 +429,16 @@ it('gives each reader of the extension email the action that fits them', functio
     'a cancelling subscriber reactivates' => [fn () => cancellingSubscriber(), 'Reactivate my subscription'],
     'an active subscriber has nothing to do' => [fn () => User::factory()->subscribed(), 'None of this changes what you pay.'],
 ]);
+
+it('tells a cancelling reader of the extension email that their deadline is their own', function () {
+    $mail = queuePriceIncreaseEmail(EXTENSION_VIEW, EXTENSION_SUBJECT, 'es', cancellingSubscriber());
+
+    // The shared body says the old price ends tomorrow, but theirs lasts as long
+    // as the subscription they already have, which can be months away.
+    $mail->assertSeeInHtml('así que tu plazo no acaba mañana');
+    $mail->assertSeeInHtml('en cualquier momento antes de que termine');
+    $mail->assertSeeInHtml('Reactivar mi suscripción');
+});
 
 /**
  * LocalizationTest only scans resources/js, so a Blade line or a subject left

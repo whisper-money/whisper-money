@@ -11,14 +11,15 @@
      the same view and so the same identifier, which dedupes anyone who lands in
      two of them:
 
-     php artisan email:update price-increase-extension-oct-2026 --audience=unsubscribed --subject="My mistake: €3.99 lasts until Thursday" --exclude-demo
-     php artisan email:update price-increase-extension-oct-2026 --audience=cancelling-low-price --subject="My mistake: €3.99 lasts until Thursday" --exclude-demo
-     php artisan email:update price-increase-extension-oct-2026 --audience=active-low-price --subject="My mistake: €3.99 lasts until Thursday" --exclude-demo
+     php artisan email:update price-increase-extension-oct-2026 --audience=unsubscribed --subject="My mistake: the €3.99 price is extended to Thursday" --exclude-demo
+     php artisan email:update price-increase-extension-oct-2026 --audience=cancelling-low-price --subject="My mistake: the €3.99 price is extended to Thursday" --exclude-demo
+     php artisan email:update price-increase-extension-oct-2026 --audience=active-low-price --subject="My mistake: the €3.99 price is extended to Thursday" --exclude-demo
 
      The body is the same for everyone. The closing block is the only thing that
      changes, read off the same subscription state the audiences are built from:
      a cancelled subscription still running (onGracePeriod) is sent to reactivate
-     it from the billing page, since /subscribe bounces them to the dashboard; a
+     it from the billing page, since /subscribe bounces them to the dashboard,
+     and told their deadline is the end of their own period, not 1 October; a
      subscription Stripe still collects on has nothing to do; everyone else is
      sent to subscribe. The subscribe button only charges €3.99 while production
      runs on the low price tier. --}}
@@ -33,12 +34,10 @@
 
 {{ __('That was a bug, and it was mine. I am sorry.') }}
 
-{{ __('Those were the last two days at the old price, and the app was telling everyone they were already over.') }}
-
-**{{ __('So I am giving you one more day: the old price now lasts until tomorrow, Thursday 1 October, at 23:59 CEST.') }}**
+**{{ __('To make up for it, the old price gets one more day: it now lasts until tomorrow, Thursday 1 October, at 23:59 CEST.') }}**
 
 @if ($user->subscription('default')?->onGracePeriod())
-{{ __('You cancelled, but your subscription is still running on the old price. Reactivate it before it ends and you keep that price for as long as you keep the subscription.') }}
+{{ __('You cancelled, but your subscription is still running on the old price, so your deadline is not tomorrow: reactivate it any time before it ends and you keep that price for as long as you keep the subscription.') }}
 
 <x-mail::button :url="route('settings.billing')">
 {{ __('Reactivate my subscription') }}
