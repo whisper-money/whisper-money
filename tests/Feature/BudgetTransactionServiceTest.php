@@ -894,6 +894,35 @@ test('reassigning a batch reads the category tree once instead of walking it per
         ->toEqualCanonicalizing($transactions->modelKeys());
 });
 
+test('reassigning a batch reads each user\'s own category tree', function () {
+    $otherUser = User::factory()->create();
+    $periods = [];
+    $transactions = [];
+
+    foreach ([$this->user, $otherUser] as $user) {
+        $root = Category::factory()->create(['user_id' => $user->id]);
+        $child = Category::factory()->childOf($root)->create();
+        $periods[] = periodTracking($root);
+        $transactions[] = Transaction::factory()->create([
+            'user_id' => $user->id,
+            'category_id' => $child->id,
+            'transaction_date' => now()->subDays(2),
+        ]);
+    }
+
+    BudgetTransaction::query()->delete();
+
+    $result = countQueries(fn () => (new ReassignTransactionsToBudgets(collect($transactions)->pluck('id')->all()))->handle($this->service));
+
+    $categoryTreeQueries = collect($result['queries'])
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "categories"') || str_contains($query, 'from `categories`'))
+            && str_contains($query, 'parent_id'));
+
+    expect($categoryTreeQueries)->toHaveCount(2)
+        ->and(periodIdsOf($transactions[0]))->toBe([$periods[0]->id])
+        ->and(periodIdsOf($transactions[1]))->toBe([$periods[1]->id]);
+});
+
 test('reassigning a batch stops the category walk at a trashed parent', function () {
     $root = Category::factory()->create(['user_id' => $this->user->id]);
     $child = Category::factory()->childOf($root)->create();

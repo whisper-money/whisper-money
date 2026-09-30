@@ -45,7 +45,9 @@ class BudgetTransactionService
 
         foreach ($transactions as $transaction) {
             $userId = $transaction->user_id;
-            $parentMap = $userId ? ($parentMaps[$userId] ??= $this->tree->parentMap($userId)) : null;
+            $parentMap = $userId && $transaction->category_id
+                ? ($parentMaps[$userId] ??= $this->tree->parentMap($userId))
+                : null;
 
             $this->assignWithCategoryTree($transaction, $notify, $parentMap);
         }
@@ -208,7 +210,8 @@ class BudgetTransactionService
      *
      * Behaves as updateOrCreate() would row by row: a missing snapshot is
      * inserted, one whose amount changed is refreshed, and one already holding
-     * the right amount is left untouched, updated_at included.
+     * the right amount is left untouched, updated_at included. Eloquent's
+     * upsert() fills in the ids and timestamps the model would have set.
      *
      * @param  Collection<int, Transaction>  $transactions
      * @return int the number of snapshots newly created
@@ -220,7 +223,6 @@ class BudgetTransactionService
             ->whereIn('transaction_id', $transactions->modelKeys())
             ->pluck('amount', 'transaction_id');
 
-        $now = now();
         $rows = [];
 
         foreach ($transactions as $transaction) {
@@ -231,16 +233,13 @@ class BudgetTransactionService
             }
 
             $rows[] = [
-                'id' => (new BudgetTransaction)->newUniqueId(),
                 'transaction_id' => $transaction->id,
                 'budget_period_id' => $budgetPeriodId,
                 'amount' => $amount,
-                'created_at' => $now,
-                'updated_at' => $now,
             ];
         }
 
-        BudgetTransaction::upsert($rows, ['transaction_id', 'budget_period_id'], ['amount', 'updated_at']);
+        BudgetTransaction::upsert($rows, ['transaction_id', 'budget_period_id'], ['amount']);
 
         return $transactions->count() - $existingAmounts->count();
     }
