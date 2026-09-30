@@ -9,6 +9,7 @@ enum BankingProvider: string
     case IndexaCapital = 'indexacapital';
     case Binance = 'binance';
     case Bitpanda = 'bitpanda';
+    case Kraken = 'kraken';
     case Coinbase = 'coinbase';
     case InteractiveBrokers = 'interactivebrokers';
     case Wise = 'wise';
@@ -39,12 +40,28 @@ enum BankingProvider: string
     }
 
     /**
+     * Whether a bank is on our curated beta list, `banking.beta_banks`.
+     */
+    public function isBetaBank(string $aspspName, ?string $country): bool
+    {
+        $banks = config('banking.beta_banks')[$this->value] ?? [];
+
+        if ($banks === '*') {
+            return true;
+        }
+
+        $countries = $banks[$aspspName] ?? [];
+
+        return $countries === '*' || in_array($country, $countries, true);
+    }
+
+    /**
      * The account type that this provider's pending accounts default to.
      */
     public function defaultAccountType(): AccountType
     {
         return match ($this) {
-            self::IndexaCapital, self::Binance, self::Bitpanda, self::Coinbase, self::InteractiveBrokers => AccountType::Investment,
+            self::IndexaCapital, self::Binance, self::Bitpanda, self::Kraken, self::Coinbase, self::InteractiveBrokers => AccountType::Investment,
             self::Wise, self::EnableBanking => AccountType::Checking,
         };
     }
@@ -66,7 +83,7 @@ enum BankingProvider: string
             self::IndexaCapital, self::Wise => [
                 new CredentialField('api_token', 'api_token', ['required', 'string', 'min:10']),
             ],
-            self::Binance => [
+            self::Binance, self::Kraken => [
                 new CredentialField('api_key', 'api_token', ['required', 'string', 'min:10']),
                 new CredentialField('api_secret', 'api_secret', ['required', 'string', 'min:10']),
             ],

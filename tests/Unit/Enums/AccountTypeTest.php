@@ -24,6 +24,19 @@ it('does not support invested amount for non-investment account types', function
     'others' => AccountType::Others,
 ]);
 
+it('sets money aside only on savings, investment and retirement accounts', function (AccountType $type, bool $isSetAside) {
+    expect($type->isSetAside())->toBe($isSetAside);
+})->with([
+    'savings' => [AccountType::Savings, true],
+    'investment' => [AccountType::Investment, true],
+    'retirement' => [AccountType::Retirement, true],
+    'checking' => [AccountType::Checking, false],
+    'credit card' => [AccountType::CreditCard, false],
+    'loan' => [AccountType::Loan, false],
+    'real estate' => [AccountType::RealEstate, false],
+    'others' => [AccountType::Others, false],
+]);
+
 it('reduces net worth for liability account types', function (AccountType $type) {
     expect($type->reducesNetWorth())->toBeTrue();
 })->with([

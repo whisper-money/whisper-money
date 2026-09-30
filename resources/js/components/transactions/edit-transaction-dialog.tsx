@@ -25,6 +25,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
 import { fetchJson } from '@/lib/fetch-json';
@@ -55,6 +60,7 @@ import { getYear, parseISO } from 'date-fns';
 import {
     CalendarDays,
     ChevronDown,
+    ChevronRight,
     ChevronUp,
     CircleDollarSign,
     CircleSlash,
@@ -73,7 +79,8 @@ import { toast } from 'sonner';
 export type TransactionCreateOrigin =
     | 'quick_add'
     | 'full_dialog'
-    | 'account_page';
+    | 'account_page'
+    | 'duplicate';
 
 interface EditTransactionDialogProps {
     transaction: ServerTransaction | null;
@@ -95,6 +102,11 @@ interface EditTransactionDialogProps {
     onSplit?: (transaction: ServerTransaction) => void;
     mode: 'create' | 'edit';
     initialAccountId?: string | null;
+    /**
+     * Create mode only: open the form filled in from this transaction, dated
+     * today, for the recurring ones entered by hand.
+     */
+    duplicateFrom?: ServerTransaction | null;
     /** Which surface opened the dialog, for `transaction_created`. */
     origin?: TransactionCreateOrigin;
     /**
@@ -196,6 +208,7 @@ export function EditTransactionDialog({
     onSplit,
     mode,
     initialAccountId = null,
+    duplicateFrom = null,
     origin = 'full_dialog',
     onRequestEdit,
 }: EditTransactionDialogProps) {
@@ -222,6 +235,10 @@ export function EditTransactionDialog({
     // entry of a batch was wrong for the rest of it too.
     const defaultAccountId = useRef('');
     const defaultDate = useRef('');
+    const defaultCategoryId = useRef('null');
+    // Only the first save is the copy: what "Save and add another" brings next
+    // is a transaction of its own, so rules and analytics treat it as one.
+    const isDuplicate = useRef(false);
     const amountInputRef = useRef<HTMLInputElement>(null);
     const [focusAmountAfterSave, setFocusAmountAfterSave] = useState(false);
     const [accountId, setAccountId] = useState<string>('');
@@ -265,21 +282,23 @@ export function EditTransactionDialog({
         transactionType === 'income' ? unsignedAmount : -unsignedAmount;
 
     useEffect(() => {
+        function fillFrom(source: ServerTransaction) {
+            setDescription(source.description);
+            setUnsignedAmount(Math.abs(source.amount));
+            setTransactionType(source.amount > 0 ? 'income' : 'expense');
+            setCurrencyCode(source.currency_code);
+            setCategoryId(source.category_id || 'null');
+            setSelectedLabelIds(
+                source.label_ids || source.labels?.map((l) => l.id) || [],
+            );
+            setNotes(source.notes || '');
+            setShowNotes(!!source.notes);
+        }
+
         if (mode === 'edit' && transaction) {
             setTransactionDate(transaction.transaction_date);
-            setDescription(transaction.description);
-            setUnsignedAmount(Math.abs(transaction.amount));
-            setTransactionType(transaction.amount > 0 ? 'income' : 'expense');
             setAccountId(transaction.account_id);
-            setCurrencyCode(transaction.currency_code);
-            setCategoryId(transaction.category_id || 'null');
-            setSelectedLabelIds(
-                transaction.label_ids ||
-                    transaction.labels?.map((l) => l.id) ||
-                    [],
-            );
-            setNotes(transaction.notes || '');
-            setShowNotes(!!transaction.notes);
+            fillFrom(transaction);
         } else if (mode === 'create' && open) {
             const today = todayDateString();
             setTransactionDate(today);
@@ -291,11 +310,15 @@ export function EditTransactionDialog({
             setShowDateField(false);
             defaultDate.current = today;
             const availableAccounts = filterTransactionalAccounts(accounts);
-            // The chip always opens filled in: the account being read wins,
-            // then the one the last manual transaction went to, then simply
-            // the first. Pre-filling is fine because the chip shows what it
-            // picked — it is hiding it that would not be.
+            // The chip always opens filled in: the duplicated transaction's
+            // account wins, then the account being read, then the one the last
+            // manual transaction went to, then simply the first. Pre-filling is
+            // fine because the chip shows what it picked — it is hiding it
+            // that would not be.
             const initialAccount =
+                availableAccounts.find(
+                    (account) => account.id === duplicateFrom?.account_id,
+                ) ??
                 availableAccounts.find(
                     (account) => account.id === initialAccountId,
                 ) ??
@@ -311,8 +334,21 @@ export function EditTransactionDialog({
             setCategoryId('null');
             setSelectedLabelIds([]);
             setNotes('');
+            if (duplicateFrom) {
+                fillFrom(duplicateFrom);
+            }
+            isDuplicate.current = !!duplicateFrom;
+            defaultCategoryId.current = duplicateFrom?.category_id || 'null';
         }
-    }, [mode, transaction, open, accounts, initialAccountId, userCurrencyCode]);
+    }, [
+        mode,
+        transaction,
+        open,
+        accounts,
+        initialAccountId,
+        userCurrencyCode,
+        duplicateFrom,
+    ]);
 
     useEffect(() => {
         if (!focusAmountAfterSave || isSubmitting) {
@@ -327,7 +363,13 @@ export function EditTransactionDialog({
     }, [focusAmountAfterSave, isSubmitting]);
 
     function checkAndApplyAutomationRules() {
-        if (mode !== 'create' || automationRules.length === 0) {
+        // A duplicate already carries the category, labels and notes the user
+        // settled on for the original, so a rule has nothing left to decide.
+        if (
+            mode !== 'create' ||
+            isDuplicate.current ||
+            automationRules.length === 0
+        ) {
             return {
                 categoryId: null,
                 labelIds: [] as string[],
@@ -592,19 +634,23 @@ export function EditTransactionDialog({
 
                 captureEvent('transaction_created', {
                     source: 'manually_created',
-                    origin,
+                    origin: isDuplicate.current ? 'duplicate' : origin,
                     expanded,
                     saved_and_added_another: addAnother,
                     account_chip_changed:
                         accountId !== defaultAccountId.current,
                     date_chip_changed: transactionDate !== defaultDate.current,
-                    // The chip always opens on Uncategorized, so anything else
-                    // is the user's own pick.
-                    category_chip_changed: categoryId !== 'null',
+                    // The chip opens on Uncategorized, or on the duplicated
+                    // transaction's category, so anything else is the user's
+                    // own pick.
+                    category_chip_changed:
+                        categoryId !== defaultCategoryId.current,
                     rule_applied_category: ruleAppliedCategory,
                 });
 
                 onSuccess(newTransaction);
+
+                isDuplicate.current = false;
 
                 if (addAnother) {
                     setUnsignedAmount(0);
@@ -934,6 +980,35 @@ export function EditTransactionDialog({
           ? FileText
           : Landmark;
 
+    const splitRow = mode === 'edit' &&
+        onSplit &&
+        transaction &&
+        canSplit(transaction) && (
+            <button
+                type="button"
+                onClick={() => {
+                    onOpenChange(false);
+                    onSplit(transaction);
+                }}
+                disabled={isSubmitting}
+                data-testid="split-transaction"
+                className="flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-colors outline-none hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-accent/50"
+            >
+                <Split className="size-4 shrink-0" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="font-medium">
+                        {__('Split into parts')}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        {__('Divide :amount across categories', {
+                            amount: formattedAmount,
+                        })}
+                    </span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+        );
+
     const descriptionField = (
         <div className="space-y-2">
             <FormLabel htmlFor="description">{__('Description')}</FormLabel>
@@ -1201,7 +1276,19 @@ export function EditTransactionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[525px]">
+            <DialogContent
+                className="focus:outline-none sm:max-w-[525px]"
+                // On a read-only transaction the split row is the first
+                // tabbable element, and landing on it opened the dialog with
+                // it ringed as if selected. Focus the dialog itself instead;
+                // Tab still reaches the row.
+                onOpenAutoFocus={(event) => {
+                    if (splitRow && !canEditAllFields) {
+                        event.preventDefault();
+                        (event.currentTarget as HTMLElement).focus();
+                    }
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>
                         {mode === 'create'
@@ -1296,6 +1383,8 @@ export function EditTransactionDialog({
                                     {!isMinimal && balanceControl}
                                 </div>
 
+                                {splitRow}
+
                                 {descriptionField}
 
                                 {isMinimal ? (
@@ -1384,6 +1473,8 @@ export function EditTransactionDialog({
                                         </p>
                                     </div>
 
+                                    {splitRow}
+
                                     {canEditDate && dateField}
 
                                     {canEditDescription && descriptionField}
@@ -1398,47 +1489,31 @@ export function EditTransactionDialog({
                         {mode === 'create' && moreOptionsTrigger}
                     </div>
 
-                    <DialogFooter>
+                    {/* One row on every width in edit mode: the dialog's X,
+                        Esc and tapping outside already close it, so there is
+                        no Cancel to stack. */}
+                    <DialogFooter className={cn(mode === 'edit' && 'flex-row')}>
                         {mode === 'edit' && onDelete && transaction && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => {
-                                    onOpenChange(false);
-                                    onDelete(transaction);
-                                }}
-                                disabled={isSubmitting}
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto dark:hover:bg-destructive/20"
-                            >
-                                <Trash2 />
-                                {__('Delete')}
-                            </Button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => {
+                                            onOpenChange(false);
+                                            onDelete(transaction);
+                                        }}
+                                        disabled={isSubmitting}
+                                        aria-label={__('Delete')}
+                                        className="shrink-0"
+                                    >
+                                        <Trash2 className="text-destructive" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{__('Delete')}</TooltipContent>
+                            </Tooltip>
                         )}
-                        {mode === 'edit' &&
-                            onSplit &&
-                            transaction &&
-                            canSplit(transaction) && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => {
-                                        onOpenChange(false);
-                                        onSplit(transaction);
-                                    }}
-                                    disabled={isSubmitting}
-                                >
-                                    <Split />
-                                    {__('Split')}
-                                </Button>
-                            )}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                            disabled={isSubmitting}
-                        >
-                            {__('Cancel')}
-                        </Button>
                         {mode === 'create' && (
                             <Button
                                 type="button"
@@ -1454,6 +1529,9 @@ export function EditTransactionDialog({
                             type="submit"
                             disabled={isSubmitting}
                             data-testid="submit-transaction"
+                            className={cn(
+                                mode === 'edit' && 'flex-1 sm:flex-none',
+                            )}
                         >
                             {isSubmitting
                                 ? __('Saving...')

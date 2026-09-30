@@ -284,7 +284,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                         <div className="space-y-1">
                                             <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                                                 {connection.aspsp_name}
-                                                {connection.aspsp_beta && (
+                                                {connection.is_beta && (
                                                     <BetaConnectorBadge />
                                                 )}
                                             </CardTitle>
@@ -525,10 +525,10 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                     'An unexpected error occurred during sync.',
                                                                 )}
                                                         </p>
-                                                        {connection.aspsp_beta && (
+                                                        {connection.is_beta && (
                                                             <p className="text-sm text-muted-foreground">
                                                                 {__(
-                                                                    'This bank is still in beta at our banking provider, so it fails more often than others. Retrying usually helps.',
+                                                                    'This bank is still in beta: its connection fails more often than others. Retrying usually helps.',
                                                                 )}
                                                             </p>
                                                         )}

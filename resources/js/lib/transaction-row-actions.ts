@@ -14,6 +14,7 @@ export interface TransactionRowAction {
 interface TransactionRowActionsOptions {
     transaction: ServerTransaction;
     onEdit: (transaction: ServerTransaction) => void;
+    onDuplicate: (transaction: ServerTransaction) => void;
     onReEvaluateRules: (transaction: ServerTransaction) => void;
     onAutomate: (transaction: ServerTransaction) => void;
     onDelete: (transaction: ServerTransaction) => void;
@@ -28,6 +29,7 @@ interface TransactionRowActionsOptions {
 export function getTransactionRowActions({
     transaction,
     onEdit,
+    onDuplicate,
     onReEvaluateRules,
     onAutomate,
     onDelete,
@@ -41,6 +43,15 @@ export function getTransactionRowActions({
             onSelect: () => onEdit(transaction),
         },
     ];
+
+    // A part of a split only makes sense next to the other parts.
+    if (!isSplitPart(transaction)) {
+        actions.push({
+            id: 'duplicate',
+            label: __('Duplicate'),
+            onSelect: () => onDuplicate(transaction),
+        });
+    }
 
     if (canSplit(transaction)) {
         actions.push({

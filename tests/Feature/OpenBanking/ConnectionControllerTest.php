@@ -46,6 +46,23 @@ test('connections page only shows own connections', function () {
     );
 });
 
+test('connections are badged beta from the curated list, not the stored column', function () {
+    $user = User::factory()->onboarded()->create();
+    $listed = BankingConnection::factory()->create(['user_id' => $user->id, 'aspsp_name' => 'Banco Mediolanum', 'aspsp_country' => 'ES']);
+    $kraken = BankingConnection::factory()->kraken()->create(['user_id' => $user->id]);
+    $unlisted = BankingConnection::factory()->create(['user_id' => $user->id, 'aspsp_name' => 'Openbank', 'aspsp_country' => 'ES']);
+    $unlisted->forceFill(['aspsp_beta' => true])->save();
+
+    $connections = collect($this->actingAs($user)->get('/settings/connections')
+        ->assertOk()
+        ->inertiaProps('connections'))
+        ->keyBy('id');
+
+    expect($connections[$listed->id]['is_beta'])->toBeTrue()
+        ->and($connections[$kraken->id]['is_beta'])->toBeTrue()
+        ->and($connections[$unlisted->id]['is_beta'])->toBeFalse();
+});
+
 test('users can disconnect a banking connection and keep accounts as manual', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
@@ -434,6 +451,55 @@ test('users can update bitpanda credentials with valid api key', function () {
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
     expect($connection->error_message)->toBeNull();
     expect($connection->api_token)->toBe('new-valid-bitpanda-key-12345');
+});
+
+test('users can update kraken credentials and the ledger is walked again', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->kraken()->error()->create([
+        'user_id' => $user->id,
+        'ledger_synced_until' => now()->subDay(),
+    ]);
+
+    Http::fake([
+        'api.kraken.com/0/private/Balance' => Http::response(['error' => [], 'result' => []]),
+        'api.kraken.com/0/private/Ledgers' => Http::response(['error' => [], 'result' => ['ledger' => [], 'count' => 0]]),
+    ]);
+
+    $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_key' => 'new-valid-kraken-key-12345',
+        'api_secret' => base64_encode('new-valid-kraken-secret'),
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active)
+        ->and($connection->api_token)->toBe('new-valid-kraken-key-12345')
+        ->and($connection->ledger_synced_until)->toBeNull();
+    Http::assertSentCount(2);
+});
+
+test('updating kraken credentials without the ledger permission names it', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->kraken()->error()->create(['user_id' => $user->id]);
+    $originalToken = $connection->api_token;
+
+    Http::fake([
+        'api.kraken.com/0/private/Balance' => Http::response(['error' => [], 'result' => []]),
+        'api.kraken.com/0/private/Ledgers' => Http::response(['error' => ['EGeneral:Permission denied']]),
+    ]);
+
+    $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_key' => 'new-valid-kraken-key-12345',
+        'api_secret' => base64_encode('new-valid-kraken-secret'),
+    ])->assertSessionHasErrors([
+        'credentials' => 'Your Kraken API key is missing the "Query Ledger Entries" permission. Enable it and try again.',
+    ]);
+
+    expect($connection->refresh()->api_token)->toBe($originalToken);
+    Queue::assertNothingPushed();
 });
 
 test('users can update wise credentials with valid api token', function () {

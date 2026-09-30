@@ -31,4 +31,33 @@ return [
         'Trade Republic' => 10,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Beta banks
+    |--------------------------------------------------------------------------
+    |
+    | The banks we badge as beta, in the picker and on the user's connections,
+    | keyed by provider. An EnableBanking bank maps its `aspsp_name` to the
+    | countries it is beta in, or `*` for all of them; a native provider set to
+    | `*` is beta as a whole.
+    |
+    | EnableBanking's own `beta` flag covers far more connectors than the ones
+    | that actually give our users trouble, so badging from it warned people off
+    | banks that work fine. This is our curated list of the ones that fail more
+    | often, and changing it is a code change on purpose.
+    |
+    */
+
+    'beta_banks' => [
+        'enablebanking' => [
+            'Trade Republic' => '*',
+            'MyInvestor Banco' => ['ES'],
+            'American Express' => ['FR'],
+            'Banco Cetelem' => ['ES'],
+            'Banco Mediolanum' => ['ES'],
+            'DKB' => ['DE'],
+        ],
+        'kraken' => '*',
+    ],
+
 ];

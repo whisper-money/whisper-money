@@ -236,7 +236,7 @@ describe('ConnectAccountDialog', () => {
         expect(screen.getAllByText('Wise')).toHaveLength(1);
     });
 
-    it('badges the banks the provider still calls beta', async () => {
+    it('badges the banks the picker marks as beta', async () => {
         await reachBankStep(
             [],
             [institution('Openbank', '', true), institution('BBVA')],
@@ -264,6 +264,33 @@ describe('ConnectAccountDialog', () => {
         ).toBeInTheDocument();
         // Still connectable: beta informs, it does not gate.
         expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled();
+    });
+
+    it('flags a native integration in beta with its own caveat', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-10-01T12:00:00Z'));
+
+        try {
+            await reachBankStep([], [institution('BBVA')]);
+
+            const kraken = screen.getByRole('button', { name: /Kraken/ });
+            expect(kraken).toHaveTextContent('Beta');
+
+            fireEvent.click(kraken);
+            fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+            expect(
+                screen.getByText('New integration in beta'),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByText('This bank is still in beta'),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.getByText('Account → Connections & APIs'),
+            ).toBeInTheDocument();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     // With no open-banking credentials the catalogue comes back empty, so the

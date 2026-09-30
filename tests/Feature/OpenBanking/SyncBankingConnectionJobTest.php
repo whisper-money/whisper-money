@@ -1526,6 +1526,81 @@ test('bitpanda sync does not send email', function () {
     Mail::assertNothingQueued();
 });
 
+test('kraken sync stores the portfolio and invested amount and advances the ledger cursor', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->kraken()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'kraken-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.kraken.com/0/public/Ticker' => Http::response(['error' => [], 'result' => ['XXBTZEUR' => ['c' => ['50000.0', '1']]]]),
+        'api.kraken.com/0/private/Balance' => Http::response(['error' => [], 'result' => ['XXBT' => '0.5', 'ZEUR' => '200.0']]),
+        'api.kraken.com/0/private/Ledgers' => Http::sequence()
+            ->push(['error' => [], 'result' => ['count' => 1, 'ledger' => [
+                'L1' => ['refid' => 'R1', 'time' => 1_700_000_000.25, 'type' => 'deposit', 'subtype' => '', 'asset' => 'ZEUR', 'amount' => '1000.0', 'fee' => '0'],
+            ]]])
+            ->push(['error' => [], 'result' => ['count' => 0, 'ledger' => []]]),
+    ]);
+
+    runSync(new SyncBankingConnectionJob($connection));
+
+    $connection->refresh();
+    $balance = $account->balances()->sole();
+
+    expect($connection->last_synced_at)->not->toBeNull()
+        ->and($connection->ledger_synced_until->getTimestamp())->toBe(1_700_000_001)
+        ->and($balance->balance)->toBe(2_520_000)
+        ->and($balance->invested_amount)->toBe(100_000);
+});
+
+test('kraken permission denied on a scheduled sync is an auth failure that emails the user', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->kraken()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'kraken-portfolio',
+    ]);
+
+    Http::fake([
+        'api.kraken.com/0/public/Ticker' => Http::response(['error' => [], 'result' => []]),
+        'api.kraken.com/0/private/*' => Http::response(['error' => ['EGeneral:Permission denied']]),
+    ]);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $mockQueueJob = Mockery::mock(Job::class);
+    $mockQueueJob->shouldReceive('attempts')->andReturn(1);
+    $mockQueueJob->shouldReceive('isReleased')->andReturn(false);
+    $mockQueueJob->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $mockQueueJob->shouldReceive('hasFailed')->andReturn(false);
+    $mockQueueJob->shouldReceive('fail')->once();
+    $job->job = $mockQueueJob;
+
+    try {
+        runSync($job);
+    } catch (RequestException) {
+        // Expected for auth failures after manually failing the job.
+    }
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error)
+        ->and($connection->error_message)->toContain('Authentication failed');
+
+    Mail::assertQueued(BankingConnectionAuthFailedEmail::class);
+});
+
 test('sends auth failed email immediately for indexa capital 401 error', function () {
     Mail::fake();
 

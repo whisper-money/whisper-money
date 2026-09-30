@@ -5,15 +5,18 @@ use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
 use App\Jobs\RetryTransientAiCategorizationJob;
+use App\Models\AutomationRule;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Ai\AiCategorizer;
 use App\Services\Ai\CategorizeTransactions;
 use App\Services\Ai\CategoryCatalog;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Lottery;
 use Illuminate\Support\Sleep;
@@ -445,4 +448,119 @@ describe('Jev backend', function () {
         Http::assertNothingSent();
         expect($this->transaction->refresh()->ai_model)->toBe((string) config('ai_categorization.model'));
     });
+});
+
+it('scores an out-of-scale confidence as zero rather than as certainty', function () {
+    $user = User::factory()->create();
+    $category = groceries($user);
+    $transaction = uncategorized($user);
+
+    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+
+    TransactionCategorizationAgent::fake([
+        ['results' => [[
+            'ref' => $transaction->id,
+            'category_index' => $index,
+            'confidence' => 200,
+            'merchant_unambiguous' => true,
+        ]]],
+    ]);
+
+    $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    $transaction->refresh();
+
+    // Zero, not 1.0: at 1.0 the answer would clear both the label bar and the
+    // higher rule bar, so one malformed response would auto-apply the category
+    // and teach a permanent merchant rule off it.
+    expect($transaction->ai_confidence)->toEqual(0.0)
+        ->and($transaction->category_id)->toBeNull()
+        ->and($transaction->category_source)->toBeNull()
+        ->and($transaction->ai_suggested_category_id)->toBe($category->id)
+        ->and($outcomes[0]->confidence)->toEqual(0.0)
+        ->and($outcomes[0]->applied)->toBeFalse();
+});
+
+it('scores a negative confidence as zero and leaves the transaction uncategorized', function () {
+    $user = User::factory()->create();
+    $category = groceries($user);
+    $transaction = uncategorized($user);
+
+    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+
+    TransactionCategorizationAgent::fake([
+        ['results' => [[
+            'ref' => $transaction->id,
+            'category_index' => $index,
+            'confidence' => -5,
+            'merchant_unambiguous' => false,
+        ]]],
+    ]);
+
+    $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    $transaction->refresh();
+
+    expect($transaction->ai_confidence)->toEqual(0.0)
+        ->and($transaction->category_id)->toBeNull()
+        ->and($outcomes[0]->confidence)->toEqual(0.0)
+        ->and($outcomes[0]->applied)->toBeFalse();
+});
+
+it('logs the raw value when the confidence is out of range', function () {
+    $user = User::factory()->create();
+    $category = groceries($user);
+    $transaction = uncategorized($user);
+
+    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+
+    TransactionCategorizationAgent::fake([
+        ['results' => [[
+            'ref' => $transaction->id,
+            'category_index' => $index,
+            'confidence' => 200,
+            'merchant_unambiguous' => true,
+        ]]],
+    ]);
+
+    Log::spy();
+
+    app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message, array $context): bool => $message === 'AI categorization returned an out-of-range confidence'
+            && $context['transaction_id'] === $transaction->id
+            && $context['confidence'] === 200.0);
+});
+
+it('learns no rule from an out-of-scale confidence even when the merchant is unambiguous', function () {
+    // Regression for the reviewed concern: clamping 200 up to 1.0 would clear
+    // both the label bar and the higher rule bar, so one malformed response
+    // would auto-apply the category AND teach a permanent merchant rule off
+    // it. Scoring zero must keep AiRuleLearner::learn() below its confidence
+    // bar too. Goes through AiCategorizer::run() (not just forTransactions())
+    // because that is what actually feeds outcomes into the rule learner.
+    $user = User::factory()->create();
+    $category = groceries($user);
+    $transaction = uncategorized($user);
+
+    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+
+    TransactionCategorizationAgent::fake([
+        ['results' => [[
+            'ref' => $transaction->id,
+            'category_index' => $index,
+            'confidence' => 200,
+            'merchant_unambiguous' => true,
+        ]]],
+    ]);
+
+    app(AiCategorizer::class)->run($user, collect([$transaction]));
+
+    $transaction->refresh();
+
+    expect(AutomationRule::query()->count())->toBe(0)
+        ->and($transaction->categorized_by_rule_id)->toBeNull()
+        ->and($transaction->category_id)->toBeNull()
+        ->and($transaction->ai_confidence)->toEqual(0.0);
 });

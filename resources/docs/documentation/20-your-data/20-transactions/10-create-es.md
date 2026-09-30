@@ -29,7 +29,7 @@ En una cuenta conectada a un banco la opción no aparece: el banco es la fuente 
 
 ## Las reglas de automatización siguen ejecutándose
 
-Una transacción creada a mano se compara con tus reglas de automatización como cualquier otra. Una regla solo rellena lo que has dejado vacío: si eliges tú la categoría, la regla no la sustituye. Cuando una regla coincide, su nombre se muestra al guardar.
+Una transacción creada a mano se compara con tus reglas de automatización como cualquier otra. Una regla solo rellena lo que has dejado vacío: si eliges tú la categoría, la regla no la sustituye. Cuando una regla coincide, su nombre se muestra al guardar. La excepción es una transacción [duplicada](/documentation/transactions/duplicate), que conserva lo que tenía la original.
 
 ## Preguntas frecuentes
 

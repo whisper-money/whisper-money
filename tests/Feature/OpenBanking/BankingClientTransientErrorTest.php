@@ -5,6 +5,7 @@ use App\Services\Banking\BinanceClient;
 use App\Services\Banking\BitpandaClient;
 use App\Services\Banking\CoinbaseClient;
 use App\Services\Banking\IndexaCapitalClient;
+use App\Services\Banking\KrakenClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -42,6 +43,7 @@ dataset('api key banking clients', [
     'binance' => ['binance', 'Binance', fn () => (new BinanceClient('api-key', 'api-secret'))->getAccount()],
     'coinbase' => ['coinbase', 'Coinbase', fn () => (new CoinbaseClient('organizations/org/apiKeys/key', transientErrorEcPrivateKey()))->getAccounts()],
     'bitpanda' => ['bitpanda', 'Bitpanda', fn () => (new BitpandaClient('api-key'))->getCryptoWallets()],
+    'kraken' => ['kraken', 'Kraken', fn () => (new KrakenClient('api-key', base64_encode('api-secret')))->getBalance()],
     'indexacapital' => ['indexacapital', 'Indexa Capital', fn () => (new IndexaCapitalClient('api-token'))->getUser()],
 ]);
 
