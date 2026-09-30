@@ -3,6 +3,7 @@
 use App\Jobs\SendUpdateEmailJob;
 use App\Mail\UpdateEmail;
 use App\Models\User;
+use Database\Factories\UserFactory;
 use Illuminate\Support\Facades\Mail;
 
 const LAST_CALL_VIEW = 'price-increase-oct-2026';
@@ -23,15 +24,20 @@ const LAST_DAYS_CANCELLING_SUBJECT = 'Last chance to keep your old price';
 const LAST_DAYS_SUBSCRIBERS_VIEW = 'price-increase-last-days-subscribers-oct-2026';
 const LAST_DAYS_SUBSCRIBERS_SUBJECT = 'After 1 October, nobody else can get your price';
 
+const EXTENSION_VIEW = 'price-increase-extension-oct-2026';
+const EXTENSION_SUBJECT = 'My mistake: €3.99 lasts until Thursday';
+
 /**
  * Queue one of the price increase emails to a user with the given locale and
  * hand back the mailable, so each test asserts on exactly what that user gets.
+ * The user is a free one unless `$reader` builds them with a subscription, for
+ * the emails that change with it.
  */
-function queuePriceIncreaseEmail(string $view, string $subject, string $locale): UpdateEmail
+function queuePriceIncreaseEmail(string $view, string $subject, string $locale, ?UserFactory $reader = null): UpdateEmail
 {
     Mail::fake();
 
-    $user = User::factory()->create(['name' => 'Ada', 'locale' => $locale]);
+    $user = ($reader ?? User::factory())->create(['name' => 'Ada', 'locale' => $locale]);
 
     (new SendUpdateEmailJob($user, $view, $view, $subject))->handle();
 
@@ -41,6 +47,17 @@ function queuePriceIncreaseEmail(string $view, string $subject, string $locale):
     expect($mail)->toBeInstanceOf(UpdateEmail::class);
 
     return $mail;
+}
+
+/**
+ * A low-price subscriber who cancelled but is still inside their period: the
+ * `ends_at` in the future the cancelling-low-price audience is built from.
+ */
+function cancellingSubscriber(): UserFactory
+{
+    return User::factory()->subscribed()->afterCreating(
+        fn (User $user) => $user->subscriptions()->update(['ends_at' => now()->addWeek()]),
+    );
 }
 
 it('renders the last call email in English', function () {
@@ -345,6 +362,70 @@ it('renders the last days subscribers email in Spanish', function () {
     $mail->assertDontSeeInHtml('Keep your subscription, keep your price');
 });
 
+it('renders the extension email in English', function () {
+    $mail = queuePriceIncreaseEmail(EXTENSION_VIEW, EXTENSION_SUBJECT, 'en');
+
+    $mail->assertHasSubject(EXTENSION_SUBJECT);
+    $mail->assertSeeInHtml('Hi Ada,');
+    $mail->assertSeeInHtml('One more day at the old price');
+
+    // The bug, the apology and the new deadline, which is all this email says.
+    $mail->assertSeeInHtml('Yesterday and today, Whisper Money showed the wrong price.');
+    $mail->assertSeeInHtml('It said €8.99 a month');
+    $mail->assertSeeInHtml('That was a bug, and it was mine. I am sorry.');
+    $mail->assertSeeInHtml('until tomorrow, Thursday 1 October, at 23:59 CEST');
+    $mail->assertSeeInHtml('reply to this email and I will sort it out');
+
+    // The fourth email on the increase: no price table and no reasons again.
+    $mail->assertDontSeeInHtml('From 1 October');
+    $mail->assertDontSeeInHtml('bank connections and AI');
+});
+
+it('renders the extension email in Spanish', function () {
+    $mail = queuePriceIncreaseEmail(EXTENSION_VIEW, EXTENSION_SUBJECT, 'es');
+
+    $mail->assertHasSubject('Culpa mía: los 3,99 € siguen hasta el jueves');
+    $mail->assertSeeInHtml('Hola Ada,');
+    $mail->assertSeeInHtml('Un día más con el precio de siempre');
+
+    $mail->assertSeeInHtml('Ayer y hoy, Whisper Money ha estado mostrando un precio equivocado.');
+    $mail->assertSeeInHtml('Ponía 8,99 € al mes');
+    $mail->assertSeeInHtml('Fue un fallo, y el fallo es mío. Lo siento.');
+    $mail->assertSeeInHtml('hasta mañana, jueves 1 de octubre, a las 23:59 (hora peninsular española)');
+    $mail->assertSeeInHtml('Suscribirme a 3,99 €');
+    $mail->assertSeeInHtml('responde a este correo y lo arreglo');
+
+    $mail->assertDontSeeInHtml('One more day at the old price');
+});
+
+/**
+ * One email goes to three audiences, and only the closing action tells them
+ * apart. Sending a cancelling subscriber to /subscribe would be a dead end,
+ * since SubscriptionController::index() bounces a running subscription to the
+ * dashboard, so each reader must see their own action and none of the others.
+ */
+it('gives each reader of the extension email the action that fits them', function (UserFactory $reader, string $action) {
+    $mail = queuePriceIncreaseEmail(EXTENSION_VIEW, EXTENSION_SUBJECT, 'en', $reader);
+
+    $actions = [
+        'Subscribe at €3.99' => route('subscribe'),
+        'Reactivate my subscription' => route('settings.billing'),
+        'None of this changes what you pay.' => null,
+    ];
+
+    foreach ($actions as $line => $url) {
+        $line === $action ? $mail->assertSeeInHtml($line) : $mail->assertDontSeeInHtml($line);
+
+        if ($url !== null) {
+            $line === $action ? $mail->assertSeeInHtml($url, escape: false) : $mail->assertDontSeeInHtml($url, escape: false);
+        }
+    }
+})->with([
+    'a free user subscribes' => [fn () => User::factory(), 'Subscribe at €3.99'],
+    'a cancelling subscriber reactivates' => [fn () => cancellingSubscriber(), 'Reactivate my subscription'],
+    'an active subscriber has nothing to do' => [fn () => User::factory()->subscribed(), 'None of this changes what you pay.'],
+]);
+
 /**
  * LocalizationTest only scans resources/js, so a Blade line or a subject left
  * out of lang/es.json ships as English inside a Spanish email. This is the only
@@ -364,4 +445,5 @@ it('has a Spanish translation for every line of the template and its subject', f
     [LAST_DAYS_VIEW, LAST_DAYS_SUBJECT],
     [LAST_DAYS_CANCELLING_VIEW, LAST_DAYS_CANCELLING_SUBJECT],
     [LAST_DAYS_SUBSCRIBERS_VIEW, LAST_DAYS_SUBSCRIBERS_SUBJECT],
+    [EXTENSION_VIEW, EXTENSION_SUBJECT],
 ]);

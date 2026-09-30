@@ -3490,5 +3490,18 @@
     "But if you cancel and your subscription ends, that price is gone for good. Coming back later would mean paying the new one, and I will not be able to give you the old one back.": "Pero si cancelas y tu suscripción termina, ese precio desaparece para siempre. Volver más adelante significaría pagar el nuevo, y no voy a poder devolverte el antiguo.",
     "So if you ever think about cancelling, reply to this email first. If something is not working for you, I would rather fix it.": "Así que, si alguna vez piensas en cancelar, antes responde a este correo. Si algo no te funciona, prefiero arreglarlo.",
     "Split into parts": "Dividir en partes",
-    "Divide :amount across categories": "Reparte :amount entre categorías"
+    "Divide :amount across categories": "Reparte :amount entre categorías",
+    "My mistake: €3.99 lasts until Thursday": "Culpa mía: los 3,99 € siguen hasta el jueves",
+    "One more day at the old price": "Un día más con el precio de siempre",
+    "Yesterday and today, Whisper Money showed the wrong price.": "Ayer y hoy, Whisper Money ha estado mostrando un precio equivocado.",
+    "It said €8.99 a month, while the old €3.99 was still valid until tonight.": "Ponía 8,99 € al mes, cuando los 3,99 € de siempre seguían valiendo hasta esta noche.",
+    "That was a bug, and it was mine. I am sorry.": "Fue un fallo, y el fallo es mío. Lo siento.",
+    "Those were the last two days at the old price, and the app was telling everyone they were already over.": "Eran los dos últimos días con el precio de siempre, y la app le estaba diciendo a todo el mundo que ya se habían acabado.",
+    "So I am giving you one more day: the old price now lasts until tomorrow, Thursday 1 October, at 23:59 CEST.": "Así que te doy un día más: el precio de siempre dura ahora hasta mañana, jueves 1 de octubre, a las 23:59 (hora peninsular española).",
+    "You cancelled, but your subscription is still running on the old price. Reactivate it before it ends and you keep that price for as long as you keep the subscription.": "Cancelaste, pero tu suscripción sigue activa con el precio antiguo. Si la reactivas antes de que termine, conservas ese precio mientras la mantengas.",
+    "None of this changes what you pay.": "Nada de esto cambia lo que pagas.",
+    "Your subscription keeps the price you signed up at for as long as you keep it, so there is nothing for you to do.": "Tu suscripción mantiene el precio con el que la empezaste mientras la conserves, así que no tienes que hacer nada.",
+    "Subscribe before then and you keep €3.99 a month, or €23.88 a year, for as long as you keep your subscription.": "Si te suscribes antes, te quedas con 3,99 € al mes, o 23,88 € al año, mientras mantengas la suscripción.",
+    "Subscribe at €3.99": "Suscribirme a 3,99 €",
+    "If the bug caused you any trouble, reply to this email and I will sort it out.": "Si el fallo te ha causado algún problema, responde a este correo y lo arreglo."
 }
