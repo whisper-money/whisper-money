@@ -47,10 +47,10 @@ class ReassignTransactionsToBudgets implements ShouldQueue
             // as null, and ownerShareOf() would then snapshot the full amount
             // instead of the owner's share.
             ->with(['labels', 'account' => fn ($query) => $query->withTrashed()])
+            // Assigned as a batch, so the category tree is read once per chunk
+            // rather than one query per level for every transaction.
             ->chunkById(200, function (Collection $transactions) use ($service): void {
-                foreach ($transactions as $transaction) {
-                    $service->assignTransaction($transaction, notify: $this->notify);
-                }
+                $service->assignTransactions($transactions, notify: $this->notify);
             });
     }
 }
