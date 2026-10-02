@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List the user\'s accounts in a space, including whether each is connected to a bank/provider (connected accounts accept manual transactions but not manual balances).')]
+#[Description('List the user\'s accounts in a space and whether each is bank-connected. Bookkeeping records only: no tool moves money between them or to anyone; the user does that at their bank.')]
 class ListAccounts extends McpTool
 {
     use PresentsAccounts;
