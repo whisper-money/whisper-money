@@ -121,11 +121,11 @@
       }
     },
     "update_transaction": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it edits the fields of an existing transaction in the user's own account.",
         "open_world_justification": "Edits a bookkeeping row inside the user's own Whisper Money account, a closed system. No external system is affected.",
-        "destructive_justification": "Reversible: field values can be edited back at any time, and a bank-imported transaction only accepts its notes and category, so the data the sync owns cannot be rewritten."
+        "destructive_justification": "Overwrites: the fields passed replace the transaction's current values, so the model should confirm the change with the user first. A bank-imported transaction only accepts its notes and category, so the data the sync owns is never rewritten."
       }
     },
     "delete_transaction": {
@@ -169,11 +169,11 @@
       }
     },
     "create_balance": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it records a new balance snapshot for one of the user's manual accounts.",
         "open_world_justification": "Writes a balance row inside the user's own Whisper Money account, a closed system. It reads no external bank data.",
-        "destructive_justification": "Reversible: it replaces only that account's snapshot for the given date, leaving the rest of the balance history intact, and the user can record the previous figure again. Bank-connected accounts are rejected so synced balances are never overwritten."
+        "destructive_justification": "Overwrites: a snapshot already recorded for that date is replaced, so the model should confirm with the user first. The rest of the balance history is left intact, and bank-connected accounts are rejected so synced balances are never overwritten."
       }
     },
     "create_category": {
@@ -233,11 +233,11 @@
       }
     },
     "update_automation_rule": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it edits the conditions or actions of an existing automation rule in the user's own workspace.",
         "open_world_justification": "Edits a rule inside the user's own Whisper Money workspace, a closed system.",
-        "destructive_justification": "Reversible: only the rule definition changes, no transaction data is touched, and the previous definition can be set again."
+        "destructive_justification": "Overwrites: the rule's previous conditions and actions are replaced, so the model should confirm the change with the user first. No transaction data is touched."
       }
     },
     "delete_automation_rule": {
@@ -249,11 +249,11 @@
       }
     },
     "apply_automation_rule": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it runs an existing automation rule over the transactions already in the user's own account, categorizing and labelling the ones it matches. It only reads while dry_run is left at its default.",
         "open_world_justification": "Reads and updates rows inside the user's own Whisper Money workspace, a closed system.",
-        "destructive_justification": "Reversible: it assigns a category, labels and a note, all of which can be reassigned or removed afterwards, and no transaction is deleted. It also previews the matches unless dry_run is explicitly set to false."
+        "destructive_justification": "Overwrites: applying it replaces the category and note of every matching transaction, possibly many at once, so the model should show the dry_run preview and confirm with the user first. It previews by default, and no transaction is deleted."
       }
     },
     "create_budget": {
@@ -283,58 +283,58 @@
   },
   "test_cases": [
     {
-      "description": "Category spending lookup for a past period. The app resolves the user's categories and returns real per-category totals for the requested month, in the user's own currency.",
+      "description": "Category spending lookup for a past period. The app returns real per-category totals for the requested month, in the user's own currency.",
       "user_prompt": "How much did I spend on groceries last month?",
-      "tools_triggered": "list_categories, spending_by_category",
-      "expected_output": "A total spent on the groceries category for the previous calendar month, taken from the demo account's transactions, with the option to break it down by merchant."
+      "tools_triggered": "spending_by_category",
+      "expected_output": "A total in US dollars for the Groceries category over the previous calendar month (merchants such as Whole Foods Market, Trader Joe's and Costco Wholesale), with the option to break it down by merchant."
     },
     {
       "description": "Net worth trend over time. The app returns the current total plus the per-account balance evolution, and the model summarises the direction of travel.",
       "user_prompt": "What's my net worth trend over the last 6 months?",
       "tools_triggered": "get_net_worth",
-      "expected_output": "Current net worth, the change versus six months ago, and a month-by-month evolution with the accounts driving it."
+      "expected_output": "Current net worth in US dollars, the change versus six months ago, and a month-by-month evolution with the accounts driving it (Primary Checking, Joint Checking, Emergency Fund, 401(k) Retirement, Brokerage Account and Cryptos)."
     },
     {
       "description": "Recurring charge discovery. The app searches transactions and the model groups them by merchant and cadence to surface subscriptions.",
       "user_prompt": "Find my recurring subscriptions and total what they cost me per month.",
       "tools_triggered": "search_transactions",
-      "expected_output": "A list of merchants charging on a regular cadence with each amount and a combined monthly total."
+      "expected_output": "A list of merchants charging the same amount every month, such as Netflix Subscription, Spotify Premium, Amazon Prime and Adobe Creative Cloud, with each amount and a combined monthly total."
     },
     {
-      "description": "Logging a manual expense. The app resolves the space and the target account, then records the transaction and echoes the created row back.",
-      "user_prompt": "Log a 45 euro cash expense for dinner yesterday in my personal space.",
-      "tools_triggered": "list_spaces, list_accounts, create_transaction",
-      "expected_output": "Confirmation of the new transaction with its date, amount, account and category, created in the personal space."
+      "description": "Logging a manual expense. The app resolves the target account and the category, then records the transaction and echoes the created row back.",
+      "user_prompt": "Log a $45 restaurant dinner from yesterday on my Joint Checking account.",
+      "tools_triggered": "list_accounts, list_categories, create_transaction",
+      "expected_output": "Confirmation of the new manual transaction: yesterday's date, an expense of $45.00, on Joint Checking, in the Cafes, restaurants, bars category."
     },
     {
-      "description": "Bulk tidy-up of miscategorized data. The app finds the matching transactions and reassigns their category, asking the user to confirm the set before writing.",
-      "user_prompt": "My Uber charges are filed as Shopping — move them to Transport.",
+      "description": "Bulk recategorization. The app finds the matching transactions and reassigns their category, asking the user to confirm the set before writing.",
+      "user_prompt": "Recategorize my Amazon.com purchases from last month as Household goods.",
       "tools_triggered": "search_transactions, list_categories, categorize_transaction",
-      "expected_output": "The matching transactions listed for confirmation, then each one reassigned to the Transport category, including bank-imported ones (categorizing is always allowed)."
+      "expected_output": "The Amazon.com Purchase transactions of the previous calendar month listed for confirmation, then each one moved to Household goods, including the ones on the bank-imported Primary Checking account (categorizing is always allowed)."
     },
     {
-      "description": "Budget check and adjustment. The app reads the budgets with the figures of the period in progress, and can raise a limit when the user asks.",
-      "user_prompt": "Am I still inside my food budget this month? Raise it to 600 if I am not.",
+      "description": "Budget check and adjustment. The app reads the budgets with the figures of the period in progress, then raises a limit when the user asks.",
+      "user_prompt": "How much of my dining out budget is left this week? Then raise it to $300 a week.",
       "tools_triggered": "list_budgets, update_budget",
-      "expected_output": "The food budget's allocated, spent and remaining amounts for the current period, and, when it is over, the limit raised to 600 for this period and the ones after it."
+      "expected_output": "The Weekly Dining Out budget's allocated ($200), spent and remaining amounts for the week in progress, then its limit raised to $300 for this week and the ones after it."
     }
   ],
   "negative_test_cases": [
     {
-      "description": "Bank-connected data is protected. Rewriting the amount, description, date or account of a transaction imported from a bank connection must be refused by the server, and the model should explain why instead of retrying.",
-      "user_prompt": "Change the amount of that Amazon charge from my bank account to 10 euros.",
+      "description": "Bank-imported data is protected. Rewriting the amount, description, date or account of a transaction imported from a bank must be refused, and the model should explain why instead of retrying.",
+      "user_prompt": "Change the amount of my latest Amazon.com purchase on Primary Checking to $10.",
       "tools_triggered": "search_transactions, update_transaction",
-      "expected_output": "The server rejects the write because the amount of a bank-imported transaction is locked, and the model explains that only manual transactions can have their amount changed, offering to recategorize, label or add a note to it instead."
+      "expected_output": "The amount is not changed. Primary Checking's transactions are bank-imported: either the model sees that in the search result and declines up front, or update_transaction is rejected by the server. The model explains that only manual transactions can have their amount changed, and offers to recategorize, label or add a note instead."
     },
     {
       "description": "Wide, irreversible deletion must not be executed on a vague instruction. delete_transaction is destructive and single-target, so the model must stop and confirm rather than looping over the user's history.",
       "user_prompt": "Delete all my transactions from last year.",
-      "tools_triggered": null,
-      "expected_output": "No delete is performed. The model states how many transactions the request would destroy irreversibly and asks for explicit confirmation of a specific set before touching anything."
+      "tools_triggered": "none, or only search_transactions to size the request (read-only); never delete_transaction",
+      "expected_output": "No delete is performed. The model warns that deleting is irreversible and only works on manual transactions, one at a time, and asks for explicit confirmation of a specific set before touching anything."
     },
     {
       "description": "Out of scope: the app is bookkeeping only and exposes no tool that can move money or reach a bank. The model must decline rather than pretending a payment happened.",
-      "user_prompt": "Transfer 500 euros from my savings account to my mum's account.",
+      "user_prompt": "Transfer $500 from my Emergency Fund to my mom's account.",
       "tools_triggered": null,
       "expected_output": "A refusal explaining that Whisper Money can only record and analyse finance data, not initiate payments or transfers, with an offer to log the transfer as a manual transaction once the user has made it themselves."
     }

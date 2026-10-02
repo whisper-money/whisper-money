@@ -30,6 +30,12 @@ $destructive = [
     // Merging a split back deletes its parts, and the category, labels and
     // notes set on each of them, for good.
     'merge_transaction_splits',
+    // These overwrite what is already there. OpenAI's review flagged them as
+    // destructive: being able to undo an overwrite does not make it additive.
+    'update_transaction',
+    'create_balance',
+    'update_automation_rule',
+    'apply_automation_rule',
 ];
 
 /**

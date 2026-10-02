@@ -8,6 +8,11 @@ Schedule::command('budgets:generate-periods')->daily();
 // the press round still lands on current data. It also provisions the account on
 // its first run, so no manual step is needed after a deploy.
 Schedule::command('demo:reset --press')->dailyAt('04:00')->timezone('Europe/Madrid');
+// The app-store reviewer account needs the same refresh: a review can land weeks
+// after the submission, and its test cases ask about "last month" and "this
+// month". Seeded once and left alone, the account had no data for either.
+Schedule::command('demo:reset --review')->dailyAt('04:10')->timezone('Europe/Madrid')
+    ->when(fn (): bool => filled(config('app.review.password')));
 // After the demo reset at 04:00, so a freshly seeded demo account has its
 // medals by the time anybody opens it. Everyone else is swept in the same pass:
 // a milestone is about a closed month or a month-end balance, so once a day is
