@@ -1,4 +1,9 @@
+import {
+    expectFoodListedWithSubcategories,
+    searchableCategories,
+} from '@/lib/category-tree.fixture';
 import { type Account } from '@/types/account';
+import { type Category } from '@/types/category';
 import { type TransactionFilters as FiltersType } from '@/types/transaction';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -49,13 +54,14 @@ const emptyFilters: FiltersType = {
 function renderFilters(
     filters: FiltersType,
     accountList: Account[] = accounts,
+    categoryList: Category[] = [],
 ) {
     const onFiltersChange = vi.fn();
     render(
         <TransactionFilters
             filters={filters}
             onFiltersChange={onFiltersChange}
-            categories={[]}
+            categories={categoryList}
             labels={[]}
             accounts={accountList}
         />,
@@ -110,5 +116,19 @@ describe('TransactionFilters accounts dropdown', () => {
         fireEvent.click(screen.getByText('Select accounts...'));
 
         expect(screen.getByText('No accounts found.')).toBeInTheDocument();
+    });
+});
+
+describe('TransactionFilters categories dropdown', () => {
+    it('lists the subcategories of a parent that matches the search, highlighting the parent', async () => {
+        renderFilters(emptyFilters, accounts, searchableCategories);
+
+        fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
+        fireEvent.click(screen.getByText('Select categories...'));
+        fireEvent.change(screen.getByPlaceholderText('Search categories...'), {
+            target: { value: 'food' },
+        });
+
+        await expectFoodListedWithSubcategories();
     });
 });

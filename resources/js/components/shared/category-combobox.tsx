@@ -15,6 +15,7 @@ import {
     buildCategoryTree,
     flattenCategoryTree,
     getCategoryPath,
+    searchCategoryTree,
 } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
@@ -97,29 +98,10 @@ export function CategoryCombobox({
 
     const query = filterValue.trim().toLowerCase();
 
-    // Tree-aware search: keep every match plus its ancestors, so a matching
-    // child is always shown under its parent for context.
-    const visibleNodes = useMemo(() => {
-        if (!query) {
-            return orderedNodes;
-        }
-
-        const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
-        const include = new Set<string>();
-        for (const category of categories) {
-            if (!category.name.toLowerCase().includes(query)) {
-                continue;
-            }
-            let id: string | null | undefined = category.id;
-            let guard = 0;
-            while (id != null && guard++ < 10) {
-                include.add(id);
-                id = parentOf.get(id);
-            }
-        }
-
-        return orderedNodes.filter((node) => include.has(node.id));
-    }, [orderedNodes, categories, query]);
+    const visibleNodes = useMemo(
+        () => searchCategoryTree(orderedNodes, query),
+        [orderedNodes, query],
+    );
 
     const showNone =
         showUncategorized &&
