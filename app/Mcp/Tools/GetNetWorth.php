@@ -39,6 +39,7 @@ class GetNetWorth extends McpTool
         $daily = $request->string('granularity')->toString() === 'daily';
 
         return $this->json([
+            'currency' => $this->reportingCurrency($user),
             'granularity' => $daily ? 'daily' : 'monthly',
             'current' => $this->callController($controller, 'netWorth', $user, $range),
             'evolution' => $this->callController(

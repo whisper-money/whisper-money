@@ -39,7 +39,7 @@ class ListBudgets extends McpTool
             ->all();
 
         return $this->json([
-            'currency' => $user->currency_code ?? 'USD',
+            'currency' => $this->reportingCurrency($user),
             'budgets' => $budgets,
         ]);
     }
