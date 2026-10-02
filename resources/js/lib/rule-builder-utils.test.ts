@@ -5,6 +5,7 @@ import {
     type Condition,
     createDescriptionCondition,
     FIELD_CONFIG,
+    isValidRuleStructure,
     type Operator,
     parseJsonLogic,
     type RuleStructure,
@@ -374,6 +375,47 @@ describe('amount equality operators', () => {
             { field: 'description', operator: 'contains', value: 'github' },
             { field: 'amount', operator: 'not_equals', value: '-14' },
         ]);
+    });
+
+    // A cleared amount would otherwise be saved as `amount != null`, which is
+    // also how `is_not_empty` is written, and match every transaction.
+    it.each<Operator>(['equals', 'not_equals', 'greater_than', 'less_than'])(
+        'leaves a blank amount %s out of the rule',
+        (operator) => {
+            const structure: RuleStructure = {
+                groupOperator: 'and',
+                groups: [
+                    {
+                        id: 'group-1',
+                        operator: 'and',
+                        conditions: [
+                            {
+                                id: 'condition-1',
+                                field: 'description',
+                                operator: 'contains',
+                                value: 'github',
+                            },
+                            {
+                                id: 'condition-2',
+                                field: 'amount',
+                                operator,
+                                value: '',
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            expect(buildJsonLogic(structure)).toEqual({
+                in: ['github', { var: 'description' }],
+            });
+        },
+    );
+
+    it('does not count a blank amount as a valid condition', () => {
+        expect(
+            isValidRuleStructure(singleCondition('amount', 'not_equals', '')),
+        ).toBe(false);
     });
 
     // An agent over MCP may negate an equality instead of writing `!=`.

@@ -123,6 +123,30 @@ function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
     }
 }
 
+/**
+ * Whether a condition has a value to compare against. A blank one is left out
+ * of the rule instead of being saved as a comparison with null: a blank amount
+ * would become `amount != null`, which matches every transaction.
+ */
+function isCompleteCondition(condition: Condition): boolean {
+    if (!condition.field || !condition.operator) {
+        return false;
+    }
+
+    if (
+        condition.operator === 'is_empty' ||
+        condition.operator === 'is_not_empty'
+    ) {
+        return true;
+    }
+
+    if (FIELD_CONFIG[condition.field]?.type === 'number') {
+        return !Number.isNaN(parseFloat(condition.value));
+    }
+
+    return condition.value.trim() !== '';
+}
+
 function buildGroupJsonLogic(group: ConditionGroup): JsonLogicRule {
     if (group.conditions.length === 0) {
         return {};
@@ -137,9 +161,12 @@ function buildGroupJsonLogic(group: ConditionGroup): JsonLogicRule {
 }
 
 export function buildJsonLogic(structure: RuleStructure): JsonLogicRule {
-    const validGroups = structure.groups.filter(
-        (group) => group.conditions.length > 0,
-    );
+    const validGroups = structure.groups
+        .map((group) => ({
+            ...group,
+            conditions: group.conditions.filter(isCompleteCondition),
+        }))
+        .filter((group) => group.conditions.length > 0);
 
     if (validGroups.length === 0) {
         return {};
@@ -490,13 +517,6 @@ export function addDescriptionMatchToRuleStructure(
 
 export function isValidRuleStructure(structure: RuleStructure): boolean {
     return structure.groups.some((group) =>
-        group.conditions.some(
-            (condition) =>
-                condition.field &&
-                condition.operator &&
-                (condition.operator === 'is_empty' ||
-                    condition.operator === 'is_not_empty' ||
-                    condition.value.trim() !== ''),
-        ),
+        group.conditions.some(isCompleteCondition),
     );
 }

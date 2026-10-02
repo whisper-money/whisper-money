@@ -150,6 +150,18 @@
         "expected": false
     },
     {
+        "name": "negated amount equality matches a different expense",
+        "rule": { "!": { "==": [{ "var": "amount" }, -14] } },
+        "transaction": { "description": "GitHub", "amount": -3.27, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": true
+    },
+    {
+        "name": "negated amount equality fails on the same signed expense",
+        "rule": { "!": { "==": [{ "var": "amount" }, -14] } },
+        "transaction": { "description": "GitHub", "amount": -14, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": false
+    },
+    {
         "name": "amount exception rule matches the merchant at another amount",
         "rule": { "and": [{ "in": ["github", { "var": "description" }] }, { "!=": [{ "var": "amount" }, -14] }] },
         "transaction": { "description": "GITHUB, INC.", "amount": -41.5, "creditor_name": null, "debtor_name": null, "notes": null },
