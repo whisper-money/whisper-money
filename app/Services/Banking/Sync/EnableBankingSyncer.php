@@ -14,6 +14,7 @@ use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -59,7 +60,9 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 
         $accountsAttempted = 0;
 
-        $connection->load('accounts.bank');
+        // chaperone() sets each account's bankingConnection to this instance,
+        // so the transaction sync reads its country without a query per account.
+        $connection->load(['accounts' => fn (HasMany $accounts) => $accounts->chaperone()->with('bank')]);
         $pageBudget = $this->pageBudget($connection);
 
         try {
