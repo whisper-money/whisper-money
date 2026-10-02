@@ -120,6 +120,48 @@
         "expected": true
     },
     {
+        "name": "equals amount matches the same signed expense",
+        "rule": { "==": [{ "var": "amount" }, -14] },
+        "transaction": { "description": "GitHub", "amount": -14, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": true
+    },
+    {
+        "name": "not equals amount matches a different expense",
+        "rule": { "!=": [{ "var": "amount" }, -14] },
+        "transaction": { "description": "GitHub", "amount": -3.27, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": true
+    },
+    {
+        "name": "not equals amount fails on the same signed expense",
+        "rule": { "!=": [{ "var": "amount" }, -14] },
+        "transaction": { "description": "GitHub", "amount": -14, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": false
+    },
+    {
+        "name": "not equals amount matches income of the same size as the expense",
+        "rule": { "!=": [{ "var": "amount" }, -14] },
+        "transaction": { "description": "GitHub refund", "amount": 14, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": true
+    },
+    {
+        "name": "not equals amount fails on the same amount with cents",
+        "rule": { "!=": [{ "var": "amount" }, -21.99] },
+        "transaction": { "description": "Streaming", "amount": -21.99, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": false
+    },
+    {
+        "name": "amount exception rule matches the merchant at another amount",
+        "rule": { "and": [{ "in": ["github", { "var": "description" }] }, { "!=": [{ "var": "amount" }, -14] }] },
+        "transaction": { "description": "GITHUB, INC.", "amount": -41.5, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": true
+    },
+    {
+        "name": "amount exception rule fails on the excluded amount",
+        "rule": { "and": [{ "in": ["github", { "var": "description" }] }, { "!=": [{ "var": "amount" }, -14] }] },
+        "transaction": { "description": "GITHUB, INC.", "amount": -14, "creditor_name": null, "debtor_name": null, "notes": null },
+        "expected": false
+    },
+    {
         "name": "exception rule matches the keyword without the excluded token",
         "rule": { "and": [{ "in": ["keyword", { "var": "description" }] }, { "!": { "in": ["visa card", { "var": "description" }] } }] },
         "transaction": { "description": "Keyword Purchase", "amount": -40, "creditor_name": null, "debtor_name": null, "notes": null },

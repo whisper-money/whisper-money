@@ -53,7 +53,7 @@ export const FIELD_CONFIG: Record<
     amount: {
         label: 'Amount',
         type: 'number',
-        operators: ['equals', 'greater_than', 'less_than'],
+        operators: ['equals', 'not_equals', 'greater_than', 'less_than'],
     },
     bank_name: {
         label: 'Bank Name',
@@ -90,6 +90,14 @@ export const OPERATOR_LABELS: Record<Operator, string> = {
 
 type JsonLogicRule = Record<string, unknown>;
 
+/**
+ * The value an equality condition compares against. A numeric field compares as
+ * a number, so `amount != 14` is stored as 14 and not as the string "14".
+ */
+function equalityValue(field: string, value: string): string | number {
+    return FIELD_CONFIG[field]?.type === 'number' ? parseFloat(value) : value;
+}
+
 function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
     const { field, operator, value } = condition;
 
@@ -99,12 +107,9 @@ function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
         case 'not_contains':
             return { '!': { in: [value, { var: field }] } };
         case 'not_equals':
-            return { '!=': [{ var: field }, value] };
+            return { '!=': [{ var: field }, equalityValue(field, value)] };
         case 'equals':
-            if (FIELD_CONFIG[field]?.type === 'number') {
-                return { '==': [{ var: field }, parseFloat(value)] };
-            }
-            return { '==': [{ var: field }, value] };
+            return { '==': [{ var: field }, equalityValue(field, value)] };
         case 'greater_than':
             return { '>': [{ var: field }, parseFloat(value)] };
         case 'less_than':
@@ -161,9 +166,9 @@ function jsonLogicVariable(value: unknown): string | null {
 }
 
 /**
- * What a condition becomes once it is wrapped in a JsonLogic `!`. Only the two
- * positive text operators have a negative twin in the builder, so anything else
- * under a `!` stays unparseable and is dropped like any other unknown node.
+ * What a condition becomes once it is wrapped in a JsonLogic `!`. Only `contains`
+ * and `equals` have a negative twin in the builder, so anything else under a `!`
+ * stays unparseable and is dropped like any other unknown node.
  *
  * The two entries are not symmetric: the builder writes `not_contains` as a `!`
  * and reads it back here, while it writes `not_equals` as a plain `!=`. The

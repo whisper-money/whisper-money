@@ -4,6 +4,7 @@ import {
     buildJsonLogic,
     type Condition,
     createDescriptionCondition,
+    FIELD_CONFIG,
     type Operator,
     parseJsonLogic,
     type RuleStructure,
@@ -164,28 +165,28 @@ describe('addDescriptionMatchToRuleStructure', () => {
     });
 });
 
+function singleCondition(
+    field: string,
+    operator: Operator,
+    value: string,
+): RuleStructure {
+    return {
+        groupOperator: 'and',
+        groups: [
+            {
+                id: 'group-1',
+                operator: 'and',
+                conditions: [{ id: 'condition-1', field, operator, value }],
+            },
+        ],
+    };
+}
+
+function firstCondition(structure: RuleStructure): Condition {
+    return structure.groups[0].conditions[0];
+}
+
 describe('negative text operators', () => {
-    function singleCondition(
-        field: string,
-        operator: Operator,
-        value: string,
-    ): RuleStructure {
-        return {
-            groupOperator: 'and',
-            groups: [
-                {
-                    id: 'group-1',
-                    operator: 'and',
-                    conditions: [{ id: 'condition-1', field, operator, value }],
-                },
-            ],
-        };
-    }
-
-    function firstCondition(structure: RuleStructure): Condition {
-        return structure.groups[0].conditions[0];
-    }
-
     it.each([
         [
             'not_contains' as Operator,
@@ -295,6 +296,96 @@ describe('negative text operators', () => {
             field: 'creditor_name',
             operator: 'is_not_empty',
             value: '',
+        });
+    });
+});
+
+describe('amount equality operators', () => {
+    it('offers does not equal right after equals', () => {
+        expect(FIELD_CONFIG.amount.operators).toEqual([
+            'equals',
+            'not_equals',
+            'greater_than',
+            'less_than',
+        ]);
+    });
+
+    // Stored as a number, like `equals`, so the rule compares amounts and not
+    // the amount against the string "-14".
+    it.each([
+        ['equals' as Operator, { '==': [{ var: 'amount' }, -14] }],
+        ['not_equals' as Operator, { '!=': [{ var: 'amount' }, -14] }],
+    ])('builds an amount %s with a numeric value', (operator, expected) => {
+        expect(
+            buildJsonLogic(singleCondition('amount', operator, '-14')),
+        ).toEqual(expected);
+    });
+
+    it.each(['-14', '-21.99', '14'])(
+        'round-trips an amount not_equals of %s through build and parse',
+        (value) => {
+            const built = buildJsonLogic(
+                singleCondition('amount', 'not_equals', value),
+            );
+
+            expect(firstCondition(parseJsonLogic(built))).toMatchObject({
+                field: 'amount',
+                operator: 'not_equals',
+                value,
+            });
+        },
+    );
+
+    // The rule from the request: every GitHub charge except the subscription.
+    it('round-trips a description match with an amount exception', () => {
+        const structure: RuleStructure = {
+            groupOperator: 'and',
+            groups: [
+                {
+                    id: 'group-1',
+                    operator: 'and',
+                    conditions: [
+                        {
+                            id: 'condition-1',
+                            field: 'description',
+                            operator: 'contains',
+                            value: 'github',
+                        },
+                        {
+                            id: 'condition-2',
+                            field: 'amount',
+                            operator: 'not_equals',
+                            value: '-14',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const jsonLogic = buildJsonLogic(structure);
+
+        expect(jsonLogic).toEqual({
+            and: [
+                { in: ['github', { var: 'description' }] },
+                { '!=': [{ var: 'amount' }, -14] },
+            ],
+        });
+        expect(parseJsonLogic(jsonLogic).groups[0].conditions).toMatchObject([
+            { field: 'description', operator: 'contains', value: 'github' },
+            { field: 'amount', operator: 'not_equals', value: '-14' },
+        ]);
+    });
+
+    // An agent over MCP may negate an equality instead of writing `!=`.
+    it('parses a negated amount equality as does not equal', () => {
+        const parsed = parseJsonLogic({
+            '!': { '==': [{ var: 'amount' }, -14] },
+        });
+
+        expect(firstCondition(parsed)).toMatchObject({
+            field: 'amount',
+            operator: 'not_equals',
+            value: '-14',
         });
     });
 });

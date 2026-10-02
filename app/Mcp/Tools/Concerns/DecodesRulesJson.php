@@ -71,13 +71,17 @@ trait DecodesRulesJson
             is not {"!=":[{"var":"creditor_name"},"netflix international b.v."]};
             is empty {"==":[{"var":"creditor_name"},null]};
             is not empty {"!=":[{"var":"creditor_name"},null]};
-            greater/less than {">":[{"var":"amount"},100]} and {"<":[{"var":"amount"},0]}.
+            greater/less than {">":[{"var":"amount"},100]} and {"<":[{"var":"amount"},0]};
+            amount equals / is not {"==":[{"var":"amount"},-14]} and {"!=":[{"var":"amount"},-14]}
+            (signed: an expense is negative, so a 14 charge is -14).
             "does not contain" and "is not" also match a transaction whose field is empty
             or null, which is what an exception usually means.
             Example, either merchant and only expenses:
             {"and":[{"or":[{"in":["uber",{"var":"description"}]},{"in":["cabify",{"var":"description"}]}]},{"<":[{"var":"amount"},0]}]}
             Example, an exception: everything from amazon except the prime subscription:
             {"and":[{"in":["amazon",{"var":"description"}]},{"!":{"in":["amazon prime",{"var":"description"}]}}]}
+            Example, an amount exception: every github charge except the 14 subscription:
+            {"and":[{"in":["github",{"var":"description"}]},{"!=":[{"var":"amount"},-14]}]}
             Only these operators are accepted: and, or, !, ==, !=, >, >=, <, <=, in, var.
             TEXT;
     }
