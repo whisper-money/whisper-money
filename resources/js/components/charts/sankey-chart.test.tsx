@@ -137,6 +137,107 @@ const salaryChildren: SankeyData = {
     total_expense: 0,
 };
 
+// An expense parent whose subtree nets 1238 + 284 - 28 = 1494: the interest
+// nets positive, so the drill-down returns it on the income side.
+const bankData: SankeyData = {
+    income_categories: [
+        {
+            category: category('salary', 'Salary'),
+            category_id: 'salary',
+            amount: 500000,
+        },
+    ],
+    expense_categories: [
+        {
+            category: category('bank', 'Bank'),
+            category_id: 'bank',
+            amount: 149400,
+            has_children: true,
+        },
+    ],
+    total_income: 500000,
+    total_expense: 149400,
+};
+
+const bankChildren: SankeyData = {
+    income_categories: [
+        {
+            category: category('interest', 'Interest'),
+            category_id: 'interest',
+            amount: 2800,
+        },
+    ],
+    expense_categories: [
+        {
+            category: category('fees', 'Fees'),
+            category_id: 'fees',
+            amount: 123800,
+        },
+        {
+            category: category('charges', 'Charges'),
+            category_id: 'charges',
+            amount: 28400,
+        },
+    ],
+    total_income: 2800,
+    total_expense: 152200,
+};
+
+// The mirror: an income parent whose subtree nets 3000 - 200 - 50 = 2750, with
+// a clawback and money taken straight off the parent on the expense side.
+const workData: SankeyData = {
+    income_categories: [
+        {
+            category: category('work', 'Work'),
+            category_id: 'work',
+            amount: 275000,
+            has_children: true,
+        },
+    ],
+    expense_categories: [
+        {
+            category: category('rent', 'Rent'),
+            category_id: 'rent',
+            amount: 100000,
+        },
+    ],
+    total_income: 275000,
+    total_expense: 100000,
+};
+
+const workChildren: SankeyData = {
+    income_categories: [
+        {
+            category: category('base-pay', 'Base pay'),
+            category_id: 'base-pay',
+            amount: 300000,
+        },
+    ],
+    expense_categories: [
+        {
+            category: category('clawback', 'Clawback'),
+            category_id: 'clawback',
+            amount: 20000,
+        },
+        {
+            category: category('work', 'Parent'),
+            category_id: 'work',
+            amount: 5000,
+            is_direct: true,
+        },
+    ],
+    total_income: 300000,
+    total_expense: 25000,
+};
+
+function respondWith(json: SankeyData) {
+    global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => json,
+    }) as unknown as typeof fetch;
+}
+
 // Three big categories plus five that fall under the 3% threshold and get
 // folded into "Other".
 const SIDE_TOTAL = 92500;
@@ -199,11 +300,7 @@ describe('SankeyChart', () => {
         // clearAllMocks() keeps return values, so a privacy-mode test would
         // otherwise leave privacy on for everything that runs after it.
         vi.mocked(usePrivacyMode).mockReturnValue(privacyMode);
-        global.fetch = vi.fn().mockResolvedValue({
-            ok: true,
-            status: 200,
-            json: async () => foodChildren,
-        }) as unknown as typeof fetch;
+        respondWith(foodChildren);
     });
 
     afterEach(() => {
@@ -299,11 +396,7 @@ describe('SankeyChart', () => {
     });
 
     it('expands an income category into its subcategories on click', async () => {
-        global.fetch = vi.fn().mockResolvedValue({
-            ok: true,
-            status: 200,
-            json: async () => salaryChildren,
-        }) as unknown as typeof fetch;
+        respondWith(salaryChildren);
 
         render(<SankeyChart data={incomeData} period={period} />);
 
@@ -487,6 +580,109 @@ describe('SankeyChart', () => {
         // 200 of Food's 310, not 200 of the 810 spent overall.
         expect(screen.getByText('$2 · 65%')).toBeInTheDocument();
         expect(screen.getByText('$1 · 35%')).toBeInTheDocument();
+    });
+
+    describe('a child that nets to the other side', () => {
+        const flows = (container: HTMLElement) =>
+            container.querySelectorAll('path[stroke-opacity="0.4"]');
+
+        const labelOf = (name: string) =>
+            screen.getByText(name).closest('foreignObject')!;
+
+        // Expands `parent` and resolves once its drill-down (fetched) shows
+        // `offset`.
+        const expand = async (
+            topLevel: SankeyData,
+            children: SankeyData,
+            parent: string,
+            offset: string,
+        ) => {
+            respondWith(children);
+            const view = render(
+                <SankeyChart data={topLevel} period={period} />,
+            );
+
+            fireEvent.click(
+                screen.getByRole('button', { name: `Expand ${parent}` }),
+            );
+
+            await waitFor(() => {
+                expect(screen.getByText(offset)).toBeInTheDocument();
+            });
+
+            return view;
+        };
+
+        it('shows it as an offset under an expense parent', async () => {
+            const { container } = await expand(
+                bankData,
+                bankChildren,
+                'Bank',
+                'Interest',
+            );
+
+            // 1238 + 284 - 28 = 1494 and 83% + 19% - 2% = 100%: the children
+            // add up to the parent they were netted into.
+            expect(screen.getByText('$1,238 · 83%')).toBeInTheDocument();
+            expect(screen.getByText('$284 · 19%')).toBeInTheDocument();
+            expect(screen.getByText('-$28 · -2%')).toBeInTheDocument();
+
+            // A sankey cannot draw a negative flow: salary -> net, net -> bank
+            // and one flow per subcategory, none for the offset.
+            expect(flows(container)).toHaveLength(4);
+            expect(
+                screen.getByRole('link', {
+                    name: 'View Interest transactions',
+                }),
+            ).toBeInTheDocument();
+        });
+
+        it('shows it as an offset under an income parent', async () => {
+            const { container } = await expand(
+                workData,
+                workChildren,
+                'Work',
+                'Clawback',
+            );
+
+            // 3000 - 200 - 50 = 2750 and 109% - 7% - 2% = 100%.
+            expect(screen.getByText('$3,000 · 109%')).toBeInTheDocument();
+            expect(screen.getByText('-$200 · -7%')).toBeInTheDocument();
+            // Money taken straight off the parent is an offset too.
+            expect(screen.getByText('Parent')).toBeInTheDocument();
+            expect(screen.getByText('-$50 · -2%')).toBeInTheDocument();
+
+            // base pay -> work, work -> net and net -> rent.
+            expect(flows(container)).toHaveLength(3);
+        });
+
+        it('stacks the offset below the subcategories without overlapping them', async () => {
+            await expand(bankData, bankChildren, 'Bank', 'Interest');
+
+            const bottomOf = (label: Element) =>
+                Number(label.getAttribute('y')) +
+                Number(label.getAttribute('height'));
+            const [fees, charges, interest] = [
+                'Fees',
+                'Charges',
+                'Interest',
+            ].map(labelOf);
+
+            expect(interest.getAttribute('x')).toBe(fees.getAttribute('x'));
+            expect(Number(interest.getAttribute('y'))).toBeGreaterThanOrEqual(
+                Math.max(bottomOf(fees), bottomOf(charges)),
+            );
+        });
+
+        it('masks the offset in privacy mode but keeps its share', async () => {
+            vi.mocked(usePrivacyMode).mockReturnValue({
+                ...privacyMode,
+                isPrivacyModeEnabled: true,
+            });
+            await expand(bankData, bankChildren, 'Bank', 'Interest');
+
+            expect(screen.getByText('-$** · -2%')).toBeInTheDocument();
+        });
     });
 
     it('shows <1% instead of rounding a tiny share down to nothing', () => {

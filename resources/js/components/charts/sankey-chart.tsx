@@ -51,6 +51,10 @@ interface FlowNode {
     categoryId?: string;
     expandable?: boolean;
     expanded?: boolean;
+    // A drill-down child that netted to the other side: it takes its (negative)
+    // amount off the parent, so it sits in the subcategory column with a label
+    // but no bar and no flow.
+    offset?: boolean;
 }
 
 interface FlowLink {
@@ -343,54 +347,74 @@ export function SankeyChart({
                     node.kind === expandedKind &&
                     node.categoryId === expandedId,
             );
-            const fetched =
+            const drilled = childrenById[expandedId];
+            const [sameSide, otherSide] =
                 expandedKind === 'income'
-                    ? childrenById[expandedId]?.income_categories
-                    : childrenById[expandedId]?.expense_categories;
+                    ? [drilled?.income_categories, drilled?.expense_categories]
+                    : [drilled?.expense_categories, drilled?.income_categories];
             const grouped =
                 expandedKind === 'income' ? groupedIncome : groupedExpense;
+            const byAmount = (a: SankeyCategory, b: SankeyCategory) =>
+                b.amount - a.amount;
             const kids = [
                 ...(expandedId === OTHER_ID
                     ? (grouped.other?.categories ?? [])
-                    : (fetched ?? [])),
-            ].sort((a, b) => b.amount - a.amount);
+                    : (sameSide ?? [])),
+            ].sort(byAmount);
+            // The parent nets its whole subtree before it picks a side, so a
+            // child that netted to the other side was taken off the parent's
+            // amount. Showing it as that offset is what makes the column add
+            // up to the parent. "Other" only groups same-side categories.
+            const offsets = [
+                ...(expandedId === OTHER_ID ? [] : (otherSide ?? [])),
+            ].sort(byAmount);
+
+            const pushChild = (
+                child: SankeyCategory,
+                amount: number,
+                color: string,
+            ) => {
+                const childIndex = nodes.length;
+                const offset = amount < 0;
+                nodes.push({
+                    name: child.category.name,
+                    amount,
+                    color,
+                    kind: expandedKind,
+                    labelSide: expandedKind === 'income' ? 'left' : 'right',
+                    // A subcategory answers "how much of this parent", not
+                    // "how much of everything", so the parent's amount is the
+                    // denominator.
+                    share: formatShare(amount, nodes[parentIndex].amount),
+                    categoryId: child.category.id,
+                    offset,
+                });
+                // A sankey cannot draw a negative flow, so an offset gets an
+                // empty one: it still lands in the subcategory column, below
+                // the subcategories, with the room for its label reserved.
+                const value = offset ? 0 : amount;
+                links.push(
+                    expandedKind === 'income'
+                        ? { source: childIndex, target: parentIndex, value }
+                        : { source: parentIndex, target: childIndex, value },
+                );
+                subcatRows += 1;
+            };
 
             if (parentIndex >= 0) {
                 kids.forEach((kid, index) => {
-                    if (kid.amount <= 0) {
-                        return;
-                    }
-
-                    const childIndex = nodes.length;
-                    nodes.push({
-                        name: kid.category.name,
-                        amount: kid.amount,
-                        color: categoryBarColor(kid.category.color, index),
-                        kind: expandedKind,
-                        labelSide: expandedKind === 'income' ? 'left' : 'right',
-                        // A subcategory answers "how much of this parent",
-                        // not "how much of everything", so the parent's
-                        // amount is the denominator.
-                        share: formatShare(
+                    if (kid.amount > 0) {
+                        pushChild(
+                            kid,
                             kid.amount,
-                            nodes[parentIndex].amount,
-                        ),
-                        categoryId: kid.category.id,
-                    });
-                    links.push(
-                        expandedKind === 'income'
-                            ? {
-                                  source: childIndex,
-                                  target: parentIndex,
-                                  value: kid.amount,
-                              }
-                            : {
-                                  source: parentIndex,
-                                  target: childIndex,
-                                  value: kid.amount,
-                              },
-                    );
-                    subcatRows += 1;
+                            categoryBarColor(kid.category.color, index),
+                        );
+                    }
+                });
+                offsets.forEach((child) => {
+                    if (child.amount > 0) {
+                        pushChild(child, -child.amount, MUTED_COLOR);
+                    }
                 });
             }
         }
@@ -571,15 +595,17 @@ export function SankeyChart({
                         : undefined
                 }
             >
-                <rect
-                    x={x}
-                    y={y}
-                    width={width}
-                    height={nodeHeight}
-                    rx={2}
-                    fill={node.color}
-                    fillOpacity={0.9}
-                />
+                {!node.offset && (
+                    <rect
+                        x={x}
+                        y={y}
+                        width={width}
+                        height={nodeHeight}
+                        rx={2}
+                        fill={node.color}
+                        fillOpacity={0.9}
+                    />
+                )}
                 <foreignObject
                     x={labelX}
                     y={labelY}
@@ -655,6 +681,10 @@ export function SankeyChart({
         index: number;
         payload: { source: FlowNode; target: FlowNode };
     }) => {
+        if (payload.source.offset || payload.target.offset) {
+            return null;
+        }
+
         const kind =
             payload.source.kind === 'center'
                 ? payload.target.kind

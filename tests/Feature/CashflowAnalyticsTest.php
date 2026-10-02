@@ -1482,6 +1482,96 @@ test('drilling into a parent splits it into children plus a direct node', functi
         ->and($directNode['amount'])->toBe(10000);
 });
 
+describe('drilling into a parent whose children net to both sides', function () {
+    beforeEach(function () {
+        $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+        $this->book = fn (Category $category, int $amount) => Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'account_id' => $account->id,
+            'category_id' => $category->id,
+            'amount' => $amount,
+            'transaction_date' => now(),
+        ]);
+
+        $this->sankey = fn (?Category $parent = null) => $this->getJson('/api/cashflow/sankey?'.http_build_query([
+            'from' => now()->startOfMonth()->toDateString(),
+            'to' => now()->endOfMonth()->toDateString(),
+            'parent' => $parent?->id,
+        ]))->assertOk()->json();
+    });
+
+    test('an expense parent keeps a child that nets positive, under its own name', function () {
+        $bank = Category::factory()->create([
+            'user_id' => $this->user->id,
+            'name' => 'Bank',
+            'type' => CategoryType::Expense,
+        ]);
+        $fees = Category::factory()->childOf($bank)->create(['name' => 'Fees']);
+        $charges = Category::factory()->childOf($bank)->create(['name' => 'Charges']);
+        $interest = Category::factory()->childOf($bank)->create(['name' => 'Interest']);
+
+        ($this->book)($fees, -123800);
+        ($this->book)($charges, -28400);
+        ($this->book)($interest, 2800);
+
+        // The top level nets the whole subtree before the parent picks a side.
+        $topLevel = ($this->sankey)();
+        expect($topLevel['expense_categories'])->toHaveCount(1)
+            ->and($topLevel['expense_categories'][0]['category']['name'])->toBe('Bank')
+            ->and($topLevel['expense_categories'][0]['amount'])->toBe(149400)
+            ->and($topLevel['income_categories'])->toBe([]);
+
+        $drilled = ($this->sankey)($bank);
+        $expense = collect($drilled['expense_categories']);
+        $income = collect($drilled['income_categories']);
+
+        expect($expense->pluck('amount', 'category.name')->all())->toBe(['Fees' => 123800, 'Charges' => 28400]);
+
+        // Still on the other side, so it can offset its parent, but named as
+        // booked: the parent already says which side it sits on, and the money
+        // coming back is not necessarily a refund.
+        expect($income->pluck('amount', 'category.name')->all())->toBe(['Interest' => 2800]);
+
+        expect($drilled['total_expense'] - $drilled['total_income'])->toBe(149400);
+    });
+
+    test('an income parent keeps a child and a direct node that net negative', function () {
+        $work = Category::factory()->create([
+            'user_id' => $this->user->id,
+            'name' => 'Work',
+            'type' => CategoryType::Income,
+        ]);
+        $basePay = Category::factory()->childOf($work)->create(['name' => 'Base pay']);
+        $clawback = Category::factory()->childOf($work)->create(['name' => 'Clawback']);
+
+        ($this->book)($basePay, 300000);
+        ($this->book)($clawback, -20000);
+        ($this->book)($work, -5000);
+
+        $topLevel = ($this->sankey)();
+        expect($topLevel['income_categories'])->toHaveCount(1)
+            ->and($topLevel['income_categories'][0]['amount'])->toBe(275000);
+
+        $drilled = ($this->sankey)($work);
+        $expense = collect($drilled['expense_categories']);
+
+        expect(collect($drilled['income_categories'])->pluck('amount', 'category.name')->all())
+            ->toBe(['Base pay' => 300000]);
+
+        $childNode = $expense->firstWhere('is_direct', false);
+        expect($childNode['category']['name'])->toBe('Clawback')
+            ->and($childNode['amount'])->toBe(20000);
+
+        $directNode = $expense->firstWhere('is_direct', true);
+        expect($directNode['category_id'])->toBe($work->id)
+            ->and($directNode['category']['name'])->toBe('Parent')
+            ->and($directNode['amount'])->toBe(5000);
+
+        expect($drilled['total_income'] - $drilled['total_expense'])->toBe(275000);
+    });
+});
+
 test('archived accounts stop feeding the cashflow figures from the day they were archived', function () {
     $expenseCategory = Category::factory()->create([
         'user_id' => $this->user->id,
