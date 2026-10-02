@@ -372,3 +372,147 @@ it('can build an exception rule and reopen it with the negative operator', funct
         ->assertSee('does not contain')
         ->assertNoJavascriptErrors();
 });
+
+/**
+ * Opens the create dialog with a two-condition group: "first" then "second".
+ */
+function openRuleWithTwoConditions($page, string $title): void
+{
+    $page->click('button:has-text("Create Rule")')
+        ->wait(0.5)
+        ->fill('title', $title)
+        ->fill('input[placeholder="Value"]', 'first')
+        ->click('Add Condition')
+        ->wait(0.5)
+        ->fill('input[placeholder="Value"] >> nth=1', 'second');
+}
+
+function saveRuleWithCategory($page, string $category): void
+{
+    $page->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click($category)
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+}
+
+// Order never changes what a rule matches, so all it has to do is come back the
+// way it was left: it travels in rules_json's array order.
+it('can move a group up with its arrow and keeps the order', function () {
+    $user = User::factory()->onboarded()->create();
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    createCategoryViaUI($page, 'Groceries');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->click('button:has-text("Create Rule")')
+        ->wait(0.5)
+        ->fill('title', 'Ordered Groups Rule')
+        ->fill('input[placeholder="Value"]', 'grocery')
+        ->click('Add Group')
+        ->wait(0.5)
+        ->fill('input[placeholder="Value"] >> nth=1', 'market')
+        ->assertDisabled('button[aria-label="Move group 1 up"]')
+        ->keys('button[aria-label="Move group 2 up"]', ['Enter'])
+        ->wait(0.5);
+
+    // The pressed ↑ is now disabled at the top, so keyboard focus moves to ↓
+    // instead of falling back to the page.
+    expect($page->script('document.activeElement.getAttribute("aria-label")'))
+        ->toBe('Move group 1 down');
+
+    saveRuleWithCategory($page, 'Groceries');
+
+    $rule = AutomationRule::where('user_id', $user->id)->sole();
+
+    expect(json_decode($rule->rules_json, true))->toBe(['or' => [
+        ['in' => ['market', ['var' => 'description']]],
+        ['in' => ['grocery', ['var' => 'description']]],
+    ]]);
+
+    $page->assertNoJavascriptErrors();
+});
+
+it('can drag a condition with the keyboard without closing the dialog', function () {
+    $user = User::factory()->onboarded()->create();
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    createCategoryViaUI($page, 'Shopping');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    openRuleWithTwoConditions($page, 'Dragged Rule');
+
+    // Escape cancels a drag; it must not also close the dialog around it.
+    $page->keys('button[aria-label="Drag to reorder"] >> nth=1', ['Space'])
+        ->wait(0.3)
+        ->keys('button[aria-label="Drag to reorder"] >> nth=1', ['Escape'])
+        ->wait(0.3)
+        ->assertSee('Create Automation Rule')
+        ->keys('button[aria-label="Drag to reorder"] >> nth=1', ['Space'])
+        ->wait(0.3)
+        ->keys('button[aria-label="Drag to reorder"] >> nth=1', ['ArrowUp'])
+        ->wait(0.3)
+        ->keys('button[aria-label="Drag to reorder"] >> nth=1', ['Space'])
+        ->wait(0.5);
+
+    saveRuleWithCategory($page, 'Shopping');
+
+    $rule = AutomationRule::where('user_id', $user->id)->sole();
+
+    expect(json_decode($rule->rules_json, true))->toBe(['or' => [
+        ['in' => ['second', ['var' => 'description']]],
+        ['in' => ['first', ['var' => 'description']]],
+    ]]);
+
+    $page->assertNoJavascriptErrors();
+});
+
+it('moves conditions with labelled arrows on a phone', function () {
+    $user = User::factory()->onboarded()->create();
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    createCategoryViaUI($page, 'Bills');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->resize(390, 844);
+
+    openRuleWithTwoConditions($page, 'Phone Rule');
+
+    // Phones swap the drag handle for arrows inside a box titled with its position.
+    $page->click('Add Condition')
+        ->wait(0.5)
+        ->fill('input[placeholder="Value"] >> nth=2', 'third')
+        ->assertSee('Condition 3')
+        ->assertDisabled('button[aria-label="Move condition 1 up"]')
+        ->keys('button[aria-label="Move condition 1 down"]', ['Enter'])
+        ->wait(0.5);
+
+    // The condition is now the second one, and focus stays on its arrow so the
+    // next Enter keeps moving it.
+    expect($page->script('document.activeElement.getAttribute("aria-label")'))
+        ->toBe('Move condition 2 down');
+
+    saveRuleWithCategory($page, 'Bills');
+
+    $rule = AutomationRule::where('user_id', $user->id)->sole();
+
+    expect(json_decode($rule->rules_json, true))->toBe(['or' => [
+        ['in' => ['second', ['var' => 'description']]],
+        ['in' => ['first', ['var' => 'description']]],
+        ['in' => ['third', ['var' => 'description']]],
+    ]]);
+
+    $page->assertNoJavascriptErrors();
+});

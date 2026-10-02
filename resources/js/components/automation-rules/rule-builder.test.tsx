@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { type RuleStructure } from '@/lib/rule-builder-utils';
+import {
+    type ConditionGroup,
+    type RuleStructure,
+} from '@/lib/rule-builder-utils';
 import { RuleBuilder } from './rule-builder';
 
 vi.mock('@inertiajs/react', () => ({
@@ -112,5 +115,96 @@ describe('RuleBuilder operators', () => {
         expect(screen.getByPlaceholderText('Value')).toHaveValue(
             'tarjeta visa',
         );
+    });
+});
+
+describe('RuleBuilder reordering', () => {
+    function group(id: string, values: string[]): ConditionGroup {
+        return {
+            id,
+            operator: 'or',
+            conditions: values.map((value) => ({
+                id: value,
+                field: 'description',
+                operator: 'contains',
+                value,
+            })),
+        };
+    }
+
+    function renderBuilder(...groups: ConditionGroup[]) {
+        const onChange = vi.fn();
+        render(
+            <RuleBuilder
+                value={{ groupOperator: 'and', groups }}
+                onChange={onChange}
+            />,
+        );
+
+        return () => onChange.mock.lastCall![0] as RuleStructure;
+    }
+
+    it('adds nothing to a rule with one group and one condition', () => {
+        renderBuilder(group('shops', ['Netflix']));
+
+        expect(
+            screen.queryByLabelText('Drag to reorder'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /^Move / }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Group 1')).not.toBeInTheDocument();
+        expect(screen.queryByText('Condition 1')).not.toBeInTheDocument();
+    });
+
+    it('moves a group one step with its arrows and announces where it landed', () => {
+        const lastChange = renderBuilder(
+            group('shops', ['Lidl']),
+            group('accounts', ['Revolut']),
+            group('amounts', ['Nómina']),
+        );
+
+        expect(screen.getByText('Group 1')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Move group 1 up' }),
+        ).toBeDisabled();
+        expect(
+            screen.getByRole('button', { name: 'Move group 3 down' }),
+        ).toBeDisabled();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Move group 3 up' }),
+        );
+
+        expect(lastChange().groups.map((g) => g.id)).toEqual([
+            'shops',
+            'amounts',
+            'accounts',
+        ]);
+        expect(
+            screen.getByText('Group moved to position 2 of 3'),
+        ).toBeInTheDocument();
+    });
+
+    it('gives each condition a drag handle and phone arrows once its group has several', () => {
+        const lastChange = renderBuilder(group('shops', ['Mercadona', 'Lidl']));
+
+        expect(screen.getAllByLabelText('Drag to reorder')).toHaveLength(2);
+        expect(screen.getByText('Condition 2')).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /group/ }),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Move condition 2 up' }),
+        );
+
+        expect(lastChange().groups[0].conditions.map((c) => c.value)).toEqual([
+            'Lidl',
+            'Mercadona',
+        ]);
+        expect(
+            screen.getByText('Condition moved to position 1 of 2'),
+        ).toBeInTheDocument();
     });
 });

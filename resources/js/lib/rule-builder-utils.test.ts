@@ -3,11 +3,15 @@ import {
     addDescriptionMatchToRuleStructure,
     buildJsonLogic,
     type Condition,
+    type ConditionGroup,
     createDescriptionCondition,
     FIELD_CONFIG,
     isValidRuleStructure,
+    moveCondition,
+    moveGroup,
     type Operator,
     parseJsonLogic,
+    reorderConditions,
     type RuleStructure,
 } from './rule-builder-utils';
 
@@ -429,5 +433,100 @@ describe('amount equality operators', () => {
             operator: 'not_equals',
             value: '-14',
         });
+    });
+});
+
+function descriptionGroup(id: string, values: string[]): ConditionGroup {
+    return {
+        id,
+        operator: 'or',
+        conditions: values.map((value) => ({
+            ...createDescriptionCondition(value),
+            id: value,
+        })),
+    };
+}
+
+function valuesOf(group: ConditionGroup): string[] {
+    return group.conditions.map((condition) => condition.value);
+}
+
+describe('reordering', () => {
+    const structure: RuleStructure = {
+        groupOperator: 'and',
+        groups: [
+            descriptionGroup('first', ['a']),
+            descriptionGroup('second', ['b']),
+            descriptionGroup('third', ['c']),
+        ],
+    };
+
+    it.each([
+        ['second', 'up', ['second', 'first', 'third']],
+        ['second', 'down', ['first', 'third', 'second']],
+        ['first', 'up', ['first', 'second', 'third']],
+        ['third', 'down', ['first', 'second', 'third']],
+    ] as const)('moves group %s %s', (groupId, direction, expected) => {
+        expect(
+            moveGroup(structure, groupId, direction).groups.map(
+                (group) => group.id,
+            ),
+        ).toEqual(expected);
+    });
+
+    it('moves a condition one step within its group', () => {
+        const group = descriptionGroup('group', ['Mercadona', 'Lidl', 'Dia']);
+
+        expect(valuesOf(moveCondition(group, 'Lidl', 'up'))).toEqual([
+            'Lidl',
+            'Mercadona',
+            'Dia',
+        ]);
+        expect(valuesOf(moveCondition(group, 'Dia', 'down'))).toEqual(
+            valuesOf(group),
+        );
+    });
+
+    it('puts conditions in the order a drag left them', () => {
+        const group = descriptionGroup('group', ['Mercadona', 'Lidl', 'Dia']);
+
+        expect(
+            valuesOf(reorderConditions(group, ['Dia', 'Mercadona', 'Lidl'])),
+        ).toEqual(['Dia', 'Mercadona', 'Lidl']);
+    });
+
+    it('keeps a condition the new order leaves out', () => {
+        const group = descriptionGroup('group', ['Mercadona', 'Lidl', 'Dia']);
+
+        expect(
+            valuesOf(reorderConditions(group, ['Dia', 'Mercadona'])),
+        ).toEqual(['Dia', 'Mercadona', 'Lidl']);
+    });
+
+    // Order is only presentational, so it has to survive a save on its own: the
+    // builder collapses a one-condition group to a bare condition and a one-group
+    // rule to that group, and reading those shapes back must keep the order.
+    it.each([
+        [
+            'several groups',
+            [
+                descriptionGroup('amount', ['Revolut', 'Nómina']),
+                descriptionGroup('shops', ['Lidl', 'Mercadona', 'Dia']),
+            ],
+        ],
+        ['a single group', [descriptionGroup('shops', ['Dia', 'Lidl'])]],
+        [
+            'a one-condition group among others',
+            [
+                descriptionGroup('account', ['Revolut']),
+                descriptionGroup('shops', ['Dia', 'Lidl']),
+            ],
+        ],
+    ])('keeps the order of %s through a save', (_, groups) => {
+        const parsed = parseJsonLogic(
+            buildJsonLogic({ groupOperator: 'and', groups }),
+        );
+
+        expect(parsed.groups.map(valuesOf)).toEqual(groups.map(valuesOf));
     });
 });

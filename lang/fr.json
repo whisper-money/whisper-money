@@ -2873,5 +2873,21 @@
     "Electronics Purchase": "Achat high-tech",
     "Medical Services": "Frais médicaux",
     "Dental Payment": "Cabinet dentaire",
-    "Home Improvement": "Bricolage et maison"
+    "Home Improvement": "Bricolage et maison",
+    "Group :number": "Groupe :number",
+    "Condition :number": "Condition :number",
+    "Move group up": "Monter le groupe",
+    "Move group down": "Descendre le groupe",
+    "Move group :number up": "Monter le groupe :number",
+    "Move group :number down": "Descendre le groupe :number",
+    "Delete group :number": "Supprimer le groupe :number",
+    "Move condition :number up": "Monter la condition :number",
+    "Move condition :number down": "Descendre la condition :number",
+    "Delete condition :number": "Supprimer la condition :number",
+    "Group moved to position :position of :total": "Groupe déplacé en position :position sur :total",
+    "Condition moved to position :position of :total": "Condition déplacée en position :position sur :total",
+    "Picked up condition :position of :total": "Condition :position sur :total saisie",
+    "Condition dropped at position :position of :total": "Condition déposée en position :position sur :total",
+    "Move cancelled. Condition back at position :position of :total": "Déplacement annulé. La condition revient en position :position sur :total",
+    "To pick up a condition, press Space or Enter. Use the up and down arrow keys to move it, Space or Enter to drop it, and Escape to cancel.": "Pour saisir une condition, appuyez sur Espace ou Entrée. Déplacez-la avec les flèches haut et bas, déposez-la avec Espace ou Entrée, et annulez avec Échap."
 }

@@ -3522,5 +3522,21 @@
     "Electronics Purchase": "Compra de electrónica",
     "Medical Services": "Servicios médicos",
     "Dental Payment": "Clínica dental",
-    "Home Improvement": "Bricolaje y hogar"
+    "Home Improvement": "Bricolaje y hogar",
+    "Group :number": "Grupo :number",
+    "Condition :number": "Condición :number",
+    "Move group up": "Mover grupo arriba",
+    "Move group down": "Mover grupo abajo",
+    "Move group :number up": "Mover grupo :number arriba",
+    "Move group :number down": "Mover grupo :number abajo",
+    "Delete group :number": "Eliminar grupo :number",
+    "Move condition :number up": "Mover condición :number arriba",
+    "Move condition :number down": "Mover condición :number abajo",
+    "Delete condition :number": "Eliminar condición :number",
+    "Group moved to position :position of :total": "Grupo movido a la posición :position de :total",
+    "Condition moved to position :position of :total": "Condición movida a la posición :position de :total",
+    "Picked up condition :position of :total": "Condición :position de :total cogida",
+    "Condition dropped at position :position of :total": "Condición soltada en la posición :position de :total",
+    "Move cancelled. Condition back at position :position of :total": "Movimiento cancelado. La condición vuelve a la posición :position de :total",
+    "To pick up a condition, press Space or Enter. Use the up and down arrow keys to move it, Space or Enter to drop it, and Escape to cancel.": "Para coger una condición, pulsa Espacio o Intro. Muévela con las flechas arriba y abajo, suéltala con Espacio o Intro y cancela con Escape."
 }

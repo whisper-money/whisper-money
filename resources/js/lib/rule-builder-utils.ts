@@ -457,6 +457,78 @@ export function createEmptyGroup(): ConditionGroup {
     };
 }
 
+export type MoveDirection = 'up' | 'down';
+
+/**
+ * Swaps the item with `id` with its neighbour above or below, or returns the list
+ * as is when it is already at that edge. Order never changes what a rule matches
+ * (AND and OR do not care), it only keeps the builder tidy, and it survives a save
+ * because `buildJsonLogic` and `parseJsonLogic` both keep array order.
+ */
+function moveById<T extends { id: string }>(
+    items: T[],
+    id: string,
+    direction: MoveDirection,
+): T[] {
+    const from = items.findIndex((item) => item.id === id);
+    const to = direction === 'up' ? from - 1 : from + 1;
+
+    if (from === -1 || to < 0 || to >= items.length) {
+        return items;
+    }
+
+    const moved = [...items];
+    [moved[from], moved[to]] = [moved[to], moved[from]];
+
+    return moved;
+}
+
+export function moveGroup(
+    structure: RuleStructure,
+    groupId: string,
+    direction: MoveDirection,
+): RuleStructure {
+    return {
+        ...structure,
+        groups: moveById(structure.groups, groupId, direction),
+    };
+}
+
+export function moveCondition(
+    group: ConditionGroup,
+    conditionId: string,
+    direction: MoveDirection,
+): ConditionGroup {
+    return {
+        ...group,
+        conditions: moveById(group.conditions, conditionId, direction),
+    };
+}
+
+export function reorderConditions(
+    group: ConditionGroup,
+    orderedIds: string[],
+): ConditionGroup {
+    const conditionsById = new Map(
+        group.conditions.map((condition) => [condition.id, condition]),
+    );
+
+    const ordered = orderedIds
+        .map((id) => conditionsById.get(id))
+        .filter((condition): condition is Condition => !!condition);
+
+    // A condition the order does not mention is kept at the end, never dropped.
+    return {
+        ...group,
+        conditions: [
+            ...ordered,
+            ...group.conditions.filter(
+                (condition) => !orderedIds.includes(condition.id),
+            ),
+        ],
+    };
+}
+
 function cloneCondition(condition: Condition): Condition {
     return {
         ...condition,
