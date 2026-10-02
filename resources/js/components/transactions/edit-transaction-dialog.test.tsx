@@ -791,6 +791,32 @@ describe('EditTransactionDialog', () => {
         ).not.toBeInTheDocument();
     });
 
+    // Sentry PHP-LARAVEL-5G: Chromium lets the year segment take six digits, and
+    // formatting the "20266-10-01" that leaves behind threw during render.
+    it('keeps rendering when the date field holds a year past four digits', () => {
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        const dateInput = document.querySelector(
+            'input[type="date"]',
+        ) as HTMLInputElement;
+        fireEvent.change(dateInput, { target: { value: '20266-10-01' } });
+
+        expect(dateInput).toHaveValue('20266-10-01');
+        expect(screen.getByText('Edit Transaction')).toBeInTheDocument();
+    });
+
     it('persists description edits on a split part', async () => {
         vi.mocked(transactionSyncService.update).mockResolvedValue({} as never);
 
