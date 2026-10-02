@@ -156,6 +156,16 @@ class DemoTransactionsProvider
     ];
 
     /**
+     * The demo's own templates, for a dataset that reuses them with changes.
+     *
+     * @return array<int, array{description: string, amount_min: int, amount_max: int, category_name: string, frequency: string}>
+     */
+    public function templates(): array
+    {
+        return self::TRANSACTION_TEMPLATES;
+    }
+
+    /**
      * Generate 12 months of realistic transactions, ending today: a reset rolls
      * every date forward, which is how the seeded accounts stay current.
      *

@@ -29,7 +29,7 @@ test('demo:reset --review ignores DEMO_ENABLED', function () {
     $this->artisan('demo:reset --review')->assertFailed();
 });
 
-test('demo:reset --review seeds the submitted test cases\' data in English, ending today', function () {
+test('demo:reset --review seeds the data the stored test cases ask about, ending today', function () {
     config(['subscriptions.enabled' => true]);
 
     // The production reviewer account is on the Spanish locale. Reseeded as-is,
@@ -42,12 +42,15 @@ test('demo:reset --review seeds the submitted test cases\' data in English, endi
 
     expect($user->id)->toBe($existing->id)
         ->and($user->locale)->toBe('en')
+        ->and($user->currency_code)->toBe('EUR')
         ->and($user->canUseFeature(PlanFeature::McpAccess))->toBeTrue()
         ->and($user->hasSeededSubscription())->toBeTrue()
         ->and($user->isDemoAccount())->toBeFalse();
 
-    // "How much did I spend on groceries last month?" and the budget check on
-    // the period in progress both need data in those two months.
+    // The stored cases log "a 45 euro" dinner and edit a charge "to 10 euros".
+    expect($user->transactions()->where('currency_code', '!=', 'EUR')->exists())->toBeFalse();
+
+    // "How much did I spend on groceries last month?" needs data in that month.
     expect($user->categories()->where('name', 'Groceries')->exists())->toBeTrue()
         ->and($user->transactions()->whereDate('transaction_date', '>=', now()->startOfMonth())->exists())->toBeTrue()
         ->and($user->transactions()->whereBetween('transaction_date', [
@@ -55,14 +58,15 @@ test('demo:reset --review seeds the submitted test cases\' data in English, endi
             now()->subMonthNoOverflow()->endOfMonth(),
         ])->exists())->toBeTrue();
 
-    // The negative test case names Primary Checking as the bank account whose
-    // Amazon charge cannot be edited, so it has to be that account every time.
-    $primary = $user->accounts()->where('name', 'Primary Checking')->sole();
-    $others = $user->accounts()->where('name', '!=', 'Primary Checking')->pluck('id');
+    // "My Uber charges are filed as Shopping — move them to Transport."
+    $shopping = $user->categories()->where('name', 'Shopping')->sole();
+    expect($user->transactions()->where('description', 'Uber Ride')->count())->toBeGreaterThan(0)
+        ->and($user->transactions()->where('description', 'Uber Ride')->where('category_id', '!=', $shopping->id)->exists())->toBeFalse();
 
-    expect($primary->transactions()->where('source', '!=', TransactionSource::EnableBanking)->exists())->toBeFalse()
-        ->and($primary->transactions()->where('description', 'Amazon.com Purchase')->exists())->toBeTrue()
-        ->and($user->transactions()->whereIn('account_id', $others)->where('source', '!=', TransactionSource::ManuallyCreated)->exists())->toBeFalse();
+    // "Change the amount of that Amazon charge from my bank account": whichever
+    // Amazon charge the model picks has to be a locked, bank-imported one.
+    expect($user->transactions()->where('description', 'Amazon.com Purchase')->exists())->toBeTrue()
+        ->and($user->transactions()->where('source', '!=', TransactionSource::EnableBanking)->exists())->toBeFalse();
 })->group('slow');
 
 test('the reviewer account is reset daily once its password is configured', function () {

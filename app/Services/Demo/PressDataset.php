@@ -39,6 +39,7 @@ class PressDataset
             'labels' => self::labels(),
             'rules' => self::rules(),
             'budgets' => self::budgets(),
+            'extra_categories' => [],
             'transaction_templates' => self::transactionTemplates(),
         ];
     }

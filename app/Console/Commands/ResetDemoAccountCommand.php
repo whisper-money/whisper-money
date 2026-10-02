@@ -131,9 +131,7 @@ class ResetDemoAccountCommand extends Command
 
         $this->createSubscription($user);
 
-        if ($this->option('imported') || $this->option('review')) {
-            $this->markTransactionsAsImported($ledgerAccounts);
-        }
+        $this->markTransactionsAsImported($this->importedAccounts($ledgerAccounts));
 
         $this->info('✓ Account reset successfully!');
 
@@ -227,14 +225,39 @@ class ResetDemoAccountCommand extends Command
             return PressDataset::get();
         }
 
-        // The reviewer runs the submitted test cases in English against the demo
-        // data, so the account is pinned to it. Left on its own locale (the
-        // reviewer account is `es`), CreateDefaultCategories would seed Spanish
-        // names that the English templates no longer resolve to, and every
-        // transaction would be skipped.
-        return $this->option('review')
-            ? [...$this->demoDataset(), 'locale' => 'en']
-            : $this->demoDataset();
+        return $this->option('review') ? $this->reviewDataset() : $this->demoDataset();
+    }
+
+    /**
+     * The demo data, shaped to the test cases stored with the ChatGPT
+     * submission. Those were entered in the old submission form, which no longer
+     * exists, and a migrated plugin cannot replace them, so the data follows the
+     * cases instead: amounts in euros, and Uber rides filed under "Shopping" for
+     * the reviewer to move to Transport.
+     *
+     * It is pinned to English as well. Left on its own locale (the reviewer
+     * account is `es`), CreateDefaultCategories would seed Spanish names that the
+     * English templates no longer resolve to, and every transaction would be
+     * skipped.
+     *
+     * @return array<string, mixed>
+     */
+    private function reviewDataset(): array
+    {
+        return [
+            ...$this->demoDataset(),
+            'locale' => 'en',
+            'currency' => 'EUR',
+            'extra_categories' => [
+                ['name' => 'Shopping', 'icon' => 'ShoppingBag', 'color' => 'pink', 'type' => 'expense'],
+            ],
+            'transaction_templates' => array_map(
+                fn (array $template): array => $template['description'] === 'Uber Ride'
+                    ? [...$template, 'category_name' => 'Shopping']
+                    : $template,
+                $this->transactionsProvider->templates(),
+            ),
+        ];
     }
 
     /**
@@ -251,6 +274,7 @@ class ResetDemoAccountCommand extends Command
             'labels' => $this->labelsProvider->getLabels(),
             'rules' => $this->rulesProvider->getRules(),
             'budgets' => self::DEMO_BUDGETS,
+            'extra_categories' => [],
             'transaction_templates' => null,
         ];
     }
@@ -326,6 +350,11 @@ class ResetDemoAccountCommand extends Command
     private function createCategories(User $user): void
     {
         (new CreateDefaultCategories)->handle($user);
+
+        foreach ($this->dataset['extra_categories'] as $category) {
+            $user->categories()->create([...$category, 'space_id' => $user->activeSpace()->id]);
+        }
+
         $this->info('  Created default categories');
     }
 
@@ -757,25 +786,37 @@ class ResetDemoAccountCommand extends Command
     }
 
     /**
-     * Mark one account's transactions as bank-imported so a reviewer can see
-     * update_transaction and delete_transaction refuse to touch synced data.
-     * It is always the dataset's first ledger account (the demo's Primary
-     * Checking), because the submitted negative test case names it. The account
-     * keeps no banking connection, so no sync ever runs on it.
+     * The accounts whose transactions should read as bank-imported, so a
+     * reviewer can see update_transaction and delete_transaction refuse to touch
+     * synced data. --imported marks the first ledger account only, leaving manual
+     * ones beside it. The reviewer account marks every one: its stored negative
+     * case edits "that Amazon charge from my bank account", and whichever Amazon
+     * charge the model picks has to be locked.
      *
      * @param  array<string, Account>  $ledgerAccounts  keyed by name, in dataset order
+     * @return list<Account>
      */
-    private function markTransactionsAsImported(array $ledgerAccounts): void
+    private function importedAccounts(array $ledgerAccounts): array
     {
-        $account = reset($ledgerAccounts);
-
-        if ($account === false) {
-            return;
+        if ($this->option('review')) {
+            return array_values($ledgerAccounts);
         }
 
-        $count = $account->transactions()->update(['source' => TransactionSource::EnableBanking]);
+        return $this->option('imported') ? array_slice(array_values($ledgerAccounts), 0, 1) : [];
+    }
 
-        $this->info("  Marked {$count} transactions on '{$account->name}' as bank-imported");
+    /**
+     * The accounts keep no banking connection, so no sync ever runs on them.
+     *
+     * @param  list<Account>  $accounts
+     */
+    private function markTransactionsAsImported(array $accounts): void
+    {
+        foreach ($accounts as $account) {
+            $count = $account->transactions()->update(['source' => TransactionSource::EnableBanking]);
+
+            $this->info("  Marked {$count} transactions on '{$account->name}' as bank-imported");
+        }
     }
 
     /**

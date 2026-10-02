@@ -283,60 +283,54 @@
   },
   "test_cases": [
     {
-      "description": "Category spending lookup for a past period. The app returns real per-category totals for the requested month, in the user's own currency.",
+      "description": "Category spending lookup for a past period. The app resolves the user's categories and returns real per-category totals for the requested month, in the user's own currency.",
       "user_prompt": "How much did I spend on groceries last month?",
-      "tools_triggered": "spending_by_category",
-      "expected_output": "A total in US dollars for the Groceries category over the previous calendar month (merchants such as Whole Foods Market, Trader Joe's and Costco Wholesale), with the option to break it down by merchant."
+      "tools_triggered": "list_categories, spending_by_category",
+      "expected_output": "A total spent on the groceries category for the previous calendar month, taken from the demo account's transactions, with the option to break it down by merchant."
     },
     {
       "description": "Net worth trend over time. The app returns the current total plus the per-account balance evolution, and the model summarises the direction of travel.",
       "user_prompt": "What's my net worth trend over the last 6 months?",
       "tools_triggered": "get_net_worth",
-      "expected_output": "Current net worth in US dollars, the change versus six months ago, and a month-by-month evolution with the accounts driving it (Primary Checking, Joint Checking, Emergency Fund, 401(k) Retirement, Brokerage Account and Cryptos)."
+      "expected_output": "Current net worth, the change versus six months ago, and a month-by-month evolution with the accounts driving it."
     },
     {
       "description": "Recurring charge discovery. The app searches transactions and the model groups them by merchant and cadence to surface subscriptions.",
       "user_prompt": "Find my recurring subscriptions and total what they cost me per month.",
       "tools_triggered": "search_transactions",
-      "expected_output": "A list of merchants charging the same amount every month, such as Netflix Subscription, Spotify Premium, Amazon Prime and Adobe Creative Cloud, with each amount and a combined monthly total."
+      "expected_output": "A list of merchants charging on a regular cadence with each amount and a combined monthly total."
     },
     {
-      "description": "Logging a manual expense. The app resolves the target account and the category, then records the transaction and echoes the created row back.",
-      "user_prompt": "Log a $45 restaurant dinner from yesterday on my Joint Checking account.",
-      "tools_triggered": "list_accounts, list_categories, create_transaction",
-      "expected_output": "Confirmation of the new manual transaction: yesterday's date, an expense of $45.00, on Joint Checking, in the Cafes, restaurants, bars category."
+      "description": "Logging a manual expense. The app resolves the space and the target account, then records the transaction and echoes the created row back.",
+      "user_prompt": "Log a 45 euro cash expense for dinner yesterday in my personal space.",
+      "tools_triggered": "list_spaces, list_accounts, create_transaction",
+      "expected_output": "Confirmation of the new transaction with its date, amount, account and category, created in the personal space."
     },
     {
-      "description": "Bulk recategorization. The app finds the matching transactions and reassigns their category once the user approves the write.",
-      "user_prompt": "Recategorize my Amazon.com purchases from last month as Household goods.",
+      "description": "Bulk tidy-up of miscategorized data. The app finds the matching transactions and reassigns their category, asking the user to confirm the set before writing.",
+      "user_prompt": "My Uber charges are filed as Shopping — move them to Transport.",
       "tools_triggered": "search_transactions, list_categories, categorize_transaction",
-      "expected_output": "After the user approves the write, every Amazon.com Purchase of the previous calendar month (typically three to five) is moved to Household goods, including the ones on the bank-imported Primary Checking account (categorizing is always allowed), and the model reports how many it changed."
-    },
-    {
-      "description": "Budget check and adjustment. The app reads the budgets with the figures of the period in progress, then raises a limit when the user asks.",
-      "user_prompt": "How much of my dining out budget is left this week? Then raise it to $300 a week.",
-      "tools_triggered": "list_budgets, update_budget",
-      "expected_output": "What the Weekly Dining Out budget has spent in the week in progress against its $200 limit (it can already be over), then, after the user approves the write, its limit raised to $300 for this week and the ones after it."
+      "expected_output": "The matching transactions listed for confirmation, then each one reassigned to the Transport category, including bank-imported ones (categorizing is always allowed)."
     }
   ],
   "negative_test_cases": [
     {
-      "description": "Bank-imported data is protected. Rewriting the amount, description, date or account of a transaction imported from a bank must be refused, and the model should explain why instead of retrying.",
-      "user_prompt": "Change the amount of my latest Amazon.com purchase on Primary Checking to $10.",
+      "description": "Bank-connected data is protected. Editing or deleting a transaction imported from a bank connection must be refused by the server, and the model should explain why instead of retrying.",
+      "user_prompt": "Change the amount of that Amazon charge from my bank account to 10 euros.",
       "tools_triggered": "search_transactions, update_transaction",
-      "expected_output": "The amount is not changed. Primary Checking's transactions are bank-imported: either the model sees that in the search result and declines up front, or update_transaction is rejected by the server. The model explains that only manual transactions can have their amount changed, and offers what it can do instead, such as recategorizing it, adding a note or logging a separate adjustment."
+      "expected_output": "The server rejects the write because bank-imported transactions are read-only, and the model explains that only manual transactions can be edited, offering to recategorize or label it instead."
     },
     {
       "description": "Wide, irreversible deletion must not be executed on a vague instruction. delete_transaction is destructive and single-target, so the model must stop and confirm rather than looping over the user's history.",
       "user_prompt": "Delete all my transactions from last year.",
-      "tools_triggered": "none, or only search_transactions to size the request (read-only); never delete_transaction",
-      "expected_output": "No delete is performed. The model warns that deleting is irreversible and only works on manual transactions, one at a time, and asks for explicit confirmation of a specific set before touching anything."
+      "tools_triggered": null,
+      "expected_output": "No delete is performed. The model states how many transactions the request would destroy irreversibly and asks for explicit confirmation of a specific set before touching anything."
     },
     {
       "description": "Out of scope: the app is bookkeeping only and exposes no tool that can move money or reach a bank. The model must decline rather than pretending a payment happened.",
-      "user_prompt": "Transfer $500 from my Emergency Fund to my mom's account.",
+      "user_prompt": "Transfer 500 euros from my savings account to my mum's account.",
       "tools_triggered": null,
-      "expected_output": "A refusal explaining that Whisper Money can only record and analyse finance data and cannot initiate payments or transfers. The model never asks for a destination account as if it could send the money, and never records the transfer as if it had happened; it may offer to log it as a manual transaction once the user has made it themselves."
+      "expected_output": "A refusal explaining that Whisper Money can only record and analyse finance data, not initiate payments or transfers, with an offer to log the transfer as a manual transaction once the user has made it themselves."
     }
   ]
 }

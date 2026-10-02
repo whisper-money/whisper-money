@@ -5,5 +5,5 @@ paths:
 
 # General
 
-## Test cases are written against the --review dataset
-OpenAI runs `test_cases`/`negative_test_cases` on openai-review@whisper.money, which `demo:reset --review` reseeds daily from the demo dataset: English, USD, Primary Checking bank-imported, budgets "Monthly Groceries" / "Weekly Dining Out". Every prompt must name things that dataset has (merchants, accounts, categories, budgets, currency). v2.1.0 was rejected because the cases asked for euros, a "Shopping" category, a "food" budget and a bank account the stale account did not have. Changing the demo dataset or a test case means re-checking the other.
+## The reviewer data follows the stored test cases, not the other way round
+OpenAI runs the test cases stored with the plugin on openai-review@whisper.money, which `demo:reset --review` reseeds daily. Those cases and the reviewer password were entered in the old submission form, which no longer exists, and a migrated plugin cannot replace them: a ZIP with `review.test_cases` needs a package-declared MCP server, and adding one to an existing plugin is rejected. So `chatgpt-app-submission.json` mirrors what OpenAI has stored, and `reviewDataset()` is shaped to it: euros, Uber rides under "Shopping", every ledger account bank-imported. `REVIEW_PASSWORD` must stay the password stored with the submission. Changing either side means re-running the cases in ChatGPT against the other.
