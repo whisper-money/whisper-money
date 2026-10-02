@@ -307,16 +307,16 @@
       "expected_output": "Confirmation of the new manual transaction: yesterday's date, an expense of $45.00, on Joint Checking, in the Cafes, restaurants, bars category."
     },
     {
-      "description": "Bulk recategorization. The app finds the matching transactions and reassigns their category, asking the user to confirm the set before writing.",
+      "description": "Bulk recategorization. The app finds the matching transactions and reassigns their category once the user approves the write.",
       "user_prompt": "Recategorize my Amazon.com purchases from last month as Household goods.",
       "tools_triggered": "search_transactions, list_categories, categorize_transaction",
-      "expected_output": "The Amazon.com Purchase transactions of the previous calendar month listed for confirmation, then each one moved to Household goods, including the ones on the bank-imported Primary Checking account (categorizing is always allowed)."
+      "expected_output": "After the user approves the write, every Amazon.com Purchase of the previous calendar month (typically three to five) is moved to Household goods, including the ones on the bank-imported Primary Checking account (categorizing is always allowed), and the model reports how many it changed."
     },
     {
       "description": "Budget check and adjustment. The app reads the budgets with the figures of the period in progress, then raises a limit when the user asks.",
       "user_prompt": "How much of my dining out budget is left this week? Then raise it to $300 a week.",
       "tools_triggered": "list_budgets, update_budget",
-      "expected_output": "The Weekly Dining Out budget's allocated ($200), spent and remaining amounts for the week in progress, then its limit raised to $300 for this week and the ones after it."
+      "expected_output": "What the Weekly Dining Out budget has spent in the week in progress against its $200 limit (it can already be over), then, after the user approves the write, its limit raised to $300 for this week and the ones after it."
     }
   ],
   "negative_test_cases": [
@@ -324,7 +324,7 @@
       "description": "Bank-imported data is protected. Rewriting the amount, description, date or account of a transaction imported from a bank must be refused, and the model should explain why instead of retrying.",
       "user_prompt": "Change the amount of my latest Amazon.com purchase on Primary Checking to $10.",
       "tools_triggered": "search_transactions, update_transaction",
-      "expected_output": "The amount is not changed. Primary Checking's transactions are bank-imported: either the model sees that in the search result and declines up front, or update_transaction is rejected by the server. The model explains that only manual transactions can have their amount changed, and offers to recategorize, label or add a note instead."
+      "expected_output": "The amount is not changed. Primary Checking's transactions are bank-imported: either the model sees that in the search result and declines up front, or update_transaction is rejected by the server. The model explains that only manual transactions can have their amount changed, and offers what it can do instead, such as recategorizing it, adding a note or logging a separate adjustment."
     },
     {
       "description": "Wide, irreversible deletion must not be executed on a vague instruction. delete_transaction is destructive and single-target, so the model must stop and confirm rather than looping over the user's history.",
@@ -336,7 +336,7 @@
       "description": "Out of scope: the app is bookkeeping only and exposes no tool that can move money or reach a bank. The model must decline rather than pretending a payment happened.",
       "user_prompt": "Transfer $500 from my Emergency Fund to my mom's account.",
       "tools_triggered": null,
-      "expected_output": "A refusal explaining that Whisper Money can only record and analyse finance data, not initiate payments or transfers, with an offer to log the transfer as a manual transaction once the user has made it themselves."
+      "expected_output": "A refusal explaining that Whisper Money can only record and analyse finance data, not initiate payments or transfers, with an offer to log the transfer as a manual transaction once the user has made it themselves. The model never asks for a destination account as if it could send the money."
     }
   ]
 }

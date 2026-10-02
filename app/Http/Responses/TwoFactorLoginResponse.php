@@ -4,9 +4,8 @@ namespace App\Http\Responses;
 
 use App\Services\AuthEntryPointService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
-use Laravel\Fortify\Fortify;
+use Symfony\Component\HttpFoundation\Response;
 
 class TwoFactorLoginResponse implements TwoFactorLoginResponseContract
 {
@@ -15,12 +14,12 @@ class TwoFactorLoginResponse implements TwoFactorLoginResponseContract
     /**
      * Create an HTTP response that represents the object.
      */
-    public function toResponse($request): JsonResponse|RedirectResponse
+    public function toResponse($request): Response
     {
         $this->authEntryPointService->queueReturningUserCookie();
 
         return $request->wantsJson()
             ? new JsonResponse('', 204)
-            : redirect()->intended(Fortify::redirects('login'));
+            : $this->authEntryPointService->redirectToIntended();
     }
 }

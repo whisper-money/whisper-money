@@ -17,6 +17,9 @@ budget or a split is). This skill covers how to get real work done with it.
   `from`/`to` and loop over periods rather than asking for "everything".
 - Only mention spaces if the user does. Everything defaults to the personal
   space; call `list_spaces` when they say "shared", "household", "our".
+- Nothing here moves money. Asked to transfer, pay or send money, say so
+  plainly instead of asking where to send it, and offer to log the transfer as
+  a manual transaction once the user has made it.
 
 ## Recipes
 
