@@ -156,6 +156,32 @@ test('n26 fingerprints a transaction the same with and without an entry referenc
         ->toBe(TransactionFingerprint::for($withoutReference, 'N26'));
 });
 
+test('n26 fingerprints on content alone whatever the connection country', function (?string $country) {
+    $payload = baseEnableBankingPayload(['entry_reference' => '95d1119e-92d2-11f1-a38e-4d2ca6090c88']);
+    $refetched = array_replace($payload, ['entry_reference' => '95d11175-92d2-11f1-822e-49adef1560a6']);
+
+    expect(TransactionFingerprint::for($payload, 'N26', $country))
+        ->toBe(TransactionFingerprint::for($refetched, 'N26', $country));
+})->with(['DE', 'ES', null]);
+
+test('bankinter portugal fingerprints a refetched transaction identically', function () {
+    // Real Bankinter PT payloads (#1058): the same booked card purchase, fetched
+    // by two consecutive syncs, with a new entry_reference each time.
+    $firstFetch = baseEnableBankingPayload(['entry_reference' => '000000000000777TAB040033469143']);
+    $secondFetch = array_replace($firstFetch, ['entry_reference' => '000000000000777TAB040033472126']);
+
+    expect(TransactionFingerprint::for($firstFetch, 'Bankinter', 'PT'))
+        ->toBe(TransactionFingerprint::for($secondFetch, 'Bankinter', 'PT'));
+});
+
+test('bankinter outside portugal still keys on its entry reference', function (?string $country) {
+    $firstFetch = baseEnableBankingPayload(['entry_reference' => '000000000000777TAB040033469143']);
+    $secondFetch = array_replace($firstFetch, ['entry_reference' => '000000000000777TAB040033472126']);
+
+    expect(TransactionFingerprint::for($firstFetch, 'Bankinter', $country))
+        ->not->toBe(TransactionFingerprint::for($secondFetch, 'Bankinter', $country));
+})->with(['ES', null]);
+
 test('a bank with stable ids still keys on its own transaction id and entry reference', function () {
     $payload = baseEnableBankingPayload(['entry_reference' => 'entry-456']);
     $sameReference = baseEnableBankingPayload([

@@ -938,6 +938,47 @@ test('sync dedupes the N26 settled copy of a card payment it already imported as
     expect($account->transactions()->count())->toBe(1);
 });
 
+test('sync dedupes a Bankinter Portugal transaction refetched with a new entry reference', function () {
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'Bankinter', 'user_id' => $user->id]);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id, 'aspsp_country' => 'PT']);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    // Two consecutive 6-hourly syncs hand over the same booked purchase, each
+    // with a freshly minted entry_reference and no transaction_id (#1058).
+    $firstFetch = [
+        'transaction_id' => null,
+        'entry_reference' => '000000000000777TAB040033469143',
+        'transaction_amount' => ['amount' => '23.45', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2026-09-30',
+        'value_date' => '2026-09-30',
+        'status' => 'BOOK',
+        'remittance_information' => ['COMPRA CONTINENTE LISBOA'],
+    ];
+
+    $secondFetch = array_replace($firstFetch, ['entry_reference' => '000000000000777TAB040033472126']);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->twice()
+        ->andReturn(
+            ['transactions' => [$firstFetch], 'continuation_key' => null],
+            ['transactions' => [$secondFetch], 'continuation_key' => null],
+        );
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+
+    expect($service->sync($account, '2026-09-28', '2026-10-01'))->toBe(1);
+    expect($service->sync($account, '2026-09-28', '2026-10-01'))->toBe(0);
+    expect($account->transactions()->count())->toBe(1);
+});
+
 test('sync skips transactions that have not settled', function (string $status) {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);

@@ -535,6 +535,27 @@ test('mixed linked and new accounts in same connection', function () {
     runSync($job, $transactionSync, $balanceSync);
 });
 
+test('every account reaches the transaction sync with its connection already loaded', function () {
+    $connection = enableBankingConnectionWithAccounts(2);
+
+    // The transaction sync reads the connection country off each account; a
+    // lazy load there would cost one query per account.
+    $connectionLoaded = [];
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->twice()->andReturnUsing(function (Account $account) use (&$connectionLoaded) {
+        $connectionLoaded[] = $account->relationLoaded('bankingConnection');
+
+        return 0;
+    });
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->twice();
+
+    runSync(new SyncBankingConnectionJob($connection), $transactionSync, $balanceSync);
+
+    expect($connectionLoaded)->toBe([true, true]);
+});
+
 test('sends email when new transactions are synced on subsequent sync', function () {
     Queue::fake();
 

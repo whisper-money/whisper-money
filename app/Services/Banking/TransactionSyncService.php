@@ -51,6 +51,7 @@ class TransactionSyncService
         $continuationKey = null;
         $dailyBalances = [];
         $bankName = $account->bank?->name;
+        $country = $account->bankingConnection?->aspsp_country;
 
         // Preload the account's existing dedup keys once. Without this every
         // incoming transaction ran its own exists() probe (the N+1 in
@@ -89,7 +90,7 @@ class TransactionSyncService
                     $pages++;
 
                     foreach ($result['transactions'] as $transaction) {
-                        if ($this->importTransaction($account, $transaction, $bankName, $knownFingerprints, $knownExternalIds)) {
+                        if ($this->importTransaction($account, $transaction, $bankName, $country, $knownFingerprints, $knownExternalIds)) {
                             $created++;
                         }
 
@@ -301,14 +302,14 @@ class TransactionSyncService
      *    certain card transactions, which previously bypassed dedup.
      *  - Race conditions between overlapping sync runs.
      */
-    private function importTransaction(Account $account, array $data, ?string $bankName, array &$knownFingerprints, array &$knownExternalIds): bool
+    private function importTransaction(Account $account, array $data, ?string $bankName, ?string $country, array &$knownFingerprints, array &$knownExternalIds): bool
     {
         if (TransactionSettlement::isUnsettled($data)) {
             return false;
         }
 
         $externalId = $data['transaction_id'] ?? $data['entry_reference'] ?? null;
-        $fingerprint = TransactionFingerprint::for($data, $bankName);
+        $fingerprint = TransactionFingerprint::for($data, $bankName, $country);
 
         // Mirror of the previous exists() probe against the preloaded sets:
         // match on the fingerprint, or — for legacy rows keyed solely on the

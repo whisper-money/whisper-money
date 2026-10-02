@@ -11,7 +11,10 @@ class TransactionFingerprint
 {
     /**
      * Banks whose upstream id cannot identify a transaction, because they mint
-     * a new one every time they hand the same transaction over.
+     * a new one every time they hand the same transaction over. Keyed by the
+     * lowercased bank name, mapped to `'*'` or to the connection countries
+     * (`banking_connections.aspsp_country`) the entry covers, the same shape
+     * as `config('banking.beta_banks')`.
      *
      * N26 never sends `transaction_id` (null on all 7916 production rows) and
      * has changed `entry_reference` three times in one month: v1 UUIDs minted
@@ -36,21 +39,42 @@ class TransactionFingerprint
      * new value. Deliberately not repaired — the duplicates already in the
      * database are being left for users to delete themselves.
      *
-     * @var list<string>
+     * Bankinter Portugal never sends `transaction_id` either, and hands the same
+     * booked purchase over with a new `entry_reference` on every fetch
+     * (`000000000000777TAB040033469143`, then `...033472126`), so each 6-hourly
+     * sync re-imported the previous day (#1058). Recomputing a self-hosted
+     * user's two months of copies, none of the 58 groups collapsed on the
+     * reference and all 58 did on the content hash. The same-day twin trade-off
+     * above applies; that history held no two copies from a single sync run,
+     * so no real twins. Bankinter Spain is left out: it sends positional or null
+     * references, never this form, and has no duplicate fingerprints. There are
+     * no Bankinter Portugal connections in our production, so the extra copy on
+     * the first sync after upgrading only happens on self-hosted installs.
+     *
+     * @var array<string, '*'|list<string>>
      */
-    private const array UNSTABLE_ID_BANKS = ['n26'];
+    private const array UNSTABLE_ID_BANKS = [
+        'n26' => '*',
+        'bankinter' => ['PT'],
+    ];
 
-    private static function hasUnstableIds(?string $bankName): bool
+    private static function hasUnstableIds(?string $bankName, ?string $country): bool
     {
-        return $bankName !== null && in_array(mb_strtolower($bankName), self::UNSTABLE_ID_BANKS, true);
+        if ($bankName === null) {
+            return false;
+        }
+
+        $countries = self::UNSTABLE_ID_BANKS[mb_strtolower($bankName)] ?? [];
+
+        return $countries === '*' || in_array($country, $countries, true);
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    public static function for(array $data, ?string $bankName = null): string
+    public static function for(array $data, ?string $bankName = null, ?string $country = null): string
     {
-        $contentOnly = self::hasUnstableIds($bankName);
+        $contentOnly = self::hasUnstableIds($bankName, $country);
 
         if (! $contentOnly && ($data['transaction_id'] ?? null) !== null) {
             return self::hash(['transaction_id', $data['transaction_id']]);
