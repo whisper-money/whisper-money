@@ -12,6 +12,7 @@ import {
     buildCategoryTree,
     flattenCategoryTree,
     getCategoryPath,
+    searchCategoryTree,
 } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
@@ -46,33 +47,10 @@ export function CategorizerCommand({
         [sortedCategories],
     );
 
-    const query = searchValue.trim().toLowerCase();
-
-    // Tree-aware search: keep each match together with its ancestors so a
-    // matching child still shows its parent chain for context.
-    const visibleCategories = useMemo(() => {
-        if (!query) {
-            return treeCategories;
-        }
-
-        const parentOf = new Map(
-            sortedCategories.map((c) => [c.id, c.parent_id]),
-        );
-        const include = new Set<string>();
-        for (const category of sortedCategories) {
-            if (!category.name.toLowerCase().includes(query)) {
-                continue;
-            }
-            let id: string | null | undefined = category.id;
-            let guard = 0;
-            while (id != null && guard++ < 10) {
-                include.add(id);
-                id = parentOf.get(id);
-            }
-        }
-
-        return treeCategories.filter((node) => include.has(node.id));
-    }, [treeCategories, sortedCategories, query]);
+    const visibleCategories = useMemo(
+        () => searchCategoryTree(treeCategories, searchValue),
+        [treeCategories, searchValue],
+    );
 
     if (animationState === 'success' || !currentTransaction) {
         return null;

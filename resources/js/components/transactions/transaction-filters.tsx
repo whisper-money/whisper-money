@@ -29,6 +29,7 @@ import {
     buildCategoryTree,
     categorySelectionState,
     flattenCategoryTree,
+    searchCategoryTree,
     toggleCategorySelection,
 } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
@@ -148,30 +149,10 @@ export function TransactionFilters({
         [filters.categoryIds],
     );
 
-    // Tree-aware search: keep each match together with its ancestors so a
-    // matching child still shows its parent chain for context.
-    const visibleCategoryTree = useMemo(() => {
-        const query = categorySearch.trim().toLowerCase();
-        if (!query) {
-            return categoryTree;
-        }
-
-        const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
-        const include = new Set<string>();
-        for (const category of categories) {
-            if (!category.name.toLowerCase().includes(query)) {
-                continue;
-            }
-            let id: string | null | undefined = category.id;
-            let guard = 0;
-            while (id != null && guard++ < 10) {
-                include.add(id);
-                id = parentOf.get(id);
-            }
-        }
-
-        return categoryTree.filter((node) => include.has(node.id));
-    }, [categoryTree, categories, categorySearch]);
+    const visibleCategoryTree = useMemo(
+        () => searchCategoryTree(categoryTree, categorySearch),
+        [categoryTree, categorySearch],
+    );
 
     const showUncategorizedRow =
         categorySearch.trim() === '' ||

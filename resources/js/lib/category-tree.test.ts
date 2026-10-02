@@ -2,7 +2,11 @@ import { Category } from '@/types/category';
 import { describe, expect, it } from 'vitest';
 
 import {
+    buildCategoryTree,
     categorySelectionState,
+    flattenCategoryTree,
+    searchCategoryTree,
+    searchTree,
     toggleCategorySelection,
 } from './category-tree';
 
@@ -97,5 +101,76 @@ describe('toggleCategorySelection', () => {
         expect(result).toEqual(['coffee']);
         expect(stateOf('groceries', result)).toBe('indeterminate');
         expect(stateOf('food', result)).toBe('indeterminate');
+    });
+});
+
+describe('searchCategoryTree', () => {
+    const ordered = flattenCategoryTree(buildCategoryTree(categories));
+    const search = (query: string) =>
+        searchCategoryTree(ordered, query).map((category) => category.id);
+
+    it('returns every category in tree order when the query is blank', () => {
+        expect(search('')).toEqual([
+            'drinks',
+            'food',
+            'groceries',
+            'coffee',
+            'restaurants',
+        ]);
+        expect(search('   ')).toEqual(search(''));
+    });
+
+    it('shows the whole subtree when a parent matches', () => {
+        expect(search('food')).toEqual([
+            'food',
+            'groceries',
+            'coffee',
+            'restaurants',
+        ]);
+    });
+
+    it('shows a matching child with its ancestors and its own children, but not its siblings', () => {
+        expect(search('groceries')).toEqual(['food', 'groceries', 'coffee']);
+    });
+
+    it('shows a matching leaf under its ancestor chain', () => {
+        expect(search('coffee')).toEqual(['food', 'groceries', 'coffee']);
+    });
+
+    it('matches case-insensitively and ignores surrounding spaces', () => {
+        expect(search('  FOO ')).toEqual(search('food'));
+    });
+
+    it('returns nothing when no category matches', () => {
+        expect(search('travel')).toEqual([]);
+    });
+});
+
+describe('searchTree', () => {
+    const options = [
+        { value: 'food', label: 'Food', parentValue: null },
+        { value: 'groceries', label: 'Groceries', parentValue: 'food' },
+        { value: 'restaurants', label: 'Restaurants', parentValue: 'food' },
+        { value: 'drinks', label: 'Drinks' },
+    ];
+    const accessors = {
+        id: (option: (typeof options)[number]) => option.value,
+        parentId: (option: (typeof options)[number]) => option.parentValue,
+        label: (option: (typeof options)[number]) => option.label,
+    };
+
+    it('reads ids, parents and labels through the given accessors', () => {
+        expect(
+            searchTree(options, 'food', accessors).map((o) => o.value),
+        ).toEqual(['food', 'groceries', 'restaurants']);
+        expect(
+            searchTree(options, 'rest', accessors).map((o) => o.value),
+        ).toEqual(['food', 'restaurants']);
+    });
+
+    it('keeps the input order instead of grouping matches first', () => {
+        expect(searchTree(options, 'r', accessors).map((o) => o.value)).toEqual(
+            ['food', 'groceries', 'restaurants', 'drinks'],
+        );
     });
 });

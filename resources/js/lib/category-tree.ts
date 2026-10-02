@@ -95,20 +95,39 @@ export function getDescendantIds(
 
 export type CategorySelectionState = 'checked' | 'indeterminate' | 'unchecked';
 
+/**
+ * How to read a tree item: its id, its parent's id and the label searched on.
+ */
+export interface TreeAccessors<T> {
+    id: (item: T) => UUID;
+    parentId: (item: T) => UUID | null | undefined;
+    label: (item: T) => string;
+}
+
+const categoryAccessors: TreeAccessors<Category> = {
+    id: (category) => category.id,
+    parentId: (category) => category.parent_id,
+    label: (category) => category.name,
+};
+
 interface TreeIndex {
     parentOf: Map<UUID, UUID | null>;
     childrenOf: Map<UUID, UUID[]>;
 }
 
-function indexTree(categories: Category[]): TreeIndex {
+function indexTree<T>(
+    items: T[],
+    { id, parentId }: TreeAccessors<T>,
+): TreeIndex {
     const parentOf = new Map<UUID, UUID | null>();
     const childrenOf = new Map<UUID, UUID[]>();
-    for (const category of categories) {
-        parentOf.set(category.id, category.parent_id);
-        if (category.parent_id != null) {
-            const siblings = childrenOf.get(category.parent_id) ?? [];
-            siblings.push(category.id);
-            childrenOf.set(category.parent_id, siblings);
+    for (const item of items) {
+        const parent = parentId(item) ?? null;
+        parentOf.set(id(item), parent);
+        if (parent != null) {
+            const siblings = childrenOf.get(parent) ?? [];
+            siblings.push(id(item));
+            childrenOf.set(parent, siblings);
         }
     }
 
@@ -128,6 +147,56 @@ function collectDescendants(id: UUID, childrenOf: Map<UUID, UUID[]>): UUID[] {
 }
 
 /**
+ * Tree-aware search over items already in display order. An item stays visible
+ * when its label matches, when it is an ancestor of a match (so a matching
+ * child keeps its parent for context) or when it is a descendant of a match (so
+ * searching a parent also lists its subcategories). The input order is kept.
+ */
+export function searchTree<T>(
+    items: T[],
+    query: string,
+    accessors: TreeAccessors<T>,
+): T[] {
+    const needle = query.trim().toLowerCase();
+    if (!needle) {
+        return items;
+    }
+
+    const { parentOf, childrenOf } = indexTree(items, accessors);
+    const visible = new Set<UUID>();
+    for (const item of items) {
+        if (!accessors.label(item).toLowerCase().includes(needle)) {
+            continue;
+        }
+        const id = accessors.id(item);
+        visible.add(id);
+
+        let ancestor = parentOf.get(id);
+        let guard = 0;
+        while (ancestor != null && guard++ < 10) {
+            visible.add(ancestor);
+            ancestor = parentOf.get(ancestor);
+        }
+
+        for (const descendant of collectDescendants(id, childrenOf)) {
+            visible.add(descendant);
+        }
+    }
+
+    return items.filter((item) => visible.has(accessors.id(item)));
+}
+
+/**
+ * {@link searchTree} for categories, matching on the category name.
+ */
+export function searchCategoryTree<T extends Category>(
+    categories: T[],
+    query: string,
+): T[] {
+    return searchTree(categories, query, categoryAccessors);
+}
+
+/**
  * Tri-state for a category in a tree multi-select: a category is checked when
  * it (or an ancestor) is in the selected set, indeterminate when only some
  * descendants are, otherwise unchecked.
@@ -137,7 +206,7 @@ export function categorySelectionState(
     selected: Set<UUID>,
     categories: Category[],
 ): CategorySelectionState {
-    const { parentOf, childrenOf } = indexTree(categories);
+    const { parentOf, childrenOf } = indexTree(categories, categoryAccessors);
 
     let current: UUID | null | undefined = id;
     let guard = 0;
@@ -171,7 +240,7 @@ export function toggleCategorySelection(
     categories: Category[],
 ): UUID[] {
     const set = new Set(selected);
-    const { parentOf, childrenOf } = indexTree(categories);
+    const { parentOf, childrenOf } = indexTree(categories, categoryAccessors);
 
     const isChecked = categorySelectionState(id, set, categories) === 'checked';
 

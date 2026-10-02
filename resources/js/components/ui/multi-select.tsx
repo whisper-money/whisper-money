@@ -13,6 +13,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { searchTree, type TreeAccessors } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
@@ -27,6 +28,12 @@ export interface MultiSelectOption {
     depth?: number;
     parentValue?: string | null;
 }
+
+const optionAccessors: TreeAccessors<MultiSelectOption> = {
+    id: (option) => option.value,
+    parentId: (option) => option.parentValue,
+    label: (option) => option.label,
+};
 
 interface Props {
     options: MultiSelectOption[];
@@ -56,32 +63,10 @@ export function MultiSelect({
         (option) => option.depth != null || option.parentValue != null,
     );
 
-    // Tree-aware search: keep each match together with its ancestors so a
-    // matching child still shows its parent chain for context.
-    const visibleOptions = useMemo(() => {
-        const query = search.trim().toLowerCase();
-        if (!isTree || !query) {
-            return options;
-        }
-
-        const parentOf = new Map(
-            options.map((option) => [option.value, option.parentValue ?? null]),
-        );
-        const include = new Set<string>();
-        for (const option of options) {
-            if (!option.label.toLowerCase().includes(query)) {
-                continue;
-            }
-            let value: string | null | undefined = option.value;
-            let guard = 0;
-            while (value != null && guard++ < 10) {
-                include.add(value);
-                value = parentOf.get(value);
-            }
-        }
-
-        return options.filter((option) => include.has(option.value));
-    }, [options, isTree, search]);
+    const visibleOptions = useMemo(
+        () => (isTree ? searchTree(options, search, optionAccessors) : options),
+        [options, isTree, search],
+    );
 
     const toggle = (value: string) => {
         if (selected.includes(value)) {
