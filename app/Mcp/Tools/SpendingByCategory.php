@@ -41,6 +41,9 @@ class SpendingByCategory extends McpTool
             $request->string('parent_category_id')->toString() ?: null,
         );
 
-        return $this->json(['categories' => $spending->values()]);
+        return $this->json([
+            'currency' => $this->reportingCurrency($user),
+            'categories' => $spending->values(),
+        ]);
     }
 }

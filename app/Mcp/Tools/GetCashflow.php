@@ -36,6 +36,7 @@ class GetCashflow extends McpTool
         $range = ['from' => $request->string('from')->toString(), 'to' => $request->string('to')->toString()];
 
         return $this->json([
+            'currency' => $this->reportingCurrency($user),
             'summary' => $this->callController($controller, 'summary', $user, $range),
             'sankey' => $this->callController($controller, 'sankey', $user, $range),
             'trend' => $this->callController($controller, 'trend', $user, $range),

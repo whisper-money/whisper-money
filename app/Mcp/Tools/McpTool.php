@@ -91,6 +91,16 @@ abstract class McpTool extends Tool
     /**
      * Encode structured data as a JSON text response the agent can parse.
      */
+    /**
+     * The currency every rolled-up figure is reported in. Analytics responses
+     * carry it so the agent never has to guess: the amounts alone do not say
+     * whether they are euros or dollars.
+     */
+    protected function reportingCurrency(User $user): string
+    {
+        return $user->currency_code ?? 'USD';
+    }
+
     protected function json(mixed $data): Response
     {
         return Response::text((string) json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

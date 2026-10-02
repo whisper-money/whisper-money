@@ -1,6 +1,8 @@
 <?php
 
 use App\Mcp\Servers\WhisperMoneyServer;
+use App\Mcp\Tools\GetCashflow;
+use App\Mcp\Tools\GetNetWorth;
 use App\Mcp\Tools\ListAccounts;
 use App\Mcp\Tools\ListAchievements;
 use App\Mcp\Tools\ListAutomationRules;
@@ -8,6 +10,7 @@ use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\SearchTransactions;
+use App\Mcp\Tools\SpendingByCategory;
 use App\Models\Account;
 use App\Models\Achievement;
 use App\Models\AutomationRule;
@@ -193,6 +196,21 @@ it('lists budgets with what the current period has spent and has left', function
         ->assertSee('"spent_amount":12000')
         ->assertSee('"remaining_amount":38000');
 });
+
+it('says which currency the rolled-up figures are in', function (string $tool) {
+    // The amounts alone cannot tell euros from dollars, and without this the
+    // agent answered a euro account's spending with a dollar sign.
+    $user = User::factory()->create(['currency_code' => 'EUR']);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool($tool, ['from' => now()->startOfMonth()->toDateString(), 'to' => now()->toDateString()])
+        ->assertOk()
+        ->assertSee('"currency":"EUR"');
+})->with([
+    'spending_by_category' => SpendingByCategory::class,
+    'get_cashflow' => GetCashflow::class,
+    'get_net_worth' => GetNetWorth::class,
+]);
 
 it('reports the remaining amount the app shows, ignoring carry-over', function () {
     $user = User::factory()->create();
