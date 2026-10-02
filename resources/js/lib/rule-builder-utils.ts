@@ -53,7 +53,7 @@ export const FIELD_CONFIG: Record<
     amount: {
         label: 'Amount',
         type: 'number',
-        operators: ['equals', 'greater_than', 'less_than'],
+        operators: ['equals', 'not_equals', 'greater_than', 'less_than'],
     },
     bank_name: {
         label: 'Bank Name',
@@ -90,6 +90,14 @@ export const OPERATOR_LABELS: Record<Operator, string> = {
 
 type JsonLogicRule = Record<string, unknown>;
 
+/**
+ * The value an equality condition compares against. A numeric field compares as
+ * a number, so `amount != 14` is stored as 14 and not as the string "14".
+ */
+function equalityValue(field: string, value: string): string | number {
+    return FIELD_CONFIG[field]?.type === 'number' ? parseFloat(value) : value;
+}
+
 function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
     const { field, operator, value } = condition;
 
@@ -99,12 +107,9 @@ function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
         case 'not_contains':
             return { '!': { in: [value, { var: field }] } };
         case 'not_equals':
-            return { '!=': [{ var: field }, value] };
+            return { '!=': [{ var: field }, equalityValue(field, value)] };
         case 'equals':
-            if (FIELD_CONFIG[field]?.type === 'number') {
-                return { '==': [{ var: field }, parseFloat(value)] };
-            }
-            return { '==': [{ var: field }, value] };
+            return { '==': [{ var: field }, equalityValue(field, value)] };
         case 'greater_than':
             return { '>': [{ var: field }, parseFloat(value)] };
         case 'less_than':
@@ -116,6 +121,30 @@ function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
         default:
             throw new Error(`Unknown operator: ${operator}`);
     }
+}
+
+/**
+ * Whether a condition has a value to compare against. A blank one is left out
+ * of the rule instead of being saved as a comparison with null: a blank amount
+ * would become `amount != null`, which matches every transaction.
+ */
+function isCompleteCondition(condition: Condition): boolean {
+    if (!condition.field || !condition.operator) {
+        return false;
+    }
+
+    if (
+        condition.operator === 'is_empty' ||
+        condition.operator === 'is_not_empty'
+    ) {
+        return true;
+    }
+
+    if (FIELD_CONFIG[condition.field]?.type === 'number') {
+        return !Number.isNaN(parseFloat(condition.value));
+    }
+
+    return condition.value.trim() !== '';
 }
 
 function buildGroupJsonLogic(group: ConditionGroup): JsonLogicRule {
@@ -132,9 +161,12 @@ function buildGroupJsonLogic(group: ConditionGroup): JsonLogicRule {
 }
 
 export function buildJsonLogic(structure: RuleStructure): JsonLogicRule {
-    const validGroups = structure.groups.filter(
-        (group) => group.conditions.length > 0,
-    );
+    const validGroups = structure.groups
+        .map((group) => ({
+            ...group,
+            conditions: group.conditions.filter(isCompleteCondition),
+        }))
+        .filter((group) => group.conditions.length > 0);
 
     if (validGroups.length === 0) {
         return {};
@@ -161,9 +193,9 @@ function jsonLogicVariable(value: unknown): string | null {
 }
 
 /**
- * What a condition becomes once it is wrapped in a JsonLogic `!`. Only the two
- * positive text operators have a negative twin in the builder, so anything else
- * under a `!` stays unparseable and is dropped like any other unknown node.
+ * What a condition becomes once it is wrapped in a JsonLogic `!`. Only `contains`
+ * and `equals` have a negative twin in the builder, so anything else under a `!`
+ * stays unparseable and is dropped like any other unknown node.
  *
  * The two entries are not symmetric: the builder writes `not_contains` as a `!`
  * and reads it back here, while it writes `not_equals` as a plain `!=`. The
@@ -485,13 +517,6 @@ export function addDescriptionMatchToRuleStructure(
 
 export function isValidRuleStructure(structure: RuleStructure): boolean {
     return structure.groups.some((group) =>
-        group.conditions.some(
-            (condition) =>
-                condition.field &&
-                condition.operator &&
-                (condition.operator === 'is_empty' ||
-                    condition.operator === 'is_not_empty' ||
-                    condition.value.trim() !== ''),
-        ),
+        group.conditions.some(isCompleteCondition),
     );
 }

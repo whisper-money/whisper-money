@@ -656,6 +656,24 @@ it('accepts an exception rule built from and, or and a negation', function () {
     expect($user->automationRules()->where('title', 'Amazon except Prime')->exists())->toBeTrue();
 });
 
+it('accepts an amount exception and keeps the amount a number', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'AI usage']);
+
+    callWriteTool($user, CreateAutomationRule::class, [
+        'title' => 'GitHub except the subscription',
+        'priority' => 0,
+        'rules_json' => ['and' => [
+            ['in' => ['github', ['var' => 'description']]],
+            ['!=' => [['var' => 'amount'], -14]],
+        ]],
+        'action_category_id' => $category->id,
+    ])->assertOk()->assertSee('GitHub except the subscription');
+
+    expect($user->automationRules()->sole()->rules_json['and'][1])
+        ->toBe(['!=' => [['var' => 'amount'], -14]]);
+});
+
 // A rule that never matches anything saves happily and then fails silently, so
 // the write tools name what they accept instead of letting the agent guess.
 it('rejects a rule whose variable or operator the engine cannot evaluate', function (array $rulesJson, string $expected) {
