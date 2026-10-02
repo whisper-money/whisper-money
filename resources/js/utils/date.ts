@@ -2,6 +2,7 @@ import { __ } from '@/utils/i18n';
 import {
     isToday as dateFnsIsToday,
     isYesterday as dateFnsIsYesterday,
+    isValid,
 } from 'date-fns';
 
 /**
@@ -76,14 +77,24 @@ export function todayDateString(): string {
  *
  * `formatStr` still names the fields in date-fns' spelling, because that is what
  * every call site already passes; what it no longer decides is their order.
+ *
+ * A date that cannot be read comes back as the string it was given, or as an
+ * empty string when it was not one. `Intl` throws on an Invalid Date, and a
+ * throw during render takes the whole page down to the error boundary.
  */
 export function formatDate(
     date: Date | string | number,
     formatStr: string,
     locale: string = 'en-US',
 ): string {
+    const localDate = toLocalDate(date);
+
+    if (!isValid(localDate)) {
+        return typeof date === 'string' ? date : '';
+    }
+
     return new Intl.DateTimeFormat(locale, toIntlOptions(formatStr)).format(
-        toLocalDate(date),
+        localDate,
     );
 }
 
@@ -166,6 +177,10 @@ export function formatRelativeDate(
     locale: string = 'en-US',
 ): string {
     const date = toLocalDate(dateStr);
+
+    if (!isValid(date)) {
+        return dateStr;
+    }
 
     if (dateFnsIsToday(date)) {
         return __('Today');

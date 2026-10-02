@@ -5,6 +5,8 @@ import {
     formatDateMedium,
     formatDayFromDate,
     formatMonthFromYearMonth,
+    formatMonthYear,
+    formatRelativeDate,
     todayDateString,
 } from './date';
 
@@ -37,6 +39,36 @@ describe('formatDate', () => {
         expect(
             formatDate('2026-08-01T12:00:00.000000Z', 'yyyy-MM-dd', 'sv-SE'),
         ).toBe('2026-08-01');
+    });
+});
+
+describe('formatDate with a date it cannot read', () => {
+    // Sentry PHP-LARAVEL-5G: `Intl.DateTimeFormat#format` throws on an Invalid
+    // Date, and a throw during render takes the whole page down to the error
+    // boundary. A label is not worth a page.
+    it('hands back the string it was given instead of throwing', () => {
+        expect(formatDate('2026-13-45', 'MMM d, yyyy', 'en-US')).toBe(
+            '2026-13-45',
+        );
+        expect(formatDate('not a date', 'MMM d, yyyy', 'en-US')).toBe(
+            'not a date',
+        );
+    });
+
+    it('returns an empty string for an Invalid Date or a NaN timestamp', () => {
+        expect(formatDate(new Date(Number.NaN), 'MMM d, yyyy', 'en-US')).toBe(
+            '',
+        );
+        expect(formatDate(Number.NaN, 'MMM d, yyyy', 'en-US')).toBe('');
+    });
+
+    it('keeps the helpers built on it from throwing', () => {
+        expect(formatMonthYear(new Date(Number.NaN), 'en-US')).toBe('');
+        expect(formatMonthFromYearMonth('not a month', 'en-US')).toBe('');
+        expect(formatDateMedium('2026-13-45', 'en-US')).toBe('2026-13-45');
+        expect(formatDateLong('2026-13-45', 'en-US')).toBe('2026-13-45');
+        expect(formatDayFromDate('2026-13-45', 'en-US')).toBe('');
+        expect(formatRelativeDate('2026-13-45', 'en-US')).toBe('2026-13-45');
     });
 });
 

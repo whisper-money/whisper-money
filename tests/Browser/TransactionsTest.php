@@ -289,3 +289,40 @@ it('can delete a transaction from the actions menu', function () {
         ->assertDontSee('Disposable transaction')
         ->assertNoJavascriptErrors();
 });
+
+it('keeps the account page up when a fifth year digit is typed into the date', function () {
+    // Without a max, Chromium lets the year segment of a date input take six
+    // digits, so the field could hold "20266-10-01" — a value date-fns' parseISO
+    // rejects. Formatting that Invalid Date threw during render (Sentry
+    // PHP-LARAVEL-5G) and the page fell to the error boundary.
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Date Typo Account',
+        'currency_code' => 'USD',
+        'type' => 'checking',
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'description' => 'Typo-prone transaction',
+        'amount' => -1500,
+        'transaction_date' => '2026-09-15',
+        'source' => 'manually_created',
+    ]);
+
+    actingAs($user);
+
+    $page = visit("/accounts/{$account->id}");
+
+    $page->waitForText('Typo-prone transaction', 10)
+        ->click('Typo-prone transaction')
+        ->waitForText('Edit Transaction', 5)
+        ->typeSlowly('#date', '100120266', 50)
+        ->assertDontSee('Something went wrong.')
+        ->assertSee('Edit Transaction')
+        ->assertNoJavascriptErrors();
+
+    expect($page->value('#date'))->toMatch('/^\d{4}-\d{2}-\d{2}$/');
+});

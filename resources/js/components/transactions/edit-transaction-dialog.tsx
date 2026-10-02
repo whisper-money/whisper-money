@@ -56,7 +56,7 @@ import { formatCurrency, toMajorUnits, toMinorUnits } from '@/utils/currency';
 import { formatDate, todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { getYear, parseISO } from 'date-fns';
+import { getYear, isValid, parseISO } from 'date-fns';
 import {
     CalendarDays,
     ChevronDown,
@@ -132,10 +132,15 @@ const CHIP_CLASS =
 /**
  * A transaction date as the dialog shows it in plain text: the year is dropped
  * when it is the current one, and the month name is capitalized for the locales
- * that lowercase it.
+ * that lowercase it. A value parseISO cannot read is shown as it was typed.
  */
 function formatTransactionDate(date: string, locale: string): string {
     const parsed = parseISO(date);
+
+    if (!isValid(parsed)) {
+        return date;
+    }
+
     const formatString =
         getYear(parsed) === getYear(new Date()) ? 'MMMM d' : 'MMMM d, yyyy';
     const formatted = formatDate(parsed, formatString, locale);
@@ -1026,9 +1031,12 @@ export function EditTransactionDialog({
     const dateField = (
         <div className="space-y-2">
             <FormLabel htmlFor="date">{__('Date')}</FormLabel>
+            {/* Without a max, Chromium lets the year take six digits, and the
+                server reads "20266-10-01" as 2006-10-01. */}
             <Input
                 id="date"
                 type="date"
+                max="9999-12-31"
                 value={transactionDate}
                 onChange={(e) => setTransactionDate(e.target.value)}
                 disabled={isSubmitting}
