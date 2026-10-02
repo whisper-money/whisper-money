@@ -52,8 +52,8 @@ interface FlowNode {
     expandable?: boolean;
     expanded?: boolean;
     // A drill-down child that netted to the other side: it takes its (negative)
-    // amount off the parent, so it sits in the subcategory column with a label
-    // and an empty bar, but no flow.
+    // amount off the parent, so it sits in the subcategory column with a label,
+    // an empty bar and a dashed connector instead of a flow.
     offset?: boolean;
 }
 
@@ -90,8 +90,10 @@ const OTHER_ID = 'other';
 const MUTED_COLOR = 'var(--color-muted)';
 const OFFSET_COLOR = 'var(--color-muted-foreground)';
 // An offset has no flow, so it gets an empty, dashed bar of this height to
-// anchor its label in the subcategory column.
+// anchor its label in the subcategory column, tied to its parent by a dashed
+// connector of this width.
 const OFFSET_MARKER_HEIGHT = 14;
+const OFFSET_LINK_WIDTH = 2;
 const CENTER_COLOR = 'var(--color-chart-1)';
 
 export function SankeyChart({
@@ -708,8 +710,23 @@ export function SankeyChart({
         index: number;
         payload: { source: FlowNode; target: FlowNode };
     }) => {
-        if (payload.source.offset || payload.target.offset) {
-            return null;
+        const curve = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
+        const offset = payload.source.offset ? payload.source : payload.target;
+
+        // An offset has no flow to draw, only a thin dashed connector, so it
+        // still reads as part of the parent it was netted into.
+        if (offset.offset) {
+            return (
+                <path
+                    key={`link-${index}`}
+                    d={curve}
+                    fill="none"
+                    stroke={offset.color}
+                    strokeWidth={OFFSET_LINK_WIDTH}
+                    strokeDasharray="4 3"
+                    strokeOpacity={0.6}
+                />
+            );
         }
 
         const kind =
@@ -722,7 +739,7 @@ export function SankeyChart({
         return (
             <path
                 key={`link-${index}`}
-                d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
+                d={curve}
                 fill="none"
                 stroke={stroke}
                 strokeWidth={Math.max(1, linkWidth)}

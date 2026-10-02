@@ -586,6 +586,9 @@ describe('SankeyChart', () => {
         const flows = (container: HTMLElement) =>
             container.querySelectorAll('path[stroke-opacity="0.4"]');
 
+        const connectors = (container: HTMLElement) =>
+            container.querySelectorAll('path[stroke-dasharray]');
+
         const labelOf = (name: string) =>
             screen.getByText(name).closest('foreignObject')!;
 
@@ -628,8 +631,10 @@ describe('SankeyChart', () => {
             expect(screen.getByText('-$28 · -2%')).toBeInTheDocument();
 
             // A sankey cannot draw a negative flow: salary -> net, net -> bank
-            // and one flow per subcategory, none for the offset.
+            // and one flow per subcategory, while the offset only gets a thin
+            // connector to show it belongs to Bank.
             expect(flows(container)).toHaveLength(4);
+            expect(connectors(container)).toHaveLength(1);
             expect(
                 screen.getByRole('link', {
                     name: 'View Interest transactions',
@@ -652,8 +657,10 @@ describe('SankeyChart', () => {
             expect(screen.getByText('Parent')).toBeInTheDocument();
             expect(screen.getByText('-$50 · -2%')).toBeInTheDocument();
 
-            // base pay -> work, work -> net and net -> rent.
+            // base pay -> work, work -> net and net -> rent, plus a connector
+            // per offset.
             expect(flows(container)).toHaveLength(3);
+            expect(connectors(container)).toHaveLength(2);
         });
 
         it("keeps the parent's bar the size of the flow feeding it", async () => {
