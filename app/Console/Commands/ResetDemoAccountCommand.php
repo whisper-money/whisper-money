@@ -232,8 +232,10 @@ class ResetDemoAccountCommand extends Command
      * The demo data, shaped to the test cases stored with the ChatGPT
      * submission. Those were entered in the old submission form, which no longer
      * exists, and a migrated plugin cannot replace them, so the data follows the
-     * cases instead: amounts in euros, and Uber rides filed under "Shopping" for
-     * the reviewer to move to Transport.
+     * cases instead: amounts in euros, a Cash account to log "a 45 euro cash
+     * expense" on, and a few Uber rides misfiled under "Shopping" for the
+     * reviewer to move to Transport. Only a few: ChatGPT caps the tool calls of
+     * one turn, and a year of weekly rides could not all be moved before it.
      *
      * It is pinned to English as well. Left on its own locale (the reviewer
      * account is `es`), CreateDefaultCategories would seed Spanish names that the
@@ -248,15 +250,17 @@ class ResetDemoAccountCommand extends Command
             ...$this->demoDataset(),
             'locale' => 'en',
             'currency' => 'EUR',
+            'accounts' => [
+                ...self::DEMO_ACCOUNTS,
+                ['name' => 'Cash', 'type' => 'others', 'bank' => null, 'balance_min' => 15000, 'balance_max' => 40000, 'monthly_variance' => 5000],
+            ],
             'extra_categories' => [
                 ['name' => 'Shopping', 'icon' => 'ShoppingBag', 'color' => 'pink', 'type' => 'expense'],
             ],
-            'transaction_templates' => array_map(
-                fn (array $template): array => $template['description'] === 'Uber Ride'
-                    ? [...$template, 'category_name' => 'Shopping']
-                    : $template,
-                $this->transactionsProvider->templates(),
-            ),
+            'transaction_templates' => [
+                ...$this->transactionsProvider->templates(),
+                ['description' => 'Uber Ride', 'amount_min' => -3500, 'amount_max' => -1200, 'category_name' => 'Shopping', 'frequency' => 'quarterly'],
+            ],
         ];
     }
 

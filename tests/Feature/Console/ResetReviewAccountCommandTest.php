@@ -58,10 +58,14 @@ test('demo:reset --review seeds the data the stored test cases ask about, ending
             now()->subMonthNoOverflow()->endOfMonth(),
         ])->exists())->toBeTrue();
 
-    // "My Uber charges are filed as Shopping — move them to Transport."
+    // "My Uber charges are filed as Shopping — move them to Transport." A few
+    // misfiled rides, so ChatGPT can move them all within one turn's tool calls.
     $shopping = $user->categories()->where('name', 'Shopping')->sole();
-    expect($user->transactions()->where('description', 'Uber Ride')->count())->toBeGreaterThan(0)
-        ->and($user->transactions()->where('description', 'Uber Ride')->where('category_id', '!=', $shopping->id)->exists())->toBeFalse();
+    $misfiled = $user->transactions()->where('description', 'Uber Ride')->where('category_id', $shopping->id)->count();
+    expect($misfiled)->toBeGreaterThan(0)->toBeLessThanOrEqual(6);
+
+    // "Log a 45 euro cash expense" has an account to land on.
+    expect($user->accounts()->where('name', 'Cash')->exists())->toBeTrue();
 
     // "Change the amount of that Amazon charge from my bank account": whichever
     // Amazon charge the model picks has to be a locked, bank-imported one.
