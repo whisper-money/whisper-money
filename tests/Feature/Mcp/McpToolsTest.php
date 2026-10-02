@@ -212,6 +212,13 @@ it('says which currency the rolled-up figures are in', function (string $tool) {
     'get_net_worth' => GetNetWorth::class,
 ]);
 
+it('tells the agent on the accounts tool that nothing moves money', function () {
+    // ChatGPT reads tool descriptions more reliably than the server
+    // instructions: asked to "transfer 500 euros to my mum's account", it
+    // offered to do it once it knew the destination account.
+    expect((new ListAccounts)->description())->toContain('no tool moves money');
+});
+
 it('reports the remaining amount the app shows, ignoring carry-over', function () {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
