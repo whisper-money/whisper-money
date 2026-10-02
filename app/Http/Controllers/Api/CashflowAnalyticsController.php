@@ -210,8 +210,12 @@ class CashflowAnalyticsController extends Controller
 
     /**
      * One sankey column: the rolled-up rows whose net points at $side, as
-     * positive flows. A sankey cannot draw a negative flow, so a category that
-     * crossed over says so in its label instead.
+     * positive flows. A sankey cannot draw a negative flow, so at the top level
+     * a category that crossed over says so in its label instead.
+     *
+     * A drilled-down child keeps its own name: the chart shows it as an offset
+     * against the parent it was netted into, whose label already states the
+     * side, and the money coming back is not necessarily a refund.
      *
      * @param  array<int, BreakdownRow>  $rolledUp
      * @param  Collection<int, Transaction>  $transactions
@@ -223,7 +227,7 @@ class CashflowAnalyticsController extends Controller
             fn (array $row): array => [
                 ...$row,
                 'amount' => abs($row['amount']),
-                'category' => $this->labelCrossover($row['category'], $side),
+                'category' => $drillParentId === null ? $this->labelCrossover($row['category'], $side) : $row['category'],
             ],
             array_filter($rolledUp, fn (array $row): bool => $this->amountMatchesSide($row['amount'], $side)),
         ));

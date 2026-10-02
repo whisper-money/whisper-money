@@ -51,6 +51,10 @@ interface FlowNode {
     categoryId?: string;
     expandable?: boolean;
     expanded?: boolean;
+    // A drill-down child that netted to the other side: it takes its (negative)
+    // amount off the parent, so it sits in the subcategory column with a label,
+    // an empty bar and a dashed connector instead of a flow.
+    offset?: boolean;
 }
 
 interface FlowLink {
@@ -84,6 +88,12 @@ const ROW_HEIGHT = 46;
 // may look it up on the API: `parent` only takes a uuid there.
 const OTHER_ID = 'other';
 const MUTED_COLOR = 'var(--color-muted)';
+const OFFSET_COLOR = 'var(--color-muted-foreground)';
+// An offset has no flow, so it gets an empty, dashed bar of this height to
+// anchor its label in the subcategory column, tied to its parent by a dashed
+// connector of this width.
+const OFFSET_MARKER_HEIGHT = 14;
+const OFFSET_LINK_WIDTH = 2;
 const CENTER_COLOR = 'var(--color-chart-1)';
 
 export function SankeyChart({
@@ -343,55 +353,86 @@ export function SankeyChart({
                     node.kind === expandedKind &&
                     node.categoryId === expandedId,
             );
-            const fetched =
+            const drilled = childrenById[expandedId];
+            const [sameSide, otherSide] =
                 expandedKind === 'income'
-                    ? childrenById[expandedId]?.income_categories
-                    : childrenById[expandedId]?.expense_categories;
+                    ? [drilled?.income_categories, drilled?.expense_categories]
+                    : [drilled?.expense_categories, drilled?.income_categories];
             const grouped =
                 expandedKind === 'income' ? groupedIncome : groupedExpense;
-            const kids = [
-                ...(expandedId === OTHER_ID
+            const byAmount = (a: SankeyCategory, b: SankeyCategory) =>
+                b.amount - a.amount;
+            const hasAmount = (child: SankeyCategory) => child.amount > 0;
+            const kids = (
+                expandedId === OTHER_ID
                     ? (grouped.other?.categories ?? [])
-                    : (fetched ?? [])),
-            ].sort((a, b) => b.amount - a.amount);
+                    : (sameSide ?? [])
+            )
+                .filter(hasAmount)
+                .sort(byAmount);
+            // The parent nets its whole subtree before it picks a side, so a
+            // child that netted to the other side was taken off the parent's
+            // amount. Showing it as that offset is what makes the column add
+            // up to the parent. "Other" only groups same-side categories.
+            const offsets = (expandedId === OTHER_ID ? [] : (otherSide ?? []))
+                .filter(hasAmount)
+                .sort(byAmount);
 
             if (parentIndex >= 0) {
-                kids.forEach((kid, index) => {
-                    if (kid.amount <= 0) {
-                        return;
-                    }
+                const parentAmount = nodes[parentIndex].amount;
+                // With an offset netted in, the subcategories add up to more
+                // than their parent. Their flows are scaled down to it so the
+                // parent's bar stays the size of the flow feeding it; the
+                // labels keep the real amounts.
+                const kidsTotal = kids.reduce(
+                    (sum, kid) => sum + kid.amount,
+                    0,
+                );
+                const flowScale =
+                    kidsTotal > parentAmount ? parentAmount / kidsTotal : 1;
 
+                const pushChild = (
+                    child: SankeyCategory,
+                    color: string,
+                    offset = false,
+                ) => {
                     const childIndex = nodes.length;
+                    const amount = offset ? -child.amount : child.amount;
                     nodes.push({
-                        name: kid.category.name,
-                        amount: kid.amount,
-                        color: categoryBarColor(kid.category.color, index),
+                        name: child.category.name,
+                        amount,
+                        color,
                         kind: expandedKind,
                         labelSide: expandedKind === 'income' ? 'left' : 'right',
                         // A subcategory answers "how much of this parent",
                         // not "how much of everything", so the parent's
                         // amount is the denominator.
-                        share: formatShare(
-                            kid.amount,
-                            nodes[parentIndex].amount,
-                        ),
-                        categoryId: kid.category.id,
+                        share: formatShare(amount, parentAmount),
+                        categoryId: child.category.id,
+                        offset,
                     });
+                    // A sankey cannot draw a negative flow, so an offset gets
+                    // an empty one: it still lands in the subcategory column,
+                    // below the subcategories, with room for its label.
+                    const value = offset ? 0 : child.amount * flowScale;
                     links.push(
                         expandedKind === 'income'
-                            ? {
-                                  source: childIndex,
-                                  target: parentIndex,
-                                  value: kid.amount,
-                              }
+                            ? { source: childIndex, target: parentIndex, value }
                             : {
                                   source: parentIndex,
                                   target: childIndex,
-                                  value: kid.amount,
+                                  value,
                               },
                     );
                     subcatRows += 1;
-                });
+                };
+
+                kids.forEach((kid, index) =>
+                    pushChild(kid, categoryBarColor(kid.category.color, index)),
+                );
+                offsets.forEach((child) =>
+                    pushChild(child, OFFSET_COLOR, true),
+                );
             }
         }
 
@@ -571,15 +612,29 @@ export function SankeyChart({
                         : undefined
                 }
             >
-                <rect
-                    x={x}
-                    y={y}
-                    width={width}
-                    height={nodeHeight}
-                    rx={2}
-                    fill={node.color}
-                    fillOpacity={0.9}
-                />
+                {node.offset ? (
+                    <rect
+                        x={x}
+                        y={y + nodeHeight / 2 - OFFSET_MARKER_HEIGHT / 2}
+                        width={width}
+                        height={OFFSET_MARKER_HEIGHT}
+                        rx={2}
+                        fill="none"
+                        stroke={node.color}
+                        strokeDasharray="2 2"
+                        strokeOpacity={0.6}
+                    />
+                ) : (
+                    <rect
+                        x={x}
+                        y={y}
+                        width={width}
+                        height={nodeHeight}
+                        rx={2}
+                        fill={node.color}
+                        fillOpacity={0.9}
+                    />
+                )}
                 <foreignObject
                     x={labelX}
                     y={labelY}
@@ -655,6 +710,27 @@ export function SankeyChart({
         index: number;
         payload: { source: FlowNode; target: FlowNode };
     }) => {
+        const curve = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
+        const offsetNode = [payload.source, payload.target].find(
+            (node) => node.offset,
+        );
+
+        // An offset has no flow to draw, only a thin dashed connector, so it
+        // still reads as part of the parent it was netted into.
+        if (offsetNode) {
+            return (
+                <path
+                    key={`link-${index}`}
+                    d={curve}
+                    fill="none"
+                    stroke={offsetNode.color}
+                    strokeWidth={OFFSET_LINK_WIDTH}
+                    strokeDasharray="4 3"
+                    strokeOpacity={0.6}
+                />
+            );
+        }
+
         const kind =
             payload.source.kind === 'center'
                 ? payload.target.kind
@@ -665,7 +741,7 @@ export function SankeyChart({
         return (
             <path
                 key={`link-${index}`}
-                d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
+                d={curve}
                 fill="none"
                 stroke={stroke}
                 strokeWidth={Math.max(1, linkWidth)}
