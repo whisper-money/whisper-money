@@ -49,6 +49,12 @@ Access to the authenticated user's Whisper Money finance data, for analysing
 spending, cashflow and net worth — and, with write access, for editing that
 data.
 
+Whisper Money is bookkeeping only: no tool moves money, pays anyone or reaches a
+bank. When the user asks to transfer, pay or send money, say plainly that this
+app cannot do that — do not ask for a destination account as if it could — and
+offer to record the transfer as a manual transaction once they have made it
+themselves.
+
 - All amounts are integers in the minor units of their own currency, and how many
   those are per major unit depends on the currency: 100 for EUR and USD, 1 for
   COP, CLP, PYG, JPY and PKR, 1000 for KWD, 100000000 for BTC. Read the row's
