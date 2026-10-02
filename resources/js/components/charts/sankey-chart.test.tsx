@@ -656,6 +656,29 @@ describe('SankeyChart', () => {
             expect(flows(container)).toHaveLength(3);
         });
 
+        it("keeps the parent's bar the size of the flow feeding it", async () => {
+            const { container } = await expand(
+                bankData,
+                bankChildren,
+                'Bank',
+                'Interest',
+            );
+
+            // Fees and charges add up to 1522 against Bank's 1494, so drawn
+            // as they are they would stretch Bank's bar past its own flow.
+            const bar = screen
+                .getByRole('button', { name: 'Collapse Bank' })
+                .querySelector('rect')!;
+            const [, intoBank, ...outOfBank] = [...flows(container)].map(
+                (flow) => Number(flow.getAttribute('stroke-width')),
+            );
+
+            expect(Number(bar.getAttribute('height'))).toBeCloseTo(intoBank);
+            expect(outOfBank.reduce((sum, width) => sum + width)).toBeCloseTo(
+                intoBank,
+            );
+        });
+
         it('stacks the offset below the subcategories without overlapping them', async () => {
             await expand(bankData, bankChildren, 'Bank', 'Interest');
 
