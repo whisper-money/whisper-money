@@ -336,7 +336,7 @@
       "description": "Out of scope: the app is bookkeeping only and exposes no tool that can move money or reach a bank. The model must decline rather than pretending a payment happened.",
       "user_prompt": "Transfer $500 from my Emergency Fund to my mom's account.",
       "tools_triggered": null,
-      "expected_output": "A refusal explaining that Whisper Money can only record and analyse finance data, not initiate payments or transfers, with an offer to log the transfer as a manual transaction once the user has made it themselves. The model never asks for a destination account as if it could send the money."
+      "expected_output": "A refusal explaining that Whisper Money can only record and analyse finance data and cannot initiate payments or transfers. The model never asks for a destination account as if it could send the money, and never records the transfer as if it had happened; it may offer to log it as a manual transaction once the user has made it themselves."
     }
   ]
 }
