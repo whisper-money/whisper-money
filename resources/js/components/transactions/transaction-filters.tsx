@@ -461,7 +461,7 @@ export function TransactionFilters({
                                                                             category.id
                                                                         }
                                                                         value={
-                                                                            category.name
+                                                                            category.id
                                                                         }
                                                                         onSelect={() =>
                                                                             handleCategoryToggle(

@@ -135,10 +135,16 @@ function indexTree<T>(
 }
 
 function collectDescendants(id: UUID, childrenOf: Map<UUID, UUID[]>): UUID[] {
+    // Tracks visited ids so a corrupt parent cycle can't loop forever.
+    const seen = new Set<UUID>([id]);
     const result: UUID[] = [];
     const stack = [...(childrenOf.get(id) ?? [])];
     while (stack.length > 0) {
         const current = stack.pop()!;
+        if (seen.has(current)) {
+            continue;
+        }
+        seen.add(current);
         result.push(current);
         stack.push(...(childrenOf.get(current) ?? []));
     }

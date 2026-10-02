@@ -144,6 +144,14 @@ describe('searchCategoryTree', () => {
     it('returns nothing when no category matches', () => {
         expect(search('travel')).toEqual([]);
     });
+
+    it('terminates on a corrupt parent cycle', () => {
+        const cyclic = [category('a', 'b'), category('b', 'a')];
+
+        expect(
+            searchCategoryTree(cyclic, 'a').map((category) => category.id),
+        ).toEqual(['a', 'b']);
+    });
 });
 
 describe('searchTree', () => {

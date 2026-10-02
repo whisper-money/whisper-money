@@ -134,7 +134,11 @@ export function MultiSelect({
                                     return (
                                         <CommandItem
                                             key={option.value}
-                                            value={option.label}
+                                            value={
+                                                isTree
+                                                    ? option.value
+                                                    : option.label
+                                            }
                                             onSelect={() => toggle(option.value)}
                                             style={
                                                 option.depth

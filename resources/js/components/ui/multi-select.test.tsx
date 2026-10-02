@@ -27,4 +27,26 @@ describe('MultiSelect tree search', () => {
         fireEvent.click(screen.getByText('Groceries'));
         expect(onChange).toHaveBeenCalledWith(['groceries']);
     });
+
+    it('highlights one row at a time when two options share a label', () => {
+        render(
+            <MultiSelect
+                options={[
+                    { value: 'food', label: 'Food', parentValue: null },
+                    { value: 'food-other', label: 'Other', parentValue: 'food' },
+                    { value: 'car', label: 'Car', parentValue: null },
+                    { value: 'car-other', label: 'Other', parentValue: 'car' },
+                ]}
+                selected={[]}
+                onChange={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('combobox'));
+        const input = screen.getByPlaceholderText('Search…');
+        fireEvent.change(input, { target: { value: 'other' } });
+        fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+        expect(screen.getAllByRole('option', { selected: true })).toHaveLength(1);
+    });
 });
