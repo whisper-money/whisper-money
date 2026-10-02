@@ -711,17 +711,19 @@ export function SankeyChart({
         payload: { source: FlowNode; target: FlowNode };
     }) => {
         const curve = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
-        const offset = payload.source.offset ? payload.source : payload.target;
+        const offsetNode = [payload.source, payload.target].find(
+            (node) => node.offset,
+        );
 
         // An offset has no flow to draw, only a thin dashed connector, so it
         // still reads as part of the parent it was netted into.
-        if (offset.offset) {
+        if (offsetNode) {
             return (
                 <path
                     key={`link-${index}`}
                     d={curve}
                     fill="none"
-                    stroke={offset.color}
+                    stroke={offsetNode.color}
                     strokeWidth={OFFSET_LINK_WIDTH}
                     strokeDasharray="4 3"
                     strokeOpacity={0.6}
