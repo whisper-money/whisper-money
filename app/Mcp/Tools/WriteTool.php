@@ -24,11 +24,13 @@ use Laravel\Mcp\Response;
  * read+write, and Sanctum personal access tokens must carry the `mcp:write`
  * ability, so a read-only PAT can analyse data but never change it.
  *
- * Only the irreversible tools (the deletes) carry #[IsDestructive]; creating,
- * updating, categorizing and labelling are reversible and inherit
- * `destructiveHint: false` from McpTool. PHP attributes are not inherited, so
- * the framework only reports one declared directly on the served tool class —
- * it cannot live here.
+ * The deletes carry #[IsDestructive], and so do the tools that overwrite what
+ * the user already has: editing a transaction or a rule, replacing a balance
+ * snapshot, applying a rule over existing transactions. OpenAI's review treats
+ * an overwrite as destructive even when it could be undone. Creating,
+ * categorizing and labelling inherit `destructiveHint: false` from McpTool.
+ * PHP attributes are not inherited, so the framework only reports one declared
+ * directly on the served tool class — it cannot live here.
  */
 abstract class WriteTool extends McpTool
 {

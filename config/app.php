@@ -147,4 +147,15 @@ return [
         'password' => env('PRESS_PASSWORD', '123456789'),
     ],
 
+    /*
+     * The app-store reviewer account: the login handed to OpenAI with the
+     * ChatGPT app directory submission. Unlike the press password this one is
+     * not public, so it only comes from the environment, and the daily reset
+     * skips the account until it is set.
+     */
+    'review' => [
+        'email' => env('REVIEW_EMAIL', 'openai-review@whisper.money'),
+        'password' => env('REVIEW_PASSWORD'),
+    ],
+
 ];

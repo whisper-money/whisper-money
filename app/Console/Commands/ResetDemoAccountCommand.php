@@ -28,11 +28,12 @@ class ResetDemoAccountCommand extends Command
 {
     protected $signature = 'demo:reset
         {--press : Create or reset the shared press account (config app.press.*) on Spanish data}
+        {--review : Create or reset the app-store reviewer account (config app.review.*) in English, with --imported}
         {--email= : Create or reset this account instead of the configured demo user}
         {--password= : Password for --email}
         {--imported : Mark one account\'s transactions as bank-imported, so the read-only protections can be demonstrated}';
 
-    protected $description = 'Reset the demo or press account with fresh data';
+    protected $description = 'Reset the demo, press or reviewer account with fresh data';
 
     private const MIN_BALANCE_GROWTH_PERCENTAGE = 0.05;
 
@@ -106,7 +107,7 @@ class ResetDemoAccountCommand extends Command
 
         [$email, $password] = $credentials;
 
-        $this->dataset = $this->option('press') ? PressDataset::get() : $this->demoDataset();
+        $this->dataset = $this->dataset();
 
         $this->info("Resetting seeded account: {$email}");
 
@@ -120,7 +121,7 @@ class ResetDemoAccountCommand extends Command
 
         $labels = $this->createLabels($user);
 
-        $this->createAccountsWithTransactions($user, $labels);
+        $ledgerAccounts = $this->createAccountsWithTransactions($user, $labels);
 
         $this->createAutomationRules($user, $labels);
 
@@ -130,8 +131,8 @@ class ResetDemoAccountCommand extends Command
 
         $this->createSubscription($user);
 
-        if ($this->option('imported')) {
-            $this->markTransactionsAsImported($user);
+        if ($this->option('imported') || $this->option('review')) {
+            $this->markTransactionsAsImported($ledgerAccounts);
         }
 
         $this->info('✓ Account reset successfully!');
@@ -141,27 +142,42 @@ class ResetDemoAccountCommand extends Command
 
     /**
      * Whether this run targets the public demo account, as opposed to the press
-     * account or a named one (e.g. an app-store reviewer). Only the public demo
+     * account, the reviewer account or a named one. Only the public demo
      * answers to `DEMO_ENABLED`.
      */
     private function seedsPublicDemo(): bool
     {
-        return ! $this->option('press') && (string) $this->option('email') === '';
+        return $this->configuredAccount() === null && (string) $this->option('email') === '';
     }
 
     /**
-     * The account to seed: the press account, an explicitly named one (e.g. an
-     * app-store reviewer) or the public demo. Null when it cannot be resolved.
+     * The config-backed account this run targets instead of the public demo —
+     * `press` or `review`, named after both the option and its `app.*` config
+     * key — or null.
+     */
+    private function configuredAccount(): ?string
+    {
+        foreach (['press', 'review'] as $account) {
+            if ($this->option($account)) {
+                return $account;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The account to seed: the press or reviewer account, an explicitly named
+     * one or the public demo. Null when it cannot be resolved.
      *
      * @return array{0: string, 1: string}|null
      */
     private function credentials(): ?array
     {
-        if ($this->option('press')) {
-            $email = (string) config('app.press.email');
-            $password = (string) config('app.press.password');
+        $configuredAccount = $this->configuredAccount();
 
-            return $email !== '' && $password !== '' ? [$email, $password] : null;
+        if ($configuredAccount !== null) {
+            return $this->configuredCredentials("app.{$configuredAccount}");
         }
 
         $explicitEmail = (string) $this->option('email');
@@ -172,16 +188,27 @@ class ResetDemoAccountCommand extends Command
             return $password !== '' ? [$explicitEmail, $password] : null;
         }
 
-        $email = (string) config('app.demo.email');
-        $password = (string) config('app.demo.password');
+        return $this->configuredCredentials('app.demo');
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    private function configuredCredentials(string $key): ?array
+    {
+        $email = (string) config("{$key}.email");
+        $password = (string) config("{$key}.password");
 
         return $email !== '' && $password !== '' ? [$email, $password] : null;
     }
 
     private function reportMissingCredentials(): int
     {
-        if ($this->option('press')) {
-            $this->error('Press configuration not set. Please set PRESS_EMAIL and PRESS_PASSWORD in .env');
+        $configuredAccount = $this->configuredAccount();
+
+        if ($configuredAccount !== null) {
+            $env = strtoupper($configuredAccount);
+            $this->error(ucfirst($configuredAccount)." configuration not set. Please set {$env}_EMAIL and {$env}_PASSWORD in .env");
         } elseif ((string) $this->option('email') !== '') {
             $this->error('Pass --password together with --email.');
         } else {
@@ -189,6 +216,25 @@ class ResetDemoAccountCommand extends Command
         }
 
         return self::FAILURE;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dataset(): array
+    {
+        if ($this->option('press')) {
+            return PressDataset::get();
+        }
+
+        // The reviewer runs the submitted test cases in English against the demo
+        // data, so the account is pinned to it. Left on its own locale (the
+        // reviewer account is `es`), CreateDefaultCategories would seed Spanish
+        // names that the English templates no longer resolve to, and every
+        // transaction would be skipped.
+        return $this->option('review')
+            ? [...$this->demoDataset(), 'locale' => 'en']
+            : $this->demoDataset();
     }
 
     /**
@@ -309,8 +355,9 @@ class ResetDemoAccountCommand extends Command
 
     /**
      * @param  array<int, array{label: Label, assignment_percentage: int}>  $labels
+     * @return array<string, Account> the accounts with a transaction ledger, keyed by name in dataset order
      */
-    private function createAccountsWithTransactions(User $user, array $labels): void
+    private function createAccountsWithTransactions(User $user, array $labels): array
     {
         $categories = $user->categories()->get()->keyBy('name');
         $created = [];
@@ -340,6 +387,8 @@ class ResetDemoAccountCommand extends Command
         $totalTransactions = $this->createMixedTransactions($transactionAccounts, $categories, $labels);
 
         $this->info('  Created '.count($created)." accounts with {$totalTransactions} transactions and 12 months of balances");
+
+        return $transactionAccounts;
     }
 
     /**
@@ -710,13 +759,17 @@ class ResetDemoAccountCommand extends Command
     /**
      * Mark one account's transactions as bank-imported so a reviewer can see
      * update_transaction and delete_transaction refuse to touch synced data.
-     * The account keeps no banking connection, so no sync ever runs on it.
+     * It is always the dataset's first ledger account (the demo's Primary
+     * Checking), because the submitted negative test case names it. The account
+     * keeps no banking connection, so no sync ever runs on it.
+     *
+     * @param  array<string, Account>  $ledgerAccounts  keyed by name, in dataset order
      */
-    private function markTransactionsAsImported(User $user): void
+    private function markTransactionsAsImported(array $ledgerAccounts): void
     {
-        $account = $user->accounts()->whereHas('transactions')->first();
+        $account = reset($ledgerAccounts);
 
-        if ($account === null) {
+        if ($account === false) {
             return;
         }
 

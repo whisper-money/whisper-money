@@ -10,7 +10,9 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
+#[IsDestructive]
 #[Description('Apply an automation rule to transactions that already exist — rules otherwise only run on new ones. Previews the matches by default; pass dry_run false to actually apply them.')]
 class ApplyAutomationRule extends WriteTool
 {
