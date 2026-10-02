@@ -2,10 +2,13 @@ import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import {
+    type Announcements,
     DndContext,
     type DragEndEvent,
     KeyboardSensor,
+    type Modifier,
     PointerSensor,
+    type ScreenReaderInstructions,
     closestCenter,
     useSensor,
     useSensors,
@@ -16,10 +19,11 @@ import {
     rectSortingStrategy,
     sortableKeyboardCoordinates,
     useSortable,
+    verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 interface SortableGridProps<T> {
     items: T[];
@@ -34,7 +38,26 @@ interface SortableGridProps<T> {
     className?: string;
     /** Non-sortable content rendered inside the grid after the items. */
     footer?: ReactNode;
+    /**
+     * `list` sorts a single column of items that may differ in height, and only
+     * lets the dragged item slide up and down.
+     */
+    layout?: 'grid' | 'list';
+    /** Merged into the drag handle, which carries `data-dragging` while it is held. */
+    handleClassName?: string;
+    /** Applied to the item while it is being dragged. */
+    draggingClassName?: string;
+    /** Replaces dnd-kit's English screen reader texts. */
+    accessibility?: {
+        announcements: Announcements;
+        screenReaderInstructions: ScreenReaderInstructions;
+    };
 }
+
+const restrictToVerticalAxis: Modifier = ({ transform }) => ({
+    ...transform,
+    x: 0,
+});
 
 export function SortableGrid<T>({
     items,
@@ -43,9 +66,14 @@ export function SortableGrid<T>({
     onReorder,
     className,
     footer,
+    layout = 'grid',
+    handleClassName,
+    draggingClassName = 'opacity-60',
+    accessibility,
 }: SortableGridProps<T>) {
     const ids = items.map(getId);
     const { trigger } = useWebHaptics();
+    const [isDragging, setIsDragging] = useState(false);
 
     // A small move starts the drag, so taps/clicks still work. Touch is handled
     // via pointer events and only the handle has touch-action: none, so the rest
@@ -57,7 +85,31 @@ export function SortableGrid<T>({
         }),
     );
 
+    // Escape cancels a drag, but a Radix dialog around the grid listens for it in
+    // the capture phase and would close first. Marking the key as handled before
+    // it reaches the dialog keeps the dialog open; dnd-kit still cancels on it.
+    useEffect(() => {
+        if (!isDragging) {
+            return;
+        }
+
+        const keepDialogOpen = (event: KeyboardEvent): void => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+            }
+        };
+
+        window.addEventListener('keydown', keepDialogOpen, { capture: true });
+
+        return () =>
+            window.removeEventListener('keydown', keepDialogOpen, {
+                capture: true,
+            });
+    }, [isDragging]);
+
     function handleDragEnd(event: DragEndEvent): void {
+        setIsDragging(false);
+
         const { active, over } = event;
         if (!over || active.id === over.id) {
             return;
@@ -76,15 +128,31 @@ export function SortableGrid<T>({
         <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            modifiers={layout === 'list' ? [restrictToVerticalAxis] : undefined}
+            accessibility={accessibility}
+            onDragStart={() => setIsDragging(true)}
+            onDragCancel={() => setIsDragging(false)}
             onDragEnd={handleDragEnd}
         >
-            <SortableContext items={ids} strategy={rectSortingStrategy}>
+            <SortableContext
+                items={ids}
+                strategy={
+                    layout === 'list'
+                        ? verticalListSortingStrategy
+                        : rectSortingStrategy
+                }
+            >
                 <div className={className}>
                     {items.map((item) => (
                         <SortableItem
                             key={getId(item)}
                             id={getId(item)}
                             onActivate={() => trigger('selection')}
+                            // A list only slides items, so a dragged item that is
+                            // styled larger than its slot is not squashed to fit it.
+                            slideOnly={layout === 'list'}
+                            handleClassName={handleClassName}
+                            draggingClassName={draggingClassName}
                         >
                             {(dragHandle) => renderItem(item, dragHandle)}
                         </SortableItem>
@@ -99,10 +167,16 @@ export function SortableGrid<T>({
 function SortableItem({
     id,
     onActivate,
+    slideOnly,
+    handleClassName,
+    draggingClassName,
     children,
 }: {
     id: string;
     onActivate: () => void;
+    slideOnly: boolean;
+    handleClassName?: string;
+    draggingClassName: string;
     children: (dragHandle: ReactNode) => ReactNode;
 }) {
     const {
@@ -120,7 +194,11 @@ function SortableItem({
             ref={setActivatorNodeRef}
             type="button"
             aria-label={__('Drag to reorder')}
-            className="cursor-grab touch-none text-muted-foreground transition-colors select-none hover:text-foreground active:cursor-grabbing"
+            data-dragging={isDragging || undefined}
+            className={cn(
+                'cursor-grab touch-none text-muted-foreground transition-colors select-none hover:text-foreground active:cursor-grabbing',
+                handleClassName,
+            )}
             {...attributes}
             {...listeners}
             onPointerDown={(event) => {
@@ -139,11 +217,13 @@ function SortableItem({
         <div
             ref={setNodeRef}
             style={{
-                transform: CSS.Transform.toString(transform),
+                transform: slideOnly
+                    ? CSS.Translate.toString(transform)
+                    : CSS.Transform.toString(transform),
                 transition,
                 zIndex: isDragging ? 50 : undefined,
             }}
-            className={cn('group relative', isDragging && 'opacity-60')}
+            className={cn('group relative', isDragging && draggingClassName)}
         >
             {children(dragHandle)}
         </div>

@@ -106,7 +106,7 @@ export function AutomateCategorizationDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="overflow-x-hidden sm:max-w-[640px]">
+            <DialogContent className="overflow-x-hidden sm:max-w-[680px]">
                 <DialogHeader>
                     <DialogTitle>
                         {step === 'create'
