@@ -27,6 +27,19 @@ vi.mock('@inertiajs/react', () => ({
     ),
 }));
 
+vi.mock('./add-transaction-button', () => ({
+    AddTransactionButton: ({
+        hasTransactionalAccounts,
+    }: {
+        hasTransactionalAccounts: boolean;
+    }) => (
+        <button
+            aria-label="Add transaction"
+            aria-disabled={!hasTransactionalAccounts}
+        />
+    ),
+}));
+
 vi.mock('./transaction-analysis-drawer', () => ({
     TransactionAnalysisDrawer: ({ open }: { open: boolean }) =>
         open ? <div data-testid="analysis-drawer" /> : null,
@@ -48,10 +61,12 @@ const emptyFilters: TransactionFilters = {
 function renderMenu(
     filters: TransactionFilters,
     transactions: ServerTransaction[] = [],
+    hasTransactionalAccounts = true,
 ) {
     return render(
         <TransactionActionsMenu
             transactions={transactions}
+            hasTransactionalAccounts={hasTransactionalAccounts}
             filters={filters}
         />,
     );
@@ -102,10 +117,11 @@ describe('TransactionActionsMenu analysis button', () => {
 });
 
 describe('TransactionActionsMenu action bar layout', () => {
-    it('shows analysis and categorize in that order on desktop', () => {
+    it('shows add, analysis and categorize in that order on desktop', () => {
         const { container } = renderMenu(emptyFilters, [uncategorized('t-1')]);
 
         expect(actionBarLabels(container)).toEqual([
+            'Add transaction',
             'Analysis',
             'Categorize1',
             'More actions',
@@ -116,23 +132,32 @@ describe('TransactionActionsMenu action bar layout', () => {
         const { container } = renderMenu(emptyFilters);
 
         expect(actionBarLabels(container)).toEqual([
+            'Add transaction',
             'Analysis',
             'Categorize',
             'More actions',
         ]);
     });
 
-    it('leaves creating and importing to the app header', async () => {
+    it('offers adding right above the list and leaves importing to the app header', async () => {
         renderMenu(emptyFilters);
 
         expect(
-            screen.queryByRole('button', { name: 'Add transaction' }),
-        ).not.toBeInTheDocument();
+            screen.getByRole('button', { name: 'Add transaction' }),
+        ).toBeInTheDocument();
 
         const menu = await openMoreActionsMenu();
         expect(
             within(menu).queryByText('Import Transactions'),
         ).not.toBeInTheDocument();
+    });
+
+    it('keeps adding off while the user owns no account to file one in', () => {
+        renderMenu(emptyFilters, [], false);
+
+        expect(
+            screen.getByRole('button', { name: 'Add transaction' }),
+        ).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('moves categorize to the dropdown on mobile', async () => {
@@ -143,6 +168,7 @@ describe('TransactionActionsMenu action bar layout', () => {
         ]);
 
         expect(actionBarLabels(container)).toEqual([
+            'Add transaction',
             'Analysis',
             'More actions',
         ]);

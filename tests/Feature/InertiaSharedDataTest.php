@@ -1,8 +1,6 @@
 <?php
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
-use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -167,47 +165,4 @@ test('shared currency options split profile and account currencies', function ()
     expect(collect($props['currencies']['accounts'])->pluck('code'))->toContain('BTC');
     expect(collect($props['currencies']['profile'])->pluck('code'))->toContain('CZK');
     expect(collect($props['currencies']['accounts'])->pluck('code'))->toContain('CZK');
-});
-
-test('hasTransactionalAccounts is false for a user with no accounts', function () {
-    $user = User::factory()->onboarded()->create();
-
-    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
-
-    $response->assertInertia(fn (Assert $page) => $page
-        ->where('hasTransactionalAccounts', false)
-    );
-});
-
-test('hasTransactionalAccounts is true once a ledger account exists', function () {
-    $user = User::factory()->onboarded()->create();
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'type' => AccountType::Checking,
-    ]);
-
-    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
-
-    $response->assertInertia(fn (Assert $page) => $page
-        ->where('hasTransactionalAccounts', true)
-    );
-});
-
-test('hasTransactionalAccounts ignores balance-only and archived accounts', function () {
-    $user = User::factory()->onboarded()->create();
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'type' => AccountType::Investment,
-    ]);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'type' => AccountType::Checking,
-        'archived_at' => now(),
-    ]);
-
-    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
-
-    $response->assertInertia(fn (Assert $page) => $page
-        ->where('hasTransactionalAccounts', false)
-    );
 });

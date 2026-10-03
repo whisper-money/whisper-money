@@ -2,18 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddTransactionButton } from './add-transaction-button';
 
-let hasTransactionalAccounts = true;
-
 // Hoisted: the mock factory reads it while the module graph is still loading.
 const { refreshPageAfterWrite } = vi.hoisted(() => ({
     refreshPageAfterWrite: vi.fn(),
 }));
 
 vi.mock('@/lib/refresh-page', () => ({ refreshPageAfterWrite }));
-
-vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: { hasTransactionalAccounts } }),
-}));
 
 const load = vi.fn(async () => true);
 
@@ -56,13 +50,12 @@ vi.mock('./edit-transaction-dialog', () => ({
 
 describe('AddTransactionButton', () => {
     beforeEach(() => {
-        hasTransactionalAccounts = true;
         load.mockClear();
         refreshPageAfterWrite.mockClear();
     });
 
     it('opens the create dialog once the lists are loaded', async () => {
-        render(<AddTransactionButton />);
+        render(<AddTransactionButton hasTransactionalAccounts />);
 
         fireEvent.click(screen.getByTestId('add-transaction-button'));
 
@@ -73,7 +66,7 @@ describe('AddTransactionButton', () => {
     });
 
     it('refreshes the page underneath once a save has closed the dialog', async () => {
-        render(<AddTransactionButton />);
+        render(<AddTransactionButton hasTransactionalAccounts />);
 
         fireEvent.click(screen.getByTestId('add-transaction-button'));
         const dialog = await screen.findByTestId('create-dialog');
@@ -84,7 +77,7 @@ describe('AddTransactionButton', () => {
     });
 
     it('leaves the page alone when the dialog closes with nothing saved', async () => {
-        render(<AddTransactionButton />);
+        render(<AddTransactionButton hasTransactionalAccounts />);
 
         fireEvent.click(screen.getByTestId('add-transaction-button'));
         await screen.findByTestId('create-dialog');
@@ -93,8 +86,7 @@ describe('AddTransactionButton', () => {
     });
 
     it('stays disabled while the user owns no account to file one in', () => {
-        hasTransactionalAccounts = false;
-        render(<AddTransactionButton />);
+        render(<AddTransactionButton hasTransactionalAccounts={false} />);
 
         const button = screen.getByTestId('add-transaction-button');
         expect(button).toHaveAttribute('aria-disabled', 'true');
