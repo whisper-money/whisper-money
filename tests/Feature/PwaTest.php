@@ -45,7 +45,7 @@ test('app template includes pwa meta tags and service worker registration', func
         ->assertSee("try {\n                    chartScheme = localStorage.getItem('chart-color-scheme')", false);
 });
 
-test('the manifest leaves the theme colour to the page and paints the splash with the light background', function () {
+test('the manifest has no theme colour, so Chrome keeps the navigation bar on the phone theme', function () {
     $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
 
     // A manifest is baked into the WebAPK at install time and cannot react to the
@@ -54,13 +54,14 @@ test('the manifest leaves the theme colour to the page and paints the splash wit
     // phone is set to. Without one, Chrome keeps that bar on the phone's light or
     // dark theme, and the status bar follows the theme-color meta either way.
     expect($manifest)->not->toHaveKey('theme_color');
+});
 
-    // background_color only paints the splash screen, so it carries the light
-    // background, the default.
-    $this->withUnencryptedCookie('appearance', 'light')
-        ->get(route('login'))
-        ->assertOk()
-        ->assertSee('<meta name="theme-color" content="'.$manifest['background_color'].'">', false);
+test('the manifest paints the splash with the light background', function () {
+    $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
+
+    // background_color only paints the splash screen, which cannot follow the
+    // theme either, so it mirrors the light --background, the default.
+    expect($manifest['background_color'])->toBe('#ffffff');
 });
 
 test('the --background tokens every hard-coded mirror was derived from have not drifted', function () {

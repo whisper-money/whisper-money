@@ -2766,12 +2766,12 @@ export default function Welcome({
             return false;
         }
 
+        // Standalone is the mode the manifest asks for, on Android and iOS
+        // alike; navigator.standalone covers older iOS. Fullscreen only matches
+        // the Android installs made while the manifest asked for it (September
+        // to October 2026), until Chrome updates their WebAPK. Drop it, and its
+        // PwaTest, from 2027.
         return (
-            // Standalone is the mode the manifest asks for, on Android and iOS
-            // alike; navigator.standalone covers older iOS. Fullscreen only
-            // matches the Android installs made while the manifest asked for
-            // it, until Chrome updates their WebAPK: drop it once they have had
-            // a few months to update.
             window.matchMedia(
                 '(display-mode: fullscreen), (display-mode: standalone)',
             ).matches ||

@@ -2,7 +2,9 @@
     // The status bar colour follows the app's own appearance preference, not the
     // OS one: a user on a dark phone with the app set to light gets a light bar.
     // An installed Android PWA paints its status bar from this meta because the
-    // manifest asks for standalone; fullscreen would hide the bar altogether.
+    // manifest asks for standalone; fullscreen would hide the bar altogether. The
+    // manifest has no theme_color on purpose: from Chrome 156 it would also paint
+    // the bottom navigation bar, in one fixed colour whatever the theme.
     // Hex mirrors of --background in resources/css/app.css.
     $appearance = $appearance ?? 'system';
     $lightBackground = '#ffffff';
@@ -11,7 +13,7 @@
     // Declared for the theme the app renders, not the one the phone is on, so the
     // form controls, scrollbars and default canvas colour match it from first
     // paint. It does not reach the bottom navigation bar of an installed Android
-    // PWA: Chrome paints that bar itself, from the phone's theme (see PwaTest).
+    // PWA: Chrome paints that bar itself, from the phone's theme.
     $colorScheme = in_array($appearance, ['light', 'dark'], true) ? $appearance : 'light dark';
 @endphp
 <!DOCTYPE html>
