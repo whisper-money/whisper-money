@@ -15,8 +15,7 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
                 "[[data-slot=button][data-variant=default]_&]:bg-primary-foreground/15 [[data-slot=button][data-variant=default]_&]:text-primary-foreground/70",
                 // Ghost and outline buttons hover to the chip's own grey, so on
                 // hover it turns to the background color with an outline.
-                "[[data-slot=button][data-variant=ghost]:hover_&]:bg-background [[data-slot=button][data-variant=ghost]:hover_&]:ring-1 [[data-slot=button][data-variant=ghost]:hover_&]:ring-border",
-                "[[data-slot=button][data-variant=outline]:hover_&]:bg-background [[data-slot=button][data-variant=outline]:hover_&]:ring-1 [[data-slot=button][data-variant=outline]:hover_&]:ring-border",
+                "[[data-slot=button]:is([data-variant=ghost],[data-variant=outline]):hover_&]:bg-background [[data-slot=button]:is([data-variant=ghost],[data-variant=outline]):hover_&]:ring-1 [[data-slot=button]:is([data-variant=ghost],[data-variant=outline]):hover_&]:ring-border",
                 "hidden sm:inline-flex",
                 className
             )}

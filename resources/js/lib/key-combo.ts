@@ -40,27 +40,43 @@ const MODIFIER_ALIASES = new Map<string, Modifier>([
     ['command', 'meta'],
 ]);
 
-/** Named keys, by the name a combo uses, with the `event.key` that reports them. */
-const NAMED_KEYS = new Map(
-    Object.entries({
-        enter: 'Enter',
-        escape: 'Escape',
-        space: ' ',
-        tab: 'Tab',
-        backspace: 'Backspace',
-        delete: 'Delete',
-        up: 'ArrowUp',
-        down: 'ArrowDown',
-        left: 'ArrowLeft',
-        right: 'ArrowRight',
-        home: 'Home',
-        end: 'End',
-        pageup: 'PageUp',
-        pagedown: 'PageDown',
-        // `+` separates the parts of a combo, so the key itself goes by name.
-        plus: '+',
-    }),
-);
+interface NamedKey {
+    /** What `event.key` reports for it. */
+    eventKey: string;
+    mac: string;
+    other: string;
+    /** Its name in `aria-keyshortcuts`. */
+    aria: string;
+}
+
+function namedKey(
+    eventKey: string,
+    mac: string,
+    other = mac,
+    aria = eventKey,
+): NamedKey {
+    return { eventKey, mac, other, aria };
+}
+
+/** Named keys, by the name a combo uses. */
+const NAMED_KEYS = new Map<string, NamedKey>([
+    ['enter', namedKey('Enter', '⏎')],
+    ['escape', namedKey('Escape', 'Esc')],
+    ['space', namedKey(' ', 'Space', 'Space', 'Space')],
+    ['tab', namedKey('Tab', '⇥', 'Tab')],
+    ['backspace', namedKey('Backspace', '⌫', 'Backspace')],
+    ['delete', namedKey('Delete', '⌦', 'Del')],
+    ['up', namedKey('ArrowUp', '↑')],
+    ['down', namedKey('ArrowDown', '↓')],
+    ['left', namedKey('ArrowLeft', '←')],
+    ['right', namedKey('ArrowRight', '→')],
+    ['home', namedKey('Home', '↖', 'Home')],
+    ['end', namedKey('End', '↘', 'End')],
+    ['pageup', namedKey('PageUp', '⇞', 'PgUp')],
+    ['pagedown', namedKey('PageDown', '⇟', 'PgDn')],
+    // `+` separates the parts of a combo, so the key itself goes by name.
+    ['plus', namedKey('+', '+', '+', 'Plus')],
+]);
 
 const KEY_ALIASES = new Map([
     ['return', 'enter'],
@@ -68,46 +84,25 @@ const KEY_ALIASES = new Map([
 ]);
 
 const COMBO_NAME_BY_EVENT_KEY = new Map(
-    [...NAMED_KEYS].map(([name, eventKey]) => [eventKey, name]),
+    [...NAMED_KEYS].map(([name, { eventKey }]) => [eventKey, name]),
 );
-
-const MAC_KEY_LABELS: Record<string, string> = {
-    enter: '⏎',
-    escape: 'Esc',
-    space: 'Space',
-    tab: '⇥',
-    backspace: '⌫',
-    delete: '⌦',
-    up: '↑',
-    down: '↓',
-    left: '←',
-    right: '→',
-    home: '↖',
-    end: '↘',
-    pageup: '⇞',
-    pagedown: '⇟',
-    plus: '+',
-};
-
-const OTHER_KEY_LABELS: Record<string, string> = {
-    ...MAC_KEY_LABELS,
-    tab: 'Tab',
-    backspace: 'Backspace',
-    delete: 'Del',
-    home: 'Home',
-    end: 'End',
-    pageup: 'PgUp',
-    pagedown: 'PgDn',
-};
 
 const LETTER_OR_DIGIT = /^[a-z0-9]$/;
 const PRINTABLE_ASCII = /^[\x21-\x7e]$/;
+
+const parsedCombos = new Map<string, KeyCombo>();
 
 /**
  * Parses `shift+mod+k`-style notation. Throws on anything it cannot read, so a
  * typo in the catalog fails its test instead of a shortcut that never fires.
  */
-export function parseCombo(notation: string): KeyCombo {
+export function parseCombo(notation: string): Readonly<KeyCombo> {
+    const parsed = parsedCombos.get(notation);
+
+    if (parsed) {
+        return parsed;
+    }
+
     const combo: KeyCombo = {
         key: '',
         mod: false,
@@ -136,6 +131,8 @@ export function parseCombo(notation: string): KeyCombo {
     if (combo.key === '') {
         throw new Error(`"${notation}" names no key.`);
     }
+
+    parsedCombos.set(notation, combo);
 
     return combo;
 }
@@ -223,28 +220,43 @@ export function matchesCombo(
     return keyFromEvent(event) === combo.key;
 }
 
+type ModifierLabels = Record<'ctrl' | 'alt' | 'shift' | 'meta', string>;
+
+/** The combo's modifiers, in this order, then the key, joined by `separator`. */
+function joinCombo(
+    combo: KeyCombo,
+    platform: Platform,
+    labels: ModifierLabels,
+    key: string,
+    separator: string,
+): string {
+    const modifiers = resolveModifiers(combo, platform);
+
+    return [
+        modifiers.ctrl && labels.ctrl,
+        modifiers.alt && labels.alt,
+        modifiers.shift && labels.shift,
+        modifiers.meta && labels.meta,
+        key,
+    ]
+        .filter(Boolean)
+        .join(separator);
+}
+
 /**
  * What the combo resolves to on this platform, as one string: two combos
  * collide on a platform exactly when their signatures match there.
  */
 export function comboSignature(combo: KeyCombo, platform: Platform): string {
-    const modifiers = resolveModifiers(combo, platform);
+    const shift = isShiftSensitive(combo.key) ? 'shift' : '';
 
-    return [
-        modifiers.ctrl && 'ctrl',
-        modifiers.alt && 'alt',
-        modifiers.shift && isShiftSensitive(combo.key) && 'shift',
-        modifiers.meta && 'meta',
+    return joinCombo(
+        combo,
+        platform,
+        { ctrl: 'ctrl', alt: 'alt', shift, meta: 'meta' },
         combo.key,
-    ]
-        .filter(Boolean)
-        .join('+');
-}
-
-function keyLabel(key: string, platform: Platform): string {
-    const labels = platform === 'mac' ? MAC_KEY_LABELS : OTHER_KEY_LABELS;
-
-    return labels[key] ?? key.toUpperCase();
+        '+',
+    );
 }
 
 /**
@@ -253,30 +265,25 @@ function keyLabel(key: string, platform: Platform): string {
  * (`Ctrl Shift K`, `Ctrl ⏎`).
  */
 export function formatCombo(combo: KeyCombo, platform: Platform): string {
-    const modifiers = resolveModifiers(combo, platform);
-    const key = keyLabel(combo.key, platform);
+    const named = NAMED_KEYS.get(combo.key);
 
     if (platform === 'mac') {
-        return [
-            modifiers.ctrl && '⌃',
-            modifiers.alt && '⌥',
-            modifiers.shift && '⇧',
-            modifiers.meta && '⌘',
-            key,
-        ]
-            .filter(Boolean)
-            .join('');
+        return joinCombo(
+            combo,
+            platform,
+            { ctrl: '⌃', alt: '⌥', shift: '⇧', meta: '⌘' },
+            named?.mac ?? combo.key.toUpperCase(),
+            '',
+        );
     }
 
-    return [
-        modifiers.ctrl && 'Ctrl',
-        modifiers.alt && 'Alt',
-        modifiers.shift && 'Shift',
-        modifiers.meta && 'Meta',
-        key,
-    ]
-        .filter(Boolean)
-        .join(' ');
+    return joinCombo(
+        combo,
+        platform,
+        { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift', meta: 'Meta' },
+        named?.other ?? combo.key.toUpperCase(),
+        ' ',
+    );
 }
 
 /** The value for `aria-keyshortcuts`: `Meta+Enter`, `Control+Enter`, `N`. */
@@ -284,21 +291,13 @@ export function toAriaKeyShortcuts(
     combo: KeyCombo,
     platform: Platform,
 ): string {
-    const modifiers = resolveModifiers(combo, platform);
-    const key =
-        combo.key === 'space'
-            ? 'Space'
-            : (NAMED_KEYS.get(combo.key) ?? combo.key.toUpperCase());
-
-    return [
-        modifiers.ctrl && 'Control',
-        modifiers.alt && 'Alt',
-        modifiers.shift && 'Shift',
-        modifiers.meta && 'Meta',
-        key,
-    ]
-        .filter(Boolean)
-        .join('+');
+    return joinCombo(
+        combo,
+        platform,
+        { ctrl: 'Control', alt: 'Alt', shift: 'Shift', meta: 'Meta' },
+        NAMED_KEYS.get(combo.key)?.aria ?? combo.key.toUpperCase(),
+        '+',
+    );
 }
 
 interface NavigatorLike {

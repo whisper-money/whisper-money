@@ -1590,7 +1590,9 @@ export function EditTransactionDialog({
                                 : mode === 'create'
                                   ? __('Create Transaction')
                                   : __('Save Changes')}
-                            <ShortcutKbd id="transaction-dialog.save" />
+                            {!isSubmitting && (
+                                <ShortcutKbd id="transaction-dialog.save" />
+                            )}
                         </Button>
                     </DialogFooter>
                 </form>

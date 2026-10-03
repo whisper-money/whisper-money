@@ -2890,6 +2890,5 @@
     "Condition dropped at position :position of :total": "Condition déposée en position :position sur :total",
     "Move cancelled. Condition back at position :position of :total": "Déplacement annulé. La condition revient en position :position sur :total",
     "To pick up a condition, press Space or Enter. Use the up and down arrow keys to move it, Space or Enter to drop it, and Escape to cancel.": "Pour saisir une condition, appuyez sur Espace ou Entrée. Déplacez-la avec les flèches haut et bas, déposez-la avec Espace ou Entrée, et annulez avec Échap.",
-    "Save the transaction": "Enregistrer la transaction",
-    "Add a note": "Ajouter une note"
+    "Save the transaction": "Enregistrer la transaction"
 }

@@ -1,13 +1,22 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
-import { ShortcutLayer } from "@/components/shortcuts/shortcut-layer"
+import {
+    ShortcutLayer,
+    ShortcutLayerRoot,
+} from "@/components/shortcuts/shortcut-layer"
 import { cn } from "@/lib/utils"
 
 function Drawer({
     ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-    return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+    return (
+        <ShortcutLayerRoot
+            root={DrawerPrimitive.Root}
+            data-slot="drawer"
+            {...props}
+        />
+    )
 }
 
 function DrawerTrigger({

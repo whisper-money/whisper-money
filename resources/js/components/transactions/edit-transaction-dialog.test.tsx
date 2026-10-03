@@ -1624,6 +1624,10 @@ describe('EditTransactionDialog', () => {
             await waitFor(() => {
                 expect(screen.getByTestId('submit-transaction')).toBeDisabled();
             });
+            // "Saving..." drops the chip, since the keys do nothing meanwhile.
+            expect(screen.getByTestId('submit-transaction')).toHaveTextContent(
+                /^Saving\.\.\.$/,
+            );
             fireEvent.keyDown(description, { key: 'Enter', ctrlKey: true });
 
             expect(transactionSyncService.create).toHaveBeenCalledTimes(1);

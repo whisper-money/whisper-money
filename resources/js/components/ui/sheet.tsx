@@ -2,11 +2,16 @@ import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
-import { ShortcutLayer } from "@/components/shortcuts/shortcut-layer"
+import {
+  ShortcutLayer,
+  ShortcutLayerRoot,
+} from "@/components/shortcuts/shortcut-layer"
 import { cn } from "@/lib/utils"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+  return (
+    <ShortcutLayerRoot root={SheetPrimitive.Root} data-slot="sheet" {...props} />
+  )
 }
 
 function SheetTrigger({

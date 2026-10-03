@@ -52,11 +52,10 @@ interface Options {
 }
 
 /**
- * Text fields, and widgets that read plain keys themselves: a combobox, even
- * closed (a Radix Select trigger picks an option by typeahead), and an open
- * listbox or menu.
+ * Where keys are typed: text fields, and comboboxes — even a closed one, as a
+ * Radix Select trigger still picks an option by typeahead.
  */
-const EDITABLE_SELECTOR = [
+const TEXT_ENTRY_SELECTOR = [
     'input:not([type=checkbox], [type=radio], [type=button], [type=submit], [type=reset], [type=range], [type=color], [type=file])',
     'textarea',
     'select',
@@ -65,15 +64,28 @@ const EDITABLE_SELECTOR = [
     '[role=searchbox]',
     '[role=spinbutton]',
     '[role=combobox]',
-    '[role=listbox]',
-    '[role=menu]',
-    '[role=menubar]',
 ].join(', ');
 
-export function isEditableTarget(target: EventTarget | null): boolean {
-    return (
-        target instanceof Element && target.closest(EDITABLE_SELECTOR) !== null
-    );
+/** An open listbox or menu, which reads its keys itself, Enter included. */
+const POPUP_SELECTOR = '[role=listbox], [role=menu], [role=menubar]';
+
+/**
+ * `popup` when focus is inside an open listbox or menu: no shortcut fires from
+ * there, so ⌘⏎ never saves a form under a picker that is still choosing.
+ * `text` when it is in a field, which plain-key shortcuts stay out of.
+ */
+export function keyTargetKind(
+    target: EventTarget | null,
+): 'popup' | 'text' | null {
+    if (!(target instanceof Element)) {
+        return null;
+    }
+
+    if (target.closest(POPUP_SELECTOR)) {
+        return 'popup';
+    }
+
+    return target.closest(TEXT_ENTRY_SELECTOR) ? 'text' : null;
 }
 
 /** IME composition: the keys belong to the candidate window, not to us. */
@@ -84,7 +96,7 @@ function isComposing(event: KeyboardEvent): boolean {
 export function createShortcutRegistry({
     platform = detectPlatform,
     target = typeof window === 'undefined' ? null : window,
-    warn = import.meta.env.DEV ? console.warn : () => {},
+    warn = import.meta.env.DEV ? (message) => console.warn(message) : () => {},
 }: Options = {}) {
     /** Active layers, bottom to top. */
     let stack: ActiveLayer[] = [{ id: ROOT_LAYER, parent: null, modal: true }];
@@ -203,14 +215,18 @@ export function createShortcutRegistry({
             return;
         }
 
-        const editable = isEditableTarget(event.target);
+        const targetKind = keyTargetKind(event.target);
+
+        if (targetKind === 'popup') {
+            return;
+        }
 
         for (const entry of candidates()) {
             if (!matchesCombo(entry.combo, event, platform())) {
                 continue;
             }
 
-            if (editable && !entry.definition.allowInEditable) {
+            if (targetKind === 'text' && !entry.definition.allowInEditable) {
                 continue;
             }
 

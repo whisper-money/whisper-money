@@ -1,7 +1,11 @@
-import { ShortcutLayer } from '@/components/shortcuts/shortcut-layer';
 import { fireEvent, render, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useShortcut, useShortcutHint } from './use-shortcut';
+import {
+    ShortcutLayerContext,
+    useShortcut,
+    useShortcutHint,
+    useShortcutLayer,
+} from './use-shortcut';
 
 function onPlatform(platform: string) {
     vi.spyOn(Navigator.prototype, 'platform', 'get').mockReturnValue(platform);
@@ -68,11 +72,12 @@ describe('useShortcut', () => {
 
         function Page({ layerOpen }: { layerOpen: boolean }) {
             useShortcut('transaction-dialog.add-note', pageHandler);
+            const layer = useShortcutLayer({ active: layerOpen });
 
             return (
-                <ShortcutLayer active={layerOpen}>
+                <ShortcutLayerContext.Provider value={layer}>
                     <Inside />
-                </ShortcutLayer>
+                </ShortcutLayerContext.Provider>
             );
         }
 

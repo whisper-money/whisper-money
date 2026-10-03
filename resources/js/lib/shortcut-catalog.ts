@@ -25,9 +25,10 @@ export interface ShortcutDefinition {
     /** A function so it is translated when read, not when the module loads. */
     description: () => string;
     /**
-     * Fire while focus is in a text field or an open combobox. Off by default,
-     * or typing an `n` into a description would trigger `n`; a combo with ⌘ or
-     * Ctrl types nothing, so it can take it.
+     * Fire while focus is in a text field or a combobox. Off by default, or
+     * typing an `n` into a description would trigger `n`; a combo with ⌘ or
+     * Ctrl types nothing, so it can take it. Nothing fires from inside an open
+     * listbox or menu either way.
      */
     allowInEditable?: boolean;
     /** Keep firing while the key is held down. Off for one-shot actions. */
@@ -49,7 +50,7 @@ export const SHORTCUTS = {
     'transaction-dialog.add-note': {
         keys: 'n',
         scope: 'transaction-dialog',
-        description: () => __('Add a note'),
+        description: () => __('Add note'),
     },
 } satisfies Record<string, ShortcutDefinition>;
 

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type ShortcutDefinition } from './shortcut-catalog';
 import {
     createShortcutRegistry,
-    isEditableTarget,
+    keyTargetKind,
     ROOT_LAYER,
 } from './shortcut-registry';
 
@@ -209,23 +209,46 @@ describe('the editable guard', () => {
         expect(handler).toHaveBeenCalledOnce();
     });
 
+    it('fires nothing from inside an open listbox, not even a combo that opts in', () => {
+        const { registry } = makeRegistry();
+        const handler = vi.fn();
+        document.body.innerHTML =
+            '<div role="listbox"><div role="option" tabindex="-1"></div></div>';
+
+        registry.register({
+            id: 'save',
+            definition: definition('mod+enter', { allowInEditable: true }),
+            layer: ROOT_LAYER,
+            handler,
+        });
+
+        const event = press(
+            registry,
+            { key: 'Enter', metaKey: true },
+            document.querySelector('[role=option]')!,
+        );
+
+        expect(handler).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false);
+    });
+
     it.each([
-        ['<input type="text">', true],
-        ['<input type="checkbox">', false],
-        ['<textarea></textarea>', true],
-        ['<select></select>', true],
-        ['<div contenteditable="true"></div>', true],
-        ['<div contenteditable="false"></div>', false],
-        ['<button role="combobox"></button>', true],
-        ['<div role="listbox"><div role="option"></div></div>', true],
-        ['<div role="menu"><div role="menuitem"></div></div>', true],
-        ['<button></button>', false],
-    ])('reads %s as editable: %s', (html, editable) => {
+        ['<input type="text">', 'text'],
+        ['<input type="checkbox">', null],
+        ['<textarea></textarea>', 'text'],
+        ['<select></select>', 'text'],
+        ['<div contenteditable="true"></div>', 'text'],
+        ['<div contenteditable="false"></div>', null],
+        ['<button role="combobox"></button>', 'text'],
+        ['<div role="listbox"><div role="option"></div></div>', 'popup'],
+        ['<div role="menu"><div role="menuitem"></div></div>', 'popup'],
+        ['<button></button>', null],
+    ])('reads %s as %s', (html, kind) => {
         document.body.innerHTML = html;
         const element = document.body.firstElementChild!;
         const target = element.firstElementChild ?? element;
 
-        expect(isEditableTarget(target)).toBe(editable);
+        expect(keyTargetKind(target)).toBe(kind);
     });
 });
 
