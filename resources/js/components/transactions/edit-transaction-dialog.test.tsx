@@ -8,7 +8,7 @@ import { todayDateString } from '@/utils/date';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
 import { toast } from 'sonner';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditTransactionDialog } from './edit-transaction-dialog';
 
 vi.mock('@/components/shared/label-combobox', () => ({
@@ -1519,5 +1519,216 @@ describe('EditTransactionDialog', () => {
             expect.objectContaining({ origin: 'duplicate' }),
             expect.objectContaining({ origin: 'full_dialog' }),
         ]);
+    });
+    describe('keyboard shortcuts', () => {
+        let platform: ReturnType<typeof vi.spyOn> | null = null;
+
+        function onPlatform(name: string) {
+            platform = vi
+                .spyOn(Navigator.prototype, 'platform', 'get')
+                .mockReturnValue(name);
+        }
+
+        afterEach(() => {
+            platform?.mockRestore();
+            platform = null;
+        });
+
+        function renderEditDialog(
+            transaction: ServerTransaction = manualTransaction,
+        ) {
+            return render(
+                <EditTransactionDialog
+                    transaction={transaction}
+                    categories={[]}
+                    accounts={[checkingAccount]}
+                    banks={[]}
+                    labels={[]}
+                    open
+                    onOpenChange={vi.fn()}
+                    onSuccess={vi.fn()}
+                    mode="edit"
+                />,
+            );
+        }
+
+        function fillCreateForm() {
+            fireEvent.change(
+                screen.getByPlaceholderText('Transaction description'),
+                { target: { value: 'Dinner' } },
+            );
+            const amountInput = screen.getByPlaceholderText('0.00');
+            fireEvent.change(amountInput, { target: { value: '25' } });
+            fireEvent.blur(amountInput);
+        }
+
+        it('saves with Ctrl+Enter while typing the description', async () => {
+            vi.mocked(transactionSyncService.create)
+                .mockClear()
+                .mockResolvedValue({ id: 'tx-new' } as never);
+            renderCreateDialog();
+            fillCreateForm();
+
+            fireEvent.keyDown(
+                screen.getByPlaceholderText('Transaction description'),
+                { key: 'Enter', ctrlKey: true },
+            );
+
+            await waitFor(() => {
+                expect(transactionSyncService.create).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        description: 'Dinner',
+                        amount: -2500,
+                    }),
+                    expect.anything(),
+                );
+            });
+        });
+
+        it('saves with ⌘⏎ on a Mac while typing a note', async () => {
+            onPlatform('MacIntel');
+            vi.mocked(transactionSyncService.update)
+                .mockClear()
+                .mockResolvedValue({} as never);
+            renderEditDialog({ ...manualTransaction, notes: 'Lunch' });
+            const notes = screen.getByPlaceholderText('Add notes...');
+
+            fireEvent.change(notes, { target: { value: 'Lunch with Ana' } });
+            fireEvent.keyDown(notes, { key: 'Enter', metaKey: true });
+
+            await waitFor(() => {
+                expect(transactionSyncService.update).toHaveBeenCalledWith(
+                    'tx-manual',
+                    expect.objectContaining({ notes: 'Lunch with Ana' }),
+                    expect.anything(),
+                );
+            });
+        });
+
+        it('does not save again while the first save is in flight', async () => {
+            let finishSaving: (value: unknown) => void = () => {};
+            vi.mocked(transactionSyncService.create)
+                .mockClear()
+                .mockReturnValue(
+                    new Promise((resolve) => {
+                        finishSaving = resolve;
+                    }) as never,
+                );
+            renderCreateDialog();
+            fillCreateForm();
+            const description = screen.getByPlaceholderText(
+                'Transaction description',
+            );
+
+            fireEvent.keyDown(description, { key: 'Enter', ctrlKey: true });
+            await waitFor(() => {
+                expect(screen.getByTestId('submit-transaction')).toBeDisabled();
+            });
+            fireEvent.keyDown(description, { key: 'Enter', ctrlKey: true });
+
+            expect(transactionSyncService.create).toHaveBeenCalledTimes(1);
+
+            finishSaving({ id: 'tx-new' });
+            await waitFor(() => {
+                expect(
+                    screen.getByTestId('submit-transaction'),
+                ).not.toBeDisabled();
+            });
+        });
+
+        it('shows the save shortcut inside the submit button, the Mac way on a Mac', () => {
+            onPlatform('MacIntel');
+            renderCreateDialog();
+
+            const submit = screen.getByTestId('submit-transaction');
+
+            expect(submit).toHaveTextContent('Create Transaction⌘⏎');
+            expect(submit).toHaveAttribute('aria-keyshortcuts', 'Meta+Enter');
+            // The chip is not read out as part of the button's name.
+            expect(
+                screen.getByRole('button', { name: 'Create Transaction' }),
+            ).toBe(submit);
+        });
+
+        it('shows it with Ctrl on Windows and Linux', () => {
+            onPlatform('Win32');
+            renderEditDialog();
+
+            const submit = screen.getByTestId('submit-transaction');
+
+            expect(submit).toHaveTextContent('Save ChangesCtrl ⏎');
+            expect(submit).toHaveAttribute(
+                'aria-keyshortcuts',
+                'Control+Enter',
+            );
+        });
+
+        it('opens the notes with N, focused and without typing the n', () => {
+            renderEditDialog();
+            const addNote = screen.getByRole('button', { name: /Add note/ });
+
+            expect(addNote).toHaveTextContent('Add noteN');
+            expect(addNote).toHaveAttribute('aria-keyshortcuts', 'N');
+
+            const notPrevented = fireEvent.keyDown(document.body, {
+                key: 'n',
+            });
+
+            expect(notPrevented).toBe(false);
+            expect(screen.getByPlaceholderText('Add notes...')).toHaveFocus();
+            expect(
+                screen.queryByRole('button', { name: /Add note/ }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('focuses notes already open with N, the caret after the text', () => {
+            renderEditDialog({ ...manualTransaction, notes: 'Flat' });
+            const notes = screen.getByPlaceholderText(
+                'Add notes...',
+            ) as HTMLTextAreaElement;
+            // Clicked at the start earlier, then left for another field.
+            notes.setSelectionRange(0, 0);
+
+            fireEvent.keyDown(document.body, { key: 'n' });
+
+            expect(notes).toHaveFocus();
+            expect(notes.selectionStart).toBe('Flat'.length);
+        });
+
+        it('leaves an n typed into a field alone', () => {
+            renderEditDialog();
+            const description = screen.getByPlaceholderText(
+                'Transaction description',
+            );
+            description.focus();
+
+            const notPrevented = fireEvent.keyDown(description, { key: 'n' });
+
+            expect(notPrevented).toBe(true);
+            expect(
+                screen.queryByPlaceholderText('Add notes...'),
+            ).not.toBeInTheDocument();
+        });
+
+        it('has no N while the collapsed create form hides the notes', () => {
+            renderCreateDialog();
+
+            expect(fireEvent.keyDown(document.body, { key: 'n' })).toBe(true);
+
+            fireEvent.click(screen.getByTestId('toggle-more-options'));
+            expect(
+                screen.getByRole('button', { name: /Add note/ }),
+            ).toBeInTheDocument();
+            fireEvent.keyDown(document.body, { key: 'n' });
+            expect(screen.getByPlaceholderText('Add notes...')).toHaveFocus();
+        });
+
+        it('focuses the notes when Add note is clicked', () => {
+            renderEditDialog();
+
+            fireEvent.click(screen.getByRole('button', { name: /Add note/ }));
+
+            expect(screen.getByPlaceholderText('Add notes...')).toHaveFocus();
+        });
     });
 });

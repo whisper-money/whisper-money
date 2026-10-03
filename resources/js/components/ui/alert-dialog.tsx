@@ -3,6 +3,7 @@
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
+import { ShortcutLayer } from "@/components/shortcuts/shortcut-layer"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { VariantProps } from "class-variance-authority"
@@ -42,6 +43,7 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
     className,
+    children,
     ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
     return (
@@ -53,7 +55,9 @@ function AlertDialogContent({
                     className
                 )}
                 {...props}
-            />
+            >
+                <ShortcutLayer>{children}</ShortcutLayer>
+            </AlertDialogPrimitive.Content>
         </AlertDialogPortal>
     )
 }

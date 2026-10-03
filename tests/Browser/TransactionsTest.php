@@ -250,6 +250,48 @@ it('can edit an existing transaction from the list', function () {
     expect($updatedTransaction->category_id)->toBe($replacementCategory->id);
 });
 
+it('opens the notes and saves an edit from the keyboard', function () {
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'Shortcut Bank']);
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'name' => 'Shortcut Account',
+        'currency_code' => 'USD',
+        'type' => 'checking',
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'description' => 'Keyboard lunch',
+        'amount' => -1500,
+        'notes' => null,
+        'source' => 'manually_created',
+    ]);
+
+    actingAs($user);
+
+    $page = visit('/transactions');
+
+    $page->waitForText('Keyboard lunch', 10)
+        ->click('Keyboard lunch')
+        ->wait(1)
+        ->assertSee('Edit Transaction')
+        // N reveals the notes and puts the cursor in them, without typing the n.
+        ->keys('[data-slot="dialog-content"]', 'n')
+        ->assertScript('document.activeElement.id', 'notes')
+        ->assertValue('#notes', '')
+        ->fill('#notes', 'Paid with the team card')
+        // ⌘⏎ on a Mac, Ctrl+Enter elsewhere: whichever the browser runs on.
+        ->keys('#notes', 'ControlOrMeta+Enter')
+        ->wait(3)
+        ->assertDontSee('Edit Transaction')
+        ->assertNoJavascriptErrors();
+
+    expect($transaction->fresh()->notes)->toBe('Paid with the team card');
+});
+
 it('can delete a transaction from the actions menu', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Delete Tx Bank']);

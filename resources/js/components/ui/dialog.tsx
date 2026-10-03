@@ -4,12 +4,41 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
+import { ShortcutLayer } from "@/components/shortcuts/shortcut-layer"
 import { cn } from "@/lib/utils"
 
+/**
+ * Whether the dialog is open, for its content. Radix keeps the content mounted
+ * through the close animation, and the dialog's keyboard shortcuts have to stop
+ * when it starts closing: a second ⌘⏎ in those 200ms would save twice.
+ */
+const DialogOpenContext = React.createContext(true)
+
 function Dialog({
+    open,
+    defaultOpen,
+    onOpenChange,
     ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-    return <DialogPrimitive.Root data-slot="dialog" {...props} />
+    // Mirrors Radix's own state for an uncontrolled dialog; Radix still owns it.
+    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(
+        defaultOpen ?? false
+    )
+
+    return (
+        <DialogOpenContext.Provider value={open ?? uncontrolledOpen}>
+            <DialogPrimitive.Root
+                data-slot="dialog"
+                open={open}
+                defaultOpen={defaultOpen}
+                onOpenChange={(next) => {
+                    setUncontrolledOpen(next)
+                    onOpenChange?.(next)
+                }}
+                {...props}
+            />
+        </DialogOpenContext.Provider>
+    )
 }
 
 function DialogTrigger({
@@ -56,6 +85,8 @@ function DialogContent({
     showCloseButton?: boolean,
     hasKeyboard?: boolean
 }) {
+    const open = React.useContext(DialogOpenContext)
+
     return (
         <DialogPortal data-slot="dialog-portal">
             <DialogOverlay />
@@ -69,7 +100,7 @@ function DialogContent({
                 )}
                 {...props}
             >
-                {children}
+                <ShortcutLayer active={open}>{children}</ShortcutLayer>
                 {showCloseButton && (
                     <DialogPrimitive.Close
                         data-slot="dialog-close"

@@ -1,6 +1,8 @@
 import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { CategoryIcon } from '@/components/shared/category-combobox';
 import { LabelCombobox } from '@/components/shared/label-combobox';
+import { Shortcut } from '@/components/shortcuts/shortcut';
+import { ShortcutKbd } from '@/components/shortcuts/shortcut-kbd';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +34,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
+import { useShortcutHint } from '@/hooks/use-shortcut';
 import { fetchJson } from '@/lib/fetch-json';
 import { captureEvent } from '@/lib/posthog';
 import { refreshPageAfterWrite } from '@/lib/refresh-page';
@@ -74,6 +77,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 
 export type TransactionCreateOrigin =
@@ -245,6 +249,10 @@ export function EditTransactionDialog({
     // is a transaction of its own, so rules and analytics treat it as one.
     const isDuplicate = useRef(false);
     const amountInputRef = useRef<HTMLInputElement>(null);
+    const formRef = useRef<HTMLFormElement>(null);
+    const notesRef = useRef<HTMLTextAreaElement>(null);
+    const saveShortcut = useShortcutHint('transaction-dialog.save');
+    const addNoteShortcut = useShortcutHint('transaction-dialog.add-note');
     const [focusAmountAfterSave, setFocusAmountAfterSave] = useState(false);
     const [accountId, setAccountId] = useState<string>('');
     const [currencyCode, setCurrencyCode] =
@@ -497,6 +505,25 @@ export function EditTransactionDialog({
                 },
             },
         });
+    }
+
+    /**
+     * Reveals the notes if they are hidden and puts the caret at the end of
+     * what is already there. The textarea has to be in the DOM before it can
+     * take focus, hence the synchronous render.
+     */
+    function openNotes() {
+        flushSync(() => setShowNotes(true));
+
+        const textarea = notesRef.current;
+
+        if (textarea) {
+            textarea.focus();
+            textarea.setSelectionRange(
+                textarea.value.length,
+                textarea.value.length,
+            );
+        }
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -1261,6 +1288,7 @@ export function EditTransactionDialog({
             <FormLabel htmlFor="notes">{__('Notes')}</FormLabel>
             <Textarea
                 id="notes"
+                ref={notesRef}
                 placeholder={__('Add notes...')}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -1274,11 +1302,13 @@ export function EditTransactionDialog({
             variant="ghost"
             size="sm"
             className="-ml-2 w-fit px-2 text-muted-foreground"
-            onClick={() => setShowNotes(true)}
+            onClick={openNotes}
             disabled={isSubmitting}
+            aria-keyshortcuts={addNoteShortcut?.ariaKeyShortcuts}
         >
             <Plus />
             {__('Add note')}
+            <ShortcutKbd id="transaction-dialog.add-note" />
         </Button>
     );
 
@@ -1310,7 +1340,20 @@ export function EditTransactionDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit}>
+                {/* Registered in here so they land on the dialog's layer:
+                    the page's shortcuts sleep while it is open. */}
+                <Shortcut
+                    id="transaction-dialog.save"
+                    onTrigger={() => formRef.current?.requestSubmit()}
+                    enabled={!isSubmitting}
+                />
+                <Shortcut
+                    id="transaction-dialog.add-note"
+                    onTrigger={openNotes}
+                    enabled={!isMinimal && !isSubmitting}
+                />
+
+                <form ref={formRef} onSubmit={handleSubmit}>
                     <div className="space-y-4 py-4">
                         {canEditAllFields ? (
                             <>
@@ -1540,12 +1583,14 @@ export function EditTransactionDialog({
                             className={cn(
                                 mode === 'edit' && 'flex-1 sm:flex-none',
                             )}
+                            aria-keyshortcuts={saveShortcut?.ariaKeyShortcuts}
                         >
                             {isSubmitting
                                 ? __('Saving...')
                                 : mode === 'create'
                                   ? __('Create Transaction')
                                   : __('Save Changes')}
+                            <ShortcutKbd id="transaction-dialog.save" />
                         </Button>
                     </DialogFooter>
                 </form>

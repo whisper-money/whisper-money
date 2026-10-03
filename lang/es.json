@@ -3538,5 +3538,7 @@
     "Picked up condition :position of :total": "Condición :position de :total cogida",
     "Condition dropped at position :position of :total": "Condición soltada en la posición :position de :total",
     "Move cancelled. Condition back at position :position of :total": "Movimiento cancelado. La condición vuelve a la posición :position de :total",
-    "To pick up a condition, press Space or Enter. Use the up and down arrow keys to move it, Space or Enter to drop it, and Escape to cancel.": "Para coger una condición, pulsa Espacio o Intro. Muévela con las flechas arriba y abajo, suéltala con Espacio o Intro y cancela con Escape."
+    "To pick up a condition, press Space or Enter. Use the up and down arrow keys to move it, Space or Enter to drop it, and Escape to cancel.": "Para coger una condición, pulsa Espacio o Intro. Muévela con las flechas arriba y abajo, suéltala con Espacio o Intro y cancela con Escape.",
+    "Save the transaction": "Guardar la transacción",
+    "Add a note": "Agregar una nota"
 }
