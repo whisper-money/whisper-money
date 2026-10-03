@@ -111,12 +111,59 @@ function CardNote({
     );
 }
 
+/**
+ * A value to paste somewhere else as is (a URL, a token, a command), with a
+ * button that copies it.
+ */
+function CopyableCode({
+    value,
+    className,
+}: {
+    value: string;
+    className?: string;
+}) {
+    const [, copy] = useClipboard();
+
+    function copyValue() {
+        copy(value).then((ok) => {
+            if (ok) {
+                toast.success(__('Copied to clipboard'));
+            }
+        });
+    }
+
+    return (
+        <div className={cn('flex items-center gap-2', className)}>
+            <code className="flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
+                {value}
+            </code>
+            <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={copyValue}
+                aria-label={__('Copy')}
+            >
+                <Copy className="h-4 w-4" />
+            </Button>
+        </div>
+    );
+}
+
+/**
+ * Installs the Claude Code plugin shipped from this repository: the marketplace
+ * in .claude-plugin/marketplace.json, then the plugin it lists.
+ */
+const CLAUDE_CODE_PLUGIN_COMMANDS = [
+    '/plugin marketplace add whisper-money/whisper-money',
+    '/plugin install whisper-money@whisper-money',
+];
+
 type ConnectorApp = 'claude' | 'chatgpt';
 
 export default function Mcp() {
     const { tokens, serverUrl, oauthUrl, subscribeUrl, newToken, auth } =
         usePage<SharedData & McpPageProps>().props;
-    const [, copy] = useClipboard();
     const [connector, setConnector] = useState<ConnectorApp>('claude');
     // A freshly minted token means the user just used the developer flow, so
     // keep that section open; otherwise it starts collapsed for everyone else.
@@ -138,30 +185,7 @@ export default function Mcp() {
         });
     }
 
-    function copyValue(value: string) {
-        copy(value).then((ok) => {
-            if (ok) {
-                toast.success(__('Copied to clipboard'));
-            }
-        });
-    }
-
-    const oauthUrlBlock = (
-        <div className="flex items-center gap-2 pt-2">
-            <code className="flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
-                {oauthUrl}
-            </code>
-            <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => copyValue(oauthUrl)}
-                aria-label={__('Copy')}
-            >
-                <Copy className="h-4 w-4" />
-            </Button>
-        </div>
-    );
+    const oauthUrlBlock = <CopyableCode value={oauthUrl} className="pt-2" />;
 
     const connectors: Record<
         ConnectorApp,
@@ -243,7 +267,7 @@ export default function Mcp() {
                         </AlertTitle>
                         <AlertDescription>
                             {__(
-                                'Anything you ask about is sent to the AI app you connect, and we cannot control what it does with your data. Connect one only if you are comfortable with that. You can revoke a token any time to cut off access.',
+                                'Anything you ask about is sent to the AI app you connect, and we cannot control what it does with your data. Connect one only if you are comfortable with that. You can disconnect it any time to cut off access.',
                             )}
                         </AlertDescription>
                     </Alert>
@@ -260,20 +284,7 @@ export default function Mcp() {
                                         'This is the only time you will see it, so copy it somewhere safe now.',
                                     )}
                                 </p>
-                                <div className="flex items-center gap-2">
-                                    <code className="flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
-                                        {newToken}
-                                    </code>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => copyValue(newToken)}
-                                        aria-label={__('Copy')}
-                                    >
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                                <CopyableCode value={newToken} />
                             </AlertDescription>
                         </Alert>
                     )}
@@ -392,9 +403,14 @@ export default function Mcp() {
                                                 )}
                                             </p>
                                         </div>
-                                        <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm whitespace-pre">
-                                            {`/plugin marketplace add whisper-money/whisper-money\n/plugin install whisper-money@whisper-money`}
-                                        </code>
+                                        {CLAUDE_CODE_PLUGIN_COMMANDS.map(
+                                            (command) => (
+                                                <CopyableCode
+                                                    key={command}
+                                                    value={command}
+                                                />
+                                            ),
+                                        )}
                                         <p className="text-sm text-muted-foreground">
                                             {__(
                                                 'Then run /mcp, pick Whisper Money and sign in through the browser. No token needed, and it can read and change your data.',
@@ -414,9 +430,9 @@ export default function Mcp() {
                                                 )}
                                             </p>
                                         </div>
-                                        <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
-                                            {`claude mcp add --transport http whisper-money ${serverUrl} --header "Authorization: Bearer <token>"`}
-                                        </code>
+                                        <CopyableCode
+                                            value={`claude mcp add --transport http whisper-money ${serverUrl} --header "Authorization: Bearer <token>"`}
+                                        />
                                     </div>
 
                                     {/* Create token */}

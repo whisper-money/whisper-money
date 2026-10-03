@@ -42,19 +42,18 @@ describe('MCP settings page', () => {
             screen.getByRole('button', { name: /Connect with Claude Code/ }),
         );
 
-        const pluginCommands = screen.getByText(
-            /\/plugin marketplace add whisper-money\/whisper-money/,
-        );
-        const tokenCommand = screen.getByText(
-            /claude mcp add --transport http whisper-money https:\/\/whisper\.money\/mcp --header/,
-        );
-
-        expect(pluginCommands.textContent).toContain(
+        const commands = [
+            '/plugin marketplace add whisper-money/whisper-money',
             '/plugin install whisper-money@whisper-money',
-        );
-        expect(
-            pluginCommands.compareDocumentPosition(tokenCommand) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
+            'claude mcp add --transport http whisper-money https://whisper.money/mcp --header "Authorization: Bearer <token>"',
+        ].map((command) => screen.getByText(command));
+
+        commands.slice(1).forEach((command, index) => {
+            expect(
+                commands[index].compareDocumentPosition(command) &
+                    Node.DOCUMENT_POSITION_FOLLOWING,
+            ).toBeTruthy();
+        });
+        expect(screen.getByText(/Then run \/mcp/)).toBeTruthy();
     });
 });
