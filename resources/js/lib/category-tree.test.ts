@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     buildCategoryTree,
+    canHaveSubcategories,
     categorySelectionState,
     flattenCategoryTree,
     searchCategoryTree,
@@ -180,5 +181,21 @@ describe('searchTree', () => {
         expect(searchTree(options, 'r', accessors).map((o) => o.value)).toEqual(
             ['food', 'groceries', 'restaurants', 'drinks'],
         );
+    });
+});
+
+describe('canHaveSubcategories', () => {
+    it('leaves room for children on every level above the deepest one', () => {
+        const depths = flattenCategoryTree(buildCategoryTree(categories)).map(
+            (node) => [node.id, canHaveSubcategories(node.depth)],
+        );
+
+        expect(Object.fromEntries(depths)).toEqual({
+            drinks: true,
+            food: true,
+            groceries: true,
+            coffee: false,
+            restaurants: true,
+        });
     });
 });

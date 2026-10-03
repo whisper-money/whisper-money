@@ -1,7 +1,7 @@
 import InputError from '@/components/input-error';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { Label } from '@/components/ui/label';
-import { getDescendantIds } from '@/lib/category-tree';
+import { canHaveSubcategories, getDescendantIds } from '@/lib/category-tree';
 import { type Category } from '@/types/category';
 import { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
@@ -50,7 +50,9 @@ export function ParentCategoryField({
         };
 
         return categories.filter(
-            (category) => !excluded.has(category.id) && depthOf(category) < 2,
+            (category) =>
+                !excluded.has(category.id) &&
+                canHaveSubcategories(depthOf(category)),
         );
     }, [categories, excludeId, byId]);
 

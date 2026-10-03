@@ -1,6 +1,7 @@
+import { CreateCategoryDialog } from '@/components/categories/create-category-dialog';
 import { EditCategoryDialog } from '@/components/categories/edit-category-dialog';
 import type { Category } from '@/types/category';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import CategoriesPage from './categories';
@@ -71,10 +72,17 @@ const fuel = makeCategory({
     icon: 'Fuel',
     parent_id: 'transportation',
 });
+const organic = makeCategory({
+    id: 'organic',
+    name: 'Organic',
+    icon: 'Leaf',
+    parent_id: 'groceries',
+});
 const salary = makeCategory({
     id: 'salary',
     name: 'Salary',
     icon: 'Banknote',
+    color: 'green',
     type: 'income',
     cashflow_direction: 'inflow',
 });
@@ -102,19 +110,38 @@ function renameTransportation() {
     ];
 }
 
-function openEditDialogFor(name: string) {
+function rowOf(name: string): HTMLElement {
     const row = screen.getByText(name).closest('tr');
     expect(row).not.toBeNull();
 
-    fireEvent.contextMenu(row!);
+    return row!;
+}
+
+function openContextMenuFor(name: string) {
+    fireEvent.contextMenu(rowOf(name));
+}
+
+function openEditDialogFor(name: string) {
+    openContextMenuFor(name);
     fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
 }
 
-/** What the open dialog would actually send on Update. */
+function menuItemLabels(): string[] {
+    return screen
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent ?? '');
+}
+
+/**
+ * What the open dialog would actually send on submit, read from the hidden
+ * inputs and from the native select Radix renders behind each `Select`.
+ */
 function submittedField(name: string): string | undefined {
     return screen
         .getByRole('dialog')
-        .querySelector<HTMLInputElement>(`input[name="${name}"]`)?.value;
+        .querySelector<
+            HTMLInputElement | HTMLSelectElement
+        >(`input[name="${name}"], select[name="${name}"]`)?.value;
 }
 
 function submittedCategoryId(): string | undefined {
@@ -153,6 +180,103 @@ describe('CategoriesPage', () => {
         rerender(<CategoriesPage />);
 
         expect(submittedCategoryId()).toBe('fuel');
+    });
+
+    it('offers Create subcategory between Edit and Delete on a row', () => {
+        page.categories = [food, groceries, organic];
+        render(<CategoriesPage />);
+
+        openContextMenuFor('Food');
+
+        expect(menuItemLabels()).toEqual([
+            'Edit',
+            'Create subcategory',
+            'Delete',
+        ]);
+    });
+
+    it('offers Create subcategory from the row "..." menu too', async () => {
+        page.categories = [food, groceries];
+        render(<CategoriesPage />);
+
+        fireEvent.pointerDown(
+            within(rowOf('Groceries')).getByRole('button', {
+                name: 'Open menu',
+            }),
+            { button: 0, ctrlKey: false },
+        );
+        fireEvent.click(
+            await screen.findByRole('menuitem', { name: 'Create subcategory' }),
+        );
+
+        expect(submittedField('parent_id')).toBe('groceries');
+    });
+
+    it('leaves Create subcategory out on categories at the deepest level', () => {
+        page.categories = [food, groceries, organic];
+        render(<CategoriesPage />);
+
+        openContextMenuFor('Organic');
+
+        expect(menuItemLabels()).toEqual(['Edit', 'Delete']);
+    });
+
+    it('opens the create dialog under the row, inheriting its type and color', () => {
+        page.categories = [salary, bonus];
+        render(<CategoriesPage />);
+
+        openContextMenuFor('Salary');
+        fireEvent.click(
+            screen.getByRole('menuitem', { name: 'Create subcategory' }),
+        );
+
+        const dialog = screen.getByRole('dialog');
+        expect(dialog).toHaveTextContent('Create Category');
+        expect(dialog).toHaveTextContent('Inherited from parent');
+        expect(submittedField('parent_id')).toBe('salary');
+        expect(submittedField('type')).toBe('income');
+        expect(submittedField('color')).toBe('green');
+    });
+
+    it('still opens the header create dialog at the top level', () => {
+        page.categories = [food, salary];
+        render(<CategoriesPage />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Create Category' }),
+        );
+
+        expect(submittedField('parent_id')).toBe('');
+        expect(submittedField('color')).toBe('');
+    });
+});
+
+describe('CreateCategoryDialog', () => {
+    const renderDialog = (parent: Category, open: boolean) => (
+        <CreateCategoryDialog
+            categories={allCategories}
+            parent={parent}
+            open={open}
+            onOpenChange={vi.fn()}
+        />
+    );
+
+    it('renders no trigger button when its open state is controlled', () => {
+        render(renderDialog(food, false));
+
+        expect(
+            screen.queryByRole('button', { name: 'Create Category' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('starts from the parent it is handed on each open', () => {
+        const { rerender } = render(renderDialog(salary, false));
+
+        rerender(renderDialog(transportation, true));
+
+        expect(submittedField('parent_id')).toBe('transportation');
+        expect(submittedField('type')).toBe('expense');
+        expect(submittedField('color')).toBe('blue');
     });
 });
 

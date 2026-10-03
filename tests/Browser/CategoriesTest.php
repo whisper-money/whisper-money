@@ -313,3 +313,61 @@ it('shows transfer type description when transfer type is selected in edit dialo
         ->assertSee('Choose whether to show them in the cashflow chart')
         ->assertNoJavascriptErrors();
 });
+
+it('can create a subcategory from a category row context menu', function () {
+    $user = User::factory()->onboarded()->create();
+    $parent = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Food',
+        'icon' => 'Utensils',
+        'color' => 'green',
+        'type' => 'expense',
+    ]);
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    $page->waitForText('Food')
+        ->rightClick('Food')
+        ->wait(0.5)
+        ->click('Create subcategory')
+        ->wait(0.5)
+        ->assertSee('Add a new category to organize your transactions')
+        ->assertSee('Inherited from parent')
+        ->fill('name', 'Groceries')
+        ->click('Select an icon')
+        ->wait(0.5)
+        ->click('//div[@role="option"][contains(., "ShoppingBasket")]')
+        ->wait(0.3)
+        ->click('Save')
+        ->wait(2)
+        ->assertSee('Groceries')
+        ->assertNoJavascriptErrors();
+
+    $this->assertDatabaseHas('categories', [
+        'user_id' => $user->id,
+        'name' => 'Groceries',
+        'parent_id' => $parent->id,
+        'color' => 'green',
+        'type' => 'expense',
+    ]);
+});
+
+it('does not offer a subcategory on categories at the deepest level', function () {
+    $user = User::factory()->onboarded()->create();
+    $food = Category::factory()->create(['user_id' => $user->id, 'name' => 'Food']);
+    $groceries = Category::factory()->childOf($food)->create(['name' => 'Groceries']);
+    Category::factory()->childOf($groceries)->create(['name' => 'Organic']);
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    $page->waitForText('Organic')
+        ->rightClick('Organic')
+        ->wait(0.5)
+        ->assertSee('Edit')
+        ->assertDontSee('Create subcategory')
+        ->assertNoJavascriptErrors();
+});

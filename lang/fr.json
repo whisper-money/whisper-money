@@ -799,6 +799,7 @@
     "Create rules like \"If description contains 'AMAZON', categorize as Shopping\"": "Créez des règles telles que « Si la description contient « AMAZON », catégorisez-la comme Achats »",
     "Create rules like \"If description contains \\'AMAZON\\', categorize as Shopping\"": "Créez des règles telles que « Si la description contient « AMAZON », catégorisez-la comme Achats »",
     "Create rules to automatically categorize your transactions based on patterns you define.": "Créez des règles pour catégoriser automatiquement vos transactions en fonction des modèles que vous définissez.",
+    "Create subcategory": "Créer une sous-catégorie",
     "Create the account now, update at any moment": "Créez un compte maintenant, mettez à jour à tout moment",
     "Create your account": "Créer mon compte",
     "Create, edit, and delete rules anytime": "Créez, modifiez et supprimez des règles à tout moment",

@@ -1,9 +1,17 @@
-import { Category } from '@/types/category';
+import { Category, CATEGORY_MAX_DEPTH } from '@/types/category';
 import { UUID } from '@/types/uuid';
 
 export interface CategoryNode extends Category {
     depth: number;
     children: CategoryNode[];
+}
+
+/**
+ * Whether a category at this depth (0 = top level) still leaves room for a
+ * level of children below it.
+ */
+export function canHaveSubcategories(depth: number): boolean {
+    return depth < CATEGORY_MAX_DEPTH - 1;
 }
 
 const compareByName = (a: Category, b: Category): number =>

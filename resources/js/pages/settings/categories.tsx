@@ -38,6 +38,7 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import {
     buildCategoryTree,
+    canHaveSubcategories,
     type CategoryNode,
     flattenCategoryTree,
 } from '@/lib/category-tree';
@@ -53,7 +54,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function categoryDialogs(category: Category, categories: Category[]) {
+function categoryDialogs(category: CategoryNode, categories: Category[]) {
     return {
         renderEditDialog: (control: DialogControl) => (
             <EditCategoryDialog
@@ -71,6 +72,21 @@ function categoryDialogs(category: Category, categories: Category[]) {
                 {...control}
             />
         ),
+        extraActions: canHaveSubcategories(category.depth)
+            ? [
+                  {
+                      label: __('Create subcategory'),
+                      renderDialog: (control: DialogControl) => (
+                          <CreateCategoryDialog
+                              categories={categories}
+                              parent={category}
+                              onSuccess={() => {}}
+                              {...control}
+                          />
+                      ),
+                  },
+              ]
+            : [],
     };
 }
 
@@ -78,7 +94,7 @@ function CategoryActions({
     category,
     categories,
 }: {
-    category: Category;
+    category: CategoryNode;
     categories: Category[];
 }) {
     return <RowActionsDropdown {...categoryDialogs(category, categories)} />;
@@ -88,7 +104,7 @@ function CategoryRow({
     row,
     categories,
 }: {
-    row: Row<Category>;
+    row: Row<CategoryNode>;
     categories: Category[];
 }) {
     return (
@@ -154,7 +170,7 @@ export default function Categories() {
         </Button>
     );
 
-    const columns: ColumnDef<Category>[] = [
+    const columns: ColumnDef<CategoryNode>[] = [
         {
             accessorKey: 'name',
             header: () => sortHeader('name', __('Name')),
@@ -165,7 +181,7 @@ export default function Categories() {
                     | undefined;
                 const Icon = IconComponent || Icons.Tag;
 
-                const depth = (row.original as CategoryNode).depth ?? 0;
+                const depth = row.original.depth;
 
                 return (
                     <div
