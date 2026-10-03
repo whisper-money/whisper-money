@@ -201,7 +201,7 @@
     "And :count charges from :merchant are uncategorised, :amount in total, so no budget counts them yet.": "Et :count opérations de :merchant sont sans catégorie, :amount en tout, donc aucun budget ne les compte pour l'instant.",
     "Ask, and set things straight": "Demandez, et faites le ménage",
     "Check this — reading as": "À vérifier — lu comme",
-    "Claude Code too, with a token": "Depuis Claude Code aussi, avec un jeton",
+    "Claude Code too, as a plugin": "Depuis Claude Code aussi, via un plugin",
     "Claude Desktop and ChatGPT": "Claude Desktop et ChatGPT",
     "Column in your file": "Colonne de votre fichier",
     "Connect Whisper Money to your assistant and ask about your money in your own words. It reads your transactions to answer you and, if you ask it to, puts them in order too: recategorising, creating rules, adjusting budgets.": "Vous connectez Whisper Money à votre assistant et vous l'interrogez sur votre argent avec vos mots. Il lit vos opérations pour vous répondre et, si vous le lui demandez, il les range aussi : il recatégorise, crée des règles et ajuste les budgets.",
