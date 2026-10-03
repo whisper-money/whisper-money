@@ -36,6 +36,20 @@ abstract class WriteTool extends McpTool
 {
     use PresentsTransactions;
 
+    /**
+     * Every write tool declares `openWorldHint: true`. OpenAI's reference would
+     * allow false for a private account, but its MCP scan flags each write tool
+     * that says so and holds the tool's updates until the finding is appealed,
+     * and an appeal pauses every automatic MCP update. Declaring it keeps tool
+     * changes shipping; ChatGPT asks before each write either way.
+     *
+     * @return array<string, mixed>
+     */
+    public function annotations(): array
+    {
+        return [...parent::annotations(), 'openWorldHint' => true];
+    }
+
     protected function respond(Request $request, User $user): Response
     {
         // Write access is granted to OAuth connections (Claude Desktop /

@@ -35,8 +35,8 @@ abstract class McpTool extends Tool
      * explicitly, with a justification per tool. Default them here — read tools
      * flip `readOnlyHint` with #[IsReadOnly] and the deleting or overwriting
      * tools flip `destructiveHint` with #[IsDestructive] (see WriteTool).
-     * `openWorldHint` is always false: every tool reads or writes the user's
-     * own account, never the open web.
+     * `openWorldHint` is false here, for the read tools; WriteTool turns it on
+     * for every write tool.
      *
      * @return array<string, mixed>
      */
