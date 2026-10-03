@@ -97,186 +97,186 @@
       }
     },
     "create_account": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it opens a new manual account (bank, cash, investment, loan or property) in the user's own workspace.",
-        "open_world_justification": "Creates an account row inside the user's own Whisper Money workspace, a closed system. It cannot connect to a bank or reach any external provider.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Additive and reversible: it only adds a new account, leaving every existing account and transaction untouched, and the user can archive or delete it in the app. Bank-connected accounts cannot be created here at all, so no bank connection is ever affected."
       }
     },
     "update_account": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it edits an existing account's name, type, currency, bank, ownership share or loan/property details.",
-        "open_world_justification": "Edits an account inside the user's own Whisper Money workspace, a closed system. It never contacts the bank or any external provider.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Reversible: only the fields passed are changed, the account keeps its transactions and balance history, and every value can be edited back. On a bank-connected account it refuses the fields the sync owns (its currency, its bank, and any type without a transaction ledger), and it can never archive or delete an account."
       }
     },
     "create_transaction": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it records a new manual transaction in the user's own account.",
-        "open_world_justification": "Writes a bookkeeping row inside the user's own Whisper Money account, a closed system. It cannot move money or reach any external service.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Additive and reversible: it creates a new record without altering existing ones, and the user can edit or delete it afterwards. Adding one to a bank-connected account is safe because a sync only inserts rows it has not seen before."
       }
     },
     "update_transaction": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it edits the fields of an existing transaction in the user's own account.",
-        "open_world_justification": "Edits a bookkeeping row inside the user's own Whisper Money account, a closed system. No external system is affected.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Overwrites: the fields passed replace the transaction's current values, so the model should confirm the change with the user first. A bank-imported transaction only accepts its notes and category, so the data the sync owns is never rewritten."
       }
     },
     "delete_transaction": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it removes a manual transaction from the user's own account.",
-        "open_world_justification": "Deletes a bookkeeping row inside the user's own Whisper Money account, a closed system. No external system is affected.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Irreversible data loss: the transaction is deleted and cannot be restored, so the model must confirm with the user first. Only manual transactions can be deleted; bank-imported ones are rejected."
       }
     },
     "split_transaction": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it replaces one transaction in the user's own account with the parts they asked for.",
-        "open_world_justification": "Rewrites bookkeeping rows inside the user's own Whisper Money account, a closed system. No external system is affected.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Reversible: the original transaction is kept and merge_transaction_splits puts it back at any time. The parts must add up to the original amount, so no money is created or lost."
       }
     },
     "merge_transaction_splits": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it removes the parts of a split from the user's own account and restores the transaction they came from.",
-        "open_world_justification": "Rewrites bookkeeping rows inside the user's own Whisper Money account, a closed system. No external system is affected.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Irreversible data loss: the parts are deleted along with the category, labels and notes set on each of them, so the model must confirm with the user first. The original transaction itself comes back untouched."
       }
     },
     "categorize_transaction": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it assigns a category to an existing transaction in the user's own account.",
-        "open_world_justification": "Updates a single field on a row inside the user's own Whisper Money account, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Reversible: only the category assignment changes, and it can be reassigned at any time. No transaction data is removed."
       }
     },
     "label_transaction": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it sets the labels attached to an existing transaction in the user's own account.",
-        "open_world_justification": "Updates label associations inside the user's own Whisper Money account, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Reversible: only label associations change and they can be set again at any time. Neither the transaction nor the labels themselves are removed."
       }
     },
     "create_balance": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it records a new balance snapshot for one of the user's manual accounts.",
-        "open_world_justification": "Writes a balance row inside the user's own Whisper Money account, a closed system. It reads no external bank data.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Overwrites: a snapshot already recorded for that date is replaced, so the model should confirm with the user first. The rest of the balance history is left intact, and bank-connected accounts are rejected so synced balances are never overwritten."
       }
     },
     "create_category": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it creates a new spending category in the user's own workspace.",
-        "open_world_justification": "Creates a category inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Additive and reversible: nothing existing is modified, and the new category can be deleted afterwards."
       }
     },
     "update_category": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it renames or restyles an existing category in the user's own workspace.",
-        "open_world_justification": "Edits a category inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Reversible: only the category's own attributes change, its transactions stay attached, and the values can be edited back."
       }
     },
     "delete_category": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it removes a category from the user's own workspace.",
-        "open_world_justification": "Deletes a category inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Irreversible: the category is gone and every transaction assigned to it becomes uncategorized, so the model must confirm with the user first."
       }
     },
     "create_label": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it creates a new label in the user's own workspace.",
-        "open_world_justification": "Creates a label inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Additive and reversible: nothing existing is modified, and the new label can be deleted afterwards."
       }
     },
     "update_label": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it renames or recolours an existing label in the user's own workspace.",
-        "open_world_justification": "Edits a label inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Reversible: only the label's name and colour change, its transactions stay attached, and the values can be edited back."
       }
     },
     "delete_label": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it removes a label from the user's own workspace.",
-        "open_world_justification": "Deletes a label inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Irreversible: the label is gone and is detached from every transaction that carried it, so the model must confirm with the user first."
       }
     },
     "create_automation_rule": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it creates an automation rule that categorizes or labels the user's future transactions.",
-        "open_world_justification": "Creates a rule inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Additive and reversible: the rule only affects how future transactions are categorized and it can be edited or deleted at any time."
       }
     },
     "update_automation_rule": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it edits the conditions or actions of an existing automation rule in the user's own workspace.",
-        "open_world_justification": "Edits a rule inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Overwrites: the rule's previous conditions and actions are replaced, so the model should confirm the change with the user first. No transaction data is touched."
       }
     },
     "delete_automation_rule": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it removes an automation rule from the user's own workspace.",
-        "open_world_justification": "Deletes a rule inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Irreversible: the rule definition is deleted and cannot be restored, so the model must confirm with the user first. Transactions it already categorized are left untouched."
       }
     },
     "apply_automation_rule": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it runs an existing automation rule over the transactions already in the user's own account, categorizing and labelling the ones it matches. It only reads while dry_run is left at its default.",
-        "open_world_justification": "Reads and updates rows inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Overwrites: applying it replaces the category and note of every matching transaction, possibly many at once, so the model should show the dry_run preview and confirm with the user first. It previews by default, and no transaction is deleted."
       }
     },
     "create_budget": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it creates a budget, its first periods, and attaches the transactions already inside them.",
-        "open_world_justification": "Creates a budget inside the user's own Whisper Money workspace, a closed system. It cannot move money or reach any external service.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Additive and reversible: no existing record is altered, and the budget can be edited or deleted afterwards."
       }
     },
     "update_budget": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {
         "read_only_justification": "Writes: it renames the user's own budget or changes the amount allocated to its current and future periods.",
-        "open_world_justification": "Edits a budget inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Reversible: only the name and the limit can be changed, both can be set straight back, and no transaction is touched."
       }
     },
     "delete_budget": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": false, "destructiveHint": true },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it removes a budget from the user's own workspace.",
-        "open_world_justification": "Deletes a budget inside the user's own Whisper Money workspace, a closed system.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Irreversible for the user: the budget disappears from their account along with the spending history of its periods, and nothing in the app brings it back, so the model must confirm first. The transactions themselves are left untouched."
       }
     }

@@ -67,7 +67,7 @@ it('declares all three MCP hints on every tool', function () use ($readOnly, $de
         $name = $tool->name();
 
         expect($annotations)->toHaveKeys(['readOnlyHint', 'destructiveHint', 'openWorldHint'])
-            ->and($annotations['openWorldHint'])->toBeFalse()
+            ->and($annotations['openWorldHint'])->toBe(! in_array($name, $readOnly, true), "openWorldHint for {$name}")
             ->and($annotations['readOnlyHint'])->toBe(in_array($name, $readOnly, true), "readOnlyHint for {$name}")
             ->and($annotations['destructiveHint'])->toBe(in_array($name, $destructive, true), "destructiveHint for {$name}");
     }
