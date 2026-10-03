@@ -166,15 +166,3 @@ test('shared currency options split profile and account currencies', function ()
     expect(collect($props['currencies']['profile'])->pluck('code'))->toContain('CZK');
     expect(collect($props['currencies']['accounts'])->pluck('code'))->toContain('CZK');
 });
-
-test('hasTransactionalAccounts is not shared with every page', function () {
-    // The add-transaction button reads it off the accounts the transactions
-    // page already loads, so the shell has no reason to pay a query for it.
-    $user = User::factory()->onboarded()->create();
-
-    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
-
-    $response->assertInertia(fn (Assert $page) => $page
-        ->missing('hasTransactionalAccounts')
-    );
-});

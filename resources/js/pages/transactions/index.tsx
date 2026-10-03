@@ -1235,6 +1235,11 @@ export default function Transactions({
 
     const selectedCount = useMemo(() => selectedIds.length, [selectedIds]);
 
+    const hasTransactionalAccounts = useMemo(
+        () => filterTransactionalAccounts(accounts).length > 0,
+        [accounts],
+    );
+
     const manualAccountIds = useMemo(
         () =>
             new Set(
@@ -1430,8 +1435,7 @@ export default function Transactions({
                                 <TransactionActionsMenu
                                     transactions={allTransactions}
                                     hasTransactionalAccounts={
-                                        filterTransactionalAccounts(accounts)
-                                            .length > 0
+                                        hasTransactionalAccounts
                                     }
                                     onReEvaluateComplete={() => {
                                         setRowSelection({});

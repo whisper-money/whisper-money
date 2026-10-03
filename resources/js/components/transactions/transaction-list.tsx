@@ -76,7 +76,11 @@ import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type Account, type Bank } from '@/types/account';
+import {
+    filterTransactionalAccounts,
+    type Account,
+    type Bank,
+} from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
@@ -1079,6 +1083,10 @@ export function TransactionList({
                             {showActionsMenu && (
                                 <TransactionActionsMenu
                                     transactions={transactions}
+                                    hasTransactionalAccounts={
+                                        filterTransactionalAccounts(accounts)
+                                            .length > 0
+                                    }
                                     onReEvaluateComplete={() => {
                                         setRowSelection({});
                                         setTimeout(() => {
