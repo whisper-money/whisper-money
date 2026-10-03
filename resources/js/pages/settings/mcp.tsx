@@ -366,7 +366,7 @@ export default function Mcp() {
                                         </span>
                                         <span className="text-sm text-muted-foreground">
                                             {__(
-                                                'For developers. Claude Code signs in with a token instead of the browser flow.',
+                                                'For developers. Install our plugin and sign in through the browser, or connect with a token.',
                                             )}
                                         </span>
                                     </span>
@@ -380,12 +380,40 @@ export default function Mcp() {
                             </CollapsibleTrigger>
                             <CollapsibleContent>
                                 <CardContent className="space-y-6 pb-6">
-                                    <div className="space-y-1">
+                                    {/* Plugin: the recommended path, OAuth in the browser like Claude Desktop */}
+                                    <div className="space-y-2">
+                                        <div className="space-y-1">
+                                            <h3 className="text-sm font-medium">
+                                                {__('With the plugin')}
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                {__(
+                                                    'Run these inside Claude Code to install the Whisper Money plugin.',
+                                                )}
+                                            </p>
+                                        </div>
+                                        <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm whitespace-pre">
+                                            {`/plugin marketplace add whisper-money/whisper-money\n/plugin install whisper-money@whisper-money`}
+                                        </code>
                                         <p className="text-sm text-muted-foreground">
                                             {__(
-                                                'Run this, using one of your tokens in place of <token>.',
+                                                'Then run /mcp, pick Whisper Money and sign in through the browser. No token needed, and it can read and change your data.',
                                             )}
                                         </p>
+                                    </div>
+
+                                    {/* Token: read-only access or headless setups */}
+                                    <div className="space-y-2">
+                                        <div className="space-y-1">
+                                            <h3 className="text-sm font-medium">
+                                                {__('With a token')}
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                {__(
+                                                    'For read-only access, or when Claude Code runs without a browser, such as on a server or in CI. Run this, using one of your tokens in place of <token>.',
+                                                )}
+                                            </p>
+                                        </div>
                                         <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-sm">
                                             {`claude mcp add --transport http whisper-money ${serverUrl} --header "Authorization: Bearer <token>"`}
                                         </code>

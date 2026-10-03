@@ -14,8 +14,8 @@ El Conector de IA permite que un asistente que ya usas, Claude o ChatGPT, lea tu
 5. Pregúntale algo: «¿cuánto me he gastado este mes en la compra?»
 
 En ChatGPT puedes saltarte la URL y conectar Whisper Money desde su directorio
-de apps. Los dos caminos están descritos más abajo, con el motivo por el que
-podrías preferir uno.
+de apps, y en Claude Code instalas nuestro plugin. Todos los caminos están
+descritos más abajo, con el motivo por el que podrías preferir uno.
 
 Haz esta parte en un ordenador. Iniciar sesión y aprobar funciona bien en el
 navegador de un ordenador, pero suele fallar en el navegador interno del móvil.
@@ -228,9 +228,44 @@ permite distinguirlas.
 
 ## Conectar Claude Code
 
-Claude Code es la línea de comandos para desarrolladores, y inicia sesión con un
-token en lugar del flujo del navegador. Cualquier otra persona debería usar una
-de las dos secciones anteriores.
+Claude Code es la línea de comandos para desarrolladores. Si no lo usas, te
+basta con una de las dos secciones anteriores.
+
+### Con el plugin
+
+Whisper Money tiene un plugin para Claude Code, y es la forma que recomendamos.
+Inicia sesión por el navegador igual que Claude Desktop, así que no hay ningún
+token que crear ni pegar.
+
+1. Dentro de Claude Code, añade nuestro marketplace e instala el plugin:
+
+    ```text
+    /plugin marketplace add whisper-money/whisper-money
+    /plugin install whisper-money@whisper-money
+    ```
+
+2. Ejecuta `/mcp`, elige Whisper Money en la lista e inicia sesión. Desde una
+   terminal, `claude mcp login plugin:whisper-money:whisper-money` hace lo
+   mismo.
+3. El navegador abre el inicio de sesión de Whisper Money. Aprueba la conexión
+   en la pantalla que aparece después, y Claude Code queda conectado.
+
+Después, `claude mcp list` muestra `plugin:whisper-money:whisper-money` como
+conectado. Igual que una conexión de Claude o de ChatGPT, puede leer tus datos y
+modificarlos.
+
+El plugin trae además dos skills: una con recetas para las herramientas de
+Whisper Money y otra que lee esta documentación cuando preguntas cómo funciona
+la app.
+
+Si ya habías añadido Whisper Money con un token con el nombre `whisper-money`,
+ejecuta `claude mcp remove whisper-money` para no acabar con dos copias.
+
+### Con un token
+
+Un token sigue siendo la forma de entrar cuando quieres acceso de solo lectura,
+o cuando Claude Code se ejecuta en un sitio sin navegador, como un servidor o un
+job de CI.
 
 Abre la sección **Conectar con Claude Code** en **Ajustes → Conector de IA**,
 crea un token y ejecuta:
@@ -266,18 +301,18 @@ Dos cosas que puedes hacerle a un token después:
 - **Revocarlo** para cortar el acceso. Surte efecto al instante y no se puede
   deshacer.
 
-Los tokens son solo para Claude Code. Una conexión de Claude o de ChatGPT no
-tiene ningún token detrás, así que no hay nada que rotar ni nada que se pueda
-filtrar.
+Los tokens son solo para Claude Code. Una conexión de Claude o de ChatGPT, o la
+de Claude Code a través del plugin, no tiene ningún token detrás, así que no hay
+nada que rotar ni nada que se pueda filtrar.
 
 ## Qué puede y qué no puede modificar
 
-Una conexión hecha desde Claude o ChatGPT puede leer tus datos y modificarlos.
-Una conexión de Claude Code solo puede modificarlos si su token es de lectura y
-escritura.
+Una conexión que apruebas en el navegador, desde Claude, ChatGPT o el plugin de
+Claude Code, puede leer tus datos y modificarlos. Una conexión hecha con un
+token solo puede modificarlos si el token es de lectura y escritura.
 
-Dónde se para la escritura es lo mismo en los dos casos, y no es una cuestión de
-confianza. Son las reglas que sigue la propia app:
+Dónde se para la escritura es lo mismo en todos los casos, y no es una cuestión
+de confianza. Son las reglas que sigue la propia app:
 
 - **Las transacciones sincronizadas del banco y las importadas no se pueden
   editar ni eliminar.** Solo las creadas a mano. Cualquier transacción, venga de
@@ -302,7 +337,8 @@ confianza. Son las reglas que sigue la propia app:
 
 Eliminar es eliminar de verdad, igual que pulsar el botón en la app. Si
 prefieres que no se toque nada, conecta Claude Code con un token de solo
-lectura; una conexión de Claude o de ChatGPT siempre es de lectura y escritura.
+lectura; una conexión que apruebas en el navegador siempre es de lectura y
+escritura.
 
 ## Privacidad
 
@@ -317,8 +353,8 @@ que los datos salen de la app, así que aquí está exactamente qué pasa.
 - Solo se envía lo que tu pregunta necesita. Preguntar por la compra del mes
   pasado no entrega tu historial completo.
 - Cuando quieras salir, quitas Whisper Money de las apps conectadas dentro de
-  Claude o de ChatGPT, o eliminas el token en el caso de Claude Code. Deja de
-  responder al instante.
+  Claude o de ChatGPT. En Claude Code, cierras la sesión del plugin, o revocas
+  el token si te conectaste con uno. Deja de responder al instante.
 
 Conéctalo solo si te parece bien ese intercambio. Si no lo conectas nunca, para
 tu cuenta no cambia nada.
@@ -343,8 +379,8 @@ Lo más probable es que la suscripción haya caducado. La conexión sigue ahí y
 sigue aprobada, pero cada petición se comprueba contra tu plan, así que deja de
 responder en lugar de desconectarse. Al renovar vuelve sin nada que reconectar.
 
-La otra posibilidad, solo en Claude Code, es un token que se rotó o se revocó.
-Vuelve a añadir la conexión con el secreto nuevo.
+La otra posibilidad, si conectaste Claude Code con un token, es que ese token se
+rotara o se revocara. Vuelve a añadir la conexión con el secreto nuevo.
 
 ### ¿Puede perder o destrozar mis datos?
 
@@ -357,9 +393,10 @@ todo y no modificar nada.
 ### ¿Uso Claude Desktop o Claude Code?
 
 Claude Desktop, salvo que ya vivas en una terminal. Son los mismos datos y las
-mismas herramientas en los dos casos. Claude Desktop te identifica por el
-navegador y no necesita ningún token; Claude Code necesita un token que crees y
-pegues, y a cambio te da la opción de solo lectura.
+mismas herramientas en los dos casos, y los dos te identifican por el navegador
+sin ningún token: Claude Code lo hace a través del plugin. En Claude Code solo
+merece la pena crear un token si quieres acceso de solo lectura o si se ejecuta
+sin navegador.
 
 ### ¿Por qué me falla la conexión en el móvil?
 
@@ -371,14 +408,16 @@ funciona con normalidad.
 ### ¿Puedo conectar más de un asistente?
 
 Sí. Claude y ChatGPT pueden estar conectados a la vez, y Claude Code junto a
-ellos con su propio token. Son conexiones separadas y quitar una deja las otras
-como estaban.
+ellos, con el plugin o con un token. Son conexiones separadas y quitar una deja
+las otras como estaban.
 
 ### ¿Cómo lo desconecto?
 
 En Claude o en ChatGPT, quita Whisper Money de la lista de apps o plugins
-conectados. Para Claude Code, revoca el token en **Ajustes → Conector de IA**.
-Después no hay nada que deshacer por nuestra parte.
+conectados. Para el plugin de Claude Code, ejecuta
+`claude mcp logout plugin:whisper-money:whisper-money`. Para un token de Claude
+Code, revócalo en **Ajustes → Conector de IA**. Después no hay nada que deshacer
+por nuestra parte.
 
 ### ¿Hay un límite de cuánto puedo preguntar?
 

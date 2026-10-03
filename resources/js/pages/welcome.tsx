@@ -3265,7 +3265,7 @@ export default function Welcome({
                                                 <CheckIcon className="size-4 shrink-0 text-emerald-500" />
                                                 <span className="text-sm">
                                                     {__(
-                                                        'Claude Code too, with a token',
+                                                        'Claude Code too, as a plugin',
                                                     )}
                                                 </span>
                                             </li>
