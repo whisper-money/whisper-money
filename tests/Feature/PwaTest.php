@@ -19,11 +19,15 @@ test('the landing page detects an installed app in the display mode the manifest
     $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
 
     // The landing page redirects installed users to the dashboard, and the
-    // display-mode media feature only matches the mode that was actually applied,
-    // so it has to cover what we ask for and the fullscreen that Android installs
-    // made under the previous manifest keep until Chrome updates their WebAPK.
+    // display-mode media feature only matches the mode that was actually applied.
     expect(file_get_contents(resource_path('js/pages/welcome.tsx')))
-        ->toContain('(display-mode: '.$manifest['display'].')')
+        ->toContain('(display-mode: '.$manifest['display'].')');
+});
+
+test('the landing page still detects the Android installs made under the fullscreen manifest', function () {
+    // A WebAPK keeps the display mode it was minted with until Chrome updates it
+    // to the current manifest, so those installs still run in fullscreen.
+    expect(file_get_contents(resource_path('js/pages/welcome.tsx')))
         ->toContain('(display-mode: fullscreen)');
 });
 
@@ -41,7 +45,7 @@ test('app template includes pwa meta tags and service worker registration', func
         ->assertSee("try {\n                    chartScheme = localStorage.getItem('chart-color-scheme')", false);
 });
 
-test('the manifest paints the splash with the light background', function () {
+test('the manifest paints the splash and the status bar before first paint with the light background', function () {
     $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
 
     // A manifest is baked into the WebAPK at install time and cannot react to the

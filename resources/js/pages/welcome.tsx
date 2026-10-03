@@ -2767,9 +2767,11 @@ export default function Welcome({
         }
 
         return (
-            // The manifest asks for standalone. Fullscreen still matches the
-            // Android installs made while it asked for fullscreen, until
-            // Chrome updates their WebAPK to the new manifest.
+            // Standalone is the mode the manifest asks for, on Android and iOS
+            // alike; navigator.standalone covers older iOS. Fullscreen only
+            // matches the Android installs made while the manifest asked for
+            // it, until Chrome updates their WebAPK: drop it once they have had
+            // a few months to update.
             window.matchMedia(
                 '(display-mode: fullscreen), (display-mode: standalone)',
             ).matches ||
