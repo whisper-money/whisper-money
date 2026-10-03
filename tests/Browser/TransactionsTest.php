@@ -253,6 +253,10 @@ it('can edit an existing transaction from the list', function () {
 it('opens the notes and saves an edit from the keyboard', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Shortcut Bank']);
+    $category = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Eating Out',
+    ]);
     $account = Account::factory()->create([
         'user_id' => $user->id,
         'bank_id' => $bank->id,
@@ -264,6 +268,7 @@ it('opens the notes and saves an edit from the keyboard', function () {
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
+        'category_id' => $category->id,
         'description' => 'Keyboard lunch',
         'amount' => -1500,
         'notes' => null,
