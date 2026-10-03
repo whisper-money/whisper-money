@@ -1,7 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import McpPage from './mcp';
+
+const pageProps = vi.hoisted(() => ({
+    auth: { hasProPlan: true },
+    tokens: [],
+    serverUrl: 'https://whisper.money/mcp',
+    oauthUrl: 'https://whisper.money/mcp/oauth',
+    subscribeUrl: '/subscribe',
+    newToken: null as string | null,
+}));
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
@@ -14,16 +23,7 @@ vi.mock('@inertiajs/react', () => ({
         processing: false,
         errors: {},
     }),
-    usePage: () => ({
-        props: {
-            auth: { hasProPlan: true },
-            tokens: [],
-            serverUrl: 'https://whisper.money/mcp',
-            oauthUrl: 'https://whisper.money/mcp/oauth',
-            subscribeUrl: '/subscribe',
-            newToken: null,
-        },
-    }),
+    usePage: () => ({ props: pageProps }),
 }));
 
 vi.mock('@/layouts/app-layout', () => ({
@@ -35,6 +35,10 @@ vi.mock('@/layouts/settings/layout', () => ({
 }));
 
 describe('MCP settings page', () => {
+    beforeEach(() => {
+        pageProps.newToken = null;
+    });
+
     it('offers the Claude Code plugin before the token command', () => {
         render(<McpPage />);
 
@@ -55,5 +59,14 @@ describe('MCP settings page', () => {
             ).toBeTruthy();
         });
         expect(screen.getByText(/Then run \/mcp/)).toBeTruthy();
+    });
+
+    it('shows a freshly created token once, with the Claude Code section open', () => {
+        pageProps.newToken = 'wm_secret_token';
+
+        render(<McpPage />);
+
+        expect(screen.getByText('wm_secret_token')).toBeTruthy();
+        expect(screen.getByText('With the plugin')).toBeTruthy();
     });
 });
