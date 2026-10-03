@@ -168,6 +168,25 @@ it('registers a public PKCE client via dynamic client registration', function ()
     expect($response->json('redirect_uris'))->toContain(CLAUDE_CALLBACK);
 });
 
+it('registers a native client with a loopback redirect on any port', function (string $callback) {
+    // Claude Code (and other CLIs) listen on a random local port for the
+    // OAuth callback, so a loopback URI is accepted whatever its port.
+    postJson('/oauth/register', [
+        'client_name' => 'Claude Code',
+        'redirect_uris' => [$callback],
+    ])->assertCreated();
+})->with([
+    'localhost' => 'http://localhost:53682/callback',
+    '127.0.0.1' => 'http://127.0.0.1:61234/callback',
+]);
+
+it('still rejects a plain-http redirect that is not loopback', function () {
+    postJson('/oauth/register', [
+        'client_name' => 'Evil',
+        'redirect_uris' => ['http://evil.example.com/callback'],
+    ])->assertStatus(400)->assertJson(['error' => 'invalid_redirect_uri']);
+});
+
 it('rejects a DCR redirect URI outside the allowlist', function () {
     postJson('/oauth/register', [
         'client_name' => 'Evil',
