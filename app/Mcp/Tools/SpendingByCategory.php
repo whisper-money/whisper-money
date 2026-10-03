@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Models\User;
 use App\Services\CategorySpendingService;
+use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -41,9 +42,16 @@ class SpendingByCategory extends McpTool
             $request->string('parent_category_id')->toString() ?: null,
         );
 
+        $currency = $this->reportingCurrency($user);
+
+        // The formatted amount saves the agent scaling minor units itself: given
+        // only 219888 and EUR, ChatGPT once answered €219.89 instead of €2,198.88.
         return $this->json([
-            'currency' => $this->reportingCurrency($user),
-            'categories' => $spending->values(),
+            'currency' => $currency,
+            'categories' => $spending->map(fn (array $row): array => [
+                ...$row,
+                'amount_formatted' => Money::format($row['amount'], $currency),
+            ])->values(),
         ]);
     }
 }

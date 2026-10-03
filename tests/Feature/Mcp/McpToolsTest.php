@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CategoryType;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\GetCashflow;
 use App\Mcp\Tools\GetNetWorth;
@@ -211,6 +212,28 @@ it('says which currency the rolled-up figures are in', function (string $tool) {
     'get_cashflow' => GetCashflow::class,
     'get_net_worth' => GetNetWorth::class,
 ]);
+
+it('formats the spending amounts in the user\'s currency', function () {
+    // Given only minor units and a currency, ChatGPT once scaled €2,198.88
+    // down to €219.89; the formatted amount spares it the maths.
+    $user = User::factory()->create(['currency_code' => 'EUR']);
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $groceries = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense, 'name' => 'Groceries']);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $groceries->id,
+        'amount' => -219888,
+        'currency_code' => 'EUR',
+        'transaction_date' => now()->toDateString(),
+    ]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(SpendingByCategory::class, ['from' => now()->startOfMonth()->toDateString(), 'to' => now()->toDateString()])
+        ->assertOk()
+        ->assertSee('"amount":219888')
+        ->assertSee('"amount_formatted":"€2,198.88"');
+});
 
 it('tells the agent on the accounts tool that nothing moves money', function () {
     // ChatGPT reads tool descriptions more reliably than the server
