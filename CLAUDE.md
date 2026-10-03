@@ -137,6 +137,18 @@ show.url(1)       // "/posts/1"
 - **Dark mode**: All new components must support dark mode using `dark:` variants
 - **Tests**: Write Pest tests for all changes, use factories for model creation
 
+## Dependencies
+
+Adding a library (Composer or npm) is fine when it earns its place: a maintained
+package that solves the problem better than code we would write and maintain
+ourselves. If the codebase already solves the problem in-house, follow that
+pattern instead. Don't rule a library out just to avoid asking, but **ask the user before
+installing it**: name the package, what it would replace, its size and maintenance
+status, and the in-house alternative. Install only after they say yes. If you
+can't reach the user (a delegated agent, an unattended loop), build without it and
+propose the library in the PR description instead. This is what "without approval"
+means in the Boost guidelines below.
+
 ## Database
 
 - Eloquent relationships with return type hints
