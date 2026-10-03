@@ -48,7 +48,11 @@ export function CreateCategoryDialog({
             )}
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{__('Create Category')}</DialogTitle>
+                    <DialogTitle>
+                        {parent
+                            ? __('Create subcategory')
+                            : __('Create Category')}
+                    </DialogTitle>
                     <DialogDescription>
                         {__(
                             'Add a new category to organize your transactions.',

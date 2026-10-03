@@ -39,7 +39,11 @@ describe('RowActionsDropdown', () => {
                 renderEditDialog={dialog('edit')}
                 renderDeleteDialog={dialog('delete')}
                 extraActions={[
-                    { label: 'Duplicate', renderDialog: dialog('duplicate') },
+                    {
+                        key: 'duplicate',
+                        label: 'Duplicate',
+                        renderDialog: dialog('duplicate'),
+                    },
                 ]}
             />,
         );

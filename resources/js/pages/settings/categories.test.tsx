@@ -231,7 +231,7 @@ describe('CategoriesPage', () => {
         );
 
         const dialog = screen.getByRole('dialog');
-        expect(dialog).toHaveTextContent('Create Category');
+        expect(dialog).toHaveTextContent('Create subcategory');
         expect(dialog).toHaveTextContent('Inherited from parent');
         expect(submittedField('parent_id')).toBe('salary');
         expect(submittedField('type')).toBe('income');

@@ -33,6 +33,8 @@ type DialogRenderer = (control: DialogControl) => ReactNode;
 
 /** A page-specific row action, listed between Edit and Delete. */
 export interface RowAction {
+    /** Identifies the action's dialog; unique within the row. */
+    key: string;
     label: string;
     renderDialog: DialogRenderer;
 }
@@ -43,8 +45,7 @@ interface RowActionDialogs {
     extraActions?: RowAction[];
 }
 
-interface KeyedRowAction extends RowAction {
-    key: string;
+interface MenuAction extends RowAction {
     variant: 'default' | 'destructive';
 }
 
@@ -61,16 +62,15 @@ function useRowActions({
 }: RowActionDialogs) {
     const [openKey, setOpenKey] = useState<string | null>(null);
 
-    const actions: KeyedRowAction[] = [
+    const actions: MenuAction[] = [
         {
             key: 'edit',
             label: __('Edit'),
             renderDialog: renderEditDialog,
             variant: 'default',
         },
-        ...extraActions.map((action, index) => ({
+        ...extraActions.map((action) => ({
             ...action,
-            key: `extra-${index}`,
             variant: 'default' as const,
         })),
         {

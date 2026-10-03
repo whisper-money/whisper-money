@@ -54,7 +54,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function categoryDialogs(category: CategoryNode, categories: Category[]) {
+function categoryRowActions(category: CategoryNode, categories: Category[]) {
     return {
         renderEditDialog: (control: DialogControl) => (
             <EditCategoryDialog
@@ -75,12 +75,12 @@ function categoryDialogs(category: CategoryNode, categories: Category[]) {
         extraActions: canHaveSubcategories(category.depth)
             ? [
                   {
+                      key: 'create-subcategory',
                       label: __('Create subcategory'),
                       renderDialog: (control: DialogControl) => (
                           <CreateCategoryDialog
                               categories={categories}
                               parent={category}
-                              onSuccess={() => {}}
                               {...control}
                           />
                       ),
@@ -97,7 +97,7 @@ function CategoryActions({
     category: CategoryNode;
     categories: Category[];
 }) {
-    return <RowActionsDropdown {...categoryDialogs(category, categories)} />;
+    return <RowActionsDropdown {...categoryRowActions(category, categories)} />;
 }
 
 function CategoryRow({
@@ -110,7 +110,7 @@ function CategoryRow({
     return (
         <RowWithActionsContextMenu
             row={row}
-            {...categoryDialogs(row.original, categories)}
+            {...categoryRowActions(row.original, categories)}
         />
     );
 }
