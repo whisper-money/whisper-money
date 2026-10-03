@@ -11,7 +11,7 @@
     // Declared for the theme the app renders, not the one the phone is on, so the
     // form controls, scrollbars and default canvas colour match it from first
     // paint. It does not reach the bottom navigation bar of an installed Android
-    // PWA: Chrome paints that bar from the phone's theme, and no web API colours it.
+    // PWA: Chrome paints that bar itself, from the phone's theme (see PwaTest).
     $colorScheme = in_array($appearance, ['light', 'dark'], true) ? $appearance : 'light dark';
 @endphp
 <!DOCTYPE html>
