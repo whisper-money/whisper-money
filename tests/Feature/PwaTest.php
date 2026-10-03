@@ -4,25 +4,31 @@ test('service worker exists', function () {
     expect(file_exists(public_path('sw.js')))->toBeTrue();
 });
 
-test('web manifest starts at dashboard with fullscreen display', function () {
+test('web manifest starts at dashboard with standalone display', function () {
     $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
 
-    // Fullscreen so Android hides the status bar instead of painting it with the
-    // manifest theme_color, which is baked at install time and cannot follow the
-    // app theme. iOS does not support fullscreen and falls back to standalone.
+    // Standalone, not fullscreen: an installed Android PWA in standalone paints
+    // the status bar from the page's theme-color meta, which follows the app's
+    // appearance and changes at runtime. Fullscreen hides the status bar and
+    // leaves the camera cutout as a black band at the top of the screen.
     expect($manifest['start_url'])->toBe('/dashboard')
-        ->and($manifest['display'])->toBe('fullscreen');
+        ->and($manifest['display'])->toBe('standalone');
 });
 
 test('the landing page detects an installed app in the display mode the manifest asks for', function () {
     $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
 
     // The landing page redirects installed users to the dashboard, and the
-    // display-mode media feature only matches the mode that was actually applied,
-    // so it has to cover both what we ask for and the standalone iOS falls back to.
+    // display-mode media feature only matches the mode that was actually applied.
     expect(file_get_contents(resource_path('js/pages/welcome.tsx')))
-        ->toContain('(display-mode: '.$manifest['display'].')')
-        ->toContain('(display-mode: standalone)');
+        ->toContain('(display-mode: '.$manifest['display'].')');
+});
+
+test('the landing page still detects the Android installs made under the fullscreen manifest', function () {
+    // A WebAPK keeps the display mode it was minted with until Chrome updates it
+    // to the current manifest, so those installs still run in fullscreen.
+    expect(file_get_contents(resource_path('js/pages/welcome.tsx')))
+        ->toContain('(display-mode: fullscreen)');
 });
 
 test('app template includes pwa meta tags and service worker registration', function () {
@@ -39,17 +45,23 @@ test('app template includes pwa meta tags and service worker registration', func
         ->assertSee("try {\n                    chartScheme = localStorage.getItem('chart-color-scheme')", false);
 });
 
-test('the manifest paints the splash and the system bars with the light background', function () {
+test('the manifest has no theme colour, so Chrome keeps the navigation bar on the phone theme', function () {
     $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
 
     // A manifest is baked into the WebAPK at install time and cannot react to the
-    // theme, so it carries the light background — the default — for both.
-    $this->withUnencryptedCookie('appearance', 'light')
-        ->get(route('login'))
-        ->assertOk()
-        ->assertSee('<meta name="theme-color" content="'.$manifest['theme_color'].'">', false);
+    // theme. From Chrome 156 an installed Android PWA paints its bottom navigation
+    // bar with the manifest theme_color, one fixed colour whatever the app or the
+    // phone is set to. Without one, Chrome keeps that bar on the phone's light or
+    // dark theme, and the status bar follows the theme-color meta either way.
+    expect($manifest)->not->toHaveKey('theme_color');
+});
 
-    expect($manifest['background_color'])->toBe($manifest['theme_color']);
+test('the manifest paints the splash with the light background', function () {
+    $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
+
+    // background_color only paints the splash screen, which cannot follow the
+    // theme either, so it mirrors the light --background, the default.
+    expect($manifest['background_color'])->toBe('#ffffff');
 });
 
 test('the --background tokens every hard-coded mirror was derived from have not drifted', function () {
