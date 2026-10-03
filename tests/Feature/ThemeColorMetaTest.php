@@ -19,7 +19,7 @@ test('the OS preference still drives the status bar when the appearance is syste
         ->assertSee('<meta name="theme-color" content="#1c1c1c" media="(prefers-color-scheme: dark)">', false);
 });
 
-test('the colour scheme follows the appearance preference, so Android tints both system bars', function (string $appearance, string $expected) {
+test('the colour scheme follows the appearance preference, not the OS one', function (string $appearance, string $expected) {
     $this->withUnencryptedCookie('appearance', $appearance)
         ->get(route('login'))
         ->assertOk()

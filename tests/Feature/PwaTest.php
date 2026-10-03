@@ -4,14 +4,15 @@ test('service worker exists', function () {
     expect(file_exists(public_path('sw.js')))->toBeTrue();
 });
 
-test('web manifest starts at dashboard with fullscreen display', function () {
+test('web manifest starts at dashboard with standalone display', function () {
     $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
 
-    // Fullscreen so Android hides the status bar instead of painting it with the
-    // manifest theme_color, which is baked at install time and cannot follow the
-    // app theme. iOS does not support fullscreen and falls back to standalone.
+    // Standalone, not fullscreen: an installed Android PWA in standalone paints
+    // the status bar from the page's theme-color meta, which follows the app's
+    // appearance and changes at runtime. Fullscreen hides the status bar and
+    // leaves the camera cutout as a black band at the top of the screen.
     expect($manifest['start_url'])->toBe('/dashboard')
-        ->and($manifest['display'])->toBe('fullscreen');
+        ->and($manifest['display'])->toBe('standalone');
 });
 
 test('the landing page detects an installed app in the display mode the manifest asks for', function () {
@@ -19,10 +20,11 @@ test('the landing page detects an installed app in the display mode the manifest
 
     // The landing page redirects installed users to the dashboard, and the
     // display-mode media feature only matches the mode that was actually applied,
-    // so it has to cover both what we ask for and the standalone iOS falls back to.
+    // so it has to cover what we ask for and the fullscreen that Android installs
+    // made under the previous manifest keep until Chrome updates their WebAPK.
     expect(file_get_contents(resource_path('js/pages/welcome.tsx')))
         ->toContain('(display-mode: '.$manifest['display'].')')
-        ->toContain('(display-mode: standalone)');
+        ->toContain('(display-mode: fullscreen)');
 });
 
 test('app template includes pwa meta tags and service worker registration', function () {
@@ -39,11 +41,13 @@ test('app template includes pwa meta tags and service worker registration', func
         ->assertSee("try {\n                    chartScheme = localStorage.getItem('chart-color-scheme')", false);
 });
 
-test('the manifest paints the splash and the system bars with the light background', function () {
+test('the manifest paints the splash with the light background', function () {
     $manifest = json_decode(file_get_contents(public_path('favicon/site.webmanifest')), true);
 
     // A manifest is baked into the WebAPK at install time and cannot react to the
-    // theme, so it carries the light background — the default — for both.
+    // theme. Its colours only paint the splash screen and the status bar until the
+    // page first paints its content, when the theme-color meta takes over, so it
+    // carries the light background — the default — for both.
     $this->withUnencryptedCookie('appearance', 'light')
         ->get(route('login'))
         ->assertOk()
