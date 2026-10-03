@@ -4,12 +4,22 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
+import {
+    ShortcutLayer,
+    ShortcutLayerRoot,
+} from "@/components/shortcuts/shortcut-layer"
 import { cn } from "@/lib/utils"
 
 function Dialog({
     ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-    return <DialogPrimitive.Root data-slot="dialog" {...props} />
+    return (
+        <ShortcutLayerRoot
+            root={DialogPrimitive.Root}
+            data-slot="dialog"
+            {...props}
+        />
+    )
 }
 
 function DialogTrigger({
@@ -69,7 +79,7 @@ function DialogContent({
                 )}
                 {...props}
             >
-                {children}
+                <ShortcutLayer>{children}</ShortcutLayer>
                 {showCloseButton && (
                     <DialogPrimitive.Close
                         data-slot="dialog-close"

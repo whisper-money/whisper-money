@@ -2,10 +2,16 @@ import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
+import {
+  ShortcutLayer,
+  ShortcutLayerRoot,
+} from "@/components/shortcuts/shortcut-layer"
 import { cn } from "@/lib/utils"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+  return (
+    <ShortcutLayerRoot root={SheetPrimitive.Root} data-slot="sheet" {...props} />
+  )
 }
 
 function SheetTrigger({
@@ -69,7 +75,7 @@ function SheetContent({
         )}
         {...props}
       >
-        {children}
+        <ShortcutLayer>{children}</ShortcutLayer>
         <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>

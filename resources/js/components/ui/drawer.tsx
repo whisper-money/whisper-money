@@ -1,12 +1,22 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
+import {
+    ShortcutLayer,
+    ShortcutLayerRoot,
+} from "@/components/shortcuts/shortcut-layer"
 import { cn } from "@/lib/utils"
 
 function Drawer({
     ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-    return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+    return (
+        <ShortcutLayerRoot
+            root={DrawerPrimitive.Root}
+            data-slot="drawer"
+            {...props}
+        />
+    )
 }
 
 function DrawerTrigger({
@@ -64,7 +74,7 @@ function DrawerContent({
                 {...props}
             >
                 <div className="bg-muted mx-auto mt-4 hidden h-2 w-[100px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
-                {children}
+                <ShortcutLayer>{children}</ShortcutLayer>
             </DrawerPrimitive.Content>
         </DrawerPortal>
     )
