@@ -25,20 +25,25 @@ import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { BarChart3, ChevronDown, Tags, WandSparkles } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { AddTransactionButton } from './add-transaction-button';
 import { TransactionAnalysisDrawer } from './transaction-analysis-drawer';
 
 interface TransactionActionsMenuProps {
     transactions: ServerTransaction[];
+    /** Whether the user owns an account a manual transaction can be filed in. */
+    hasTransactionalAccounts: boolean;
     onReEvaluateComplete?: () => void;
     filters: TransactionFilters;
 }
 
 /**
- * The bar above the transactions table. Creating and importing live in the
- * app header, so neither is repeated here.
+ * The bar above the transactions table. Adding a transaction sits here, right
+ * above the list it lands in; importing lives in the app header, so it is not
+ * repeated here.
  */
 export function TransactionActionsMenu({
     transactions,
+    hasTransactionalAccounts,
     onReEvaluateComplete,
     filters,
 }: TransactionActionsMenuProps) {
@@ -95,7 +100,11 @@ export function TransactionActionsMenu({
         );
 
     return (
-        <>
+        <div className="flex items-center gap-2">
+            <AddTransactionButton
+                hasTransactionalAccounts={hasTransactionalAccounts}
+            />
+
             <ButtonGroup>
                 <TooltipProvider>
                     <Tooltip
@@ -200,6 +209,6 @@ export function TransactionActionsMenu({
                 onOpenChange={setAnalysisDrawerOpen}
                 filters={filters}
             />
-        </>
+        </div>
     );
 }

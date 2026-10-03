@@ -230,8 +230,6 @@ export interface SharedData {
     /** Null for guests. */
     challenges: Challenges | null;
     expiredBankingConnections: ExpiredBankingConnectionNotification[];
-    /** Whether the user owns an account a manual transaction can be filed in. */
-    hasTransactionalAccounts: boolean;
     locale: string;
     translations: Record<string, string>;
     currencies: {

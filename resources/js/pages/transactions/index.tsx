@@ -105,7 +105,11 @@ import {
 } from '@/routes/ai/consent';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { type Account, type Bank } from '@/types/account';
+import {
+    filterTransactionalAccounts,
+    type Account,
+    type Bank,
+} from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import {
     type AiConsentResponse,
@@ -1425,6 +1429,10 @@ export default function Transactions({
                             <div className="flex w-full items-center justify-between gap-2">
                                 <TransactionActionsMenu
                                     transactions={allTransactions}
+                                    hasTransactionalAccounts={
+                                        filterTransactionalAccounts(accounts)
+                                            .length > 0
+                                    }
                                     onReEvaluateComplete={() => {
                                         setRowSelection({});
                                         refreshTransactions();

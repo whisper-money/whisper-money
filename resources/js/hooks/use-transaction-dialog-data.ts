@@ -17,8 +17,9 @@ export interface TransactionDialogData {
 
 /**
  * The lists the add and import dialogs need, fetched the first time one is
- * opened rather than shipped with the page: both live in the app chrome, and
- * most visits never press either.
+ * opened rather than shipped with the page: the import button lives in the app
+ * chrome, on screens that never load them, and most visits never press either
+ * button.
  */
 export function useTransactionDialogData() {
     const [data, setData] = useState<TransactionDialogData | null>(null);

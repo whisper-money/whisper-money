@@ -26,7 +26,7 @@ it('can view transactions page', function () {
 it('can open add transaction dialog', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
-    // Pinned: the factory picks a random type, and the header's add button is
+    // Pinned: the factory picks a random type, and the add button is
     // off for a user whose only account cannot hold a transaction.
     Account::factory()->create([
         'user_id' => $user->id,
@@ -41,6 +41,25 @@ it('can open add transaction dialog', function () {
         ->click('[data-testid="add-transaction-button"]')
         ->wait(0.5)
         ->assertSee('Create Transaction')
+        ->assertNoJavascriptErrors();
+});
+
+it('offers adding a transaction above the list, not in the app header', function () {
+    $user = User::factory()->onboarded()->create();
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'type' => 'checking',
+    ]);
+
+    actingAs($user);
+
+    visit('/dashboard')
+        ->assertNotPresent('[data-testid="add-transaction-button"]')
+        ->assertNoJavascriptErrors();
+
+    visit('/transactions')
+        ->assertPresent('[data-testid="add-transaction-button"]')
+        ->assertNotPresent('[data-testid="page-header"] [data-testid="add-transaction-button"]')
         ->assertNoJavascriptErrors();
 });
 

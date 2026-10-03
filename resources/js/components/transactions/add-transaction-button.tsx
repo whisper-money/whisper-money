@@ -8,20 +8,24 @@ import {
 } from '@/components/ui/tooltip';
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
 import { refreshPageAfterWrite } from '@/lib/refresh-page';
-import { type SharedData } from '@/types';
 import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+interface AddTransactionButtonProps {
+    /** Whether the user owns an account a manual transaction can be filed in. */
+    hasTransactionalAccounts: boolean;
+}
+
 /**
- * Adding a transaction by hand from anywhere in the app. A quarter of active
- * users never connect a bank, so this is their only way in and it cannot
- * depend on which screen they happen to be on.
+ * Adding a transaction by hand, from right above the transactions list so
+ * what was just entered can be checked without scrolling back up. A quarter
+ * of active users never connect a bank, so this is their only way in.
  */
-export function AddTransactionButton() {
-    const { hasTransactionalAccounts } = usePage<SharedData>().props;
+export function AddTransactionButton({
+    hasTransactionalAccounts,
+}: AddTransactionButtonProps) {
     const { data, loading, load } = useTransactionDialogData();
     const [open, setOpen] = useState(false);
     // Set only by the toast's "Change category", which reopens the same dialog
