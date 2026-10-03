@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+        "whisper-money": {
+            "type": "http",
+            "url": "https://whisper.money/mcp/oauth"
+        }
+    }
+}

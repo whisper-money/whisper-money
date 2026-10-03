@@ -1,0 +1,13 @@
+{
+    "name": "whisper-money",
+    "displayName": "Whisper Money",
+    "description": "Work with your own Whisper Money finances from Claude Code: spending, cashflow, net worth, budgets, categories, labels and automation rules, plus the product documentation.",
+    "author": {
+        "name": "Whisper Money",
+        "url": "https://whisper.money"
+    },
+    "homepage": "https://whisper.money",
+    "repository": "https://github.com/whisper-money/whisper-money",
+    "license": "CC-BY-NC-4.0",
+    "keywords": ["finance", "personal-finance", "budgeting", "mcp"]
+}
