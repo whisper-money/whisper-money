@@ -28,7 +28,7 @@ class BankNameMatcher
         $banks = Bank::query()
             ->availableForUser($user)
             ->get(['id', 'name', 'logo', 'user_id'])
-            ->map(fn (Bank $bank): array => ['bank' => $bank, 'normalized' => $this->normalize($bank->name)])
+            ->map(fn (Bank $bank): array => ['bank' => $bank, 'normalized' => self::normalize($bank->name)])
             ->filter(fn (array $entry): bool => $entry['normalized'] !== '')
             // Longest first, so "Wise Business" beats "Wise" when both fit.
             ->sortByDesc(fn (array $entry): int => mb_strlen($entry['normalized']))
@@ -37,7 +37,7 @@ class BankNameMatcher
         $matches = [];
 
         foreach ($names as $name) {
-            $matches[$name] = $this->find($banks, $this->normalize($name));
+            $matches[$name] = $this->find($banks, self::normalize($name));
         }
 
         return $matches;
@@ -64,7 +64,12 @@ class BankNameMatcher
         return $contained['bank'] ?? null;
     }
 
-    private function normalize(string $value): string
+    /**
+     * A bank name as the matcher compares it: lower case, no accents, words
+     * separated by single spaces. Shared with the import's own bank creation,
+     * so "Lares" and "LARES" are one bank there too.
+     */
+    public static function normalize(string $value): string
     {
         return Str::of(Str::ascii($value))
             ->lower()

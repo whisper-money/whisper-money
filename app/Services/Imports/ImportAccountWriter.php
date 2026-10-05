@@ -4,6 +4,7 @@ namespace App\Services\Imports;
 
 use App\Enums\ImportAccountAction;
 use App\Models\Account;
+use App\Models\Bank;
 use App\Models\Import;
 use App\Services\AccountWriteService;
 use App\Services\CurrencyOptions;
@@ -20,6 +21,11 @@ use RuntimeException;
  */
 class ImportAccountWriter
 {
+    /** @var array<string, Bank> the user's own banks this run resolved, by normalized name */
+    private array $ownBanks = [];
+
+    private int $banksCreated = 0;
+
     public function __construct(
         private AccountWriteService $accountWriter,
         private CurrencyOptions $currencyOptions,
@@ -30,6 +36,9 @@ class ImportAccountWriter
      */
     public function write(Import $import, array $plan): ImportAccountMap
     {
+        $this->ownBanks = [];
+        $this->banksCreated = 0;
+
         $map = new ImportAccountMap;
         $entries = collect($plan);
 
@@ -49,11 +58,10 @@ class ImportAccountWriter
             }
         }
 
-        $created = $entries->where('action', ImportAccountAction::Create->value)->count();
-
         $import->recordStats(['accounts' => [
-            'created' => $created,
+            'created' => $entries->where('action', ImportAccountAction::Create->value)->count(),
             'mapped' => $entries->where('action', ImportAccountAction::Map->value)->count(),
+            'banks_created' => $this->banksCreated,
         ]]);
 
         return $map;
@@ -88,38 +96,77 @@ class ImportAccountWriter
             'name' => $entry['name'],
             'type' => $entry['type'],
             'currency_code' => $entry['currency_code'],
-            'bank_id' => $entry['bank_id'] ?? null,
+            'bank_id' => $this->bankIdFor($import, $entry),
         ], $import->space_id);
 
         $account->forceFill([
             'import_id' => $import->id,
-            'iban' => $this->normalizeIban($entry['iban'] ?? null),
+            'iban' => ImportIban::normalize($entry['iban'] ?? null),
         ])->save();
 
         return $account;
     }
 
     /**
-     * The request already refused anything but a manual account of the user's
-     * own in this space. Checked again here because a bank could have been
-     * connected to it while the import waited in the queue, and a connected
-     * account must never receive imported rows.
+     * The bank an account goes in: the one picked, or a bank of the user's own
+     * named after the other app's when nothing in the catalog matched. Every
+     * account naming the same bank shares it, and one the user already has
+     * under that name is reused, so importing the file again creates none.
+     *
+     * @param  array<string, mixed>  $entry
+     */
+    private function bankIdFor(Import $import, array $entry): ?string
+    {
+        if (filled($entry['bank_id'] ?? null)) {
+            return (string) $entry['bank_id'];
+        }
+
+        $name = trim((string) ($entry['new_bank_name'] ?? ''));
+
+        if ($name === '') {
+            return null;
+        }
+
+        return ($this->ownBanks[BankNameMatcher::normalize($name)] ??= $this->ownBank($import, $name))->id;
+    }
+
+    private function ownBank(Import $import, string $name): Bank
+    {
+        $normalized = BankNameMatcher::normalize($name);
+
+        $existing = Bank::query()
+            ->where('user_id', $import->user_id)
+            ->get(['id', 'name', 'user_id'])
+            ->first(fn (Bank $bank): bool => BankNameMatcher::normalize($bank->name) === $normalized);
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $this->banksCreated++;
+
+        return Bank::query()->forceCreate([
+            'name' => $name,
+            'user_id' => $import->user_id,
+            'import_id' => $import->id,
+        ]);
+    }
+
+    /**
+     * The request already refused anything but an account the import may
+     * write into. Checked again here, under the same rules, because the
+     * account could have been connected to a bank or archived while the
+     * import waited in the queue, and a connected account must never receive
+     * imported rows.
      */
     private function mapTarget(Import $import, string $accountId): Account
     {
-        $account = $import->user->accounts()->forSpace((string) $import->space_id)->find($accountId);
+        $account = ImportPlanValidator::mappableAccounts($import->user, (string) $import->space_id)->find($accountId);
 
-        if ($account === null || $account->isConnected()) {
-            throw new RuntimeException('The account picked for the import is no longer a manual account of this space.');
+        if ($account === null) {
+            throw new RuntimeException('The account picked for the import can no longer receive imported transactions.');
         }
 
         return $account;
-    }
-
-    private function normalizeIban(?string $iban): ?string
-    {
-        $normalized = strtoupper((string) preg_replace('/\s+/', '', (string) $iban));
-
-        return preg_match('/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/', $normalized) === 1 ? $normalized : null;
     }
 }

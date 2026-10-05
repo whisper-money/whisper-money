@@ -77,6 +77,10 @@ class StoreFullImportRequest extends FormRequest
             'accounts.*.type' => ['required_if:accounts.*.action,create', 'nullable', Rule::in(ImportPlanValidator::transactionalTypeValues())],
             'accounts.*.currency_code' => ['required_if:accounts.*.action,create', 'nullable', Rule::in(app(CurrencyOptions::class)->accountCodes())],
             'accounts.*.bank_id' => ['nullable', 'uuid', Rule::exists(Bank::class, 'id')->where(fn ($query) => $query->whereNull('user_id')->orWhere('user_id', $this->user()->id))],
+            // A bank of the user's own, created by the import when nothing in
+            // the catalog matched the other app's bank. `bank_id` wins when
+            // both arrive.
+            'accounts.*.new_bank_name' => ['nullable', 'string', 'max:255'],
             'accounts.*.iban' => ['nullable', 'string', 'max:64'],
             'accounts.*.target_account_id' => ['required_if:accounts.*.action,map', 'nullable', 'uuid'],
             'accounts.*.merge_into_key' => ['required_if:accounts.*.action,merge', 'nullable', 'string', 'max:255'],
