@@ -46,6 +46,12 @@ class FullImporter
      */
     public function run(Import $import, int $transactionSeconds = self::TRANSACTIONS_SECONDS_PER_RUN): bool
     {
+        // A late retry, or a run queued twice: whatever happened to the
+        // import since, it is not this run's to write any more.
+        if (! in_array($import->status, [ImportStatus::Queued, ImportStatus::Processing], true)) {
+            return true;
+        }
+
         if (! isset($import->plan['resolved'])) {
             $this->prepare($import);
         }
@@ -100,7 +106,9 @@ class FullImporter
         $import->forceFill(['status' => ImportStatus::Processing, 'started_at' => now()])->save();
         $plan = $import->plan ?? [];
 
-        if ($import->mode === ImportMode::Wipe) {
+        // The wipe deletes the user's accounts, so it runs once whatever
+        // happens next: `stats.wiped` is written as soon as it is done.
+        if ($import->mode === ImportMode::Wipe && ! isset($import->stats['wiped'])) {
             $import->recordStage(ImportStage::Wipe);
             $import->recordStats(['wiped' => $this->wiper->wipe($import)]);
         }

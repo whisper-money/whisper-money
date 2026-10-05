@@ -140,7 +140,8 @@ it('does not start until every row it expects has arrived, and replaces a re-sen
         'expected_balances' => 0,
     ])->assertCreated()->json('id');
 
-    $chunk = ['kind' => 'transactions', 'position' => 0, 'rows' => [Fixtures::row('a0', '2026-09-01', -100, 'Coffee')]];
+    $one = Fixtures::row('a0', '2026-09-01', -100, 'Coffee');
+    $chunk = ['kind' => 'transactions', 'position' => 0, 'rows' => [$one]];
 
     $this->postJson(route('api.full-imports.chunks.store', $id), $chunk)->assertJsonPath('received', 1);
     $this->postJson(route('api.full-imports.chunks.store', $id), $chunk)->assertJsonPath('received', 1);
@@ -148,13 +149,18 @@ it('does not start until every row it expects has arrived, and replaces a re-sen
 
     Queue::assertNothingPushed();
 
-    $this->postJson(route('api.full-imports.chunks.store', $id), [...$chunk, 'position' => 1])->assertJsonPath('received', 2);
+    // Two rows fit one chunk: a second position is past what the plan announced.
+    $this->postJson(route('api.full-imports.chunks.store', $id), [...$chunk, 'position' => 1])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('position');
+
+    $this->postJson(route('api.full-imports.chunks.store', $id), [...$chunk, 'rows' => [$one, $one]])->assertJsonPath('received', 2);
     $this->postJson(route('api.full-imports.start', $id))->assertOk()->assertJsonPath('status', 'queued');
 
     Queue::assertPushed(ProcessFullImportJob::class, 1);
 
     // Started imports take no more rows and cannot be started twice.
-    $this->postJson(route('api.full-imports.chunks.store', $id), [...$chunk, 'position' => 2])->assertConflict();
+    $this->postJson(route('api.full-imports.chunks.store', $id), $chunk)->assertConflict();
     $this->postJson(route('api.full-imports.start', $id))->assertConflict();
 });
 
@@ -218,4 +224,62 @@ it('files ignored movements under a transfer category only', function () {
     postFullImportPlan(Fixtures::plan([Fixtures::newAccount('a0', 'Wise')], [
         ['key' => 'ignored', 'action' => 'match', 'category_id' => Fixtures::seeded($user, 'Other transfers')->id],
     ]))->assertCreated();
+});
+
+it('refuses more rows than the plan announced, amounts past a bigint and currencies an account cannot have', function () {
+    $user = Fixtures::user();
+
+    $id = $this->actingAs($user)->postJson(route('api.full-imports.store'), [
+        ...Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]),
+        'expected_transactions' => 2,
+        'expected_balances' => 0,
+    ])->assertCreated()->json('id');
+
+    $row = Fixtures::row('a0', '2026-09-01', -100, 'Coffee');
+    $post = fn (array $body) => $this->postJson(route('api.full-imports.chunks.store', $id), ['kind' => 'transactions', 'position' => 0, ...$body]);
+
+    $post(['rows' => [$row, $row, $row]])->assertUnprocessable()->assertJsonValidationErrors('rows');
+    $post(['rows' => [[...$row, 'amount' => '9223372036854775808']]])->assertUnprocessable()->assertJsonValidationErrors('rows.0.amount');
+    $post(['rows' => [[...$row, 'currency_code' => 'XYZ']]])->assertUnprocessable()->assertJsonValidationErrors('rows.0.currency_code');
+    $post(['rows' => [[...$row, 'currency_code' => 'usd']]])->assertOk();
+
+    $this->postJson(route('api.full-imports.chunks.store', $id), ['kind' => 'balances', 'position' => 0, 'rows' => [
+        ['account_key' => 'a0', 'date' => '2026-09-01', 'balance' => 100],
+    ]])->assertUnprocessable()->assertJsonValidationErrors('position');
+
+    expect(ImportChunk::query()->where('import_id', $id)->value('rows')[0]['currency_code'])->toBe('USD');
+});
+
+it('keeps a draft that is still receiving chunks out of the prune', function () {
+    $user = Fixtures::user();
+
+    $id = $this->actingAs($user)->postJson(route('api.full-imports.store'), [
+        ...Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]),
+        'expected_transactions' => 1,
+        'expected_balances' => 0,
+    ])->assertCreated()->json('id');
+
+    Import::query()->whereKey($id)->update(['updated_at' => now()->subDays(2)]);
+
+    $this->postJson(route('api.full-imports.chunks.store', $id), [
+        'kind' => 'transactions', 'position' => 0, 'rows' => [Fixtures::row('a0', '2026-09-01', -100, 'Coffee')],
+    ])->assertOk();
+
+    $this->artisan('model:prune', ['--model' => [Import::class]])->assertSuccessful();
+
+    expect(Import::query()->find($id))->not->toBeNull();
+});
+
+it('starts and creates under a lock, one import at a time', function () {
+    Queue::fake([ProcessFullImportJob::class]);
+    $user = Fixtures::user();
+    $running = Import::factory()->for($user)->draft()->create(['plan' => ['expected' => ['transactions' => 0, 'balances' => 0]]]);
+    $other = Import::factory()->for($user)->create(['status' => ImportStatus::Processing]);
+
+    $this->actingAs($user)->postJson(route('api.full-imports.start', $running))->assertConflict();
+
+    Queue::assertNothingPushed();
+
+    expect($running->fresh()->status)->toBe(ImportStatus::Draft)
+        ->and($other->fresh()->status)->toBe(ImportStatus::Processing);
 });

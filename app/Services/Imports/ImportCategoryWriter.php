@@ -6,6 +6,7 @@ use App\Enums\CategoryType;
 use App\Enums\ImportCategoryAction;
 use App\Models\Category;
 use App\Models\Import;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -73,9 +74,11 @@ class ImportCategoryWriter
     }
 
     /**
-     * A category of that name may already sit under the same parent, from an
-     * earlier import of the same file or made by hand since the wizard looked:
-     * names are unique among siblings, so it is reused rather than refused.
+     * A category of that name may already sit under the same parent in the
+     * import's space, from an earlier import of the same file or made by hand
+     * since the wizard looked: names are unique among siblings, so it is
+     * reused rather than refused. One in another space of the same user is
+     * never reused: its rows would land outside the space being imported to.
      *
      * A child takes its parent's type and cashflow direction, the same rule the
      * category form follows, so a subtree never mixes types.
@@ -85,8 +88,7 @@ class ImportCategoryWriter
      */
     private function findOrCreate(Import $import, array $entry, ?string $parentId): array
     {
-        $existing = Category::query()
-            ->where('user_id', $import->user_id)
+        $existing = $this->inSpace($import)
             ->where('parent_id', $parentId)
             ->where('name', $entry['name'])
             ->first();
@@ -95,14 +97,14 @@ class ImportCategoryWriter
             return [$existing, false];
         }
 
-        $parent = $parentId !== null ? Category::query()->find($parentId) : null;
+        $parent = $parentId !== null ? $this->inSpace($import)->find($parentId) : null;
         $type = $parent !== null ? $parent->type : CategoryType::from((string) $entry['type']);
 
         $category = Category::query()->create([
             'user_id' => $import->user_id,
             'space_id' => $import->space_id,
-            'parent_id' => $parentId,
-            'name' => $entry['name'],
+            'parent_id' => $parent?->id,
+            'name' => $this->availableName($import, (string) $entry['name'], $parent?->id),
             'icon' => $entry['icon'],
             'color' => $entry['color'],
             'type' => $type,
@@ -111,5 +113,43 @@ class ImportCategoryWriter
         ]);
 
         return [$category, true];
+    }
+
+    /**
+     * Category names are unique per user and parent across all of the user's
+     * spaces (the database index ignores the space), so a root name another
+     * space already uses gets the source in brackets, like the separate
+     * account for a connected namesake does.
+     */
+    private function availableName(Import $import, string $name, ?string $parentId): string
+    {
+        $taken = fn (string $candidate): bool => Category::query()
+            ->where('user_id', $import->user_id)
+            ->where('parent_id', $parentId)
+            ->where('name', $candidate)
+            ->exists();
+
+        if (! $taken($name)) {
+            return $name;
+        }
+
+        $suffixed = "{$name} ({$import->source->nameSuffix()})";
+        $candidate = $suffixed;
+
+        for ($attempt = 2; $taken($candidate); $attempt++) {
+            $candidate = "{$suffixed} {$attempt}";
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * @return Builder<Category>
+     */
+    private function inSpace(Import $import): Builder
+    {
+        return Category::query()
+            ->where('user_id', $import->user_id)
+            ->forSpace((string) $import->space_id);
     }
 }

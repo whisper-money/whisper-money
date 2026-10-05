@@ -141,7 +141,13 @@ class ImportHistoryPresenter
      */
     private function undoSummary(Import $import): array
     {
-        $created = $import->accounts()->withCount('transactions')->orderBy('name')->get(['id', 'name']);
+        // An account the import created that has since been connected to a
+        // bank is not deleted by undo: only what the import wrote leaves it.
+        [$connected, $created] = $import->accounts()
+            ->withCount('transactions')
+            ->orderBy('name')
+            ->get(['id', 'name', 'banking_connection_id'])
+            ->partition(fn (Account $account): bool => $account->isConnected());
 
         $intoOwn = $import->transactions()
             ->whereNotIn('account_id', $created->pluck('id'))
@@ -160,7 +166,8 @@ class ImportHistoryPresenter
             'accounts' => $created->map(fn (Account $account): array => [
                 'name' => $account->name,
                 'transactions' => (int) $account->getAttribute('transactions_count'),
-            ])->all(),
+            ])->values()->all(),
+            'connected_accounts' => $connected->map(fn (Account $account): array => ['name' => $account->name])->values()->all(),
             'categories' => $import->categories()->count(),
             'transactions' => $import->transactions()->count(),
             'balances' => $import->balances()->count(),

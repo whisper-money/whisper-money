@@ -7,10 +7,13 @@ use App\Jobs\ProcessFullImportJob;
 use App\Jobs\ReassignTransactionsToBudgets;
 use App\Listeners\AssignTransactionToBudget;
 use App\Models\Account;
+use App\Models\AccountBalance;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
+use App\Models\Category;
 use App\Models\Import;
+use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Imports\FullImporter;
@@ -69,7 +72,7 @@ it('carries a large import over several runs, picking up where the last one stop
 });
 
 it('queues the next run when one stops at its deadline', function () {
-    $import = Import::factory()->create(['status' => ImportStatus::Processing]);
+    $import = Import::factory()->create(['status' => ImportStatus::Processing, 'plan' => ['resolved' => ['accounts' => [], 'categories' => []]]]);
 
     $this->mock(FullImporter::class)->shouldReceive('run')->once()->andReturnFalse();
     Queue::fake();
@@ -181,4 +184,96 @@ it('wipes only the manual accounts the wizard listed, not ones already deleted',
     expect(Account::withTrashed()->whereKey($archived->id)->exists())->toBeFalse()
         ->and(Account::withTrashed()->whereKey($deleted->id)->exists())->toBeTrue()
         ->and($import->stats['wiped']['accounts'])->toBe(1);
+});
+
+it('never reuses a category from another space of the same user', function () {
+    $user = Fixtures::user();
+    $otherSpace = Space::factory()->create(['owner_id' => $user->id]);
+    $elsewhere = Category::factory()->create(['user_id' => $user->id, 'space_id' => $otherSpace->id, 'name' => 'Empresa', 'parent_id' => null]);
+
+    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')], [
+        ['key' => 'c0', 'action' => 'create', 'name' => 'Empresa', 'type' => 'expense', 'icon' => 'Wallet', 'color' => 'blue'],
+        ['key' => 'c1', 'action' => 'create', 'name' => 'Gastos', 'parent_key' => 'c0', 'icon' => 'Wallet', 'color' => 'blue'],
+    ]), [Fixtures::row('a0', '2026-09-01', -100, 'Coffee', ['category_key' => 'c1'])]);
+
+    $created = Category::query()->where('import_id', $import->id)->get()->keyBy('name');
+
+    // The name is unique per user across spaces, so the new root gets the source added.
+    expect($created->keys()->sort()->values()->all())->toBe(['Empresa (Banktrack)', 'Gastos'])
+        ->and($created->every(fn (Category $category): bool => $category->space_id === $user->current_space_id))->toBeTrue()
+        ->and($created['Gastos']->parent_id)->toBe($created['Empresa (Banktrack)']->id)
+        ->and($elsewhere->fresh()->transactions()->exists())->toBeFalse();
+});
+
+it('does nothing for an import that is no longer queued or processing', function () {
+    $import = Import::factory()->create(['status' => ImportStatus::Completed, 'plan' => ['accounts' => [Fixtures::newAccount('a0', 'Wise')]]]);
+
+    expect(app(FullImporter::class)->run($import))->toBeTrue()
+        ->and(Account::query()->where('import_id', $import->id)->exists())->toBeFalse();
+});
+
+it('fails a retry that finds the import halfway through its preparation', function () {
+    $import = Import::factory()->create(['status' => ImportStatus::Processing, 'plan' => ['accounts' => []]]);
+
+    $this->mock(FullImporter::class)->shouldNotReceive('run');
+
+    $job = new ProcessFullImportJob($import);
+    $job->withFakeQueueInteractions();
+    app()->call([$job, 'handle']);
+
+    $job->assertFailed();
+});
+
+it('never wipes twice', function () {
+    $user = Fixtures::user();
+    $import = stageFullImport($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')], mode: 'wipe'), [
+        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
+    ]);
+    $import->recordStats(['wiped' => ['accounts' => 1, 'transactions' => 3]]);
+    $manual = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Checking]);
+
+    app(FullImporter::class)->run($import->refresh());
+
+    expect($manual->fresh())->not->toBeNull();
+});
+
+it('refuses at run time a mapped account archived while the import waited', function () {
+    $user = Fixtures::user();
+    $own = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Checking]);
+    $import = stageFullImport($this, $user, Fixtures::plan([
+        ['key' => 'a0', 'action' => 'map', 'target_account_id' => $own->id],
+    ]), [Fixtures::row('a0', '2026-09-01', -100, 'Coffee')]);
+
+    $own->update(['archived_at' => now()]);
+
+    expect(fn () => app(FullImporter::class)->run($import))->toThrow(RuntimeException::class);
+});
+
+it('stores only real IBANs', function (string $given, ?string $stored) {
+    $user = Fixtures::user();
+
+    $import = Fixtures::run($this, $user, Fixtures::plan([
+        Fixtures::newAccount('a0', 'Wise', ['iban' => $given]),
+    ]), [Fixtures::row('a0', '2026-09-01', -100, 'Coffee')]);
+
+    expect(Account::query()->where('import_id', $import->id)->value('iban'))->toBe($stored);
+})->with([
+    'valid, spaced' => ['ES91 2100 0418 4502 0005 1332', 'ES9121000418450200051332'],
+    'masked with X' => ['ES12 3456 7890 1234 5678 XXXX', null],
+    'masked with stars' => ['ES91 2100 **** **** 0005 1332', null],
+    'wrong check digits' => ['ES00 2100 0418 4502 0005 1332', null],
+    'not an IBAN' => ['Cuenta Corriente', null],
+]);
+
+it('clears the links of the rows an import wrote when its history row is deleted', function () {
+    $user = Fixtures::user();
+    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]), [
+        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
+    ], [['account_key' => 'a0', 'date' => '2026-09-01', 'balance' => 100]]);
+
+    $import->delete();
+
+    expect(Transaction::query()->where('description', 'Coffee')->value('import_id'))->toBeNull()
+        ->and(AccountBalance::query()->whereNotNull('import_id')->exists())->toBeFalse()
+        ->and(AccountBalance::query()->first()->toArray())->not->toHaveKey('import_id');
 });

@@ -2,20 +2,25 @@
 
 namespace App\Services\Imports;
 
+use App\Enums\ImportStatus;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Import;
 use App\Models\Transaction;
 use App\Services\CategoryTree;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Takes a full import back out of the user's data: the accounts it created,
  * with everything on them (rows added since by hand or by another import
  * included, which the undo dialog says), the movements and balances it put
- * into the user's own accounts, and the categories it created. The user's own
- * accounts stay.
+ * into the user's own accounts, and the categories and banks it created. The
+ * user's own accounts stay, and so does an account the import created that
+ * has since been connected to a bank: only what the import wrote leaves it.
+ *
+ * Runs from UndoImportJob, in short steps rather than one transaction, and
+ * every step only removes what is still there, so a retry finishes the job.
  *
  * What a "start from scratch" import wiped before it ran is gone for good;
  * undo cannot bring it back.
@@ -29,16 +34,24 @@ class ImportUndoer
 
     public function undo(Import $import): void
     {
-        DB::transaction(function () use ($import): void {
-            Transaction::withTrashed()->where('import_id', $import->id)->forceDelete();
-            AccountBalance::query()->where('import_id', $import->id)->delete();
+        $this->purger->deleteInChunks(Transaction::withTrashed()->where('import_id', $import->id));
+        $this->purger->deleteInChunks(AccountBalance::query()->where('import_id', $import->id));
 
-            $this->purger->purge(Account::withTrashed()->where('import_id', $import->id)->pluck('id'));
+        $created = Account::withTrashed()->where('import_id', $import->id)->get(['id', 'banking_connection_id']);
+        [$connected, $manual] = $created->partition(fn (Account $account): bool => $account->isConnected());
 
-            $this->deleteCreatedCategories($import);
+        $this->purger->purge($manual->pluck('id'));
 
-            $import->forceFill(['undone_at' => now()])->save();
-        });
+        // Kept, and no longer counted as the import's.
+        Account::withTrashed()->whereIn('id', $connected->pluck('id'))->update(['import_id' => null]);
+
+        $this->deleteCreatedCategories($import);
+        $this->deleteCreatedBanks($import);
+
+        $import->forceFill([
+            'status' => ImportStatus::tryFrom((string) ($import->stats['undo']['previous_status'] ?? '')) ?? ImportStatus::Completed,
+            'undone_at' => now(),
+        ])->save();
     }
 
     /**
@@ -62,6 +75,24 @@ class ImportUndoer
                 ->update(['category_source' => null]);
 
             $this->tree->deleteSubtree($root);
+        }
+    }
+
+    /**
+     * A bank the import created goes when nothing points at it any more. One
+     * the user has since put another account in stays: deleting a bank takes
+     * its accounts with it (the foreign key cascades), trashed ones included.
+     */
+    private function deleteCreatedBanks(Import $import): void
+    {
+        foreach (Bank::query()->where('import_id', $import->id)->get() as $bank) {
+            if (Account::withTrashed()->where('bank_id', $bank->id)->exists()) {
+                $bank->forceFill(['import_id' => null])->save();
+
+                continue;
+            }
+
+            $bank->forceDelete();
         }
     }
 }

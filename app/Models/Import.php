@@ -13,8 +13,8 @@ use Database\Factories\ImportFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +36,7 @@ use Illuminate\Support\Facades\DB;
 class Import extends Model
 {
     /** @use HasFactory<ImportFactory> */
-    use BelongsToSpace, HasFactory, HasUuids, MassPrunable;
+    use BelongsToSpace, HasFactory, HasUuids, Prunable;
 
     protected $fillable = [
         'user_id',
@@ -75,6 +75,20 @@ class Import extends Model
             'finished_at' => 'datetime',
             'undone_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The movements and balances an import wrote point back at it through a
+     * plain column, not a foreign key (those tables are too large to add one
+     * to), so deleting the history row clears the link here instead. Pruning
+     * goes through this too: it deletes model by model.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Import $import): void {
+            Transaction::withTrashed()->where('import_id', $import->id)->update(['import_id' => null]);
+            AccountBalance::query()->where('import_id', $import->id)->update(['import_id' => null]);
+        });
     }
 
     /**
@@ -121,6 +135,12 @@ class Import extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    /** @return HasMany<Bank, $this> */
+    public function banks(): HasMany
+    {
+        return $this->hasMany(Bank::class);
+    }
+
     /** @return HasMany<AccountBalance, $this> */
     public function balances(): HasMany
     {
@@ -140,6 +160,21 @@ class Import extends Model
         return $query
             ->whereNull('undone_at')
             ->whereIn('status', [ImportStatus::Completed->value, ImportStatus::Failed->value]);
+    }
+
+    /**
+     * Imports whose rows are still in the user's data or on their way out:
+     * the undoable ones and the one being undone. What keeps the Settings
+     * page around past the window.
+     *
+     * @param  Builder<Import>  $query
+     * @return Builder<Import>
+     */
+    public function scopeInUserData(Builder $query): Builder
+    {
+        return $query
+            ->whereNull('undone_at')
+            ->whereIn('status', [ImportStatus::Completed->value, ImportStatus::Failed->value, ImportStatus::Undoing->value]);
     }
 
     /**

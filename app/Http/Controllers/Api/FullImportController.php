@@ -12,11 +12,13 @@ use App\Http\Requests\Api\StoreFullImportRequest;
 use App\Jobs\ProcessFullImportJob;
 use App\Models\Bank;
 use App\Models\Import;
+use App\Models\User;
 use App\Services\Imports\BankNameMatcher;
 use App\Services\Imports\ImportHistoryPresenter;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The full import wizard's backend. The browser parses the file; this takes
@@ -49,18 +51,33 @@ class FullImportController extends Controller
     public function store(StoreFullImportRequest $request): JsonResponse
     {
         $user = $request->user();
-
-        if ($user->imports()->running()->exists()) {
-            return response()->json(['message' => __('An import is already running. Wait for it to finish first.')], 409);
-        }
-
-        // An upload abandoned halfway left a draft behind with nothing written
-        // from it yet; its staged rows go with it.
-        $user->imports()->where('status', ImportStatus::Draft->value)->delete();
-
         $validated = $request->validated();
 
-        $import = $user->imports()->create([
+        $import = $this->whileHoldingUser($user, function () use ($user, $validated): ?Import {
+            if ($user->imports()->running()->exists()) {
+                return null;
+            }
+
+            // An upload abandoned halfway left a draft behind with nothing
+            // written from it yet; its staged rows go with it.
+            $user->imports()->where('status', ImportStatus::Draft->value)->get()->each->delete();
+
+            return $this->createDraft($user, $validated);
+        });
+
+        if ($import === null) {
+            return $this->alreadyRunning();
+        }
+
+        return response()->json($this->presenter->status($import), 201);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function createDraft(User $user, array $validated): Import
+    {
+        return $user->imports()->create([
             'space_id' => $user->activeSpace()->id,
             'source' => $validated['source'],
             'file_name' => $validated['file_name'] ?? null,
@@ -77,8 +94,6 @@ class FullImportController extends Controller
             'options' => ['profile' => $validated['profile'] ?? null],
             'stats' => ['stage' => ImportStage::Upload->value],
         ]);
-
-        return response()->json($this->presenter->status($import), 201);
     }
 
     public function storeChunk(StoreFullImportChunkRequest $request, Import $import): JsonResponse
@@ -95,6 +110,9 @@ class FullImportController extends Controller
             ['rows' => $rows, 'row_count' => count($rows)],
         );
 
+        // An upload still going is not an abandoned draft (see Import::prunable).
+        $import->touch();
+
         return response()->json(['received' => $import->stagedRowCount($kind)]);
     }
 
@@ -108,15 +126,18 @@ class FullImportController extends Controller
             }
         }
 
-        // A conditional update rather than a read and a save: two starts sent
-        // at once (a double click, a retried request) must not both queue the
-        // job, or the new accounts would be written twice.
-        $claimed = Import::query()
-            ->whereKey($import->id)
-            ->where('status', ImportStatus::Draft->value)
-            ->update(['status' => ImportStatus::Queued->value]);
+        // Held on the user row, with a conditional update: two starts sent at
+        // once (a double click, a retried request, two tabs) must not both
+        // queue a job, or the new accounts would be written twice.
+        $claimed = $this->whileHoldingUser($request->user(), fn (): bool => ! $request->user()->imports()->running()->exists()
+            && Import::query()
+                ->whereKey($import->id)
+                ->where('status', ImportStatus::Draft->value)
+                ->update(['status' => ImportStatus::Queued->value]) === 1);
 
-        abort_if($claimed === 0, 409, __('This import has already started.'));
+        if (! $claimed) {
+            return $this->alreadyRunning();
+        }
 
         $import->recordStage(ImportStage::Queued);
 
@@ -130,6 +151,29 @@ class FullImportController extends Controller
         $this->authorize('view', $import);
 
         return response()->json($this->presenter->status($import));
+    }
+
+    /**
+     * Run a check-then-write with the user's row locked, so "one import at a
+     * time" holds when two requests arrive together.
+     *
+     * @template TResult
+     *
+     * @param  callable(): TResult  $callback
+     * @return TResult
+     */
+    private function whileHoldingUser(User $user, callable $callback): mixed
+    {
+        return DB::transaction(function () use ($user, $callback): mixed {
+            User::query()->whereKey($user->id)->lockForUpdate()->first();
+
+            return $callback();
+        });
+    }
+
+    private function alreadyRunning(): JsonResponse
+    {
+        return response()->json(['message' => __('An import is already running. Wait for it to finish first.')], 409);
     }
 
     /**

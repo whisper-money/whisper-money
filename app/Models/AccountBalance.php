@@ -26,6 +26,11 @@ class AccountBalance extends Model
         'import_id',
     ];
 
+    /** @var list<string> */
+    protected $hidden = [
+        'import_id',
+    ];
+
     protected function casts(): array
     {
         return [

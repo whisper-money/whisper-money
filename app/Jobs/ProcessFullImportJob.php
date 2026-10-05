@@ -7,6 +7,7 @@ use App\Models\Import;
 use App\Services\Imports\FullImporter;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -29,15 +30,34 @@ class ProcessFullImportJob implements ShouldQueue
     public int $timeout = 600;
 
     /**
-     * A retry of the first run would write the new accounts a second time. A
-     * failed import is undone from Settings and started again instead.
+     * Safe to retry once the accounts and categories are resolved: the
+     * movements and balances are written a committed chunk at a time, and a
+     * chunk that was written is no longer staged. A retry that finds the
+     * import mid-preparation fails instead (see handle()).
      */
-    public int $tries = 1;
+    public int $tries = 3;
 
     public function __construct(public Import $import) {}
 
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [10, 60];
+    }
+
     public function handle(FullImporter $importer): void
     {
+        // Processing without resolved accounts means an earlier attempt died
+        // while creating them: running the preparation again would create
+        // them twice. The import fails, and Settings can undo what it wrote.
+        if ($this->import->status === ImportStatus::Processing && ! isset($this->import->plan['resolved'])) {
+            $this->fail(new RuntimeException('The import stopped while it was preparing its accounts and categories.'));
+
+            return;
+        }
+
         if (! $importer->run($this->import)) {
             self::dispatch($this->import->fresh() ?? $this->import);
         }

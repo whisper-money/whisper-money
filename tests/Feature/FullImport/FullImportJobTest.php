@@ -178,7 +178,7 @@ it('imports accounts, the category tree, transfers, ignored rows and balances', 
     expect($revolut->transactions()->count())->toBe(0);
 
     expect($import->stats['transactions'])->toMatchArray(['total' => 10, 'processed' => 10, 'imported' => 8, 'duplicates' => 2, 'skipped' => 0])
-        ->and($import->stats['accounts'])->toEqual(['created' => 3, 'mapped' => 1])
+        ->and($import->stats['accounts'])->toEqual(['created' => 3, 'mapped' => 1, 'banks_created' => 0])
         ->and($import->stats['categories'])->toEqual(['created' => 2, 'matched' => 3])
         ->and($import->stats['balances'])->toEqual(['total' => 5, 'imported' => 3])
         ->and(collect($import->stats['per_account'])->firstWhere('account_id', $bbva->id))

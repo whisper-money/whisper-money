@@ -12,16 +12,30 @@ return new class extends Migration
      *
      * A column per table rather than a pivot: an import writes thousands of
      * transactions, undo is one indexed delete per table, and the link survives
-     * any later edit of the row. `nullOnDelete` because the import row is only
-     * the history entry: losing it must never take the user's data with it.
+     * any later edit of the row.
+     *
+     * The small tables get a foreign key that nulls the link when the history
+     * row goes. `transactions` and `account_balances` get a plain indexed
+     * column instead, like `space_id` before them: adding a foreign key there
+     * makes MySQL copy the whole table. Undo deletes by `import_id` explicitly,
+     * and an import that is deleted clears the link in code (`Import::booted`).
+     *
+     * Each table is checked first, so a run that stopped halfway can run again.
      *
      * @var list<string>
      */
-    private array $tables = ['accounts', 'categories', 'transactions', 'account_balances'];
+    private array $constrained = ['accounts', 'categories', 'banks'];
+
+    /** @var list<string> */
+    private array $indexed = ['transactions', 'account_balances'];
 
     public function up(): void
     {
-        foreach ($this->tables as $tableName) {
+        foreach ($this->constrained as $tableName) {
+            if (Schema::hasColumn($tableName, 'import_id')) {
+                continue;
+            }
+
             Schema::table($tableName, function (Blueprint $table) {
                 $table->foreignUuid('import_id')
                     ->nullable()
@@ -29,13 +43,38 @@ return new class extends Migration
                     ->nullOnDelete();
             });
         }
+
+        foreach ($this->indexed as $tableName) {
+            if (Schema::hasColumn($tableName, 'import_id')) {
+                continue;
+            }
+
+            Schema::table($tableName, function (Blueprint $table) {
+                $table->uuid('import_id')->nullable()->index();
+            });
+        }
     }
 
     public function down(): void
     {
-        foreach ($this->tables as $tableName) {
+        foreach ($this->constrained as $tableName) {
+            if (! Schema::hasColumn($tableName, 'import_id')) {
+                continue;
+            }
+
             Schema::table($tableName, function (Blueprint $table) {
                 $table->dropForeign(['import_id']);
+                $table->dropColumn('import_id');
+            });
+        }
+
+        foreach ($this->indexed as $tableName) {
+            if (! Schema::hasColumn($tableName, 'import_id')) {
+                continue;
+            }
+
+            Schema::table($tableName, function (Blueprint $table) {
+                $table->dropIndex(['import_id']);
                 $table->dropColumn('import_id');
             });
         }

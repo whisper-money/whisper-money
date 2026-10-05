@@ -482,7 +482,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             return false;
         }
 
-        return $this->canUseFullImport() || $this->imports()->undoable()->exists();
+        return $this->canUseFullImport() || $this->imports()->inUserData()->exists();
     }
 
     public function hasReceivedEmail(DripEmailType $type): bool

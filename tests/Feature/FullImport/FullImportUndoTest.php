@@ -1,10 +1,14 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\ImportStatus;
+use App\Jobs\UndoImportJob;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\Queue;
 use Tests\Support\FullImportFixtures as Fixtures;
 
 it('takes everything the import wrote back out, and nothing the user had', function () {
@@ -91,4 +95,76 @@ it('cannot undo the same import twice', function () {
 
     $this->delete(route('full-import.destroy', $import))->assertSessionHas('success');
     $this->delete(route('full-import.destroy', $import))->assertSessionHasErrors('import');
+});
+
+it('undoes on the queue, showing the import as being undone meanwhile', function () {
+    $user = Fixtures::user();
+    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]), [
+        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
+    ]);
+
+    Queue::fake([UndoImportJob::class]);
+
+    $this->delete(route('full-import.destroy', $import))->assertSessionHas('success');
+
+    $import->refresh();
+
+    expect($import->status)->toBe(ImportStatus::Undoing)
+        ->and($import->isUndoable())->toBeFalse()
+        ->and(Account::query()->where('import_id', $import->id)->exists())->toBeTrue();
+
+    Queue::assertPushed(UndoImportJob::class, 1);
+
+    // A second click does not queue it again.
+    $this->delete(route('full-import.destroy', $import))->assertSessionHasErrors('import');
+    Queue::assertPushed(UndoImportJob::class, 1);
+
+    app()->call([new UndoImportJob($import), 'handle']);
+
+    $import->refresh();
+
+    expect($import->undone_at)->not->toBeNull()
+        ->and($import->status)->toBe(ImportStatus::Completed)
+        ->and(Account::query()->where('import_id', $import->id)->exists())->toBeFalse();
+});
+
+it('puts the import back as it was when the undo fails, so it can be tried again', function () {
+    $user = Fixtures::user();
+    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]), [
+        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
+    ]);
+
+    Queue::fake([UndoImportJob::class]);
+    $this->delete(route('full-import.destroy', $import));
+
+    (new UndoImportJob($import->fresh()))->failed(new RuntimeException('boom'));
+
+    $import->refresh();
+
+    expect($import->status)->toBe(ImportStatus::Completed)
+        ->and($import->isUndoable())->toBeTrue()
+        ->and($import->stats['undo']['failed'])->toBeTrue();
+});
+
+it('keeps an imported account that has since been connected, removing only what the import wrote', function () {
+    $user = Fixtures::user();
+    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Revolut')]), [
+        Fixtures::row('a0', '2026-09-01', -100, 'Imported'),
+    ]);
+
+    $account = Account::query()->where('import_id', $import->id)->sole();
+    $account->update(['banking_connection_id' => BankingConnection::factory()->create(['user_id' => $user->id])->id]);
+    $synced = Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $account->id, 'description' => 'From the bank']);
+
+    $this->get(route('full-import.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('imports.0.summary.connected_accounts', [['name' => 'Revolut']])
+            ->where('imports.0.summary.accounts', []));
+
+    $this->delete(route('full-import.destroy', $import));
+
+    expect($account->fresh())->not->toBeNull()
+        ->and($account->fresh()->import_id)->toBeNull()
+        ->and($synced->fresh())->not->toBeNull()
+        ->and(Transaction::query()->where('import_id', $import->id)->exists())->toBeFalse();
 });

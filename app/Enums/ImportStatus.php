@@ -14,6 +14,9 @@ enum ImportStatus: string
     case Completed = 'completed';
     case Failed = 'failed';
 
+    /** Being taken back out of the user's data by UndoImportJob. */
+    case Undoing = 'undoing';
+
     /** Whether a worker has the import, or is about to. */
     public function isRunning(): bool
     {

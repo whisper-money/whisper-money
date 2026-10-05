@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\ImportStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\UndoImportJob;
 use App\Models\Import;
 use App\Services\Imports\ImportHistoryPresenter;
-use App\Services\Imports\ImportUndoer;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,19 +44,31 @@ class FullImportController extends Controller
     }
 
     /**
-     * Undo an import. Open past the window on purpose: an import made inside
-     * it has to stay undoable after it closes.
+     * Start undoing an import. Open past the window on purpose: an import made
+     * inside it has to stay undoable after it closes. The deleting happens on
+     * the queue (UndoImportJob); claiming the import with a conditional update
+     * means two clicks never queue it twice.
      */
-    public function destroy(Import $import, ImportUndoer $undoer): RedirectResponse
+    public function destroy(Import $import): RedirectResponse
     {
         $this->authorize('delete', $import);
 
-        if (! $import->isUndoable()) {
+        $previousStatus = $import->status;
+
+        $claimed = $import->isUndoable() && Import::query()
+            ->whereKey($import->id)
+            ->whereNull('undone_at')
+            ->where('status', $previousStatus->value)
+            ->update(['status' => ImportStatus::Undoing->value]) === 1;
+
+        if (! $claimed) {
             return to_route('full-import.index')->withErrors(['import' => __('This import cannot be undone.')]);
         }
 
-        $undoer->undo($import);
+        $import->recordStats(['undo' => ['previous_status' => $previousStatus->value, 'failed' => false]]);
 
-        return to_route('full-import.index')->with('success', __('Import undone.'));
+        UndoImportJob::dispatch($import->refresh());
+
+        return to_route('full-import.index')->with('success', __('The import is being undone.'));
     }
 }
