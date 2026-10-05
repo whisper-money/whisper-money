@@ -85,15 +85,41 @@ async function sendChunk(
  * Create the import, upload its rows in chunks and hand it to the queue.
  * `onProgress` hears how many rows are up, out of how many.
  */
+export type UploadStage = 'create' | 'chunks' | 'start';
+
+/**
+ * A failed upload, with the phase it failed in: creating the import, sending
+ * its rows, or handing it to the queue. The request's own error is `original`.
+ */
+export class ImportUploadError extends Error {
+    constructor(
+        public readonly stage: UploadStage,
+        public readonly original: unknown,
+    ) {
+        super(`Full import upload failed while ${stage}`);
+        this.name = 'ImportUploadError';
+    }
+}
+
+async function inStage<T>(
+    stage: UploadStage,
+    run: () => Promise<T>,
+): Promise<T> {
+    try {
+        return await run();
+    } catch (error) {
+        throw new ImportUploadError(stage, error);
+    }
+}
+
 export async function submitImport(
     payload: ImportPayload,
     transactions: TransactionPayloadRow[],
     balances: BalancePayloadRow[],
     onProgress: (sent: number, total: number) => void,
 ): Promise<ImportStatus> {
-    const { data: created } = await axios.post<ImportStatus>(
-        store.url(),
-        payload,
+    const { data: created } = await inStage('create', () =>
+        axios.post<ImportStatus>(store.url(), payload),
     );
     const total = transactions.length + balances.length;
     let sent = 0;
@@ -107,19 +133,27 @@ export async function submitImport(
         for (let offset = 0; offset < rows.length; offset += CHUNK_SIZE) {
             const chunk = rows.slice(offset, offset + CHUNK_SIZE);
 
-            await sendChunk(created.id, kind, offset / CHUNK_SIZE, chunk);
+            await inStage('chunks', () =>
+                sendChunk(created.id, kind, offset / CHUNK_SIZE, chunk),
+            );
             sent += chunk.length;
             onProgress(sent, total);
         }
     }
 
-    const { data } = await axios.post<ImportStatus>(start.url(created.id));
+    const { data } = await inStage('start', () =>
+        axios.post<ImportStatus>(start.url(created.id)),
+    );
 
     return data;
 }
 
 /** The message a refused request carries, or a generic one. */
 export function requestErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof ImportUploadError) {
+        return requestErrorMessage(error.original, fallback);
+    }
+
     if (isAxiosError(error)) {
         const data = error.response?.data as
             | { message?: string; errors?: Record<string, string[]> }

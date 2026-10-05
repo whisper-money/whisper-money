@@ -7,6 +7,7 @@ import {
     waitFor,
     within,
 } from '@testing-library/react';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FullImportWizard } from './full-import-wizard';
@@ -18,6 +19,19 @@ const api = vi.hoisted(() => ({
     fetchImport: vi.fn(),
     submitImport: vi.fn(),
 }));
+
+const captureEvent = vi.hoisted(() => vi.fn());
+const captureException = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/posthog', () => ({ captureEvent }));
+vi.mock('@sentry/react', () => ({ captureException }));
+
+/** The properties of every event sent under that name, in order. */
+function sent(name: string): Record<string, unknown>[] {
+    return captureEvent.mock.calls
+        .filter(([event]) => event === name)
+        .map(([, properties]) => properties);
+}
 
 vi.mock('@/lib/full-import-api', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/lib/full-import-api')>()),
@@ -153,6 +167,42 @@ describe('FullImportWizard', () => {
         );
 
         await waitFor(() => expect(api.submitImport).toHaveBeenCalled());
+
+        expect(sent('full_import_opened')).toEqual([{ entry: 'settings' }]);
+        expect(sent('full_import_file_parsed')).toEqual([
+            {
+                recognized: true,
+                source: 'banktrack',
+                extension: 'csv',
+                rows: 12,
+                skipped_blank_rows: 1,
+                columns_count: 20,
+            },
+        ]);
+        expect(sent('full_import_submitted')).toEqual([
+            expect.objectContaining({
+                mode: 'add',
+                source: 'banktrack',
+                rows: 12,
+                accounts_new: 4,
+                accounts_mapped: 0,
+                accounts_skipped: 0,
+                estimated_duplicates: null,
+                entry: 'settings',
+            }),
+        ]);
+        expect(
+            sent('full_import_step_viewed').map(
+                (properties) => properties.step,
+            ),
+        ).toEqual([
+            'file',
+            'columns',
+            'accounts',
+            'categories',
+            'review',
+            'progress',
+        ]);
 
         const [payload, transactions, balances] =
             api.submitImport.mock.calls[0];
@@ -336,6 +386,105 @@ describe('FullImportWizard', () => {
         const leavingLater = new Event('beforeunload', { cancelable: true });
         window.dispatchEvent(leavingLater);
         expect(leavingLater.defaultPrevented).toBe(false);
+    });
+
+    it('sends only the headers of a file it does not recognise', async () => {
+        api.fetchImportContext.mockResolvedValue(context());
+        render(<FullImportWizard variant="embedded" onClose={vi.fn()} />);
+
+        await screen.findByText('Where are you coming from?');
+        fireEvent.change(screen.getByTestId('full-import-file-input'), {
+            target: {
+                files: [
+                    new File(
+                        [
+                            'Date,Amount,Memo\n2026-01-01,-5.25,Secret Coffee Shop\n',
+                        ],
+                        'Juana Pérez export.csv',
+                        { type: 'text/csv' },
+                    ),
+                ],
+            },
+        });
+
+        await waitFor(() =>
+            expect(sent('full_import_file_parsed')).toHaveLength(1),
+        );
+
+        const [parsed] = sent('full_import_file_parsed');
+
+        expect(parsed).toEqual({
+            recognized: false,
+            source: 'generic',
+            extension: 'csv',
+            rows: 1,
+            skipped_blank_rows: 0,
+            columns_count: 3,
+            headers: ['Date', 'Amount', 'Memo'],
+        });
+        expect(JSON.stringify(captureEvent.mock.calls)).not.toMatch(
+            /Secret Coffee|5\.25|Juana/,
+        );
+        expect(sent('full_import_opened')).toEqual([{ entry: 'onboarding' }]);
+    });
+
+    it('counts a file turned away without reporting it as an error', async () => {
+        api.fetchImportContext.mockResolvedValue(context());
+        render(<FullImportWizard variant="page" onClose={vi.fn()} />);
+
+        await screen.findByText('Where are you coming from?');
+        fireEvent.change(screen.getByTestId('full-import-file-input'), {
+            target: { files: [new File(['%PDF'], 'statement.pdf')] },
+        });
+
+        await waitFor(() =>
+            expect(sent('full_import_file_failed')).toEqual([
+                { reason: 'unsupported_type', extension: 'pdf' },
+            ]),
+        );
+        expect(captureException).not.toHaveBeenCalled();
+    });
+
+    it('counts a failed upload and reports it only when the server broke', async () => {
+        const { ImportUploadError } = await import('@/lib/full-import-api');
+        const failure = (status: number) =>
+            new ImportUploadError(
+                'chunks',
+                new AxiosError('failed', 'ERR', undefined, undefined, {
+                    status,
+                    data: { message: 'Nope' },
+                } as AxiosResponse),
+            );
+
+        api.submitImport.mockRejectedValueOnce(failure(500));
+        await openWithBanktrackFile(context());
+        await continueTo('Check the columns');
+        await continueTo('Your accounts');
+        await continueTo('Your categories');
+        await continueTo('Ready to import');
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Import 12 transactions' }),
+        );
+
+        await screen.findByText('Nope');
+        expect(sent('full_import_upload_failed')).toEqual([
+            { stage: 'chunks', status: 500, entry: 'settings' },
+        ]);
+        expect(captureException).toHaveBeenCalledTimes(1);
+        expect(captureException.mock.calls[0][1]).toEqual({
+            tags: { feature: 'full_import', stage: 'chunks' },
+            extra: { entry: 'settings', source: 'banktrack', rows: 12 },
+        });
+
+        api.submitImport.mockRejectedValueOnce(failure(422));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Import 12 transactions' }),
+        );
+
+        await waitFor(() =>
+            expect(sent('full_import_upload_failed')).toHaveLength(2),
+        );
+        expect(captureException).toHaveBeenCalledTimes(1);
     });
 
     it('jumps to the progress of an import that is already running', async () => {

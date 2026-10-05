@@ -30,6 +30,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const EMPTY_FILE: NormalizedFile = { rows: [], unreadable: [], blankRows: 0 };
 
+/**
+ * Run a step of the plan, keeping a throw as a value: a bug in reading an
+ * odd file should leave the wizard standing (and be reported), not take the
+ * screen down with it.
+ */
+function attempt<T>(run: () => T, fallback: T): { value: T; error: unknown } {
+    try {
+        return { value: run(), error: null };
+    } catch (error) {
+        return { value: fallback, error };
+    }
+}
+
 interface FullImportPlanInput {
     parsed: ParsedImportFile | null;
     mapping: FullImportMapping | null;
@@ -82,16 +95,21 @@ export function useFullImportPlan({
         [currencyCodes],
     );
 
-    const normalized = useMemo(
+    const reading = useMemo(
         () =>
-            parsed && mapping
-                ? normalizeRows(parsed, mapping, {
-                      fileName: parsed.file.name,
-                      supportedCurrencies,
-                  })
-                : EMPTY_FILE,
+            attempt(
+                () =>
+                    parsed && mapping
+                        ? normalizeRows(parsed, mapping, {
+                              fileName: parsed.file.name,
+                              supportedCurrencies,
+                          })
+                        : EMPTY_FILE,
+                EMPTY_FILE,
+            ),
         [parsed, mapping, supportedCurrencies],
     );
+    const normalized = reading.value;
 
     const fileAccounts = useMemo(
         () => detectAccounts(normalized.rows),
@@ -191,24 +209,28 @@ export function useFullImportPlan({
             : null;
     }, [context, ownChoice, ignoredChoice]);
 
-    const built = useMemo(
+    const building = useMemo(
         () =>
             withPayload && mapping && transfers && context
-                ? buildImport({
-                      source,
-                      fileName: parsed?.file.name ?? null,
-                      mode,
-                      mapping,
-                      rows: normalized.rows,
-                      fileAccounts,
-                      accountPlan,
-                      contextAccounts: context.accounts,
-                      nodes,
-                      categoryPlan,
-                      categories: context.categories,
-                      transfers,
-                  })
-                : null,
+                ? attempt(
+                      () =>
+                          buildImport({
+                              source,
+                              fileName: parsed?.file.name ?? null,
+                              mode,
+                              mapping,
+                              rows: normalized.rows,
+                              fileAccounts,
+                              accountPlan,
+                              contextAccounts: context.accounts,
+                              nodes,
+                              categoryPlan,
+                              categories: context.categories,
+                              transfers,
+                          }),
+                      null,
+                  )
+                : { value: null, error: null },
         [
             withPayload,
             mapping,
@@ -224,6 +246,7 @@ export function useFullImportPlan({
             categoryPlan,
         ],
     );
+    const built = building.value;
 
     // The bank behind each account name is a server question; asked once per
     // name, when the accounts step first needs it.
@@ -297,6 +320,8 @@ export function useFullImportPlan({
         transfers,
         built,
         banksVersion: String(Object.keys(banks).length),
+        /** A bug in reading the rows or building the payload, for reporting. */
+        planError: reading.error ?? building.error,
         setAccount,
         setCategory,
         setOwnChoice,

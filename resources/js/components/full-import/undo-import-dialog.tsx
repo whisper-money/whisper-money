@@ -17,6 +17,7 @@ import {
     sourceLabel,
     transactionCount,
 } from '@/lib/full-import-format';
+import { trackImport } from '@/lib/full-import-telemetry';
 import { type ImportHistoryEntry } from '@/types/full-import';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -154,6 +155,9 @@ export function UndoImportDialog({
         event.preventDefault();
         setIsUndoing(true);
         setError(null);
+        trackImport('full_import_undo_requested', {
+            transactions: entry.stats.transactions?.imported ?? 0,
+        });
 
         router.delete(destroy.url(entry.id), {
             preserveScroll: true,

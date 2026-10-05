@@ -7,6 +7,7 @@ import { UndoImportDialog } from '@/components/full-import/undo-import-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useImportUndoneEvents } from '@/hooks/use-full-import-telemetry';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -167,6 +168,7 @@ export default function FullImport({
     const running = imports.some((entry) =>
         ['queued', 'processing', 'undoing'].includes(entry.status),
     );
+    useImportUndoneEvents(imports);
     const { start, stop } = usePoll(
         3000,
         { only: ['imports'] },

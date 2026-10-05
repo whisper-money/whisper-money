@@ -5,6 +5,7 @@ import {
     pollDelay,
     useImportPolling,
 } from '@/hooks/use-import-polling';
+import { importStatus } from '@/lib/full-import.fixture';
 import { type ImportStatus } from '@/types/full-import';
 import { act, renderHook } from '@testing-library/react';
 import { AxiosError, type AxiosResponse } from 'axios';
@@ -18,19 +19,7 @@ vi.mock('@/lib/full-import-api', () => ({
 }));
 
 function status(overrides: Partial<ImportStatus> = {}): ImportStatus {
-    return {
-        id: 'import-1',
-        source: 'banktrack',
-        mode: 'add',
-        status: 'processing',
-        file_name: null,
-        error: null,
-        created_at: null,
-        finished_at: null,
-        undone_at: null,
-        stats: { stage: 'transactions' },
-        ...overrides,
-    };
+    return importStatus({ stats: { stage: 'transactions' }, ...overrides });
 }
 
 function httpError(code: number): AxiosError {

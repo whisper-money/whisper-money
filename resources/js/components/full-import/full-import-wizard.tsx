@@ -22,13 +22,20 @@ import { Spinner } from '@/components/ui/spinner';
 import { useDuplicateEstimate } from '@/hooks/use-duplicate-estimate';
 import { useFullImportPlan } from '@/hooks/use-full-import-plan';
 import {
+    useImportOpenedEvent,
+    useImportOutcomeEvent,
+    useImportStepViewedEvent,
+} from '@/hooks/use-full-import-telemetry';
+import {
     useImportPolling,
     type PollingProblem,
 } from '@/hooks/use-import-polling';
 import { useLocale } from '@/hooks/use-locale';
+import { UNREADABLE_FILE_MESSAGE } from '@/lib/file-parser';
 import {
     fetchImport,
     fetchImportContext,
+    ImportUploadError,
     requestErrorMessage,
     submitImport,
 } from '@/lib/full-import-api';
@@ -39,10 +46,20 @@ import {
 } from '@/lib/full-import-format';
 import {
     applySavedProfile,
+    countBlankRows,
     defaultMapping,
     detectSource,
     readFullImportFile,
 } from '@/lib/full-import-profiles';
+import {
+    fileExtension,
+    fileParsedProperties,
+    reportImportError,
+    requestStatus,
+    submittedProperties,
+    trackImport,
+    type ImportEntry,
+} from '@/lib/full-import-telemetry';
 import {
     isSupportedImportFile,
     MAX_IMPORT_FILE_BYTES,
@@ -63,6 +80,7 @@ import {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
     type ReactNode,
 } from 'react';
@@ -156,6 +174,19 @@ function PollingProblemNotice({
     );
 }
 
+/** Why a file was turned away, as `full_import_file_failed` reports it. */
+type FileRejection =
+    | 'unsupported_type'
+    | 'too_large'
+    | 'unreadable'
+    | 'no_rows';
+
+/** What the reader throws for a file that is the user's problem, not ours. */
+const KNOWN_READ_FAILURES: Record<string, FileRejection> = {
+    [UNREADABLE_FILE_MESSAGE]: 'unreadable',
+    'File is empty': 'no_rows',
+};
+
 /** "Import 36 transactions", or plain "Import" when none look new. */
 function importButtonLabel(count: number, locale: string): string {
     if (count === 0) {
@@ -199,7 +230,8 @@ export function FullImportWizard({
 
     const [upload, setUpload] = useState<UploadProgress | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const { status, setStatus, problem, retry } = useImportPolling();
+    const { status, setStatus, problem, retry, lastError } = useImportPolling();
+    const entry: ImportEntry = variant === 'page' ? 'settings' : 'onboarding';
 
     const plan = useFullImportPlan({
         parsed,
@@ -221,6 +253,42 @@ export function FullImportWizard({
 
     useLeaveGuard(step === 'progress' && upload !== null && status === null);
 
+    const finished =
+        status?.status === 'completed' || status?.status === 'failed';
+    useImportOpenedEvent(entry);
+    useImportStepViewedEvent(
+        context ? (step === 'progress' && finished ? 'done' : step) : null,
+        entry,
+    );
+    useImportOutcomeEvent(status, entry);
+
+    // A bug in reading the rows or building the payload, not a bad file.
+    useEffect(() => {
+        if (plan.planError) {
+            reportImportError(plan.planError, 'plan', {
+                entry,
+                source,
+                rows: parsed?.rows.length,
+            });
+        }
+    }, [plan.planError, entry, source, parsed]);
+
+    // The poll gave up after its run of failures: worth a look, once per
+    // give-up rather than once per error that led to it.
+    const reportedGiveUp = useRef(false);
+    useEffect(() => {
+        if (problem !== 'unreachable') {
+            reportedGiveUp.current = false;
+
+            return;
+        }
+
+        if (!reportedGiveUp.current) {
+            reportedGiveUp.current = true;
+            reportImportError(lastError, 'poll', { entry, source });
+        }
+    }, [problem, lastError, entry, source]);
+
     const loadContext = useCallback(() => {
         setContextFailed(false);
 
@@ -235,8 +303,11 @@ export function FullImportWizard({
                     setStep('progress');
                 }
             })
-            .catch(() => setContextFailed(true));
-    }, [setStatus]);
+            .catch((error: unknown) => {
+                setContextFailed(true);
+                reportImportError(error, 'context', { entry });
+            });
+    }, [setStatus, entry]);
 
     useEffect(() => {
         loadContext();
@@ -252,16 +323,29 @@ export function FullImportWizard({
         [context, locale],
     );
 
+    /** A file turned away: shown to the user, counted, never reported. */
+    const rejectFile = (file: File, reason: FileRejection, message: string) => {
+        setFileError(message);
+        trackImport('full_import_file_failed', {
+            reason,
+            extension: fileExtension(file.name),
+        });
+    };
+
     const handleFile = async (file: File) => {
         setFileError(null);
 
         if (!isSupportedImportFile(file)) {
-            setFileError(unsupportedFileReason(file.name));
+            rejectFile(
+                file,
+                'unsupported_type',
+                unsupportedFileReason(file.name),
+            );
             return;
         }
 
         if (file.size > MAX_IMPORT_FILE_BYTES) {
-            setFileError(__('That file is over 10 MB'));
+            rejectFile(file, 'too_large', __('That file is over 10 MB'));
             return;
         }
 
@@ -271,7 +355,7 @@ export function FullImportWizard({
             const read = await readFullImportFile(file, locale);
 
             if (read.rows.length === 0) {
-                setFileError(__('There are no rows in it'));
+                rejectFile(file, 'no_rows', __('There are no rows in it'));
                 return;
             }
 
@@ -283,14 +367,34 @@ export function FullImportWizard({
             setSource(nextSource);
             setMapping(mappingFor(nextSource, read));
             plan.reset();
-        } catch (error) {
-            setFileError(
-                __(
-                    error instanceof Error
-                        ? error.message
-                        : 'Failed to parse file',
+            trackImport(
+                'full_import_file_parsed',
+                fileParsedProperties(
+                    file,
+                    read.headers,
+                    {
+                        count: read.rows.length,
+                        blank: countBlankRows(read.rowNumbers),
+                    },
+                    nextSource,
+                    detected === 'banktrack',
                 ),
             );
+        } catch (error) {
+            const message = error instanceof Error ? error.message : '';
+            const known = KNOWN_READ_FAILURES[message];
+
+            rejectFile(
+                file,
+                known ?? 'unreadable',
+                __(message || 'Failed to parse file'),
+            );
+
+            // A file the browser cannot open or that holds nothing is the
+            // user's; anything else the reader threw may be ours.
+            if (!known) {
+                reportImportError(error, 'parse', { entry });
+            }
         } finally {
             setParsing(false);
         }
@@ -313,6 +417,18 @@ export function FullImportWizard({
         setSubmitError(null);
         setUpload({ sent: 0, total: built.transactions.length });
         setStep('progress');
+        trackImport(
+            'full_import_submitted',
+            submittedProperties({
+                mode,
+                source,
+                built,
+                accountPlan: plan.accountPlan,
+                uncategorized: counts.uncategorized,
+                estimatedDuplicates: duplicates.estimate?.existing ?? null,
+                entry,
+            }),
+        );
 
         try {
             setStatus(
@@ -324,6 +440,21 @@ export function FullImportWizard({
                 ),
             );
         } catch (error) {
+            const stage =
+                error instanceof ImportUploadError ? error.stage : 'create';
+            const cause =
+                error instanceof ImportUploadError ? error.original : error;
+
+            trackImport('full_import_upload_failed', {
+                stage,
+                status: requestStatus(cause),
+                entry,
+            });
+            reportImportError(cause, stage, {
+                entry,
+                source,
+                rows: built.transactions.length,
+            });
             setSubmitError(
                 requestErrorMessage(
                     error,
@@ -352,9 +483,6 @@ export function FullImportWizard({
         stepIndex === -1
             ? []
             : steps.map((id) => ({ id, label: __(STEP_LABELS[id]) }));
-    const finished =
-        status?.status === 'completed' || status?.status === 'failed';
-
     const goBack = () =>
         stepIndex <= 0 ? onClose() : setStep(steps[stepIndex - 1]);
     const goNext = () => setStep(steps[stepIndex + 1]);

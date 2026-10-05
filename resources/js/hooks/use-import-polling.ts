@@ -64,6 +64,8 @@ export function useImportPolling() {
     const [status, setStatus] = useState<ImportStatus | null>(null);
     const [failures, setFailures] = useState(0);
     const [gone, setGone] = useState(false);
+    /** The latest failure, so whoever shows the give-up can also report it. */
+    const [lastError, setLastError] = useState<unknown>(null);
     const unreachable = failures >= MAX_POLL_FAILURES;
 
     useEffect(() => {
@@ -98,6 +100,7 @@ export function useImportPolling() {
                             return;
                         }
 
+                        setLastError(error);
                         setFailures((count) => count + 1);
                     });
             },
@@ -118,5 +121,5 @@ export function useImportPolling() {
           ? 'unreachable'
           : null;
 
-    return { status, setStatus, problem, retry };
+    return { status, setStatus, problem, retry, lastError };
 }

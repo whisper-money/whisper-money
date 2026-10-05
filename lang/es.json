@@ -3818,5 +3818,6 @@
     "none seem to be there yet": "ninguna parece estar ya",
     "New bank «:name»": "Banco nuevo «:name»",
     "This import expects no more rows.": "Esta importación no espera más filas.",
-    "The import is being undone.": "Se está deshaciendo la importación."
+    "The import is being undone.": "Se está deshaciendo la importación.",
+    "The import stopped before it finished.": "La importación se detuvo antes de terminar."
 }
