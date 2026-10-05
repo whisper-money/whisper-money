@@ -291,6 +291,8 @@ export interface ImportUndoSummary {
 
 export interface ImportHistoryEntry extends ImportStatus {
     undoable: boolean;
+    /** The last undo broke off; the import is back as it was and can be undone again. */
+    undo_failed: boolean;
     summary: ImportUndoSummary | null;
 }
 

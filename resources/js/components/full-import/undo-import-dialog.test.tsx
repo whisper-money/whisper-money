@@ -4,10 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UndoImportDialog } from './undo-import-dialog';
 
 const routerDelete = vi.hoisted(() => vi.fn());
+const captureEvent = vi.hoisted(() => vi.fn());
 
 vi.mock('@inertiajs/react', () => ({
     router: { delete: routerDelete },
 }));
+
+vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
 const entry: ImportHistoryEntry = {
     id: 'import-1',
@@ -21,6 +24,7 @@ const entry: ImportHistoryEntry = {
     undone_at: null,
     stats: {},
     undoable: true,
+    undo_failed: false,
     summary: {
         accounts: [{ name: 'Wise', transactions: 12 }],
         categories: 2,
@@ -46,7 +50,10 @@ function renderDialog(onOpenChange = vi.fn()) {
 }
 
 describe('UndoImportDialog', () => {
-    beforeEach(() => routerDelete.mockReset());
+    beforeEach(() => {
+        routerDelete.mockReset();
+        captureEvent.mockReset();
+    });
 
     it('lists what goes, including what was added afterwards', () => {
         renderDialog();
@@ -85,6 +92,7 @@ describe('UndoImportDialog', () => {
 
         expect(onOpenChange).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: /Undoing/ })).toBeDisabled();
+        expect(captureEvent).not.toHaveBeenCalled();
 
         const [, options] = routerDelete.mock.calls[0];
         act(() => {
@@ -93,6 +101,11 @@ describe('UndoImportDialog', () => {
         });
 
         expect(onOpenChange).toHaveBeenCalledWith(false);
+        expect(captureEvent).toHaveBeenCalledOnce();
+        expect(captureEvent).toHaveBeenCalledWith(
+            'full_import_undo_requested',
+            { transactions: 0 },
+        );
     });
 
     it('shows a failure inside the dialog', () => {
@@ -110,5 +123,7 @@ describe('UndoImportDialog', () => {
             screen.getByText('This import cannot be undone.'),
         ).toBeInTheDocument();
         expect(onOpenChange).not.toHaveBeenCalled();
+        // A refused undo is not counted as requested.
+        expect(captureEvent).not.toHaveBeenCalled();
     });
 });

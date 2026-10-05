@@ -3819,5 +3819,8 @@
     "New bank «:name»": "Banco nuevo «:name»",
     "This import expects no more rows.": "Esta importación no espera más filas.",
     "The import is being undone.": "Se está deshaciendo la importación.",
-    "The import stopped before it finished.": "La importación se detuvo antes de terminar."
+    "The import stopped before it finished.": "La importación se detuvo antes de terminar.",
+    "An earlier import is still being undone. Try again in a moment.": "Todavía se está deshaciendo una importación anterior. Inténtalo de nuevo en un momento.",
+    "The undo could not be started. Try again.": "No se ha podido empezar a deshacer. Inténtalo de nuevo.",
+    "Couldn't undo this import. Try again.": "No se ha podido deshacer esta importación. Inténtalo de nuevo."
 }

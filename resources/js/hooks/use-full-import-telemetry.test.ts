@@ -96,6 +96,7 @@ describe('full import telemetry hooks', () => {
                 },
             }),
             undoable: false,
+            undo_failed: false,
             summary: null,
             ...overrides,
         });

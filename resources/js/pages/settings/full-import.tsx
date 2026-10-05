@@ -133,6 +133,11 @@ function HistoryRow({
                         {aiNote}
                     </div>
                 )}
+                {entry.undo_failed && (
+                    <div className="text-[13px] text-destructive">
+                        {__("Couldn't undo this import. Try again.")}
+                    </div>
+                )}
             </div>
             {entry.undoable && (
                 <>

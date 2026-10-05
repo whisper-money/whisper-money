@@ -155,13 +155,17 @@ export function UndoImportDialog({
         event.preventDefault();
         setIsUndoing(true);
         setError(null);
-        trackImport('full_import_undo_requested', {
-            transactions: entry.stats.transactions?.imported ?? 0,
-        });
 
         router.delete(destroy.url(entry.id), {
             preserveScroll: true,
-            onSuccess: () => onOpenChange(false),
+            // Counted once the server has taken the undo on, not on the click:
+            // a refused undo was never requested as far as the funnel goes.
+            onSuccess: () => {
+                trackImport('full_import_undo_requested', {
+                    transactions: entry.stats.transactions?.imported ?? 0,
+                });
+                onOpenChange(false);
+            },
             onError: (errors) =>
                 setError(
                     errors.import ??
