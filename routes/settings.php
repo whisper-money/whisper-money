@@ -7,6 +7,7 @@ use App\Http\Controllers\Settings\AutomationRuleController;
 use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\ChartColorSchemeController;
+use App\Http\Controllers\Settings\FullImportController;
 use App\Http\Controllers\Settings\LabelController;
 use App\Http\Controllers\Settings\McpTokenController;
 use App\Http\Controllers\Settings\NetWorthChartLoanPreferenceController;
@@ -118,6 +119,14 @@ Route::middleware('auth')->group(function () {
             'hasActiveSubscriptionOrTrial' => $request->user()->hasActiveSubscriptionOrTrial(),
         ]);
     })->name('delete-account.edit');
+
+    // Import from another app. Not behind `onboarded`, like the rest of this
+    // file; the controller decides who sees it (User::canUseFullImport()).
+    Route::get('settings/import', [FullImportController::class, 'index'])->name('full-import.index');
+    Route::get('settings/import/new', [FullImportController::class, 'create'])->name('full-import.create');
+    Route::delete('settings/import/{import}', [FullImportController::class, 'destroy'])
+        ->middleware('block-shared')
+        ->name('full-import.destroy');
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');

@@ -294,12 +294,19 @@ class HandleInertiaRequests extends Middleware
             return [
                 'cashflow' => true,
                 'calculateBalancesOnImport' => false,
+                'fullImport' => false,
+                'fullImportSettings' => false,
             ];
         }
 
         return [
             'cashflow' => true,
             'calculateBalancesOnImport' => Feature::for($user)->active(CalculateBalancesOnImport::class),
+            // Two answers, because Settings keeps the page past the window for
+            // as long as an import can still be undone, while starting one is
+            // only offered inside it.
+            'fullImport' => $user->canUseFullImport(),
+            'fullImportSettings' => $user->canSeeFullImportSettings(),
         ];
     }
 

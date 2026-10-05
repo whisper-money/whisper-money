@@ -24,6 +24,8 @@ import { useCallback, useEffect, useState } from 'react';
 interface BankComboboxProps {
     value: string | null;
     onValueChange: (value: string | null) => void;
+    /** The whole bank picked, for callers that keep more than its id. */
+    onBankChange?: (bank: Bank | null) => void;
     defaultBank?: Bank;
     onCreateCustomBank?: (searchQuery: string) => void;
     disabled?: boolean;
@@ -34,6 +36,7 @@ const bankCache = new Map<string, Bank[]>();
 export function BankCombobox({
     value,
     onValueChange,
+    onBankChange,
     defaultBank,
     onCreateCustomBank,
     disabled = false,
@@ -104,6 +107,7 @@ export function BankCombobox({
     const handleSelect = (bank: Bank | null) => {
         setSelectedBank(bank);
         onValueChange(bank?.id ?? null);
+        onBankChange?.(bank);
         setOpen(false);
     };
 

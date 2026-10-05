@@ -26,6 +26,7 @@ import {
     isSupportedImportFile,
     MAX_IMPORT_FILE_BYTES,
     parseImportFile,
+    unsupportedFileReason,
     type ParsedImportFile,
 } from '@/lib/transaction-import';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -67,17 +68,6 @@ interface StepImportTransactionsProps {
     /** False on a plan with no bank connections to offer as a way out. */
     canConnectBank?: boolean;
     onComplete: () => void;
-}
-
-/** "PDF is not supported", from whatever the file is actually called. */
-function unsupportedReason(fileName: string): string {
-    const dot = fileName.lastIndexOf('.');
-
-    return dot === -1
-        ? __('That file has no format we recognise')
-        : __(':format is not supported', {
-              format: fileName.slice(dot + 1).toUpperCase(),
-          });
 }
 
 export function StepImportTransactions({
@@ -181,7 +171,7 @@ export function StepImportTransactions({
     const handleFileSelect = useCallback(
         async (file: File) => {
             if (!isSupportedImportFile(file)) {
-                reject(file.name, unsupportedReason(file.name));
+                reject(file.name, unsupportedFileReason(file.name));
                 return;
             }
 

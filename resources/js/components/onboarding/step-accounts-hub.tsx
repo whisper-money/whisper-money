@@ -1,4 +1,5 @@
 import { BankLogo } from '@/components/bank-logo';
+import { FullImportWizard } from '@/components/full-import/full-import-wizard';
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepConnectFailed } from '@/components/onboarding/step-connect-failed';
 import { StepGate } from '@/components/onboarding/step-gate';
@@ -33,9 +34,10 @@ import { formatAccountType, type AccountType } from '@/types/account';
 import { type SignupPlan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import {
     ChartLine,
+    FileUp,
     House,
     Landmark,
     Plus,
@@ -49,7 +51,14 @@ import { useCallback, useMemo, useState } from 'react';
  * for everything hanging off the hub — the same arrangement `SUB_STEPS` gives
  * `import-transactions` and `import-balances`.
  */
-type HubMode = 'hub' | 'manual' | 'connected' | 'broker' | 'failed' | 'gate';
+type HubMode =
+    | 'hub'
+    | 'manual'
+    | 'connected'
+    | 'broker'
+    | 'failed'
+    | 'gate'
+    | 'full-import';
 
 /**
  * The bank a failed authorization named, off the URL
@@ -139,7 +148,7 @@ interface AccountGroup {
 }
 
 /** Where a row of the hub leads. Only 'manual' asks the user to type. */
-type HubRoute = 'manual' | 'connected' | 'broker';
+type HubRoute = 'manual' | 'connected' | 'broker' | 'full-import';
 
 /** One row of the section that asks for what open banking never returns. */
 interface HubSuggestion {
@@ -211,7 +220,11 @@ export function StepAccountsHub({
         openBankingEnabled,
         locale,
         flash,
+        features,
     } = usePage<SharedData>().props;
+    // Moving in from another app, all of it in one file: open while the user
+    // is onboarding unless the account is one of the shared ones.
+    const canFullImport = features?.fullImport ?? false;
     const hasProPlan = auth.hasProPlan;
     const cheapestMonthlyPrice = useCheapestMonthlyPrice();
     const isFreePlan = signupPlan === 'free';
@@ -355,6 +368,12 @@ export function StepAccountsHub({
                 accounts: accountCount,
             });
 
+            if (route === 'full-import') {
+                setMode('full-import');
+
+                return;
+            }
+
             if (route !== 'manual') {
                 onConnectedAccountSelected?.();
             }
@@ -430,6 +449,21 @@ export function StepAccountsHub({
 
     if (mode === 'gate') {
         return <StepGate kind={gateKind} onDecline={() => setMode('manual')} />;
+    }
+
+    // Comes back to the hub like the other flows, with whatever accounts the
+    // import created already on the list.
+    if (mode === 'full-import') {
+        return (
+            <FullImportWizard
+                variant="embedded"
+                onClose={() => setMode('hub')}
+                onFinished={() => {
+                    router.reload({ only: ['accounts'] });
+                    setMode('hub');
+                }}
+            />
+        );
     }
 
     // The bank flow renders its own StepScreen so each of its sub-steps gets
@@ -545,6 +579,7 @@ export function StepAccountsHub({
                             trailing={<StepChevron />}
                             onClick={() => openRoute('manual', 'manual')}
                         />
+                        {canFullImport && <FullImportRow onOpen={openRoute} />}
                     </StepList>
 
                     {openBankingEnabled && (
@@ -649,8 +684,28 @@ export function StepAccountsHub({
                         trailing={<StepChevron />}
                         onClick={() => openRoute('manual', 'manual')}
                     />
+                    {canFullImport && <FullImportRow onOpen={openRoute} />}
                 </StepList>
             </div>
         </StepScreen>
+    );
+}
+
+/** The way into the full import, in both states of the hub. */
+function FullImportRow({
+    onOpen,
+}: {
+    onOpen: (route: HubRoute, option: string) => void;
+}) {
+    return (
+        <StepRow
+            icon={FileUp}
+            title={__('Coming from another app?')}
+            description={__(
+                'Banktrack or a spreadsheet: bring your accounts, categories and transactions in one go.',
+            )}
+            trailing={<StepChevron />}
+            onClick={() => onOpen('full-import', 'full-import')}
+        />
     );
 }

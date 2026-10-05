@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Import;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('budgets:generate-periods')->daily();
@@ -37,3 +38,6 @@ Schedule::command('stats:subscription-funnel')->weekly()->mondays()->at('09:15')
 // middle of their night. Each pass sends to whoever it is 9am for, and the
 // command is a no-op outside the 3rd-to-10th window.
 Schedule::command('email:monthly-summary')->hourly();
+// A full import that never got started keeps the rows the browser staged for
+// it; a day on, nobody is coming back to finish that upload.
+Schedule::command('model:prune', ['--model' => [Import::class]])->dailyAt('04:45')->timezone('Europe/Madrid');

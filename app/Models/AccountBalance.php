@@ -23,6 +23,7 @@ class AccountBalance extends Model
         'balance',
         'invested_amount',
         'derived',
+        'import_id',
     ];
 
     protected function casts(): array

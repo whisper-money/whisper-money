@@ -45,12 +45,14 @@ class Account extends Model
         'archived_at',
         'ownership_percentage',
         'ownership_applies_to_balance',
+        'import_id',
     ];
 
     /** @var list<string> */
     protected $hidden = [
         'user_id',
         'space_id',
+        'import_id',
         'bank_id',
         'transactions_paginate_before',
         'iban',
