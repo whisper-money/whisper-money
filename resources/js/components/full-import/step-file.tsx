@@ -4,9 +4,9 @@ import {
     WizardScreen,
 } from '@/components/full-import/full-import-layout';
 import {
-    formatCount,
     formatFileSize,
     formatMonthRange,
+    transactionCount,
 } from '@/lib/full-import-format';
 import { SUPPORTED_IMPORT_EXTENSIONS } from '@/lib/transaction-import';
 import { cn } from '@/lib/utils';
@@ -131,12 +131,10 @@ export function StepFile({
                                     parsing
                                         ? __('Reading…')
                                         : summary &&
-                                          __(':count transactions', {
-                                              count: formatCount(
-                                                  summary.rows,
-                                                  locale,
-                                              ),
-                                          }),
+                                          transactionCount(
+                                              summary.rows,
+                                              locale,
+                                          ),
                                     summary?.from &&
                                         summary.to &&
                                         formatMonthRange(

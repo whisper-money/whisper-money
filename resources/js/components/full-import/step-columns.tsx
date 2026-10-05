@@ -1,4 +1,5 @@
 import { WizardScreen } from '@/components/full-import/full-import-layout';
+import { UnreadableRows } from '@/components/full-import/unreadable-rows';
 import {
     ColumnSelect,
     DateFormatSelect,
@@ -13,7 +14,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatCount } from '@/lib/full-import-format';
+import {
+    countLabel,
+    formatCount,
+    transactionCount,
+} from '@/lib/full-import-format';
 import { splitCategoryPath, unmappedHeaders } from '@/lib/full-import-profiles';
 import {
     SINGLE_ACCOUNT_COLUMN,
@@ -233,11 +238,15 @@ export function StepColumns({
                     sample={sampleOf(columnOptions, mapping.account)}
                     hint={
                         mapping.account
-                            ? __(
-                                  'Every different value is an account: there are :count.',
-                                  {
-                                      count: accounts,
-                                  },
+                            ? countLabel(
+                                  accounts,
+                                  __(
+                                      'Every different value is an account: there is 1.',
+                                  ),
+                                  __(
+                                      'Every different value is an account: there are :count.',
+                                      { count: accounts },
+                                  ),
                               )
                             : undefined
                     }
@@ -335,9 +344,20 @@ export function StepColumns({
                     sample={sampleOf(columnOptions, mapping.balance)}
                     hint={
                         mapping.balance
-                            ? __(
-                                  'Only in :count rows: we import the balance of the accounts that have it.',
-                                  { count: formatCount(balanceRows, locale) },
+                            ? countLabel(
+                                  balanceRows,
+                                  __(
+                                      'Only in 1 row: we import the balance of the accounts that have it.',
+                                  ),
+                                  __(
+                                      'Only in :count rows: we import the balance of the accounts that have it.',
+                                      {
+                                          count: formatCount(
+                                              balanceRows,
+                                              locale,
+                                          ),
+                                      },
+                                  ),
                               )
                             : __('No column, no balances imported.')
                     }
@@ -382,15 +402,15 @@ function ColumnsPreview({
     locale: string;
 }) {
     const summary = [
-        __(':count transactions', {
-            count: formatCount(normalized.rows.length, locale),
-        }),
+        transactionCount(normalized.rows.length, locale),
         normalized.blankRows > 0 &&
-            __(':count blank rows skipped', { count: normalized.blankRows }),
-        normalized.unreadable.length > 0 &&
-            __(":count rows can't be read", {
-                count: normalized.unreadable.length,
-            }),
+            countLabel(
+                normalized.blankRows,
+                __('1 blank row skipped'),
+                __(':count blank rows skipped', {
+                    count: formatCount(normalized.blankRows, locale),
+                }),
+            ),
     ].filter(Boolean);
 
     return (
@@ -403,6 +423,7 @@ function ColumnsPreview({
                     {summary.join(' · ')}
                 </span>
             </div>
+            <UnreadableRows rows={normalized.unreadable} locale={locale} />
             <div className="overflow-x-auto rounded-xl border">
                 <table className="w-full min-w-[36rem] text-sm">
                     <thead className="bg-muted/50 text-left text-xs text-muted-foreground">

@@ -2,6 +2,7 @@
 
 namespace App\Services\Imports;
 
+use App\Enums\ImportAiStatus;
 use App\Jobs\CategorizeImportedTransactionsJob;
 use App\Models\Import;
 use App\Services\Ai\AiCategorizationGate;
@@ -13,28 +14,38 @@ use App\Services\Ai\AiCategorizationGate;
  * own AI step, which already categorizes everything still blank in one go
  * (CategorizeOnboardingTransactionsJob).
  */
-class ImportAiFollowUp
+class ImportAiScheduler
 {
     public function __construct(private AiCategorizationGate $gate) {}
 
-    public function handle(Import $import): void
+    /**
+     * Record the decision on the import. It is only acted on once the import
+     * is closed ({@see self::dispatchIfQueued()}), so the pass never starts
+     * writing progress to a row the import job is still finishing.
+     */
+    public function decide(Import $import): ImportAiStatus
     {
         $uncategorized = $import->transactions()->whereNull('category_id')->count();
         $user = $import->user;
 
         $status = match (true) {
-            $uncategorized === 0 => 'skipped',
-            ! $user->isOnboarded() => 'onboarding',
-            ! $this->gate->allows($user) => 'unavailable',
-            default => 'queued',
+            $uncategorized === 0 => ImportAiStatus::Skipped,
+            ! $user->isOnboarded() => ImportAiStatus::Onboarding,
+            ! $this->gate->allows($user) => ImportAiStatus::Unavailable,
+            default => ImportAiStatus::Queued,
         };
 
         $import->recordStats([
             'uncategorized' => $uncategorized,
-            'ai' => ['status' => $status, 'total' => $uncategorized, 'processed' => 0, 'applied' => 0],
+            'ai' => ['status' => $status->value, 'total' => $uncategorized, 'processed' => 0, 'applied' => 0],
         ]);
 
-        if ($status === 'queued') {
+        return $status;
+    }
+
+    public function dispatchIfQueued(Import $import, ImportAiStatus $status): void
+    {
+        if ($status === ImportAiStatus::Queued) {
             CategorizeImportedTransactionsJob::dispatch($import);
         }
     }

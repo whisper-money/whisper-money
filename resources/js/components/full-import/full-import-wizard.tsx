@@ -1,3 +1,4 @@
+import { index as importIndex } from '@/actions/App/Http/Controllers/Settings/FullImportController';
 import {
     Notice,
     WizardFooter,
@@ -18,31 +19,27 @@ import {
 import { StepReview } from '@/components/full-import/step-review';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useFullImportPlan } from '@/hooks/use-full-import-plan';
+import {
+    useImportPolling,
+    type PollingProblem,
+} from '@/hooks/use-import-polling';
 import { useLocale } from '@/hooks/use-locale';
 import {
-    fetchBankMatches,
     fetchImport,
     fetchImportContext,
-    POLL_INTERVAL_MS,
     requestErrorMessage,
     submitImport,
 } from '@/lib/full-import-api';
-import { formatCount, sourceSuffix } from '@/lib/full-import-format';
 import {
-    buildImport,
-    categoryNodeId,
-    detectAccounts,
-    detectCategories,
-    importedRows,
-    isOwnTransferNode,
-    resolveAccountPlan,
-    resolveCategoryPlan,
-} from '@/lib/full-import-plan';
+    countLabel,
+    formatCount,
+    sourceSuffix,
+} from '@/lib/full-import-format';
 import {
     applySavedProfile,
     defaultMapping,
     detectSource,
-    normalizeRows,
     readFullImportFile,
 } from '@/lib/full-import-profiles';
 import {
@@ -54,18 +51,13 @@ import {
 import { type SharedData } from '@/types';
 import {
     SINGLE_ACCOUNT_COLUMN,
-    type AccountPlanEntry,
-    type BankLite,
-    type CategoryPlanEntry,
     type FullImportContext,
     type FullImportMapping,
     type FullImportMode,
     type FullImportSource,
-    type ImportStatus,
-    type NormalizedFile,
 } from '@/types/full-import';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     useCallback,
     useEffect,
@@ -82,7 +74,8 @@ type PlanningStep =
     | 'categories'
     | 'review';
 
-type Step = PlanningStep | 'progress' | 'done';
+/** The progress screen turns into the done screen by itself once the job ends. */
+type Step = PlanningStep | 'progress';
 
 const STEP_LABELS: Record<PlanningStep, string> = {
     file: 'File',
@@ -93,11 +86,6 @@ const STEP_LABELS: Record<PlanningStep, string> = {
     review: 'Review',
 };
 
-const EMPTY_FILE: NormalizedFile = { rows: [], unreadable: [], blankRows: 0 };
-
-/** Polls stop being worth it once the AI pass is all that is left to watch. */
-const AI_POLL_INTERVAL_MS = 4000;
-
 interface FullImportWizardProps {
     /** Its own page in Settings, or inside the onboarding's accounts step. */
     variant: WizardVariant;
@@ -107,13 +95,70 @@ interface FullImportWizardProps {
 }
 
 /**
+ * While the rows are still going up, leaving the tab would strand the import
+ * half-sent. Once `start` has answered, the job has everything and the user
+ * may close the tab, so the guard goes with it.
+ */
+function useLeaveGuard(active: boolean): void {
+    useEffect(() => {
+        if (!active) {
+            return;
+        }
+
+        const warn = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            // Still what Chromium and Safari read to show their prompt.
+            event.returnValue = '';
+        };
+
+        window.addEventListener('beforeunload', warn);
+
+        return () => window.removeEventListener('beforeunload', warn);
+    }, [active]);
+}
+
+/** What the screen says when it can no longer follow the import. */
+function PollingProblemNotice({
+    problem,
+    variant,
+    onRetry,
+}: {
+    problem: Exclude<PollingProblem, null>;
+    variant: WizardVariant;
+    onRetry: () => void;
+}) {
+    return (
+        <Notice tone="danger">
+            <span>
+                {problem === 'gone'
+                    ? __('This import is no longer available.')
+                    : __(
+                          "We can't reach the server to follow the import. It keeps running on our side.",
+                      )}
+            </span>
+            <span className="flex flex-wrap items-center gap-3">
+                {problem === 'unreachable' && (
+                    <Button variant="outline" size="sm" onClick={onRetry}>
+                        {__('Retry')}
+                    </Button>
+                )}
+                {variant === 'page' && (
+                    <Link
+                        href={importIndex()}
+                        className="text-sm font-medium underline underline-offset-4"
+                    >
+                        {__('Go to Settings')}
+                    </Link>
+                )}
+            </span>
+        </Notice>
+    );
+}
+
+/**
  * The full import from another app: read the file in the browser, let the
  * user check the columns, accounts and categories it found, then hand the
  * plan and the rows to the server, which writes them in a queued job.
- *
- * Every plan the screens show is derived from the file and the user's
- * choices (the overrides), never stored: changing a column re-reads the rows,
- * and the accounts and categories follow without any of it going stale.
  */
 export function FullImportWizard({
     variant,
@@ -133,24 +178,25 @@ export function FullImportWizard({
     const [fileError, setFileError] = useState<string | null>(null);
     const [parsing, setParsing] = useState(false);
     const [mapping, setMapping] = useState<FullImportMapping | null>(null);
-
     const [mode, setMode] = useState<FullImportMode>('add');
-    const [accountOverrides, setAccountOverrides] = useState<
-        Record<string, AccountPlanEntry>
-    >({});
-    const [banks, setBanks] = useState<Record<string, BankLite | null>>({});
-    const [categoryOverrides, setCategoryOverrides] = useState<
-        Record<string, Partial<CategoryPlanEntry>>
-    >({});
-    const [ownChoice, setOwnChoice] = useState<string | null | undefined>();
-    const [ignoredChoice, setIgnoredChoice] = useState<
-        string | null | undefined
-    >();
     const [confirmWipe, setConfirmWipe] = useState(false);
 
     const [upload, setUpload] = useState<UploadProgress | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [status, setStatus] = useState<ImportStatus | null>(null);
+    const { status, setStatus, problem, retry } = useImportPolling();
+
+    const plan = useFullImportPlan({
+        parsed,
+        mapping,
+        context,
+        source,
+        mode,
+        lookUpBanks: step === 'accounts',
+        withPayload: step === 'review',
+    });
+    const { normalized, built, counts } = plan;
+
+    useLeaveGuard(step === 'progress' && upload !== null && status === null);
 
     const loadContext = useCallback(() => {
         setContextFailed(false);
@@ -167,230 +213,11 @@ export function FullImportWizard({
                 }
             })
             .catch(() => setContextFailed(true));
-    }, []);
+    }, [setStatus]);
 
     useEffect(() => {
         loadContext();
     }, [loadContext]);
-
-    // Poll the job while it runs, then a little longer while the AI pass
-    // after it does, so the done screen can say when it finished.
-    useEffect(() => {
-        if (!status || status.status === 'draft') {
-            return;
-        }
-
-        const finished =
-            status.status === 'completed' || status.status === 'failed';
-        const aiRunning =
-            status.stats.ai?.status === 'queued' ||
-            status.stats.ai?.status === 'running';
-
-        if (finished && step === 'progress') {
-            setStep('done');
-
-            return;
-        }
-
-        if (finished && !aiRunning) {
-            return;
-        }
-
-        const timer = window.setTimeout(
-            () => {
-                fetchImport(status.id)
-                    .then(setStatus)
-                    .catch(() => setStatus({ ...status }));
-            },
-            finished ? AI_POLL_INTERVAL_MS : POLL_INTERVAL_MS,
-        );
-
-        return () => window.clearTimeout(timer);
-    }, [status, step]);
-
-    const supportedCurrencies = useMemo(
-        () => currencies.accounts.map((currency) => currency.code),
-        [currencies],
-    );
-
-    const normalized = useMemo(
-        () =>
-            parsed && mapping
-                ? normalizeRows(parsed, mapping, {
-                      fileName: parsed.file.name,
-                      supportedCurrencies,
-                  })
-                : EMPTY_FILE,
-        [parsed, mapping, supportedCurrencies],
-    );
-
-    const fileAccounts = useMemo(
-        () => detectAccounts(normalized.rows),
-        [normalized],
-    );
-
-    const accountContext = useMemo(
-        () => ({
-            mode,
-            accounts: context?.accounts ?? [],
-            mappableAccountIds: context?.mappableAccountIds ?? [],
-            userCurrency: auth.user.currency_code,
-            supportedCurrencies,
-            sourceLabel: sourceSuffix(source),
-            banks,
-        }),
-        [
-            mode,
-            context,
-            auth.user.currency_code,
-            supportedCurrencies,
-            source,
-            banks,
-        ],
-    );
-
-    const accountPlan = useMemo(
-        () =>
-            resolveAccountPlan(fileAccounts, accountOverrides, accountContext),
-        [fileAccounts, accountOverrides, accountContext],
-    );
-
-    const rowsToImport = useMemo(
-        () => importedRows(normalized.rows, accountPlan),
-        [normalized, accountPlan],
-    );
-    const categorizedRows = useMemo(
-        () => rowsToImport.filter((row) => !row.ignored),
-        [rowsToImport],
-    );
-    const nodes = useMemo(
-        () => detectCategories(categorizedRows),
-        [categorizedRows],
-    );
-    const categoryPlan = useMemo(
-        () =>
-            resolveCategoryPlan(nodes, categoryOverrides, {
-                categories: context?.categories ?? [],
-                defaultNames: context?.defaultCategoryNames ?? [],
-            }),
-        [nodes, categoryOverrides, context],
-    );
-
-    const counts = useMemo(() => {
-        const ownIds = new Set(
-            nodes
-                .filter((node) => isOwnTransferNode(node, nodes))
-                .map((node) => node.id),
-        );
-
-        return {
-            own: categorizedRows.filter(
-                (row) =>
-                    row.categoryPath.length > 0 &&
-                    ownIds.has(categoryNodeId(row.categoryPath)),
-            ).length,
-            ignored: rowsToImport.length - categorizedRows.length,
-            uncategorized: categorizedRows.filter(
-                (row) => row.categoryPath.length === 0,
-            ).length,
-            skippedAccounts: normalized.rows.length - rowsToImport.length,
-        };
-    }, [nodes, categorizedRows, rowsToImport, normalized]);
-
-    const transfers = useMemo(() => {
-        const targets = context?.transferTargets;
-
-        return targets
-            ? {
-                  own: {
-                      categoryId:
-                          ownChoice === undefined
-                              ? targets.own.category_id
-                              : ownChoice,
-                      target: targets.own,
-                  },
-                  ignored: {
-                      categoryId:
-                          ignoredChoice === undefined
-                              ? targets.ignored.category_id
-                              : ignoredChoice,
-                      target: targets.ignored,
-                  },
-              }
-            : null;
-    }, [context, ownChoice, ignoredChoice]);
-
-    const built = useMemo(
-        () =>
-            step === 'review' && mapping && transfers && context
-                ? buildImport({
-                      source,
-                      fileName: parsed?.file.name ?? null,
-                      mode,
-                      mapping,
-                      rows: normalized.rows,
-                      fileAccounts,
-                      accountPlan,
-                      contextAccounts: context.accounts,
-                      nodes,
-                      categoryPlan,
-                      categories: context.categories,
-                      transfers,
-                  })
-                : null,
-        [
-            step,
-            mapping,
-            transfers,
-            context,
-            source,
-            parsed,
-            mode,
-            normalized,
-            fileAccounts,
-            accountPlan,
-            nodes,
-            categoryPlan,
-        ],
-    );
-
-    // The bank behind each account name is a server question; asked once per
-    // name, when the accounts step first needs it.
-    useEffect(() => {
-        if (step !== 'accounts') {
-            return;
-        }
-
-        const missing = fileAccounts
-            .map((account) => account.name)
-            .filter((name) => !(name in banks));
-
-        if (missing.length === 0) {
-            return;
-        }
-
-        let active = true;
-
-        fetchBankMatches(missing)
-            .catch(() => ({}))
-            .then((matches: Record<string, BankLite | null>) => {
-                if (active) {
-                    setBanks((previous) => ({
-                        ...previous,
-                        ...Object.fromEntries(
-                            missing.map((name) => [
-                                name,
-                                matches[name] ?? null,
-                            ]),
-                        ),
-                    }));
-                }
-            });
-
-        return () => {
-            active = false;
-        };
-    }, [step, fileAccounts, banks]);
 
     const mappingFor = useCallback(
         (nextSource: FullImportSource, file: ParsedImportFile) =>
@@ -401,13 +228,6 @@ export function FullImportWizard({
             ),
         [context, locale],
     );
-
-    const resetPlans = () => {
-        setAccountOverrides({});
-        setCategoryOverrides({});
-        setOwnChoice(undefined);
-        setIgnoredChoice(undefined);
-    };
 
     const handleFile = async (file: File) => {
         setFileError(null);
@@ -439,7 +259,7 @@ export function FullImportWizard({
             setRecognized(detected === 'banktrack');
             setSource(nextSource);
             setMapping(mappingFor(nextSource, read));
-            resetPlans();
+            plan.reset();
         } catch (error) {
             setFileError(
                 __(
@@ -458,7 +278,7 @@ export function FullImportWizard({
 
         if (parsed) {
             setMapping(mappingFor(nextSource, parsed));
-            resetPlans();
+            plan.reset();
         }
     };
 
@@ -509,6 +329,8 @@ export function FullImportWizard({
         stepIndex === -1
             ? []
             : steps.map((id) => ({ id, label: __(STEP_LABELS[id]) }));
+    const finished =
+        status?.status === 'completed' || status?.status === 'failed';
 
     const goBack = () =>
         stepIndex <= 0 ? onClose() : setStep(steps[stepIndex - 1]);
@@ -526,7 +348,7 @@ export function FullImportWizard({
             (mapped(mapping.account) ||
                 mapping.account === SINGLE_ACCOUNT_COLUMN) &&
             normalized.rows.length > 0,
-        accounts: Object.values(accountPlan).some(
+        accounts: Object.values(plan.accountPlan).some(
             (entry) => entry.action === 'create' || entry.action === 'map',
         ),
         categories: true,
@@ -559,18 +381,31 @@ export function FullImportWizard({
         total: steps.length,
     });
 
+    const uncategorized = formatCount(counts.uncategorized, locale);
     const aiReviewNote = context?.aiAvailable
-        ? __(
-              'Afterwards, the AI will categorize the :count transactions that arrive without a category.',
-              { count: formatCount(counts.uncategorized, locale) },
+        ? countLabel(
+              counts.uncategorized,
+              __(
+                  'Afterwards, the AI will categorize the transaction that arrives without a category.',
+              ),
+              __(
+                  'Afterwards, the AI will categorize the :count transactions that arrive without a category.',
+                  { count: uncategorized },
+              ),
           )
-        : __(
-              ':count transactions arrive without a category and stay that way. With a paid plan, the AI categorizes them for you.',
-              { count: formatCount(counts.uncategorized, locale) },
+        : countLabel(
+              counts.uncategorized,
+              __(
+                  '1 transaction arrives without a category and stays that way. With a paid plan, the AI categorizes it for you.',
+              ),
+              __(
+                  ':count transactions arrive without a category and stay that way. With a paid plan, the AI categorizes them for you.',
+                  { count: uncategorized },
+              ),
           );
 
     const renderStep = (): ReactNode => {
-        if (!context || !transfers) {
+        if (!context || !plan.transfers) {
             return contextFailed ? (
                 <Notice tone="danger">
                     <span>{__('We could not load your data. Try again.')}</span>
@@ -656,20 +491,15 @@ export function FullImportWizard({
                 return (
                     <StepAccounts
                         eyebrow={eyebrow}
-                        fileAccounts={fileAccounts}
-                        plan={accountPlan}
-                        onChange={(key, entry) =>
-                            setAccountOverrides((previous) => ({
-                                ...previous,
-                                [key]: entry,
-                            }))
-                        }
+                        fileAccounts={plan.fileAccounts}
+                        plan={plan.accountPlan}
+                        onChange={plan.setAccount}
                         mode={mode}
                         accounts={context.accounts}
                         mappableAccountIds={context.mappableAccountIds}
                         currencies={currencies.accounts}
                         sourceLabel={sourceSuffix(source)}
-                        banksVersion={String(Object.keys(banks).length)}
+                        banksVersion={plan.banksVersion}
                         locale={locale}
                         footer={footer()}
                     />
@@ -678,24 +508,19 @@ export function FullImportWizard({
                 return (
                     <StepCategories
                         eyebrow={eyebrow}
-                        nodes={nodes}
-                        plan={categoryPlan}
-                        onChange={(nodeId, entry) =>
-                            setCategoryOverrides((previous) => ({
-                                ...previous,
-                                [nodeId]: { ...previous[nodeId], ...entry },
-                            }))
-                        }
+                        nodes={plan.nodes}
+                        plan={plan.categoryPlan}
+                        onChange={plan.setCategory}
                         categories={context.categories}
                         own={{
                             count: counts.own,
-                            ...transfers.own,
-                            onChange: setOwnChoice,
+                            ...plan.transfers.own,
+                            onChange: plan.setOwnChoice,
                         }}
                         ignored={{
                             count: counts.ignored,
-                            ...transfers.ignored,
-                            onChange: setIgnoredChoice,
+                            ...plan.transfers.ignored,
+                            onChange: plan.setIgnoredChoice,
                         }}
                         uncategorized={counts.uncategorized}
                         aiAvailable={context.aiAvailable}
@@ -712,11 +537,11 @@ export function FullImportWizard({
                         <StepReview
                             eyebrow={eyebrow}
                             mode={mode}
-                            fileAccounts={fileAccounts}
-                            plan={accountPlan}
+                            fileAccounts={plan.fileAccounts}
+                            plan={plan.accountPlan}
                             accounts={context.accounts}
                             built={built}
-                            unreadable={normalized.unreadable.length}
+                            unreadable={normalized.unreadable}
                             uncategorized={counts.uncategorized}
                             aiNote={aiReviewNote}
                             confirmWipe={confirmWipe}
@@ -727,12 +552,16 @@ export function FullImportWizard({
                                     disabled={!canContinue.review}
                                     onClick={handleSubmit}
                                 >
-                                    {__('Import :count transactions', {
-                                        count: formatCount(
-                                            built.transactions.length,
-                                            locale,
-                                        ),
-                                    })}
+                                    {countLabel(
+                                        built.transactions.length,
+                                        __('Import 1 transaction'),
+                                        __('Import :count transactions', {
+                                            count: formatCount(
+                                                built.transactions.length,
+                                                locale,
+                                            ),
+                                        }),
+                                    )}
                                 </Button>,
                                 mode === 'wipe'
                                     ? __(
@@ -743,17 +572,8 @@ export function FullImportWizard({
                         />
                     </div>
                 ) : null;
-            case 'progress':
-                return (
-                    <StepProgress
-                        status={status}
-                        upload={upload}
-                        showDashboardLink={variant === 'page'}
-                        locale={locale}
-                    />
-                );
-            case 'done':
-                return status ? (
+            default:
+                return status && finished ? (
                     <StepDone
                         status={status}
                         variant={variant}
@@ -770,9 +590,29 @@ export function FullImportWizard({
                         onFinished={onFinished ?? onClose}
                         locale={locale}
                     />
-                ) : null;
+                ) : (
+                    <StepProgress
+                        status={status}
+                        upload={upload}
+                        showDashboardLink={variant === 'page'}
+                        locale={locale}
+                    />
+                );
         }
     };
+
+    const content = (
+        <>
+            {problem && step === 'progress' && (
+                <PollingProblemNotice
+                    problem={problem}
+                    variant={variant}
+                    onRetry={retry}
+                />
+            )}
+            {renderStep()}
+        </>
+    );
 
     if (variant === 'embedded') {
         return (
@@ -784,7 +624,7 @@ export function FullImportWizard({
                         current={step}
                         onClose={onClose}
                     />
-                    {renderStep()}
+                    {content}
                 </div>
             </main>
         );
@@ -799,7 +639,9 @@ export function FullImportWizard({
                 onClose={onClose}
             />
             <main className="flex justify-center px-4 py-10 sm:px-6 md:py-12">
-                <div className="w-full max-w-[800px]">{renderStep()}</div>
+                <div className="flex w-full max-w-[800px] flex-col gap-6">
+                    {content}
+                </div>
             </main>
         </div>
     );

@@ -40,15 +40,20 @@ it('says when the window closes while it is open', function () {
     expect($user->fullImportWindowEndsAt()?->toDateString())->toBe(now()->addDays(10)->toDateString());
 });
 
-it('shares both answers with the frontend', function () {
+it('shares both answers with the frontend, the Settings one only where the Settings menu reads it', function () {
     $this->actingAs(fullImportUserOnboarded(3))
-        ->get(route('dashboard'))
+        ->get(route('accounts.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('features.fullImport', true)
             ->where('features.fullImportSettings', true));
 
+    $this->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.fullImport', true)
+            ->where('features.fullImportSettings', false));
+
     $this->actingAs(fullImportUserOnboarded(40))
-        ->get(route('dashboard'))
+        ->get(route('accounts.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('features.fullImport', false)
             ->where('features.fullImportSettings', false));

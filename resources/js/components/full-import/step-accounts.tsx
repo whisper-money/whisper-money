@@ -13,7 +13,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatCount, formatMonthRange } from '@/lib/full-import-format';
+import {
+    countLabel,
+    formatCount,
+    formatMonthRange,
+    transactionCount,
+} from '@/lib/full-import-format';
 import { connectedNamesake } from '@/lib/full-import-plan';
 import { formatAccountType, type CurrencyOption } from '@/types/account';
 import {
@@ -69,7 +74,7 @@ export function accountActionPill(
         case 'skip':
             return <Pill>{__('Not imported')}</Pill>;
         default:
-            return <Pill tone="info">{__('New')}</Pill>;
+            return <Pill tone="info">{__('New account')}</Pill>;
     }
 }
 
@@ -82,7 +87,7 @@ function balanceLine(
         return __('no balances in the file');
     }
 
-    return __(':count daily balances, the last :amount on :date', {
+    const values = {
         count: formatCount(account.balanceCount, locale),
         amount: formatCurrency(
             toMinorUnits(account.lastBalance.amount, currency),
@@ -90,7 +95,13 @@ function balanceLine(
             locale,
         ),
         date: formatDateMedium(account.lastBalance.date, locale),
-    });
+    };
+
+    return countLabel(
+        account.balanceCount,
+        __('1 daily balance, :amount on :date', values),
+        __(':count daily balances, the last :amount on :date', values),
+    );
 }
 
 function Field({
@@ -148,27 +159,53 @@ export function StepAccounts({
         <WizardScreen
             eyebrow={eyebrow}
             title={__('Your accounts')}
-            description={__(
-                'There are :count accounts in the file. For each one, choose whether it is new, goes into a manual account you already have, or joins another one from the file.',
-                { count: fileAccounts.length },
+            description={countLabel(
+                fileAccounts.length,
+                __(
+                    'There is 1 account in the file. Choose whether it is new, goes into a manual account you already have, or is left out.',
+                ),
+                __(
+                    'There are :count accounts in the file. For each one, choose whether it is new, goes into a manual account you already have, or joins another one from the file.',
+                    { count: fileAccounts.length },
+                ),
             )}
             footer={footer}
         >
             <div className="flex flex-wrap gap-2">
                 <Pill tone="info">
-                    {__(':count new', { count: counts.create })}
+                    {countLabel(
+                        counts.create,
+                        __('1 new'),
+                        __(':count new', { count: counts.create }),
+                    )}
                 </Pill>
                 {counts.map > 0 && (
                     <Pill>
-                        {__(':count into your accounts', { count: counts.map })}
+                        {countLabel(
+                            counts.map,
+                            __('1 into your accounts'),
+                            __(':count into your accounts', {
+                                count: counts.map,
+                            }),
+                        )}
                     </Pill>
                 )}
                 {counts.merge > 0 && (
-                    <Pill>{__(':count merged', { count: counts.merge })}</Pill>
+                    <Pill>
+                        {countLabel(
+                            counts.merge,
+                            __('1 merged'),
+                            __(':count merged', { count: counts.merge }),
+                        )}
+                    </Pill>
                 )}
                 {counts.skip > 0 && (
                     <Pill>
-                        {__(':count not imported', { count: counts.skip })}
+                        {countLabel(
+                            counts.skip,
+                            __('1 not imported'),
+                            __(':count not imported', { count: counts.skip }),
+                        )}
                     </Pill>
                 )}
             </div>
@@ -224,6 +261,10 @@ function AccountCard({
     locale: string;
 }) {
     const id = `full-import-account-${account.key}`;
+    const mapTarget =
+        entry.action === 'map'
+            ? mappable.find((target) => target.id === entry.targetAccountId)
+            : undefined;
     const mergeTargets = fileAccounts.filter(
         (other) =>
             other.key !== account.key &&
@@ -275,9 +316,7 @@ function AccountCard({
                     </div>
                     <div className="text-[13px] text-muted-foreground">
                         {[
-                            __(':count transactions', {
-                                count: formatCount(account.count, locale),
-                            }),
+                            transactionCount(account.count, locale),
                             formatMonthRange(account.from, account.to, locale),
                             balanceLine(account, entry.currencyCode, locale),
                         ].join(' · ')}
@@ -422,9 +461,23 @@ function AccountCard({
                     </Select>
                     <span className="text-[13px] text-muted-foreground">
                         {__(
-                            'Transactions already in it are skipped, so nothing is duplicated.',
+                            'Transactions already in it (same date, amount and description, or the same :source ID) are skipped.',
+                            { source: sourceLabel },
                         )}
                     </span>
+                    {mapTarget &&
+                        account.currency &&
+                        mapTarget.currency_code !== account.currency && (
+                            <Notice tone="warning">
+                                {__(
+                                    "This account is in :target; the file's transactions are in :file and are imported as they are, without conversion.",
+                                    {
+                                        target: mapTarget.currency_code,
+                                        file: account.currency,
+                                    },
+                                )}
+                            </Notice>
+                        )}
                 </Field>
             )}
 
@@ -453,9 +506,13 @@ function AccountCard({
                         </SelectContent>
                     </Select>
                     <span className="text-[13px] text-muted-foreground">
-                        {__('Its :count transactions go there.', {
-                            count: formatCount(account.count, locale),
-                        })}
+                        {countLabel(
+                            account.count,
+                            __('Its transaction goes there.'),
+                            __('Its :count transactions go there.', {
+                                count: formatCount(account.count, locale),
+                            }),
+                        )}
                     </span>
                 </Field>
             )}

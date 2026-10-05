@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ImportChunkKind;
 use App\Enums\ImportMode;
 use App\Enums\ImportSource;
+use App\Enums\ImportStage;
 use App\Enums\ImportStatus;
 use App\Models\Concerns\BelongsToSpace;
 use Carbon\Carbon;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One full import from another app: the history row Settings lists, the
@@ -84,7 +86,7 @@ class Import extends Model
      */
     public function prunable(): Builder
     {
-        return static::query()
+        return Import::query()
             ->where('status', ImportStatus::Draft->value)
             ->where('updated_at', '<', now()->subDay());
     }
@@ -158,23 +160,15 @@ class Import extends Model
     }
 
     /**
-     * Hand the staged chunks of a kind over one at a time, in the order the
-     * browser cut the file into them. Each is read on its own, so a decade of
-     * movements is never held in memory at once.
-     *
-     * @param  callable(ImportChunk): void  $callback
+     * The next staged chunk of a kind still to be written, in the order the
+     * browser cut the file into them. A chunk is deleted in the same database
+     * transaction that writes its rows, so what is left is exactly what a
+     * resumed run still has to do, and a decade of movements is never held in
+     * memory at once.
      */
-    public function eachChunk(ImportChunkKind $kind, callable $callback): void
+    public function nextChunk(ImportChunkKind $kind): ?ImportChunk
     {
-        $ids = $this->chunks()->where('kind', $kind->value)->orderBy('position')->pluck('id');
-
-        foreach ($ids as $id) {
-            $chunk = ImportChunk::query()->find($id);
-
-            if ($chunk !== null) {
-                $callback($chunk);
-            }
-        }
+        return $this->chunks()->where('kind', $kind->value)->orderBy('position')->first();
     }
 
     public function isUndoable(): bool
@@ -186,10 +180,28 @@ class Import extends Model
      * Merge counts into the stats the progress screen polls, writing them at
      * once so a closed tab finds them on its next visit.
      *
+     * The import job and the AI pass write to the same row from different
+     * workers, so the merge happens on a locked, fresh read rather than on
+     * whatever this instance loaded earlier: neither can wipe out the other's
+     * progress.
+     *
      * @param  array<string, mixed>  $stats
      */
     public function recordStats(array $stats): void
     {
-        $this->forceFill(['stats' => array_replace_recursive($this->stats ?? [], $stats)])->save();
+        DB::transaction(function () use ($stats): void {
+            $current = static::query()->whereKey($this->id)->lockForUpdate()->value('stats');
+            $merged = array_replace_recursive(is_array($current) ? $current : [], $stats);
+
+            static::query()->whereKey($this->id)->update(['stats' => json_encode($merged)]);
+
+            $this->forceFill(['stats' => $merged])->syncOriginalAttribute('stats');
+        });
+    }
+
+    /** Record the stage the import has reached. */
+    public function recordStage(ImportStage $stage): void
+    {
+        $this->recordStats(['stage' => $stage->value]);
     }
 }

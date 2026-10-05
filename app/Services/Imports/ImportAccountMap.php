@@ -56,4 +56,41 @@ class ImportAccountMap
     {
         return isset($this->preexistingIds[$account->id]);
     }
+
+    /**
+     * What a later run of the import needs to carry on where this one left
+     * off: account ids rather than models.
+     *
+     * @return array{targets: array<string, string>, balance_keys: list<string>, preexisting_ids: list<string>}
+     */
+    public function toArray(): array
+    {
+        return [
+            'targets' => array_map(fn (Account $account): string => $account->id, $this->targets),
+            'balance_keys' => array_keys($this->balanceKeys),
+            'preexisting_ids' => array_keys($this->preexistingIds),
+        ];
+    }
+
+    /**
+     * @param  array{targets?: array<string, string>, balance_keys?: list<string>, preexisting_ids?: list<string>}  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $ids = array_values(array_unique($data['targets'] ?? []));
+        $accounts = Account::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $targets = [];
+
+        foreach ($data['targets'] ?? [] as $key => $accountId) {
+            if ($accounts->has($accountId)) {
+                $targets[$key] = $accounts[$accountId];
+            }
+        }
+
+        return new self(
+            $targets,
+            array_fill_keys($data['balance_keys'] ?? [], true),
+            array_fill_keys($data['preexisting_ids'] ?? [], true),
+        );
+    }
 }

@@ -62,7 +62,9 @@ describe('StepAccountsHub full import', () => {
         fireEvent.click(screen.getByText('Coming from another app?'));
         fireEvent.click(screen.getByText('close wizard'));
 
+        expect(reload).toHaveBeenCalledWith({ only: ['accounts'] });
         expect(screen.getByText('Connect a bank')).toBeInTheDocument();
+        reload.mockClear();
 
         fireEvent.click(screen.getByText('Coming from another app?'));
         fireEvent.click(screen.getByText('finish wizard'));

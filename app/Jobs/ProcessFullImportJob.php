@@ -12,20 +12,25 @@ use Throwable;
 /**
  * Writes a staged full import. Queued so the user can close the tab: the
  * progress lives on the import row, not in the browser.
+ *
+ * A large file takes several runs: each writes movements for a few minutes
+ * and dispatches the next one, which carries on from the chunks still
+ * staged. No run outlives the queue's reservation, whatever the file's size.
  */
 class ProcessFullImportJob implements ShouldQueue
 {
     use Queueable;
 
     /**
-     * Thousands of movements, each through the automation rules and the
-     * budgets. Kept below the database queue's retry_after (QueueConfigTest).
+     * One run writes movements for four minutes (FullImporter) plus whatever
+     * the chunk in hand and the stages around it take. Kept below the database
+     * queue's retry_after (QueueConfigTest).
      */
     public int $timeout = 600;
 
     /**
-     * A second run would write the new accounts a second time. A failed
-     * import is undone from Settings and started again instead.
+     * A retry of the first run would write the new accounts a second time. A
+     * failed import is undone from Settings and started again instead.
      */
     public int $tries = 1;
 
@@ -33,7 +38,9 @@ class ProcessFullImportJob implements ShouldQueue
 
     public function handle(FullImporter $importer): void
     {
-        $importer->run($this->import);
+        if (! $importer->run($this->import)) {
+            self::dispatch($this->import->fresh() ?? $this->import);
+        }
     }
 
     /**

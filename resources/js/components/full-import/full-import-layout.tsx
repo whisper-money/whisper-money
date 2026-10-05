@@ -1,3 +1,5 @@
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
@@ -188,13 +190,14 @@ export function WizardFooter({
     );
 }
 
+/** Tints laid over the shared Alert, which only ships a neutral and a destructive one. */
 const NOTICE_TONES = {
-    muted: 'bg-muted text-foreground/85',
+    muted: 'border-transparent bg-muted text-foreground/85',
     success:
-        'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100',
+        'border-transparent bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100',
     warning:
-        'bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-100',
-    danger: 'border border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100',
+        'border-transparent bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-100',
+    danger: 'border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100',
 } as const;
 
 const NOTICE_ICONS: Record<keyof typeof NOTICE_TONES, LucideIcon> = {
@@ -204,7 +207,11 @@ const NOTICE_ICONS: Record<keyof typeof NOTICE_TONES, LucideIcon> = {
     danger: TriangleAlert,
 };
 
-/** A tinted aside: a caveat, a confirmation, a warning. */
+/**
+ * A tinted aside: a caveat, a confirmation, a warning. Only a danger one is
+ * announced the moment it appears; the rest are notes the reader reaches in
+ * their own time.
+ */
 export function Notice({
     tone = 'muted',
     icon,
@@ -218,16 +225,19 @@ export function Notice({
     const Icon = icon ?? NOTICE_ICONS[tone];
 
     return (
-        <div
+        <Alert
+            role={tone === 'danger' ? 'alert' : 'note'}
             className={cn(
-                'flex items-start gap-3 rounded-xl px-4 py-3.5 text-sm leading-normal',
+                'rounded-xl py-3.5 leading-normal',
                 NOTICE_TONES[tone],
                 className,
             )}
         >
-            <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <div className="flex min-w-0 flex-1 flex-col gap-2">{children}</div>
-        </div>
+            <Icon aria-hidden="true" />
+            <AlertDescription className="gap-2 text-inherit">
+                {children}
+            </AlertDescription>
+        </Alert>
     );
 }
 
@@ -287,6 +297,7 @@ export function SectionRow({
     );
 }
 
+/** Tints laid over the shared Badge, whose own variants are all full-strength. */
 const PILL_TONES = {
     neutral: 'bg-muted text-foreground/80',
     info: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200',
@@ -303,14 +314,15 @@ export function Pill({
     children,
 }: PropsWithChildren<{ tone?: keyof typeof PILL_TONES }>) {
     return (
-        <span
+        <Badge
+            variant="outline"
             className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                'rounded-full border-transparent px-2.5',
                 PILL_TONES[tone],
             )}
         >
             {children}
-        </span>
+        </Badge>
     );
 }
 

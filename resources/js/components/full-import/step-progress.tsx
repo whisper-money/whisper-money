@@ -1,7 +1,7 @@
 import { WizardScreen } from '@/components/full-import/full-import-layout';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
-import { formatCount } from '@/lib/full-import-format';
+import { countLabel, formatCount } from '@/lib/full-import-format';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import {
@@ -80,6 +80,11 @@ export function overallProgress(
     }
 }
 
+/** "1 created", "5 created". */
+function createdCount(count: number): string {
+    return countLabel(count, __('1 created'), __(':count created', { count }));
+}
+
 function stageMeta(
     stage: RowStage,
     stats: ImportStats,
@@ -88,15 +93,19 @@ function stageMeta(
     switch (stage) {
         case 'wipe':
             return stats.wiped
-                ? __(':count accounts deleted', { count: stats.wiped.accounts })
+                ? countLabel(
+                      stats.wiped.accounts,
+                      __('1 account deleted'),
+                      __(':count accounts deleted', {
+                          count: stats.wiped.accounts,
+                      }),
+                  )
                 : null;
         case 'accounts':
-            return stats.accounts
-                ? __(':count created', { count: stats.accounts.created })
-                : null;
+            return stats.accounts ? createdCount(stats.accounts.created) : null;
         case 'categories':
             return stats.categories
-                ? __(':count created', { count: stats.categories.created })
+                ? createdCount(stats.categories.created)
                 : null;
         case 'transactions':
             return stats.transactions
@@ -114,9 +123,13 @@ function stageMeta(
                 : null;
         default:
             return stats.uncategorized !== undefined
-                ? __(':count without a category', {
-                      count: formatCount(stats.uncategorized, locale),
-                  })
+                ? countLabel(
+                      stats.uncategorized,
+                      __('1 without a category'),
+                      __(':count without a category', {
+                          count: formatCount(stats.uncategorized, locale),
+                      }),
+                  )
                 : null;
     }
 }
@@ -167,7 +180,7 @@ export function StepProgress({
                 />
                 {upload && (!status || status.status === 'draft') && (
                     <span className="text-[13px] text-muted-foreground">
-                        {__('Uploading :sent of :total rows', {
+                        {__('Uploading rows: :sent of :total', {
                             sent: formatCount(upload.sent, locale),
                             total: formatCount(upload.total, locale),
                         })}

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\ImportChunkKind;
+use App\Enums\ImportStage;
 use App\Enums\ImportStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\MatchFullImportBanksRequest;
@@ -74,7 +75,7 @@ class FullImportController extends Controller
                 ],
             ],
             'options' => ['profile' => $validated['profile'] ?? null],
-            'stats' => ['stage' => 'upload'],
+            'stats' => ['stage' => ImportStage::Upload->value],
         ]);
 
         return response()->json($this->presenter->status($import), 201);
@@ -107,12 +108,21 @@ class FullImportController extends Controller
             }
         }
 
-        $import->forceFill(['status' => ImportStatus::Queued])->save();
-        $import->recordStats(['stage' => 'queued']);
+        // A conditional update rather than a read and a save: two starts sent
+        // at once (a double click, a retried request) must not both queue the
+        // job, or the new accounts would be written twice.
+        $claimed = Import::query()
+            ->whereKey($import->id)
+            ->where('status', ImportStatus::Draft->value)
+            ->update(['status' => ImportStatus::Queued->value]);
 
-        ProcessFullImportJob::dispatch($import);
+        abort_if($claimed === 0, 409, __('This import has already started.'));
 
-        return response()->json($this->presenter->status($import->refresh()));
+        $import->recordStage(ImportStage::Queued);
+
+        ProcessFullImportJob::dispatch($import->refresh());
+
+        return response()->json($this->presenter->status($import));
     }
 
     public function show(Import $import): JsonResponse

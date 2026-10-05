@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\ImportAiStatus;
 use App\Models\Import;
 use App\Models\Transaction;
 use App\Services\Ai\AiCategorizationGate;
@@ -25,9 +26,10 @@ class CategorizeImportedTransactionsJob implements ShouldBeUnique, ShouldQueue
     use Queueable;
 
     /**
-     * A large import can span many model calls, so give the batch plenty of room.
+     * A large import can span many model calls, so give the batch plenty of
+     * room. Kept below the database queue's retry_after (QueueConfigTest).
      */
-    public int $timeout = 300;
+    public int $timeout = 600;
 
     /**
      * Re-running a partially completed pass re-bills the model for work already
@@ -59,7 +61,7 @@ class CategorizeImportedTransactionsJob implements ShouldBeUnique, ShouldQueue
         // Re-checked at run time: the plan or the consent may have lapsed while
         // the job waited, or the import been undone.
         if ($user === null || $this->import->undone_at !== null || ! $gate->allows($user)) {
-            $this->import->recordStats(['ai' => ['status' => 'unavailable']]);
+            $this->import->recordStats(['ai' => ['status' => ImportAiStatus::Unavailable->value]]);
 
             return;
         }
@@ -67,7 +69,7 @@ class CategorizeImportedTransactionsJob implements ShouldBeUnique, ShouldQueue
         $result = $categorizer->backfill(
             $user,
             fn (int $processed, int $total, int $applied) => $this->import->recordStats(['ai' => [
-                'status' => 'running',
+                'status' => ImportAiStatus::Running->value,
                 'processed' => $processed,
                 'total' => $total,
                 'applied' => $applied,
@@ -76,7 +78,7 @@ class CategorizeImportedTransactionsJob implements ShouldBeUnique, ShouldQueue
         );
 
         $this->import->recordStats(['ai' => [
-            'status' => 'done',
+            'status' => ImportAiStatus::Done->value,
             ...$result,
         ], 'uncategorized' => Transaction::query()->where('import_id', $this->import->id)->whereNull('category_id')->count()]);
     }
@@ -87,6 +89,6 @@ class CategorizeImportedTransactionsJob implements ShouldBeUnique, ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Import::query()->find($this->import->id)?->recordStats(['ai' => ['status' => 'failed']]);
+        Import::query()->find($this->import->id)?->recordStats(['ai' => ['status' => ImportAiStatus::Failed->value]]);
     }
 }

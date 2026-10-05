@@ -3,6 +3,7 @@
 namespace App\Services\Imports;
 
 use App\Enums\ImportMode;
+use App\Enums\ImportStage;
 use App\Enums\ImportStatus;
 use App\Models\Import;
 
@@ -12,6 +13,11 @@ use App\Models\Import;
  * parents first, movements, balances, and then a single AI pass over whatever
  * is still uncategorized, now that every category from the file exists.
  *
+ * The movements can take longer than one queued job may run, so they are
+ * written for a while and then handed over: `run()` returns false when it
+ * stopped at its deadline and the job dispatches the next run, which picks up
+ * the accounts and categories the first one resolved from the import's plan.
+ *
  * Each stage is written to the import row as it starts, which is what the
  * progress screen polls and what lets the user close the tab. A stage that
  * fails leaves what the earlier ones wrote linked to the import, so undoing
@@ -19,41 +25,50 @@ use App\Models\Import;
  */
 class FullImporter
 {
+    /**
+     * How long one run writes movements before handing over to a fresh job,
+     * well inside ProcessFullImportJob's own timeout.
+     */
+    private const TRANSACTIONS_SECONDS_PER_RUN = 240;
+
     public function __construct(
         private ImportWiper $wiper,
         private ImportAccountWriter $accounts,
         private ImportCategoryWriter $categories,
         private ImportTransactionWriter $transactions,
         private ImportBalanceWriter $balances,
-        private ImportAiFollowUp $ai,
+        private ImportAiScheduler $ai,
     ) {}
 
-    public function run(Import $import): void
+    /**
+     * @param  int  $transactionSeconds  how long this run may write movements
+     * @return bool whether the import is finished; false means another run is needed
+     */
+    public function run(Import $import, int $transactionSeconds = self::TRANSACTIONS_SECONDS_PER_RUN): bool
     {
-        $import->forceFill(['status' => ImportStatus::Processing, 'started_at' => now()])->save();
-        $plan = $import->plan ?? [];
-
-        if ($import->mode === ImportMode::Wipe) {
-            $this->stage($import, 'wipe');
-            $import->recordStats(['wiped' => $this->wiper->wipe($import)]);
+        if (! isset($import->plan['resolved'])) {
+            $this->prepare($import);
         }
 
-        $this->stage($import, 'accounts');
-        $accounts = $this->accounts->write($import, $plan['accounts'] ?? []);
+        $accounts = ImportAccountMap::fromArray($import->plan['resolved']['accounts'] ?? []);
+        $categoryIds = $import->plan['resolved']['categories'] ?? [];
 
-        $this->stage($import, 'categories');
-        $categoryIds = $this->categories->write($import, $plan['categories'] ?? []);
+        $import->recordStage(ImportStage::Transactions);
 
-        $this->stage($import, 'transactions');
-        $this->transactions->write($import, $accounts, $categoryIds);
+        if (! $this->transactions->write($import, $accounts, $categoryIds, now()->addSeconds($transactionSeconds))) {
+            return false;
+        }
 
-        $this->stage($import, 'balances');
+        $import->recordStage(ImportStage::Balances);
         $this->balances->write($import, $accounts);
 
-        $this->stage($import, 'ai');
-        $this->ai->handle($import);
+        $import->recordStage(ImportStage::Ai);
+        $aiStatus = $this->ai->decide($import);
 
         $this->finish($import, ImportStatus::Completed);
+        $this->ai->dispatchIfQueued($import, $aiStatus);
+
+        return true;
     }
 
     /**
@@ -71,12 +86,34 @@ class FullImporter
             'error' => $error,
         ])->save();
 
-        $import->recordStats(['stage' => 'done']);
+        $import->recordStage(ImportStage::Done);
         $import->chunks()->delete();
     }
 
-    private function stage(Import $import, string $stage): void
+    /**
+     * Everything before the movements, done once: the wipe, the accounts and
+     * the categories. What they resolved to is stored on the plan, for this
+     * run and any that follow.
+     */
+    private function prepare(Import $import): void
     {
-        $import->recordStats(['stage' => $stage]);
+        $import->forceFill(['status' => ImportStatus::Processing, 'started_at' => now()])->save();
+        $plan = $import->plan ?? [];
+
+        if ($import->mode === ImportMode::Wipe) {
+            $import->recordStage(ImportStage::Wipe);
+            $import->recordStats(['wiped' => $this->wiper->wipe($import)]);
+        }
+
+        $import->recordStage(ImportStage::Accounts);
+        $accounts = $this->accounts->write($import, $plan['accounts'] ?? []);
+
+        $import->recordStage(ImportStage::Categories);
+        $categoryIds = $this->categories->write($import, $plan['categories'] ?? []);
+
+        $import->forceFill(['plan' => [
+            ...$plan,
+            'resolved' => ['accounts' => $accounts->toArray(), 'categories' => $categoryIds],
+        ]])->save();
     }
 }

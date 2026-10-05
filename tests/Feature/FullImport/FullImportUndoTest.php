@@ -69,9 +69,16 @@ it('lists what undoing would remove', function () {
         Fixtures::row('a1', '2026-09-02', -200, 'Into BBVA'),
     ]);
 
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => Account::query()->where('name', 'Wise')->value('id'),
+        'description' => 'Added by hand',
+    ]);
+
     $this->get(route('full-import.index'))
         ->assertInertia(fn ($page) => $page
-            ->where('imports.0.summary.accounts', [['name' => 'Wise', 'transactions' => 2]])
+            ->where('imports.0.summary.accounts', [['name' => 'Wise', 'transactions' => 3]])
+            ->where('imports.0.summary.later_transactions', 1)
             ->where('imports.0.summary.transactions', 3)
             ->where('imports.0.summary.into_own_accounts', [['name' => 'BBVA', 'transactions' => 1]]));
 });

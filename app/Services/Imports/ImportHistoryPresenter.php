@@ -149,7 +149,14 @@ class ImportHistoryPresenter
             ->groupBy('account_id')
             ->pluck('aggregate', 'account_id');
 
+        $onCreated = $created->sum(fn (Account $account): int => (int) $account->getAttribute('transactions_count'));
+        $importedOnCreated = $import->transactions()->whereIn('account_id', $created->pluck('id'))->count();
+
         return [
+            // Movements on the accounts the import created that it did not
+            // write itself: added by hand or by a later import. Undo deletes
+            // them with the account, and the dialog has to say so.
+            'later_transactions' => max(0, $onCreated - $importedOnCreated),
             'accounts' => $created->map(fn (Account $account): array => [
                 'name' => $account->name,
                 'transactions' => (int) $account->getAttribute('transactions_count'),

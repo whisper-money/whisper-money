@@ -9,7 +9,13 @@ import { Button } from '@/components/ui/button';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { formatCount, sourceLabel } from '@/lib/full-import-format';
+import {
+    aiOutcomeNote,
+    categoryCount,
+    countLabel,
+    sourceLabel,
+    transactionCount,
+} from '@/lib/full-import-format';
 import { type BreadcrumbItem } from '@/types';
 import { type ImportHistoryEntry } from '@/types/full-import';
 import { formatDateMedium } from '@/utils/date';
@@ -69,6 +75,12 @@ function HistoryRow({
 }) {
     const [confirming, setConfirming] = useState(false);
     const stats = entry.stats;
+    // Only what is still news here: a pass running, or one that broke off.
+    const aiNote =
+        !entry.undone_at &&
+        ['queued', 'running', 'failed'].includes(stats.ai?.status ?? '')
+            ? aiOutcomeNote(stats, locale)
+            : null;
 
     return (
         <div className="flex flex-wrap items-center gap-3.5 px-4 py-4 sm:px-5">
@@ -89,22 +101,27 @@ function HistoryRow({
                                 entry.created_at.slice(0, 10),
                                 locale,
                             ),
-                        __(':count new accounts', {
-                            count: stats.accounts?.created ?? 0,
-                        }),
-                        __(':count categories', {
-                            count: stats.categories?.created ?? 0,
-                        }),
-                        __(':count transactions', {
-                            count: formatCount(
-                                stats.transactions?.imported ?? 0,
-                                locale,
-                            ),
-                        }),
+                        countLabel(
+                            stats.accounts?.created ?? 0,
+                            __('1 new account'),
+                            __(':count new accounts', {
+                                count: stats.accounts?.created ?? 0,
+                            }),
+                        ),
+                        categoryCount(stats.categories?.created ?? 0, locale),
+                        transactionCount(
+                            stats.transactions?.imported ?? 0,
+                            locale,
+                        ),
                     ]
                         .filter(Boolean)
                         .join(' · ')}
                 </div>
+                {aiNote && (
+                    <div className="text-[13px] text-muted-foreground">
+                        {aiNote}
+                    </div>
+                )}
             </div>
             {entry.undoable && (
                 <>
@@ -155,6 +172,9 @@ export default function FullImport({
     // Read once: the chip counts whole days, so a render later in the same
     // visit has nothing new to say.
     const [now] = useState(() => Date.now());
+    const windowEnd = windowEndsAt
+        ? formatDateMedium(windowEndsAt.slice(0, 10), locale)
+        : '';
     const daysLeft = windowEndsAt
         ? Math.max(
               0,
@@ -183,13 +203,16 @@ export default function FullImport({
                         {daysLeft !== null && windowEndsAt && canStart && (
                             <span className="inline-flex w-fit items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-[13px] font-medium">
                                 <Clock className="size-3.5" />
-                                {__(':count days left, until :date', {
-                                    count: daysLeft,
-                                    date: formatDateMedium(
-                                        windowEndsAt.slice(0, 10),
-                                        locale,
-                                    ),
-                                })}
+                                {countLabel(
+                                    daysLeft,
+                                    __('1 day left, until :date', {
+                                        date: windowEnd,
+                                    }),
+                                    __(':count days left, until :date', {
+                                        count: daysLeft,
+                                        date: windowEnd,
+                                    }),
+                                )}
                             </span>
                         )}
 

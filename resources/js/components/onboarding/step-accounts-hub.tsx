@@ -452,16 +452,20 @@ export function StepAccountsHub({
     }
 
     // Comes back to the hub like the other flows, with whatever accounts the
-    // import created already on the list.
+    // import created already on the list. Closing reloads them too: the user
+    // may leave mid-import, and a free signup has no accounts poll to catch
+    // them later.
     if (mode === 'full-import') {
+        const backToHub = () => {
+            router.reload({ only: ['accounts'] });
+            setMode('hub');
+        };
+
         return (
             <FullImportWizard
                 variant="embedded"
-                onClose={() => setMode('hub')}
-                onFinished={() => {
-                    router.reload({ only: ['accounts'] });
-                    setMode('hub');
-                }}
+                onClose={backToHub}
+                onFinished={backToHub}
             />
         );
     }

@@ -7,7 +7,7 @@ import {
     WizardScreen,
     type Choice,
 } from '@/components/full-import/full-import-layout';
-import { formatCount } from '@/lib/full-import-format';
+import { transactionCount } from '@/lib/full-import-format';
 import { type ContextAccount, type FullImportMode } from '@/types/full-import';
 import { __ } from '@/utils/i18n';
 import { Lock, RefreshCw } from 'lucide-react';
@@ -50,7 +50,7 @@ export function StepExisting({
             value: 'add',
             title: __('Add to what I have'),
             description: __(
-                'Everything of yours stays. In the accounts step you can send a file account into one of your manual accounts; repeated transactions are skipped.',
+                'Everything of yours stays. In the accounts step you can send a file account into one of your manual accounts; transactions already in it are skipped.',
             ),
         },
         {
@@ -60,13 +60,16 @@ export function StepExisting({
             description:
                 manual.length > 0
                     ? __(
-                          'Before importing we delete your manual accounts with their transactions and balances: :accounts, :count transactions. Your categories, labels and rules stay.',
+                          'Before importing we delete your manual accounts with their transactions and balances: :accounts, :transactions. Your categories, labels and rules stay.',
                           {
                               accounts: joinNames(
                                   manual.map((account) => account.name),
                                   locale,
                               ),
-                              count: formatCount(manualMovements, locale),
+                              transactions: transactionCount(
+                                  manualMovements,
+                                  locale,
+                              ),
                           },
                       )
                     : __(
@@ -103,12 +106,10 @@ export function StepExisting({
                             account.connected
                                 ? __('Syncs daily')
                                 : __('Manual'),
-                            __(':count transactions', {
-                                count: formatCount(
-                                    account.transactions_count,
-                                    locale,
-                                ),
-                            }),
+                            transactionCount(
+                                account.transactions_count,
+                                locale,
+                            ),
                         ].join(' · ')}
                     />
                 ))}

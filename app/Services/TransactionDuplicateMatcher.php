@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Tells which incoming rows an account already holds, for the imports that
@@ -46,13 +45,15 @@ class TransactionDuplicateMatcher
 
     /**
      * The keys of every row the account holds between two days, inclusive, as
-     * a set. Without bounds, the whole history.
+     * a set. Without bounds, the whole history. An import in progress passes
+     * its own id, so what it wrote itself is never taken for something the
+     * account already held.
      *
      * @return array<string, true>
      */
-    public function existingKeys(Account $account, ?string $from = null, ?string $to = null): array
+    public function existingKeys(Account $account, ?string $from = null, ?string $to = null, ?string $exceptImportId = null): array
     {
-        $existing = $this->heldTransactions($account)
+        $existing = $this->heldTransactions($account, $exceptImportId)
             ->when($from !== null && $to !== null, fn (Builder $query) => $query->whereBetween('transaction_date', [$from, $to]))
             ->get(['transaction_date', 'amount', 'description']);
 
@@ -70,14 +71,15 @@ class TransactionDuplicateMatcher
     }
 
     /**
-     * The ids another app gave the rows the account holds, as a set. What the
-     * full import reads to make a second run of the same file a no-op.
+     * The ids another app gave the rows the account holds, as a set, leaving
+     * out the import asking. What the full import reads to make a second run
+     * of the same file a no-op.
      *
      * @return array<string, true>
      */
-    public function existingExternalIds(Account $account): array
+    public function existingExternalIds(Account $account, ?string $exceptImportId = null): array
     {
-        $ids = $this->heldTransactions($account)
+        $ids = $this->heldTransactions($account, $exceptImportId)
             ->whereNotNull('external_transaction_id')
             ->pluck('external_transaction_id')
             ->all();
@@ -94,13 +96,16 @@ class TransactionDuplicateMatcher
      * re-imported - as can a parent whose parts are all gone, since it has no
      * live parts left to hold the money.
      *
-     * @return HasMany<Transaction, Account>
+     * @return Builder<Transaction>
      */
-    private function heldTransactions(Account $account): HasMany
+    private function heldTransactions(Account $account, ?string $exceptImportId): Builder
     {
-        return $account->transactions()
-            ->withTrashed()
-            ->where(fn (Builder $query) => $query->whereNull('deleted_at')->orWhereHas('splits'));
+        return Transaction::withTrashed()
+            ->where('account_id', $account->id)
+            ->where(fn (Builder $query) => $query->whereNull('deleted_at')->orWhereHas('splits'))
+            ->when($exceptImportId !== null, fn (Builder $query) => $query->where(
+                fn (Builder $inner) => $inner->whereNull('import_id')->orWhere('import_id', '!=', $exceptImportId),
+            ));
     }
 
     public function key(string $date, int $amount, string $description): string

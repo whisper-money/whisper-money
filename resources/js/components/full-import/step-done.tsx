@@ -6,7 +6,16 @@ import {
 } from '@/components/full-import/full-import-layout';
 import { StepFilled } from '@/components/onboarding/step-screen';
 import { Button } from '@/components/ui/button';
-import { formatCount, sourceLabel } from '@/lib/full-import-format';
+import {
+    accountCount,
+    aiOutcomeNote,
+    categoryCount,
+    countLabel,
+    dailyBalanceCount,
+    formatCount,
+    sourceLabel,
+    transactionCount,
+} from '@/lib/full-import-format';
 import { list as accountsList } from '@/routes/accounts';
 import { index as transactionsIndex } from '@/routes/transactions';
 import { type ImportStatus } from '@/types/full-import';
@@ -14,38 +23,46 @@ import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { Check, Sparkles, TriangleAlert } from 'lucide-react';
 
-/** What the AI is doing with what the file left uncategorized, in words. */
-export function aiOutcomeNote(
-    status: ImportStatus,
-    locale: string,
-): string | null {
-    const uncategorized = status.stats.uncategorized ?? 0;
-    const count = formatCount(uncategorized, locale);
+/** "1 skipped", "12 skipped". */
+function skippedCount(count: number, locale: string): string {
+    return countLabel(
+        count,
+        __('1 skipped'),
+        __(':count skipped', { count: formatCount(count, locale) }),
+    );
+}
 
-    switch (status.stats.ai?.status) {
-        case 'queued':
-        case 'running':
-            return __(
-                'The AI is categorizing the :count transactions that arrived without a category. It takes a few minutes.',
-                { count },
-            );
-        case 'done':
-            return __('The AI categorized :count transactions.', {
-                count: formatCount(status.stats.ai.applied ?? 0, locale),
-            });
-        case 'onboarding':
-            return __(
-                ':count transactions arrived without a category. You can categorize them in a moment.',
-                { count },
-            );
-        case 'unavailable':
-            return __(
-                ':count transactions stayed uncategorized. With a paid plan, the AI categorizes them for you.',
-                { count },
-            );
-        default:
-            return null;
+/**
+ * What the import added up to: what it created, and how many of the user's
+ * own accounts it wrote into as well.
+ */
+function outcomeSentence(status: ImportStatus, locale: string): string {
+    const stats = status.stats;
+    const mapped = stats.accounts?.mapped ?? 0;
+    const created = __(
+        'We created :accounts and :categories, and added :transactions and :balances.',
+        {
+            accounts: accountCount(stats.accounts?.created ?? 0, locale),
+            categories: categoryCount(stats.categories?.created ?? 0, locale),
+            transactions: transactionCount(
+                stats.transactions?.imported ?? 0,
+                locale,
+            ),
+            balances: dailyBalanceCount(stats.balances?.imported ?? 0, locale),
+        },
+    );
+
+    if (mapped === 0) {
+        return created;
     }
+
+    return `${created} ${countLabel(
+        mapped,
+        __('1 of your accounts got transactions too.'),
+        __(':count of your accounts got transactions too.', {
+            count: mapped,
+        }),
+    )}`;
 }
 
 interface StepDoneProps {
@@ -76,9 +93,13 @@ export function StepDone({
                     {__('The import stopped before it finished')}
                 </h1>
                 <p className="text-[15px] text-muted-foreground">
-                    {__(
-                        'Part of it may already be in. Undo it from Settings and try again.',
-                    )}
+                    {status.mode === 'wipe'
+                        ? __(
+                              'Undo it from Settings to remove what it imported. What was deleted before the import started cannot be brought back.',
+                          )
+                        : __(
+                              'Part of it may already be in. Undo it from Settings and try again.',
+                          )}
                 </p>
                 <div className="flex flex-wrap gap-3">
                     {variant === 'page' ? (
@@ -97,7 +118,7 @@ export function StepDone({
         );
     }
 
-    const aiNote = aiOutcomeNote(status, locale);
+    const aiNote = aiOutcomeNote(stats, locale);
     const duplicates = (stats.per_account ?? []).filter(
         (account) => account.duplicates > 0,
     );
@@ -116,27 +137,7 @@ export function StepDone({
                         : __('Your data is here')}
                 </h1>
                 <p className="text-[15px] text-muted-foreground">
-                    {__(
-                        'We created :accounts accounts and :categories categories, and added :transactions transactions and :balances daily balances.',
-                        {
-                            accounts: formatCount(
-                                stats.accounts?.created ?? 0,
-                                locale,
-                            ),
-                            categories: formatCount(
-                                stats.categories?.created ?? 0,
-                                locale,
-                            ),
-                            transactions: formatCount(
-                                stats.transactions?.imported ?? 0,
-                                locale,
-                            ),
-                            balances: formatCount(
-                                stats.balances?.imported ?? 0,
-                                locale,
-                            ),
-                        },
-                    )}
+                    {outcomeSentence(status, locale)}
                 </p>
             </div>
 
@@ -154,9 +155,7 @@ export function StepDone({
                     <SectionRow
                         key={account.account_id}
                         title={__('Repeated in :name', { name: account.name })}
-                        meta={__(':count skipped', {
-                            count: formatCount(account.duplicates, locale),
-                        })}
+                        meta={skippedCount(account.duplicates, locale)}
                     />
                 ))}
                 {clientSkipped
@@ -165,9 +164,7 @@ export function StepDone({
                         <SectionRow
                             key={line.label}
                             title={line.label}
-                            meta={__(':count skipped', {
-                                count: formatCount(line.count, locale),
-                            })}
+                            meta={skippedCount(line.count, locale)}
                         />
                     ))}
             </SectionCard>

@@ -1,5 +1,6 @@
 import { type FullImportContext, type ImportStatus } from '@/types/full-import';
 import {
+    act,
     fireEvent,
     render,
     screen,
@@ -234,6 +235,65 @@ describe('FullImportWizard', () => {
         fireEvent.click(within(warning).getByRole('checkbox'));
 
         expect(importButton).toBeEnabled();
+    });
+
+    it('warns when a file account goes into an account in another currency', async () => {
+        await openWithBanktrackFile(
+            context({
+                accounts: [
+                    {
+                        id: 'wise-usd',
+                        name: 'Wise Personal',
+                        type: 'checking',
+                        currency_code: 'USD',
+                        connected: false,
+                        archived: false,
+                        transactions_count: 0,
+                        bank: null,
+                    },
+                ],
+                mappableAccountIds: ['wise-usd'],
+            }),
+        );
+        await continueTo('You already have data here');
+        await continueTo('Check the columns');
+        await continueTo('Your accounts');
+
+        expect(
+            screen.getByText(
+                "This account is in USD; the file's transactions are in EUR and are imported as they are, without conversion.",
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('warns before leaving while the rows are still uploading', async () => {
+        let finishUpload: (status: ImportStatus) => void = () => undefined;
+        api.submitImport.mockImplementation(
+            () =>
+                new Promise<ImportStatus>((resolve) => {
+                    finishUpload = resolve;
+                }),
+        );
+        await openWithBanktrackFile(context());
+        await continueTo('Check the columns');
+        await continueTo('Your accounts');
+        await continueTo('Your categories');
+        await continueTo('Ready to import');
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Import 12 transactions' }),
+        );
+        await screen.findByText('Importing your data');
+
+        const leaving = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(leaving);
+        expect(leaving.defaultPrevented).toBe(true);
+
+        await act(async () => finishUpload(QUEUED));
+
+        const leavingLater = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(leavingLater);
+        expect(leavingLater.defaultPrevented).toBe(false);
     });
 
     it('jumps to the progress of an import that is already running', async () => {

@@ -13,7 +13,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatCount } from '@/lib/full-import-format';
+import {
+    countLabel,
+    formatCount,
+    transactionCount,
+} from '@/lib/full-import-format';
 import { isOwnTransferNode } from '@/lib/full-import-plan';
 import {
     CATEGORY_TYPES,
@@ -135,9 +139,7 @@ export function StepCategories({
 
     const countLine = (node: FileCategoryNode) =>
         node.count > 0
-            ? __(':count transactions', {
-                  count: formatCount(node.count, locale),
-              })
+            ? transactionCount(node.count, locale)
             : __('Main category');
 
     return (
@@ -151,16 +153,30 @@ export function StepCategories({
         >
             <div className="flex flex-wrap gap-2">
                 <Pill>
-                    {__(':count merged with yours', { count: matched.length })}
+                    {countLabel(
+                        matched.length,
+                        __('1 merged with yours'),
+                        __(':count merged with yours', {
+                            count: matched.length,
+                        }),
+                    )}
                 </Pill>
                 <Pill tone="info">
-                    {__(':count new', { count: created.length })}
+                    {countLabel(
+                        created.length,
+                        __('1 new'),
+                        __(':count new', { count: created.length }),
+                    )}
                 </Pill>
                 {uncategorized > 0 && (
                     <Pill>
-                        {__(':count transactions without a category', {
-                            count: formatCount(uncategorized, locale),
-                        })}
+                        {countLabel(
+                            uncategorized,
+                            __('1 transaction without a category'),
+                            __(':count transactions without a category', {
+                                count: formatCount(uncategorized, locale),
+                            }),
+                        )}
                     </Pill>
                 )}
             </div>
@@ -181,9 +197,7 @@ export function StepCategories({
                                     isOwnTransferNode(node, nodes),
                                 )?.name ?? __('Own transfers')
                             }
-                            meta={__(':count transactions', {
-                                count: formatCount(own.count, locale),
-                            })}
+                            meta={transactionCount(own.count, locale)}
                         >
                             <TransferPicker
                                 label="full-import-own-transfers"
@@ -195,9 +209,7 @@ export function StepCategories({
                     {ignored.count > 0 && (
                         <SectionRow
                             title={__('Marked as «Ignored»')}
-                            meta={__(':count transactions', {
-                                count: formatCount(ignored.count, locale),
-                            })}
+                            meta={transactionCount(ignored.count, locale)}
                         >
                             <TransferPicker
                                 label="full-import-ignored"
@@ -241,7 +253,7 @@ export function StepCategories({
                 <SectionCard
                     label={
                         <>
-                            {__('New')}
+                            {__('New categories')}
                             <span className="font-normal">
                                 {__(
                                     'Created with an icon and a colour; you can change them later.',
@@ -325,18 +337,34 @@ export function StepCategories({
             {uncategorized > 0 && (
                 <Notice icon={Sparkles}>
                     <span className="font-medium">
-                        {__(
-                            ':count transactions have no category in the file',
-                            { count: formatCount(uncategorized, locale) },
+                        {countLabel(
+                            uncategorized,
+                            __('1 transaction has no category in the file'),
+                            __(
+                                ':count transactions have no category in the file',
+                                { count: formatCount(uncategorized, locale) },
+                            ),
                         )}
                     </span>
                     <span>
                         {aiAvailable
-                            ? __(
-                                  'When the import finishes, the AI will categorize them with your categories, new ones included.',
+                            ? countLabel(
+                                  uncategorized,
+                                  __(
+                                      'When the import finishes, the AI will categorize it with your categories, new ones included.',
+                                  ),
+                                  __(
+                                      'When the import finishes, the AI will categorize them with your categories, new ones included.',
+                                  ),
                               )
-                            : __(
-                                  'They will stay uncategorized. With a paid plan, the AI categorizes them for you.',
+                            : countLabel(
+                                  uncategorized,
+                                  __(
+                                      'It will stay uncategorized. With a paid plan, the AI categorizes it for you.',
+                                  ),
+                                  __(
+                                      'They will stay uncategorized. With a paid plan, the AI categorizes them for you.',
+                                  ),
                               )}
                     </span>
                 </Notice>

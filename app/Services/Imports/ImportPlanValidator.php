@@ -39,7 +39,7 @@ class ImportPlanValidator
      * under. Those did not count there, so here they go to a transfer, which
      * counts neither as spending nor as income.
      */
-    public const IGNORED_ROWS_KEY = 'ignored';
+    private const IGNORED_ROWS_KEY = 'ignored';
 
     public function __construct(private CategoryTree $tree) {}
 
@@ -146,7 +146,7 @@ class ImportPlanValidator
             }
 
             if (($entry['key'] ?? null) === self::IGNORED_ROWS_KEY && ! $this->isTransfer($entry, $ownTypes)) {
-                $validator->errors()->add("{$path}.category_id", __('Ignored movements go to a transfer category.'));
+                $validator->errors()->add("{$path}.category_id", __('Ignored transactions go to a transfer category.'));
             }
         }
     }

@@ -258,6 +258,11 @@ export interface ImportUndoSummary {
     categories: number;
     transactions: number;
     balances: number;
+    /**
+     * Rows on the accounts the import created that it did not write itself:
+     * added by hand, or by another import. They go with those accounts.
+     */
+    later_transactions: number;
     into_own_accounts: { name: string; transactions: number }[];
 }
 

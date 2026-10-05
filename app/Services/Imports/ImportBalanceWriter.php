@@ -5,7 +5,6 @@ namespace App\Services\Imports;
 use App\Enums\ImportChunkKind;
 use App\Models\AccountBalance;
 use App\Models\Import;
-use App\Models\ImportChunk;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -28,19 +27,20 @@ class ImportBalanceWriter
 
         $import->recordStats(['balances' => $totals]);
 
-        $import->eachChunk(ImportChunkKind::Balances, function (ImportChunk $chunk) use ($import, $accounts, &$totals): void {
+        while (($chunk = $import->nextChunk(ImportChunkKind::Balances)) !== null) {
             [$created, $preexisting] = $this->rowsFor($import, $accounts, $chunk->rows);
 
-            DB::transaction(function () use ($created, $preexisting, &$totals): void {
+            DB::transaction(function () use ($import, $chunk, $created, $preexisting, &$totals): void {
                 if ($created !== []) {
                     AccountBalance::query()->upsert($created, ['account_id', 'balance_date'], ['balance', 'derived', 'import_id', 'updated_at']);
                 }
 
                 $totals['imported'] += count($created) + ($preexisting === [] ? 0 : AccountBalance::query()->insertOrIgnore($preexisting));
-            });
 
-            $import->recordStats(['balances' => $totals]);
-        });
+                $chunk->delete();
+                $import->recordStats(['balances' => $totals]);
+            });
+        }
     }
 
     /**
