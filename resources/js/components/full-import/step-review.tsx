@@ -14,7 +14,12 @@ import {
     formatCount,
     transactionCount,
 } from '@/lib/full-import-format';
-import { accountPayloadKey, type BuiltImport } from '@/lib/full-import-plan';
+import {
+    accountPayloadKey,
+    IGNORED_KEY,
+    OWN_TRANSFER_KEY,
+    type BuiltImport,
+} from '@/lib/full-import-plan';
 import {
     type AccountPlanEntry,
     type ContextAccount,
@@ -46,8 +51,9 @@ interface StepReviewProps {
 function skippedNote(
     skippedAccounts: number,
     unreadable: number,
+    mode: FullImportMode,
     locale: string,
-): string {
+): string | undefined {
     const parts = [
         skippedAccounts > 0 &&
             countLabel(
@@ -67,8 +73,14 @@ function skippedNote(
             ),
     ].filter(Boolean);
 
-    return parts.length > 0
-        ? __('Skipped: :reasons', { reasons: parts.join(', ') })
+    if (parts.length > 0) {
+        return __('Skipped: :reasons', { reasons: parts.join(', ') });
+    }
+
+    // Starting from scratch leaves no account of the user's to find a
+    // duplicate in.
+    return mode === 'wipe'
+        ? undefined
         : __('Ones already in your accounts are skipped');
 }
 
@@ -101,7 +113,14 @@ export function StepReview({
     const created = built.payload.categories.filter(
         (entry) => entry.action === 'create',
     ).length;
-    const matched = built.payload.categories.length - created;
+    // The transfer targets are counted on the categories step as transfers,
+    // not as categories merged with the user's, so they stay out here too.
+    const matched = built.payload.categories.filter(
+        (entry) =>
+            entry.action === 'match' &&
+            entry.key !== OWN_TRANSFER_KEY &&
+            entry.key !== IGNORED_KEY,
+    ).length;
     const newAccounts = fileAccounts.filter(
         (account) => plan[account.key].action === 'create',
     ).length;
@@ -176,6 +195,7 @@ export function StepReview({
                     note={skippedNote(
                         skippedAccounts,
                         unreadable.length,
+                        mode,
                         locale,
                     )}
                 />
@@ -189,7 +209,7 @@ export function StepReview({
                     note={
                         withBalances.length > 0
                             ? __('from :accounts', {
-                                  accounts: joinNames(withBalances, locale),
+                                  accounts: joinNames(withBalances),
                               })
                             : __('The file has none for these accounts')
                     }
@@ -248,7 +268,6 @@ export function StepReview({
                                   {
                                       accounts: joinNames(
                                           manual.map((account) => account.name),
-                                          locale,
                                       ),
                                       transactions: transactionCount(
                                           manual.reduce(

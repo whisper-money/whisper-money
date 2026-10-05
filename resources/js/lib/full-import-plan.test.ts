@@ -263,6 +263,22 @@ describe('accounts', () => {
         });
     });
 
+    it('goes back into the separate account an earlier import made for a connected namesake', () => {
+        const again: AccountPlanContext = {
+            ...context,
+            accounts: [
+                ...context.accounts,
+                account({ id: 'separate', name: 'Revolut (Banktrack)' }),
+            ],
+            mappableAccountIds: ['manual', 'separate'],
+        };
+
+        expect(defaultAccountPlan(byKey('revolut'), again)).toMatchObject({
+            action: 'map',
+            targetAccountId: 'separate',
+        });
+    });
+
     it('never targets an account that keeps no ledger', () => {
         expect(defaultAccountPlan(byKey('hipoteca'), context).action).toBe(
             'create',

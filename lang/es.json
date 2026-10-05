@@ -3806,5 +3806,7 @@
     "A new category needs a type.": "Una categoría nueva necesita un tipo.",
     "The parent category is not part of the import.": "La categoría principal no forma parte de la importación.",
     "Categories can only be nested :depth levels deep.": "Las categorías solo pueden anidarse hasta :depth niveles.",
-    "Ignored transactions go to a transfer category.": "Las transacciones ignoradas van a una categoría de transferencia."
+    "Ignored transactions go to a transfer category.": "Las transacciones ignoradas van a una categoría de transferencia.",
+    "Nothing new: everything in the file was already here.": "Nada nuevo: todo lo del archivo ya estaba aquí.",
+    ":list and :last": ":list y :last"
 }

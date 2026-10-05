@@ -181,13 +181,18 @@ export function defaultAccountPlan(
     context: AccountPlanContext,
 ): AccountPlanEntry {
     const mappable = new Set(context.mappableAccountIds);
+    const connected = connectedNamesake(account, context);
+    const separateName = `${account.name} (${context.sourceLabel})`;
+    // The separate account an earlier import made for a connected namesake is
+    // where a second import of the same file belongs, not a third account.
     const mapTarget =
         context.mode === 'add'
-            ? namesakeAccount(account, context.accounts, (candidate) =>
-                  mappable.has(candidate.id),
+            ? namesakeAccount(
+                  connected ? { ...account, name: separateName } : account,
+                  context.accounts,
+                  (candidate) => mappable.has(candidate.id),
               )
             : null;
-    const connected = connectedNamesake(account, context);
     const currency =
         account.currency &&
         context.supportedCurrencies.includes(account.currency)
@@ -196,9 +201,7 @@ export function defaultAccountPlan(
 
     return {
         action: mapTarget ? 'map' : 'create',
-        name: connected
-            ? `${account.name} (${context.sourceLabel})`
-            : account.name,
+        name: connected ? separateName : account.name,
         type: guessAccountType(account.name),
         currencyCode: currency,
         bank: isCashAccountName(account.name)

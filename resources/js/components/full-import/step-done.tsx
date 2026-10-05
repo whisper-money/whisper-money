@@ -39,6 +39,19 @@ function skippedCount(count: number, locale: string): string {
 function outcomeSentence(status: ImportStatus, locale: string): string {
     const stats = status.stats;
     const mapped = stats.accounts?.mapped ?? 0;
+    const wroteNothing =
+        (stats.accounts?.created ?? 0) +
+            (stats.categories?.created ?? 0) +
+            (stats.transactions?.imported ?? 0) +
+            (stats.balances?.imported ?? 0) ===
+        0;
+
+    // A second import of the same file: saying "we created 0 accounts and
+    // added 0 transactions" reads like a failure when it is the point.
+    if (wroteNothing) {
+        return __('Nothing new: everything in the file was already here.');
+    }
+
     const created = __(
         'We created :accounts and :categories, and added :transactions and :balances.',
         {
