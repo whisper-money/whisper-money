@@ -1,9 +1,9 @@
-import { BankCombobox } from '@/components/accounts/bank-combobox';
 import {
     Notice,
     Pill,
     WizardScreen,
 } from '@/components/full-import/full-import-layout';
+import { ImportBankField } from '@/components/full-import/import-bank-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -411,26 +411,13 @@ function AccountCard({
                         </Select>
                     </Field>
                     <Field label={__('Bank')}>
-                        <BankCombobox
-                            key={banksVersion}
-                            value={entry.bank?.id ?? null}
-                            defaultBank={
-                                entry.bank
-                                    ? { ...entry.bank, user_id: null }
-                                    : undefined
-                            }
-                            onValueChange={() => undefined}
-                            onBankChange={(bank) =>
-                                onChange({
-                                    ...entry,
-                                    bank: bank
-                                        ? {
-                                              id: bank.id,
-                                              name: bank.name,
-                                              logo: bank.logo,
-                                          }
-                                        : null,
-                                })
+                        <ImportBankField
+                            bank={entry.bank}
+                            newBankName={entry.newBankName}
+                            suggestedName={account.bankName}
+                            version={banksVersion}
+                            onChange={(choice) =>
+                                onChange({ ...entry, ...choice })
                             }
                         />
                     </Field>

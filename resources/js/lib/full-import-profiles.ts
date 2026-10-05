@@ -420,11 +420,12 @@ function accountOf(
     row: ParsedRow,
     mapping: FullImportMapping,
     fileName: string,
-): { key: string; name: string } {
+): { key: string; name: string; bank: string } {
     if (mapping.account === SINGLE_ACCOUNT_COLUMN) {
         return {
             key: 'single',
             name: fileName.replace(/\.[^.]+$/, '') || __('Imported account'),
+            bank: '',
         };
     }
 
@@ -437,7 +438,7 @@ function accountOf(
         : normalizeText(value);
     const base = value || __('No account');
 
-    return { key, name: detail ? `${base} · ${detail}` : base };
+    return { key, name: detail ? `${base} · ${detail}` : base, bank: value };
 }
 
 function balanceOf(row: ParsedRow, mapping: FullImportMapping): number | null {
@@ -477,6 +478,7 @@ function normalizeRow(
             notesCell && !sameText(notesCell, description) ? notesCell : null,
         accountKey: account.key,
         accountName: account.name,
+        accountBank: account.bank,
         categoryPath: splitCategoryPath(
             cellText(row, mapping.category),
             mapping.categorySeparator,

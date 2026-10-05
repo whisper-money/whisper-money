@@ -87,6 +87,7 @@ export function detectAccounts(rows: NormalizedRow[]): FileAccount[] {
             return {
                 key,
                 name: accountRows[0].accountName,
+                bankName: accountRows[0].accountBank ?? '',
                 count: accountRows.length,
                 from: dates[0],
                 to: dates[dates.length - 1],
@@ -198,17 +199,47 @@ export function defaultAccountPlan(
         context.supportedCurrencies.includes(account.currency)
             ? account.currency
             : context.userCurrency;
+    const type = guessAccountType(account.name);
 
     return {
         action: mapTarget ? 'map' : 'create',
         name: connected ? separateName : account.name,
-        type: guessAccountType(account.name),
+        type,
         currencyCode: currency,
-        bank: isCashAccountName(account.name)
-            ? null
-            : (context.banks[account.name] ?? null),
+        ...defaultBank(account, type, context.banks),
         targetAccountId: mapTarget?.id ?? null,
         mergeIntoKey: null,
+    };
+}
+
+/** The name a file account's bank is looked up by: the account column's own value. */
+export function bankLookupName(account: FileAccount): string {
+    return account.bankName || account.name;
+}
+
+/**
+ * The bank a new account starts with: the known one its name points at, or,
+ * once the lookup has come back empty, a new one named after the file's
+ * account column ("MyInvestor", not "MyInvestor · Cuenta Corriente"). Cash
+ * keeps no bank at all. Until the lookup answers there is nothing to propose.
+ */
+function defaultBank(
+    account: FileAccount,
+    type: ImportAccountType,
+    banks: Record<string, BankLite | null>,
+): Pick<AccountPlanEntry, 'bank' | 'newBankName'> {
+    const lookup = bankLookupName(account);
+
+    if (type === 'others' || !(lookup in banks)) {
+        return { bank: null, newBankName: null };
+    }
+
+    const bank = banks[lookup] ?? null;
+
+    return {
+        bank,
+        newBankName:
+            bank === null && account.bankName ? account.bankName : null,
     };
 }
 
@@ -286,6 +317,32 @@ export function targetCurrency(
     }
 
     return entry.currencyCode;
+}
+
+/**
+ * The user's own account each plan account key writes into, for the file
+ * accounts that go into one: mapped onto it, or merged into one that is.
+ * What the review checks for transactions that are already there.
+ */
+export function existingTargets(
+    accounts: FileAccount[],
+    plan: Record<string, AccountPlanEntry>,
+): Record<string, string> {
+    const targets: Record<string, string> = {};
+
+    accounts.forEach((account, index) => {
+        const entry = plan[account.key];
+        const into =
+            entry?.action === 'merge' && entry.mergeIntoKey
+                ? plan[entry.mergeIntoKey]
+                : entry;
+
+        if (into?.action === 'map' && into.targetAccountId) {
+            targets[accountPayloadKey(index)] = into.targetAccountId;
+        }
+    });
+
+    return targets;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -689,6 +746,15 @@ export function accountPayloadKey(index: number): string {
     return `a${index}`;
 }
 
+/** The bank to create, sent only when no known bank was picked. */
+function newBankField(
+    entry: AccountPlanEntry,
+): Pick<AccountPayloadEntry, 'new_bank_name'> {
+    const name = entry.newBankName?.trim().slice(0, 255);
+
+    return entry.bank === null && name ? { new_bank_name: name } : {};
+}
+
 function accountEntries(input: BuildImportInput): {
     entries: AccountPayloadEntry[];
     keys: Map<string, string>;
@@ -713,6 +779,7 @@ function accountEntries(input: BuildImportInput): {
                     type: entry.type,
                     currency_code: entry.currencyCode,
                     bank_id: entry.bank?.id ?? null,
+                    ...newBankField(entry),
                     iban: account.iban,
                 };
             case 'map':

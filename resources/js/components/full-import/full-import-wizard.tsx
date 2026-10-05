@@ -19,6 +19,7 @@ import {
 import { StepReview } from '@/components/full-import/step-review';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useDuplicateEstimate } from '@/hooks/use-duplicate-estimate';
 import { useFullImportPlan } from '@/hooks/use-full-import-plan';
 import {
     useImportPolling,
@@ -155,6 +156,21 @@ function PollingProblemNotice({
     );
 }
 
+/** "Import 36 transactions", or plain "Import" when none look new. */
+function importButtonLabel(count: number, locale: string): string {
+    if (count === 0) {
+        return __('Import');
+    }
+
+    return countLabel(
+        count,
+        __('Import 1 transaction'),
+        __('Import :count transactions', {
+            count: formatCount(count, locale),
+        }),
+    );
+}
+
 /**
  * The full import from another app: read the file in the browser, let the
  * user check the columns, accounts and categories it found, then hand the
@@ -195,6 +211,13 @@ export function FullImportWizard({
         withPayload: step === 'review',
     });
     const { normalized, built, counts } = plan;
+
+    const duplicates = useDuplicateEstimate(built, plan.existingTargets);
+    // The estimate only ever lowers the count: the server dedupes again,
+    // by the file's own ids too, while it writes.
+    const likelyNew = built
+        ? built.transactions.length - (duplicates.estimate?.existing ?? 0)
+        : 0;
 
     useLeaveGuard(step === 'progress' && upload !== null && status === null);
 
@@ -547,27 +570,24 @@ export function FullImportWizard({
                             confirmWipe={confirmWipe}
                             onConfirmWipeChange={setConfirmWipe}
                             locale={locale}
+                            estimate={duplicates.estimate}
+                            checkingDuplicates={duplicates.checking}
                             footer={footer(
                                 <Button
                                     disabled={!canContinue.review}
                                     onClick={handleSubmit}
                                 >
-                                    {countLabel(
-                                        built.transactions.length,
-                                        __('Import 1 transaction'),
-                                        __('Import :count transactions', {
-                                            count: formatCount(
-                                                built.transactions.length,
-                                                locale,
-                                            ),
-                                        }),
-                                    )}
+                                    {importButtonLabel(likelyNew, locale)}
                                 </Button>,
-                                mode === 'wipe'
+                                likelyNew === 0
                                     ? __(
-                                          'Undoing the import does not bring back what is deleted',
+                                          'Likely nothing new to import: it all seems to be there already.',
                                       )
-                                    : __('You can undo it from Settings'),
+                                    : mode === 'wipe'
+                                      ? __(
+                                            'Undoing the import does not bring back what is deleted',
+                                        )
+                                      : __('You can undo it from Settings'),
                             )}
                         />
                     </div>

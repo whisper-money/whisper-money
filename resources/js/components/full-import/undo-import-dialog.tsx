@@ -101,6 +101,14 @@ function SummaryList({
                     )}
                 </span>
             ))}
+            {(summary.connected_accounts ?? []).map((account) => (
+                <span key={account.name}>
+                    {__(
+                        ':name is now connected to your bank, so it stays; only the imported transactions are removed.',
+                        { name: account.name },
+                    )}
+                </span>
+            ))}
             {summary.later_transactions > 0 && (
                 <span>
                     {countLabel(

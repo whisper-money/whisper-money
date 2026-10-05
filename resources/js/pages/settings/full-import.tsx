@@ -6,6 +6,7 @@ import { Notice, Pill } from '@/components/full-import/full-import-layout';
 import { UndoImportDialog } from '@/components/full-import/undo-import-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -55,6 +56,15 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 function statusPill(entry: ImportHistoryEntry) {
     if (entry.undone_at) {
         return <Pill>{__('Undone')}</Pill>;
+    }
+
+    if (entry.status === 'undoing') {
+        return (
+            <Pill>
+                <Spinner className="size-3" />
+                {__('Undoing…')}
+            </Pill>
+        );
     }
 
     if (entry.status === 'queued' || entry.status === 'processing') {
@@ -152,8 +162,10 @@ export default function FullImport({
 }: FullImportPageProps) {
     const locale = useLocale();
     const { errors } = usePage<{ errors: Record<string, string> }>().props;
-    const running = imports.some(
-        (entry) => entry.status === 'queued' || entry.status === 'processing',
+    // An import being written or being undone both finish on the queue, so
+    // the list keeps asking until neither is left.
+    const running = imports.some((entry) =>
+        ['queued', 'processing', 'undoing'].includes(entry.status),
     );
     const { start, stop } = usePoll(
         3000,

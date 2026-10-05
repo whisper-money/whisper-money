@@ -28,6 +28,7 @@ const entry: ImportHistoryEntry = {
         balances: 4,
         later_transactions: 3,
         into_own_accounts: [{ name: 'BBVA Conjunta', transactions: 1 }],
+        connected_accounts: [{ name: 'Revolut (Banktrack)' }],
     },
 };
 
@@ -68,6 +69,11 @@ describe('UndoImportDialog', () => {
         expect(
             screen.getByText(
                 'Subcategories you created under the imported categories are removed too.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'Revolut (Banktrack) is now connected to your bank, so it stays; only the imported transactions are removed.',
             ),
         ).toBeInTheDocument();
     });

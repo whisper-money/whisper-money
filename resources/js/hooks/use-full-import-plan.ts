@@ -1,10 +1,12 @@
 import { fetchBankMatches } from '@/lib/full-import-api';
 import { sourceSuffix } from '@/lib/full-import-format';
 import {
+    bankLookupName,
     buildImport,
     categoryNodeId,
     detectAccounts,
     detectCategories,
+    existingTargets,
     importedRows,
     isOwnTransferNode,
     resolveAccountPlan,
@@ -70,9 +72,14 @@ export function useFullImportPlan({
         string | null | undefined
     >();
 
+    // Keyed on the codes rather than the prop object, so a props object
+    // rebuilt with the same currencies does not re-read the whole file.
+    const currencyCodes = currencies.accounts
+        .map((currency) => currency.code)
+        .join(',');
     const supportedCurrencies = useMemo(
-        () => currencies.accounts.map((currency) => currency.code),
-        [currencies],
+        () => currencyCodes.split(','),
+        [currencyCodes],
     );
 
     const normalized = useMemo(
@@ -112,6 +119,11 @@ export function useFullImportPlan({
             source,
             banks,
         ],
+    );
+
+    const targets = useMemo(
+        () => existingTargets(fileAccounts, accountPlan),
+        [fileAccounts, accountPlan],
     );
 
     const rowsToImport = useMemo(
@@ -220,9 +232,9 @@ export function useFullImportPlan({
             return;
         }
 
-        const missing = fileAccounts
-            .map((account) => account.name)
-            .filter((name) => !(name in banks));
+        const missing = [...new Set(fileAccounts.map(bankLookupName))].filter(
+            (name) => !(name in banks),
+        );
 
         if (missing.length === 0) {
             return;
@@ -278,6 +290,7 @@ export function useFullImportPlan({
         normalized,
         fileAccounts,
         accountPlan,
+        existingTargets: targets,
         nodes,
         categoryPlan,
         counts,

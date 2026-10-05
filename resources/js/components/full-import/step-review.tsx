@@ -9,6 +9,7 @@ import { accountActionPill } from '@/components/full-import/step-accounts';
 import { joinNames } from '@/components/full-import/step-existing';
 import { UnreadableRows } from '@/components/full-import/unreadable-rows';
 import { Checkbox } from '@/components/ui/checkbox';
+import { type DuplicateEstimate } from '@/hooks/use-duplicate-estimate';
 import {
     countLabel,
     formatCount,
@@ -43,8 +44,54 @@ interface StepReviewProps {
     aiNote: string | null;
     confirmWipe: boolean;
     onConfirmWipeChange: (confirmed: boolean) => void;
+    /** How much of what goes into the user's own accounts is there already. */
+    estimate: DuplicateEstimate | null;
+    checkingDuplicates: boolean;
     locale: string;
     footer: ReactNode;
+}
+
+/** "36 new, about 4 already there": an estimate, so worded as one. */
+function likelyNewPhrase(
+    total: number,
+    existing: number,
+    locale: string,
+): string {
+    const fresh = total - existing;
+    const freshPart = countLabel(
+        fresh,
+        __('1 new'),
+        __(':count new', { count: formatCount(fresh, locale) }),
+    );
+
+    if (existing === 0) {
+        return `${freshPart}, ${__('none seem to be there yet')}`;
+    }
+
+    return `${freshPart}, ${countLabel(
+        existing,
+        __('about 1 already there'),
+        __('about :count already there', {
+            count: formatCount(existing, locale),
+        }),
+    )}`;
+}
+
+/** What the transactions card says beyond the count. */
+function transactionsNote(
+    built: BuiltImport,
+    estimate: DuplicateEstimate | null,
+    checking: boolean,
+    skipped: string | undefined,
+    locale: string,
+): string | undefined {
+    const duplicates = estimate
+        ? likelyNewPhrase(built.transactions.length, estimate.existing, locale)
+        : checking
+          ? __('Checking what is already there…')
+          : undefined;
+
+    return [duplicates, skipped].filter(Boolean).join(' · ') || undefined;
 }
 
 /** What the review says about the transactions nobody will import. */
@@ -52,6 +99,7 @@ function skippedNote(
     skippedAccounts: number,
     unreadable: number,
     mode: FullImportMode,
+    hasEstimate: boolean,
     locale: string,
 ): string | undefined {
     const parts = [
@@ -78,8 +126,8 @@ function skippedNote(
     }
 
     // Starting from scratch leaves no account of the user's to find a
-    // duplicate in.
-    return mode === 'wipe'
+    // duplicate in, and an estimate already says how many there are.
+    return mode === 'wipe' || hasEstimate
         ? undefined
         : __('Ones already in your accounts are skipped');
 }
@@ -107,6 +155,8 @@ export function StepReview({
     aiNote,
     confirmWipe,
     onConfirmWipeChange,
+    estimate,
+    checkingDuplicates,
     locale,
     footer,
 }: StepReviewProps) {
@@ -192,10 +242,17 @@ export function StepReview({
                         __('transaction'),
                         __('transactions'),
                     )}
-                    note={skippedNote(
-                        skippedAccounts,
-                        unreadable.length,
-                        mode,
+                    note={transactionsNote(
+                        built,
+                        estimate,
+                        checkingDuplicates,
+                        skippedNote(
+                            skippedAccounts,
+                            unreadable.length,
+                            mode,
+                            estimate !== null || checkingDuplicates,
+                            locale,
+                        ),
                         locale,
                     )}
                 />
@@ -236,6 +293,14 @@ export function StepReview({
                             }
                             meta={[
                                 transactionCount(account.count, locale),
+                                estimate?.byAccount[accountPayloadKey(index)] &&
+                                    likelyNewPhrase(
+                                        account.count,
+                                        estimate.byAccount[
+                                            accountPayloadKey(index)
+                                        ],
+                                        locale,
+                                    ),
                                 balances > 0 &&
                                     countLabel(
                                         balances,

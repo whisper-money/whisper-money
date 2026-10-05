@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FullImportWizard } from './full-import-wizard';
 
 const api = vi.hoisted(() => ({
+    checkExistingTransactions: vi.fn(),
     fetchImportContext: vi.fn(),
     fetchBankMatches: vi.fn(),
     fetchImport: vi.fn(),
@@ -264,6 +265,47 @@ describe('FullImportWizard', () => {
                 "This account is in USD; the file's transactions are in EUR and are imported as they are, without conversion.",
             ),
         ).toBeInTheDocument();
+    });
+
+    it('estimates on Review what a mapped account already holds', async () => {
+        api.checkExistingTransactions.mockImplementation(
+            async (_accountId: string, rows: unknown[]) => rows.map(() => true),
+        );
+        await openWithBanktrackFile(
+            context({
+                accounts: [
+                    {
+                        id: 'wise-own',
+                        name: 'Wise Personal',
+                        type: 'checking',
+                        currency_code: 'EUR',
+                        connected: false,
+                        archived: false,
+                        transactions_count: 4,
+                        bank: null,
+                    },
+                ],
+                mappableAccountIds: ['wise-own'],
+            }),
+        );
+        await continueTo('You already have data here');
+        await continueTo('Check the columns');
+        await continueTo('Your accounts');
+        await continueTo('Your categories');
+        await continueTo('Ready to import');
+
+        expect(
+            await screen.findByRole('button', {
+                name: 'Import 8 transactions',
+            }),
+        ).toBeEnabled();
+        expect(
+            screen.getByText('8 new, about 4 already there'),
+        ).toBeInTheDocument();
+        expect(api.checkExistingTransactions).toHaveBeenCalledWith(
+            'wise-own',
+            expect.any(Array),
+        );
     });
 
     it('warns before leaving while the rows are still uploading', async () => {

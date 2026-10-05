@@ -57,6 +57,11 @@ export interface NormalizedRow {
     notes: string | null;
     accountKey: string;
     accountName: string;
+    /**
+     * The account column's own value, without the product a split by
+     * product adds to the name: what the bank is looked up, or created, by.
+     */
+    accountBank: string;
     /** Parent first, at most three levels. Empty when uncategorized. */
     categoryPath: string[];
     /** A supported ISO code, or null to use the account's. */
@@ -84,6 +89,8 @@ export interface NormalizedFile {
 export interface FileAccount {
     key: string;
     name: string;
+    /** The raw account column value ("MyInvestor"), empty for a single-account file. */
+    bankName: string;
     count: number;
     from: string;
     to: string;
@@ -119,6 +126,11 @@ export interface AccountPlanEntry {
     type: ImportAccountType;
     currencyCode: string;
     bank: BankLite | null;
+    /**
+     * A bank to create for the account, when none of the known ones is it.
+     * Ignored while `bank` is set.
+     */
+    newBankName: string | null;
     targetAccountId: string | null;
     /** The file account key this one is merged into. */
     mergeIntoKey: string | null;
@@ -243,7 +255,13 @@ export interface ImportStatus {
     id: string;
     source: FullImportSource;
     mode: FullImportMode;
-    status: 'draft' | 'queued' | 'processing' | 'completed' | 'failed';
+    status:
+        | 'draft'
+        | 'queued'
+        | 'processing'
+        | 'completed'
+        | 'failed'
+        | 'undoing';
     file_name: string | null;
     error: string | null;
     created_at: string | null;
@@ -264,6 +282,11 @@ export interface ImportUndoSummary {
      */
     later_transactions: number;
     into_own_accounts: { name: string; transactions: number }[];
+    /**
+     * Accounts the import created that have been connected to a bank since:
+     * undo keeps them and only takes out what the import wrote.
+     */
+    connected_accounts: { name: string }[];
 }
 
 export interface ImportHistoryEntry extends ImportStatus {
@@ -297,6 +320,8 @@ export interface AccountPayloadEntry {
     type?: ImportAccountType;
     currency_code?: string;
     bank_id?: string | null;
+    /** Only when there is no `bank_id`: the bank to create (or reuse) by name. */
+    new_bank_name?: string | null;
     iban?: string | null;
     target_account_id?: string;
     merge_into_key?: string;

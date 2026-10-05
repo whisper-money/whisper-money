@@ -6,6 +6,7 @@ import {
     store,
     storeChunk,
 } from '@/actions/App/Http/Controllers/Api/FullImportController';
+import { checkDuplicates } from '@/actions/App/Http/Controllers/Api/TransactionController';
 import {
     type BalancePayloadRow,
     type BankLite,
@@ -129,4 +130,40 @@ export function requestErrorMessage(error: unknown, fallback: string): string {
     }
 
     return fallback;
+}
+
+/** Rows per duplicate check: well under the endpoint's own ceiling of 10,000. */
+const DUPLICATE_CHECK_SIZE = 5000;
+
+/**
+ * Which of these rows the account already holds, one flag per row, by the
+ * same rule the per-account import uses (same day, amount and description).
+ * The server also skips rows by the file's own id, so this can only
+ * undercount what will be left out.
+ */
+export async function checkExistingTransactions(
+    accountId: string,
+    rows: Pick<TransactionPayloadRow, 'date' | 'amount' | 'description'>[],
+): Promise<boolean[]> {
+    const flags: boolean[] = [];
+
+    for (let offset = 0; offset < rows.length; offset += DUPLICATE_CHECK_SIZE) {
+        const { data } = await axios.post<{ duplicates: boolean[] }>(
+            checkDuplicates.url(),
+            {
+                account_id: accountId,
+                transactions: rows
+                    .slice(offset, offset + DUPLICATE_CHECK_SIZE)
+                    .map((row) => ({
+                        transaction_date: row.date,
+                        amount: row.amount,
+                        description: row.description,
+                    })),
+            },
+        );
+
+        flags.push(...data.duplicates);
+    }
+
+    return flags;
 }

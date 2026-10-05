@@ -1,9 +1,11 @@
 import {
+    bankLookupName,
     buildImport,
     categoryNodeId,
     defaultAccountPlan,
     detectAccounts,
     detectCategories,
+    existingTargets,
     guessAccountType,
     IGNORED_KEY,
     isOwnTransferNode,
@@ -17,6 +19,7 @@ import {
 } from '@/lib/full-import-plan';
 import { type Category } from '@/types/category';
 import {
+    type AccountPlanEntry,
     type ContextAccount,
     type FullImportMapping,
     type NormalizedRow,
@@ -34,6 +37,7 @@ function row(overrides: Partial<NormalizedRow>): NormalizedRow {
         notes: null,
         accountKey: 'wise',
         accountName: 'Wise',
+        accountBank: 'Wise',
         categoryPath: [],
         currency: 'EUR',
         balance: null,
@@ -193,6 +197,38 @@ describe('detectCategories and resolveCategoryPlan', () => {
     });
 });
 
+describe('existingTargets', () => {
+    it('points mapped accounts, and the ones merged into them, at the user account', () => {
+        const accounts = detectAccounts([
+            row({ accountKey: 'bbva', accountName: 'BBVA' }),
+            row({ accountKey: 'bbva', accountName: 'BBVA' }),
+            row({ accountKey: 'cash', accountName: 'Cash' }),
+            row({ accountKey: 'wise', accountName: 'Wise' }),
+        ]);
+        const entry = (
+            overrides: Partial<AccountPlanEntry>,
+        ): AccountPlanEntry => ({
+            action: 'create',
+            name: 'Account',
+            type: 'checking',
+            currencyCode: 'EUR',
+            bank: null,
+            newBankName: null,
+            targetAccountId: null,
+            mergeIntoKey: null,
+            ...overrides,
+        });
+
+        expect(
+            existingTargets(accounts, {
+                bbva: entry({ action: 'map', targetAccountId: 'own-bbva' }),
+                cash: entry({ action: 'merge', mergeIntoKey: 'bbva' }),
+                wise: entry({}),
+            }),
+        ).toEqual({ a0: 'own-bbva', a1: 'own-bbva' });
+    });
+});
+
 describe('latestBalances', () => {
     it('takes the first row of a day in a newest-first export', () => {
         const balances = latestBalances([
@@ -300,6 +336,77 @@ describe('accounts', () => {
         expect(guessAccountType('Tarjeta Amex')).toBe('credit_card');
     });
 
+    describe('banks', () => {
+        const bankAccounts = detectAccounts([
+            row({
+                accountKey: 'myinvestor|cuenta',
+                accountName: 'MyInvestor · Cuenta',
+                accountBank: 'MyInvestor',
+            }),
+            row({
+                accountKey: 'wise',
+                accountName: 'Wise',
+                accountBank: 'Wise',
+            }),
+            row({
+                accountKey: 'cash',
+                accountName: 'Cash',
+                accountBank: 'Cash',
+            }),
+        ]);
+        const answered: AccountPlanContext = {
+            ...context,
+            banks: {
+                MyInvestor: null,
+                Wise: { id: 'bank-wise', name: 'Wise', logo: null },
+                Cash: null,
+            },
+        };
+        const bankFor = (key: string, planContext = answered) =>
+            defaultAccountPlan(
+                bankAccounts.find((one) => one.key === key)!,
+                planContext,
+            );
+
+        it('proposes a new bank named after the account column when none matches', () => {
+            expect(bankFor('myinvestor|cuenta')).toMatchObject({
+                bank: null,
+                newBankName: 'MyInvestor',
+            });
+        });
+
+        it('takes a known bank when one matches, and no new one', () => {
+            expect(bankFor('wise')).toMatchObject({
+                bank: { id: 'bank-wise' },
+                newBankName: null,
+            });
+        });
+
+        it('gives cash no bank at all', () => {
+            expect(bankFor('cash')).toMatchObject({
+                type: 'others',
+                bank: null,
+                newBankName: null,
+            });
+        });
+
+        it('proposes nothing until the lookup has answered', () => {
+            expect(
+                bankFor('myinvestor|cuenta', { ...context, banks: {} }),
+            ).toMatchObject({ bank: null, newBankName: null });
+        });
+
+        it('looks the bank up by the account column, not the display name', () => {
+            expect(
+                bankLookupName(
+                    bankAccounts.find(
+                        (one) => one.key === 'myinvestor|cuenta',
+                    )!,
+                ),
+            ).toBe('MyInvestor');
+        });
+    });
+
     it('turns a mapping it cannot honour back into a new account', () => {
         const plan = resolveAccountPlan(
             fileAccounts,
@@ -401,6 +508,7 @@ describe('buildImport', () => {
                     type: 'checking',
                     currencyCode: 'EUR',
                     bank: null,
+                    newBankName: null,
                     targetAccountId: null,
                     mergeIntoKey: null,
                 },
@@ -410,6 +518,7 @@ describe('buildImport', () => {
                     type: 'others',
                     currencyCode: 'EUR',
                     bank: null,
+                    newBankName: null,
                     targetAccountId: null,
                     mergeIntoKey: 'wise',
                 },
@@ -419,6 +528,7 @@ describe('buildImport', () => {
                     type: 'checking',
                     currencyCode: 'EUR',
                     bank: null,
+                    newBankName: null,
                     targetAccountId: null,
                     mergeIntoKey: null,
                 },
@@ -509,6 +619,32 @@ describe('buildImport', () => {
             buildImport(input({ mapping: { ...mapping, balance: null } }))
                 .balances,
         ).toEqual([]);
+    });
+
+    it('sends a new bank name only when no known bank was picked', () => {
+        const created = (entry: Partial<AccountPlanEntry>) =>
+            buildImport(
+                input({
+                    accountPlan: {
+                        ...input().accountPlan,
+                        wise: { ...input().accountPlan.wise, ...entry },
+                    },
+                }),
+            ).payload.accounts[0];
+
+        expect(created({ newBankName: '  Wise  ' })).toMatchObject({
+            bank_id: null,
+            new_bank_name: 'Wise',
+        });
+        expect(
+            created({
+                bank: { id: 'bank-wise', name: 'Wise', logo: null },
+                newBankName: 'Wise',
+            }),
+        ).not.toHaveProperty('new_bank_name');
+        expect(created({ newBankName: null })).not.toHaveProperty(
+            'new_bank_name',
+        );
     });
 
     it('asks for the wipe to be confirmed in wipe mode only', () => {

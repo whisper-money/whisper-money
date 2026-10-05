@@ -3808,5 +3808,15 @@
     "Categories can only be nested :depth levels deep.": "Las categorías solo pueden anidarse hasta :depth niveles.",
     "Ignored transactions go to a transfer category.": "Las transacciones ignoradas van a una categoría de transferencia.",
     "Nothing new: everything in the file was already here.": "Nada nuevo: todo lo del archivo ya estaba aquí.",
-    ":list and :last": ":list y :last"
+    ":list and :last": ":list y :last",
+    ":name is now connected to your bank, so it stays; only the imported transactions are removed.": ":name ahora está conectada a tu banco, así que se queda; solo se quitan las transacciones importadas.",
+    "Create «:name» as a new bank": "Crear «:name» como banco nuevo",
+    "Likely nothing new to import: it all seems to be there already.": "Probablemente no hay nada nuevo que importar: parece que ya está todo.",
+    "Checking what is already there…": "Comprobando lo que ya está…",
+    "about 1 already there": "probablemente 1 ya está",
+    "about :count already there": "unas :count ya están",
+    "none seem to be there yet": "ninguna parece estar ya",
+    "New bank «:name»": "Banco nuevo «:name»",
+    "This import expects no more rows.": "Esta importación no espera más filas.",
+    "The import is being undone.": "Se está deshaciendo la importación."
 }
