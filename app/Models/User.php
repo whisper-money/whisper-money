@@ -443,8 +443,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     /**
      * Whether the user may start a full import from another app: while still
      * onboarding, for the first days after it, or with the `FullImport` flag
-     * on. Never on an account whose credentials are public. The one place both
-     * the shared prop and the endpoints read it from.
+     * on. Never on an account whose credentials are public. With the master
+     * switch off (`full_import.enabled`) only the flag opens it. The one place
+     * both the shared prop and the endpoints read it from.
      */
     public function canUseFullImport(): bool
     {
@@ -452,7 +453,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             return false;
         }
 
-        if ($this->onboarded_at === null || $this->onboarded_at->gt(now()->subDays(self::FULL_IMPORT_WINDOW_DAYS))) {
+        if ($this->isInFullImportWindow()) {
             return true;
         }
 
@@ -460,12 +461,29 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
+     * Whether the onboarding window alone keeps the import open: the switch
+     * is on, and the user is still onboarding or onboarded recently.
+     */
+    private function isInFullImportWindow(): bool
+    {
+        if (! config('full_import.enabled')) {
+            return false;
+        }
+
+        return $this->onboarded_at === null || $this->onboarded_at->gt(now()->subDays(self::FULL_IMPORT_WINDOW_DAYS));
+    }
+
+    /**
      * The day the onboarding window closes, or null when the window is not
-     * what keeps the import open: before onboarding ends, or once the flag is
-     * the only reason left.
+     * what keeps the import open: before onboarding ends, once the flag is the
+     * only reason left, or with the master switch off.
      */
     public function fullImportWindowEndsAt(): ?Carbon
     {
+        if (! config('full_import.enabled')) {
+            return null;
+        }
+
         $endsAt = $this->onboarded_at?->copy()->addDays(self::FULL_IMPORT_WINDOW_DAYS);
 
         return $endsAt !== null && $endsAt->isFuture() ? $endsAt : null;

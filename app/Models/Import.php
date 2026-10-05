@@ -165,9 +165,10 @@ class Import extends Model
     }
 
     /**
-     * Imports whose rows are still in the user's data or on their way out:
-     * the undoable ones and the one being undone. What keeps the Settings
-     * page around past the window.
+     * Imports whose rows are in the user's data, on their way in or on their
+     * way out: running, undoable, or being undone. What keeps the Settings
+     * page and its history around once the user may no longer start one
+     * (the window closed, or the master switch is off).
      *
      * @param  Builder<Import>  $query
      * @return Builder<Import>
@@ -176,7 +177,13 @@ class Import extends Model
     {
         return $query
             ->whereNull('undone_at')
-            ->whereIn('status', [ImportStatus::Completed->value, ImportStatus::Failed->value, ImportStatus::Undoing->value]);
+            ->whereIn('status', [
+                ImportStatus::Queued->value,
+                ImportStatus::Processing->value,
+                ImportStatus::Completed->value,
+                ImportStatus::Failed->value,
+                ImportStatus::Undoing->value,
+            ]);
     }
 
     /**
