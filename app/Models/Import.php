@@ -8,6 +8,7 @@ use App\Enums\ImportSource;
 use App\Enums\ImportStage;
 use App\Enums\ImportStatus;
 use App\Models\Concerns\BelongsToSpace;
+use App\Services\Imports\ImportFailure;
 use Carbon\Carbon;
 use Database\Factories\ImportFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,7 +19,6 @@ use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -236,20 +236,14 @@ class Import extends Model
 
     /**
      * How a failure is kept for whoever investigates it: the exception class
-     * and its message, cut to what is worth storing. Never shown to the user,
-     * who gets a friendly sentence instead (ImportHistoryPresenter::status()).
+     * and a message with nothing of the user's data in it (ImportFailure).
+     * Never shown to the user, who gets a friendly sentence instead
+     * (ImportHistoryPresenter::status()).
      */
     public static function failureReason(?Throwable $exception): ?string
     {
-        if ($exception === null) {
-            return null;
-        }
-
-        return Str::limit($exception::class.': '.$exception->getMessage(), self::FAILURE_REASON_LENGTH, '…');
+        return $exception !== null ? ImportFailure::describe($exception) : null;
     }
-
-    /** Well inside the `error` TEXT column, and enough for any exception message worth reading. */
-    private const FAILURE_REASON_LENGTH = 2000;
 
     public function isUndoable(): bool
     {

@@ -125,3 +125,21 @@ it('removes the banks it created on undo, keeping one another account still uses
         ->and($lares->fresh()->import_id)->toBeNull()
         ->and($byHand->fresh())->not->toBeNull();
 });
+
+it('creates no bank for a cash account, nor for a name with nothing to match by', function () {
+    $user = Fixtures::user();
+
+    $import = Fixtures::run($this, $user, Fixtures::plan([
+        Fixtures::newAccount('a0', 'Cash', ['type' => 'others', 'new_bank_name' => 'Cash']),
+        Fixtures::newAccount('a1', 'Piggy', ['new_bank_name' => '🐷 ✨']),
+    ]), [
+        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
+        Fixtures::row('a1', '2026-09-01', -100, 'Tea'),
+    ]);
+
+    expect(Account::query()->where('import_id', $import->id)->whereNotNull('bank_id')->exists())->toBeFalse()
+        ->and(Bank::query()->where('user_id', $user->id)->exists())->toBeFalse();
+
+    $this->postJson(route('api.full-imports.bank-matches'), ['names' => ['🐷 ✨']])
+        ->assertJsonPath('matches', ['🐷 ✨' => null]);
+});

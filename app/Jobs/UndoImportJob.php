@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\ImportStatus;
 use App\Models\Import;
+use App\Services\Imports\ImportFailure;
 use App\Services\Imports\ImportUndoer;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -81,8 +82,7 @@ class UndoImportJob implements ShouldBeUnique, ShouldQueue
 
         Log::error('Full import undo failed', $import->logContext([
             'attempt' => $this->attempts(),
-            'exception' => $exception !== null ? $exception::class : null,
-            'message' => $exception?->getMessage(),
+            ...$exception !== null ? ImportFailure::context($exception) : ['exception' => null, 'message' => null],
         ]));
     }
 }

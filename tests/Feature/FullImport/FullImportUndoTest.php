@@ -7,7 +7,11 @@ use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\BankingConnection;
 use App\Models\Category;
+use App\Models\Import;
 use App\Models\Transaction;
+use Illuminate\Bus\UniqueLock;
+use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\FullImportFixtures as Fixtures;
 
@@ -167,4 +171,59 @@ it('keeps an imported account that has since been connected, removing only what 
         ->and($account->fresh()->import_id)->toBeNull()
         ->and($synced->fresh())->not->toBeNull()
         ->and(Transaction::query()->where('import_id', $import->id)->exists())->toBeFalse();
+});
+
+it('refuses a new import while an earlier one is being undone', function () {
+    $user = Fixtures::user();
+    $undoing = Import::factory()->for($user)->create(['status' => ImportStatus::Undoing]);
+    $draft = Import::factory()->for($user)->draft()->create(['plan' => ['expected' => ['transactions' => 0, 'balances' => 0]]]);
+
+    $this->actingAs($user)->postJson(route('api.full-imports.store'), [
+        ...Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]),
+        'expected_transactions' => 1,
+        'expected_balances' => 0,
+    ])->assertConflict()->assertJsonPath('message', 'An earlier import is still being undone. Try again in a moment.');
+
+    $this->postJson(route('api.full-imports.start', $draft))->assertConflict()
+        ->assertJsonPath('message', 'An earlier import is still being undone. Try again in a moment.');
+
+    expect($draft->fresh()->status)->toBe(ImportStatus::Draft)
+        ->and($undoing->fresh()->status)->toBe(ImportStatus::Undoing);
+});
+
+it('tells the history an undo broke off, and lets it be tried again', function () {
+    $user = Fixtures::user();
+    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]), [
+        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
+    ]);
+
+    Queue::fake([UndoImportJob::class]);
+    $this->delete(route('full-import.destroy', $import));
+    (new UndoImportJob($import->fresh()))->failed(new RuntimeException('boom'));
+    // The worker releases the job's unique lock when it fails; the fake never ran it.
+    (new UniqueLock(app(Repository::class)))->release(new UndoImportJob($import));
+
+    $this->get(route('full-import.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('imports.0.undoable', true)
+            ->where('imports.0.undo_failed', true));
+
+    $this->delete(route('full-import.destroy', $import))->assertSessionHas('success');
+    Queue::assertPushed(UndoImportJob::class, 2);
+});
+
+it('puts the import back when the undo cannot be queued', function () {
+    $user = Fixtures::user();
+    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]), [
+        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
+    ]);
+
+    Bus::shouldReceive('dispatch')->andThrow(new RuntimeException('The queue is down'));
+
+    $this->delete(route('full-import.destroy', $import))->assertSessionHasErrors('import');
+
+    expect($import->fresh()->status)->toBe(ImportStatus::Completed)
+        ->and($import->fresh()->isUndoable())->toBeTrue()
+        // The unique lock the failed dispatch took is free again.
+        ->and((new UniqueLock(app(Repository::class)))->acquire(new UndoImportJob($import)))->toBeTrue();
 });

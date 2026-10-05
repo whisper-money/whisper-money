@@ -37,6 +37,8 @@ class BankNameMatcher
         $matches = [];
 
         foreach ($names as $name) {
+            // An alias of only symbols or emoji normalizes to nothing: there
+            // is nothing to match a bank by, so no bank.
             $matches[$name] = $this->find($banks, self::normalize($name));
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Services\Imports;
 
+use App\Enums\AccountType;
 use App\Enums\ImportAccountAction;
 use App\Models\Account;
 use App\Models\Bank;
@@ -123,7 +124,9 @@ class ImportAccountWriter
 
         $name = trim((string) ($entry['new_bank_name'] ?? ''));
 
-        if ($name === '') {
+        // Cash has no bank to create, and a name of only symbols or emoji
+        // has nothing to match a bank by.
+        if ($name === '' || ($entry['type'] ?? null) === AccountType::Others->value || BankNameMatcher::normalize($name) === '') {
             return null;
         }
 

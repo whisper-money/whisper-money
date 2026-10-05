@@ -53,8 +53,12 @@ class FullImportController extends Controller
         $user = $request->user();
         $validated = $request->validated();
 
-        $import = $this->whileHoldingUser($user, function () use ($user, $validated): ?Import {
-            if ($user->imports()->running()->exists()) {
+        $refusal = null;
+
+        $import = $this->whileHoldingUser($user, function () use ($user, $validated, &$refusal): ?Import {
+            $refusal = $this->refusalFor($user);
+
+            if ($refusal !== null) {
                 return null;
             }
 
@@ -66,7 +70,7 @@ class FullImportController extends Controller
         });
 
         if ($import === null) {
-            return $this->alreadyRunning();
+            return $refusal ?? $this->alreadyRunning();
         }
 
         return response()->json($this->presenter->status($import), 201);
@@ -129,14 +133,19 @@ class FullImportController extends Controller
         // Held on the user row, with a conditional update: two starts sent at
         // once (a double click, a retried request, two tabs) must not both
         // queue a job, or the new accounts would be written twice.
-        $claimed = $this->whileHoldingUser($request->user(), fn (): bool => ! $request->user()->imports()->running()->exists()
-            && Import::query()
+        $refusal = null;
+
+        $claimed = $this->whileHoldingUser($request->user(), function () use ($request, $import, &$refusal): bool {
+            $refusal = $this->refusalFor($request->user());
+
+            return $refusal === null && Import::query()
                 ->whereKey($import->id)
                 ->where('status', ImportStatus::Draft->value)
-                ->update(['status' => ImportStatus::Queued->value]) === 1);
+                ->update(['status' => ImportStatus::Queued->value]) === 1;
+        });
 
         if (! $claimed) {
-            return $this->alreadyRunning();
+            return $refusal ?? $this->alreadyRunning();
         }
 
         $import->recordStage(ImportStage::Queued);
@@ -169,6 +178,25 @@ class FullImportController extends Controller
 
             return $callback();
         });
+    }
+
+    /**
+     * Why the user may not start an import right now, or null when they may:
+     * one is already running, or an earlier one is still being undone (the
+     * new one could map into an account that undo is about to delete).
+     * Checked while holding the user row.
+     */
+    private function refusalFor(User $user): ?JsonResponse
+    {
+        if ($user->imports()->running()->exists()) {
+            return $this->alreadyRunning();
+        }
+
+        if ($user->imports()->where('status', ImportStatus::Undoing->value)->exists()) {
+            return response()->json(['message' => __('An earlier import is still being undone. Try again in a moment.')], 409);
+        }
+
+        return null;
     }
 
     private function alreadyRunning(): JsonResponse

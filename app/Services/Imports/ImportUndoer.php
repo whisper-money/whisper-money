@@ -11,6 +11,7 @@ use App\Models\Import;
 use App\Models\Transaction;
 use App\Services\CategoryTree;
 use Carbon\Carbon;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -104,19 +105,20 @@ class ImportUndoer
      */
     private function deleteCreatedBanks(Import $import): int
     {
-        $deleted = 0;
+        // One statement, so no account can be put in the bank between the
+        // check and the delete and then go with it (accounts.bank_id
+        // cascades). Trashed accounts count: the subquery reads the table.
+        $deleted = Bank::withTrashed()
+            ->where('import_id', $import->id)
+            ->whereNotExists(fn (QueryBuilder $accounts) => $accounts
+                ->selectRaw('1')
+                ->from('accounts')
+                ->whereColumn('accounts.bank_id', 'banks.id'))
+            ->forceDelete();
 
-        foreach (Bank::query()->where('import_id', $import->id)->get() as $bank) {
-            if (Account::withTrashed()->where('bank_id', $bank->id)->exists()) {
-                $bank->forceFill(['import_id' => null])->save();
+        // What is left is used by an account: it stays, no longer the import's.
+        Bank::withTrashed()->where('import_id', $import->id)->update(['import_id' => null]);
 
-                continue;
-            }
-
-            $bank->forceDelete();
-            $deleted++;
-        }
-
-        return $deleted;
+        return (int) $deleted;
     }
 }

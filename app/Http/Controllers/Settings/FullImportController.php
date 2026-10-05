@@ -7,12 +7,15 @@ use App\Http\Controllers\Controller;
 use App\Jobs\UndoImportJob;
 use App\Models\Import;
 use App\Services\Imports\ImportHistoryPresenter;
+use Illuminate\Bus\UniqueLock;
+use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 /**
  * Settings › Import from another app: the way into the wizard, and the history
@@ -72,9 +75,22 @@ class FullImportController extends Controller
             'failed' => false,
         ]]);
 
-        Log::info('Full import undo requested', $import->logContext(['previous_status' => $previousStatus->value]));
+        try {
+            // Through dispatch(), so the job's unique lock is taken too.
+            UndoImportJob::dispatch($import->refresh());
+        } catch (Throwable $exception) {
+            // Claimed but never queued, the import would stay "undoing" for
+            // good: it goes back to how it was, and the user can try again.
+            // dispatch() took the job's unique lock before failing; it is
+            // released too, or the next try would be dropped for half an hour.
+            report($exception);
+            Import::query()->whereKey($import->id)->where('status', ImportStatus::Undoing->value)->update(['status' => $previousStatus->value]);
+            (new UniqueLock(app(Cache::class)))->release(new UndoImportJob($import));
 
-        UndoImportJob::dispatch($import->refresh());
+            return to_route('full-import.index')->withErrors(['import' => __('The undo could not be started. Try again.')]);
+        }
+
+        Log::info('Full import undo requested', $import->logContext(['previous_status' => $previousStatus->value]));
 
         return to_route('full-import.index')->with('success', __('The import is being undone.'));
     }

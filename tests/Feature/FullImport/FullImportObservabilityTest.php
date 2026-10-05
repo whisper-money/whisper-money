@@ -7,6 +7,8 @@ use App\Jobs\UndoImportJob;
 use App\Models\Account;
 use App\Models\Import;
 use App\Services\Imports\FullImporter;
+use App\Services\Imports\ImportFailure;
+use Illuminate\Database\QueryException;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Exceptions;
@@ -202,4 +204,74 @@ it('logs a failed undo and keeps its reason away from the client', function () {
         ->assertJsonPath('stats.undo.failed', true)
         ->assertJsonMissingPath('stats.undo.error')
         ->assertDontSee('Lock wait timeout');
+});
+
+it('keeps the SQL and its bound values of a database error out of the logs and the import row', function () {
+    $user = Fixtures::user();
+    $import = Import::factory()->for($user)->create(['status' => ImportStatus::Processing]);
+
+    $exception = new QueryException(
+        'mysql',
+        'insert into `transactions` (`description`, `notes`, `amount`) values (?, ?, ?)',
+        ['Pharmacy near Secret Street 12', 'Private note', -4250],
+        new PDOException('SQLSTATE[22001]: String data, right truncated: 1406 Data too long for column \'description\' at row 1'),
+    );
+    $exception->errorInfo = ['22001', 1406, 'Data too long for column \'description\' at row 1'];
+
+    $logs = fullImportLogsDuring(fn () => (new ProcessFullImportJob($import))->failed($exception));
+
+    $context = fullImportLog($logs, 'Full import failed')[2];
+    $stored = $import->fresh()->error;
+
+    expect($context['exception'])->toBe(QueryException::class)
+        ->and($context['message'])->toBe('SQLSTATE[22001] (1406)')
+        ->and($stored)->toBe('Illuminate\Database\QueryException: SQLSTATE[22001] (1406)');
+
+    foreach (['Secret Street', 'Private note', '-4250', 'insert into', 'Data too long'] as $leak) {
+        expect(json_encode($context))->not->toContain($leak)
+            ->and($stored)->not->toContain($leak);
+    }
+});
+
+it('cuts any other message before the SQL and the connection, and shortens it', function () {
+    $import = Import::factory()->create(['status' => ImportStatus::Processing]);
+    $exception = new RuntimeException('Lost connection (Connection: mysql, SQL: select * from accounts where name = Secret)'.str_repeat(' and more', 5));
+    $long = new RuntimeException(str_repeat('x', 500));
+
+    (new ProcessFullImportJob($import))->failed($exception);
+
+    expect($import->fresh()->error)->toBe('RuntimeException: Lost connection')
+        ->and(ImportFailure::context($long)['message'])->toHaveLength(201);
+});
+
+it('fails right away with the real cause when an attempt dies while preparing', function () {
+    Exceptions::fake();
+    $user = Fixtures::user();
+    $import = Import::factory()->for($user)->create(['status' => ImportStatus::Queued, 'plan' => ['accounts' => []]]);
+
+    $this->mock(FullImporter::class)->shouldReceive('run')->once()->andReturnUsing(function (Import $import): never {
+        $import->forceFill(['status' => ImportStatus::Processing])->save();
+
+        throw new RuntimeException('Deadlock found when trying to get lock');
+    });
+
+    $job = new ProcessFullImportJob($import);
+    $job->withFakeQueueInteractions();
+    app()->call([$job, 'handle']);
+
+    $job->assertFailedWith(RuntimeException::class);
+    Exceptions::assertReported(fn (RuntimeException $exception): bool => $exception->getMessage() === 'Deadlock found when trying to get lock');
+});
+
+it('leaves an exception after the preparation to the worker and its retries', function () {
+    $import = Import::factory()->create(['status' => ImportStatus::Processing, 'plan' => ['resolved' => ['accounts' => [], 'categories' => []]]]);
+
+    $this->mock(FullImporter::class)->shouldReceive('run')->once()->andThrow(new RuntimeException('Deadlock'));
+
+    $job = new ProcessFullImportJob($import);
+    $job->withFakeQueueInteractions();
+
+    expect(fn () => app()->call([$job, 'handle']))->toThrow(RuntimeException::class, 'Deadlock');
+
+    $job->assertNotFailed();
 });

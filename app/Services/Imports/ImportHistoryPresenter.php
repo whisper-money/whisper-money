@@ -64,6 +64,9 @@ class ImportHistoryPresenter
             ->map(fn (Import $import): array => [
                 ...$this->status($import),
                 'undoable' => $import->isUndoable(),
+                // The last undo broke off: the import is back as it was and
+                // can be undone again. Why it broke off stays server-side.
+                'undo_failed' => $import->isUndoable() && (bool) ($import->stats['undo']['failed'] ?? false),
                 'summary' => $import->isUndoable() ? $this->undoSummary($import) : null,
             ])
             ->all();

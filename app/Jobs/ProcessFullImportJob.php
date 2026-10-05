@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\ImportStatus;
 use App\Models\Import;
 use App\Services\Imports\FullImporter;
+use App\Services\Imports\ImportFailure;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -56,21 +57,30 @@ class ProcessFullImportJob implements ShouldQueue
         configureScope(fn (Scope $scope) => $scope->setTag('full_import_id', (string) $this->import->id));
 
         // Processing without resolved accounts means an earlier attempt died
-        // while creating them: running the preparation again would create
-        // them twice. The import fails, and Settings can undo what it wrote.
-        // Failing a job by hand reaches failed() without the worker ever
-        // seeing an exception, so this is the one failure reported here: one
-        // thrown out of handle() is reported by the worker on every attempt.
+        // while creating them, without an exception to show for it (a killed
+        // worker): running the preparation again would create them twice.
         if ($this->import->status === ImportStatus::Processing && ! isset($this->import->plan['resolved'])) {
-            $exception = new RuntimeException('The import stopped while it was preparing its accounts and categories.');
-
-            report($exception);
-            $this->fail($exception);
+            $this->failWith(new RuntimeException('The import stopped while it was preparing its accounts and categories.'));
 
             return;
         }
 
-        if (! $importer->run($this->import, attempt: $this->attempts())) {
+        try {
+            $finished = $importer->run($this->import, attempt: $this->attempts());
+        } catch (Throwable $exception) {
+            // Before the accounts and categories are resolved, a retry could
+            // only end in the fail-fast above and bury the real cause under a
+            // generic one: the job fails now, with the exception itself.
+            if (! $this->isResolved()) {
+                $this->failWith($exception);
+
+                return;
+            }
+
+            throw $exception;
+        }
+
+        if (! $finished) {
             $import = $this->import->fresh() ?? $this->import;
 
             Log::warning('Full import resumed', $import->logContext([
@@ -81,6 +91,22 @@ class ProcessFullImportJob implements ShouldQueue
 
             self::dispatch($import);
         }
+    }
+
+    /**
+     * Fail the job by hand. failed() is reached without the worker ever seeing
+     * an exception, so it is reported here; one thrown out of handle() is
+     * reported by the worker, on every attempt, and failed() adds nothing.
+     */
+    private function failWith(Throwable $exception): void
+    {
+        report($exception);
+        $this->fail($exception);
+    }
+
+    private function isResolved(): bool
+    {
+        return isset(Import::query()->find($this->import->id)?->plan['resolved']);
     }
 
     /**
@@ -99,8 +125,7 @@ class ProcessFullImportJob implements ShouldQueue
         Log::error('Full import failed', $import->logContext([
             'attempt' => $this->attempts(),
             'stage' => $import->stats['stage'] ?? null,
-            'exception' => $exception !== null ? $exception::class : null,
-            'message' => $exception?->getMessage(),
+            ...$exception !== null ? ImportFailure::context($exception) : ['exception' => null, 'message' => null],
         ]));
 
         app(FullImporter::class)->finish($import, ImportStatus::Failed, Import::failureReason($exception));
