@@ -11,7 +11,10 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
+use Sentry\State\Scope;
 use Throwable;
+
+use function Sentry\configureScope;
 
 /**
  * The single AI pass over a full import: whatever the file left uncategorized,
@@ -56,6 +59,8 @@ class CategorizeImportedTransactionsJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(AiCategorizationGate $gate, AiCategorizer $categorizer): void
     {
+        configureScope(fn (Scope $scope) => $scope->setTag('full_import_id', (string) $this->import->id));
+
         $user = $this->import->user;
 
         // Re-checked at run time: the plan or the consent may have lapsed while

@@ -7,8 +7,12 @@ use App\Models\Import;
 use App\Services\Imports\FullImporter;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Sentry\State\Scope;
 use Throwable;
+
+use function Sentry\configureScope;
 
 /**
  * Writes a staged full import. Queued so the user can close the tab: the
@@ -49,17 +53,33 @@ class ProcessFullImportJob implements ShouldQueue
 
     public function handle(FullImporter $importer): void
     {
+        configureScope(fn (Scope $scope) => $scope->setTag('full_import_id', (string) $this->import->id));
+
         // Processing without resolved accounts means an earlier attempt died
         // while creating them: running the preparation again would create
         // them twice. The import fails, and Settings can undo what it wrote.
+        // Failing a job by hand reaches failed() without the worker ever
+        // seeing an exception, so this is the one failure reported here: one
+        // thrown out of handle() is reported by the worker on every attempt.
         if ($this->import->status === ImportStatus::Processing && ! isset($this->import->plan['resolved'])) {
-            $this->fail(new RuntimeException('The import stopped while it was preparing its accounts and categories.'));
+            $exception = new RuntimeException('The import stopped while it was preparing its accounts and categories.');
+
+            report($exception);
+            $this->fail($exception);
 
             return;
         }
 
-        if (! $importer->run($this->import)) {
-            self::dispatch($this->import->fresh() ?? $this->import);
+        if (! $importer->run($this->import, attempt: $this->attempts())) {
+            $import = $this->import->fresh() ?? $this->import;
+
+            Log::warning('Full import resumed', $import->logContext([
+                'attempt' => $this->attempts(),
+                'processed' => $import->stats['transactions']['processed'] ?? 0,
+                'total' => $import->stats['transactions']['total'] ?? 0,
+            ]));
+
+            self::dispatch($import);
         }
     }
 
@@ -76,6 +96,13 @@ class ProcessFullImportJob implements ShouldQueue
             return;
         }
 
-        app(FullImporter::class)->finish($import, ImportStatus::Failed, 'The import stopped before it finished.');
+        Log::error('Full import failed', $import->logContext([
+            'attempt' => $this->attempts(),
+            'stage' => $import->stats['stage'] ?? null,
+            'exception' => $exception !== null ? $exception::class : null,
+            'message' => $exception?->getMessage(),
+        ]));
+
+        app(FullImporter::class)->finish($import, ImportStatus::Failed, Import::failureReason($exception));
     }
 }

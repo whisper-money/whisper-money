@@ -4,6 +4,7 @@ namespace App\Services\Imports;
 
 use App\Models\Account;
 use App\Models\Import;
+use Illuminate\Support\Facades\Log;
 
 /**
  * "Start from scratch": deletes the user's manual accounts in the import's
@@ -33,6 +34,10 @@ class ImportWiper
             ->whereNull('banking_connection_id')
             ->pluck('id');
 
-        return ['accounts' => $accountIds->count(), 'transactions' => $this->purger->purge($accountIds)];
+        $wiped = ['accounts' => $accountIds->count(), 'transactions' => $this->purger->purge($accountIds)];
+
+        Log::info('Full import wiped the manual accounts', $import->logContext($wiped));
+
+        return $wiped;
     }
 }

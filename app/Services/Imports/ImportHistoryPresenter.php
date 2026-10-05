@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Import;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 /**
@@ -36,8 +37,10 @@ class ImportHistoryPresenter
             'mode' => $import->mode->value,
             'status' => $import->status->value,
             'file_name' => $import->file_name,
-            'stats' => $import->stats ?? [],
-            'error' => $import->error,
+            // What failed is kept in the database for investigating; the
+            // user gets a sentence, never an exception class or message.
+            'stats' => Arr::except($import->stats ?? [], ['undo.error']),
+            'error' => $import->error !== null ? __('The import stopped before it finished.') : null,
             'created_at' => $import->created_at?->toIso8601String(),
             'finished_at' => $import->finished_at?->toIso8601String(),
             'undone_at' => $import->undone_at?->toIso8601String(),

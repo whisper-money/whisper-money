@@ -10,6 +10,8 @@ use App\Models\Category;
 use App\Models\Import;
 use App\Models\Transaction;
 use App\Services\CategoryTree;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Takes a full import back out of the user's data: the accounts it created,
@@ -34,24 +36,36 @@ class ImportUndoer
 
     public function undo(Import $import): void
     {
-        $this->purger->deleteInChunks(Transaction::withTrashed()->where('import_id', $import->id));
-        $this->purger->deleteInChunks(AccountBalance::query()->where('import_id', $import->id));
+        $transactions = $this->purger->deleteInChunks(Transaction::withTrashed()->where('import_id', $import->id));
+        $balances = $this->purger->deleteInChunks(AccountBalance::query()->where('import_id', $import->id));
 
         $created = Account::withTrashed()->where('import_id', $import->id)->get(['id', 'banking_connection_id']);
         [$connected, $manual] = $created->partition(fn (Account $account): bool => $account->isConnected());
 
-        $this->purger->purge($manual->pluck('id'));
+        $transactions += $this->purger->purge($manual->pluck('id'));
 
         // Kept, and no longer counted as the import's.
         Account::withTrashed()->whereIn('id', $connected->pluck('id'))->update(['import_id' => null]);
 
-        $this->deleteCreatedCategories($import);
-        $this->deleteCreatedBanks($import);
+        $categories = $this->deleteCreatedCategories($import);
+        $banks = $this->deleteCreatedBanks($import);
 
         $import->forceFill([
             'status' => ImportStatus::tryFrom((string) ($import->stats['undo']['previous_status'] ?? '')) ?? ImportStatus::Completed,
             'undone_at' => now(),
         ])->save();
+
+        $requestedAt = $import->stats['undo']['requested_at'] ?? null;
+
+        Log::info('Full import undone', $import->logContext([
+            'transactions' => $transactions,
+            'balances' => $balances,
+            'accounts_deleted' => $manual->count(),
+            'accounts_kept_connected' => $connected->count(),
+            'categories' => $categories,
+            'banks_deleted' => $banks,
+            'duration_seconds' => $requestedAt !== null ? Carbon::parse($requestedAt)->diffInSeconds(now()) : null,
+        ]));
     }
 
     /**
@@ -62,7 +76,10 @@ class ImportUndoer
      * hand into a category that is gone is no longer the user's choice, so
      * the rules and the AI may file it again.
      */
-    private function deleteCreatedCategories(Import $import): void
+    /**
+     * @return int how many categories the import created
+     */
+    private function deleteCreatedCategories(Import $import): int
     {
         $created = Category::query()->where('import_id', $import->id)->get();
         $createdIds = $created->pluck('id')->flip();
@@ -76,6 +93,8 @@ class ImportUndoer
 
             $this->tree->deleteSubtree($root);
         }
+
+        return $created->count();
     }
 
     /**
@@ -83,8 +102,10 @@ class ImportUndoer
      * the user has since put another account in stays: deleting a bank takes
      * its accounts with it (the foreign key cascades), trashed ones included.
      */
-    private function deleteCreatedBanks(Import $import): void
+    private function deleteCreatedBanks(Import $import): int
     {
+        $deleted = 0;
+
         foreach (Bank::query()->where('import_id', $import->id)->get() as $bank) {
             if (Account::withTrashed()->where('bank_id', $bank->id)->exists()) {
                 $bank->forceFill(['import_id' => null])->save();
@@ -93,6 +114,9 @@ class ImportUndoer
             }
 
             $bank->forceDelete();
+            $deleted++;
         }
+
+        return $deleted;
     }
 }

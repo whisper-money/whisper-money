@@ -8,7 +8,11 @@ use App\Services\Imports\ImportUndoer;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
+use Sentry\State\Scope;
 use Throwable;
+
+use function Sentry\configureScope;
 
 /**
  * Takes a full import back out of the user's data. Queued because a large
@@ -45,6 +49,8 @@ class UndoImportJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(ImportUndoer $undoer): void
     {
+        configureScope(fn (Scope $scope) => $scope->setTag('full_import_id', (string) $this->import->id));
+
         if ($this->import->status !== ImportStatus::Undoing || $this->import->undone_at !== null) {
             return;
         }
@@ -69,6 +75,14 @@ class UndoImportJob implements ShouldBeUnique, ShouldQueue
             'status' => ImportStatus::tryFrom((string) ($import->stats['undo']['previous_status'] ?? '')) ?? ImportStatus::Completed,
         ])->save();
 
-        $import->recordStats(['undo' => ['failed' => true]]);
+        // The reason stays with the import for whoever investigates; the
+        // client only learns that the undo failed (ImportHistoryPresenter).
+        $import->recordStats(['undo' => ['failed' => true, 'error' => Import::failureReason($exception)]]);
+
+        Log::error('Full import undo failed', $import->logContext([
+            'attempt' => $this->attempts(),
+            'exception' => $exception !== null ? $exception::class : null,
+            'message' => $exception?->getMessage(),
+        ]));
     }
 }

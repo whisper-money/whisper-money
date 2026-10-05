@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * One full import from another app: the history row Settings lists, the
@@ -205,6 +207,42 @@ class Import extends Model
     {
         return $this->chunks()->where('kind', $kind->value)->orderBy('position')->first();
     }
+
+    /**
+     * What every log line about the import carries: ids and enums only, never
+     * anything from the user's file.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    public function logContext(array $extra = []): array
+    {
+        return [
+            'import_id' => $this->id,
+            'user_id' => $this->user_id,
+            'space_id' => $this->space_id,
+            'source' => $this->source->value,
+            'mode' => $this->mode->value,
+            ...$extra,
+        ];
+    }
+
+    /**
+     * How a failure is kept for whoever investigates it: the exception class
+     * and its message, cut to what is worth storing. Never shown to the user,
+     * who gets a friendly sentence instead (ImportHistoryPresenter::status()).
+     */
+    public static function failureReason(?Throwable $exception): ?string
+    {
+        if ($exception === null) {
+            return null;
+        }
+
+        return Str::limit($exception::class.': '.$exception->getMessage(), self::FAILURE_REASON_LENGTH, '…');
+    }
+
+    /** Well inside the `error` TEXT column, and enough for any exception message worth reading. */
+    private const FAILURE_REASON_LENGTH = 2000;
 
     public function isUndoable(): bool
     {

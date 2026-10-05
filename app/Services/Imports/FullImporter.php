@@ -2,10 +2,14 @@
 
 namespace App\Services\Imports;
 
+use App\Enums\ImportAccountAction;
+use App\Enums\ImportCategoryAction;
+use App\Enums\ImportChunkKind;
 use App\Enums\ImportMode;
 use App\Enums\ImportStage;
 use App\Enums\ImportStatus;
 use App\Models\Import;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Runs a full import from another app once the browser has staged all of it,
@@ -42,9 +46,10 @@ class FullImporter
 
     /**
      * @param  int  $transactionSeconds  how long this run may write movements
+     * @param  int  $attempt  the job attempt running it, for the logs
      * @return bool whether the import is finished; false means another run is needed
      */
-    public function run(Import $import, int $transactionSeconds = self::TRANSACTIONS_SECONDS_PER_RUN): bool
+    public function run(Import $import, int $transactionSeconds = self::TRANSACTIONS_SECONDS_PER_RUN, int $attempt = 1): bool
     {
         // A late retry, or a run queued twice: whatever happened to the
         // import since, it is not this run's to write any more.
@@ -53,7 +58,7 @@ class FullImporter
         }
 
         if (! isset($import->plan['resolved'])) {
-            $this->prepare($import);
+            $this->prepare($import, $attempt);
         }
 
         $accounts = ImportAccountMap::fromArray($import->plan['resolved']['accounts'] ?? []);
@@ -94,6 +99,20 @@ class FullImporter
 
         $import->recordStage(ImportStage::Done);
         $import->chunks()->delete();
+
+        $stats = $import->stats ?? [];
+
+        Log::info('Full import finished', $import->logContext([
+            'status' => $status->value,
+            'imported' => $stats['transactions']['imported'] ?? 0,
+            'skipped_duplicates' => $stats['transactions']['duplicates'] ?? 0,
+            'banks_created' => $stats['accounts']['banks_created'] ?? 0,
+            'categories_created' => $stats['categories']['created'] ?? 0,
+            'categories_matched' => $stats['categories']['matched'] ?? 0,
+            'balances_imported' => $stats['balances']['imported'] ?? 0,
+            'ai_status' => $stats['ai']['status'] ?? null,
+            'duration_seconds' => $import->started_at?->diffInSeconds($import->finished_at),
+        ]));
     }
 
     /**
@@ -101,10 +120,20 @@ class FullImporter
      * the categories. What they resolved to is stored on the plan, for this
      * run and any that follow.
      */
-    private function prepare(Import $import): void
+    private function prepare(Import $import, int $attempt): void
     {
         $import->forceFill(['status' => ImportStatus::Processing, 'started_at' => now()])->save();
         $plan = $import->plan ?? [];
+        $accounts = collect($plan['accounts'] ?? []);
+
+        Log::info('Full import started', $import->logContext([
+            'attempt' => $attempt,
+            'expected_transactions' => $plan['expected'][ImportChunkKind::Transactions->value] ?? 0,
+            'expected_balances' => $plan['expected'][ImportChunkKind::Balances->value] ?? 0,
+            'accounts_new' => $accounts->where('action', ImportAccountAction::Create->value)->count(),
+            'accounts_mapped' => $accounts->where('action', ImportAccountAction::Map->value)->count(),
+            'categories_new' => collect($plan['categories'] ?? [])->where('action', ImportCategoryAction::Create->value)->count(),
+        ]));
 
         // The wipe deletes the user's accounts, so it runs once whatever
         // happens next: `stats.wiped` is written as soon as it is done.

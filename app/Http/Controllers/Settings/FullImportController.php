@@ -10,6 +10,7 @@ use App\Services\Imports\ImportHistoryPresenter;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -65,7 +66,13 @@ class FullImportController extends Controller
             return to_route('full-import.index')->withErrors(['import' => __('This import cannot be undone.')]);
         }
 
-        $import->recordStats(['undo' => ['previous_status' => $previousStatus->value, 'failed' => false]]);
+        $import->recordStats(['undo' => [
+            'previous_status' => $previousStatus->value,
+            'requested_at' => now()->toIso8601String(),
+            'failed' => false,
+        ]]);
+
+        Log::info('Full import undo requested', $import->logContext(['previous_status' => $previousStatus->value]));
 
         UndoImportJob::dispatch($import->refresh());
 
