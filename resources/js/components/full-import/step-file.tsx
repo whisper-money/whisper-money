@@ -36,7 +36,7 @@ const SOURCES: {
 
 const EXPORT_STEPS = [
     'In Banktrack, open the «Transacciones» module.',
-    'Leave the bank and account filter empty and pick the widest period: the download only includes the transactions you see on screen.',
+    'Leave the bank and account filter empty and pick the widest period: the download only includes what you see on screen.',
     'Click «Descargar» and choose CSV or XLSX.',
     'Upload the file here as it comes: no need to open it, rename columns or delete rows.',
 ];
@@ -223,7 +223,7 @@ export function StepFile({
                         )}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-neutral-300 underline-offset-4 hover:decoration-current dark:decoration-neutral-500"
+                        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
                     >
                         {__('Read the full guide')}
                         <ExternalLink className="size-3.5" aria-hidden="true" />

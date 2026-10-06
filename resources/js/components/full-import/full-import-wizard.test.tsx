@@ -168,7 +168,7 @@ describe('FullImportWizard', () => {
                 .map((step) => step.textContent),
         ).toEqual([
             'In Banktrack, open the «Transacciones» module.',
-            'Leave the bank and account filter empty and pick the widest period: the download only includes the transactions you see on screen.',
+            'Leave the bank and account filter empty and pick the widest period: the download only includes what you see on screen.',
             'Click «Descargar» and choose CSV or XLSX.',
             'Upload the file here as it comes: no need to open it, rename columns or delete rows.',
         ]);
