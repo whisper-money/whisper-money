@@ -1728,7 +1728,7 @@ final class MarketingContent
                 'bullets' => [
                     'Your whole Banktrack export in one go: accounts, categories with subcategories, transactions with their notes, and daily balances.',
                     "Banktrack's layout recognised on its own: no columns to rename and no rows to delete.",
-                    'One account per bank, with its bank, currency and IBAN. A bank our list does not know is created as one of your own.',
+                    'One account per bank, with its bank and currency. A bank our list does not know is created as one of your own.',
                     'Traspasos Propios and the rows you marked as ignored go to transfer categories, so they count as neither spending nor income.',
                     "Import a newer export later and only the new transactions come in, thanks to Banktrack's own transaction IDs.",
                     'One Undo in Settings removes everything an import created.',
@@ -1800,7 +1800,7 @@ final class MarketingContent
                 'bullets' => [
                     'Toda tu exportación de Banktrack de una vez: cuentas, categorías con subcategorías, movimientos con sus notas y saldos diarios.',
                     'El formato de Banktrack se reconoce solo: no hay columnas que renombrar ni filas que borrar.',
-                    'Una cuenta por banco, con su banco, su moneda y su IBAN. Si nuestra lista no conoce el banco, se crea como banco propio.',
+                    'Una cuenta por banco, con su banco y su moneda. Si nuestra lista no conoce el banco, se crea como banco propio.',
                     'Los Traspasos Propios y las filas que marcaste como ignoradas van a categorías de transferencia, así que no cuentan ni como gasto ni como ingreso.',
                     'Si importas más adelante una exportación más reciente, solo entran los movimientos nuevos, gracias a los identificadores de Banktrack.',
                     'Un solo «Deshacer» en Configuración quita todo lo que creó la importación.',
