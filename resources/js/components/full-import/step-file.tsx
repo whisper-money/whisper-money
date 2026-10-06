@@ -10,9 +10,10 @@ import {
 } from '@/lib/full-import-format';
 import { SUPPORTED_IMPORT_EXTENSIONS } from '@/lib/transaction-import';
 import { cn } from '@/lib/utils';
+import documentation from '@/routes/documentation';
 import { type FullImportSource } from '@/types/full-import';
 import { __ } from '@/utils/i18n';
-import { FileSpreadsheet, Lock, Upload } from 'lucide-react';
+import { ExternalLink, FileSpreadsheet, Lock, Upload } from 'lucide-react';
 import { useRef, useState, type ReactNode } from 'react';
 
 const SOURCES: {
@@ -34,9 +35,10 @@ const SOURCES: {
 ];
 
 const EXPORT_STEPS = [
-    'Open Banktrack and find the option to export your transactions.',
-    'Download them as an Excel or CSV file.',
-    'Upload it here without changing anything.',
+    'In Banktrack, open the «Transacciones» module.',
+    'Leave the bank and account filter empty and pick the widest period: the download only includes the transactions you see on screen.',
+    'Click «Descargar» and choose CSV or XLSX.',
+    'Upload the file here as it comes: no need to open it, rename columns or delete rows.',
 ];
 
 export interface FileSummary {
@@ -213,6 +215,19 @@ export function StepFile({
                             <li key={step}>{__(step)}</li>
                         ))}
                     </ol>
+                    {/* A new tab, so leaving for the guide keeps the file
+                        already read here. */}
+                    <a
+                        href={documentation.show.url(
+                            'import-from-another-app/banktrack',
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-neutral-300 underline-offset-4 hover:decoration-current dark:decoration-neutral-500"
+                    >
+                        {__('Read the full guide')}
+                        <ExternalLink className="size-3.5" aria-hidden="true" />
+                    </a>
                 </details>
             )}
 
