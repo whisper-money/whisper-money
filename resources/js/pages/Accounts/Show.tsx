@@ -197,9 +197,10 @@ export default function AccountShow({
     );
 
     // Rendered right above the transactions list, so what was just entered can
-    // be checked without scrolling back up past the chart. Connected accounts
-    // accept manual transactions too: a sync only inserts rows it has not
-    // seen, so they survive.
+    // be checked without scrolling back up past the chart. It shows wherever
+    // the list does, on transactional accounts only. Connected accounts accept
+    // manual transactions too: a sync only inserts rows it has not seen, so
+    // they survive.
     const addTransactionButton = (
         <Button variant="outline" onClick={handleAddTransaction}>
             <Plus className="h-4 w-4" />
