@@ -1,0 +1,80 @@
+<svg viewBox="0 0 720 350" role="img" aria-labelledby="banktrack-columns-es-title banktrack-columns-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="banktrack-columns-es-title">Cómo se lee una exportación de Banktrack</title>
+    <desc id="banktrack-columns-es-desc">Cada columna de Banktrack alimenta un dato de Whisper Money: Fecha la fecha, Concepto la descripción, Descripción las notas, Importe el importe, Banco la cuenta, Categorías la categoría y su subcategoría, Balance los saldos diarios, ID la comprobación de duplicados e Ignorada la categoría de transferencia. Signo cambiado, las columnas de contacto, Archivos y Facturas no se leen.</desc>
+    <defs>
+        <marker id="banktrack-columns-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+        <marker id="banktrack-columns-es-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead-accent" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="80" y="16">COLUMNA DE BANKTRACK</text>
+    <line class="dg-hairline" x1="80" y1="24" x2="280" y2="24"/>
+    <text class="dg-eyebrow" x="440" y="16">EN WHISPER MONEY</text>
+    <line class="dg-hairline" x1="440" y1="24" x2="640" y2="24"/>
+    <path class="dg-edge" d="M280,51 H436" marker-end="url(#banktrack-columns-es-arrow)"/>
+    <rect class="dg-mask" x="80" y="40" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="40" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="54">Fecha</text>
+    <rect class="dg-mask" x="440" y="40" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="40" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="55">Fecha</text>
+    <path class="dg-edge" d="M280,81 H436" marker-end="url(#banktrack-columns-es-arrow)"/>
+    <rect class="dg-mask" x="80" y="70" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="70" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="84">Concepto</text>
+    <rect class="dg-mask" x="440" y="70" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="70" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="85">Descripción</text>
+    <path class="dg-edge" d="M280,111 H436" marker-end="url(#banktrack-columns-es-arrow)"/>
+    <rect class="dg-mask" x="80" y="100" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="100" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="114">Descripción</text>
+    <rect class="dg-mask" x="440" y="100" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="100" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="115">Notas</text>
+    <path class="dg-edge" d="M280,141 H436" marker-end="url(#banktrack-columns-es-arrow)"/>
+    <rect class="dg-mask" x="80" y="130" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="130" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="144">Importe</text>
+    <rect class="dg-mask" x="440" y="130" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="130" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="145">Importe</text>
+    <path class="dg-edge dg-edge-accent" d="M280,171 H436" marker-end="url(#banktrack-columns-es-arrow-accent)"/>
+    <rect class="dg-mask" x="80" y="160" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="160" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="174">Banco</text>
+    <rect class="dg-mask" x="440" y="160" width="200" height="22" rx="4"/>
+    <rect class="dg-node-focal" x="440" y="160" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="175">Cuenta, una por banco</text>
+    <path class="dg-edge" d="M280,201 H436" marker-end="url(#banktrack-columns-es-arrow)"/>
+    <rect class="dg-mask" x="80" y="190" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="190" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="204">Categorías</text>
+    <rect class="dg-mask" x="440" y="190" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="190" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="205">Categoría › subcategoría</text>
+    <path class="dg-edge" d="M280,231 H436" marker-end="url(#banktrack-columns-es-arrow)"/>
+    <rect class="dg-mask" x="80" y="220" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="220" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="234">Balance</text>
+    <rect class="dg-mask" x="440" y="220" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="220" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="235">Saldos diarios</text>
+    <path class="dg-edge" d="M280,261 H436" marker-end="url(#banktrack-columns-es-arrow)"/>
+    <rect class="dg-mask" x="80" y="250" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="250" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="264">ID</text>
+    <rect class="dg-mask" x="440" y="250" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="250" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="265">Sin duplicados</text>
+    <path class="dg-edge" d="M280,291 H436" marker-end="url(#banktrack-columns-es-arrow)"/>
+    <rect class="dg-mask" x="80" y="280" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="280" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="294">Ignorada</text>
+    <rect class="dg-mask" x="440" y="280" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="280" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="295">Categoría de transferencia</text>
+    <text class="dg-aside" x="80" y="338">No se leen: Signo cambiado, las columnas de contacto, Archivos y Facturas.</text>
+</svg>

@@ -2,6 +2,10 @@
 
 Importar trae un archivo del banco a Whisper Money cuando la sincronización automática no está disponible para ese banco, o cuando prefieres hacerlo tú.
 
+Así se importa un archivo a una cuenta. Para traer la exportación entera de otra
+app, con muchas cuentas y sus categorías, usa
+[Importar desde otra app](/documentation/import-from-another-app).
+
 {{TOC}}
 
 ## Inicio rápido

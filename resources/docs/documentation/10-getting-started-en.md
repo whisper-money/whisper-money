@@ -15,6 +15,10 @@ Follow this order if you are setting things up for the first time.
 5. Check Cashflow to see income, expenses, and net movement.
 6. Add budgets when you want spending limits.
 
+Coming from another finance app? [Import from another app](/documentation/import-from-another-app)
+brings its accounts, categories and transactions over in one go, while you set
+up your account and for 15 days after.
+
 ## How the pieces fit together
 
 ```mermaid

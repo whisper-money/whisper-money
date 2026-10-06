@@ -171,3 +171,52 @@ test('pinning the page language leaves the visitor session locale alone', functi
 
     expect(session('locale'))->toBe('es');
 });
+
+test('the banktrack page is published in english and in spanish', function (string $path, string $locale) {
+    $this->get($path)
+        ->assertSuccessful()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('comparison')
+            ->where('pageLocale', $locale)
+            ->where('page.slug', 'banktrack-vs-whisper-money')
+            ->where('page.rival', 'Banktrack')
+            ->has('page.migration_steps', 5)
+        );
+
+    $this->get($path.'.md')
+        ->assertSuccessful()
+        ->assertSee('# Banktrack vs Whisper Money', false);
+})->with([
+    ['/compare/banktrack-vs-whisper-money', 'en'],
+    ['/comparativa/banktrack-vs-whisper-money', 'es'],
+]);
+
+test('the banktrack page is in the sitemap with its spanish alternate', function () {
+    $content = $this->get('/sitemap.xml')->assertSuccessful()->content();
+
+    expect($content)
+        ->toContain('<loc>'.config('app.url').'/compare/banktrack-vs-whisper-money</loc>')
+        ->toContain('<loc>'.config('app.url').'/comparativa/banktrack-vs-whisper-money</loc>')
+        ->toContain('hreflang="es" href="'.config('app.url').'/comparativa/banktrack-vs-whisper-money"');
+});
+
+test('the landing links to the banktrack page in every language', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('welcome')
+            ->where('comparisonLinks', fn ($links): bool => collect($links)->contains(
+                fn (array $link): bool => $link['key'] === 'banktrack'
+                    && $link['path'] === '/compare/banktrack-vs-whisper-money'
+                    && $link['heading'] === 'Banktrack vs Whisper Money'
+            ))
+        );
+
+    expect(collect(ComparisonPages::index('es'))->firstWhere('key', 'banktrack'))
+        ->toMatchArray(['path' => '/comparativa/banktrack-vs-whisper-money']);
+});
+
+test('the agent summary mentions the full import from another app', function () {
+    expect($this->get('/index.md')->assertSuccessful()->content())->toContain('Brings in a whole export from another finance app')
+        ->and($this->get('/index.es.md')->assertSuccessful()->content())->toContain('la exportación entera de otra app de finanzas');
+});

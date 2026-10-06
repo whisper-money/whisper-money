@@ -15,8 +15,8 @@ namespace App\Support\Marketing;
  * one. Keeping both languages side by side makes a missing translation visible.
  *
  * Every claim about a competitor is a fact published on that competitor's own
- * pages and was verified on 2026-08-18. Re-check the figure before editing a
- * page and update the date quoted inside the row.
+ * pages, checked on the date quoted inside the row that carries it. Re-check
+ * the figure before editing a page and update that date.
  */
 final class MarketingContent
 {
@@ -145,6 +145,7 @@ final class MarketingContent
             'monefy' => self::monefy(),
             'margen' => self::margen(),
             'dinerio' => self::dinerio(),
+            'banktrack' => self::banktrack(),
         ];
     }
 
@@ -164,6 +165,7 @@ final class MarketingContent
                     'Agrega cuentas de bancos españoles y europeos por PSD2, la normativa europea de banca abierta. La autorización se firma en la web de tu propio banco: no vemos ni almacenamos tus credenciales.',
                     'Integra brokers y exchanges con claves de API que generas tú: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase.',
                     'Importa extractos en CSV, XLS y XLSX con detección automática de columnas (incluidas las cabeceras en español), cuatro formatos de fecha, detección de duplicados y mapeo guardado por cuenta.',
+                    'Se trae de una vez la exportación entera de otra app de finanzas (Banktrack, o cualquier CSV o Excel con una fila por movimiento): cuentas, categorías con subcategorías, movimientos y saldos diarios, sin duplicados y con la opción de deshacerlo desde Configuración. Está abierta durante la configuración inicial y los 15 días siguientes; después, bajo petición.',
                     'Categoriza con reglas de automatización propias y, de forma opcional y con consentimiento explícito, con IA que aprende de tus correcciones.',
                     'Presupuestos por categoría con periodo semanal, quincenal, mensual o anual, arrastre del sobrante y avisos.',
                     'Patrimonio neto, flujo de caja mensual y multidivisa con 33 monedas.',
@@ -190,6 +192,7 @@ final class MarketingContent
                     'Aggregates Spanish and European bank accounts over PSD2, the European open banking regulation. You sign the authorisation on your own bank\'s website: we never see or store your credentials.',
                     'Integrates brokers and exchanges through API keys you generate yourself: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase.',
                     'Imports statements in CSV, XLS and XLSX with automatic column detection (Spanish headers included), four date formats, duplicate detection and per-account saved mapping.',
+                    'Brings in a whole export from another finance app in one go (Banktrack, or any CSV or Excel file with one row per transaction): accounts, categories with subcategories, transactions and daily balances, without duplicates and undoable from Settings. It is open during onboarding and for the 15 days after it; later, on request.',
                     'Categorises with your own automation rules and, optionally and only with explicit consent, with AI that learns from your corrections.',
                     'Category budgets on a weekly, biweekly, monthly or yearly period, with rollover and alerts.',
                     'Net worth, monthly cash flow and multi-currency support across 33 currencies.',
@@ -486,7 +489,7 @@ final class MarketingContent
                 'rows' => [
                     [
                         'dimension' => 'Price',
-                        'rival' => '$14.99/month or $109/year. Its pricing page warns that the rate is "priced in US dollars" and publishes no euro price (checked 18 August 2026).',
+                        'rival' => '$14.99/month or $109/year. Its pricing page warns that the rate is "priced in US dollars" and publishes no euro price (checked 6 October 2026).',
                         'whisper' => 'A free plan and a paid plan billed in euros, with the rate published on the pricing page.',
                     ],
                     [
@@ -521,13 +524,14 @@ final class MarketingContent
                     'Automation rules to categorise by merchant, amount or text, without redoing the work every month.',
                     'Optional AI categorisation that learns from your corrections, if you consent to it.',
                     'Investments and crypto inside the same net worth: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase.',
+                    'During your first 15 days, the full importer brings your whole YNAB history in one go: every account, its categories and its transactions from a single file.',
                     'CSV, XLS and XLSX import with column mapping for the accounts that do not connect.',
                 ],
-                'migration_intro' => 'YNAB exports your data, so the move is direct. In its web app, click the plan name in the left sidebar and choose "Export Plan": you get two files, one with the plan and its categories and one with the transaction history. The second is the one we want. You can also select one account\'s transactions and export just those.',
+                'migration_intro' => 'YNAB exports your data, so the move is direct. In its web app, click the plan name in the left sidebar and choose "Export Plan": you get two files, one with the plan and its categories and one with the transaction history. The second is the one we want: it covers every account and names the account of each transaction, so during your first 15 days the full importer turns it into all your accounts, categories and transactions in one go. After that, you can also select one account\'s transactions and export just those for the importer under Transactions.',
                 'migration_steps' => [
                     [
                         'title' => 'Create your account and prepare the destination accounts',
-                        'body' => 'Connect the banks that sync over PSD2 and create the ones that do not by hand. The destination account has to exist before you import, because the importer always asks where the transactions go.',
+                        'body' => 'Connect the banks that sync over PSD2. If you use the full importer, it creates the rest of your accounts from the file; if you go account by account, create each destination account first, because that importer always asks where the transactions go.',
                     ],
                     [
                         'title' => 'Export from YNAB',
@@ -538,12 +542,12 @@ final class MarketingContent
                         'body' => 'YNAB splits the amount across two columns, Outflow and Inflow. Our importer expects one: in your spreadsheet, build a single amount column with expenses negative and income positive. It is the only manual edit in the whole move.',
                     ],
                     [
-                        'title' => 'Upload the file and map the columns',
-                        'body' => "Under Transactions, open the importer, pick the account and drag the file in. YNAB's file carries Date, Payee, Memo and Category: map Date to the date, Payee to the description — you can add Memo as a second column and they get joined — and your new column to the amount. You pick the date format from DD-MM-YYYY, YYYY-MM-DD, MM-DD-YYYY and YYYYMMDD, and you see the first three rows already parsed before carrying on.",
+                        'title' => 'Bring every account in at once',
+                        'body' => 'During your first 15 days, open Settings → Import from another app, choose "Another app or my own spreadsheet" and upload the file. Map Date to the date, your new column to the amount, Payee to the description, Memo to the notes, Category to the category and Account to the account: each YNAB account is created here, or sent into one you already have. Importing the same file twice duplicates nothing, and Undo in Settings takes it all back.',
                     ],
                     [
-                        'title' => 'Turn your categories into rules and import',
-                        'body' => 'The preview gives you the total, the selected rows and the duplicates, which come unticked. On import your automation rules run, so writing four or five rules for your regular merchants puts much of the history back in place in one pass; whatever is left uncategorised the AI handles if you turn it on.',
+                        'title' => 'Or go account by account',
+                        'body' => "After those 15 days, or for a single account, export just that account's transactions, open the importer under Transactions, pick the account and drag the file in. Map Date to the date, Payee to the description — Memo can be joined to it — and your new column to the amount, and pick the date format. Duplicates come unticked in the preview, your automation rules run on import, and four or five rules for your regular merchants put much of the history back in place; whatever is left uncategorised the AI handles if you turn it on.",
                     ],
                 ],
                 'closing_body' => 'The method you learned in YNAB still holds. What changes is that here you apply it in euros, with the bank coming in on its own. The free plan asks for no card.',
@@ -558,7 +562,7 @@ final class MarketingContent
                 'rows' => [
                     [
                         'dimension' => 'Precio',
-                        'rival' => '14,99 $/mes o 109 $/año. Su página de precios avisa de que la tarifa está «priced in US dollars» y no publica precio en euros (consultado el 18 de agosto de 2026).',
+                        'rival' => '14,99 $/mes o 109 $/año. Su página de precios avisa de que la tarifa está «priced in US dollars» y no publica precio en euros (consultado el 6 de octubre de 2026).',
                         'whisper' => 'Plan gratuito y plan de pago facturado en euros, con la tarifa publicada en la página de precios.',
                     ],
                     [
@@ -593,13 +597,14 @@ final class MarketingContent
                     'Reglas de automatización para categorizar por comercio, importe o texto, sin repetir el trabajo cada mes.',
                     'Categorización con IA opcional que aprende de tus correcciones, si das tu consentimiento.',
                     'Inversiones y cripto en el mismo patrimonio neto: Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase.',
+                    'Durante tus primeros 15 días, el importador completo se trae todo tu histórico de YNAB de una vez: cada cuenta, sus categorías y sus movimientos desde un solo archivo.',
                     'Importación de CSV, XLS y XLSX con mapeo de columnas para las cuentas que no conectan.',
                 ],
-                'migration_intro' => 'YNAB exporta tus datos, así que la mudanza es directa. En su aplicación web pulsas el nombre del plan en la barra lateral izquierda y eliges «Export Plan»: obtienes dos ficheros, uno con el plan y las categorías y otro con el histórico de movimientos. El segundo es el que vamos a usar. También puedes seleccionar los movimientos de una cuenta y exportar solo esos.',
+                'migration_intro' => 'YNAB exporta tus datos, así que la mudanza es directa. En su aplicación web pulsas el nombre del plan en la barra lateral izquierda y eliges «Export Plan»: obtienes dos ficheros, uno con el plan y las categorías y otro con el histórico de movimientos. El segundo es el que vamos a usar: incluye todas las cuentas e indica la cuenta de cada movimiento, así que durante tus primeros 15 días el importador completo lo convierte en todas tus cuentas, categorías y movimientos de una vez. Después, también puedes seleccionar los movimientos de una cuenta y exportar solo esos para el importador de Transacciones.',
                 'migration_steps' => [
                     [
                         'title' => 'Crea la cuenta y prepara las cuentas de destino',
-                        'body' => 'Conecta por PSD2 los bancos que sincronicen y crea a mano los que no. Necesitas la cuenta de destino creada antes de importar, porque el importador siempre pregunta a dónde van los movimientos.',
+                        'body' => 'Conecta por PSD2 los bancos que sincronicen. Si usas el importador completo, él crea el resto de cuentas a partir del archivo; si vas cuenta a cuenta, crea antes cada cuenta de destino, porque ese importador siempre pregunta a dónde van los movimientos.',
                     ],
                     [
                         'title' => 'Exporta desde YNAB',
@@ -610,12 +615,12 @@ final class MarketingContent
                         'body' => 'YNAB reparte el importe en dos columnas, Outflow e Inflow. Nuestro importador espera una sola: en tu hoja de cálculo crea una columna de importe con los gastos en negativo y los ingresos en positivo. Es la única edición manual de toda la mudanza.',
                     ],
                     [
-                        'title' => 'Sube el fichero y mapea las columnas',
-                        'body' => 'En Transacciones abres el importador, eliges la cuenta y arrastras el fichero. El fichero de YNAB trae Date, Payee, Memo y Category: asignas Date a la fecha, Payee a la descripción —puedes añadir Memo como segunda columna y se unen— y tu columna nueva al importe. El formato de fecha lo eliges entre DD-MM-YYYY, YYYY-MM-DD, MM-DD-YYYY y YYYYMMDD, y ves las tres primeras filas ya interpretadas antes de continuar.',
+                        'title' => 'Tráete todas las cuentas de una vez',
+                        'body' => 'Durante tus primeros 15 días, abre Configuración → Importar desde otra app, elige «Otra app o un Excel propio» y sube el archivo. Asigna Date a la fecha, tu columna nueva al importe, Payee a la descripción, Memo a las notas, Category a la categoría y Account a la cuenta: cada cuenta de YNAB se crea aquí, o va a una que ya tengas. Importar dos veces el mismo archivo no duplica nada, y «Deshacer» en Configuración lo quita todo.',
                     ],
                     [
-                        'title' => 'Convierte tus categorías en reglas e importa',
-                        'body' => 'La vista previa te da el total, los seleccionados y los duplicados, que vienen desmarcados. Al importar se aplican tus reglas de automatización, así que crear cuatro o cinco reglas para tus comercios habituales recoloca buena parte del histórico de una pasada; lo que quede sin categoría lo resuelve la IA si la activas.',
+                        'title' => 'O ve cuenta a cuenta',
+                        'body' => 'Pasados esos 15 días, o para una sola cuenta, exporta solo los movimientos de esa cuenta, abre el importador en Transacciones, elige la cuenta y arrastra el fichero. Asigna Date a la fecha, Payee a la descripción —puedes unirle Memo— y tu columna nueva al importe, y elige el formato de fecha. Los duplicados vienen desmarcados en la vista previa, al importar se aplican tus reglas de automatización, y cuatro o cinco reglas para tus comercios habituales recolocan buena parte del histórico; lo que quede sin categoría lo resuelve la IA si la activas.',
                     ],
                 ],
                 'closing_body' => 'El método que aprendiste en YNAB sigue valiendo. Lo que cambia es que aquí lo aplicas en euros, en español y con el banco entrando solo. El plan gratuito no pide tarjeta.',
@@ -687,6 +692,7 @@ final class MarketingContent
                     'For the rest, the same statement you were already downloading, with headers detected automatically.',
                     'Duplicates detected and unticked before importing, so you can redo a month without dirtying the data.',
                     'The column mapping is saved per account: the second file from the same bank needs no setup.',
+                    'A sheet with an account column comes in whole during your first 15 days: every account, category and subcategory at once.',
                     'Automation rules instead of VLOOKUP.',
                     'Net worth worked out for you, across accounts, brokers, crypto, property and loans.',
                     'Category budgets with alerts, and no conditional formatting.',
@@ -694,15 +700,15 @@ final class MarketingContent
                     'Runs in the browser and installs on your phone, so logging cash no longer waits until you reach a computer.',
                     'Interface in English, Spanish and French, public code, and no data shared with third parties.',
                 ],
-                'migration_intro' => 'This is the cleanest move of them all, because your history is already in the shape the importer expects: a sheet with one row per transaction.',
+                'migration_intro' => 'This is the cleanest move of them all, because your history is already in the shape the importer expects: a sheet with one row per transaction. If it also has a column saying which account each row belongs to, the full importer brings every account in at once during your first 15 days.',
                 'migration_steps' => [
                     [
                         'title' => 'Create the accounts you had as tabs',
-                        'body' => 'Each tab or block in your sheet usually maps to a real account. Create them in Whisper Money, or connect the bank directly if it syncs, before importing anything.',
+                        'body' => 'Each tab or block in your sheet usually maps to a real account. Create them in Whisper Money, or connect the bank directly if it syncs, before importing anything. If everything lives in one tab with an account column, skip this: the full importer creates them for you.',
                     ],
                     [
                         'title' => 'Prepare the sheet without reformatting it',
-                        'body' => 'Nothing needs rebuilding. All it takes is one row per transaction and a date column, a description column and an amount column with expenses negative. If you kept expense and income in separate columns, merge them into one signed column.',
+                        'body' => 'Nothing needs rebuilding. All it takes is one row per transaction and a date column, a description column and an amount column with expenses negative. If you kept expense and income in separate columns, merge them into one signed column. For the full importer, add an account column if your accounts share a tab; a category column with values like "Home, Repairs" becomes a category and its subcategory.',
                     ],
                     [
                         'title' => 'Save or export the file',
@@ -710,7 +716,7 @@ final class MarketingContent
                     ],
                     [
                         'title' => 'Upload the file and confirm the mapping',
-                        'body' => 'On upload the headers get detected and a mapping is proposed. You confirm date, description and amount, and optionally balance. You pick the date format from DD-MM-YYYY, YYYY-MM-DD, MM-DD-YYYY and YYYYMMDD and see the first three rows already parsed before continuing. The mapping is saved for that account.',
+                        'body' => 'During your first 15 days, a sheet with an account column goes through Settings → Import from another app, as "Another app or my own spreadsheet": map date, amount, description and account, and every account is created at once. Otherwise, use the importer under Transactions, one account at a time. On upload the headers get detected and a mapping is proposed. You confirm date, description and amount, and optionally balance. You pick the date format from DD-MM-YYYY, YYYY-MM-DD, MM-DD-YYYY and YYYYMMDD and see the first three rows already parsed before continuing. The mapping is saved for that account.',
                     ],
                     [
                         'title' => 'Rebuild the categories as rules',
@@ -759,6 +765,7 @@ final class MarketingContent
                     'Para el resto, el mismo extracto que ya descargabas, con las cabeceras en español detectadas automáticamente.',
                     'Duplicados detectados y desmarcados antes de importar, así que puedes repetir un mes sin ensuciar los datos.',
                     'El mapeo de columnas se guarda por cuenta: el segundo fichero del mismo banco entra sin configurar nada.',
+                    'Una hoja con columna de cuenta entra entera durante tus primeros 15 días: todas las cuentas, categorías y subcategorías de una vez.',
                     'Reglas de automatización en lugar de BUSCARV.',
                     'Patrimonio neto calculado solo, con cuentas, brokers, cripto, inmuebles y préstamos.',
                     'Presupuestos por categoría con avisos, sin formatos condicionales.',
@@ -766,15 +773,15 @@ final class MarketingContent
                     'Funciona en el navegador y se instala en el móvil, así que apuntar el efectivo deja de esperar a que llegues al ordenador.',
                     'Interfaz en español, inglés y francés, código público y ningún dato compartido con terceros.',
                 ],
-                'migration_intro' => 'Esta es la mudanza más limpia de todas, porque tu histórico ya está en el formato que el importador espera: una hoja con una fila por movimiento.',
+                'migration_intro' => 'Esta es la mudanza más limpia de todas, porque tu histórico ya está en el formato que el importador espera: una hoja con una fila por movimiento. Si además tiene una columna que diga a qué cuenta pertenece cada fila, el importador completo se trae todas las cuentas de una vez durante tus primeros 15 días.',
                 'migration_steps' => [
                     [
                         'title' => 'Crea las cuentas que tenías en pestañas',
-                        'body' => 'Cada pestaña o cada bloque de tu hoja suele corresponder a una cuenta real. Créalas en Whisper Money, o conecta directamente el banco si sincroniza, antes de importar nada.',
+                        'body' => 'Cada pestaña o cada bloque de tu hoja suele corresponder a una cuenta real. Créalas en Whisper Money, o conecta directamente el banco si sincroniza, antes de importar nada. Si lo tienes todo en una pestaña con una columna de cuenta, sáltate esto: el importador completo las crea por ti.',
                     ],
                     [
                         'title' => 'Prepara la hoja sin reformatearla',
-                        'body' => 'No hace falta rehacer nada. Basta con que cada movimiento sea una fila y que existan una columna de fecha, una de concepto y una de importe con los gastos en negativo. Si llevabas gasto e ingreso en columnas separadas, únelos en una sola con signo.',
+                        'body' => 'No hace falta rehacer nada. Basta con que cada movimiento sea una fila y que existan una columna de fecha, una de concepto y una de importe con los gastos en negativo. Si llevabas gasto e ingreso en columnas separadas, únelos en una sola con signo. Para el importador completo, añade una columna de cuenta si tus cuentas comparten pestaña; una columna de categoría con valores como «Hogar, Reparaciones» se convierte en una categoría y su subcategoría.',
                     ],
                     [
                         'title' => 'Guarda o exporta el fichero',
@@ -782,7 +789,7 @@ final class MarketingContent
                     ],
                     [
                         'title' => 'Sube el fichero y confirma el mapeo',
-                        'body' => 'Al subirlo se detectan las cabeceras y se propone el mapeo. Confirmas fecha, descripción e importe, y de forma opcional el saldo. Eliges el formato de fecha entre DD-MM-YYYY, YYYY-MM-DD, MM-DD-YYYY y YYYYMMDD y ves las tres primeras filas ya interpretadas antes de seguir. El mapeo queda guardado para esa cuenta.',
+                        'body' => 'Durante tus primeros 15 días, una hoja con columna de cuenta entra por Configuración → Importar desde otra app, como «Otra app o un Excel propio»: asignas fecha, importe, descripción y cuenta, y todas las cuentas se crean de una vez. Si no, usa el importador de Transacciones, cuenta a cuenta. Al subirlo se detectan las cabeceras y se propone el mapeo. Confirmas fecha, descripción e importe, y de forma opcional el saldo. Eliges el formato de fecha entre DD-MM-YYYY, YYYY-MM-DD, MM-DD-YYYY y YYYYMMDD y ves las tres primeras filas ya interpretadas antes de seguir. El mapeo queda guardado para esa cuenta.',
                     ],
                     [
                         'title' => 'Reconstruye las categorías con reglas',
@@ -997,13 +1004,13 @@ final class MarketingContent
                 'rows' => [
                     [
                         'dimension' => 'Price',
-                        'rival' => 'Publishes no rate on its site: it mentions a free trial and premium users, with no figures (checked 18 August 2026).',
+                        'rival' => 'Publishes no rate on its site: it mentions a free trial and premium users, with no figures (checked 6 October 2026).',
                         'whisper' => 'Price published on the pricing page, with a free plan and a paid plan in euros.',
                     ],
                     [
                         'dimension' => 'Moving your history',
                         'rival' => 'Exports to CSV and XLS from its web app by selecting transactions. Its help centre states the export is a premium feature and that it does not include budgets, goals or recurring payments.',
-                        'whisper' => 'Importing CSV, XLS and XLSX with column mapping is included in the free plan.',
+                        'whisper' => 'Importing CSV, XLS and XLSX with column mapping is included in the free plan, and in your first 15 days one export with all your accounts comes in whole.',
                     ],
                     [
                         'dimension' => 'Investments and crypto',
@@ -1027,6 +1034,7 @@ final class MarketingContent
                     'Price published on the site, with nothing to install to find it out.',
                     'A free plan with statement importing included, not behind the paid plan.',
                     'The CSV or XLS file you export from Wallet goes straight in, with column mapping and duplicate detection.',
+                    'During your first 15 days, one Wallet export with every account comes in whole: each account and category is created for you.',
                     'The mapping is saved per account: the second import from the same source needs no setup.',
                     'Brokers, crypto and Wise integrated into net worth.',
                     'Property and loans, for the complete net worth figure.',
@@ -1035,19 +1043,19 @@ final class MarketingContent
                     'A full web app, not only mobile, and installable as an app on your phone.',
                     'Interface in English, Spanish and French, 33 currencies, and public code on GitHub.',
                 ],
-                'migration_intro' => 'Wallet exports to CSV and XLS, which are exactly two of the formats the importer expects. The move is one file per account.',
+                'migration_intro' => 'Wallet exports to CSV and XLS, which are exactly two of the formats the importer expects, and its export carries the account of every transaction. During your first 15 days that means one file for everything; after that, the move is one file per account.',
                 'migration_steps' => [
                     [
                         'title' => 'Export from Wallet',
-                        'body' => 'In its web app, go to Records, filter by account and by the widest date range you have, click "Select all" and use the Export button to choose "Export to CSV" or "Export to xls". Repeat account by account, so each file matches one destination account here.',
+                        'body' => 'In its web app, go to Records, pick the widest date range you have, click "Select all" and use the Export button to choose "Export to CSV" or "Export to xls". For the full importer, leave every account in; for the importer under Transactions, filter by account and repeat account by account, so each file matches one destination account here.',
                     ],
                     [
-                        'title' => 'Create or connect the destination account',
-                        'body' => 'If your bank connects over PSD2, connect it and let it bring in the recent transactions. If not, create the account by hand. The importer always asks which account the transactions go to.',
+                        'title' => 'Bring all your accounts in at once',
+                        'body' => 'During your first 15 days, open Settings → Import from another app, choose "Another app or my own spreadsheet" and upload the file. Map the date, the amount, the note or the payee as the description, the account and the category: each Wallet account and category is created here, or sent into one you already have.',
                     ],
                     [
-                        'title' => 'Upload the file',
-                        'body' => 'Under Transactions, open the importer, select the account and drag in the .csv or .xls you just exported. It also accepts .xlsx.',
+                        'title' => 'Or create the destination account and upload the file',
+                        'body' => 'After those 15 days, or for a single account: if your bank connects over PSD2, connect it and let it bring in the recent transactions; if not, create the account by hand. Then, under Transactions, open the importer, select the account and drag in the .csv or .xls you just exported. It also accepts .xlsx.',
                     ],
                     [
                         'title' => 'Review the column mapping',
@@ -1055,7 +1063,7 @@ final class MarketingContent
                     ],
                     [
                         'title' => 'Recover the categories as rules',
-                        'body' => "Wallet's export carries each transaction's category, but not your rules. On import, the automation rules you have created here run, and whatever is left unclassified the AI handles if you turn it on. In the preview you see the total, the selected rows and the duplicates before confirming.",
+                        'body' => "Wallet's export carries each transaction's category, which the full importer turns into categories, but not your rules. On import, the automation rules you have created here run, and whatever is left unclassified the AI handles if you turn it on. In the preview you see the total, the selected rows and the duplicates before confirming.",
                     ],
                 ],
                 'closing_body' => 'If you already have the export, the move is five minutes per account. And if you only want to try before deciding, the free plan includes importing and asks for no card.',
@@ -1070,13 +1078,13 @@ final class MarketingContent
                 'rows' => [
                     [
                         'dimension' => 'Precio',
-                        'rival' => 'No publica tarifa en su web: habla de prueba gratuita y de usuarios premium, sin cifras (consultado el 18 de agosto de 2026).',
+                        'rival' => 'No publica tarifa en su web: habla de prueba gratuita y de usuarios premium, sin cifras (consultado el 6 de octubre de 2026).',
                         'whisper' => 'Precio publicado en la página de precios, con plan gratuito y plan de pago en euros.',
                     ],
                     [
                         'dimension' => 'Mover tu histórico',
                         'rival' => 'Exporta a CSV y a XLS desde su web seleccionando movimientos. Su centro de ayuda indica que la exportación es una función premium y que no incluye presupuestos, objetivos ni pagos recurrentes.',
-                        'whisper' => 'La importación de CSV, XLS y XLSX con mapeo de columnas está incluida en el plan gratuito.',
+                        'whisper' => 'La importación de CSV, XLS y XLSX con mapeo de columnas está incluida en el plan gratuito, y en tus primeros 15 días una exportación con todas tus cuentas entra entera.',
                     ],
                     [
                         'dimension' => 'Inversiones y cripto',
@@ -1100,6 +1108,7 @@ final class MarketingContent
                     'Precio publicado en la web, sin instalar nada para descubrirlo.',
                     'Plan gratuito con la importación de extractos incluida, no detrás del plan de pago.',
                     'El fichero CSV o XLS que exportas de Wallet entra directamente, con mapeo de columnas y detección de duplicados.',
+                    'Durante tus primeros 15 días, una sola exportación de Wallet con todas tus cuentas entra entera: cada cuenta y cada categoría se crean por ti.',
                     'El mapeo se guarda por cuenta: la segunda importación del mismo origen no requiere configurar nada.',
                     'Brokers, cripto y Wise integrados en el patrimonio neto.',
                     'Inmuebles y préstamos, para el patrimonio neto completo.',
@@ -1108,19 +1117,19 @@ final class MarketingContent
                     'Aplicación web completa, no solo móvil, e instalable como app en el teléfono.',
                     'Interfaz en español, inglés y francés, 33 divisas y código público en GitHub.',
                 ],
-                'migration_intro' => 'Wallet exporta a CSV y a XLS, que son exactamente dos de los formatos que el importador espera. La mudanza es un fichero por cuenta.',
+                'migration_intro' => 'Wallet exporta a CSV y a XLS, que son exactamente dos de los formatos que el importador espera, y su exportación lleva la cuenta de cada movimiento. Durante tus primeros 15 días eso significa un solo archivo para todo; después, la mudanza es un fichero por cuenta.',
                 'migration_steps' => [
                     [
                         'title' => 'Exporta desde Wallet',
-                        'body' => 'En su aplicación web entra en Records, filtra por cuenta y por el rango de fechas más amplio que tengas, pulsa «Select all» y usa el botón Export para elegir «Export to CSV» o «Export to xls». Repite la operación cuenta por cuenta: así cada fichero corresponde a una cuenta de destino aquí.',
+                        'body' => 'En su aplicación web entra en Records, elige el rango de fechas más amplio que tengas, pulsa «Select all» y usa el botón Export para elegir «Export to CSV» o «Export to xls». Para el importador completo, deja todas las cuentas; para el importador de Transacciones, filtra por cuenta y repite la operación cuenta por cuenta, así cada fichero corresponde a una cuenta de destino aquí.',
                     ],
                     [
-                        'title' => 'Crea o conecta la cuenta de destino',
-                        'body' => 'Si tu banco conecta por PSD2, conéctalo y deja que traiga lo reciente. Si no, crea la cuenta a mano. El importador siempre pregunta a qué cuenta van los movimientos.',
+                        'title' => 'Tráete todas las cuentas de una vez',
+                        'body' => 'Durante tus primeros 15 días, abre Configuración → Importar desde otra app, elige «Otra app o un Excel propio» y sube el archivo. Asigna la fecha, el importe, la nota o el beneficiario como descripción, la cuenta y la categoría: cada cuenta y cada categoría de Wallet se crean aquí, o van a una que ya tengas.',
                     ],
                     [
-                        'title' => 'Sube el fichero',
-                        'body' => 'En Transacciones abres el importador, seleccionas la cuenta y arrastras el .csv o el .xls que acabas de exportar. También acepta .xlsx.',
+                        'title' => 'O crea la cuenta de destino y sube el fichero',
+                        'body' => 'Pasados esos 15 días, o para una sola cuenta: si tu banco conecta por PSD2, conéctalo y deja que traiga lo reciente; si no, crea la cuenta a mano. Después, en Transacciones, abres el importador, seleccionas la cuenta y arrastras el .csv o el .xls que acabas de exportar. También acepta .xlsx.',
                     ],
                     [
                         'title' => 'Revisa el mapeo de columnas',
@@ -1128,7 +1137,7 @@ final class MarketingContent
                     ],
                     [
                         'title' => 'Recupera las categorías con reglas',
-                        'body' => 'La exportación de Wallet trae la categoría de cada movimiento, pero no tus reglas. Al importar se aplican las reglas de automatización que hayas creado aquí, y lo que quede sin clasificar lo resuelve la IA si la activas. En la vista previa ves el total, los seleccionados y los duplicados antes de confirmar.',
+                        'body' => 'La exportación de Wallet trae la categoría de cada movimiento, que el importador completo convierte en categorías, pero no tus reglas. Al importar se aplican las reglas de automatización que hayas creado aquí, y lo que quede sin clasificar lo resuelve la IA si la activas. En la vista previa ves el total, los seleccionados y los duplicados antes de confirmar.',
                     ],
                 ],
                 'closing_body' => 'Si ya tienes el fichero exportado, la mudanza son cinco minutos por cuenta. Y si solo quieres probar antes de decidir, el plan gratuito incluye la importación y no pide tarjeta.',
@@ -1170,7 +1179,7 @@ final class MarketingContent
                 'rows' => [
                     [
                         'dimension' => 'Price',
-                        'rival' => 'Free core plus an optional paid upgrade; its site does not publish the price of that upgrade (checked 18 August 2026).',
+                        'rival' => 'Free core plus an optional paid upgrade; its site does not publish the price of that upgrade (checked 6 October 2026).',
                         'whisper' => 'Price published, with a free plan and a paid plan in euros.',
                     ],
                     [
@@ -1199,6 +1208,7 @@ final class MarketingContent
                     'Direct debits, subscriptions and fees come in by themselves: they do not depend on you remembering.',
                     'PSD2 connection is optional. If you do not want to connect the bank, you import the statement and that is that.',
                     'CSV, XLS and XLSX import with column mapping: the file Monefy exports goes straight in.',
+                    'During your first 15 days, the full importer takes the whole Monefy file in one go and creates its categories for you.',
                     'Logging cash by hand from your phone is still fast.',
                     'Category budgets on a weekly, biweekly, monthly or yearly period, with alerts.',
                     'Cash flow: income against spending month by month, not just how the spending splits.',
@@ -1207,19 +1217,19 @@ final class MarketingContent
                     'Web and mobile on the same account, with no syncing through Drive or Dropbox.',
                     'Interface in English, Spanish and French, public code, and no data shared with third parties.',
                 ],
-                'migration_intro' => 'Monefy exports your data to CSV or Excel according to its own guide, and that is all it takes. Since Monefy does not split transactions by bank account, the usual approach is to import them all into a single cash account and carry on from there.',
+                'migration_intro' => 'Monefy exports your data to CSV or Excel according to its own guide, and that is all it takes. During your first 15 days, the full importer brings the whole file in one go, categories included. After that, since Monefy does not split transactions by bank account, the usual approach is to import them all into a single cash account and carry on from there.',
                 'migration_steps' => [
                     [
                         'title' => 'Export your records from Monefy',
                         'body' => 'Use its export-to-file feature and save the CSV somewhere you can reach from a computer: Drive, Dropbox or your own email all work.',
                     ],
                     [
-                        'title' => 'Create the destination account',
-                        'body' => 'Create a cash account, which is the closest match to what Monefy held. Banks, if you want them, get connected separately afterwards.',
+                        'title' => 'Import it whole with the full importer',
+                        'body' => 'During your first 15 days, open Settings → Import from another app, choose "Another app or my own spreadsheet" and upload the CSV. Map the date, the amount, the description and the category. For the account, choose the column that names it if the file has one, so each Monefy account arrives as its own; if not, choose "All rows are one account".',
                     ],
                     [
-                        'title' => 'Upload the file',
-                        'body' => 'Under Transactions, open the importer, pick that account and drag the CSV in. It also accepts .xls and .xlsx if you have been through a spreadsheet.',
+                        'title' => 'Or create a cash account and upload the file',
+                        'body' => 'After those 15 days, create a cash account, which is the closest match to what Monefy held; banks, if you want them, get connected separately afterwards. Then, under Transactions, open the importer, pick that account and drag the CSV in. It also accepts .xls and .xlsx if you have been through a spreadsheet.',
                     ],
                     [
                         'title' => 'Confirm the column mapping',
@@ -1242,7 +1252,7 @@ final class MarketingContent
                 'rows' => [
                     [
                         'dimension' => 'Precio',
-                        'rival' => 'Núcleo gratuito y mejora opcional de pago; su web no publica el precio de esa mejora (consultado el 18 de agosto de 2026).',
+                        'rival' => 'Núcleo gratuito y mejora opcional de pago; su web no publica el precio de esa mejora (consultado el 6 de octubre de 2026).',
                         'whisper' => 'Precio publicado, con plan gratuito y plan de pago en euros.',
                     ],
                     [
@@ -1271,6 +1281,7 @@ final class MarketingContent
                     'Los recibos, las suscripciones y las comisiones entran solos: no dependen de que te acuerdes.',
                     'Conexión por PSD2 opcional. Si no quieres conectar el banco, importas el extracto y listo.',
                     'Importación de CSV, XLS y XLSX con mapeo de columnas: el fichero que exporta Monefy entra directo.',
+                    'Durante tus primeros 15 días, el importador completo se trae el archivo de Monefy entero de una vez y crea sus categorías por ti.',
                     'Sigue siendo rápido apuntar el efectivo a mano desde el móvil.',
                     'Presupuestos por categoría con periodo semanal, quincenal, mensual o anual, y avisos.',
                     'Flujo de caja: ingresos contra gastos mes a mes, no solo el reparto del gasto.',
@@ -1279,19 +1290,19 @@ final class MarketingContent
                     'Aplicación web y móvil con la misma cuenta, sin sincronizar a través de Drive ni Dropbox.',
                     'Interfaz en español, inglés y francés, código público y ningún dato compartido con terceros.',
                 ],
-                'migration_intro' => 'Monefy exporta tus datos a CSV o Excel, según su propia guía, y eso es todo lo que hace falta. Como en Monefy los movimientos no están separados por cuenta bancaria, lo habitual es importarlos todos a una única cuenta de efectivo y seguir desde ahí.',
+                'migration_intro' => 'Monefy exporta tus datos a CSV o Excel, según su propia guía, y eso es todo lo que hace falta. Durante tus primeros 15 días, el importador completo se trae el archivo entero de una vez, categorías incluidas. Después, como en Monefy los movimientos no están separados por cuenta bancaria, lo habitual es importarlos todos a una única cuenta de efectivo y seguir desde ahí.',
                 'migration_steps' => [
                     [
                         'title' => 'Exporta tus registros desde Monefy',
                         'body' => 'Usa su función de exportar a fichero y guarda el CSV donde puedas alcanzarlo desde el ordenador: Drive, Dropbox o tu propio correo sirven igual.',
                     ],
                     [
-                        'title' => 'Crea la cuenta de destino',
-                        'body' => 'Crea una cuenta de efectivo, que es la que mejor refleja lo que había en Monefy. Los bancos, si quieres tenerlos, los conectas después por separado.',
+                        'title' => 'Impórtalo entero con el importador completo',
+                        'body' => 'Durante tus primeros 15 días, abre Configuración → Importar desde otra app, elige «Otra app o un Excel propio» y sube el CSV. Asigna la fecha, el importe, la descripción y la categoría. Para la cuenta, elige la columna que la indique si el archivo la tiene, así cada cuenta de Monefy llega como una cuenta propia; si no, elige «Todas las filas son de una sola cuenta».',
                     ],
                     [
-                        'title' => 'Sube el fichero',
-                        'body' => 'En Transacciones abres el importador, eliges esa cuenta y arrastras el CSV. También acepta .xls y .xlsx si lo has pasado por una hoja de cálculo.',
+                        'title' => 'O crea una cuenta de efectivo y sube el fichero',
+                        'body' => 'Pasados esos 15 días, crea una cuenta de efectivo, que es la que mejor refleja lo que había en Monefy; los bancos, si quieres tenerlos, los conectas después por separado. Luego, en Transacciones, abres el importador, eliges esa cuenta y arrastras el CSV. También acepta .xls y .xlsx si lo has pasado por una hoja de cálculo.',
                     ],
                     [
                         'title' => 'Confirma el mapeo de columnas',
@@ -1513,7 +1524,7 @@ final class MarketingContent
                 'rows' => [
                     [
                         'dimension' => 'Price',
-                        'rival' => '€3.99/month or €35.88/year (equivalent to €2.99/month), with a 14-day trial (dinerioapp.es, 18 August 2026).',
+                        'rival' => '€3.99/month or €35.88/year (equivalent to €2.99/month), with a 14-day trial (dinerioapp.es, 6 October 2026).',
                         'whisper' => 'A permanent free plan and a paid plan in euros, with the rate published on the site.',
                     ],
                     [
@@ -1551,7 +1562,7 @@ final class MarketingContent
                     'Interface in English, Spanish and French, across 33 currencies.',
                     'Public code on GitHub and no data shared with third parties.',
                 ],
-                'migration_intro' => "Dinerio's site does not document a transaction export, so the reliable route is the same one you used to feed Dinerio: your bank statement. The difference is that here you upload it instead of typing it.",
+                'migration_intro' => 'Dinerio lets you download all your data as an Excel file "with a professional layout", in the words of its site, but it does not say how that file is laid out. If it turns out to be one row per transaction with a date, an amount and a description, the full importer can read it during your first 15 days. Otherwise, the reliable route is the same one you used to feed Dinerio: your bank statement. The difference is that here you upload it instead of typing it.',
                 'migration_steps' => [
                     [
                         'title' => 'Create your account and decide whether to connect',
@@ -1586,7 +1597,7 @@ final class MarketingContent
                 'rows' => [
                     [
                         'dimension' => 'Precio',
-                        'rival' => '3,99 €/mes o 35,88 €/año (equivalente a 2,99 €/mes), con 14 días de prueba (dinerioapp.es, 18 de agosto de 2026).',
+                        'rival' => '3,99 €/mes o 35,88 €/año (equivalente a 2,99 €/mes), con 14 días de prueba (dinerioapp.es, 6 de octubre de 2026).',
                         'whisper' => 'Plan gratuito permanente y plan de pago en euros, con la tarifa publicada en la web.',
                     ],
                     [
@@ -1624,7 +1635,7 @@ final class MarketingContent
                     'Interfaz en español, inglés y francés, con 33 divisas.',
                     'Código público en GitHub y ningún dato compartido con terceros.',
                 ],
-                'migration_intro' => 'La web de Dinerio no documenta una exportación de movimientos, así que la vía fiable es la misma con la que alimentabas Dinerio: el extracto de tu banco. La diferencia es que aquí lo subes en lugar de teclearlo.',
+                'migration_intro' => 'Dinerio te deja descargar todos tus datos en un archivo Excel «con diseño profesional», en palabras de su web, pero no explica cómo está organizado. Si resulta ser una fila por movimiento con fecha, importe y descripción, el importador completo puede leerlo durante tus primeros 15 días. Si no, la vía fiable es la misma con la que alimentabas Dinerio: el extracto de tu banco. La diferencia es que aquí lo subes en lugar de teclearlo.',
                 'migration_steps' => [
                     [
                         'title' => 'Crea tu cuenta y decide si conectas',
@@ -1648,6 +1659,180 @@ final class MarketingContent
                     ],
                 ],
                 'closing_body' => 'Si te convenció el argumento de privacidad de Dinerio, aquí lo tienes con dos añadidos: el código que puedes leer y la opción de que los movimientos entren solos cuando te apetezca. El plan gratuito no pide tarjeta.',
+            ],
+        ];
+    }
+
+    /**
+     * Banktrack's site now sells to businesses, so this page is about moving a
+     * personal history out of it rather than about features: its export is the
+     * one the full importer recognises on its own.
+     *
+     * @return array<string, mixed>
+     */
+    private static function banktrack(): array
+    {
+        return [
+            'testimonials' => [
+                [
+                    'name' => 'Mark',
+                    'text' => [
+                        'en' => "I've tried a load of apps that never quite fitted. Apps also scare me a little, because years ago I spent months entering data into one that was working nicely — I was on the paid version — and six months later it disappeared and I lost all the information, and above all the time. Yours looks very good.",
+                        'es' => 'He probado un montón de aplicaciones que no terminaban de cuadrar. Las aplicaciones también me dan un poco de miedo porque hace años estuve meses metiendo datos en una que iba guay, yo tenía versión de pago, pero a los 6 meses desapareció y perdí toda la información y sobre todo el tiempo. La vuestra pinta muy bien.',
+                    ],
+                ],
+                [
+                    'name' => 'Marcus Oliveira',
+                    'gravatar' => '3c4342baddf0beb8b0bd9fe89168e282',
+                    'text' => [
+                        'en' => 'Thank you for developing Whisper Money. The focus on privacy and centralizing finances is an excellent proposition.',
+                        'es' => 'Gracias por desarrollar Whisper Money. El enfoque en la privacidad y en centralizar las finanzas es una propuesta excelente.',
+                    ],
+                ],
+            ],
+            'en' => [
+                'slug' => 'banktrack-vs-whisper-money',
+                'rival' => 'Banktrack',
+                'title' => 'Banktrack vs Whisper Money (2026) | Comparison',
+                'description' => 'Banktrack now sells treasury and invoicing to small businesses, from €59 a month. Whisper Money is built for your personal finances, and brings your whole Banktrack export over in one go: accounts, categories and transactions.',
+                'heading' => 'Banktrack vs Whisper Money',
+                'intro' => 'Banktrack was born in 2021 as what its own site calls "a financial push project" and grew into a complete finance suite. In May 2025 its blog was still pitching it as an alternative to Fintonic for personal finances. Today its site describes something else: "Tesorería y Facturación, diseñadas para PYMEs", treasury and invoicing for small businesses, with plans from €59 a month. If you were using it for your household money, this page covers what changes and how to bring every account, category and transaction with you without typing a thing.',
+                'rows' => [
+                    [
+                        'dimension' => 'Who it is for',
+                        'rival' => 'Small and medium businesses: its home page reads "Tesorería y Facturación, diseñadas para PYMEs" (banktrack.com, 6 October 2026).',
+                        'whisper' => 'Your personal and household finances: accounts, budgets, cash flow and net worth.',
+                    ],
+                    [
+                        'dimension' => 'Price',
+                        'rival' => 'Starter at €59/month and Advanced at €119/month, with a 7-day trial, plus a custom plan (banktrack.com/precios, 6 October 2026).',
+                        'whisper' => 'A permanent free plan and a paid plan in euros, with the rate published on the pricing page.',
+                    ],
+                    [
+                        'dimension' => 'Moving your history',
+                        'rival' => 'Its "Descargar" button, in the Transacciones module, downloads the transactions you see on screen as PDF, CSV, XLSX or JSON, according to its help centre.',
+                        'whisper' => 'The full importer reads that CSV or XLSX as it comes: accounts, categories with subcategories, transactions and daily balances, in one go.',
+                    ],
+                    [
+                        'dimension' => 'What you can verify',
+                        'rival' => 'Its help centre says data is kept on Amazon Web Services servers in Europe and is not sold or passed on to third parties for commercial purposes.',
+                        'whisper' => 'We do not sell or share your data with third parties either, and the code is public on GitHub, so the promise can be read and not just believed.',
+                    ],
+                ],
+                'narrative_title' => 'A business tool now, with your history inside it',
+                'narrative' => [
+                    'Nothing here says Banktrack is a bad product. It has chosen its customer, and it is a company. Its plans are measured in connected banks, invoices per quarter and users, and they come with Verifactu-ready invoicing and, on the larger plans, treasury forecasting. That is the right shape for a small business and the wrong one for keeping track of a salary, a joint account and some savings.',
+                    "If you used it for your own money, the part worth keeping is the history you built there: the accounts, the categories you refined over the years, the transfers between your own accounts that you marked so they would not count as spending. All of it fits in one file, the one Banktrack's Descargar button gives you.",
+                    'Whisper Money reads that file as it comes. It knows Banktrack\'s columns, creates one account per bank with its balances, rebuilds your categories with their subcategories, sends your own transfers and the rows you had ignored to transfer categories, and skips anything already imported. If something looks wrong afterwards, one Undo in Settings takes the whole import back out.',
+                ],
+                'bullets' => [
+                    'Your whole Banktrack export in one go: accounts, categories with subcategories, transactions with their notes, and daily balances.',
+                    "Banktrack's layout recognised on its own: no columns to rename and no rows to delete.",
+                    'One account per bank, with its bank, currency and IBAN. A bank our list does not know is created as one of your own.',
+                    'Traspasos Propios and the rows you marked as ignored go to transfer categories, so they count as neither spending nor income.',
+                    "Import a newer export later and only the new transactions come in, thanks to Banktrack's own transaction IDs.",
+                    'One Undo in Settings removes everything an import created.',
+                    'Open while you set up your account and for 15 days after. Past that, write to us.',
+                    'PSD2 bank connections, plus Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase in the same net worth.',
+                    'Category budgets, cash flow and net worth, with a permanent free plan.',
+                    'Public code on GitHub, and no data shared with third parties.',
+                ],
+                'migration_intro' => 'Banktrack puts everything in one file, and that file is all you need. Whisper Money already knows its columns, so the move takes minutes rather than an afternoon of spreadsheets.',
+                'migration_steps' => [
+                    [
+                        'title' => 'Download everything from Banktrack',
+                        'body' => 'In its Transacciones module, clear the bank and account filter, pick the widest period and click "Descargar", then choose CSV or XLSX. Its help centre explains that the download follows the filters you have on, which is why they need clearing first.',
+                    ],
+                    [
+                        'title' => 'Create your Whisper Money account',
+                        'body' => 'The full importer is open while you set up your account and for 15 days after. During setup it is the "Coming from another app?" option on the accounts step; afterwards it lives in Settings → Import from another app. If those 15 days are over, write to us.',
+                    ],
+                    [
+                        'title' => 'Upload the file as it comes',
+                        'body' => 'Choose Banktrack and drop the file in. Your browser reads it and recognises its headers: date, amount, concept, bank and categories are matched for you, and you can change any of them. Nothing is saved until the last step.',
+                    ],
+                    [
+                        'title' => 'Check the accounts and the categories',
+                        'body' => 'Each value of the Banco column becomes an account, which you can create, send into one of your manual accounts or merge with another. Categories are matched to yours by name and the rest are created with their subcategories, with Traspasos Propios going to your Own account transfer category.',
+                    ],
+                    [
+                        'title' => 'Import, and undo if you need to',
+                        'body' => 'The import runs in the background, so you can close the tab. On the paid plan, and if you consent to it, the AI categorises whatever arrived without a category. If anything looks off, Settings → Import from another app → Undo removes everything the import created.',
+                    ],
+                ],
+                'closing_body' => 'Your Banktrack years do not have to stay behind in a business plan. Bring them over in one file and carry on from where you were. The free plan asks for no card.',
+            ],
+            'es' => [
+                'slug' => 'banktrack-vs-whisper-money',
+                'rival' => 'Banktrack',
+                'title' => 'Banktrack vs Whisper Money (2026) | Comparativa',
+                'description' => 'Banktrack se ha centrado en la tesorería y la facturación de pymes, con planes desde 59 € al mes. Whisper Money está pensado para tus finanzas personales y se trae toda tu exportación de Banktrack de una vez: cuentas, categorías y movimientos.',
+                'heading' => 'Banktrack vs Whisper Money',
+                'intro' => 'Banktrack nació en 2021 como lo que su propia web llama «un proyecto de push financiero» y fue creciendo hasta ser una suite financiera completa. En mayo de 2025 su blog todavía lo presentaba como alternativa a Fintonic para las finanzas personales. Hoy su web cuenta otra cosa: «Tesorería y Facturación, diseñadas para PYMEs», con planes desde 59 € al mes. Si lo usabas para el dinero de casa, aquí tienes qué cambia y cómo traerte cada cuenta, cada categoría y cada movimiento sin teclear nada.',
+                'rows' => [
+                    [
+                        'dimension' => 'Para quién es',
+                        'rival' => 'Para empresas: su portada dice «Tesorería y Facturación, diseñadas para PYMEs» (banktrack.com, 6 de octubre de 2026).',
+                        'whisper' => 'Para tus finanzas personales y las de casa: cuentas, presupuestos, flujo de caja y patrimonio neto.',
+                    ],
+                    [
+                        'dimension' => 'Precio',
+                        'rival' => 'Starter a 59 €/mes y Advanced a 119 €/mes, con 7 días de prueba, además de un plan a medida (banktrack.com/precios, 6 de octubre de 2026).',
+                        'whisper' => 'Plan gratuito permanente y plan de pago en euros, con la tarifa publicada en la página de precios.',
+                    ],
+                    [
+                        'dimension' => 'Llevarte tu histórico',
+                        'rival' => 'Su botón «Descargar», en el módulo Transacciones, descarga los movimientos que ves en pantalla en PDF, CSV, XLSX o JSON, según su centro de ayuda.',
+                        'whisper' => 'El importador completo lee ese CSV o XLSX tal cual: cuentas, categorías con subcategorías, movimientos y saldos diarios, de una vez.',
+                    ],
+                    [
+                        'dimension' => 'Qué puedes comprobar',
+                        'rival' => 'Su centro de ayuda dice que guarda los datos en servidores de Amazon Web Services en Europa y que no los vende ni los cede a terceros con fines comerciales.',
+                        'whisper' => 'Nosotros tampoco vendemos ni compartimos tus datos con terceros, y además el código es público en GitHub: la promesa se puede leer, no solo creer.',
+                    ],
+                ],
+                'narrative_title' => 'Ahora es una herramienta de empresa, con tu histórico dentro',
+                'narrative' => [
+                    'Aquí nadie dice que Banktrack sea un mal producto. Ha elegido a su cliente, y ese cliente es una empresa. Sus planes se miden en bancos conectados, facturas por trimestre y usuarios, e incluyen facturación compatible con Verifactu y, en los planes grandes, previsión de tesorería. Es la forma adecuada para una pyme y la equivocada para llevar una nómina, una cuenta conjunta y algo de ahorro.',
+                    'Si lo usabas para tu propio dinero, lo que merece la pena conservar es el histórico que construiste allí: las cuentas, las categorías que fuiste afinando con los años, los traspasos entre tus cuentas que marcaste para que no contaran como gasto. Todo eso cabe en un archivo, el que te da el botón «Descargar» de Banktrack.',
+                    'Whisper Money lee ese archivo tal y como sale. Conoce las columnas de Banktrack, crea una cuenta por banco con sus saldos, reconstruye tus categorías con sus subcategorías, manda tus traspasos propios y las filas que habías ignorado a categorías de transferencia, y se salta lo que ya estuviera importado. Si después algo no te cuadra, un solo «Deshacer» en Configuración quita la importación entera.',
+                ],
+                'bullets' => [
+                    'Toda tu exportación de Banktrack de una vez: cuentas, categorías con subcategorías, movimientos con sus notas y saldos diarios.',
+                    'El formato de Banktrack se reconoce solo: no hay columnas que renombrar ni filas que borrar.',
+                    'Una cuenta por banco, con su banco, su moneda y su IBAN. Si nuestra lista no conoce el banco, se crea como banco propio.',
+                    'Los Traspasos Propios y las filas que marcaste como ignoradas van a categorías de transferencia, así que no cuentan ni como gasto ni como ingreso.',
+                    'Si importas más adelante una exportación más reciente, solo entran los movimientos nuevos, gracias a los identificadores de Banktrack.',
+                    'Un solo «Deshacer» en Configuración quita todo lo que creó la importación.',
+                    'Disponible mientras configuras tu cuenta y durante los 15 días siguientes. Después, escríbenos.',
+                    'Conexión bancaria por PSD2, más Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase en el mismo patrimonio neto.',
+                    'Presupuestos por categoría, flujo de caja y patrimonio neto, con plan gratuito permanente.',
+                    'Código público en GitHub y ningún dato compartido con terceros.',
+                ],
+                'migration_intro' => 'Banktrack lo mete todo en un archivo, y ese archivo es todo lo que necesitas. Whisper Money ya conoce sus columnas, así que la mudanza son minutos y no una tarde peleándote con hojas de cálculo.',
+                'migration_steps' => [
+                    [
+                        'title' => 'Descárgalo todo de Banktrack',
+                        'body' => 'En su módulo Transacciones, quita el filtro de banco y cuenta, elige el periodo más amplio y pulsa «Descargar»; después elige CSV o XLSX. Su centro de ayuda explica que la descarga respeta los filtros activos, por eso hay que quitarlos antes.',
+                    ],
+                    [
+                        'title' => 'Crea tu cuenta en Whisper Money',
+                        'body' => 'El importador completo está abierto mientras configuras tu cuenta y durante los 15 días siguientes. En la configuración es la opción «¿Vienes de otra app?» del paso de cuentas; después lo tienes en Configuración → Importar desde otra app. Si ya han pasado esos 15 días, escríbenos.',
+                    ],
+                    [
+                        'title' => 'Sube el archivo tal cual',
+                        'body' => 'Elige Banktrack y arrastra el archivo. Lo lee tu navegador y reconoce sus cabeceras: la fecha, el importe, el concepto, el banco y las categorías se asignan solos, y puedes cambiar cualquiera. No se guarda nada hasta el último paso.',
+                    ],
+                    [
+                        'title' => 'Revisa las cuentas y las categorías',
+                        'body' => 'Cada valor de la columna Banco pasa a ser una cuenta, que puedes crear, mandar a una de tus cuentas manuales o unir con otra. Las categorías se comparan por nombre con las tuyas y el resto se crean con sus subcategorías, y los Traspasos Propios van a tu categoría de transferencia Cuenta propia.',
+                    ],
+                    [
+                        'title' => 'Importa, y deshaz si hace falta',
+                        'body' => 'La importación se hace en segundo plano, así que puedes cerrar la pestaña. Con el plan de pago, y si das tu consentimiento, la IA categoriza lo que haya llegado sin categoría. Si algo no te cuadra, Configuración → Importar desde otra app → Deshacer quita todo lo que creó la importación.',
+                    ],
+                ],
+                'closing_body' => 'Tus años en Banktrack no tienen por qué quedarse dentro de un plan de empresa. Tráetelos en un archivo y sigue donde lo dejaste. El plan gratuito no pide tarjeta.',
             ],
         ];
     }

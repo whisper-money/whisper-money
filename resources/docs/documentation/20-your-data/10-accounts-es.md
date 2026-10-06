@@ -12,6 +12,10 @@ Las cuentas son la base de Whisper Money. Guardan saldos, transacciones e histor
 4. Importa transacciones para cuentas con actividad diaria.
 5. Revisa la página de Cuentas para ver saldos y evolución del patrimonio neto.
 
+¿Te mudas desde otra app? [Importar desde otra app](/documentation/import-from-another-app)
+crea tus cuentas a partir de su exportación, con su banco, su tipo, su moneda y
+sus saldos diarios.
+
 ## Mapa de cuentas
 
 ```mermaid

@@ -339,6 +339,67 @@ async function openAccount(page) {
 }
 
 /**
+ * The synthetic Banktrack export the importer's own tests read: no real person,
+ * account or IBAN in it, which is the only kind of file a public screenshot may
+ * show.
+ */
+const BANKTRACK_EXPORT = 'resources/js/lib/__fixtures__/banktrack-sample.csv';
+
+/**
+ * Take back every full import of the account, the way Settings' Undo does but
+ * without waiting for the queue. A second import of the same file goes into the
+ * accounts and categories the first one created, so without this the dark shots
+ * would show a re-import where the light ones showed a first import.
+ */
+function undoFullImports() {
+    artisan([
+        'tinker',
+        '--execute',
+        `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
+         foreach (App\\Models\\Import::query()->whereBelongsTo($user)->get() as $import) {
+             app(App\\Services\\Imports\\ImportUndoer::class)->undo($import);
+             $import->delete();
+         }`,
+    ]);
+}
+
+/**
+ * Open the full import on the Banktrack export and walk it forward until the
+ * step with this title is on screen.
+ */
+async function openFullImport(page, stepTitle = null) {
+    undoFullImports();
+    await page.goto(`${BASE_URL}/settings/import/new`, {
+        waitUntil: 'domcontentloaded',
+    });
+    await page.getByTestId('full-import-file-input').setInputFiles(
+        BANKTRACK_EXPORT,
+    );
+    await page.getByText('Banktrack format recognized.').waitFor();
+
+    while (
+        stepTitle !== null &&
+        !(await page
+            .getByRole('heading', { level: 1, name: stepTitle })
+            .isVisible())
+    ) {
+        await page.getByRole('button', { name: 'Continue' }).click();
+        await page.waitForTimeout(800);
+    }
+
+    // Continue sits at the foot of a long step, and the next step opens
+    // wherever the last one was scrolled to.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(600);
+}
+
+/** A wizard step's "Step 2 of 6" and its title, the top of every step's frame. */
+function stepHeading(page) {
+    return page.getByRole('heading', { level: 1 }).locator('xpath=..');
+}
+
+/**
  * Each shot leaves the app on the screen it wants and returns what to capture:
  * the elements to frame, or a rectangle when the element's own box is not what
  * should be in the picture.
@@ -577,6 +638,95 @@ const SHOTS = {
 
         return [table];
     },
+
+    // The full import shots run in this order: the done shot is the one that
+    // actually imports, and the Settings shot shows that import in its history.
+
+    'full-import-file': async (page) => {
+        await openFullImport(page);
+
+        return [
+            stepHeading(page),
+            page
+                .getByText('Banktrack format recognized.')
+                .locator('xpath=ancestor::div[contains(@class, "rounded-xl")][1]'),
+        ];
+    },
+
+    'full-import-columns': async (page) => {
+        // Tall enough to reach the category row, which is where the
+        // subcategory separator shows what it does.
+        await page.setViewportSize({ width: 900, height: 1150 });
+        await openFullImport(page, 'Check the columns');
+
+        // The whole category row: the column, the separator and the
+        // parent › child it turns the sample into.
+        return [
+            stepHeading(page),
+            page.getByText('Empresa › Gastos Empresa').locator('xpath=../../..'),
+        ];
+    },
+
+    'full-import-accounts': async (page) => {
+        await page.setViewportSize({ width: 900, height: 1200 });
+        await openFullImport(page, 'Your accounts');
+        // The banks are looked up once the step opens; the custom bank is
+        // only proposed once that lookup has come back empty.
+        const customBank = page.getByText('New bank «MyInvestor»');
+        await customBank.waitFor();
+        await page.waitForTimeout(600);
+
+        // Down to the end of the card holding the bank of the user's own.
+        return [
+            stepHeading(page),
+            customBank.locator(
+                'xpath=ancestor::div[contains(@class, "rounded-xl")][1]',
+            ),
+        ];
+    },
+
+    'full-import-categories': async (page) => {
+        await openFullImport(page, 'Your categories');
+
+        // Down to the last subcategory of the first new category: the row
+        // holds the name, prefixed with a ›, and its count.
+        return [
+            stepHeading(page),
+            page.getByText(/Viajes$/).locator('xpath=../..'),
+        ];
+    },
+
+    'full-import-done': async (page) => {
+        await openFullImport(page, 'Ready to import');
+        await page
+            .getByRole('button', { name: /^Import \d+ transactions$/ })
+            .click();
+        // The import runs on the queue, behind whatever `demo:reset` left
+        // there, so this can take a few minutes on a freshly seeded account.
+        await page
+            .getByText('Transactions imported')
+            .waitFor({ timeout: 600000 });
+        await page.waitForTimeout(1500);
+
+        // The column the done screen is laid out in: the tick above the
+        // heading down to the links under the counts.
+        return [page.getByRole('heading', { level: 1 }).locator('xpath=../..')];
+    },
+
+    'full-import-settings': async (page) => {
+        await page.goto(`${BASE_URL}/settings/import`, {
+            waitUntil: 'domcontentloaded',
+        });
+
+        const history = page.getByRole('heading', { name: 'Imports' });
+        await history.waitFor();
+        await page.waitForTimeout(800);
+
+        return [
+            page.getByRole('heading', { name: 'Import from another app' }),
+            history.locator('xpath=..'),
+        ];
+    },
 };
 
 async function main() {
@@ -613,6 +763,15 @@ async function main() {
 
         log('seeding a savings goal and a split');
         seedFeatures();
+
+        // Onboarded a few days ago, so the full import is open and Settings
+        // shows the days left rather than nothing.
+        artisan([
+            'tinker',
+            '--execute',
+            `App\\Models\\User::where('email', '${EMAIL}')->firstOrFail()
+                 ->forceFill(['onboarded_at' => now()->subDays(3)])->save();`,
+        ]);
     }
 
     mkdirSync(OUT_DIR, { recursive: true });
