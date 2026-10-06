@@ -339,6 +339,19 @@ async function openAccount(page) {
 }
 
 /**
+ * Onboarded a few days ago, so the full import is open to the account and
+ * Settings shows the days it has left rather than nothing.
+ */
+function seedFullImportWindow() {
+    artisan([
+        'tinker',
+        '--execute',
+        `App\\Models\\User::where('email', '${EMAIL}')->firstOrFail()
+             ->forceFill(['onboarded_at' => now()->subDays(3)])->save();`,
+    ]);
+}
+
+/**
  * The synthetic Banktrack export the importer's own tests read: no real person,
  * account or IBAN in it, which is the only kind of file a public screenshot may
  * show.
@@ -372,19 +385,23 @@ async function openFullImport(page, stepTitle = null) {
     await page.goto(`${BASE_URL}/settings/import/new`, {
         waitUntil: 'domcontentloaded',
     });
-    await page.getByTestId('full-import-file-input').setInputFiles(
-        BANKTRACK_EXPORT,
-    );
+    await page
+        .getByTestId('full-import-file-input')
+        .setInputFiles(BANKTRACK_EXPORT);
     await page.getByText('Banktrack format recognized.').waitFor();
 
-    while (
-        stepTitle !== null &&
-        !(await page
-            .getByRole('heading', { level: 1, name: stepTitle })
-            .isVisible())
-    ) {
-        await page.getByRole('button', { name: 'Continue' }).click();
-        await page.waitForTimeout(800);
+    if (stepTitle !== null) {
+        const target = page.getByRole('heading', { level: 1, name: stepTitle });
+
+        // Six steps at most; past that the title is wrong, not slow.
+        for (let step = 0; step < 6 && !(await target.isVisible()); step++) {
+            await page.getByRole('button', { name: 'Continue' }).click();
+            await page.waitForTimeout(800);
+        }
+
+        if (!(await target.isVisible())) {
+            throw new Error(`the full import never reached "${stepTitle}"`);
+        }
     }
 
     // Continue sits at the foot of a long step, and the next step opens
@@ -394,9 +411,16 @@ async function openFullImport(page, stepTitle = null) {
     await page.waitForTimeout(600);
 }
 
-/** A wizard step's "Step 2 of 6" and its title, the top of every step's frame. */
+/** A wizard step's "Step 3 of 6" and its title, the top of every step's frame. */
 function stepHeading(page) {
     return page.getByRole('heading', { level: 1 }).locator('xpath=..');
+}
+
+/** The rounded card a piece of text sits in, so a frame ends on its border. */
+function cardAround(locator) {
+    return locator.locator(
+        'xpath=ancestor::div[contains(@class, "rounded-xl")][1]',
+    );
 }
 
 /**
@@ -503,7 +527,9 @@ const SHOTS = {
         await page.getByRole('button', { name: 'Next' }).click();
         await page.getByText('Map Columns').waitFor();
         await page.waitForTimeout(1000);
-        await page.getByRole('button', { name: 'Preview Transactions' }).click();
+        await page
+            .getByRole('button', { name: 'Preview Transactions' })
+            .click();
         await page.waitForTimeout(2000);
 
         return drawerClip(page);
@@ -553,7 +579,9 @@ const SHOTS = {
             .first();
 
         await row.getByRole('button', { name: 'Open menu' }).click();
-        await page.getByRole('menuitem', { name: 'Split', exact: true }).click();
+        await page
+            .getByRole('menuitem', { name: 'Split', exact: true })
+            .click();
         await dialog(page).waitFor();
         await page.waitForTimeout(600);
 
@@ -647,9 +675,7 @@ const SHOTS = {
 
         return [
             stepHeading(page),
-            page
-                .getByText('Banktrack format recognized.')
-                .locator('xpath=ancestor::div[contains(@class, "rounded-xl")][1]'),
+            cardAround(page.getByText('Banktrack format recognized.')),
         ];
     },
 
@@ -663,7 +689,9 @@ const SHOTS = {
         // parent › child it turns the sample into.
         return [
             stepHeading(page),
-            page.getByText('Empresa › Gastos Empresa').locator('xpath=../../..'),
+            page
+                .getByText('Empresa › Gastos Empresa')
+                .locator('xpath=../../..'),
         ];
     },
 
@@ -677,12 +705,7 @@ const SHOTS = {
         await page.waitForTimeout(600);
 
         // Down to the end of the card holding the bank of the user's own.
-        return [
-            stepHeading(page),
-            customBank.locator(
-                'xpath=ancestor::div[contains(@class, "rounded-xl")][1]',
-            ),
-        ];
+        return [stepHeading(page), cardAround(customBank)];
     },
 
     'full-import-categories': async (page) => {
@@ -692,7 +715,7 @@ const SHOTS = {
         // holds the name, prefixed with a ›, and its count.
         return [
             stepHeading(page),
-            page.getByText(/Viajes$/).locator('xpath=../..'),
+            page.getByText(/^›\s*Viajes$/).locator('xpath=../..'),
         ];
     },
 
@@ -703,9 +726,16 @@ const SHOTS = {
             .click();
         // The import runs on the queue, behind whatever `demo:reset` left
         // there, so this can take a few minutes on a freshly seeded account.
+        const failed = page.getByText('The import stopped before it finished');
         await page
             .getByText('Transactions imported')
+            .or(failed)
             .waitFor({ timeout: 600000 });
+
+        if (await failed.isVisible()) {
+            throw new Error('the import failed; see the queue log');
+        }
+
         await page.waitForTimeout(1500);
 
         // The column the done screen is laid out in: the tick above the
@@ -718,8 +748,11 @@ const SHOTS = {
             waitUntil: 'domcontentloaded',
         });
 
+        // Only there once the done shot has imported: without it the shot
+        // fails here instead of capturing an empty history.
         const history = page.getByRole('heading', { name: 'Imports' });
-        await history.waitFor();
+        await history.waitFor({ timeout: 5000 });
+        await page.getByRole('button', { name: 'Undo' }).waitFor();
         await page.waitForTimeout(800);
 
         return [
@@ -764,14 +797,8 @@ async function main() {
         log('seeding a savings goal and a split');
         seedFeatures();
 
-        // Onboarded a few days ago, so the full import is open and Settings
-        // shows the days left rather than nothing.
-        artisan([
-            'tinker',
-            '--execute',
-            `App\\Models\\User::where('email', '${EMAIL}')->firstOrFail()
-                 ->forceFill(['onboarded_at' => now()->subDays(3)])->save();`,
-        ]);
+        log('opening the full import window');
+        seedFullImportWindow();
     }
 
     mkdirSync(OUT_DIR, { recursive: true });

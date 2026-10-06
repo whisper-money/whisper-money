@@ -1217,7 +1217,7 @@ final class MarketingContent
                     'Web and mobile on the same account, with no syncing through Drive or Dropbox.',
                     'Interface in English, Spanish and French, public code, and no data shared with third parties.',
                 ],
-                'migration_intro' => 'Monefy exports your data to CSV or Excel according to its own guide, and that is all it takes. During your first 15 days, the full importer brings the whole file in one go, categories included. After that, since Monefy does not split transactions by bank account, the usual approach is to import them all into a single cash account and carry on from there.',
+                'migration_intro' => 'Monefy exports your data to CSV or Excel according to its own guide, and that is all it takes. During your first 15 days, the full importer brings the whole file in one go, categories included, and if the file names the Monefy account of each record, each one arrives as its own account. Otherwise, since Monefy\'s accounts are pockets rather than bank accounts, the usual approach is to import everything into a single cash account and carry on from there.',
                 'migration_steps' => [
                     [
                         'title' => 'Export your records from Monefy',
@@ -1290,7 +1290,7 @@ final class MarketingContent
                     'Aplicación web y móvil con la misma cuenta, sin sincronizar a través de Drive ni Dropbox.',
                     'Interfaz en español, inglés y francés, código público y ningún dato compartido con terceros.',
                 ],
-                'migration_intro' => 'Monefy exporta tus datos a CSV o Excel, según su propia guía, y eso es todo lo que hace falta. Durante tus primeros 15 días, el importador completo se trae el archivo entero de una vez, categorías incluidas. Después, como en Monefy los movimientos no están separados por cuenta bancaria, lo habitual es importarlos todos a una única cuenta de efectivo y seguir desde ahí.',
+                'migration_intro' => 'Monefy exporta tus datos a CSV o Excel, según su propia guía, y eso es todo lo que hace falta. Durante tus primeros 15 días, el importador completo se trae el archivo entero de una vez, categorías incluidas, y si el archivo indica la cuenta de Monefy de cada registro, cada una llega como una cuenta propia. Si no, como las cuentas de Monefy son bolsillos y no cuentas bancarias, lo habitual es importarlo todo a una única cuenta de efectivo y seguir desde ahí.',
                 'migration_steps' => [
                     [
                         'title' => 'Exporta tus registros desde Monefy',
@@ -1710,12 +1710,12 @@ final class MarketingContent
                     ],
                     [
                         'dimension' => 'Moving your history',
-                        'rival' => 'Its "Descargar" button, in the Transacciones module, downloads the transactions you see on screen as PDF, CSV, XLSX or JSON, according to its help centre.',
+                        'rival' => 'Its "Descargar" button, in the Transacciones module, downloads the transactions you see on screen as PDF, CSV, XLSX or JSON (docs.banktrack.com, 6 October 2026).',
                         'whisper' => 'The full importer reads that CSV or XLSX as it comes: accounts, categories with subcategories, transactions and daily balances, in one go.',
                     ],
                     [
                         'dimension' => 'What you can verify',
-                        'rival' => 'Its help centre says data is kept on Amazon Web Services servers in Europe and is not sold or passed on to third parties for commercial purposes.',
+                        'rival' => 'Its help centre says data is kept on Amazon Web Services servers in Europe and is not sold or passed on to third parties for commercial purposes (docs.banktrack.com, 6 October 2026).',
                         'whisper' => 'We do not sell or share your data with third parties either, and the code is public on GitHub, so the promise can be read and not just believed.',
                     ],
                 ],
@@ -1782,12 +1782,12 @@ final class MarketingContent
                     ],
                     [
                         'dimension' => 'Llevarte tu histórico',
-                        'rival' => 'Su botón «Descargar», en el módulo Transacciones, descarga los movimientos que ves en pantalla en PDF, CSV, XLSX o JSON, según su centro de ayuda.',
+                        'rival' => 'Su botón «Descargar», en el módulo Transacciones, descarga los movimientos que ves en pantalla en PDF, CSV, XLSX o JSON (docs.banktrack.com, 6 de octubre de 2026).',
                         'whisper' => 'El importador completo lee ese CSV o XLSX tal cual: cuentas, categorías con subcategorías, movimientos y saldos diarios, de una vez.',
                     ],
                     [
                         'dimension' => 'Qué puedes comprobar',
-                        'rival' => 'Su centro de ayuda dice que guarda los datos en servidores de Amazon Web Services en Europa y que no los vende ni los cede a terceros con fines comerciales.',
+                        'rival' => 'Su centro de ayuda dice que guarda los datos en servidores de Amazon Web Services en Europa y que no los vende ni los cede a terceros con fines comerciales (docs.banktrack.com, 6 de octubre de 2026).',
                         'whisper' => 'Nosotros tampoco vendemos ni compartimos tus datos con terceros, y además el código es público en GitHub: la promesa se puede leer, no solo creer.',
                     ],
                 ],
@@ -1817,7 +1817,7 @@ final class MarketingContent
                     ],
                     [
                         'title' => 'Crea tu cuenta en Whisper Money',
-                        'body' => 'El importador completo está abierto mientras configuras tu cuenta y durante los 15 días siguientes. En la configuración es la opción «¿Vienes de otra app?» del paso de cuentas; después lo tienes en Configuración → Importar desde otra app. Si ya han pasado esos 15 días, escríbenos.',
+                        'body' => 'El importador completo está abierto mientras configuras tu cuenta y durante los 15 días siguientes. Durante el alta es la opción «¿Vienes de otra app?» del paso de cuentas; después lo tienes en Configuración → Importar desde otra app. Si ya han pasado esos 15 días, escríbenos.',
                     ],
                     [
                         'title' => 'Sube el archivo tal cual',

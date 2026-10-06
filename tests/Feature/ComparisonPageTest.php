@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\MarketingContent;
 use Inertia\Testing\AssertableInertia;
@@ -193,11 +194,14 @@ test('the banktrack page is published in english and in spanish', function (stri
 
 test('the banktrack page is in the sitemap with its spanish alternate', function () {
     $content = $this->get('/sitemap.xml')->assertSuccessful()->content();
+    $english = ComparisonPages::url('en', 'banktrack-vs-whisper-money');
+    $spanish = ComparisonPages::url('es', 'banktrack-vs-whisper-money');
 
-    expect($content)
-        ->toContain('<loc>'.config('app.url').'/compare/banktrack-vs-whisper-money</loc>')
-        ->toContain('<loc>'.config('app.url').'/comparativa/banktrack-vs-whisper-money</loc>')
-        ->toContain('hreflang="es" href="'.config('app.url').'/comparativa/banktrack-vs-whisper-money"');
+    expect($english)->toEndWith('/compare/banktrack-vs-whisper-money')
+        ->and($spanish)->toEndWith('/comparativa/banktrack-vs-whisper-money')
+        ->and($content)->toContain("<loc>{$english}</loc>")
+        ->and($content)->toContain("<loc>{$spanish}</loc>")
+        ->and($content)->toContain('hreflang="es" href="'.$spanish.'"');
 });
 
 test('the landing links to the banktrack page in every language', function () {
@@ -213,10 +217,20 @@ test('the landing links to the banktrack page in every language', function () {
         );
 
     expect(collect(ComparisonPages::index('es'))->firstWhere('key', 'banktrack'))
-        ->toMatchArray(['path' => '/comparativa/banktrack-vs-whisper-money']);
+        ->toMatchArray([
+            'path' => '/comparativa/banktrack-vs-whisper-money',
+            'heading' => 'Banktrack vs Whisper Money',
+        ]);
 });
 
 test('the agent summary mentions the full import from another app', function () {
     expect($this->get('/index.md')->assertSuccessful()->content())->toContain('Brings in a whole export from another finance app')
         ->and($this->get('/index.es.md')->assertSuccessful()->content())->toContain('la exportación entera de otra app de finanzas');
+});
+
+test('the copy about the full import window matches the window', function () {
+    // The docs and the comparison pages say "15 days" in prose. If the window
+    // changes, so must they: resources/docs/documentation/20-your-data and
+    // MarketingContent.
+    expect(User::FULL_IMPORT_WINDOW_DAYS)->toBe(15, 'The full import window changed: update the "15 days" in its docs and comparison pages');
 });

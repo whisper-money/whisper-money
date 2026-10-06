@@ -34,8 +34,9 @@ One file, exported from your previous app or kept by you:
 - CSV, XLS, XLSX or Numbers, up to 10 MB.
 - One row per transaction.
 - A date, an amount in a single column with expenses negative, and a description.
-- A column saying which account each row belongs to. Without one, every row goes
-  into a single account named after the file.
+- A column saying which account each row belongs to. Without one, choose **All
+  rows are one account** and every row goes into a single account named after
+  the file.
 
 Your browser reads the file. Nothing is saved until you confirm the last step,
 and only the columns you map are imported.
@@ -56,7 +57,7 @@ flowchart TD
     review --> run[Import in the background]
 ```
 
-### 1. File
+### File
 
 Pick where you are coming from: **Banktrack**, or **Another app or my own
 spreadsheet**. Then upload the file. A Banktrack export is recognized by its
@@ -64,7 +65,7 @@ headers whichever you picked, and its columns are filled in for you.
 
 ![The file step, with a Banktrack export uploaded and the Banktrack format recognized](/docs/documentation/full-import-file.png)
 
-### 2. Your current data
+### Your current data
 
 This step only appears when your space already has accounts.
 
@@ -79,7 +80,7 @@ A connected account is never touched either way. If the file has transactions
 from it, they go into a new manual account, so they never mix with the ones the
 bank sends.
 
-### 3. Columns
+### Columns
 
 Each piece of a transaction comes from one column of your file. Whisper Money
 guesses what it can, you correct the rest, and the choice is remembered for the
@@ -117,7 +118,7 @@ Below the columns, a preview shows how the first transactions will look. Rows
 that cannot be read are listed with the reason, blank rows are skipped, and the
 columns you leave unmapped are named so you know what stays behind.
 
-### 4. Accounts
+### Accounts
 
 Every account in the file is listed with its transactions, its dates and the
 balances it carries. For each one, choose:
@@ -136,7 +137,7 @@ it.
 
 ![The accounts step, with four accounts from the file and a new bank created for one the list does not know](/docs/documentation/full-import-accounts.png)
 
-### 5. Categories
+### Categories
 
 Each category in the file is matched against yours by name. The ones you
 already have are merged, names that only look alike are flagged **Similar,
@@ -145,22 +146,23 @@ of them into one of your categories instead.
 
 Transfers get their own section:
 
-- Transfers between your own accounts (Banktrack calls them "Traspasos Propios")
-  go to your **Own account** transfer category.
+- A category named "Traspasos Propios", "Transferencias propias" or "Own
+  transfers", the way Banktrack and other apps name the transfers between your
+  own accounts, goes to your **Own account** transfer category.
 - Rows the other app marked as ignored go to a transfer category, **Other
   transfers** unless you pick another, so they count as neither spending nor
   income.
 
 ![The categories step, with the transfers section and the new categories listed with their subcategories](/docs/documentation/full-import-categories.png)
 
-### 6. Review
+### Review
 
 A summary of what will be created: new accounts, new categories, transactions
 and daily balances. When transactions go into accounts you already have, it says
 how many are new and about how many are already there. If you chose to start from
 scratch, you confirm the deletion here.
 
-### 7. Import
+### Import
 
 The import runs in the background. You can close the tab and come back later:
 the progress is waiting in Settings.
@@ -193,6 +195,10 @@ transactions and balances, including anything you added to them afterwards; the
 categories and banks; and the transactions and balances it added to accounts you
 already had. Your own accounts stay. It runs in the background, and the list
 shows "Undoing…" until it finishes.
+
+Transactions you filed by hand under one of those categories since the import
+stay, without a category. A bank the import created stays if you have put
+another account in it.
 
 An imported account that you have since connected to your bank stays, without
 the imported transactions. What **Start from scratch** deleted before the

@@ -48,7 +48,7 @@ flowchart LR
 
 | Banktrack column  | In Whisper Money                                                                                               |
 | ----------------- | -------------------------------------------------------------------------------------------------------------- |
-| Fecha             | The date, read as day/month/year.                                                                              |
+| Fecha             | The date, usually day/month/year; the format is detected and can be changed.                                   |
 | Concepto          | The description.                                                                                               |
 | Descripción       | The notes, when it says something the concept does not. When the concept is empty, it becomes the description. |
 | Importe           | The amount, with its decimal comma and its sign.                                                               |

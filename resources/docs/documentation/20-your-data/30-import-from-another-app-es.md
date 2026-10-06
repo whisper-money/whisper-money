@@ -34,8 +34,9 @@ Un único archivo, exportado de tu app anterior o hecho por ti:
 - CSV, XLS, XLSX o Numbers, de hasta 10 MB.
 - Una fila por transacción.
 - Una fecha, un importe en una sola columna con los gastos en negativo y una descripción.
-- Una columna que diga a qué cuenta pertenece cada fila. Si no la tiene, todas las
-  filas van a una sola cuenta con el nombre del archivo.
+- Una columna que diga a qué cuenta pertenece cada fila. Si no la tiene, elige
+  **Todas las filas son de una sola cuenta** y todas van a una sola cuenta con el
+  nombre del archivo.
 
 El archivo lo lee tu navegador. No se guarda nada hasta que confirmas el último
 paso, y solo se importan las columnas que asignas.
@@ -56,7 +57,7 @@ flowchart TD
     review --> run[Importación en segundo plano]
 ```
 
-### 1. Archivo
+### Archivo
 
 Elige de dónde vienes: **Banktrack**, u **Otra app o un Excel propio**. Después
 sube el archivo. Una exportación de Banktrack se reconoce por sus cabeceras elijas
@@ -64,7 +65,7 @@ lo que elijas, y sus columnas se rellenan solas.
 
 ![El paso del archivo, con una exportación de Banktrack subida y el formato de Banktrack reconocido](/docs/documentation/full-import-file.png)
 
-### 2. Tus datos actuales
+### Tus datos actuales
 
 Este paso solo aparece cuando ya tienes cuentas en tu espacio.
 
@@ -79,7 +80,7 @@ Una cuenta conectada no se toca en ningún caso. Si el archivo trae transaccione
 suyas, van a una cuenta manual nueva, para que nunca se mezclen con las que
 envía el banco.
 
-### 3. Columnas
+### Columnas
 
 Cada dato de una transacción sale de una columna de tu archivo. Whisper Money
 adivina lo que puede, tú corriges el resto, y lo recuerda para el próximo archivo
@@ -118,7 +119,7 @@ transacciones. Las filas que no se pueden leer aparecen con el motivo, las filas
 en blanco se saltan y las columnas que dejas sin asignar se nombran, para que
 sepas qué se queda fuera.
 
-### 4. Cuentas
+### Cuentas
 
 Cada cuenta del archivo aparece con sus transacciones, sus fechas y los saldos
 que trae. Para cada una, elige:
@@ -137,7 +138,7 @@ solo muestre una parte.
 
 ![El paso de cuentas, con cuatro cuentas del archivo y un banco nuevo creado para una que la lista no conoce](/docs/documentation/full-import-accounts.png)
 
-### 5. Categorías
+### Categorías
 
 Cada categoría del archivo se compara por nombre con las tuyas. Las que ya
 tienes se unen, las que solo se parecen salen marcadas como **Parecida,
@@ -146,22 +147,24 @@ puedes mandar a una de tus categorías.
 
 Las transferencias tienen su propia sección:
 
-- Las transferencias entre tus cuentas (los «Traspasos Propios» de Banktrack)
-  van a tu categoría de transferencia **Cuenta propia**.
+- Una categoría llamada «Traspasos Propios», «Transferencias propias» u «Own
+  transfers», que es como Banktrack y otras apps llaman a las transferencias
+  entre tus propias cuentas, va a tu categoría de transferencia **Cuenta
+  propia**.
 - Las filas que la otra app marcaba como ignoradas van a una categoría de
   transferencia, **Otras transferencias** salvo que elijas otra, así que no
   cuentan ni como gasto ni como ingreso.
 
 ![El paso de categorías, con la sección de transferencias y las categorías nuevas con sus subcategorías](/docs/documentation/full-import-categories.png)
 
-### 6. Resumen
+### Resumen
 
 Lo que se va a crear: cuentas nuevas, categorías nuevas, transacciones y saldos
 diarios. Cuando las transacciones van a cuentas que ya tienes, te dice cuántas
 son nuevas y cuántas, más o menos, ya estaban. Si elegiste empezar de cero, aquí
 confirmas el borrado.
 
-### 7. Importación
+### Importación
 
 La importación se hace en segundo plano. Puedes cerrar la pestaña y volver más
 tarde: el progreso te espera en Configuración.
@@ -194,6 +197,10 @@ transacciones y saldos, incluido lo que les hayas añadido después; las
 categorías y los bancos; y las transacciones y los saldos que añadió a cuentas
 que ya tenías. Tus cuentas se quedan. Se hace en segundo plano, y la lista
 muestra «Deshaciendo…» hasta que termina.
+
+Las transacciones que hayas metido a mano en una de esas categorías después de
+importar se quedan, sin categoría. Un banco que creó la importación se queda si
+le has puesto otra cuenta.
 
 Una cuenta importada que después hayas conectado a tu banco se queda, sin las
 transacciones importadas. Lo que **Empezar de cero** borró antes de importar no se

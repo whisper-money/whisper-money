@@ -48,7 +48,7 @@ flowchart LR
 
 | Columna de Banktrack | En Whisper Money                                                                                           |
 | -------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Fecha                | La fecha, leída como día/mes/año.                                                                          |
+| Fecha                | La fecha, normalmente día/mes/año; el formato se detecta y se puede cambiar.                               |
 | Concepto             | La descripción.                                                                                            |
 | Descripción          | Las notas, cuando dice algo que el concepto no dice. Si el concepto está vacío, pasa a ser la descripción. |
 | Importe              | El importe, con su coma decimal y su signo.                                                                |
