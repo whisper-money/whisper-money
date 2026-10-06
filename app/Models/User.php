@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DripEmailType;
 use App\Enums\PlanFeature;
+use App\Features\FullImport;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
 use Carbon\Carbon;
@@ -424,6 +425,82 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function bankingConnections(): HasMany
     {
         return $this->hasMany(BankingConnection::class);
+    }
+
+    /** @return HasMany<Import, $this> */
+    public function imports(): HasMany
+    {
+        return $this->hasMany(Import::class);
+    }
+
+    /**
+     * How long after onboarding the full import from another app stays open.
+     * It is meant for moving in, not for the day-to-day: past this, a user
+     * brings data in through the per-account import instead.
+     */
+    public const FULL_IMPORT_WINDOW_DAYS = 15;
+
+    /**
+     * Whether the user may start a full import from another app: while still
+     * onboarding, for the first days after it, or with the `FullImport` flag
+     * on. Never on an account whose credentials are public. With the master
+     * switch off (`full_import.enabled`) only the flag opens it. The one place
+     * both the shared prop and the endpoints read it from.
+     */
+    public function canUseFullImport(): bool
+    {
+        if ($this->isRestrictedSharedAccount()) {
+            return false;
+        }
+
+        if ($this->isInFullImportWindow()) {
+            return true;
+        }
+
+        return $this->features()->active(FullImport::class);
+    }
+
+    /**
+     * Whether the onboarding window alone keeps the import open: the switch
+     * is on, and the user is still onboarding or onboarded recently.
+     */
+    private function isInFullImportWindow(): bool
+    {
+        if (! config('full_import.enabled')) {
+            return false;
+        }
+
+        return $this->onboarded_at === null || $this->onboarded_at->gt(now()->subDays(self::FULL_IMPORT_WINDOW_DAYS));
+    }
+
+    /**
+     * The day the onboarding window closes, or null when the window is not
+     * what keeps the import open: before onboarding ends, once the flag is the
+     * only reason left, or with the master switch off.
+     */
+    public function fullImportWindowEndsAt(): ?Carbon
+    {
+        if (! config('full_import.enabled')) {
+            return null;
+        }
+
+        $endsAt = $this->onboarded_at?->copy()->addDays(self::FULL_IMPORT_WINDOW_DAYS);
+
+        return $endsAt !== null && $endsAt->isFuture() ? $endsAt : null;
+    }
+
+    /**
+     * Whether Settings shows the import page at all. It outlives the window
+     * while an import can still be undone, so closing the window never strands
+     * the only button that takes an import back out.
+     */
+    public function canSeeFullImportSettings(): bool
+    {
+        if ($this->isRestrictedSharedAccount()) {
+            return false;
+        }
+
+        return $this->canUseFullImport() || $this->imports()->inUserData()->exists();
     }
 
     public function hasReceivedEmail(DripEmailType $type): bool

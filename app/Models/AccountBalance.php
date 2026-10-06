@@ -23,6 +23,12 @@ class AccountBalance extends Model
         'balance',
         'invested_amount',
         'derived',
+        'import_id',
+    ];
+
+    /** @var list<string> */
+    protected $hidden = [
+        'import_id',
     ];
 
     protected function casts(): array

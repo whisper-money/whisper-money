@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\BulkUpdateTransactionRequest;
 use App\Http\Requests\Api\CheckDuplicateTransactionsRequest;
 use App\Models\Transaction;
-use Illuminate\Database\Eloquent\Builder;
+use App\Services\TransactionDuplicateMatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -37,65 +37,14 @@ class TransactionController extends Controller
     /**
      * Flag which of the given (date, amount, description) tuples already exist
      * on the account. Replaces the old client-side IndexedDB duplicate check.
-     *
-     * Matching mirrors the previous frontend logic: same day, exact amount (both
-     * in integer cents), and case-insensitive description with collapsed
-     * whitespace. Returns a boolean per input transaction, in order.
+     * Returns a boolean per input transaction, in order.
      */
-    public function checkDuplicates(CheckDuplicateTransactionsRequest $request): JsonResponse
+    public function checkDuplicates(CheckDuplicateTransactionsRequest $request, TransactionDuplicateMatcher $matcher): JsonResponse
     {
         $validated = $request->validated();
         $account = $request->user()->accounts()->findOrFail($validated['account_id']);
-        $incoming = $validated['transactions'];
 
-        $dates = array_map(fn (array $t): string => substr($t['transaction_date'], 0, 10), $incoming);
-
-        $existing = $account->transactions()
-            // A split parent is soft-deleted but its money is still on the
-            // account, spread over its parts, so the row that produced it is
-            // already imported. Rows the user deleted on purpose stay invisible
-            // here and can be re-imported - as can a parent whose parts are all
-            // gone, since it has no live parts left to hold the money.
-            ->withTrashed()
-            ->where(fn (Builder $query) => $query->whereNull('deleted_at')->orWhereHas('splits'))
-            ->whereBetween('transaction_date', [min($dates), max($dates)])
-            ->get(['transaction_date', 'amount', 'description']);
-
-        $seen = [];
-        foreach ($existing as $transaction) {
-            $seen[$this->duplicateKey(
-                $transaction->transaction_date->format('Y-m-d'),
-                (int) $transaction->amount,
-                $transaction->description,
-            )] = true;
-        }
-
-        $duplicates = array_map(
-            fn (array $t): bool => isset($seen[$this->duplicateKey(
-                substr($t['transaction_date'], 0, 10),
-                (int) $t['amount'],
-                $t['description'],
-            )]),
-            $incoming,
-        );
-
-        return response()->json(['duplicates' => $duplicates]);
-    }
-
-    private function duplicateKey(string $date, int $amount, string $description): string
-    {
-        // Collapse every Unicode whitespace run (matching JS \s, which includes
-        // the non-breaking spaces common in bank statements) to a single space,
-        // then trim. PHP's default \s is ASCII-only, so without this an existing
-        // "Coffee Shop" and an imported "Coffee Shop" would not be seen as
-        // the same row, unlike the old client-side check.
-        $normalized = trim((string) preg_replace(
-            '/[\s\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]+/u',
-            ' ',
-            mb_strtolower($description),
-        ));
-
-        return $date.'|'.$amount.'|'.$normalized;
+        return response()->json(['duplicates' => $matcher->flag($account, $validated['transactions'])]);
     }
 
     /**

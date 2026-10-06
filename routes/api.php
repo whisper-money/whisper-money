@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\CategoryMonthlyBreakdownController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\Api\ExchangeRateController;
+use App\Http\Controllers\Api\FullImportController;
 use App\Http\Controllers\Api\ImportDataController;
 use App\Http\Controllers\Api\SavedFilterController;
 use App\Http\Controllers\Api\TransactionAnalysisController;
@@ -62,6 +63,18 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
         Route::get('sankey', [CashflowAnalyticsController::class, 'sankey']);
         Route::get('trend', [CashflowAnalyticsController::class, 'trend']);
         Route::get('breakdown', [CashflowAnalyticsController::class, 'breakdown']);
+    });
+
+    // Full import from another app (the wizard). `block-shared` on the writes:
+    // an account with public credentials never imports. Outside `onboarded`
+    // and `subscribed` on purpose, so the whole import works mid-onboarding.
+    Route::get('full-imports/context', [FullImportController::class, 'context'])->name('api.full-imports.context');
+    Route::get('full-imports/{import}', [FullImportController::class, 'show'])->name('api.full-imports.show');
+    Route::middleware('block-shared')->group(function () {
+        Route::post('full-imports/bank-matches', [FullImportController::class, 'bankMatches'])->name('api.full-imports.bank-matches');
+        Route::post('full-imports', [FullImportController::class, 'store'])->name('api.full-imports.store');
+        Route::post('full-imports/{import}/chunks', [FullImportController::class, 'storeChunk'])->name('api.full-imports.chunks.store');
+        Route::post('full-imports/{import}/start', [FullImportController::class, 'start'])->name('api.full-imports.start');
     });
 
     // Saved transaction filters

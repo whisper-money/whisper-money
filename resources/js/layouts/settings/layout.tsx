@@ -1,6 +1,7 @@
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { index as fullImportIndex } from '@/actions/App/Http/Controllers/Settings/FullImportController';
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import { index as mcpIndex } from '@/actions/App/Http/Controllers/Settings/McpTokenController';
 import { index as notificationsIndex } from '@/actions/App/Http/Controllers/Settings/NotificationPreferenceController';
@@ -37,6 +38,7 @@ const getNavItems = (
     subscriptionsEnabled: boolean,
     isDemoAccount: boolean,
     isSharedAccount: boolean,
+    showFullImport: boolean,
 ): (NavItem | NavSectionHeader | NavDivider)[] => [
     {
         type: 'nav-item' as const,
@@ -120,6 +122,19 @@ const getNavItems = (
     ...(!isSharedAccount
         ? [
               { type: 'divider' as const },
+              // Kept out of the way on purpose: it is for moving in, not for
+              // every day. Shown while the import window is open, and for as
+              // long as an import can still be undone after it.
+              ...(showFullImport
+                  ? [
+                        {
+                            type: 'nav-item' as const,
+                            title: 'Import from another app',
+                            href: fullImportIndex(),
+                            icon: null,
+                        },
+                    ]
+                  : []),
               {
                   type: 'nav-item' as const,
                   title: 'Delete Account',
@@ -193,7 +208,8 @@ function renderMobileNavGroups(
 }
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
-    const { subscriptionsEnabled, auth } = usePage<SharedData>().props;
+    const { subscriptionsEnabled, auth, features } =
+        usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
     const isSharedAccount = auth?.isSharedAccount ?? false;
 
@@ -207,6 +223,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
         subscriptionsEnabled,
         isDemoAccount,
         isSharedAccount,
+        features?.fullImportSettings ?? false,
     );
 
     const activeNavItem = sidebarNavItems.find(

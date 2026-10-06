@@ -79,13 +79,18 @@ interface ImportStepMappingProps {
     onBack: () => void;
 }
 
-/** One "map this field to a column" select, shared by every row of the table. */
-function ColumnSelect({
+/**
+ * One "map this field to a column" select, shared by every row of the table
+ * and by the full import's columns step. `extraOptions` sit above the file's
+ * columns, for choices that are not a column (a single-account file).
+ */
+export function ColumnSelect({
     id,
     value,
     placeholder,
     optional,
     columnOptions,
+    extraOptions = [],
     onChange,
 }: {
     id: string;
@@ -93,6 +98,7 @@ function ColumnSelect({
     placeholder: string;
     optional?: boolean;
     columnOptions: ColumnOption[];
+    extraOptions?: { value: string; label: string }[];
     onChange: (value: string) => void;
 }) {
     return (
@@ -105,12 +111,54 @@ function ColumnSelect({
             </SelectTrigger>
             <SelectContent>
                 {optional && <SelectItem value={NONE}>{__('None')}</SelectItem>}
+                {extraOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                    </SelectItem>
+                ))}
                 {columnOptions.map((option, index) => (
                     <SelectItem
                         key={`${id}-${option.value}-${index}`}
                         value={option.value}
                     >
                         {option.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
+
+/** The date format a file is read with, shared with the full import. */
+export function DateFormatSelect({
+    id,
+    value,
+    onChange,
+    triggerClassName,
+    ariaLabel,
+}: {
+    id?: string;
+    value: DateFormat;
+    onChange: (format: DateFormat) => void;
+    triggerClassName?: string;
+    ariaLabel?: string;
+}) {
+    return (
+        <Select
+            value={value}
+            onValueChange={(next) => onChange(next as DateFormat)}
+        >
+            <SelectTrigger
+                id={id}
+                className={triggerClassName}
+                aria-label={ariaLabel}
+            >
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+                {Object.entries(DATE_FORMAT_LABELS).map(([format, label]) => (
+                    <SelectItem key={format} value={format}>
+                        {label}
                     </SelectItem>
                 ))}
             </SelectContent>
@@ -439,31 +487,12 @@ export function ImportStepMapping({
                                     ? __('Reading as')
                                     : __('Check this — reading as')}
                             </span>
-                            <Select
+                            <DateFormatSelect
+                                id="date-format"
                                 value={dateFormat}
-                                onValueChange={(value) =>
-                                    onDateFormatChange(value as DateFormat)
-                                }
-                            >
-                                <SelectTrigger
-                                    id="date-format"
-                                    className="h-7 w-auto gap-1.5 px-2 text-xs"
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {Object.entries(DATE_FORMAT_LABELS).map(
-                                        ([value, label]) => (
-                                            <SelectItem
-                                                key={value}
-                                                value={value}
-                                            >
-                                                {label}
-                                            </SelectItem>
-                                        ),
-                                    )}
-                                </SelectContent>
-                            </Select>
+                                onChange={onDateFormatChange}
+                                triggerClassName="h-7 w-auto gap-1.5 px-2 text-xs"
+                            />
                         </div>
                     </div>
                     {report && (

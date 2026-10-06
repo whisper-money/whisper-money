@@ -62,6 +62,14 @@ class CategorizeTransactionWithAi implements ShouldQueue
             return false;
         }
 
+        // A full import writes thousands of rows at once, so it is categorized
+        // in one batch once every category from the file exists
+        // (CategorizeImportedTransactionsJob), never one model call per row.
+        // Checked before the user is loaded: it costs no query.
+        if ($transaction->import_id !== null) {
+            return false;
+        }
+
         $user = $transaction->user;
 
         if ($user === null) {

@@ -51,6 +51,17 @@ export function isSupportedImportFile(file: File | null | undefined): boolean {
     );
 }
 
+/** "PDF is not supported", from whatever the file is actually called. */
+export function unsupportedFileReason(fileName: string): string {
+    const dot = fileName.lastIndexOf('.');
+
+    return dot === -1
+        ? __('That file has no format we recognise')
+        : __(':format is not supported', {
+              format: fileName.slice(dot + 1).toUpperCase(),
+          });
+}
+
 /**
  * Parsing happens in the browser, so a file large enough to hang the tab is
  * turned away before it is read rather than after. A decade of movements is

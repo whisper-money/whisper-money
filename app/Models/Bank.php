@@ -24,6 +24,7 @@ class Bank extends Model
 
     /** @var list<string> */
     protected $hidden = [
+        'import_id',
         'created_at',
         'updated_at',
         'deleted_at',

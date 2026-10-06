@@ -40,6 +40,7 @@ use Illuminate\Support\Facades\DB;
  * @property ?string $ai_suggested_category_id
  * @property ?Carbon $ai_suggested_category_at
  * @property ?string $ai_model
+ * @property ?string $import_id
  */
 class Transaction extends Model
 {
@@ -77,6 +78,7 @@ class Transaction extends Model
         'raw_data',
         'creditor_name',
         'debtor_name',
+        'import_id',
     ];
 
     /**
@@ -94,6 +96,7 @@ class Transaction extends Model
         'categorized_by_rule_id',
         'ai_model',
         'deleted_at',
+        'import_id',
     ];
 
     protected function casts(): array

@@ -43,12 +43,14 @@ class Category extends Model
         'user_id',
         'space_id',
         'parent_id',
+        'import_id',
     ];
 
     /** @var list<string> */
     protected $hidden = [
         'user_id',
         'space_id',
+        'import_id',
         'created_at',
         'updated_at',
         'deleted_at',

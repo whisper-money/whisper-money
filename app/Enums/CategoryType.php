@@ -26,4 +26,16 @@ enum CategoryType: string
     {
         return $this === self::Savings || $this === self::Investment;
     }
+
+    /**
+     * The cashflow direction a root category of this type starts with: money
+     * set aside leaves the cashflow, everything else stays out of it. Only a
+     * transfer lets the user pick another one.
+     */
+    public function defaultCashflowDirection(): CategoryCashflowDirection
+    {
+        return $this->isSetAside()
+            ? CategoryCashflowDirection::Outflow
+            : CategoryCashflowDirection::Hidden;
+    }
 }

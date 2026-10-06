@@ -4,6 +4,7 @@ namespace App\Services\Ai;
 
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -39,16 +40,19 @@ class AiCategorizer
      * user, most recent first. A fixed snapshot of ids is chunked so rows left
      * blank (below the confidence bar) are never re-processed. The optional
      * $onProgress callback is invoked once up-front and after each batch with
-     * (processed, total, applied) so callers can report live progress.
+     * (processed, total, applied) so callers can report live progress, and
+     * $narrow limits the pass to part of the backlog (one import's rows).
      *
      * @param  (callable(int, int, int): void)|null  $onProgress
+     * @param  (callable(Builder<Transaction>): mixed)|null  $narrow
      * @return array{processed: int, total: int, applied: int}
      */
-    public function backfill(User $user, ?callable $onProgress = null): array
+    public function backfill(User $user, ?callable $onProgress = null, ?callable $narrow = null): array
     {
         $pendingIds = Transaction::query()
             ->where('user_id', $user->id)
             ->pendingAiCategorization()
+            ->when($narrow !== null, $narrow)
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')
             ->pluck('id');
