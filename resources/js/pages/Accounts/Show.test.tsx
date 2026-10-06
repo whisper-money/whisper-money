@@ -103,7 +103,9 @@ vi.mock('@/components/transactions/edit-transaction-dialog', () => ({
 }));
 
 vi.mock('@/components/transactions/transaction-list', () => ({
-    TransactionList: () => null,
+    TransactionList: ({ headerActions }: { headerActions?: ReactNode }) => (
+        <div data-testid="transaction-list-actions">{headerActions}</div>
+    ),
     TransactionListSkeleton: () => null,
 }));
 
@@ -224,6 +226,24 @@ describe('AccountShow', () => {
 
         expect(screen.queryByText('Invested')).not.toBeInTheDocument();
         expect(screen.queryByText('Gain')).not.toBeInTheDocument();
+    });
+
+    /**
+     * The button sat in the page header, above the chart, so adding a
+     * transaction meant scrolling up to press it and back down to check it.
+     */
+    it('offers adding a transaction from the bar above the transactions list', () => {
+        renderPage();
+
+        expect(
+            screen.getAllByRole('button', { name: 'Add transaction' }),
+        ).toHaveLength(1);
+        expect(
+            within(screen.getByTestId('transaction-list-actions')).getByRole(
+                'button',
+                { name: 'Add transaction' },
+            ),
+        ).toBeInTheDocument();
     });
 
     it('opens create transaction dialog for disconnected transactional accounts', () => {

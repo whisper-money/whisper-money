@@ -183,9 +183,6 @@ export default function AccountShow({
     const loanDetail = account.loan_detail;
     const linkedLoanAccount = account.linked_loan_account;
     const hasLinkedLoan = isRealEstate && !!linkedLoanAccount;
-    // Connected accounts accept manual transactions too: a sync only inserts
-    // rows it has not seen, so they survive.
-    const canCreateTransaction = isTransactionalAccount(account);
 
     const archiveMenuItem = isArchived ? (
         <DropdownMenuItem onClick={handleUnarchive}>
@@ -199,12 +196,16 @@ export default function AccountShow({
         </DropdownMenuItem>
     );
 
-    const addTransactionButton = canCreateTransaction ? (
+    // Rendered right above the transactions list, so what was just entered can
+    // be checked without scrolling back up past the chart. Connected accounts
+    // accept manual transactions too: a sync only inserts rows it has not
+    // seen, so they survive.
+    const addTransactionButton = (
         <Button variant="outline" onClick={handleAddTransaction}>
             <Plus className="h-4 w-4" />
             {__('Add transaction')}
         </Button>
-    ) : null;
+    );
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -314,37 +315,34 @@ export default function AccountShow({
                             </ButtonGroup>
                         </ButtonGroup>
                     ) : (
-                        <div className="flex flex-wrap gap-2">
-                            {addTransactionButton}
-                            <ButtonGroup>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setUpdateBalanceOpen(true)}
+                        <ButtonGroup>
+                            <Button
+                                variant="outline"
+                                onClick={() => setUpdateBalanceOpen(true)}
+                            >
+                                {updateBalanceLabel}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setImportBalancesOpen(true)}
+                            >
+                                {importBalancesLabel}
+                            </Button>
+                            <MoreOptionsMenu>
+                                <DropdownMenuItem
+                                    onClick={() => setBalancesOpen(true)}
                                 >
-                                    {updateBalanceLabel}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setImportBalancesOpen(true)}
+                                    {seeBalancesLabel}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => setEditOpen(true)}
                                 >
-                                    {importBalancesLabel}
-                                </Button>
-                                <MoreOptionsMenu>
-                                    <DropdownMenuItem
-                                        onClick={() => setBalancesOpen(true)}
-                                    >
-                                        {seeBalancesLabel}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        onClick={() => setEditOpen(true)}
-                                    >
-                                        {__('Edit account')}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    {archiveMenuItem}
-                                </MoreOptionsMenu>
-                            </ButtonGroup>
-                        </div>
+                                    {__('Edit account')}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {archiveMenuItem}
+                            </MoreOptionsMenu>
+                        </ButtonGroup>
                     )}
                 </div>
 
@@ -430,6 +428,7 @@ export default function AccountShow({
                             showActionsMenu={false}
                             maxHeight={600}
                             hideColumns={['bank', 'account']}
+                            headerActions={addTransactionButton}
                             onBalanceUpdated={() =>
                                 setChartRefreshKey((key) => key + 1)
                             }
