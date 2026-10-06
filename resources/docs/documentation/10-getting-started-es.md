@@ -15,6 +15,10 @@ Sigue este orden si estás configurando todo por primera vez.
 5. Revisa Flujo de efectivo para ver ingresos, gastos y movimiento neto.
 6. Añade presupuestos cuando quieras límites de gasto.
 
+¿Vienes de otra app de finanzas? [Importar desde otra app](/documentation/import-from-another-app)
+trae sus cuentas, categorías y transacciones de una vez, mientras configuras tu
+cuenta y durante los 15 días siguientes.
+
 ## Cómo encajan las piezas
 
 ```mermaid

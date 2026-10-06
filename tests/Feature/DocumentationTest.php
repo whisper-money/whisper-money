@@ -236,6 +236,27 @@ it('serves a page nested under another page at a path of its own', function () {
         ->assertSee('# Import transactions', false);
 });
 
+it('serves the full import pages in both languages, with Banktrack nested under the general one', function (string $locale, string $title, string $banktrack) {
+    $this->get(route('documentation.show', ['slug' => 'import-from-another-app', 'lang' => $locale]))
+        ->assertOk()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('document.title', $title)
+                ->where('navigation.1.children.2.slug', 'import-from-another-app')
+                ->where('navigation.1.children.2.children.0.slug', 'import-from-another-app/banktrack')
+        );
+
+    $this->get(route('documentation.show', ['slug' => 'import-from-another-app/banktrack', 'lang' => $locale]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('document.title', $banktrack));
+
+    expect($this->get(route('documentation.markdown', ['slug' => 'import-from-another-app', 'lang' => $locale]))->assertOk()->getContent())
+        ->toContain(route('documentation.markdown', ['slug' => 'import-from-another-app/banktrack', 'lang' => $locale]));
+})->with([
+    ['en', 'Import from another app', 'Import from Banktrack'],
+    ['es', 'Importar desde otra app', 'Importar desde Banktrack'],
+]);
+
 it('redirects a page that has moved under another page, in html and in markdown', function () {
     $this->get('/documentation/imports')
         ->assertMovedPermanently()

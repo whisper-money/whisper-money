@@ -12,6 +12,10 @@ Accounts are the foundation of Whisper Money. They hold balances, transactions, 
 4. Import transactions for accounts that have day-to-day activity.
 5. Review the Accounts page to see balances and net worth movement.
 
+Moving from another app? [Import from another app](/documentation/import-from-another-app)
+creates your accounts from its export, with their bank, type, currency and daily
+balances.
+
 ## Account map
 
 ```mermaid

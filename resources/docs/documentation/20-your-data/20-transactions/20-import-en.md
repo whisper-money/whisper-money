@@ -2,6 +2,10 @@
 
 Importing brings a bank file into Whisper Money when automatic syncing is not available for that bank, or when you would rather do it yourself.
 
+This imports one file into one account. To bring over a whole export from
+another app, with many accounts and its categories, use
+[Import from another app](/documentation/import-from-another-app).
+
 {{TOC}}
 
 ## Quick start

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\MarketingContent;
 use Inertia\Testing\AssertableInertia;
@@ -170,4 +171,66 @@ test('pinning the page language leaves the visitor session locale alone', functi
         ->assertInertia(fn (AssertableInertia $page) => $page->where('pageLocale', 'en'));
 
     expect(session('locale'))->toBe('es');
+});
+
+test('the banktrack page is published in english and in spanish', function (string $path, string $locale) {
+    $this->get($path)
+        ->assertSuccessful()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('comparison')
+            ->where('pageLocale', $locale)
+            ->where('page.slug', 'banktrack-vs-whisper-money')
+            ->where('page.rival', 'Banktrack')
+            ->has('page.migration_steps', 5)
+        );
+
+    $this->get($path.'.md')
+        ->assertSuccessful()
+        ->assertSee('# Banktrack vs Whisper Money', false);
+})->with([
+    ['/compare/banktrack-vs-whisper-money', 'en'],
+    ['/comparativa/banktrack-vs-whisper-money', 'es'],
+]);
+
+test('the banktrack page is in the sitemap with its spanish alternate', function () {
+    $content = $this->get('/sitemap.xml')->assertSuccessful()->content();
+    $english = ComparisonPages::url('en', 'banktrack-vs-whisper-money');
+    $spanish = ComparisonPages::url('es', 'banktrack-vs-whisper-money');
+
+    expect($english)->toEndWith('/compare/banktrack-vs-whisper-money')
+        ->and($spanish)->toEndWith('/comparativa/banktrack-vs-whisper-money')
+        ->and($content)->toContain("<loc>{$english}</loc>")
+        ->and($content)->toContain("<loc>{$spanish}</loc>")
+        ->and($content)->toContain('hreflang="es" href="'.$spanish.'"');
+});
+
+test('the landing links to the banktrack page in every language', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('welcome')
+            ->where('comparisonLinks', fn ($links): bool => collect($links)->contains(
+                fn (array $link): bool => $link['key'] === 'banktrack'
+                    && $link['path'] === '/compare/banktrack-vs-whisper-money'
+                    && $link['heading'] === 'Banktrack vs Whisper Money'
+            ))
+        );
+
+    expect(collect(ComparisonPages::index('es'))->firstWhere('key', 'banktrack'))
+        ->toMatchArray([
+            'path' => '/comparativa/banktrack-vs-whisper-money',
+            'heading' => 'Banktrack vs Whisper Money',
+        ]);
+});
+
+test('the agent summary mentions the full import from another app', function () {
+    expect($this->get('/index.md')->assertSuccessful()->content())->toContain('Brings in a whole export from another finance app')
+        ->and($this->get('/index.es.md')->assertSuccessful()->content())->toContain('la exportación entera de otra app de finanzas');
+});
+
+test('the copy about the full import window matches the window', function () {
+    // The docs and the comparison pages say "15 days" in prose. If the window
+    // changes, so must they: resources/docs/documentation/20-your-data and
+    // MarketingContent.
+    expect(User::FULL_IMPORT_WINDOW_DAYS)->toBe(15, 'The full import window changed: update the "15 days" in its docs and comparison pages');
 });

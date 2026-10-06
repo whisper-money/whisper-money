@@ -1,0 +1,34 @@
+<svg viewBox="0 0 720 208" role="img" aria-labelledby="full-import-steps-es-title full-import-steps-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="full-import-steps-es-title">Los siete pasos de una importación completa</title>
+    <desc id="full-import-steps-es-desc">Sube el archivo, di qué hacer con los datos que ya tienes, revisa las columnas, decide qué pasa con cada cuenta y cada categoría, revisa el resumen e importa en segundo plano. No se guarda nada antes del último paso, y la importación se puede deshacer desde Configuración.</desc>
+    <line class="dg-edge" x1="72" y1="104" x2="648" y2="104"/>
+    <text class="dg-name" x="72" y="52" text-anchor="middle">Archivo</text>
+    <text class="dg-sub" x="72" y="64" text-anchor="middle">Banktrack o cualquier CSV</text>
+    <circle class="dg-station" cx="72" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="72" y="107" text-anchor="middle">1</text>
+    <text class="dg-name" x="168" y="148" text-anchor="middle">Tus datos</text>
+    <text class="dg-sub" x="168" y="160" text-anchor="middle">solo si ya tienes</text>
+    <circle class="dg-station" cx="168" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="168" y="107" text-anchor="middle">2</text>
+    <text class="dg-name" x="264" y="52" text-anchor="middle">Columnas</text>
+    <text class="dg-sub" x="264" y="64" text-anchor="middle">fecha · importe · cuenta</text>
+    <circle class="dg-station" cx="264" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="264" y="107" text-anchor="middle">3</text>
+    <text class="dg-name" x="360" y="148" text-anchor="middle">Cuentas</text>
+    <text class="dg-sub" x="360" y="160" text-anchor="middle">nuevas, tuyas o unidas</text>
+    <circle class="dg-station" cx="360" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="360" y="107" text-anchor="middle">4</text>
+    <text class="dg-name" x="456" y="52" text-anchor="middle">Categorías</text>
+    <text class="dg-sub" x="456" y="64" text-anchor="middle">se unen o se crean</text>
+    <circle class="dg-station" cx="456" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="456" y="107" text-anchor="middle">5</text>
+    <text class="dg-name" x="552" y="148" text-anchor="middle">Resumen</text>
+    <text class="dg-sub" x="552" y="160" text-anchor="middle">lo que se va a crear</text>
+    <circle class="dg-station-focal" cx="552" cy="104" r="16"/>
+    <text class="dg-station-number-focal dg-station-number" x="552" y="107" text-anchor="middle">6</text>
+    <text class="dg-name" x="648" y="52" text-anchor="middle">Importar</text>
+    <text class="dg-sub" x="648" y="64" text-anchor="middle">en segundo plano</text>
+    <circle class="dg-station" cx="648" cy="104" r="16"/>
+    <text class="dg-station-number dg-station-number" x="648" y="107" text-anchor="middle">7</text>
+    <text class="dg-aside" x="24" y="188">No se guarda nada antes del último paso, y cada importación se puede deshacer desde Configuración.</text>
+</svg>

@@ -1,0 +1,80 @@
+<svg viewBox="0 0 720 350" role="img" aria-labelledby="banktrack-columns-en-title banktrack-columns-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="banktrack-columns-en-title">How a Banktrack export is read</title>
+    <desc id="banktrack-columns-en-desc">Each Banktrack column feeds one piece of Whisper Money: Fecha the date, Concepto the description, Descripción the notes, Importe the amount, Banco the account, Categorías the category and its subcategory, Balance the daily balances, ID the duplicate check, and Ignorada the transfer category. Signo cambiado, the contact columns, Archivos and Facturas are not read.</desc>
+    <defs>
+        <marker id="banktrack-columns-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+        <marker id="banktrack-columns-en-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead-accent" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="80" y="16">BANKTRACK COLUMN</text>
+    <line class="dg-hairline" x1="80" y1="24" x2="280" y2="24"/>
+    <text class="dg-eyebrow" x="440" y="16">IN WHISPER MONEY</text>
+    <line class="dg-hairline" x1="440" y1="24" x2="640" y2="24"/>
+    <path class="dg-edge" d="M280,51 H436" marker-end="url(#banktrack-columns-en-arrow)"/>
+    <rect class="dg-mask" x="80" y="40" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="40" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="54">Fecha</text>
+    <rect class="dg-mask" x="440" y="40" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="40" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="55">Date</text>
+    <path class="dg-edge" d="M280,81 H436" marker-end="url(#banktrack-columns-en-arrow)"/>
+    <rect class="dg-mask" x="80" y="70" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="70" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="84">Concepto</text>
+    <rect class="dg-mask" x="440" y="70" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="70" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="85">Description</text>
+    <path class="dg-edge" d="M280,111 H436" marker-end="url(#banktrack-columns-en-arrow)"/>
+    <rect class="dg-mask" x="80" y="100" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="100" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="114">Descripción</text>
+    <rect class="dg-mask" x="440" y="100" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="100" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="115">Notes</text>
+    <path class="dg-edge" d="M280,141 H436" marker-end="url(#banktrack-columns-en-arrow)"/>
+    <rect class="dg-mask" x="80" y="130" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="130" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="144">Importe</text>
+    <rect class="dg-mask" x="440" y="130" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="130" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="145">Amount</text>
+    <path class="dg-edge dg-edge-accent" d="M280,171 H436" marker-end="url(#banktrack-columns-en-arrow-accent)"/>
+    <rect class="dg-mask" x="80" y="160" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="160" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="174">Banco</text>
+    <rect class="dg-mask" x="440" y="160" width="200" height="22" rx="4"/>
+    <rect class="dg-node-focal" x="440" y="160" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="175">Account, one per bank</text>
+    <path class="dg-edge" d="M280,201 H436" marker-end="url(#banktrack-columns-en-arrow)"/>
+    <rect class="dg-mask" x="80" y="190" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="190" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="204">Categorías</text>
+    <rect class="dg-mask" x="440" y="190" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="190" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="205">Category › subcategory</text>
+    <path class="dg-edge" d="M280,231 H436" marker-end="url(#banktrack-columns-en-arrow)"/>
+    <rect class="dg-mask" x="80" y="220" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="220" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="234">Balance</text>
+    <rect class="dg-mask" x="440" y="220" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="220" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="235">Daily balances</text>
+    <path class="dg-edge" d="M280,261 H436" marker-end="url(#banktrack-columns-en-arrow)"/>
+    <rect class="dg-mask" x="80" y="250" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="250" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="264">ID</text>
+    <rect class="dg-mask" x="440" y="250" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="250" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="265">No duplicates</text>
+    <path class="dg-edge" d="M280,291 H436" marker-end="url(#banktrack-columns-en-arrow)"/>
+    <rect class="dg-mask" x="80" y="280" width="200" height="22" rx="4"/>
+    <rect class="dg-node-soft" x="80" y="280" width="200" height="22" rx="4"/>
+    <text class="dg-sub" x="92" y="294">Ignorada</text>
+    <rect class="dg-mask" x="440" y="280" width="200" height="22" rx="4"/>
+    <rect class="dg-node" x="440" y="280" width="200" height="22" rx="4"/>
+    <text class="dg-name" x="452" y="295">Transfer category</text>
+    <text class="dg-aside" x="80" y="338">Not read: Signo cambiado, the contact columns, Archivos and Facturas.</text>
+</svg>
