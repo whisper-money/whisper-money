@@ -1,6 +1,5 @@
 <?php
 
-use App\Mail\Drip\MonthlySummaryEmail;
 use App\Models\Achievement;
 use App\Models\Category;
 use App\Models\MonthlySummary;
@@ -11,17 +10,18 @@ use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia;
 
 /*
- * The medals block of the monthly report.
+ * The medals block of the monthly report screen.
  *
- * Two halves, in both the email and on the screen: what the reported month
- * earned, and what is close enough now to say how far off it is. Gone entirely
- * when neither half has anything to say.
+ * Two halves: what the reported month earned, and what is close enough now to
+ * say how far off it is. Gone entirely when neither half has anything to say.
+ * The email only counts the month's medals: their milestones are amounts, and
+ * amounts stay in the app.
  */
 
 beforeEach(function (): void {
     Cache::flush();
-    // These assertions are about props and rendered mail, never about the HTML
-    // an SSR pass would produce — see MonthlySummaryPagesTest.
+    // These assertions are about props, never about the HTML an SSR pass would
+    // produce — see MonthlySummaryPagesTest.
     config()->set('inertia.ssr.enabled', false);
 
     $this->mock(CardRenderer::class, function ($mock): void {
@@ -56,11 +56,21 @@ function awardMedals(User $user, array $keys, ?string $on = null): void
     }
 }
 
+/**
+ * The medals block as the report screen is handed it, flattened to one string
+ * so the assertions can read it like text.
+ */
 function renderedMedalReport(User $user): string
 {
     $summary = $user->monthlySummaries()->first();
+    $achievements = test()->actingAs($user)
+        ->get(route('monthly-summaries.show', $summary))
+        ->assertOk()
+        ->viewData('page')['props']['achievements'] ?? [];
 
-    return (new MonthlySummaryEmail($user, $summary))->render();
+    return collect($achievements)
+        ->flatMap(fn (array $group): array => [$group['title'], ...$group['lines']])
+        ->implode("\n");
 }
 
 it('remembers the medals the reported month earned, and only those', function (): void {
@@ -130,7 +140,7 @@ it('drops the block when the month earned nothing and every next medal is alread
         ->not->toContain('What you can unlock next');
 });
 
-it('hands the screen the same block it puts in the email', function (): void {
+it('hands the screen both halves of the block', function (): void {
     $user = readerWithMedalReport();
     $summary = $user->monthlySummaries()->first();
 

@@ -61,32 +61,50 @@ class AchievementsSection
     }
 
     /**
+     * How many medals the reported month earned, for a sentence that only
+     * needs the number — the email, which names no milestone.
+     */
+    public function earnedCount(User $user, MonthlySummary $summary): int
+    {
+        return $this->earnedIn($user->achievements()->get(), $summary)->count();
+    }
+
+    /**
      * The medals the reported month earned.
-     *
-     * An exact match rather than a range: a medal is always dated to the first
-     * day of the month it really happened in, so the month that closed is the
-     * whole filter. The sweep runs nightly and the report goes out from the 3rd,
-     * so by the time this is read the month has long been swept.
      *
      * @param  Collection<string, Achievement>  $earned
      * @return array{title: string, lines: list<string>}|null
      */
     private function unlocked(Collection $earned, MonthlySummary $summary, string $currency, string $locale, string $formatLocale): ?array
     {
-        $month = $summary->periodStart();
-
-        $lines = $earned
-            ->filter(fn (Achievement $achievement): bool => $achievement->achieved_on->toDateString() === $month->toDateString())
-            ->map(fn (Achievement $achievement): ?Definition => $this->catalog->find($achievement->key))
-            ->filter()
+        $lines = $this->earnedIn($earned, $summary)
             ->map(fn (Definition $definition): string => $this->earnedLine($definition, $currency, $formatLocale))
             ->values()
             ->all();
 
         return $lines === [] ? null : [
-            'title' => __('What you unlocked in :month', ['month' => $month->locale($locale)->isoFormat('MMMM')]),
+            'title' => __('What you unlocked in :month', ['month' => $summary->periodStart()->locale($locale)->isoFormat('MMMM')]),
             'lines' => $lines,
         ];
+    }
+
+    /**
+     * An exact match rather than a range: a medal is always dated to the first
+     * day of the month it really happened in, so the month that closed is the
+     * whole filter. The sweep runs nightly and the report goes out from the 3rd,
+     * so by the time this is read the month has long been swept.
+     *
+     * @param  Collection<array-key, Achievement>  $earned
+     * @return Collection<array-key, Definition>
+     */
+    private function earnedIn(Collection $earned, MonthlySummary $summary): Collection
+    {
+        $month = $summary->periodStart()->toDateString();
+
+        return $earned
+            ->filter(fn (Achievement $achievement): bool => $achievement->achieved_on->toDateString() === $month)
+            ->map(fn (Achievement $achievement): ?Definition => $this->catalog->find($achievement->key))
+            ->filter();
     }
 
     /**

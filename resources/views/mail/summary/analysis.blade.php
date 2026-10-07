@@ -1,6 +1,8 @@
 {{-- The analysis block, in one of three states.
 
-     A Pro reader with AI consent gets the real thing.
+     A Pro reader with AI consent is told their analysis is waiting, and given a
+     link to it. Never the text itself: it quotes amounts, and amounts stay in
+     the app.
 
      When the model could not be reached they get a plain line saying so. The
      locked block below would be a lie to them: it sells the plan they already
@@ -21,9 +23,8 @@
                 <td><span style="display:inline-block;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;background:#18181b;color:#ffffff;padding:3px 6px;border-radius:3px;">{{ __('Pro') }}</span></td>
             </tr></table>
 
-            @foreach (preg_split('/\n{2,}/', trim($analysis)) as $paragraph)
-                <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#52525b;">{{ trim($paragraph) }}</p>
-            @endforeach
+            <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#52525b;">{{ $analysisTeaser }}</p>
+            <p style="margin:12px 0 0;"><a href="{{ $analysisUrl }}" style="font-size:13px;font-weight:600;color:#18181b;text-decoration:none;border-bottom:1px solid #d4d4d8;">{{ __('Read my analysis') }}</a></p>
 
             <p style="margin:13px 0 0;padding-top:11px;border-top:1px solid #e4e4e7;font-size:11px;line-height:1.5;color:#a1a1aa;">{{ __('Written by a model from your month\'s totals and the names of your accounts, never from your individual transactions. You can turn it off in Settings → AI.') }}</p>
         </td>
@@ -33,7 +34,7 @@
         <td width="4" style="background:#d4d4d8;font-size:0;line-height:0;">&nbsp;</td>
         <td style="background:#fafafa;padding:18px 20px;">
             <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:#a1a1aa;">{{ __('Why this happened') }}</p>
-            <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#52525b;">{{ __('We could not write your analysis this month. Every figure below is unaffected.') }}</p>
+            <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#52525b;">{{ __('We could not write your analysis this month. Every figure in the report is unaffected.') }}</p>
         </td>
     </tr></table>
 @else
