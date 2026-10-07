@@ -2,11 +2,8 @@
 
 namespace App\Mail\Drip;
 
-use App\Enums\MonthlySummaryCard;
 use App\Models\MonthlySummary;
 use App\Models\User;
-use App\Services\MonthlySummary\AchievementsSection;
-use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\EmailPresenter;
 use App\Support\Figures;
 use Illuminate\Mail\Mailables\Content;
@@ -14,21 +11,19 @@ use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Support\Facades\URL;
 
 /**
- * The monthly report.
+ * The monthly summary email: a short note in percentages that points into the
+ * report screen, where every amount lives.
  *
- * A view rather than a Markdown mail, because the design is a report and not a
- * letter. Every figure about the month comes from the frozen summary, so
- * re-sending or previewing it can never produce different figures than the
- * reader was given.
- *
- * The medals block is the one thing read live: how far off the next one is is a
- * distance of today, and a resend a fortnight later should say today's. See
- * {@see AchievementsSection}.
+ * It never carries an absolute amount — see {@see EmailPresenter} for why. A
+ * view rather than a Markdown mail, because the tiles, the analysis block and
+ * the card do not survive Markdown. Every figure comes from the frozen summary,
+ * so re-sending or previewing it can never say something different from what
+ * the reader was given.
  */
 class MonthlySummaryEmail extends DripMail
 {
     /**
-     * @param  ?string  $analysis  the AI analysis, or null when the reader is not entitled to one or the model failed
+     * @param  ?string  $analysis  the AI analysis, or null when the reader is not entitled to one or the model failed. Never printed: it quotes amounts, so the email only says whether it is waiting in the report
      * @param  ?string  $cardUrl  the rendered card, or null when rendering failed — the report goes out either way
      */
     public function __construct(
@@ -76,12 +71,12 @@ class MonthlySummaryEmail extends DripMail
 
     public function content(): Content
     {
-        $report = app(EmailPresenter::class)->present($this->summary, app()->getLocale(), $this->pro);
+        $reportUrl = route('monthly-summaries.show', $this->summary);
 
         return new Content(
             view: $this->template(),
             with: [
-                ...$report,
+                ...app(EmailPresenter::class)->present($this->user, $this->summary, app()->getLocale(), $this->pro),
                 'subject' => $this->dripSubject(),
                 'preheader' => $this->preheader(),
                 'appUrl' => rtrim((string) config('app.url'), '/'),
@@ -93,58 +88,17 @@ class MonthlySummaryEmail extends DripMail
                 'lockedPitch' => $this->lockedPitch(),
                 'lockedAction' => $this->lockedAction(),
                 'lockedUrl' => $this->lockedUrl(),
+                'reportUrl' => $this->withUtm($reportUrl, 'report'),
+                'analysisUrl' => $this->withUtm($reportUrl, 'analysis').'#analysis',
                 'cardUrl' => $this->cardUrl,
                 'cardAlt' => __('Your :month card', ['month' => $this->monthName()]),
-                'shareUrl' => $this->withUtm(route('monthly-summaries.show', $this->summary), 'share'),
+                'shareUrl' => $this->withUtm($reportUrl, 'share').'#share',
                 'shareBlurb' => __('Your :month in one image: percentages and streaks, not a single amount.', ['month' => $this->monthName()]),
-                'alternatives' => $this->alternatives(),
                 'historyUrl' => $this->withUtm(route('monthly-summaries.index'), 'history'),
                 'preferencesUrl' => $this->withUtm(route('notifications.index'), 'preferences'),
                 'unsubscribeUrl' => $this->unsubscribeUrl(),
-                'todos' => $this->todosWithUrls($report['todos']),
-                'achievements' => app(AchievementsSection::class)->for($this->user, $this->summary, app()->getLocale()),
-                'achievementsUrl' => $this->withUtm(route('achievements.index'), 'achievements'),
             ],
         );
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $todos
-     * @return list<array<string, mixed>>
-     */
-    private function todosWithUrls(array $todos): array
-    {
-        return array_map(fn (array $todo): array => [
-            ...$todo,
-            'url' => $this->withUtm(route($todo['route']), 'todo'),
-        ], $todos);
-    }
-
-    /**
-     * The other cards this month can produce, so the reader knows the picture is
-     * a choice rather than the only thing on offer.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function alternatives(): array
-    {
-        $cards = app(CardPicker::class)->alternatives($this->summary->payload, $this->summary->card);
-
-        return array_map(fn (MonthlySummaryCard $card): array => [
-            'label' => $this->cardLabel($card),
-            'url' => $this->withUtm(route('monthly-summaries.show', $this->summary), 'card-'.$card->value),
-        ], $cards);
-    }
-
-    private function cardLabel(MonthlySummaryCard $card): string
-    {
-        return match ($card) {
-            MonthlySummaryCard::Streak => __('Streak'),
-            MonthlySummaryCard::SavingsRate => __('Savings rate'),
-            MonthlySummaryCard::SpendingSplit => __('Where it went'),
-            MonthlySummaryCard::NetWorth => __('Net worth'),
-            MonthlySummaryCard::SavingsGoal => __('Savings goal'),
-        };
     }
 
     /**

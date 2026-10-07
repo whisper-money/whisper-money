@@ -163,7 +163,10 @@ export default function MonthlySummaryShow({
                 </div>
 
                 {analysis !== null && (
-                    <div className="flex flex-col gap-3 border-l-4 border-primary bg-muted/50 p-5">
+                    <div
+                        id="analysis"
+                        className="flex flex-col gap-3 border-l-4 border-primary bg-muted/50 p-5"
+                    >
                         <span className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                             <SparklesIcon className="size-3.5" />
                             {__('Why this happened')}
@@ -176,7 +179,7 @@ export default function MonthlySummaryShow({
                     </div>
                 )}
 
-                <div className="flex flex-col gap-4">
+                <div id="share" className="flex flex-col gap-4">
                     <h2 className="text-sm font-semibold">
                         {__('Share your month')}
                     </h2>

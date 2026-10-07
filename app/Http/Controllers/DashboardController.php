@@ -7,7 +7,7 @@ use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
 use App\Services\LabelSpendingService;
-use App\Services\MonthlySummary\EmailPresenter;
+use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -21,7 +21,7 @@ class DashboardController extends Controller
         private CategorySpendingService $categorySpendingService,
         private LabelSpendingService $labelSpendingService,
         private CashflowSummaryService $summaries,
-        private EmailPresenter $presenter,
+        private ReportPresenter $presenter,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -64,7 +64,7 @@ class DashboardController extends Controller
         return [
             'id' => $summary->id,
             'monthLabel' => $summary->periodStart()->locale($locale)->isoFormat('MMMM'),
-            'headline' => $this->presenter->present($summary, $locale)['headline'],
+            'headline' => $this->presenter->headline($summary, $locale),
         ];
     }
 

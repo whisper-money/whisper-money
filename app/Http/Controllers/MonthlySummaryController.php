@@ -10,7 +10,7 @@ use App\Services\MonthlySummary\AchievementsSection;
 use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\CardRenderer;
-use App\Services\MonthlySummary\EmailPresenter;
+use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\Notifications\NotificationFeed;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,7 +33,7 @@ class MonthlySummaryController extends Controller
     public function __construct(
         private CardPicker $picker,
         private CardRenderer $renderer,
-        private EmailPresenter $presenter,
+        private ReportPresenter $presenter,
         private AnalysisWriter $analysis,
         private AchievementsSection $achievements,
         private NotificationFeed $notifications,

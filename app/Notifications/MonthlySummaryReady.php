@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 use App\Models\MonthlySummary;
 use App\Models\User;
-use App\Services\MonthlySummary\EmailPresenter;
+use App\Services\MonthlySummary\ReportPresenter;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -39,7 +39,7 @@ class MonthlySummaryReady extends Notification
             // Written in the reader's language at send time, like the email it
             // announces: a headline is a sentence about a closed month, not a
             // figure to re-derive on every render.
-            'headline' => app(EmailPresenter::class)->present($this->summary, $notifiable->preferredLocale())['headline'],
+            'headline' => app(ReportPresenter::class)->headline($this->summary, $notifiable->preferredLocale()),
         ];
     }
 }
