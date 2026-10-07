@@ -3,292 +3,146 @@
 namespace App\Services\MonthlySummary;
 
 use App\Models\MonthlySummary;
+use App\Models\User;
 use App\Support\Figures;
-use App\Support\Money;
-use Carbon\Carbon;
-use Illuminate\Support\Str;
+use Illuminate\Support\Arr;
 
 /**
- * Turns a frozen summary into the sentences and micro-charts the email prints.
+ * Turns a frozen summary into what the monthly email says: a headline, up to
+ * three percentage tiles and a line about what waits in the report.
  *
- * One sentence per figure, each with a small chart beside it, is the shape the
- * design settled on. Rows with nothing to say are dropped rather than printed as
- * zeroes, which is also what makes the first-month email work: it is this same
- * list with the comparative rows absent.
- *
- * Amounts are formatted with {@see Money::formatIn()} so the email prints them
- * the way the app does — a reader has to be able to reconcile the two.
+ * No absolute amount ever reaches the email. It sits in an inbox for years,
+ * syncs to every device, shows on lock screens and gets forwarded, so it talks
+ * in percentages and counts and points into the app, where
+ * {@see ReportPresenter} prints every figure in full.
  */
 class EmailPresenter
 {
     /**
-     * Shades used for the three-category bar, matching the app's charts.
+     * A strip, not a table: the headline already carries the savings rate.
      */
-    private const SPLIT_SHADES = ['#18181b', '#52525b', '#a1a1aa'];
+    private const MAX_TILES = 3;
+
+    public function __construct(
+        private ReportPresenter $report,
+        private AchievementsSection $achievements,
+    ) {}
 
     /**
-     * @return array<string, mixed>
+     * @return array{monthName: string, headline: string, lede: string, kpis: list<array{value: string, label: string, sub: string, tone: ?string}>, analysisTeaser: string, inside: string}
      */
-    public function present(MonthlySummary $summary, string $locale, bool $pro = false): array
+    public function present(User $user, MonthlySummary $summary, string $locale, bool $pro): array
     {
-        $month = $summary->periodStart();
+        $monthName = $summary->periodStart()->locale($locale)->isoFormat('MMMM');
 
         return [
-            'monthName' => $month->copy()->locale($locale)->isoFormat('MMMM'),
-            // A title, unlike `monthName`, which is read inside a sentence: it
-            // lands in the breadcrumb and the browser tab, and Spanish and French
-            // print their month names in lower case.
-            'monthLabel' => Str::ucfirst($month->copy()->locale($locale)->isoFormat('MMMM YYYY')),
-            'headline' => $this->headline($summary, $locale, $month),
-            'lede' => $this->lede($summary, $locale),
-            'rows' => $this->rows($summary, $locale, $month),
-            'todos' => $this->todos($summary, $locale, $pro),
+            'monthName' => $monthName,
+            'headline' => $this->headline($summary, $locale, $monthName),
+            'lede' => $this->report->lede($summary, $locale),
+            'kpis' => $this->kpis($summary, $locale),
+            'analysisTeaser' => $this->analysisTeaser($summary, $locale, $monthName),
+            'inside' => $this->inside($user, $summary, $locale, $pro, $monthName),
         ];
     }
 
-    private function headline(MonthlySummary $summary, string $locale, Carbon $month): string
+    /**
+     * The report's headline when the month saved something. When it did not,
+     * the report names the shortfall in money and the email says it as a share
+     * of what came in instead.
+     */
+    private function headline(MonthlySummary $summary, string $locale, string $monthName): string
     {
         $rate = (float) $summary->figure('cashflow.savings_rate', 0);
-        $monthName = $month->copy()->locale($locale)->isoFormat('MMMM');
 
-        if ($rate <= 0) {
-            return __('You spent :amount more than you earned in :month.', [
-                'amount' => $this->money($summary, abs((int) $summary->figure('cashflow.net', 0))),
-                'month' => $monthName,
-            ]);
+        if ($rate > 0) {
+            return $this->report->headline($summary, $locale);
         }
 
-        return __('You saved :rate of what you earned in :month.', [
-            'rate' => Figures::percent($rate, $locale),
+        // Zero is a month with no income to measure against, or one that broke
+        // exactly even: either way there is no percentage worth leading with.
+        if ($rate == 0) {
+            return __('This is how your :month went.', ['month' => $monthName]);
+        }
+
+        return __('You spent :rate more than you earned in :month.', [
+            'rate' => Figures::percent(abs($rate), $locale),
             'month' => $monthName,
         ]);
     }
 
-    private function lede(MonthlySummary $summary, string $locale): string
+    /**
+     * @return list<array{value: string, label: string, sub: string, tone: ?string}>
+     */
+    private function kpis(MonthlySummary $summary, string $locale): array
     {
-        if (! $summary->figure('has_history', false)) {
-            return __('Your first month with us closed. From next month on this email also compares it against the one before.');
-        }
+        $tiles = array_filter([
+            $this->netWorthTile($summary, $locale),
+            $this->spendingTile($summary, $locale),
+            $this->budgetsTile($summary, $locale),
+            $this->goalTile($summary, $locale),
+        ]);
 
-        $streak = (int) $summary->figure('streak_months', 0);
-
-        if ($streak < 2) {
-            return __('Here is the month, and three things you can close in five minutes.');
-        }
-
-        if ($summary->figure('best_savings_rate_in_year', false)) {
-            return __(':count months in a row in the black, and the best of them.', [
-                'count' => Figures::count($streak, $locale),
-            ]);
-        }
-
-        return __(':count months in a row in the black.', ['count' => Figures::count($streak, $locale)]);
+        return array_slice(array_values($tiles), 0, self::MAX_TILES);
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * Only against a positive base: the change is divided by the absolute
+     * previous value, so from a negative net worth its sign would mislead.
+     *
+     * @return array{value: string, label: string, sub: string, tone: ?string}|null
      */
-    private function rows(MonthlySummary $summary, string $locale, Carbon $month): array
+    private function netWorthTile(MonthlySummary $summary, string $locale): ?array
     {
-        $candidates = [
-            $this->netWorthRow($summary, $locale, $month),
-            $this->savingsRow($summary, $locale),
-            $this->categoriesRow($summary, $locale),
-            $this->dropRow($summary, $locale, $month),
-            $this->investedRow($summary, $locale),
-            $this->budgetsRow($summary, $locale),
-            $this->goalRow($summary, $locale),
-        ];
-
-        return array_values(array_filter($candidates));
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function netWorthRow(MonthlySummary $summary, string $locale, Carbon $month): ?array
-    {
-        $current = (int) $summary->figure('net_worth.current', 0);
-
-        if ($current === 0) {
+        if (! $summary->figure('has_history', false) || (int) $summary->figure('net_worth.previous', 0) <= 0) {
             return null;
         }
 
-        $diff = (int) $summary->figure('net_worth.diff', 0);
-        $history = (array) $summary->figure('net_worth.history', []);
+        $change = (float) $summary->figure('net_worth.diff_percent', 0);
 
-        return [
-            'text' => $summary->figure('has_history', false) && $diff !== 0
-                ? __('Your net worth is :amount, :diff :direction than when :month closed.', [
-                    'amount' => $this->strong($this->money($summary, $current)),
-                    'diff' => $this->strong($this->money($summary, abs($diff))),
-                    'direction' => $diff > 0 ? __('more') : __('less'),
-                    'month' => $month->copy()->subMonth()->locale($locale)->isoFormat('MMMM'),
-                ])
-                : __('Your net worth is :amount.', ['amount' => $this->strong($this->money($summary, $current))]),
-            'viz' => 'sparkline',
-            'data' => [
-                'points' => $this->normalise(array_map(fn (array $point): int => (int) $point['value'], $history)),
-                'left' => $this->shortMonth($history[0]['month'] ?? null, $locale),
-                'right' => $this->shortMonth($summary->period, $locale),
-            ],
-        ];
+        return $this->changeTile($summary, $locale, $change, __('Net worth'), $this->tone($change));
     }
 
     /**
-     * @return array<string, mixed>|null
+     * @return array{value: string, label: string, sub: string, tone: ?string}|null
      */
-    private function savingsRow(MonthlySummary $summary, string $locale): ?array
+    private function spendingTile(MonthlySummary $summary, string $locale): ?array
     {
-        $income = (int) $summary->figure('cashflow.income', 0);
-        $net = (int) $summary->figure('cashflow.net', 0);
-
-        if ($income <= 0 || $net <= 0) {
+        if (! $summary->figure('has_history', false) || (int) $summary->figure('cashflow.previous.expense', 0) <= 0) {
             return null;
         }
 
-        return [
-            'text' => __('That saving is :saved of the :income that came in.', [
-                'saved' => $this->strong($this->money($summary, $net)),
-                'income' => $this->strong($this->money($summary, $income)),
-            ]),
-            'viz' => 'bar',
-            'data' => [
-                'segments' => [['width' => (float) $summary->figure('cashflow.savings_rate', 0), 'colour' => '#059669']],
-                'left' => __('Saved'),
-                'right' => Figures::percent((float) $summary->figure('cashflow.savings_rate', 0), $locale),
-            ],
-        ];
+        $change = (float) $summary->figure('cashflow.expense_change_percent', 0);
+
+        // Spending less is the good news, so the colours run the other way.
+        return $this->changeTile($summary, $locale, $change, __('Spending'), $this->tone(-$change));
     }
 
     /**
-     * @return array<string, mixed>|null
+     * @return array{value: string, label: string, sub: string, tone: ?string}|null
      */
-    private function categoriesRow(MonthlySummary $summary, string $locale): ?array
-    {
-        $top = array_values((array) $summary->figure('categories.top', []));
-        $total = (int) $summary->figure('categories.total', 0);
-
-        if (count($top) < 3 || $total <= 0) {
-            return null;
-        }
-
-        return [
-            'text' => __('Three categories took :top of the :total you spent: :names.', [
-                'top' => $this->strong($this->money($summary, (int) array_sum(array_column($top, 'amount')))),
-                'total' => $this->strong($this->money($summary, $total)),
-                'names' => $this->list(array_column($top, 'name')),
-            ]),
-            'viz' => 'bar',
-            'data' => [
-                'segments' => array_map(fn (int $index): array => [
-                    'width' => (float) $top[$index]['share'],
-                    'colour' => self::SPLIT_SHADES[$index],
-                ], array_keys($top)),
-                'left' => __('Those three'),
-                'right' => Figures::percent((float) $summary->figure('categories.top_share', 0), $locale),
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function dropRow(MonthlySummary $summary, string $locale, Carbon $month): ?array
-    {
-        $drop = $summary->figure('biggest_drop');
-
-        if ($drop === null || ! $summary->figure('has_history', false)) {
-            return null;
-        }
-
-        $before = (int) $drop['previous_amount'];
-        $now = (int) $drop['amount'];
-
-        return [
-            'text' => __('You spent :percent less on :name than in :month: :now against :before.', [
-                'percent' => $this->strong(Figures::percent(abs((float) $drop['change_percent']), $locale)),
-                'name' => e(mb_strtolower((string) $drop['name'])),
-                'month' => $month->copy()->subMonth()->locale($locale)->isoFormat('MMMM'),
-                'now' => $this->strong($this->money($summary, $now)),
-                'before' => $this->strong($this->money($summary, $before)),
-            ]),
-            'viz' => 'columns',
-            'data' => [
-                'columns' => [
-                    ['height' => 100, 'colour' => '#e4e4e7', 'label' => $month->copy()->subMonth()->locale($locale)->isoFormat('MMM')],
-                    ['height' => $before > 0 ? (int) round($now / $before * 100) : 0, 'colour' => '#059669', 'label' => $month->copy()->locale($locale)->isoFormat('MMM')],
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function investedRow(MonthlySummary $summary, string $locale): ?array
-    {
-        $invested = $summary->figure('invested');
-
-        if ($invested === null || (int) $invested['gain'] === 0) {
-            return null;
-        }
-
-        $gain = (int) $invested['gain'];
-        $value = max(1, (int) $invested['value']);
-
-        return [
-            'text' => $gain > 0
-                ? __('Your investment accounts hold :gain in gains over what you put in.', ['gain' => $this->strong($this->money($summary, $gain))])
-                : __('Your investment accounts are :gain below what you put in.', ['gain' => $this->strong($this->money($summary, abs($gain)))]),
-            'viz' => 'bar',
-            'data' => [
-                'segments' => [
-                    ['width' => $this->barWidth((int) $invested['contributed'] / $value * 100), 'colour' => '#d4d4d8'],
-                    ['width' => $this->barWidth($gain / $value * 100), 'colour' => $gain > 0 ? '#059669' : '#dc2626'],
-                ],
-                'left' => __('Paid in'),
-                'right' => $this->money($summary, (int) $invested['value']),
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function budgetsRow(MonthlySummary $summary, string $locale): ?array
+    private function budgetsTile(MonthlySummary $summary, string $locale): ?array
     {
         $total = (int) $summary->figure('budgets.total', 0);
 
-        if ($total === 0) {
+        if ($total <= 0) {
             return null;
         }
 
-        $met = (int) $summary->figure('budgets.met', 0);
-        $overspent = array_values((array) $summary->figure('budgets.overspent', []));
-
         return [
-            'text' => $overspent === []
-                ? __('You met all :total of your budgets.', ['total' => $this->strong(Figures::count($total, $locale))])
-                : __('You met :met of :total budgets. You went over on :names.', [
-                    'met' => $this->strong(Figures::count($met, $locale)),
-                    'total' => $this->strong(Figures::count($total, $locale)),
-                    'names' => $this->overspentList($summary, $overspent),
-                ]),
-            'viz' => 'dots',
-            'data' => [
-                'met' => $met,
-                'over' => $total - $met,
-                'left' => __(':count met', ['count' => Figures::count($met, $locale)]),
-                'right' => __(':count over', ['count' => Figures::count($total - $met, $locale)]),
-            ],
+            'value' => __(':met of :total', [
+                'met' => Figures::count((int) $summary->figure('budgets.met', 0), $locale),
+                'total' => Figures::count($total, $locale),
+            ]),
+            'label' => __('Budgets'),
+            'sub' => __('met'),
+            'tone' => null,
         ];
     }
 
     /**
-     * @return array<string, mixed>|null
+     * @return array{value: string, label: string, sub: string, tone: ?string}|null
      */
-    private function goalRow(MonthlySummary $summary, string $locale): ?array
+    private function goalTile(MonthlySummary $summary, string $locale): ?array
     {
         $goal = $summary->figure('goal');
 
@@ -297,181 +151,75 @@ class EmailPresenter
         }
 
         return [
-            'text' => __(':name is at :percent: :saved of the :target you set.', [
-                'name' => $this->strong((string) $goal['name']),
-                'percent' => $this->strong(Figures::percent((float) $goal['percent'], $locale)),
-                'saved' => $this->money($summary, (int) $goal['saved']),
-                'target' => $this->money($summary, (int) $goal['target']),
-            ]),
-            'viz' => 'bar',
-            'data' => [
-                'segments' => [['width' => min(100, (float) $goal['percent']), 'colour' => '#18181b']],
-                'left' => (string) $goal['name'],
-                'right' => Figures::percent((float) $goal['percent'], $locale),
-            ],
+            'value' => Figures::percent((float) $goal['percent'], $locale),
+            'label' => (string) $goal['name'],
+            'sub' => __('of the goal'),
+            'tone' => null,
         ];
     }
 
     /**
-     * The actionable half of the email: the few things that are worth five
-     * minutes, each with the consequence of not doing it.
+     * @return array{value: string, label: string, sub: string, tone: ?string}
+     */
+    private function changeTile(MonthlySummary $summary, string $locale, float $change, string $label, ?string $tone): array
+    {
+        return [
+            'value' => Figures::percent($change, $locale, signed: $change != 0),
+            'label' => $label,
+            'sub' => __('vs :month', ['month' => $summary->periodStart()->subMonth()->locale($locale)->isoFormat('MMMM')]),
+            'tone' => $tone,
+        ];
+    }
+
+    private function tone(float $goodness): ?string
+    {
+        return match (true) {
+            $goodness > 0 => 'good',
+            $goodness < 0 => 'bad',
+            default => null,
+        };
+    }
+
+    /**
+     * What the Pro reader's analysis is about, without a word of it: the
+     * analysis quotes amounts, so it stays in the report.
      *
-     * @return list<array<string, mixed>>
+     * It never promises the goal projection, which the model only writes in
+     * some months.
      */
-    private function todos(MonthlySummary $summary, string $locale, bool $pro): array
+    private function analysisTeaser(MonthlySummary $summary, string $locale, string $monthName): string
     {
-        $todos = [];
-        $uncategorised = (array) $summary->figure('todos.uncategorised', []);
+        $rate = (float) $summary->figure('cashflow.savings_rate', 0);
 
-        if ((int) ($uncategorised['count'] ?? 0) > 0) {
-            $todos[] = [
-                'icon' => 'tag',
-                'text' => __(':count transactions in :month have no category, :amount in total. Until you sort them, the figures above are short.', [
-                    'count' => $this->strong(Figures::count((int) $uncategorised['count'], $locale)),
-                    'month' => $summary->periodStart()->locale($locale)->isoFormat('MMMM'),
-                    'amount' => $this->money($summary, (int) $uncategorised['amount']),
-                ]),
-                'action' => __('Sort them out'),
-                'route' => 'transactions.index',
-            ];
+        if ($rate > 0) {
+            return __('Your :month analysis, written by AI, is waiting in the report: what moved that :rate and what is going to repeat next month.', [
+                'month' => $monthName,
+                'rate' => Figures::percent($rate, $locale),
+            ]);
         }
 
-        $suggestions = (int) $summary->figure('todos.rule_suggestions.count', 0);
-        $matched = (int) $summary->figure('todos.rule_suggestions.transactions', 0);
-
-        // Applying rule suggestions is a Pro feature, so it is only actionable
-        // for a Pro reader. On a free one the same count argues the upsell
-        // instead, up in the locked analysis block.
-        if ($pro && $suggestions > 0) {
-            $todos[] = [
-                'icon' => 'sparkle',
-                'text' => __(':count suggested rules are waiting. Applying them categorises :transactions of your transactions on their own.', [
-                    'count' => $this->strong(Figures::count($suggestions, $locale)),
-                    'transactions' => $this->strong(Figures::count($matched, $locale)),
-                ]),
-                'action' => __('See the rules'),
-                'route' => 'automation-rules.index',
-            ];
+        if ($rate < 0) {
+            return __('Your :month analysis, written by AI, is waiting in the report: what made you spend more than you earned and what is going to repeat next month.', ['month' => $monthName]);
         }
 
-        foreach ($this->connectionTodos($summary, $locale) as $todo) {
-            $todos[] = $todo;
-        }
-
-        return $todos;
+        return __('Your :month analysis, written by AI, is waiting in the report: what shaped the month and what is going to repeat next month.', ['month' => $monthName]);
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * The line under the main button, built from what the report really holds
+     * this month so it never promises an empty section.
      */
-    private function connectionTodos(MonthlySummary $summary, string $locale): array
+    private function inside(User $user, MonthlySummary $summary, string $locale, bool $pro, string $monthName): string
     {
-        $todos = [];
+        $medals = $this->achievements->earnedCount($user, $summary);
+        $todos = count($this->report->todos($summary, $locale, $pro));
 
-        foreach ((array) $summary->figure('todos.expiring_connections', []) as $connection) {
-            $todos[] = [
-                'icon' => 'alert',
-                'text' => __('Your access to :bank expires in :days days. If it lapses, next month starts with no transactions.', [
-                    'bank' => $this->strong((string) $connection['bank']),
-                    'days' => $this->strong(Figures::count((int) $connection['days'], $locale)),
-                ]),
-                'action' => __('Renew the access'),
-                'route' => 'settings.connections.index',
-            ];
-        }
+        $items = array_values(array_filter([
+            __('every figure in detail'),
+            $medals > 0 ? trans_choice(':count new medal|:count new medals', $medals, ['count' => Figures::count($medals, $locale)]) : null,
+            $todos > 0 ? trans_choice('one thing to close :month|:count things to close :month', $todos, ['count' => Figures::count($todos, $locale), 'month' => $monthName]) : null,
+        ]));
 
-        return $todos;
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $overspent
-     */
-    private function overspentList(MonthlySummary $summary, array $overspent): string
-    {
-        return $this->list(array_map(
-            fn (array $budget): string => e((string) $budget['name']).' ('.$this->strong('+'.$this->money($summary, (int) $budget['over_by'])).')',
-            $overspent,
-        ), escape: false);
-    }
-
-    /**
-     * @param  list<string|null>  $items
-     * @param  bool  $escape  false when the items are already-escaped markup
-     */
-    private function list(array $items, bool $escape = true): string
-    {
-        $items = array_values(array_filter(array_map(
-            fn (?string $item): string => $escape ? e((string) $item) : (string) $item,
-            $items,
-        )));
-
-        if (count($items) < 2) {
-            return $items[0] ?? '';
-        }
-
-        $last = array_pop($items);
-
-        return implode(', ', $items).' '.__('and').' '.$last;
-    }
-
-    /**
-     * Normalise a series into 0-100 heights: the sparkline shows the shape, and
-     * the sentence beside it carries the numbers.
-     *
-     * @param  list<int>  $values
-     * @return list<int>
-     */
-    private function normalise(array $values): array
-    {
-        if (count($values) < 2) {
-            return [50, 50];
-        }
-
-        $low = min($values);
-        $span = max(1, max($values) - $low);
-
-        return array_map(fn (int $value): int => (int) round(($value - $low) / $span * 100), $values);
-    }
-
-    /**
-     * A segment width, as a percentage of the bar it sits in. Clamped because a
-     * ratio taken against a near-zero denominator is not a width: an account
-     * emptied to nothing once produced a "paid in" segment 349,899,800% wide.
-     */
-    private function barWidth(float $percent): int
-    {
-        return max(0, min(100, (int) round($percent)));
-    }
-
-    /**
-     * Read off the summary's own reader rather than taken as an argument: the
-     * region belongs to the user, and threading it down through every row and
-     * sentence below would touch a dozen signatures to say one thing. The app
-     * locale is only a last resort — it names a language, not a region.
-     */
-    private function money(MonthlySummary $summary, int $amount): string
-    {
-        $locale = $summary->user?->formatLocale() ?? app()->getLocale();
-
-        return Money::formatIn($amount, (string) $summary->figure('currency', 'EUR'), $locale);
-    }
-
-    /**
-     * Emphasis is applied here because the sentences are assembled from
-     * translated fragments, and a translator should not have to carry the markup
-     * through in every language.
-     */
-    private function strong(string $value): string
-    {
-        return '<strong>'.e($value).'</strong>';
-    }
-
-    private function shortMonth(?string $period, string $locale): string
-    {
-        if ($period === null) {
-            return '';
-        }
-
-        return Carbon::createFromFormat('Y-m-d', $period.'-01')->locale($locale)->isoFormat('MMM YY');
+        return __('Inside: :items.', ['items' => Arr::join($items, ', ', ' '.__('and').' ')]);
     }
 }

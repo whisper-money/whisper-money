@@ -1,17 +1,18 @@
 {{--
-    The monthly summary. A standalone view rather than a Markdown mail, because
-    the design is a report — a headline, an analysis, a shareable card, seven
-    sentences with charts beside them and a short list of things to do — and none
-    of that survives Markdown.
+    The monthly summary. Short on purpose, and without a single absolute amount:
+    an email sits in an inbox for years, syncs to every device and shows on lock
+    screens, so it speaks in percentages and sends the reader into the app, where
+    the report keeps every figure in full.
 
-    Layout is tables with inline styles throughout. The colours, the 570px card
-    and the 32px content cell come from the mail theme the rest of the emails
-    already use, so this reads as part of the same family.
+    A standalone view rather than a Markdown mail, because the tiles, the
+    analysis block and the card do not survive Markdown. Layout is tables with
+    inline styles throughout. The colours, the 570px card and the 32px content
+    cell come from the mail theme the rest of the emails already use, so this
+    reads as part of the same family.
 
-    The order is deliberate and was argued: headline, then the analysis, then the
-    card, and only then the figures. The analysis is what a reader upgrades for,
-    so it goes where it will be seen; the headline above it already carries the
-    month's number, so nothing is buried by the swap.
+    The order: headline, a few tiles, the analysis (or what it would take to
+    get one), then the two ways into the app — the full report first, the card
+    to share second.
 --}}
 @php
     $ink = '#18181b'; $body = '#52525b'; $muted = '#a1a1aa'; $rule = '#e4e4e7'; $wash = '#fafafa';
@@ -29,6 +30,7 @@
             .shell { width: 100% !important; }
             .stack, .stack > tbody, .stack > tbody > tr, .stack > tbody > tr > td { display: block !important; width: 100% !important; }
             .stack-gap { padding-top: 16px !important; }
+            .kpi-next { padding-left: 0 !important; border-left: 0 !important; border-top: 1px solid #e4e4e7 !important; }
         }
     </style>
 </head>
@@ -65,35 +67,22 @@
                 <p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:{{ $muted }};">{{ $incompleteNotice }}</p>
             @endif
 
+            @if (count($kpis) > 0)
+                @include('mail.summary.kpis')
+            @endif
+
             @include('mail.summary.analysis')
 
-            @include('mail.summary.share')
-
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:34px 0 0;"><tr>
-                <td align="left" style="font-size:15px;font-weight:700;color:{{ $ink }};letter-spacing:-0.01em;">{{ __('The rest of :month', ['month' => $monthName]) }}</td>
-                <td align="right" style="font-size:10px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:{{ $muted }};">{{ trans_choice(':count figure|:count figures', count($rows), ['count' => count($rows)]) }}</td>
+            {{-- The main way in. Full width, because it is the one thing this
+                 email asks of the reader. --}}
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:26px;"><tr>
+                <td align="center" style="background:{{ $ink }};border-radius:4px;">
+                    <a href="{{ $reportUrl }}" style="display:block;padding:13px 20px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">{{ __('See the full report') }}</a>
+                </td>
             </tr></table>
+            <p style="margin:10px 0 0;font-size:13px;line-height:1.5;color:{{ $body }};">{{ $inside }}</p>
 
-            <div style="margin-top:8px;">
-                @foreach ($rows as $row)
-                    @include('mail.summary.row', ['row' => $row])
-                @endforeach
-            </div>
-
-            @if ($achievements !== null)
-                @include('mail.summary.achievements')
-            @endif
-
-            @if (count($todos) > 0)
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:34px 0 14px;"><tr>
-                    <td align="left" style="font-size:15px;font-weight:700;color:{{ $ink }};letter-spacing:-0.01em;">{{ trans_choice('One thing to close :month|:count things to close :month', count($todos), ['count' => count($todos), 'month' => $monthName]) }}</td>
-                    <td align="right" style="font-size:10px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:{{ $muted }};">{{ __('5 minutes') }}</td>
-                </tr></table>
-
-                @foreach ($todos as $index => $todo)
-                    @include('mail.summary.todo', ['todo' => $todo, 'number' => $index + 1])
-                @endforeach
-            @endif
+            @include('mail.summary.share')
 
         </td></tr>
     </table>

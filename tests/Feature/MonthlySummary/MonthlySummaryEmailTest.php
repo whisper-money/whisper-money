@@ -6,19 +6,24 @@ use App\Enums\MonthlySummaryCard;
 use App\Jobs\Drip\SendMonthlySummaryEmailJob;
 use App\Jobs\WarmMonthlySummaryCardsJob;
 use App\Mail\Drip\MonthlySummaryEmail;
+use App\Models\Achievement;
 use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Models\UserMailLog;
 use App\Services\MonthlySummary\CardPicker;
 use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
+use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\MonthlySummary\Summaries;
+use App\Support\Money;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Number;
 use Illuminate\Support\Sleep;
+use Inertia\Testing\AssertableInertia;
 use Mockery\MockInterface;
 
 /*
@@ -54,20 +59,126 @@ function sentSummaryFor(?User $user = null): MonthlySummary
     ]);
 }
 
-it('prints the month\'s figures and the things to do', function (): void {
+it('talks in percentages and points into the report', function (): void {
     $summary = sentSummaryFor();
 
     $rendered = (new MonthlySummaryEmail($summary->user, $summary))->render();
 
     expect($rendered)
-        ->toContain('35.5%')                       // the headline savings rate
-        ->toContain('Trip to Japan')               // the goal row
-        ->toContain('12')                          // uncategorised transactions
-        ->toContain('BBVA')                        // the expiring connection
-        ->toContain('whisper.money');
+        ->toContain('You saved 35.5% of what you earned in')  // the headline
+        ->toContain('+2.0%')                                   // net worth tile
+        ->toContain('-4.1%')                                   // spending tile
+        ->toContain('4 of 6')                                  // budgets tile
+        // Three tiles at most: the goal is fourth in line.
+        ->not->toContain('Trip to Japan')
+        ->toContain('See the full report')
+        ->toContain(route('monthly-summaries.show', $summary).'?')
+        ->toContain('Inside: every figure in detail and 2 things to close')
+        // What used to be printed and now lives only in the app.
+        ->not->toContain('The rest of')
+        ->not->toContain('BBVA')
+        ->not->toContain('Sort them out')
+        ->not->toContain('Or share something else');
 });
 
-it('shows the analysis to a reader who has one, with the boundary spelled out', function (): void {
+it('keeps every figure, to-do and the analysis in the app report', function (): void {
+    config()->set('inertia.ssr.enabled', false);
+    $summary = sentSummaryFor();
+    $summary->forceFill(['sent_at' => now(), 'ai_analysis' => 'Groceries went up 149 €.'])->save();
+
+    $this->actingAs($summary->user)
+        ->get(route('monthly-summaries.show', $summary))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('analysis', 'Groceries went up 149 €.')
+            ->where('report.headline', fn (string $headline): bool => str_contains($headline, '35.5%'))
+            ->where('report.rows', fn ($rows): bool => collect($rows)->contains(fn (array $row): bool => str_contains($row['text'], '160,223.05')))
+            ->where('report.todos', fn ($todos): bool => collect($todos)->contains(fn (array $todo): bool => str_contains($todo['text'], 'BBVA'))));
+});
+
+it('says a month that spent more than it earned as a percentage', function (): void {
+    $summary = summaryWith(['cashflow' => ['savings_rate' => -12.4, 'net' => -47740, 'income' => 385000]]);
+
+    $email = (new MonthlySummaryEmail($summary->user, $summary, analysis: 'Sample.', pro: true))->render();
+
+    expect($email)
+        ->toContain('You spent 12.4% more than you earned in')
+        ->toContain('what made you spend more than you earned')
+        ->not->toContain('477.40');
+
+    // The app still names the shortfall in money.
+    expect(app(ReportPresenter::class)->headline($summary, 'en'))->toContain('477.40');
+});
+
+it('leads a month with nothing to measure against with no figure at all', function (): void {
+    $summary = summaryWith(['cashflow' => ['savings_rate' => 0.0, 'net' => 0, 'income' => 0]]);
+
+    expect((new MonthlySummaryEmail($summary->user, $summary))->render())
+        ->toContain('This is how your '.$summary->periodStart()->isoFormat('MMMM').' went.');
+});
+
+it('only compares against a previous month there is one for', function (): void {
+    $summary = summaryWith([
+        'has_history' => false,
+        'budgets' => ['total' => 0, 'met' => 0, 'overspent' => []],
+    ]);
+
+    $kpis = app(EmailPresenter::class)->present($summary->user, $summary, 'en', false)['kpis'];
+
+    // No net worth or spending change on a first month, no budgets set: the
+    // goal is the one tile left.
+    expect($kpis)->toHaveCount(1)
+        ->and($kpis[0])->toMatchArray(['value' => '62.0%', 'label' => 'Trip to Japan', 'sub' => 'of the goal']);
+});
+
+it('skips a change measured against a base that is zero or negative', function (): void {
+    $summary = summaryWith([
+        'net_worth' => ['previous' => -50000, 'diff_percent' => 120.0],
+        'cashflow' => ['previous' => ['expense' => 0]],
+        'goal' => null,
+    ]);
+
+    $labels = array_column(app(EmailPresenter::class)->present($summary->user, $summary, 'en', false)['kpis'], 'label');
+
+    expect($labels)->toBe(['Budgets']);
+});
+
+it('drops the strip when no tile has anything to say', function (): void {
+    $summary = summaryWith([
+        'has_history' => false,
+        'budgets' => ['total' => 0, 'met' => 0, 'overspent' => []],
+        'goal' => null,
+    ]);
+
+    expect((new MonthlySummaryEmail($summary->user, $summary))->render())->not->toContain('font-size:22px')
+        ->and(app(EmailPresenter::class)->present($summary->user, $summary, 'en', false)['kpis'])->toBe([]);
+});
+
+it('colours a change by whether it is good news', function (): void {
+    $summary = summaryWith([
+        'net_worth' => ['diff_percent' => -0.9],
+        'cashflow' => ['expense_change_percent' => 18.2],
+    ]);
+
+    $kpis = app(EmailPresenter::class)->present($summary->user, $summary, 'en', false)['kpis'];
+
+    expect(array_column($kpis, 'tone'))->toBe(['bad', 'bad', null]);
+});
+
+it('counts the month\'s medals in the line under the main button', function (): void {
+    $summary = sentSummaryFor();
+    Achievement::factory()->key('streaks.1')->create([
+        'user_id' => $summary->user_id,
+        'space_id' => $summary->space_id,
+        'achieved_on' => $summary->periodStart()->toDateString(),
+    ]);
+
+    $inside = app(EmailPresenter::class)->present($summary->user, $summary, 'en', true)['inside'];
+
+    expect($inside)->toBe('Inside: every figure in detail, 1 new medal and 3 things to close '.$summary->periodStart()->isoFormat('MMMM').'.');
+});
+
+it('tells a reader with an analysis it is waiting in the report, without a word of it', function (): void {
     $summary = sentSummaryFor();
 
     $rendered = (new MonthlySummaryEmail(
@@ -78,10 +189,91 @@ it('shows the analysis to a reader who has one, with the boundary spelled out', 
     ))->render();
 
     expect($rendered)
-        ->toContain('It came from spending less.')
-        ->toContain('Housing is the one that will repeat.')
-        ->toContain('never from your individual transactions');
+        ->toContain('is waiting in the report: what moved that 35.5%')
+        ->toContain('Read my analysis')
+        ->toContain('utm_content=analysis#analysis')
+        ->toContain('never from your individual transactions')
+        ->not->toContain('It came from spending less.')
+        ->not->toContain('Housing is the one that will repeat.');
 });
+
+/*
+ * The guard. An email sits in an inbox for years, syncs to every device and
+ * shows on lock screens, so the monthly one never carries an absolute amount.
+ * If a sentence with money in it is ever added back, this is what fails.
+ */
+dataset('every email state', [
+    'pro with an analysis' => fn (): array => ['analysis' => SAMPLE_ANALYSIS_WITH_AMOUNTS, 'pro' => true, 'payload' => []],
+    'pro, model failed' => fn (): array => ['analysis' => null, 'pro' => true, 'payload' => []],
+    'free or pro without AI' => fn (): array => ['analysis' => null, 'pro' => false, 'payload' => []],
+    'negative month' => fn (): array => ['analysis' => SAMPLE_ANALYSIS_WITH_AMOUNTS, 'pro' => true, 'payload' => ['cashflow' => ['savings_rate' => -12.4, 'net' => -47740]]],
+    'first month' => fn (): array => ['analysis' => SAMPLE_ANALYSIS_WITH_AMOUNTS, 'pro' => true, 'payload' => ['has_history' => false]],
+]);
+
+const SAMPLE_ANALYSIS_WITH_AMOUNTS = 'Groceries went up 149 € and Transport another 64 €.';
+
+it('never carries an absolute amount', function (array $state): void {
+    $summary = summaryWith($state['payload']);
+    Achievement::factory()->key('net_worth.4')->create([
+        'user_id' => $summary->user_id,
+        'space_id' => $summary->space_id,
+        'achieved_on' => $summary->periodStart()->toDateString(),
+    ]);
+
+    foreach ([true, false] as $subscriptions) {
+        config(['subscriptions.enabled' => $subscriptions]);
+
+        $rendered = (new MonthlySummaryEmail($summary->user, $summary, $state['analysis'], 'https://whisper.money/storage/card.png', $state['pro']))->render();
+
+        expect($rendered)->not->toMatch('/[€$£¥]|EUR/u');
+
+        foreach (amountsIn($summary) as $amount) {
+            expect($rendered)->not->toContain($amount);
+        }
+    }
+})->with('every email state');
+
+/**
+ * The fixture summary, with parts of its payload overridden.
+ *
+ * @param  array<string, mixed>  $overrides
+ */
+function summaryWith(array $overrides): MonthlySummary
+{
+    $summary = sentSummaryFor();
+    $summary->forceFill(['payload' => array_replace_recursive($summary->payload, $overrides)])->save();
+
+    return $summary->fresh();
+}
+
+/**
+ * Every amount the fixture payload holds, as the app would print it, plus the
+ * bare number, so neither "1,368.05 €" nor "1,368.05" slips through.
+ *
+ * @return list<string>
+ */
+function amountsIn(MonthlySummary $summary): array
+{
+    $cents = [
+        $summary->figure('net_worth.current'), $summary->figure('net_worth.previous'), $summary->figure('net_worth.diff'),
+        $summary->figure('cashflow.income'), $summary->figure('cashflow.expense'), abs((int) $summary->figure('cashflow.net')),
+        $summary->figure('categories.total'), $summary->figure('categories.top.0.amount'),
+        $summary->figure('invested.value'), $summary->figure('invested.gain'), $summary->figure('invested.contributed'),
+        $summary->figure('goal.saved'), $summary->figure('goal.target'),
+        $summary->figure('todos.uncategorised.amount'),
+        $summary->figure('budgets.overspent.0.over_by'), $summary->figure('budgets.overspent.1.over_by'),
+        10000000, 25000000, // the net worth medals either side of the fixture's figure
+    ];
+
+    return collect($cents)
+        ->filter()
+        ->flatMap(fn (int $amount): array => [
+            Money::formatIn($amount, 'EUR', 'en'),
+            Number::format($amount / 100, precision: 2, locale: 'en'),
+        ])
+        ->values()
+        ->all();
+}
 
 it('locks the analysis behind the same block for everyone without one', function (): void {
     config(['subscriptions.enabled' => true]);
@@ -412,7 +604,7 @@ it('keeps a bar segment inside the bar it sits in', function (): void {
         'invested' => ['contributed' => 3498998, 'value' => 1, 'gain' => -3498997, 'currency' => 'EUR'],
     ]])->save();
 
-    $rows = app(EmailPresenter::class)->present($summary->fresh(), 'en');
+    $rows = app(ReportPresenter::class)->present($summary->fresh(), 'en');
     $invested = collect($rows['rows'])->firstWhere('viz', 'bar');
     $widths = array_column(collect($rows['rows'])->pluck('data.segments')->flatten(1)->all(), 'width');
 

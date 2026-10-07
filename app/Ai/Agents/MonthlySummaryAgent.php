@@ -8,13 +8,13 @@ use Stringable;
 
 /**
  * Writes the "why this happened" paragraphs that open a user's monthly summary
- * email. Unlike {@see ReportSummaryAgent}, which talks to us in an admin
+ * report in the app. Unlike {@see ReportSummaryAgent}, which talks to us in an admin
  * channel, this one talks to the user, in their own language.
  *
  * The payload it receives is the frozen summary plus the same figures for the
  * previous months, and the names of the user's banks and accounts. It never sees
- * a transaction description or a merchant: that boundary is printed under the
- * block in the email, so it has to hold here.
+ * a transaction description or a merchant: that boundary is printed in the
+ * summary email, so it has to hold here.
  */
 class MonthlySummaryAgent implements Agent
 {
@@ -29,7 +29,7 @@ class MonthlySummaryAgent implements Agent
     public function instructions(): Stringable|string
     {
         return <<<PROMPT
-        You write the short analysis that opens the monthly summary email of a
+        You write the short analysis that opens the monthly summary report of a
         personal-finance app. You are writing to the person whose money it is,
         about {$this->month}, and they will read the figures right below you.
 
