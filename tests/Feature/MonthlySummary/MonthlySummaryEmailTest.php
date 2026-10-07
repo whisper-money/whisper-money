@@ -165,6 +165,14 @@ it('colours a change by whether it is good news', function (): void {
     expect(array_column($kpis, 'tone'))->toBe(['bad', 'bad', null]);
 });
 
+it('leaves a change that rounds to nothing unsigned and uncoloured', function (): void {
+    $summary = summaryWith(['net_worth' => ['diff_percent' => 0.04]]);
+
+    $tile = app(EmailPresenter::class)->present($summary->user, $summary, 'en', false)['kpis'][0];
+
+    expect($tile)->toMatchArray(['value' => '0.0%', 'tone' => null]);
+});
+
 it('counts the month\'s medals in the line under the main button', function (): void {
     $summary = sentSummaryFor();
     Achievement::factory()->key('streaks.1')->create([

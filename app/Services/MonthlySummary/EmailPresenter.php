@@ -46,8 +46,8 @@ class EmailPresenter
     }
 
     /**
-     * The report's headline when the month saved something. When it did not,
-     * the report names the shortfall in money and the email says it as a share
+     * Written here rather than borrowed from {@see ReportPresenter::headline()}:
+     * the report names a shortfall in money, and the email says it as a share
      * of what came in instead.
      */
     private function headline(MonthlySummary $summary, string $locale, string $monthName): string
@@ -55,7 +55,10 @@ class EmailPresenter
         $rate = (float) $summary->figure('cashflow.savings_rate', 0);
 
         if ($rate > 0) {
-            return $this->report->headline($summary, $locale);
+            return __('You saved :rate of what you earned in :month.', [
+                'rate' => Figures::percent($rate, $locale),
+                'month' => $monthName,
+            ]);
         }
 
         // Zero is a month with no income to measure against, or one that broke
@@ -164,20 +167,29 @@ class EmailPresenter
     private function changeTile(MonthlySummary $summary, string $locale, float $change, string $label, ?string $tone): array
     {
         return [
-            'value' => Figures::percent($change, $locale, signed: $change != 0),
+            'value' => Figures::percent($change, $locale, signed: $this->shown($change) != 0),
             'label' => $label,
             'sub' => __('vs :month', ['month' => $summary->periodStart()->subMonth()->locale($locale)->isoFormat('MMMM')]),
             'tone' => $tone,
         ];
     }
 
+    /**
+     * Judged on the figure as printed, so a change too small to show as
+     * anything but 0.0% is neither signed nor coloured.
+     */
     private function tone(float $goodness): ?string
     {
         return match (true) {
-            $goodness > 0 => 'good',
-            $goodness < 0 => 'bad',
+            $this->shown($goodness) > 0 => 'good',
+            $this->shown($goodness) < 0 => 'bad',
             default => null,
         };
+    }
+
+    private function shown(float $percent): float
+    {
+        return round($percent, 1);
     }
 
     /**
