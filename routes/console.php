@@ -4,7 +4,12 @@ use App\Models\Import;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('budgets:generate-periods')->daily();
+// Just after midnight, so a month opens and the last one closes as soon as it
+// is over (pages open the month themselves if they get there first). Again at
+// breakfast time in Europe, which is when the month-end reminder goes out: the
+// notifier holds it back until then. Every run is idempotent.
 Schedule::command('savings-goals:generate-periods')->dailyAt('00:05')->withoutOverlapping();
+Schedule::command('savings-goals:generate-periods')->dailyAt('07:00')->withoutOverlapping();
 // The press account keeps itself alive: every reset re-derives its 12 months of
 // transactions and balances from today, so a journalist who logs in months after
 // the press round still lands on current data. It also provisions the account on

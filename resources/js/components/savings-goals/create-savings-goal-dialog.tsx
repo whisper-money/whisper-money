@@ -43,6 +43,8 @@ interface Props {
     trigger?: React.ReactNode;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
+    /** Where the month-end reminder starts: the user's default from settings. */
+    reminderDefault?: boolean;
 }
 
 export function CreateSavingsGoalDialog({
@@ -51,6 +53,7 @@ export function CreateSavingsGoalDialog({
     trigger,
     open,
     onOpenChange,
+    reminderDefault = true,
 }: Props) {
     const {
         open: dialogOpen,
@@ -74,7 +77,7 @@ export function CreateSavingsGoalDialog({
     // user should opt into knowingly.
     const [autoTag, setAutoTag] = useState(false);
     const [autoTagAccountId, setAutoTagAccountId] = useState('');
-    const [notifyReminder, setNotifyReminder] = useState(true);
+    const [notifyReminder, setNotifyReminder] = useState(reminderDefault);
     const [name, setName] = useState('');
     const [targetAmount, setTargetAmount] = useState<number>(0);
     const [initialAmount, setInitialAmount] = useState<number>(0);
@@ -119,7 +122,7 @@ export function CreateSavingsGoalDialog({
         setMonthlyTarget(EMPTY_MONTHLY_TARGET);
         setAutoTag(false);
         setAutoTagAccountId('');
-        setNotifyReminder(true);
+        setNotifyReminder(reminderDefault);
         setName('');
         setTargetAmount(0);
         setInitialAmount(0);

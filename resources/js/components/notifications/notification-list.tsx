@@ -1,6 +1,7 @@
 import { show } from '@/actions/App/Http/Controllers/NotificationController';
 import { AchievementFigure } from '@/components/achievements/achievement-figure';
 import { Medal } from '@/components/achievements/medal';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { type NotificationItem, type NotificationKind } from '@/types';
@@ -9,6 +10,7 @@ import { Link } from '@inertiajs/react';
 import {
     BellIcon,
     FileTextIcon,
+    RepeatIcon,
     SparklesIcon,
     type LucideIcon,
 } from 'lucide-react';
@@ -102,6 +104,10 @@ const KINDS: Record<
         label: () => __('Achievements'),
         icon: SparklesIcon,
     },
+    monthly_savings_goal: {
+        label: () => __('Monthly savings'),
+        icon: RepeatIcon,
+    },
     other: { label: () => __('Notification'), icon: BellIcon },
 };
 
@@ -121,6 +127,31 @@ function NotificationGlyph({ item }: { item: NotificationItem }): ReactNode {
             <Icon className="size-4" />
         </span>
     );
+}
+
+/**
+ * A medal's milestone is a round number; a monthly goal's difference is a
+ * signed amount to the cent, written the way the goal's page writes it.
+ */
+function NotificationFigure({ item }: { item: NotificationItem }) {
+    const { figure } = item;
+
+    if (
+        item.kind === 'monthly_savings_goal' &&
+        figure?.type === 'money' &&
+        figure.currency
+    ) {
+        return (
+            <AmountDisplay
+                amountInCents={figure.value}
+                currencyCode={figure.currency}
+                showSign
+                className="tabular-nums"
+            />
+        );
+    }
+
+    return <AchievementFigure figure={figure} />;
 }
 
 export function NotificationRow({
@@ -162,7 +193,7 @@ export function NotificationRow({
                     {item.figure && (
                         <>
                             {' '}
-                            <AchievementFigure figure={item.figure} />
+                            <NotificationFigure item={item} />
                         </>
                     )}
                 </span>
