@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Features\CreditCardStatements;
 use App\Models\Account;
@@ -111,7 +112,7 @@ it('sends the usage of each credit card to the accounts list while the flag is o
     Feature::for($this->user)->activate(CreditCardStatements::class);
     $card = cardWithPurchase(124000, limit: 300000);
     $cardWithoutLimit = cardWithPurchase(5000, limit: null);
-    $checking = Account::factory()->create(['user_id' => $this->user->id]);
+    $checking = Account::factory()->create(['user_id' => $this->user->id, 'type' => AccountType::Checking]);
 
     actingAs($this->user)
         ->get(route('accounts.list'))
