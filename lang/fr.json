@@ -2937,7 +2937,6 @@
     "Credit limit in use": "Plafond de crédit utilisé",
     "In use of": "Utilisé sur",
     "Credit used": "Crédit utilisé",
-    "Cycle from :from to :to": "Cycle du :from au :to",
     "Over limit": "Plafond dépassé",
     "Used": "Utilisé",
     "Available": "Disponible",
@@ -2946,5 +2945,8 @@
     ":percent% of the limit used": ":percent% du plafond utilisé",
     "Over the limit by": "Au-dessus du plafond de",
     "No spending recorded in this period yet": "Aucune dépense enregistrée sur cette période pour le moment",
-    "Add the credit limit of this card to see how much of it you have used and how much is still available.": "Ajoutez le plafond de cette carte pour voir combien vous en avez utilisé et combien il reste disponible."
+    "Add the credit limit of this card to see how much of it you have used and how much is still available.": "Ajoutez le plafond de cette carte pour voir combien vous en avez utilisé et combien il reste disponible.",
+    "From :from to :to": "Du :from au :to",
+    "Used counts the purchases on this card that are still to be charged: the statement not paid yet and the open cycle. Payments to the card are not subtracted.": "L'utilisé additionne les achats de cette carte qui n'ont pas encore été prélevés : le relevé pas encore payé et le cycle en cours. Les remboursements de la carte ne sont pas déduits.",
+    "Used counts the purchases on this card this month. Payments to the card are not subtracted.": "L'utilisé additionne les achats de cette carte ce mois-ci. Les remboursements de la carte ne sont pas déduits."
 }

@@ -108,14 +108,14 @@ describe('CreditCardUsageChart', () => {
         expect(screen.getByText('October 2026')).toBeInTheDocument();
     });
 
-    it('names the cycles when the card has statement dates', () => {
+    it('names the statement dates when the card has them', () => {
         renderChart(
             usage({ period_from: '2026-09-06', period_to: '2026-11-05' }),
             withDates,
         );
 
         expect(
-            screen.getByText('Cycle from Sep 6, 2026 to Nov 5, 2026'),
+            screen.getByText('From Sep 6, 2026 to Nov 5, 2026'),
         ).toBeInTheDocument();
     });
 
@@ -152,6 +152,20 @@ describe('CreditCardUsageChart', () => {
 
         expect(
             screen.getByRole('dialog', { name: 'Card details' }),
+        ).toBeInTheDocument();
+    });
+
+    it('never reads a net refund as a negative share of the limit', () => {
+        renderChart(usage({ used: -5000, available: 105000 }));
+
+        expect(screen.getByText('0% of the limit used')).toBeInTheDocument();
+    });
+
+    it('explains that payments to the card are not subtracted', () => {
+        renderChart(usage());
+
+        expect(
+            screen.getByText(/Payments to the card are not subtracted\./),
         ).toBeInTheDocument();
     });
 });

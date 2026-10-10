@@ -66,24 +66,45 @@ export function usageChartData(usage: CreditCardUsage): UsageChartPoint[] {
     });
 }
 
+interface UsagePeriod {
+    /** The span `used` covers, as dates or as a month. */
+    label: string;
+    /** What `used` counts over that span, for the footnote. */
+    explanation: string;
+}
+
 /**
- * The span `used` covers, named the way the user thinks of it: the statement
- * cycles when the card has dates to go by, the calendar month otherwise.
+ * The span `used` covers, named the way the user thinks of it: the dates of
+ * the statements still to be charged when the card has dates to go by (it can
+ * take a closed statement and the open cycle), the calendar month otherwise.
  */
-function windowLabel(
+function usagePeriod(
     usage: CreditCardUsage,
     detail: CreditCardDetail | null,
     locale: string,
-): string {
+): UsagePeriod {
     if (detail?.statement_closing_date && detail.payment_due_date) {
-        return __('Cycle from :from to :to', {
-            from: formatDateMedium(usage.period_from, locale),
-            to: formatDateMedium(usage.period_to, locale),
-        });
+        return {
+            label: __('From :from to :to', {
+                from: formatDateMedium(usage.period_from, locale),
+                to: formatDateMedium(usage.period_to, locale),
+            }),
+            explanation: __(
+                'Used counts the purchases on this card that are still to be charged: the statement not paid yet and the open cycle. Payments to the card are not subtracted.',
+            ),
+        };
     }
 
-    return formatMonthYear(toLocalDate(usage.period_from), locale);
+    return {
+        label: formatMonthYear(toLocalDate(usage.period_from), locale),
+        explanation: __(
+            'Used counts the purchases on this card this month. Payments to the card are not subtracted.',
+        ),
+    };
 }
+
+/** Over the limit, the figures that say so turn red. */
+const OVER_LIMIT_TEXT = 'text-red-600 dark:text-red-400';
 
 /**
  * Takes the place of the balance chart on a credit card: how much of the
@@ -99,7 +120,7 @@ export function CreditCardUsageChart({
 }: CreditCardUsageChartProps) {
     const locale = useLocale();
     const [dialogOpen, setDialogOpen] = useState(false);
-    const label = windowLabel(usage, detail, locale);
+    const period = usagePeriod(usage, detail, locale);
 
     return (
         <Card>
@@ -107,7 +128,7 @@ export function CreditCardUsageChart({
                 <MissingLimit
                     usage={usage}
                     currencyCode={currencyCode}
-                    windowLabel={label}
+                    period={period}
                     onSetLimit={() => setDialogOpen(true)}
                 />
             ) : (
@@ -116,7 +137,7 @@ export function CreditCardUsageChart({
                     limit={usage.limit}
                     available={usage.available}
                     currencyCode={currencyCode}
-                    windowLabel={label}
+                    period={period}
                 />
             )}
 
@@ -128,6 +149,13 @@ export function CreditCardUsageChart({
                 onOpenChange={setDialogOpen}
             />
         </Card>
+    );
+}
+
+/** The footnote under the figures, so "used" is never read as a balance. */
+function PeriodExplanation({ period }: { period: UsagePeriod }) {
+    return (
+        <p className="text-xs text-muted-foreground">{period.explanation}</p>
     );
 }
 
@@ -145,19 +173,19 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
 function MissingLimit({
     usage,
     currencyCode,
-    windowLabel,
+    period,
     onSetLimit,
 }: {
     usage: CreditCardUsage;
     currencyCode: CurrencyCode;
-    windowLabel: string;
+    period: UsagePeriod;
     onSetLimit: () => void;
 }) {
     return (
         <>
             <CardHeader>
                 <CardTitle>{__('Credit used')}</CardTitle>
-                <CardDescription>{windowLabel}</CardDescription>
+                <CardDescription>{period.label}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
                 <AmountDisplay
@@ -177,6 +205,7 @@ function MissingLimit({
                         {__('Set credit limit')}
                     </Button>
                 </div>
+                <PeriodExplanation period={period} />
             </CardContent>
         </>
     );
@@ -187,16 +216,17 @@ function LimitUsage({
     limit,
     available,
     currencyCode,
-    windowLabel,
+    period,
 }: {
     usage: CreditCardUsage;
     limit: number;
     available: number;
     currencyCode: CurrencyCode;
-    windowLabel: string;
+    period: UsagePeriod;
 }) {
     const isOverLimit = available < 0;
-    const usedPercent = limit > 0 ? (usage.used / limit) * 100 : 100;
+    // Refunds can outweigh purchases and leave `used` below zero.
+    const usedPercent = Math.max(0, (usage.used / limit) * 100);
 
     return (
         <>
@@ -207,7 +237,7 @@ function LimitUsage({
                         <Badge variant="destructive">{__('Over limit')}</Badge>
                     )}
                 </CardTitle>
-                <CardDescription>{windowLabel}</CardDescription>
+                <CardDescription>{period.label}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
                 <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -222,9 +252,7 @@ function LimitUsage({
                     <Figure label={__('Available')}>
                         <span
                             className={
-                                isOverLimit
-                                    ? 'text-red-600 dark:text-red-400'
-                                    : undefined
+                                isOverLimit ? OVER_LIMIT_TEXT : undefined
                             }
                         >
                             <AmountDisplay
@@ -247,7 +275,8 @@ function LimitUsage({
 
                 <div className="flex flex-col gap-2">
                     <Progress
-                        value={usedPercent}
+                        // Radix reads a value past `max` as no value at all.
+                        value={Math.min(100, usedPercent)}
                         className="h-2"
                         aria-label={__('Credit used')}
                         indicatorClassName={
@@ -258,14 +287,14 @@ function LimitUsage({
                         }
                     />
                     <span
-                        className={`flex flex-wrap items-baseline gap-1 text-sm ${isOverLimit ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}
+                        className={`flex flex-wrap items-baseline gap-1 text-sm ${isOverLimit ? OVER_LIMIT_TEXT : 'text-muted-foreground'}`}
                     >
                         {__(':percent% of the limit used', {
                             percent: Math.round(usedPercent),
                         })}
                         {isOverLimit && (
                             <>
-                                <span>·</span>
+                                <span aria-hidden>·</span>
                                 <span>{__('Over the limit by')}</span>
                                 <AmountDisplay
                                     amountInCents={-available}
@@ -281,6 +310,7 @@ function LimitUsage({
                     limit={limit}
                     currencyCode={currencyCode}
                 />
+                <PeriodExplanation period={period} />
             </CardContent>
         </>
     );

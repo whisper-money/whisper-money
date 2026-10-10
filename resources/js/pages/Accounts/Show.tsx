@@ -165,7 +165,7 @@ export default function AccountShow({
     const creditCardUsage = isCreditCard
         ? account.credit_card_usage
         : undefined;
-    const tracksBalance = creditCardUsage === undefined;
+    const showsCreditLimit = creditCardUsage !== undefined;
 
     function handleTransactionCreated() {
         // A credit card's statement estimate is computed on the server from
@@ -289,15 +289,7 @@ export default function AccountShow({
                         )}
                     </div>
 
-                    {!tracksBalance ? (
-                        <MoreOptionsMenu>
-                            <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                                {__('Edit account')}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {archiveMenuItem}
-                        </MoreOptionsMenu>
-                    ) : hasLinkedLoan ? (
+                    {hasLinkedLoan ? (
                         <ButtonGroup>
                             <ButtonGroup>
                                 <Button
@@ -349,24 +341,34 @@ export default function AccountShow({
                         </ButtonGroup>
                     ) : (
                         <ButtonGroup>
-                            <Button
-                                variant="outline"
-                                onClick={() => setUpdateBalanceOpen(true)}
-                            >
-                                {updateBalanceLabel}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setImportBalancesOpen(true)}
-                            >
-                                {importBalancesLabel}
-                            </Button>
+                            {!showsCreditLimit && (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                            setUpdateBalanceOpen(true)
+                                        }
+                                    >
+                                        {updateBalanceLabel}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                            setImportBalancesOpen(true)
+                                        }
+                                    >
+                                        {importBalancesLabel}
+                                    </Button>
+                                </>
+                            )}
                             <MoreOptionsMenu>
-                                <DropdownMenuItem
-                                    onClick={() => setBalancesOpen(true)}
-                                >
-                                    {seeBalancesLabel}
-                                </DropdownMenuItem>
+                                {!showsCreditLimit && (
+                                    <DropdownMenuItem
+                                        onClick={() => setBalancesOpen(true)}
+                                    >
+                                        {seeBalancesLabel}
+                                    </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                     onClick={() => setEditOpen(true)}
                                 >
@@ -484,9 +486,9 @@ export default function AccountShow({
                                 setChartRefreshKey((key) => key + 1)
                             }
                             onTransactionsChanged={
-                                tracksBalance
-                                    ? undefined
-                                    : handleTransactionsChanged
+                                showsCreditLimit
+                                    ? handleTransactionsChanged
+                                    : undefined
                             }
                         />
                     </Deferred>
@@ -507,7 +509,7 @@ export default function AccountShow({
                 onOpenChange={setArchiveOpen}
             />
 
-            {tracksBalance && (
+            {!showsCreditLimit && (
                 <UpdateBalanceDialog
                     account={account}
                     open={updateBalanceOpen}
@@ -531,7 +533,7 @@ export default function AccountShow({
                 origin="account_page"
             />
 
-            {tracksBalance && (
+            {!showsCreditLimit && (
                 <>
                     <BalancesModal
                         account={account}
