@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Concerns;
 
 use App\Enums\MonthlyTargetType;
+use App\Models\SavingsGoal;
 use Illuminate\Validation\Rule;
 
 /**
@@ -22,7 +23,7 @@ trait ValidatesMonthlySavingsTarget
             // amount sent without saying what kind of target it is fails
             // instead of being quietly dropped.
             'monthly_target_type' => [$creating ? 'required' : 'required_with:monthly_target_amount,monthly_target_rate', Rule::enum(MonthlyTargetType::class)],
-            'monthly_target_amount' => ['nullable', 'required_if:monthly_target_type,'.MonthlyTargetType::Amount->value, 'integer', 'min:1'],
+            'monthly_target_amount' => ['nullable', 'required_if:monthly_target_type,'.MonthlyTargetType::Amount->value, 'integer', 'min:1', 'max:'.SavingsGoal::MAX_AMOUNT],
             // Two decimals, as stored. A share above 100% would ask for more than
             // came in.
             'monthly_target_rate' => ['nullable', 'required_if:monthly_target_type,'.MonthlyTargetType::IncomeRate->value, 'numeric', 'gt:0', 'max:100', 'decimal:0,2'],

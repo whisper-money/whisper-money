@@ -4,17 +4,20 @@ namespace App\Http\Requests;
 
 use App\Enums\AccountType;
 use App\Enums\SavingsGoalKind;
+use App\Http\Requests\Concerns\NamesSavingsGoalAttributes;
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
 use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
 use App\Http\Requests\Concerns\ValidatesSavingsGoalName;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
+use App\Models\SavingsGoal;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreSavingsGoalRequest extends FormRequest
 {
-    use ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesUserOwnedResources;
+    use NamesSavingsGoalAttributes, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesUserOwnedResources;
 
     public function authorize(): bool
     {
@@ -42,6 +45,15 @@ class StoreSavingsGoalRequest extends FormRequest
                     'nullable',
                     'uuid',
                     $this->userOwnedAccountOfType(AccountType::Savings)->where('space_id', $this->user()->activeSpace()->id),
+                    // Rules stop at the first match: a second goal on the
+                    // same account would never see a transfer.
+                    function (string $attribute, mixed $value, Closure $fail): void {
+                        $owner = is_string($value) ? SavingsGoal::autoTaggingAccount($value) : null;
+
+                        if ($owner !== null) {
+                            $fail(__('This account already feeds “:goal”. Pick another one, or leave contributions to be linked by hand.', ['goal' => $owner->name]));
+                        }
+                    },
                 ],
             ];
         }

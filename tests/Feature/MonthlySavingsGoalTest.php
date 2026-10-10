@@ -507,7 +507,7 @@ test('a goal created before the last days of a month is judged on that month', f
     expect(monthlyGoalStats($goal)['history'][0]['status'])->toBe(SavingsGoalMonthStatus::Missed);
 });
 
-test('an archived goal has no month in progress and no verdict on the month it was archived in', function () {
+test('an archived goal has no month in progress and its archive month reads archived, with no verdict', function () {
     $this->travelTo(Carbon::parse('2026-08-10'));
     $user = monthlyGoalUser();
     $goal = createMonthlyGoal($user);
@@ -523,7 +523,7 @@ test('an archived goal has no month in progress and no verdict on the month it w
     expect($stats['current'])->toBeNull()
         ->and(collect($stats['history'])->pluck('status', 'month')->all())->toBe([
             '2026-08' => SavingsGoalMonthStatus::Met,
-            '2026-09' => SavingsGoalMonthStatus::Partial,
+            '2026-09' => SavingsGoalMonthStatus::Archived,
         ])
         ->and($stats['history'][1]['saved'])->toBe(4000)
         ->and($stats['months_closed'])->toBe(1)
@@ -718,4 +718,44 @@ test('the auto-tag account has to be in the active space', function () {
     ])->assertSessionHasErrors('auto_tag_account_id');
 
     expect(SavingsGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('an account can feed only one running monthly goal', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = monthlyGoalUser();
+    $savings = monthlyGoalAccount($user);
+    $first = createMonthlyGoal($user, ['name' => 'Emergency fund', 'auto_tag_account_id' => $savings->id]);
+
+    expect($first->auto_tag_account_id)->toBe($savings->id);
+
+    $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'Japan trip',
+        'kind' => 'monthly',
+        'monthly_target_type' => 'amount',
+        'monthly_target_amount' => 10000,
+        'auto_tag_account_id' => $savings->id,
+    ])->assertSessionHasErrors(['auto_tag_account_id' => 'This account already feeds “Emergency fund”. Pick another one, or leave contributions to be linked by hand.']);
+
+    // Once the first goal is archived the account is free again.
+    $this->actingAs($user)->post("/savings-goals/{$first->id}/archive");
+    createMonthlyGoal($user, ['name' => 'Japan trip', 'auto_tag_account_id' => $savings->id]);
+});
+
+test('targets are capped at the largest amount a goal takes', function (array $input, string $field) {
+    $user = monthlyGoalUser();
+
+    $this->actingAs($user)->post('/savings-goals', ['name' => 'Fund', ...$input])
+        ->assertSessionHasErrors($field);
+})->with([
+    'monthly' => [['kind' => 'monthly', 'monthly_target_type' => 'amount', 'monthly_target_amount' => SavingsGoal::MAX_AMOUNT + 1], 'monthly_target_amount'],
+    'one-off total' => [['kind' => 'one_off', 'target_amount' => SavingsGoal::MAX_AMOUNT + 1], 'target_amount'],
+    'one-off start' => [['kind' => 'one_off', 'target_amount' => 100, 'initial_amount' => SavingsGoal::MAX_AMOUNT + 1], 'initial_amount'],
+]);
+
+test('validation messages name the fields in the user\'s language', function () {
+    $user = User::factory()->create(['onboarded_at' => now(), 'locale' => 'es']);
+    app()->setLocale('es');
+
+    $this->actingAs($user)->post('/savings-goals', ['name' => 'Fondo', 'kind' => 'monthly', 'monthly_target_type' => 'amount'])
+        ->assertSessionHasErrors(['monthly_target_amount' => __('validation.required_if', ['attribute' => 'importe mensual', 'other' => 'tipo de objetivo mensual', 'value' => 'amount'])]);
 });

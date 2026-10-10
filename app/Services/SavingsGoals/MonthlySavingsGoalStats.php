@@ -110,8 +110,12 @@ class MonthlySavingsGoalStats
 
     private static function status(SavingsGoal $goal, Carbon $month, int $saved, int $target): SavingsGoalMonthStatus
     {
-        if ($goal->isPartialMonth($month)) {
+        if ($goal->startedLateIn($month)) {
             return SavingsGoalMonthStatus::Partial;
+        }
+
+        if ($goal->wasArchivedIn($month)) {
+            return SavingsGoalMonthStatus::Archived;
         }
 
         if ($month->gte(today()->startOfMonth())) {
