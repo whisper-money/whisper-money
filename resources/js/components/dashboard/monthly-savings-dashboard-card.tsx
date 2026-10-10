@@ -13,14 +13,14 @@ import {
     daysLeftLabel,
     monthDate,
 } from '@/lib/monthly-savings';
-import { SavingsGoal } from '@/types/savings-goal';
+import { DashboardMonthlyGoal } from '@/types/savings-goal';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { Repeat } from 'lucide-react';
 
 interface Props {
-    goals: SavingsGoal[];
+    goals: DashboardMonthlyGoal[];
     currencyCode: string;
 }
 
@@ -65,15 +65,26 @@ export function MonthlySavingsDashboardCard({
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                    <SavedOfTarget
-                        saved={aggregate.saved}
-                        target={aggregate.target}
-                        currencyCode={currencyCode}
-                    />
-                    <MonthlyGoalProgress
-                        saved={aggregate.saved}
-                        target={aggregate.target}
-                    />
+                    {aggregate.allPartial ? (
+                        <span className="text-base font-semibold">
+                            {__('The first month is partial')}
+                        </span>
+                    ) : (
+                        <>
+                            <SavedOfTarget
+                                saved={aggregate.saved}
+                                target={aggregate.target}
+                                currencyCode={currencyCode}
+                            />
+                            {/* No target yet (only shares of an income still
+                                to come) is not a target met. */}
+                            <MonthlyGoalProgress
+                                saved={aggregate.saved}
+                                target={aggregate.target}
+                                empty={aggregate.target <= 0}
+                            />
+                        </>
+                    )}
                     <span className="text-sm text-muted-foreground">
                         {[
                             aggregate.daysLeft !== null &&
@@ -107,7 +118,7 @@ function GoalLine({
     goal,
     currencyCode,
 }: {
-    goal: SavingsGoal;
+    goal: DashboardMonthlyGoal;
     currencyCode: string;
 }) {
     const current = goal.monthly?.current;
@@ -137,6 +148,7 @@ function GoalLine({
                 <MonthlyGoalProgress
                     saved={saved}
                     target={target}
+                    empty={note !== null}
                     className="h-1.5"
                 />
             )}

@@ -2,7 +2,7 @@ import { MonthlySavingsMonth, SavingsGoal } from '@/types/savings-goal';
 import { describe, expect, it } from 'vitest';
 import {
     aggregateMonthlyGoals,
-    monthProgressPercent,
+    isTargetUnknown,
     monthStrip,
     progressPercent,
     startsLate,
@@ -142,17 +142,17 @@ describe('partial and unknown targets', () => {
         );
     });
 
-    it('draws no bar for a partial month or a live share still at 0', () => {
-        expect(monthProgressPercent(month('2026-10', 'partial', 5000))).toBe(0);
+    it('knows a target is unknown in a partial month or a live share still at 0', () => {
+        expect(isTargetUnknown(month('2026-10', 'partial', 5000))).toBe(true);
         expect(
-            monthProgressPercent({
+            isTargetUnknown({
                 ...month('2026-10', 'in_progress', 0, 0),
                 is_live_target: true,
             }),
-        ).toBe(0);
+        ).toBe(true);
         expect(
-            monthProgressPercent(month('2026-10', 'in_progress', 15000, 30000)),
-        ).toBe(50);
+            isTargetUnknown(month('2026-10', 'in_progress', 15000, 30000)),
+        ).toBe(false);
     });
 
     it('knows when a goal created today starts with a partial month', () => {

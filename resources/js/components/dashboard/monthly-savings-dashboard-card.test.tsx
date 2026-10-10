@@ -181,4 +181,31 @@ describe('MonthlySavingsDashboardCard', () => {
             screen.getByText('the target grows as income comes in'),
         ).toBeInTheDocument();
     });
+
+    it('says the first month is partial when every goal is in one', () => {
+        const partial = {
+            id: 'p',
+            name: 'Late starter',
+            monthly: {
+                current: {
+                    ...month('2026-10', 900, 30000, 'partial'),
+                    remaining: 29100,
+                    days_left: 3,
+                },
+                history: [],
+            },
+        } as never;
+
+        render(
+            <MonthlySavingsDashboardCard
+                goals={[partial]}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(
+            screen.getByText('The first month is partial'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/^0$/)).toBeNull();
+    });
 });
