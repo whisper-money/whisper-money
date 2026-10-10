@@ -246,6 +246,20 @@ describe('AccountShow', () => {
         ).toBeInTheDocument();
     });
 
+    /**
+     * The list bar only holds this button and "Columns", so the label fits
+     * even on a 320px phone and is never collapsed to the icon.
+     */
+    it('labels the add button "Transaction" at every width', () => {
+        renderPage();
+
+        const label = within(
+            screen.getByRole('button', { name: 'Add transaction' }),
+        ).getByText('Transaction');
+
+        expect(label).not.toHaveClass('hidden');
+    });
+
     it('opens create transaction dialog for disconnected transactional accounts', () => {
         renderPage();
 

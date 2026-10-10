@@ -13,6 +13,35 @@ import { __ } from '@/utils/i18n';
 import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+/**
+ * Squares the button around its icon while the label is hidden. The bar it
+ * sits in is the size container (see TransactionFilters' actions slot), so
+ * this follows the room actually left beside the sidebar, not the viewport.
+ */
+const COLLAPSIBLE_BUTTON_CLASSES =
+    'w-9 px-0 has-[>svg]:px-0 @xs:w-auto @xs:px-4 @xs:has-[>svg]:px-3';
+
+/**
+ * "+ Transaction", the face of every add-transaction button above a
+ * transactions list. A collapsible label drops to the icon alone when the
+ * bar is too narrow to fit it next to the other actions (320px phones on
+ * /transactions); the accessible name stays on the button's aria-label.
+ */
+export function AddTransactionLabel({
+    collapsible = false,
+}: {
+    collapsible?: boolean;
+}) {
+    return (
+        <>
+            <Plus className="h-4 w-4" />
+            <span className={collapsible ? 'hidden @xs:inline' : undefined}>
+                {__('Transaction')}
+            </span>
+        </>
+    );
+}
+
 interface AddTransactionButtonProps {
     /** Whether the user owns an account a manual transaction can be filed in. */
     hasTransactionalAccounts: boolean;
@@ -70,16 +99,13 @@ export function AddTransactionButton({
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button
-                            className={`h-9 w-9 px-0 has-[>svg]:px-0 md:w-auto md:px-4 md:has-[>svg]:px-3 ${isDisabled || loading ? 'cursor-not-allowed opacity-50' : ''}`}
+                            className={`${COLLAPSIBLE_BUTTON_CLASSES} ${isDisabled || loading ? 'cursor-not-allowed opacity-50' : ''}`}
                             onClick={handleOpen}
                             aria-disabled={isDisabled || loading}
                             aria-label={__('Add transaction')}
                             data-testid="add-transaction-button"
                         >
-                            <Plus className="h-5 w-5" />
-                            <span className="hidden md:inline">
-                                {__('Transaction')}
-                            </span>
+                            <AddTransactionLabel collapsible />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
