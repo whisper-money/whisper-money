@@ -5,7 +5,7 @@ import { monthKey } from '@/lib/monthly-savings';
 import { SavingsGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { Repeat } from 'lucide-react';
-import { MonthlyBadge } from './month-status';
+import { MonthlyBadge, noJudgedMonthYet } from './month-status';
 import { MonthStrip } from './month-strip';
 import {
     CurrentMonthProgress,
@@ -64,7 +64,7 @@ export function MonthlySavingsGoalCard({ savingsGoal, currencyCode }: Props) {
                     <div className="flex items-center justify-between gap-2 text-sm">
                         <span>
                             {monthly.months_closed === 0
-                                ? __('The first month is still in progress')
+                                ? noJudgedMonthYet(archived)
                                 : __(':met of :total months met', {
                                       met: monthly.months_met,
                                       total: monthly.months_closed,

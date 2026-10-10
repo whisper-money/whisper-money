@@ -92,3 +92,31 @@ describe('progressPercent', () => {
         expect(progressPercent(15000, 30000)).toBe(50);
     });
 });
+
+describe('aggregateMonthlyGoals with partial months', () => {
+    it('leaves partial months out of this month and last month alike', () => {
+        const partialNow = {
+            monthly: {
+                current: {
+                    ...month('2026-10', 'partial', 5000),
+                    remaining: 0,
+                    days_left: 3,
+                },
+                history: [month('2026-10', 'partial', 5000)],
+            },
+        } as unknown as SavingsGoal;
+        const partialBefore = goal([
+            month('2026-09', 'partial', 1000),
+            month('2026-10', 'in_progress', 12000),
+        ]);
+
+        const aggregate = aggregateMonthlyGoals(
+            [partialNow, partialBefore],
+            '2026-10',
+        );
+
+        expect(aggregate.saved).toBe(12000);
+        expect(aggregate.target).toBe(30000);
+        expect(aggregate.previousTotal).toBe(0);
+    });
+});

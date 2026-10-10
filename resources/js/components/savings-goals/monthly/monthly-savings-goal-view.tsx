@@ -22,7 +22,13 @@ import { formatDate, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
-import { MonthStatusBadge, MonthStatusLegend } from './month-status';
+import {
+    isJudged,
+    legendStatuses,
+    MonthStatusBadge,
+    MonthStatusLegend,
+    noJudgedMonthYet,
+} from './month-status';
 import {
     AmountToGo,
     CurrentMonthProgress,
@@ -37,6 +43,8 @@ import {
 interface Props {
     savingsGoal: SavingsGoal;
     monthly: MonthlySavingsStats;
+    /** An archived goal has no month in progress and no countdown. */
+    archived: boolean;
     transactions: ServerTransaction[];
     categories: Category[];
     accounts: Account[];
@@ -52,6 +60,7 @@ interface Props {
 export function MonthlySavingsGoalView({
     savingsGoal,
     monthly,
+    archived,
     transactions,
     categories,
     accounts,
@@ -61,7 +70,11 @@ export function MonthlySavingsGoalView({
 }: Props) {
     return (
         <div className="flex min-w-0 flex-col gap-6">
-            <SummaryCards monthly={monthly} currencyCode={currencyCode} />
+            <SummaryCards
+                monthly={monthly}
+                archived={archived}
+                currencyCode={currencyCode}
+            />
 
             <Card className="min-w-0">
                 <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
@@ -69,7 +82,12 @@ export function MonthlySavingsGoalView({
                         {__('Saved each month')}
                     </CardTitle>
                     <div className="flex flex-wrap items-center gap-4">
-                        <MonthStatusLegend statuses={['met', 'missed']} />
+                        <MonthStatusLegend
+                            statuses={legendStatuses(
+                                ['met', 'missed'],
+                                monthly.history,
+                            )}
+                        />
                         <TargetLineLegend label={__("That month's target")} />
                     </div>
                 </CardHeader>
@@ -125,13 +143,17 @@ function SummaryCard({
 
 function SummaryCards({
     monthly,
+    archived,
     currencyCode,
 }: {
     monthly: MonthlySavingsStats;
+    archived: boolean;
     currencyCode: string;
 }) {
     const locale = useLocale();
-    const { current } = monthly;
+    // The server sends no current month for an archived goal; the flag keeps
+    // the page from counting down even if one slips through.
+    const current = archived ? null : monthly.current;
     const share =
         monthly.months_closed > 0
             ? Math.round((monthly.months_met / monthly.months_closed) * 100)
@@ -165,7 +187,7 @@ function SummaryCards({
                         ? __(':percent% since you created it', {
                               percent: share,
                           })
-                        : __('The first month is still in progress')
+                        : noJudgedMonthYet(archived)
                 }
             >
                 <span className="text-2xl font-semibold">
@@ -263,10 +285,14 @@ function HistoryTable({
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground tabular-nums">
-                                    <MonthTarget
-                                        month={entry}
-                                        currencyCode={currencyCode}
-                                    />
+                                    {entry.status === 'partial' ? (
+                                        '—'
+                                    ) : (
+                                        <MonthTarget
+                                            month={entry}
+                                            currencyCode={currencyCode}
+                                        />
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums">
                                     <AmountDisplay
@@ -275,7 +301,11 @@ function HistoryTable({
                                     />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {entry.status === 'in_progress' ? (
+                                    {entry.status === 'partial' ? (
+                                        <span className="text-muted-foreground">
+                                            —
+                                        </span>
+                                    ) : !isJudged(entry.status) ? (
                                         <span className="text-muted-foreground tabular-nums">
                                             {entry.difference < 0 ? (
                                                 <AmountToGo

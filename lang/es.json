@@ -3930,7 +3930,7 @@
     "That month's target": "Objetivo de ese mes",
     "The first month is still in progress": "El primer mes aún está en curso",
     "This month": "Este mes",
-    "Transfers into": "Transferencias que entren en",
+    "Transfers into": "Transferencias recibidas en",
     "Worked out from your average income over the previous three months, and fixed when the month starts.": "Se calcula con tus ingresos medios de los tres meses anteriores y se fija al empezar el mes.",
     "in progress": "en curso",
     "overall": "acumulado",
@@ -3940,5 +3940,9 @@
     "1 day left": "queda 1 día",
     ":amount to go": "Faltan :amount",
     "Fixed amount": "Importe fijo",
-    "Set how much to put aside every month. A label with the same name marks your contributions.": "Indica cuánto quieres apartar cada mes. Una etiqueta con el mismo nombre marcará tus aportaciones."
+    "Set how much to put aside every month. A label with the same name marks your contributions.": "Indica cuánto quieres apartar cada mes. Una etiqueta con el mismo nombre marcará tus aportaciones.",
+    "Partial month": "Mes parcial",
+    "partial": "parcial",
+    "Partial month: it started too late to have a target. The first full month counts.": "Mes parcial: empezó demasiado tarde para tener objetivo. Cuenta el primer mes completo.",
+    "No full month before it was archived": "Ningún mes completo antes de archivarlo"
 }

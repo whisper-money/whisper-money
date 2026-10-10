@@ -8,6 +8,7 @@ import { __ } from '@/utils/i18n';
 import { useLayoutEffect, useRef } from 'react';
 import {
     differenceClassName,
+    isJudged,
     MONTH_STATUS_FILL,
     monthStatusLabel,
 } from './month-status';
@@ -49,7 +50,9 @@ export function MonthlySavingsBarChart({
     const locale = useLocale();
     const scale = Math.max(
         1,
-        ...bars.flatMap((bar) => [bar.saved, bar.target]),
+        ...bars.flatMap((bar) =>
+            bar.status === 'partial' ? [bar.saved] : [bar.saved, bar.target],
+        ),
     );
     const percentOf = (value: number) =>
         `${(Math.max(0, value) / scale) * 100}%`;
@@ -85,9 +88,11 @@ export function MonthlySavingsBarChart({
                         <div key={bar.month} className="flex flex-col gap-2">
                             {showDifference && (
                                 <span className="text-center text-xs tabular-nums">
-                                    {bar.status === 'in_progress' ? (
+                                    {!isJudged(bar.status) ? (
                                         <span className="text-muted-foreground">
-                                            {__('in progress')}
+                                            {bar.status === 'partial'
+                                                ? __('partial')
+                                                : __('in progress')}
                                         </span>
                                     ) : (
                                         <AmountDisplay
@@ -119,15 +124,18 @@ export function MonthlySavingsBarChart({
                                     )}
                                     style={{ height: percentOf(bar.saved) }}
                                 />
-                                <div
-                                    className="absolute -inset-x-1 h-0.5 bg-foreground"
-                                    // Kept inside the box: the highest target sits at
-                                    // 100%, where the scroll container would clip it.
-                                    style={{
-                                        bottom: `min(${percentOf(bar.target)}, calc(100% - 2px))`,
-                                    }}
-                                    aria-hidden="true"
-                                />
+                                {/* A partial month has no target to draw. */}
+                                {bar.status !== 'partial' && (
+                                    <div
+                                        className="absolute -inset-x-1 h-0.5 bg-foreground"
+                                        // Kept inside the box: the highest target sits at
+                                        // 100%, where the scroll container would clip it.
+                                        style={{
+                                            bottom: `min(${percentOf(bar.target)}, calc(100% - 2px))`,
+                                        }}
+                                        aria-hidden="true"
+                                    />
+                                )}
                             </div>
                             <span className="text-center text-xs text-muted-foreground">
                                 {label}

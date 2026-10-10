@@ -143,7 +143,8 @@ export function SignedAmount({
 
 /**
  * The month in progress: saved of target, a bar, and what is left to do in
- * how many days.
+ * how many days. A partial month — the goal started in its last days — only
+ * shows what was saved: it has no target to measure against.
  */
 export function CurrentMonthProgress({
     current,
@@ -154,6 +155,25 @@ export function CurrentMonthProgress({
     currencyCode: string;
     size?: 'lg' | 'xl';
 }) {
+    if (current.status === 'partial') {
+        return (
+            <div className="flex flex-col gap-2">
+                <AmountDisplay
+                    amountInCents={current.saved}
+                    currencyCode={currencyCode}
+                    size={size === 'xl' ? '2xl' : 'xl'}
+                    weight="semibold"
+                    className="tabular-nums"
+                />
+                <span className="text-sm text-muted-foreground">
+                    {__(
+                        'Partial month: it started too late to have a target. The first full month counts.',
+                    )}
+                </span>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-baseline justify-between gap-2 tabular-nums">
@@ -185,6 +205,16 @@ function RemainingLine({
     current: MonthlySavingsCurrent;
     currencyCode: string;
 }) {
+    // A share of an income that has not arrived yet is 0, which is not a
+    // target met: say why it is empty instead.
+    if (current.is_live_target && current.target <= 0) {
+        return (
+            <span className="text-sm text-muted-foreground">
+                {__('the target grows as income comes in')}
+            </span>
+        );
+    }
+
     if (current.remaining <= 0) {
         return (
             <span className="text-sm text-emerald-700 dark:text-emerald-400">

@@ -65,7 +65,8 @@ export interface MonthlySavingsAggregate {
 /**
  * The current month across every running monthly goal, and how many of them
  * were met the month before. A goal created this month has no previous month
- * and is left out of that count.
+ * and is left out of that count, and so is a partial month: it has no target
+ * and no verdict to add up.
  */
 export function aggregateMonthlyGoals(
     goals: SavingsGoal[],
@@ -81,11 +82,14 @@ export function aggregateMonthlyGoals(
                 (entry) => entry.month === previousMonth,
             ),
         )
-        .filter((entry) => entry !== undefined);
+        .filter(isAddedUp);
+    const running = goals
+        .map((goal) => goal.monthly?.current)
+        .filter(isAddedUp);
 
     return {
-        saved: sum(goals.map((goal) => goal.monthly?.current?.saved ?? 0)),
-        target: sum(goals.map((goal) => goal.monthly?.current?.target ?? 0)),
+        saved: sum(running.map((entry) => entry.saved)),
+        target: sum(running.map((entry) => entry.target)),
         daysLeft:
             goals.find((goal) => goal.monthly?.current)?.monthly?.current
                 ?.days_left ?? null,
@@ -123,6 +127,12 @@ export function progressPercent(saved: number, target: number): number {
     }
 
     return Math.min(100, Math.max(0, (saved / target) * 100));
+}
+
+function isAddedUp<T extends MonthlySavingsMonth>(
+    entry: T | null | undefined,
+): entry is T {
+    return entry != null && entry.status !== 'partial';
 }
 
 function sum(values: number[]): number {

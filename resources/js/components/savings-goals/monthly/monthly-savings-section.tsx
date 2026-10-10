@@ -10,7 +10,7 @@ import { SavingsGoal } from '@/types/savings-goal';
 import { formatDate, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Repeat } from 'lucide-react';
-import { MonthStatusLegend } from './month-status';
+import { legendStatuses, MonthStatusLegend } from './month-status';
 import { MonthlySavingsGoalCard } from './monthly-savings-goal-card';
 
 interface Props {
@@ -95,7 +95,12 @@ export function MonthlySavingsSection({ goals, currencyCode }: Props) {
                 ))}
             </div>
 
-            <MonthStatusLegend />
+            <MonthStatusLegend
+                statuses={legendStatuses(
+                    ['met', 'missed', 'in_progress', 'none'],
+                    goals.flatMap((goal) => goal.monthly?.history ?? []),
+                )}
+            />
         </section>
     );
 }

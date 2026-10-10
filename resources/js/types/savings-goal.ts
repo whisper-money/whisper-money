@@ -21,7 +21,12 @@ export type SavingsGoalKind = 'one_off' | 'monthly';
 
 export type MonthlyTargetType = 'amount' | 'income_rate';
 
-export type MonthlySavingsStatus = 'met' | 'missed' | 'in_progress';
+/**
+ * Mirrors App\Enums\SavingsGoalMonthStatus. A `partial` month (the goal started
+ * in its last days, or was archived during it) shows what was saved but gets
+ * no verdict.
+ */
+export type MonthlySavingsStatus = 'met' | 'missed' | 'in_progress' | 'partial';
 
 /** One calendar month of a monthly goal, judged against its own target. */
 export interface MonthlySavingsMonth {
