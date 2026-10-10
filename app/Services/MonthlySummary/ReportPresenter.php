@@ -23,6 +23,8 @@ use Illuminate\Support\Str;
  */
 class ReportPresenter
 {
+    private const LISTED_MONTHLY_GOALS = 3;
+
     /**
      * Shades used for the three-category bar, matching the app's charts.
      */
@@ -303,13 +305,32 @@ class ReportPresenter
             'text' => __('You met :met of :total monthly savings goals: :goals.', [
                 'met' => $this->strong(Figures::count($met, $locale)),
                 'total' => $this->strong(Figures::count((int) $section['total'], $locale)),
-                'goals' => $this->list(array_map(
-                    fn (array $goal): string => e((string) $goal['name']).' ('.$this->strong($this->signedMoney($summary, (int) $goal['difference'])).')',
-                    (array) $section['goals'],
-                ), escape: false),
+                'goals' => $this->monthlyGoalsList($summary, (array) $section['goals'], $locale),
             ]),
             ...$this->dots($met, $missed, __(':count missed', ['count' => Figures::count($missed, $locale)]), $locale),
         ];
+    }
+
+    /**
+     * The goals furthest from their target first, three at most: past that the
+     * sentence turns into a wall of names.
+     *
+     * @param  list<array<string, mixed>>  $goals
+     */
+    private function monthlyGoalsList(MonthlySummary $summary, array $goals, string $locale): string
+    {
+        usort($goals, fn (array $a, array $b): int => (int) $a['difference'] <=> (int) $b['difference']);
+
+        $items = array_map(
+            fn (array $goal): string => e((string) $goal['name']).' ('.$this->strong($this->signedMoney($summary, (int) $goal['difference'])).')',
+            array_slice($goals, 0, self::LISTED_MONTHLY_GOALS),
+        );
+
+        if (count($goals) > self::LISTED_MONTHLY_GOALS) {
+            $items[] = e(__(':count more', ['count' => Figures::count(count($goals) - self::LISTED_MONTHLY_GOALS, $locale)]));
+        }
+
+        return $this->list($items, escape: false);
     }
 
     /**
@@ -434,7 +455,7 @@ class ReportPresenter
     private function overspentList(MonthlySummary $summary, array $overspent): string
     {
         return $this->list(array_map(
-            fn (array $budget): string => e((string) $budget['name']).' ('.$this->strong('+'.$this->money($summary, (int) $budget['over_by'])).')',
+            fn (array $budget): string => e((string) $budget['name']).' ('.$this->strong($this->signedMoney($summary, (int) $budget['over_by'])).')',
             $overspent,
         ), escape: false);
     }
@@ -503,7 +524,7 @@ class ReportPresenter
 
     private function signedMoney(MonthlySummary $summary, int $amount): string
     {
-        return ($amount > 0 ? '+' : '').$this->money($summary, $amount);
+        return ($amount >= 0 ? '+' : '').$this->money($summary, $amount);
     }
 
     /**

@@ -236,3 +236,28 @@ test('the summary email keeps three tiles when the others fill them', function (
 
     expect($labels)->toHaveCount(3)->not->toContain('Monthly savings goals');
 });
+
+test('the report names the three goals furthest off and counts the rest', function () {
+    $goal = fn (string $name, int $difference): array => ['name' => $name, 'saved' => 0, 'target' => 0, 'difference' => $difference, 'met' => $difference >= 0, 'streak' => 0];
+    $summary = surfacesSummary(['monthly_goals' => [
+        'total' => 5, 'met' => 2, 'saved' => 0, 'target' => 0,
+        'goals' => [$goal('A', 1000), $goal('B', -9000), $goal('C', 0), $goal('D', -100), $goal('E', -4000)],
+    ]]);
+
+    $texts = array_column(app(ReportPresenter::class)->present($summary, 'en')['rows'], 'text');
+    $row = collect($texts)->first(fn (string $text): bool => str_contains($text, 'monthly savings goals'));
+
+    expect($row)->toContain('B (<strong>-€90.00</strong>), E (<strong>-€40.00</strong>), D (<strong>-€1.00</strong>) and 2 more')
+        ->not->toContain('A (');
+});
+
+test('the cashflow card counts goals reached so far in the month still running', function () {
+    [$user, $fund] = surfacesSeptember();
+    surfacesSave($fund, 30000, '2026-10-02');
+
+    $this->actingAs($user)->getJson('/api/cashflow/monthly-savings?month=2026-10')
+        ->assertOk()
+        ->assertJsonPath('data.status', 'in_progress')
+        ->assertJsonPath('data.met', 1)
+        ->assertJsonPath('data.total', 2);
+});

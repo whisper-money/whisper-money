@@ -3974,5 +3974,7 @@
     "See all": "Ver todo",
     "Sum of targets": "Suma de objetivos",
     "You met :met of :total monthly savings goals: :goals.": "Cumpliste :met de :total objetivos de ahorro mensual: :goals.",
-    "against the plan": "respecto al plan"
+    "against the plan": "respecto al plan",
+    ":count more": ":count más",
+    ":met of :total goals reached so far": ":met de :total objetivos alcanzados por ahora"
 }

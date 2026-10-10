@@ -80,6 +80,41 @@ describe('MonthlySavingsCashflowCard', () => {
         );
     });
 
+    it('says what is left in the month still running and hides a share over 100%', async () => {
+        respondWith({
+            month: '2026-10',
+            saved: 20000,
+            target: 50000,
+            difference: -30000,
+            met: 1,
+            total: 2,
+            status: 'in_progress',
+            history: [
+                {
+                    month: '2026-10',
+                    saved: 20000,
+                    target: 50000,
+                    status: 'in_progress',
+                },
+            ],
+        });
+
+        render(
+            <MonthlySavingsCashflowCard
+                month={new Date(2026, 9, 3)}
+                net={10000}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(
+            await screen.findByText('1 of 2 goals reached so far'),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/to go/)).toBeInTheDocument();
+        expect(screen.queryByText(/against the plan/)).toBeNull();
+        expect(screen.queryByText(/net cashflow/)).toBeNull();
+    });
+
     it('stays out of the page when no goal had the month or the load fails', async () => {
         const fetchMock = respondWith(null);
         const { container, rerender } = render(

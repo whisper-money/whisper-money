@@ -29,8 +29,14 @@ interface Props {
  * monthly goal, no card: the dashboard slot is only spent on it when there is
  * something to follow.
  */
-export function MonthlySavingsDashboardCard({ goals, currencyCode }: Props) {
+export function MonthlySavingsDashboardCard({
+    goals: allGoals,
+    currencyCode,
+}: Props) {
     const locale = useLocale();
+    // A goal with no period for this month yet (the daily run has not opened
+    // it) has nothing to show: drawn, it would read as a full bar of €0 of €0.
+    const goals = allGoals.filter((goal) => goal.monthly?.current);
 
     if (goals.length === 0) {
         return null;
@@ -69,14 +75,18 @@ export function MonthlySavingsDashboardCard({ goals, currencyCode }: Props) {
                         target={aggregate.target}
                     />
                     <span className="text-sm text-muted-foreground">
-                        {aggregate.daysLeft !== null &&
-                            daysLeftLabel(aggregate.daysLeft)}
-                        {aggregate.previousTotal > 0 &&
-                            ` · ${__(':month: :met of :total met', {
-                                month: monthName(aggregate.previousMonth),
-                                met: aggregate.previousMet,
-                                total: aggregate.previousTotal,
-                            })}`}
+                        {[
+                            aggregate.daysLeft !== null &&
+                                daysLeftLabel(aggregate.daysLeft),
+                            aggregate.previousTotal > 0 &&
+                                __(':month: :met of :total met', {
+                                    month: monthName(aggregate.previousMonth),
+                                    met: aggregate.previousMet,
+                                    total: aggregate.previousTotal,
+                                }),
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
                     </span>
                 </div>
                 <ul className="flex flex-col gap-2.5 text-sm">
