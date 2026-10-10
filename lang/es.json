@@ -3897,5 +3897,6 @@
     "Statement frequency": "Frecuencia del extracto",
     "Every field is optional. Later statements are assumed to repeat on the same weekday every week. If your bank moves them, update them here.": "Todos los campos son opcionales. Se asume que los siguientes extractos se repiten el mismo día de la semana cada semana. Si tu banco los cambia, actualízalos aquí.",
     "A savings goal can't switch between one-off and monthly.": "Un objetivo de ahorro no puede pasar de puntual a mensual ni al revés.",
-    "Contributions to :goal": "Aportaciones a :goal"
+    "Contributions to :goal": "Aportaciones a :goal",
+    "Pick one of your savings accounts.": "Elige una de tus cuentas de ahorro."
 }

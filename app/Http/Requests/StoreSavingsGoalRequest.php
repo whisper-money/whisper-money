@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Enums\SavingsGoalKind;
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
 use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
+use App\Http\Requests\Concerns\ValidatesSavingsGoalName;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 class StoreSavingsGoalRequest extends FormRequest
 {
-    use ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesUserOwnedResources;
+    use ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesUserOwnedResources;
 
     public function authorize(): bool
     {
@@ -26,14 +27,7 @@ class StoreSavingsGoalRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('labels', 'name')
-                    ->where('user_id', auth()->id())
-                    ->whereNull('deleted_at'),
-            ],
+            'name' => $this->savingsGoalNameRules((string) auth()->id(), creating: true),
             'kind' => ['sometimes', Rule::enum(SavingsGoalKind::class)],
         ];
 
@@ -67,6 +61,7 @@ class StoreSavingsGoalRequest extends FormRequest
     {
         return [
             'name.unique' => __('You already have a label or goal with this name.'),
+            'auto_tag_account_id.exists' => __('Pick one of your savings accounts.'),
             'target_date.date_format' => __('Please enter a valid target date.'),
         ];
     }
