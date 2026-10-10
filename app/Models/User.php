@@ -820,6 +820,15 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
+     * Where a new monthly savings goal's month-end reminder starts. On unless
+     * the user turned the default off.
+     */
+    public function wantsSavingsGoalRemindersByDefault(): bool
+    {
+        return $this->setting->savings_goal_notify_on_month_end_reminder ?? true;
+    }
+
+    /**
      * The one email a day the medals can produce. The rows in the bell are the
      * record of what happened and stay whatever this says.
      */

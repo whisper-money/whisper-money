@@ -1,5 +1,5 @@
 <x-mail::message>
-# {{ __(':days days left of :month', ['days' => $daysLeft, 'month' => $monthName]) }}
+# {{ trans_choice('{1}1 day left in :month|[2,*]:days days left in :month', $daysLeft, ['days' => $daysLeft, 'month' => $monthName]) }}
 
 {{ __('Hi :name, you have put aside :saved of the :target you wanted to save this month for **:goal**.', ['name' => $userName, 'saved' => $savedFormatted, 'target' => $targetFormatted, 'goal' => $goal->name]) }}
 

@@ -65,7 +65,7 @@ class NotificationPreferenceController extends Controller
                     'notify_on_close_to_limit',
                     'notify_on_over_limit',
                 ]),
-            'savingsGoalReminderDefault' => (bool) ($setting->savings_goal_notify_on_month_end_reminder ?? true),
+            'savingsGoalReminderDefault' => $user->wantsSavingsGoalRemindersByDefault(),
             // Only running monthly goals send the month-end reminder.
             'monthlySavingsGoals' => $user->savingsGoals()
                 ->monthly()
