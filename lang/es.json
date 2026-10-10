@@ -3965,7 +3965,6 @@
     "**:goal**: you are at :percent% of it.": "**:goal**: vas al :percent %.",
     "View your goals": "Ver tus objetivos",
     "You can turn this reminder off on each goal or in [notification settings](:url).": "Puedes desactivar este recordatorio en cada objetivo o en los [ajustes de notificaciones](:url).",
-    "Hi :name, you are at :percent% of your :month target for **:goal**.": "Hola :name, vas al :percent % de tu objetivo de :month para **:goal**.",
     ":count missed": ":count no cumplidos",
     ":met of :total goals met": ":met de :total objetivos cumplidos",
     ":month: :met of :total met": ":month: :met de :total cumplidos",
@@ -3976,5 +3975,6 @@
     "You met :met of :total monthly savings goals: :goals.": "Cumpliste :met de :total objetivos de ahorro mensual: :goals.",
     "against the plan": "respecto al plan",
     ":count more": ":count más",
-    ":met of :total goals reached so far": ":met de :total objetivos alcanzados por ahora"
+    ":met of :total goals reached so far": ":met de :total objetivos alcanzados por ahora",
+    "No monthly goal counts in this month.": "Ningún objetivo mensual cuenta en este mes."
 }

@@ -79,15 +79,29 @@ class DashboardController extends Controller
 
     /**
      * The monthly goals still running, for this month's card. An archived goal
-     * has nothing left to save towards.
+     * has nothing left to save towards. The card only needs this month and
+     * the one before (for "September: 1 of 2 met"), so that is all it gets:
+     * no full history, no goal fields it does not draw.
      *
-     * @return list<array<string, mixed>>
+     * @return list<array{id: string, name: string, monthly: array{current: array<string, mixed>|null, history: list<array<string, mixed>>}}>
      */
     private function runningMonthlyGoals(Request $request): array
     {
-        return $this->monthlySavingsGoals->present(
+        $previousMonth = today()->subMonthNoOverflow()->format('Y-m');
+
+        return array_map(fn (array $goal): array => [
+            'id' => $goal['id'],
+            'name' => $goal['name'],
+            'monthly' => [
+                'current' => $goal['monthly']['current'],
+                'history' => array_values(array_filter(
+                    $goal['monthly']['history'],
+                    fn (array $month): bool => $month['month'] === $previousMonth,
+                )),
+            ],
+        ], $this->monthlySavingsGoals->present(
             $request->user()->savingsGoals()->monthly()->notArchived()->listed()->get(),
-        );
+        ));
     }
 
     private function getNetWorthEvolution(Request $request): array

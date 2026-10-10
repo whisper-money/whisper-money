@@ -493,7 +493,7 @@ class SummaryBuilder
     {
         $totals = $this->monthlyGoals->forMonth($user, $month, historyMonths: 1);
 
-        if ($totals === null) {
+        if ($totals === null || $totals['total'] === 0) {
             return null;
         }
 

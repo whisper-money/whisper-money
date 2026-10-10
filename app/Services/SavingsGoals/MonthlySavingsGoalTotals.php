@@ -17,10 +17,11 @@ class MonthlySavingsGoalTotals
     public function __construct(private MonthlySavingsGoalStats $stats) {}
 
     /**
-     * The given month and the ones before it, oldest first. Null when no goal
-     * had that month, partial ones aside.
+     * The given month and the ones before it, oldest first. A month no goal
+     * was judged in still comes back, empty, with the history before it; null
+     * only when no goal had any of those months.
      *
-     * @return array{month: string, saved: int, target: int, difference: int, met: int, total: int, status: SavingsGoalMonthStatus, goals: list<array<string, mixed>>, history: list<array<string, mixed>>}|null
+     * @return array{month: string, saved: int, target: int, difference: int, met: int, total: int, target_pending: bool, status: SavingsGoalMonthStatus|null, goals: list<array<string, mixed>>, history: list<array<string, mixed>>}|null
      */
     public function forMonth(User $user, Carbon $month, int $historyMonths = 6): ?array
     {
@@ -28,13 +29,13 @@ class MonthlySavingsGoalTotals
         $byMonth = $this->byMonth($user, $from->format('Y-m'), $month->format('Y-m'));
         $key = $month->format('Y-m');
 
-        if (! isset($byMonth[$key])) {
+        if ($byMonth === []) {
             return null;
         }
 
         $history = array_values(array_map(fn (array $entry): array => array_diff_key($entry, ['goals' => true]), $byMonth));
 
-        return [...$byMonth[$key], 'history' => $history];
+        return [...($byMonth[$key] ?? self::summarize([], $key)), 'history' => $history];
     }
 
     /**
@@ -69,6 +70,7 @@ class MonthlySavingsGoalTotals
                     'target' => $entry['target'],
                     'difference' => $entry['difference'],
                     'status' => $entry['status'],
+                    'is_live_target' => $entry['is_live_target'],
                     'streak' => $run,
                 ];
             }
@@ -92,6 +94,7 @@ class MonthlySavingsGoalTotals
         $saved = array_sum(array_column($goals, 'saved'));
         $target = array_sum(array_column($goals, 'target'));
         $inProgress = in_array(SavingsGoalMonthStatus::InProgress, array_column($goals, 'status'), true);
+        $waiting = array_filter($goals, self::waitingForIncome(...));
 
         return [
             'month' => $month,
@@ -100,9 +103,14 @@ class MonthlySavingsGoalTotals
             'difference' => $saved - $target,
             // Reached rather than judged: in a month still running it reads as
             // "reached so far", and a closed month is met exactly when reached.
-            'met' => count(array_filter($goals, fn (array $goal): bool => self::reached($goal['saved'], $goal['target']))),
+            'met' => count(array_filter($goals, fn (array $goal): bool => ! self::waitingForIncome($goal) && self::reached($goal['saved'], $goal['target']))),
             'total' => count($goals),
+            // A share of income that has not come in yet is a target of 0 that
+            // is not met: while every goal is in that state the month has no
+            // target to show.
+            'target_pending' => $goals !== [] && count($waiting) === count($goals),
             'status' => match (true) {
+                $goals === [] => null,
                 $inProgress => SavingsGoalMonthStatus::InProgress,
                 self::reached($saved, $target) => SavingsGoalMonthStatus::Met,
                 default => SavingsGoalMonthStatus::Missed,
@@ -117,5 +125,16 @@ class MonthlySavingsGoalTotals
     private static function reached(int $saved, int $target): bool
     {
         return $target <= 0 || $saved >= $target;
+    }
+
+    /**
+     * A month still running whose target follows an income that has not
+     * arrived yet.
+     *
+     * @param  array<string, mixed>  $goal
+     */
+    private static function waitingForIncome(array $goal): bool
+    {
+        return $goal['status'] === SavingsGoalMonthStatus::InProgress && $goal['is_live_target'] && $goal['target'] <= 0;
     }
 }

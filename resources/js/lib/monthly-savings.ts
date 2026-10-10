@@ -1,7 +1,7 @@
 import {
+    MonthlyGoalSnapshot,
     MonthlySavingsMonth,
     MonthlySavingsStatus,
-    SavingsGoal,
 } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 
@@ -74,7 +74,7 @@ export interface MonthlySavingsAggregate {
  * and no verdict to add up.
  */
 export function aggregateMonthlyGoals(
-    goals: SavingsGoal[],
+    goals: MonthlyGoalSnapshot[],
     currentMonth: string,
 ): MonthlySavingsAggregate {
     const current = monthDate(currentMonth);
@@ -112,7 +112,7 @@ export function aggregateMonthlyGoals(
  * "previous month" count follow the stats rather than the browser's clock.
  * Falls back to the browser only when no goal has a month in progress.
  */
-export function currentMonthOf(goals: SavingsGoal[]): string {
+export function currentMonthOf(goals: MonthlyGoalSnapshot[]): string {
     return (
         goals.find((goal) => goal.monthly?.current)?.monthly?.current?.month ??
         monthKey(new Date())
@@ -152,19 +152,6 @@ export function progressPercent(saved: number, target: number): number {
     }
 
     return Math.min(100, Math.max(0, (saved / target) * 100));
-}
-
-/**
- * The bar of a month in progress. A partial month has no target, and a share
- * of an income that has not arrived yet is a target of 0 that is not met:
- * neither draws a full bar.
- */
-export function monthProgressPercent(month: MonthlySavingsMonth): number {
-    if (isTargetUnknown(month)) {
-        return 0;
-    }
-
-    return progressPercent(month.saved, month.target);
 }
 
 /** A month whose target is not known yet: partial, or a live share still at 0. */

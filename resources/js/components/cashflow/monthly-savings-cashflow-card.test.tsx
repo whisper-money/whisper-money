@@ -139,4 +139,72 @@ describe('MonthlySavingsCashflowCard', () => {
 
         await waitFor(() => expect(container).toBeEmptyDOMElement());
     });
+
+    it('keeps the history for a month no goal was judged in', async () => {
+        respondWith({
+            month: '2026-12',
+            saved: 0,
+            target: 0,
+            difference: 0,
+            met: 0,
+            total: 0,
+            target_pending: false,
+            status: null,
+            history: [
+                {
+                    month: '2026-08',
+                    saved: 30000,
+                    target: 50000,
+                    status: 'missed',
+                },
+            ],
+        });
+
+        render(
+            <MonthlySavingsCashflowCard
+                month={new Date(2026, 11, 15)}
+                net={null}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(
+            await screen.findByText('No monthly goal counts in this month.'),
+        ).toBeInTheDocument();
+        expect(screen.getAllByRole('img')).toHaveLength(1);
+    });
+
+    it('says the target is still to come instead of met', async () => {
+        respondWith({
+            month: '2026-10',
+            saved: 0,
+            target: 0,
+            difference: 0,
+            met: 0,
+            total: 1,
+            target_pending: true,
+            status: 'in_progress',
+            history: [
+                {
+                    month: '2026-10',
+                    saved: 0,
+                    target: 0,
+                    status: 'in_progress',
+                },
+            ],
+        });
+
+        render(
+            <MonthlySavingsCashflowCard
+                month={new Date(2026, 9, 15)}
+                net={null}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(
+            await screen.findByText(/the target grows as income comes in/),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Target met')).toBeNull();
+    });
 });

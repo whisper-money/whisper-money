@@ -31,7 +31,7 @@ import { dashboard } from '@/routes';
 import { BreadcrumbItem, SharedData } from '@/types';
 import { type CreditCardUsage } from '@/types/account';
 import { Category } from '@/types/category';
-import { SavingsGoal } from '@/types/savings-goal';
+import { DashboardMonthlyGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
@@ -64,7 +64,7 @@ interface DashboardProps extends SharedData {
     /** Only while the credit card feature is on. */
     creditCardUsage?: Record<string, CreditCardUsage>;
     monthlySummary?: MonthlySummaryNoticeData | null;
-    monthlySavingsGoals?: SavingsGoal[];
+    monthlySavingsGoals?: DashboardMonthlyGoal[];
 }
 
 export default function Dashboard() {
