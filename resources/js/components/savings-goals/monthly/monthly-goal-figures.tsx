@@ -1,6 +1,10 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Progress } from '@/components/ui/progress';
-import { progressPercent } from '@/lib/monthly-savings';
+import {
+    daysLeftLabel,
+    formatRate,
+    progressPercent,
+} from '@/lib/monthly-savings';
 import { cn } from '@/lib/utils';
 import {
     MonthlySavingsCurrent,
@@ -8,7 +12,45 @@ import {
     SavingsGoal,
 } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
+import { Fragment, ReactNode } from 'react';
 import { differenceClassName } from './month-status';
+
+/**
+ * A translated sentence with a component in place of `:amount`, so the amount
+ * still goes through AmountDisplay (and privacy mode) while each language puts
+ * it where its grammar wants: "€180 to go", "Faltan 180 €".
+ */
+export function withAmount(template: string, amount: ReactNode): ReactNode {
+    const [before, ...rest] = template.split(':amount');
+
+    return (
+        <>
+            {before}
+            {rest.length > 0 && (
+                <>
+                    {amount}
+                    {rest.map((part, index) => (
+                        <Fragment key={index}>{part}</Fragment>
+                    ))}
+                </>
+            )}
+        </>
+    );
+}
+
+/** What is still missing to reach a month's target. */
+export function AmountToGo({
+    amount,
+    currencyCode,
+}: {
+    amount: number;
+    currencyCode: string;
+}) {
+    return withAmount(
+        __(':amount to go'),
+        <AmountDisplay amountInCents={amount} currencyCode={currencyCode} />,
+    );
+}
 
 /** "300 € a month" or "20% of income": what the goal asks for. */
 export function MonthlyTargetRule({
@@ -37,10 +79,6 @@ export function MonthlyTargetRule({
             {__('a month')}
         </>
     );
-}
-
-export function formatRate(rate: number | null): string {
-    return String(Number(rate ?? 0));
 }
 
 /**
@@ -147,26 +185,25 @@ function RemainingLine({
     current: MonthlySavingsCurrent;
     currencyCode: string;
 }) {
-    const daysLeft = __(':count days left', { count: current.days_left });
-
     if (current.remaining <= 0) {
         return (
             <span className="text-sm text-emerald-700 dark:text-emerald-400">
-                {__('Target met for this month')} · {daysLeft}
+                {__('Target met for this month')} ·{' '}
+                {daysLeftLabel(current.days_left)}
             </span>
         );
     }
 
     return (
         <span className="text-sm text-muted-foreground">
-            <AmountDisplay
-                amountInCents={current.remaining}
+            <AmountToGo
+                amount={current.remaining}
                 currencyCode={currencyCode}
             />{' '}
-            {__('to go')} ·{' '}
+            ·{' '}
             {current.is_live_target
                 ? __('the target grows as income comes in')
-                : daysLeft}
+                : daysLeftLabel(current.days_left)}
         </span>
     );
 }

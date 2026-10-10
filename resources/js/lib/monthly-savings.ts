@@ -3,6 +3,7 @@ import {
     MonthlySavingsStatus,
     SavingsGoal,
 } from '@/types/savings-goal';
+import { __ } from '@/utils/i18n';
 
 /** A cell of the 12-month strip; `none` is a month before the goal existed. */
 export type MonthStripStatus = MonthlySavingsStatus | 'none';
@@ -92,6 +93,27 @@ export function aggregateMonthlyGoals(
         previousMet: previous.filter((entry) => entry.status === 'met').length,
         previousTotal: previous.length,
     };
+}
+
+/**
+ * The month the server considers current for these goals, so the strip and the
+ * "previous month" count follow the stats rather than the browser's clock.
+ * Falls back to the browser only when no goal has a month in progress.
+ */
+export function currentMonthOf(goals: SavingsGoal[]): string {
+    return (
+        goals.find((goal) => goal.monthly?.current)?.monthly?.current?.month ??
+        monthKey(new Date())
+    );
+}
+
+export function daysLeftLabel(count: number): string {
+    return count === 1 ? __('1 day left') : __(':count days left', { count });
+}
+
+/** A month's percentage-of-income rate as written in copy: 20, 12.5. */
+export function formatRate(rate: number | null): string {
+    return String(Number(rate ?? 0));
 }
 
 /** Progress towards a target, clamped to 0-100. A zero target is complete. */

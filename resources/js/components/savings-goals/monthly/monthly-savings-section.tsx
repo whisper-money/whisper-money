@@ -2,8 +2,9 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { useLocale } from '@/hooks/use-locale';
 import {
     aggregateMonthlyGoals,
+    currentMonthOf,
+    daysLeftLabel,
     monthDate,
-    monthKey,
 } from '@/lib/monthly-savings';
 import { SavingsGoal } from '@/types/savings-goal';
 import { formatDate, formatMonthYear } from '@/utils/date';
@@ -24,7 +25,7 @@ interface Props {
  */
 export function MonthlySavingsSection({ goals, currencyCode }: Props) {
     const locale = useLocale();
-    const currentMonth = monthKey(new Date());
+    const currentMonth = currentMonthOf(goals);
     const aggregate = aggregateMonthlyGoals(goals, currentMonth);
 
     return (
@@ -44,7 +45,7 @@ export function MonthlySavingsSection({ goals, currencyCode }: Props) {
                     <p className="text-sm text-muted-foreground">
                         {formatMonthYear(monthDate(currentMonth), locale)}
                         {aggregate.daysLeft !== null &&
-                            ` · ${__(':count days left', { count: aggregate.daysLeft })}`}
+                            ` · ${daysLeftLabel(aggregate.daysLeft)}`}
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-6 text-sm">

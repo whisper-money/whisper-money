@@ -1,7 +1,9 @@
+import { Badge } from '@/components/ui/badge';
 import { MonthStripStatus } from '@/lib/monthly-savings';
 import { cn } from '@/lib/utils';
 import { MonthlySavingsStatus } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
+import { ReactNode } from 'react';
 
 /**
  * The colour of a month, shared by the strip, the bar chart and the legend so
@@ -14,6 +16,18 @@ export const MONTH_STATUS_FILL: Record<MonthStripStatus, string> = {
         'border-[1.5px] border-dashed border-foreground/80 bg-background',
     none: 'bg-muted',
 };
+
+/** The "Monthly" pill on a goal's card and page. */
+export function MonthlyBadge({ children }: { children: ReactNode }) {
+    return (
+        <Badge
+            variant="outline"
+            className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+        >
+            {children}
+        </Badge>
+    );
+}
 
 export function monthStatusLabel(status: MonthStripStatus): string {
     const labels: Record<MonthStripStatus, string> = {
