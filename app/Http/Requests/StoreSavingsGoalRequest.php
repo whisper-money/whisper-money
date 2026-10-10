@@ -2,12 +2,18 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AccountType;
+use App\Enums\SavingsGoalKind;
+use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreSavingsGoalRequest extends FormRequest
 {
+    use ValidatesMonthlySavingsTarget, ValidatesUserOwnedResources;
+
     public function authorize(): bool
     {
         return true;
@@ -18,7 +24,7 @@ class StoreSavingsGoalRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => [
                 'required',
                 'string',
@@ -27,6 +33,21 @@ class StoreSavingsGoalRequest extends FormRequest
                     ->where('user_id', auth()->id())
                     ->whereNull('deleted_at'),
             ],
+            'kind' => ['sometimes', Rule::enum(SavingsGoalKind::class)],
+        ];
+
+        if ($this->isMonthly()) {
+            return [
+                ...$rules,
+                ...$this->monthlyTargetRules('required'),
+                // Only a savings account: on any other type an incoming transfer
+                // counts against the goal, not towards it.
+                'auto_tag_account_id' => ['nullable', 'uuid', $this->userOwnedAccountOfType(AccountType::Savings)],
+            ];
+        }
+
+        return [
+            ...$rules,
             'target_amount' => ['required', 'integer', 'min:1'],
             'initial_amount' => ['nullable', 'integer', 'min:0'],
             // Pin the format and cap the year: 'date' alone silently mangles a
@@ -37,6 +58,11 @@ class StoreSavingsGoalRequest extends FormRequest
             // than real target dates.
             'target_date' => ['nullable', 'date_format:Y-m-d', 'after:today', 'before_or_equal:2100-01-01'],
         ];
+    }
+
+    public function isMonthly(): bool
+    {
+        return $this->input('kind') === SavingsGoalKind::Monthly->value;
     }
 
     /**

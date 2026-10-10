@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\AccountType;
+use App\Enums\MonthlyTargetType;
+use App\Enums\SavingsGoalKind;
 use App\Models\Concerns\Archivable;
 use App\Models\Concerns\BelongsToSpace;
 use Database\Factories\SavingsGoalFactory;
@@ -11,6 +13,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +23,11 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $target_date
  * @property Carbon|null $archived_at
  * @property int|null $archived_saved_amount
+ * @property SavingsGoalKind $kind
+ * @property MonthlyTargetType|null $monthly_target_type
+ * @property int|null $monthly_target_amount
+ * @property float|null $monthly_target_rate
+ * @property bool $notify_on_month_end_reminder
  */
 class SavingsGoal extends Model
 {
@@ -31,12 +39,28 @@ class SavingsGoal extends Model
         'space_id',
         'label_id',
         'name',
+        'kind',
         'position',
         'target_amount',
         'initial_amount',
         'target_date',
         'archived_at',
         'archived_saved_amount',
+        'monthly_target_type',
+        'monthly_target_amount',
+        'monthly_target_rate',
+        'notify_on_month_end_reminder',
+    ];
+
+    /**
+     * Mirrors the column defaults, so a goal that was just created reads the
+     * same before and after a refresh.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'kind' => 'one_off',
+        'notify_on_month_end_reminder' => true,
     ];
 
     /** @var list<string> */
@@ -53,6 +77,11 @@ class SavingsGoal extends Model
             'target_date' => 'date:Y-m-d',
             'archived_at' => 'datetime',
             'archived_saved_amount' => 'integer',
+            'kind' => SavingsGoalKind::class,
+            'monthly_target_type' => MonthlyTargetType::class,
+            'monthly_target_amount' => 'integer',
+            'monthly_target_rate' => 'float',
+            'notify_on_month_end_reminder' => 'boolean',
         ];
     }
 
@@ -66,6 +95,39 @@ class SavingsGoal extends Model
     public function label(): BelongsTo
     {
         return $this->belongsTo(Label::class);
+    }
+
+    /**
+     * The calendar months of a monthly goal, each with the target it was held to.
+     *
+     * @return HasMany<SavingsGoalPeriod, $this>
+     */
+    public function periods(): HasMany
+    {
+        return $this->hasMany(SavingsGoalPeriod::class);
+    }
+
+    public function isMonthly(): bool
+    {
+        return $this->kind === SavingsGoalKind::Monthly;
+    }
+
+    /**
+     * @param  Builder<SavingsGoal>  $query
+     * @return Builder<SavingsGoal>
+     */
+    public function scopeMonthly(Builder $query): Builder
+    {
+        return $query->where('kind', SavingsGoalKind::Monthly->value);
+    }
+
+    /**
+     * @param  Builder<SavingsGoal>  $query
+     * @return Builder<SavingsGoal>
+     */
+    public function scopeOneOff(Builder $query): Builder
+    {
+        return $query->where('kind', SavingsGoalKind::OneOff->value);
     }
 
     /**
@@ -86,7 +148,7 @@ class SavingsGoal extends Model
      * @param  iterable<int, string>  $labelIds
      * @return Builder<Transaction>
      */
-    private static function taggedContributions(iterable $labelIds): Builder
+    public static function taggedContributions(iterable $labelIds): Builder
     {
         return Transaction::query()
             ->join('label_transaction', 'label_transaction.transaction_id', '=', 'transactions.id')

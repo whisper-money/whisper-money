@@ -2,12 +2,17 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
+use App\Models\SavingsGoal;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateSavingsGoalRequest extends FormRequest
 {
+    use ValidatesMonthlySavingsTarget;
+
     public function authorize(): bool
     {
         return true;
@@ -18,7 +23,7 @@ class UpdateSavingsGoalRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => [
                 'sometimes',
                 'required',
@@ -27,8 +32,24 @@ class UpdateSavingsGoalRequest extends FormRequest
                 Rule::unique('labels', 'name')
                     ->where('user_id', auth()->id())
                     ->whereNull('deleted_at')
-                    ->ignore($this->route('savingsGoal')?->label_id),
+                    ->ignore($this->goal()?->label_id),
             ],
+            // A goal keeps the kind it was created with: its months and its
+            // one-off progress are two different histories, and neither turns
+            // into the other.
+            'kind' => ['sometimes', function (string $attribute, mixed $value, Closure $fail): void {
+                if ($value !== $this->goal()?->kind->value) {
+                    $fail(__('A savings goal can\'t switch between one-off and monthly.'));
+                }
+            }],
+        ];
+
+        if ($this->goal()?->isMonthly()) {
+            return [...$rules, ...$this->monthlyTargetRules('sometimes')];
+        }
+
+        return [
+            ...$rules,
             'target_amount' => ['sometimes', 'required', 'integer', 'min:1'],
             'initial_amount' => ['sometimes', 'required', 'integer', 'min:0'],
             // Pin the format and bound the year for the same reason as in
@@ -39,6 +60,13 @@ class UpdateSavingsGoalRequest extends FormRequest
             // keeps a dropped-digit typo like 0026-11-10 out.
             'target_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:1900-01-01', 'before_or_equal:2100-01-01'],
         ];
+    }
+
+    public function goal(): ?SavingsGoal
+    {
+        $goal = $this->route('savingsGoal');
+
+        return $goal instanceof SavingsGoal ? $goal : null;
     }
 
     /**
