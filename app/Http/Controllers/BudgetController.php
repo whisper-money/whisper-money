@@ -66,7 +66,7 @@ class BudgetController extends Controller
             // account against, each with the running goal it already feeds.
             'autoTagAccounts' => Inertia::optional(fn () => $this->autoTagAccounts($user)),
             // What the create dialog's month-end reminder starts at.
-            'savingsGoalReminderDefault' => (bool) ($user->setting->savings_goal_notify_on_month_end_reminder ?? true),
+            'savingsGoalReminderDefault' => $user->wantsSavingsGoalRemindersByDefault(),
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }

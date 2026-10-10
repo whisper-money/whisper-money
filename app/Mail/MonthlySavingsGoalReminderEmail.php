@@ -25,6 +25,13 @@ class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     /**
+     * A goal deleted before the email left has nothing left to remind about.
+     *
+     * @var bool
+     */
+    public $deleteWhenMissingModels = true;
+
+    /**
      * @var int
      */
     public $tries = 5;
@@ -52,7 +59,7 @@ class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
                 config('mail.from.address', 'no-reply@whisper.money'),
                 config('mail.from.name', 'Whisper Money'),
             ),
-            subject: __(':goal: :days days left to reach this month\'s target', [
+            subject: trans_choice('{1}:goal: 1 day left to reach this month\'s target|[2,*]:goal: :days days left to reach this month\'s target', $this->daysLeft, [
                 'goal' => $this->goal->name,
                 'days' => $this->daysLeft,
             ]),

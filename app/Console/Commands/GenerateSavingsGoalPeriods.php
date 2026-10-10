@@ -31,11 +31,15 @@ class GenerateSavingsGoalPeriods extends Command
         foreach ($goals as $goal) {
             // One goal that fails must not hold back everybody else's months.
             try {
-                $closed = $this->periods->advance($goal);
-                $closedCount += $closed->count();
+                $closedCount += $this->periods->advance($goal)->count();
+            } catch (Throwable $exception) {
+                report($exception);
+            }
 
-                $this->notifier->monthsClosed($goal, $closed);
-                $this->notifier->remindIfBehind($goal);
+            // Apart from the close: a notice that fails is retried tomorrow,
+            // and must not keep the goal's months from moving on.
+            try {
+                $this->notifier->notify($goal);
             } catch (Throwable $exception) {
                 report($exception);
             }

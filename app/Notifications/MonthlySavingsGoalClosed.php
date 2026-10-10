@@ -46,7 +46,7 @@ class MonthlySavingsGoalClosed extends Notification
             'difference' => $this->month['difference'],
             'met' => $this->month['status'] === 'met',
             'streak' => $this->streak,
-            'currency_code' => $notifiable->currency_code,
+            'currency_code' => $notifiable->currency_code ?? 'USD',
         ];
     }
 }
