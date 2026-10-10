@@ -148,8 +148,8 @@ it('edits the target and archives the goal, which moves it to the archived secti
 
     $page->assertSee('New kitchen')
         ->assertSee('25%')
-        ->click('[aria-label="More options"]')
-        ->click('[role="menuitem"]:has-text("Edit goal")')
+        // Edit and Archive sit in the page header; only Delete is in the menu.
+        ->click('button:text-is("Edit")')
         ->assertSee('Edit Savings Goal')
         // Focus first: an AmountInput rewrites itself with the amount it
         // already holds the moment it gains focus, which lands on top of a
@@ -165,8 +165,7 @@ it('edits the target and archives the goal, which moves it to the archived secti
 
     expect($goal->fresh()->target_amount)->toBe(50000);
 
-    $page->click('[aria-label="More options"]')
-        ->click('[role="menuitem"]:has-text("Archive goal")')
+    $page->click('button:text-is("Archive")')
         ->assertSee('Archive savings goal')
         ->assertSee('The amount saved is frozen at what it is today, whatever happens to those transactions afterwards.')
         ->click('[role="alertdialog"] button:has-text("Archive goal")')

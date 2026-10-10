@@ -1,0 +1,130 @@
+import { Badge } from '@/components/ui/badge';
+import { MonthStripStatus } from '@/lib/monthly-savings';
+import { cn } from '@/lib/utils';
+import { MonthlySavingsStatus } from '@/types/savings-goal';
+import { __ } from '@/utils/i18n';
+import { ReactNode } from 'react';
+
+/**
+ * The colour of a month, shared by the strip, the bar chart and the legend so
+ * the three never disagree about what green means.
+ */
+export const MONTH_STATUS_FILL: Record<MonthStripStatus, string> = {
+    met: 'bg-emerald-600 dark:bg-emerald-500',
+    missed: 'bg-orange-300 dark:bg-orange-400/70',
+    in_progress:
+        'border-[1.5px] border-dashed border-foreground/80 bg-background',
+    partial: 'bg-emerald-600/30 dark:bg-emerald-500/30',
+    archived: 'bg-muted-foreground/30',
+    none: 'bg-muted',
+};
+
+/** The "Monthly" pill on a goal's card and page. */
+export function MonthlyBadge({ children }: { children: ReactNode }) {
+    return (
+        <Badge
+            variant="outline"
+            className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+        >
+            {children}
+        </Badge>
+    );
+}
+
+export function monthStatusLabel(status: MonthStripStatus): string {
+    const labels: Record<MonthStripStatus, string> = {
+        met: __('Met'),
+        missed: __('Missed'),
+        in_progress: __('In progress'),
+        partial: __('Partial month'),
+        archived: __('Archived'),
+        none: __('Before it existed'),
+    };
+
+    return labels[status];
+}
+
+/** Whether a month got a verdict, so its target and difference mean something. */
+export function isJudged(status: MonthlySavingsStatus): boolean {
+    return status === 'met' || status === 'missed';
+}
+
+/** A month shown without a target or a verdict: partial or archived. */
+export function hasNoVerdict(status: MonthlySavingsStatus): boolean {
+    return status === 'partial' || status === 'archived';
+}
+
+/**
+ * The legend for a set of months: the given statuses, plus "partial" and
+ * "archived" only when one of the months is, so goals without one are not
+ * taught a term they will never see.
+ */
+export function legendStatuses(
+    base: MonthStripStatus[],
+    months: { status: MonthlySavingsStatus }[],
+): MonthStripStatus[] {
+    const extra = (['partial', 'archived'] as const).filter((status) =>
+        months.some((month) => month.status === status),
+    );
+
+    return [...base, ...extra];
+}
+
+/**
+ * What stands in for "months met" before any month was judged: the first one
+ * is still running, or — for an archived goal — none ever will be.
+ */
+export function noJudgedMonthYet(archived: boolean): string {
+    return archived
+        ? __('No full month before it was archived')
+        : __('The first month is still in progress');
+}
+
+/** Text colour for a signed difference: ahead reads green, behind orange. */
+export function differenceClassName(difference: number): string {
+    if (difference > 0) {
+        return 'text-emerald-700 dark:text-emerald-400';
+    }
+
+    return difference < 0 ? 'text-orange-700 dark:text-orange-400' : '';
+}
+
+export function MonthStatusBadge({ status }: { status: MonthlySavingsStatus }) {
+    return (
+        <span
+            className={cn(
+                'inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+                status === 'met' &&
+                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+                status === 'missed' &&
+                    'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+                (status === 'in_progress' || hasNoVerdict(status)) &&
+                    'bg-muted text-muted-foreground',
+            )}
+        >
+            {monthStatusLabel(status)}
+        </span>
+    );
+}
+
+export function MonthStatusLegend({
+    statuses = ['met', 'missed', 'in_progress', 'none'],
+}: {
+    statuses?: MonthStripStatus[];
+}) {
+    return (
+        <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+            {statuses.map((status) => (
+                <span key={status} className="flex items-center gap-1.5">
+                    <span
+                        className={cn(
+                            'size-3 rounded-[3px]',
+                            MONTH_STATUS_FILL[status],
+                        )}
+                    />
+                    {monthStatusLabel(status)}
+                </span>
+            ))}
+        </div>
+    );
+}

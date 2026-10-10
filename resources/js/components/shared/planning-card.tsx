@@ -43,14 +43,17 @@ export function PlanningCard({
     dimmed = false,
 }: Props) {
     return (
-        <Card className={cn(dimmed && 'opacity-60')}>
+        // min-w-0 all the way down: a long name without spaces truncates
+        // instead of widening the card past its grid column.
+        <Card className={cn('min-w-0', dimmed && 'opacity-60')}>
             <CardHeader>
-                <div className="flex items-start justify-between">
-                    <div className="space-y-1">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
                         <CardTitle className="text-xl">
                             <Link
                                 href={href}
-                                className="-my-1 -ml-1.5 inline-flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                                title={title}
+                                className="-my-1 -ml-1.5 block max-w-full truncate rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                             >
                                 {title}
                             </Link>
@@ -61,7 +64,7 @@ export function PlanningCard({
                             </CardDescription>
                         )}
                     </div>
-                    {badge}
+                    <div className="shrink-0">{badge}</div>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">

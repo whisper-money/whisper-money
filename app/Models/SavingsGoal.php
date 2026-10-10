@@ -10,6 +10,7 @@ use App\Models\Concerns\BelongsToSpace;
 use Carbon\CarbonInterface;
 use Database\Factories\SavingsGoalFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -192,6 +193,21 @@ class SavingsGoal extends Model
     }
 
     /**
+     * Goals in the order the budgets index lists them, with the label each one
+     * saves under. Archiving soft-deletes the label, so it has to be read
+     * through the trashed scope or an archived goal loses the name it saved under.
+     *
+     * @param  Builder<SavingsGoal>  $query
+     * @return Builder<SavingsGoal>
+     */
+    public function scopeListed(Builder $query): Builder
+    {
+        return $query->with(['label' => fn ($query) => $query->withTrashed()])
+            ->orderBy('position')
+            ->orderBy('name');
+    }
+
+    /**
      * What a tagged transaction contributes to a goal, as SQL. On a savings
      * account the money arriving IS the contribution, so the amount counts as
      * it stands (+ adds, a withdrawal subtracts). On any other account type the
@@ -269,11 +285,19 @@ class SavingsGoal extends Model
      */
     public static function withStatsForUser(User $user): array
     {
-        // Archiving soft-deletes the label, so it has to be read through the
-        // trashed scope or an archived goal loses the name it saved under.
         // Monthly goals have no total to reach; they are listed on their own.
-        $goals = $user->savingsGoals()->oneOff()->orderBy('position')->orderBy('name')->with(['label' => fn ($query) => $query->withTrashed()])->get();
+        return self::withStats($user->savingsGoals()->oneOff()->listed()->get());
+    }
 
+    /**
+     * The progress of one-off goals already loaded with their labels, so a page
+     * that lists both kinds reads the goals once.
+     *
+     * @param  Collection<int, SavingsGoal>  $goals
+     * @return list<array<string, mixed>>
+     */
+    public static function withStats(Collection $goals): array
+    {
         // ponytail: one grouped sum+min for all goals' labels avoids N+1 across the list.
         $aggByLabel = self::taggedContributions($goals->pluck('label_id')->filter())
             ->groupBy('label_transaction.label_id')
@@ -300,7 +324,7 @@ class SavingsGoal extends Model
                     $goal->initial_amount,
                 ),
             ]);
-        })->all();
+        })->values()->all();
     }
 
     /**
