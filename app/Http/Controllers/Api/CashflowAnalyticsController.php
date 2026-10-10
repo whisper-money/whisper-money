@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\MonthlySavingsTotalsRequest;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\CashflowSummaryService;
@@ -12,6 +13,7 @@ use App\Services\CategoryTree;
 use App\Services\Concerns\ConvertsTransactionCurrency;
 use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
+use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,6 +32,7 @@ class CashflowAnalyticsController extends Controller
         private ExchangeRateService $exchangeRateService,
         private CategoryTree $tree,
         private CashflowSummaryService $summaries,
+        private MonthlySavingsGoalTotals $monthlySavings,
     ) {}
 
     public function summary(Request $request): JsonResponse
@@ -171,6 +174,17 @@ class CashflowAnalyticsController extends Controller
             'data' => $currentWithPercentage,
             'total' => $currentTotal,
             'previous_total' => $previousTotal,
+        ]);
+    }
+
+    /**
+     * Every monthly goal added up for one month, with the months before it. The
+     * data is null when no monthly goal ran that month.
+     */
+    public function monthlySavings(MonthlySavingsTotalsRequest $request): JsonResponse
+    {
+        return $this->cashflowJson([
+            'data' => $this->monthlySavings->forMonth($request->user(), $request->month()),
         ]);
     }
 

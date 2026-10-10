@@ -99,6 +99,7 @@ class ReportPresenter
             $this->dropRow($summary, $locale, $month),
             $this->investedRow($summary, $locale),
             $this->budgetsRow($summary, $locale),
+            $this->monthlyGoalsRow($summary, $locale),
             $this->goalRow($summary, $locale),
         ];
 
@@ -277,12 +278,54 @@ class ReportPresenter
                     'total' => $this->strong(Figures::count($total, $locale)),
                     'names' => $this->overspentList($summary, $overspent),
                 ]),
+            ...$this->dots($met, $total - $met, __(':count over', ['count' => Figures::count($total - $met, $locale)]), $locale),
+        ];
+    }
+
+    /**
+     * Each monthly goal against that month's own target, by how far it landed
+     * above or below it.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function monthlyGoalsRow(MonthlySummary $summary, string $locale): ?array
+    {
+        $section = $summary->figure('monthly_goals');
+
+        if ($section === null) {
+            return null;
+        }
+
+        $met = (int) $section['met'];
+        $missed = (int) $section['total'] - $met;
+
+        return [
+            'text' => __('You met :met of :total monthly savings goals: :goals.', [
+                'met' => $this->strong(Figures::count($met, $locale)),
+                'total' => $this->strong(Figures::count((int) $section['total'], $locale)),
+                'goals' => $this->list(array_map(
+                    fn (array $goal): string => e((string) $goal['name']).' ('.$this->strong($this->signedMoney($summary, (int) $goal['difference'])).')',
+                    (array) $section['goals'],
+                ), escape: false),
+            ]),
+            ...$this->dots($met, $missed, __(':count missed', ['count' => Figures::count($missed, $locale)]), $locale),
+        ];
+    }
+
+    /**
+     * A row of dots, one per item, the met ones filled.
+     *
+     * @return array{viz: string, data: array<string, mixed>}
+     */
+    private function dots(int $met, int $over, string $right, string $locale): array
+    {
+        return [
             'viz' => 'dots',
             'data' => [
                 'met' => $met,
-                'over' => $total - $met,
+                'over' => $over,
                 'left' => __(':count met', ['count' => Figures::count($met, $locale)]),
-                'right' => __(':count over', ['count' => Figures::count($total - $met, $locale)]),
+                'right' => $right,
             ],
         ];
     }
@@ -456,6 +499,11 @@ class ReportPresenter
         $locale = $summary->user?->formatLocale() ?? app()->getLocale();
 
         return Money::formatIn($amount, (string) $summary->figure('currency', 'EUR'), $locale);
+    }
+
+    private function signedMoney(MonthlySummary $summary, int $amount): string
+    {
+        return ($amount > 0 ? '+' : '').$this->money($summary, $amount);
     }
 
     /**

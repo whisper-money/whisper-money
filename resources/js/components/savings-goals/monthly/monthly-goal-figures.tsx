@@ -3,7 +3,8 @@ import { Progress } from '@/components/ui/progress';
 import {
     daysLeftLabel,
     formatRate,
-    monthProgressPercent,
+    isTargetUnknown,
+    progressPercent,
 } from '@/lib/monthly-savings';
 import { cn } from '@/lib/utils';
 import {
@@ -188,10 +189,10 @@ export function CurrentMonthProgress({
                     <MonthTarget month={current} currencyCode={currencyCode} />
                 </span>
             </div>
-            <Progress
-                value={monthProgressPercent(current)}
-                className="h-2"
-                indicatorClassName="bg-emerald-600 dark:bg-emerald-500"
+            <MonthlyGoalProgress
+                saved={current.saved}
+                target={current.target}
+                empty={isTargetUnknown(current)}
             />
             <RemainingLine current={current} currencyCode={currencyCode} />
         </div>
@@ -235,5 +236,54 @@ function RemainingLine({
                 ? __('the target grows as income comes in')
                 : daysLeftLabel(current.days_left)}
         </span>
+    );
+}
+
+/** "€120 of €300", the saved figure first and larger. */
+export function SavedOfTarget({
+    saved,
+    target,
+    currencyCode,
+}: {
+    saved: number;
+    target: number;
+    currencyCode: string;
+}) {
+    return (
+        <span className="text-2xl font-semibold tabular-nums">
+            <AmountDisplay amountInCents={saved} currencyCode={currencyCode} />{' '}
+            <span className="text-sm font-normal text-muted-foreground">
+                {__('of')}{' '}
+                <AmountDisplay
+                    amountInCents={target}
+                    currencyCode={currencyCode}
+                />
+            </span>
+        </span>
+    );
+}
+
+/**
+ * The green bar every monthly goal is drawn with. `empty` when the target is
+ * not known yet (a partial month, or a live share of income still at 0), so
+ * a target of 0 does not draw as a full bar.
+ */
+export function MonthlyGoalProgress({
+    saved,
+    target,
+    empty = false,
+    className = 'h-2',
+}: {
+    saved: number;
+    target: number;
+    empty?: boolean;
+    className?: string;
+}) {
+    return (
+        <Progress
+            value={empty ? 0 : progressPercent(saved, target)}
+            className={className}
+            indicatorClassName="bg-emerald-600 dark:bg-emerald-500"
+        />
     );
 }
