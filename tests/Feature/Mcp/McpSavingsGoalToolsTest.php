@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Label;
 use App\Models\SavingsGoal;
+use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
@@ -240,4 +241,63 @@ test('a field of the other kind is refused instead of ignored', function () {
 
     expect($oneOff->fresh()->isMonthly())->toBeFalse()
         ->and($monthly->fresh()->target_amount)->toBe(0);
+});
+
+test('savings goal tools work inside the space they are given', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = mcpGoalUser();
+    $personal = mcpMonthlyGoal($user, ['name' => 'Personal fund']);
+    $household = Space::factory()->create(['owner_id' => $user->id, 'name' => 'Household']);
+    $sharedSavings = Account::factory()->create(['user_id' => $user->id, 'space_id' => $household->id, 'type' => AccountType::Savings, 'currency_code' => 'EUR']);
+
+    // The same name is free in another space, like labels.
+    callSavingsGoalTool($user, CreateSavingsGoal::class, [
+        'name' => 'Personal fund',
+        'kind' => 'monthly',
+        'monthly_target_type' => 'amount',
+        'monthly_target_amount' => 20000,
+        'auto_tag_account_id' => $sharedSavings->id,
+        'space' => $household->id,
+    ])->assertOk();
+
+    $shared = SavingsGoal::query()->forSpace($household)->sole();
+
+    expect($shared->label->space_id)->toBe($household->id)
+        ->and(AutomationRule::query()->where('user_id', $user->id)->sole()->space_id)->toBe($household->id);
+
+    callSavingsGoalTool($user, ListSavingsGoals::class, ['space' => $household->id])
+        ->assertOk()
+        ->assertSee('"id":"'.$shared->id.'"')
+        ->assertDontSee('"id":"'.$personal->id.'"');
+
+    callSavingsGoalTool($user, ListSavingsGoals::class)
+        ->assertOk()
+        ->assertSee('"id":"'.$personal->id.'"')
+        ->assertDontSee('"id":"'.$shared->id.'"');
+
+    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $shared->id, 'name' => 'Elsewhere'])
+        ->assertHasErrors()->assertSee('No savings goal with id');
+    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $shared->id, 'space' => $household->id, 'name' => 'Household fund'])
+        ->assertOk();
+
+    expect($shared->fresh()->name)->toBe('Household fund');
+});
+
+test('create_savings_goal refuses an auto-tag account from another space', function () {
+    $user = mcpGoalUser();
+    $elsewhere = Account::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => Space::factory()->create(['owner_id' => $user->id])->id,
+        'type' => AccountType::Savings,
+    ]);
+
+    callSavingsGoalTool($user, CreateSavingsGoal::class, [
+        'name' => 'Fund',
+        'kind' => 'monthly',
+        'monthly_target_type' => 'amount',
+        'monthly_target_amount' => 100,
+        'auto_tag_account_id' => $elsewhere->id,
+    ])->assertHasErrors()->assertSee('No account with id');
+
+    expect($user->savingsGoals()->count())->toBe(0);
 });
