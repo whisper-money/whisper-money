@@ -42,7 +42,7 @@ export function CreditCardUsageSummary({
             ) : (
                 <>
                     <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                        {__('of')}
+                        {__('In use of')}
                         <AmountDisplay
                             amountInCents={limit}
                             currencyCode={currencyCode}

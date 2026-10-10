@@ -48,6 +48,20 @@ export interface AccountWithMetrics extends Account {
 }
 
 /**
+ * The currency a row's figures are drawn in: a credit card's usage stays in
+ * the card's own currency, unconverted, while balances arrive converted to
+ * the one on display.
+ */
+export function figuresCurrencyCode(
+    account: Pick<AccountWithMetrics, 'currency_code' | 'creditCardUsage'>,
+    displayCurrencyCode: string | undefined,
+): string {
+    return account.creditCardUsage
+        ? account.currency_code
+        : (displayCurrencyCode ?? account.currency_code);
+}
+
+/**
  * A credit card's row once its usage is known: the usage stands in for the
  * balance, and the sparkline follows what is in use day by day instead of a
  * balance nobody keeps.

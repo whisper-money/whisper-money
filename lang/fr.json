@@ -2934,5 +2934,6 @@
     "Show amounts in this block": "Afficher les montants de ce bloc",
     "Hide amounts in this block": "Masquer les montants de ce bloc",
     "In use": "Utilisé",
-    "Credit limit in use": "Plafond de crédit utilisé"
+    "Credit limit in use": "Plafond de crédit utilisé",
+    "In use of": "Utilisé sur"
 }

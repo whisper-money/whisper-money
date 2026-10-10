@@ -5,7 +5,10 @@ import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indica
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
-import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import {
+    AccountWithMetrics,
+    figuresCurrencyCode,
+} from '@/hooks/use-dashboard-data';
 import { cn } from '@/lib/utils';
 import { formatAccountType, supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -47,10 +50,7 @@ export function AccountListCard({
     displayCurrencyCode,
     dragHandle,
 }: AccountListCardProps) {
-    // A credit card's usage stays in the card's own currency, unconverted.
-    const currencyCode = account.creditCardUsage
-        ? account.currency_code
-        : (displayCurrencyCode ?? account.currency_code);
+    const currencyCode = figuresCurrencyCode(account, displayCurrencyCode);
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
         useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
