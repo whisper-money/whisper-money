@@ -235,6 +235,8 @@ export interface SharedData {
     achievements: AchievementsProgress | null;
     /** Null for guests. */
     challenges: Challenges | null;
+    /** Whether the header offers its own add-transaction button. */
+    showHeaderAddTransaction: boolean;
     expiredBankingConnections: ExpiredBankingConnectionNotification[];
     locale: string;
     translations: Record<string, string>;

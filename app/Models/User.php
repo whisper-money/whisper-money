@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DripEmailType;
 use App\Enums\PlanFeature;
+use App\Enums\TransactionSource;
 use App\Features\FullImport;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
@@ -458,6 +459,41 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         }
 
         return $this->features()->active(FullImport::class);
+    }
+
+    /**
+     * How far back the header looks to decide whether the user adds
+     * transactions by hand, and the share of them that has to be manual.
+     */
+    public const MANUAL_ENTRY_WINDOW_DAYS = 30;
+
+    public const MANUAL_ENTRY_MIN_SHARE = 0.25;
+
+    /**
+     * Whether the user adds a meaningful share of their transactions by hand:
+     * of the rows created inside the window, at least the minimum share were
+     * typed in rather than imported or synced. Judged on `created_at`, not the
+     * transaction date, so a big import months ago does not drown out what
+     * the user does today.
+     *
+     * One aggregate, no rows loaded. Listing every source keeps the
+     * (user_id, source, created_at) index seekable on the date range: without
+     * it `source` sits unconstrained between the two and MySQL walks all of
+     * the user's index entries instead of the last month's.
+     */
+    public function addsTransactionsByHand(): bool
+    {
+        $counts = $this->transactions()
+            ->whereIn('source', TransactionSource::cases())
+            ->where('created_at', '>=', now()->subDays(self::MANUAL_ENTRY_WINDOW_DAYS))
+            ->toBase()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN source = ? THEN 1 ELSE 0 END) as manual', [TransactionSource::ManuallyCreated->value])
+            ->first();
+
+        $total = (int) $counts->total;
+
+        return $total > 0 && (int) $counts->manual / $total >= self::MANUAL_ENTRY_MIN_SHARE;
     }
 
     /**
