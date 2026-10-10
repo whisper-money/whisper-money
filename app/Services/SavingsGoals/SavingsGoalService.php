@@ -13,6 +13,7 @@ use App\Models\SavingsGoal;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\MonthlySavingsGoalClosed;
 use App\Services\AutomationRuleService;
 use Illuminate\Support\Facades\DB;
 
@@ -51,7 +52,7 @@ class SavingsGoalService
                 ]);
             }
 
-            $goal = $this->create($user, $space, $this->monthlyAttributes($input, $user->setting->savings_goal_notify_on_month_end_reminder ?? true));
+            $goal = $this->create($user, $space, $this->monthlyAttributes($input, $user->wantsSavingsGoalRemindersByDefault()));
             $this->periods->openPeriod($goal, today());
 
             if (filled($input['auto_tag_account_id'] ?? null)) {
@@ -190,6 +191,11 @@ class SavingsGoalService
     {
         DB::transaction(function () use ($goal): void {
             $this->retireLabel($goal);
+            // Its bell rows would lead nowhere.
+            $goal->user->notifications()
+                ->where('type', MonthlySavingsGoalClosed::class)
+                ->where('data->savings_goal_id', $goal->id)
+                ->delete();
             $goal->delete();
         });
     }

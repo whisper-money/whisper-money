@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $resolved_target_amount Null while a share-of-income target has no complete month of income behind it yet, and is followed live until the month closes.
  * @property int|null $income_base The income a share-of-income target was worked out from; null for a fixed amount, and while the target is followed live.
  * @property Carbon|null $closed_at
+ * @property Carbon|null $closed_notified_at
  * @property Carbon|null $reminder_notified_at
  */
 class SavingsGoalPeriod extends Model
@@ -41,6 +42,7 @@ class SavingsGoalPeriod extends Model
         'resolved_target_amount',
         'income_base',
         'closed_at',
+        'closed_notified_at',
         'reminder_notified_at',
     ];
 
@@ -54,6 +56,7 @@ class SavingsGoalPeriod extends Model
             'resolved_target_amount' => 'integer',
             'income_base' => 'integer',
             'closed_at' => 'datetime',
+            'closed_notified_at' => 'datetime',
             'reminder_notified_at' => 'datetime',
         ];
     }

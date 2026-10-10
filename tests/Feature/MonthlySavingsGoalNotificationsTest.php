@@ -10,8 +10,10 @@ use App\Models\UserSetting;
 use App\Notifications\MonthlySavingsGoalClosed;
 use App\Services\Notifications\NotificationFeed;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
+use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 function noticesUser(): User
 {
@@ -63,7 +65,7 @@ test('closing a month rings the bell once with how it went', function () {
 
     $row = app(NotificationFeed::class)->page($user)[0];
     expect($row['kind'])->toBe('monthly_savings_goal')
-        ->and($row['title'])->toBe('Emergency fund: October met by')
+        ->and($row['title'])->toBe('Emergency fund: October goal met')
         ->and($row['figure'])->toBe(['type' => 'money', 'value' => 1000, 'currency' => 'EUR'])
         ->and($row['url'])->toBe(route('savings-goals.show', $goal));
 });
@@ -78,8 +80,8 @@ test('a missed month says by how much', function () {
     $this->artisan('savings-goals:generate-periods');
 
     $row = app(NotificationFeed::class)->page($user)[0];
-    expect($row['title'])->toBe('Japan trip: October missed by')
-        ->and($row['figure']['value'])->toBe(6000);
+    expect($row['title'])->toBe('Japan trip: October goal missed')
+        ->and($row['figure']['value'])->toBe(-6000);
 });
 
 test('months filled in after an outage do not each ring the bell', function () {
@@ -94,33 +96,35 @@ test('months filled in after an outage do not each ring the bell', function () {
         ->and($user->notifications()->first()->data['month'])->toBe('2026-10');
 });
 
-test('the month-end reminder goes out once, five days before the end, when the goal is behind', function () {
-    $this->travelTo(Carbon::parse('2026-10-25 09:00'));
+test('the month-end reminder goes out once, with five days left, when the goal is behind', function () {
+    $this->travelTo(Carbon::parse('2026-10-20 09:00'));
     $user = noticesUser();
     $goal = noticesGoal($user);
     noticesSave($goal, 12000, '2026-10-06');
 
+    $this->travelTo(Carbon::parse('2026-10-26 09:00'));
     $this->artisan('savings-goals:generate-periods');
     Mail::assertNothingOutgoing();
 
-    $this->travelTo(Carbon::parse('2026-10-26 09:00'));
-    $this->artisan('savings-goals:generate-periods');
     $this->travelTo(Carbon::parse('2026-10-27 09:00'));
+    $this->artisan('savings-goals:generate-periods');
+    $this->travelTo(Carbon::parse('2026-10-28 09:00'));
     $this->artisan('savings-goals:generate-periods');
 
     Mail::assertQueuedCount(1);
     Mail::assertQueued(MonthlySavingsGoalReminderEmail::class, fn (MonthlySavingsGoalReminderEmail $mail): bool => $mail->hasTo($user->email)
         && $mail->saved === 12000
         && $mail->target === 30000
-        && $mail->daysLeft === 6);
+        && $mail->daysLeft === 5);
 
     expect($goal->periods()->where('month', '2026-10-01')->value('reminder_notified_at'))->not->toBeNull();
 });
 
 test('no reminder when the month is already met, the reminder is off or the goal is archived', function (Closure $setUp) {
-    $this->travelTo(Carbon::parse('2026-10-28 09:00'));
+    $this->travelTo(Carbon::parse('2026-10-15 09:00'));
     $setUp(noticesUser());
 
+    $this->travelTo(Carbon::parse('2026-10-28 09:00'));
     $this->artisan('savings-goals:generate-periods');
 
     Mail::assertNothingOutgoing();
@@ -132,14 +136,59 @@ test('no reminder when the month is already met, the reminder is off or the goal
     'archived' => [fn (User $user) => SavingsGoal::factory()->monthly()->archived()->create(['user_id' => $user->id])],
 ]);
 
+test('a goal created in the last days of a month gets neither a reminder nor a verdict for it', function () {
+    $this->travelTo(Carbon::parse('2026-10-29 10:00'));
+    $user = noticesUser();
+    noticesGoal($user);
+
+    $this->artisan('savings-goals:generate-periods');
+    $this->travelTo(Carbon::parse('2026-11-01 07:00'));
+    $this->artisan('savings-goals:generate-periods');
+
+    Mail::assertNothingOutgoing();
+    expect($user->notifications()->count())->toBe(0);
+});
+
+test('a notice that fails is retried on the next run instead of being lost', function () {
+    $this->travelTo(Carbon::parse('2026-10-15'));
+    $user = noticesUser();
+    $goal = noticesGoal($user);
+    $this->travelTo(Carbon::parse('2026-11-01 07:00'));
+
+    Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('database down'));
+    $this->artisan('savings-goals:generate-periods')->assertSuccessful();
+
+    expect($goal->periods()->where('month', '2026-10-01')->first())
+        ->closed_at->not->toBeNull()
+        ->closed_notified_at->toBeNull();
+
+    Notification::swap(new ChannelManager($this->app));
+    $this->artisan('savings-goals:generate-periods');
+
+    expect($user->notifications()->count())->toBe(1);
+});
+
+test('deleting a goal takes its notices out of the bell', function () {
+    $this->travelTo(Carbon::parse('2026-10-15'));
+    $user = noticesUser();
+    $goal = noticesGoal($user);
+    $this->travelTo(Carbon::parse('2026-11-01 07:00'));
+    $this->artisan('savings-goals:generate-periods');
+
+    $this->actingAs($user)->delete("/savings-goals/{$goal->id}");
+
+    expect($user->notifications()->count())->toBe(0);
+});
+
 test('the reminder email renders the month and the figures', function () {
     $this->travelTo(Carbon::parse('2026-10-26 09:00'));
     $user = noticesUser();
     $goal = noticesGoal($user, ['name' => 'Emergency fund']);
 
-    $html = (new MonthlySavingsGoalReminderEmail($user, $goal, '2026-10', 12000, 30000, 6))->render();
+    $mail = new MonthlySavingsGoalReminderEmail($user, $goal, '2026-10', 12000, 30000, 1);
 
-    expect($html)->toContain('Emergency fund')->toContain('October');
+    expect($mail->render())->toContain('Emergency fund')->toContain('1 day left in October')
+        ->and($mail->envelope()->subject)->toBe("Emergency fund: 1 day left to reach this month's target");
 });
 
 test('a new monthly goal starts with the user\'s reminder default', function (bool $default) {
