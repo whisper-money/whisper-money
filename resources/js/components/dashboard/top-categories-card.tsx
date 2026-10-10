@@ -154,7 +154,7 @@ export function TopCategoriesCard({
             <CardHeader className="gap-2">
                 <div className="flex items-start justify-between gap-2">
                     <CardTitle>{__('Top spending categories')}</CardTitle>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                         <PrivacyRevealButton className="-my-2" />
                         <CategoryAnalysisButton
                             widgetKey="dashboard-top-categories"

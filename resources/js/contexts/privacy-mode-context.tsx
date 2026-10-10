@@ -1,10 +1,11 @@
 import {
     createContext,
-    type ReactNode,
+    useCallback,
     useContext,
     useEffect,
     useMemo,
     useState,
+    type ReactNode,
 } from 'react';
 
 const PRIVACY_MODE_STORAGE_KEY = 'privacy-mode-enabled';
@@ -12,7 +13,11 @@ const PRIVACY_MODE_STORAGE_KEY = 'privacy-mode-enabled';
 interface PrivacyModeContextType {
     /** Whether amounts must be masked here: false inside a revealed block. */
     isPrivacyModeEnabled: boolean;
-    /** The user's privacy mode setting, regardless of any revealed block. */
+    /**
+     * The user's privacy mode setting, regardless of any revealed block. Read
+     * this, not isPrivacyModeEnabled, for anything that shows or flips the
+     * setting itself (the logo, the privacy toggle).
+     */
     isGlobalPrivacyModeEnabled: boolean;
     togglePrivacyMode: () => void;
     setPrivacyMode: (enabled: boolean) => void;
@@ -48,13 +53,9 @@ export function PrivacyModeProvider({ children }: { children: ReactNode }) {
         setStoredPrivacyMode(isPrivacyModeEnabled);
     }, [isPrivacyModeEnabled]);
 
-    const togglePrivacyMode = () => {
+    const togglePrivacyMode = useCallback(() => {
         setIsPrivacyModeEnabled((prev) => !prev);
-    };
-
-    const setPrivacyMode = (enabled: boolean) => {
-        setIsPrivacyModeEnabled(enabled);
-    };
+    }, []);
 
     return (
         <PrivacyModeContext.Provider
@@ -62,7 +63,7 @@ export function PrivacyModeProvider({ children }: { children: ReactNode }) {
                 isPrivacyModeEnabled,
                 isGlobalPrivacyModeEnabled: isPrivacyModeEnabled,
                 togglePrivacyMode,
-                setPrivacyMode,
+                setPrivacyMode: setIsPrivacyModeEnabled,
             }}
         >
             {children}
@@ -97,7 +98,8 @@ const PrivacyRevealContext = createContext<
  */
 export function PrivacyRevealScope({ children }: { children: ReactNode }) {
     const privacyMode = usePrivacyMode();
-    const { isGlobalPrivacyModeEnabled } = privacyMode;
+    const { isGlobalPrivacyModeEnabled, togglePrivacyMode, setPrivacyMode } =
+        privacyMode;
     const [isRevealed, setIsRevealed] = useState(false);
     const [revealedUnderGlobal, setRevealedUnderGlobal] = useState(
         isGlobalPrivacyModeEnabled,
@@ -109,11 +111,18 @@ export function PrivacyRevealScope({ children }: { children: ReactNode }) {
     }
 
     const scopedPrivacyMode = useMemo(
-        () =>
-            isRevealed
-                ? { ...privacyMode, isPrivacyModeEnabled: false }
-                : privacyMode,
-        [isRevealed, privacyMode],
+        () => ({
+            isPrivacyModeEnabled: isGlobalPrivacyModeEnabled && !isRevealed,
+            isGlobalPrivacyModeEnabled,
+            togglePrivacyMode,
+            setPrivacyMode,
+        }),
+        [
+            isGlobalPrivacyModeEnabled,
+            isRevealed,
+            togglePrivacyMode,
+            setPrivacyMode,
+        ],
     );
 
     const reveal = useMemo(
