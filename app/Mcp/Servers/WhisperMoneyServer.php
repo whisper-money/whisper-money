@@ -146,6 +146,9 @@ first.
 `ownership_percentage` below 100 means the user only owns that share of the
 account, and the app counts only that slice of it in their figures — changing it
 also reweighs the budgets that already counted the account.
+When a credit card row carries `credit_card_statement`, it is an estimate of the
+next charge (`is_final` false means the cycle is still open), computed from the
+statement dates in `credit_card_detail`; it is not a transaction.
 MARKDOWN)]
 class WhisperMoneyServer extends Server
 {

@@ -61,4 +61,11 @@ class AccountFactory extends Factory
             'type' => AccountType::Loan,
         ]);
     }
+
+    public function creditCard(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => AccountType::CreditCard,
+        ]);
+    }
 }

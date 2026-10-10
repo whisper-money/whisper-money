@@ -4,6 +4,7 @@ use App\Enums\AccountType;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
+use App\Features\CreditCardStatements;
 use App\Jobs\ApplySingleAutomationRuleJob;
 use App\Jobs\GenerateHistoricalLoanBalancesJob;
 use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
@@ -37,6 +38,7 @@ use App\Models\AutomationRule;
 use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
+use App\Models\CreditCardDetail;
 use App\Models\Label;
 use App\Models\Space;
 use App\Models\Transaction;
@@ -45,6 +47,7 @@ use App\Services\AutomationRuleApplier;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Server\Testing\TestResponse;
+use Laravel\Pennant\Feature;
 
 /**
  * Call a write tool as $user, giving them a real personal access token with the
@@ -1563,4 +1566,94 @@ it('rejects update_account for a read-only token', function () {
     ], ['mcp:read'])->assertHasErrors(['read-only']);
 
     expect($account->fresh()->name)->toBe('Untouched');
+});
+
+it('creates a credit card with its statement dates when the user has the feature', function () {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(CreditCardStatements::class);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Visa',
+        'type' => 'credit_card',
+        'currency_code' => 'EUR',
+        'statement_closing_date' => '2026-03-05',
+        'payment_due_date' => '2026-03-20',
+    ])->assertOk()->assertSee('credit_card_statement')->assertSee('2026-03-20');
+
+    $detail = $user->accounts()->sole()->creditCardDetail;
+
+    expect($detail->statement_closing_date->toDateString())->toBe('2026-03-05')
+        ->and($detail->payment_due_date->toDateString())->toBe('2026-03-20');
+});
+
+it('sets and clears the statement dates of a credit card through update_account', function () {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(CreditCardStatements::class);
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'statement_closing_date' => '2026-04-25',
+        'payment_due_date' => '2026-05-10',
+    ])->assertOk()->assertSee('2026-05-10');
+
+    expect($card->creditCardDetail()->sole()->statement_closing_date->toDateString())->toBe('2026-04-25');
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'statement_closing_date' => null,
+        'payment_due_date' => null,
+    ])->assertOk();
+
+    expect($card->creditCardDetail()->exists())->toBeFalse();
+});
+
+it('leaves the statement dates alone when update_account is not passed them', function () {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(CreditCardStatements::class);
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id]);
+    CreditCardDetail::factory()->create(['account_id' => $card->id]);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'name' => 'Renamed card',
+    ])->assertOk();
+
+    expect($card->creditCardDetail()->exists())->toBeTrue();
+});
+
+it('rejects statement dates that do not make sense through update_account', function (array $dates) {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(CreditCardStatements::class);
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, UpdateAccount::class, ['account_id' => $card->id, ...$dates])->assertHasErrors();
+
+    expect($card->creditCardDetail()->exists())->toBeFalse();
+})->with([
+    'due before closing' => [['statement_closing_date' => '2026-04-25', 'payment_due_date' => '2026-04-20']],
+    'due too long after closing' => [['statement_closing_date' => '2026-04-01', 'payment_due_date' => '2026-05-17']],
+    'only one of the two' => [['statement_closing_date' => '2026-04-25']],
+]);
+
+it('tells a user without the feature that statement dates are not available yet', function () {
+    $user = User::factory()->create();
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'statement_closing_date' => '2026-04-25',
+        'payment_due_date' => '2026-05-10',
+    ])->assertHasErrors(['not available for this account yet']);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Visa',
+        'type' => 'credit_card',
+        'currency_code' => 'EUR',
+        'statement_closing_date' => '2026-04-25',
+        'payment_due_date' => '2026-05-10',
+    ])->assertHasErrors(['not available for this account yet']);
+
+    expect($card->creditCardDetail()->exists())->toBeFalse()
+        ->and($user->accounts()->count())->toBe(1);
 });

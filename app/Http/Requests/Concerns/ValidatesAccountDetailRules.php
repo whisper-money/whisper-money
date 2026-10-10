@@ -5,6 +5,7 @@ namespace App\Http\Requests\Concerns;
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
 use App\Models\Account;
+use App\Rules\PaymentDueAfterStatementClosing;
 use Closure;
 use Illuminate\Validation\Rule;
 
@@ -72,6 +73,23 @@ trait ValidatesAccountDetailRules
             // ancient loan start date OOMs the balance generator (PHP-LARAVEL-49).
             'loan_start_date' => ['nullable', 'date', 'after_or_equal:1900-01-01'],
             'original_amount' => ['nullable', ...$completeSet('annual_interest_rate', 'loan_term_months'), 'integer', 'min:0'],
+        ];
+    }
+
+    /**
+     * Validation rules for the statement dates of a credit card. Both travel
+     * together, since one is meaningless without the other. With
+     * `$allowClearing`, sending both as null forgets them.
+     *
+     * @return array<string, array<mixed>>
+     */
+    protected function creditCardDetailRules(bool $allowClearing = false): array
+    {
+        $presence = $allowClearing ? 'nullable' : 'required';
+
+        return [
+            'statement_closing_date' => [$presence, 'required_with:payment_due_date', 'date_format:Y-m-d'],
+            'payment_due_date' => [$presence, 'required_with:statement_closing_date', 'date_format:Y-m-d', new PaymentDueAfterStatementClosing],
         ];
     }
 

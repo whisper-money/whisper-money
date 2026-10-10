@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\CategoryType;
+use App\Features\CreditCardStatements;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\GetCashflow;
 use App\Mcp\Tools\GetNetWorth;
@@ -17,9 +18,13 @@ use App\Models\Achievement;
 use App\Models\AutomationRule;
 use App\Models\Budget;
 use App\Models\Category;
+use App\Models\CreditCardDetail;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 it('blocks read tools when subscriptions are enabled and the user has no paid plan', function () {
     config(['subscriptions.enabled' => true]);
@@ -148,6 +153,52 @@ it('lists the user\'s accounts for the space', function () {
         ->tool(ListAccounts::class, [])
         ->assertOk()
         ->assertSee('Everyday Checking');
+});
+
+it('presents the next credit card payment when the user has the feature', function () {
+    $user = User::factory()->create(['currency_code' => 'EUR']);
+    Feature::for($user)->activate(CreditCardStatements::class);
+    $this->travelTo(CarbonImmutable::parse('2026-03-10 12:00', 'UTC'));
+
+    $cards = Account::factory()->creditCard()->count(3)->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $cards->each(fn (Account $card) => CreditCardDetail::factory()->create([
+        'account_id' => $card->id,
+        'statement_closing_date' => '2026-03-05',
+        'payment_due_date' => '2026-03-20',
+    ]));
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $cards->first()->id,
+        'category_id' => Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense])->id,
+        'currency_code' => 'EUR',
+        'amount' => -4321,
+        'transaction_date' => '2026-03-01',
+    ]);
+
+    DB::enableQueryLog();
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListAccounts::class, [])
+        ->assertOk()
+        ->assertSee('credit_card_statement')
+        ->assertSee('"amount":4321')
+        ->assertSee('"is_final":true')
+        ->assertSee('2026-03-20');
+
+    // One ledger query per card on top of the fixed ones, never one per row.
+    expect(collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from `transactions`'))->count())->toBe(3);
+});
+
+it('presents no credit card estimate to a user without the feature', function () {
+    $user = User::factory()->create();
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id]);
+    CreditCardDetail::factory()->create(['account_id' => $card->id]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListAccounts::class, [])
+        ->assertOk()
+        ->assertDontSee('credit_card_statement')
+        ->assertDontSee('credit_card_detail');
 });
 
 it('lists the user\'s categories for the space', function () {

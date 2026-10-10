@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
+use App\Features\CreditCardStatements;
 use App\Features\FullImport;
 use App\Models\BankingConnection;
 use App\Models\User;
@@ -297,11 +298,12 @@ class HandleInertiaRequests extends Middleware
                 'calculateBalancesOnImport' => false,
                 'fullImport' => false,
                 'fullImportSettings' => false,
+                'creditCardStatements' => false,
             ];
         }
 
-        // One query for both flags, however many of them get read below.
-        Feature::for($user)->load([CalculateBalancesOnImport::class, FullImport::class]);
+        // One query for every flag, however many of them get read below.
+        Feature::for($user)->load([CalculateBalancesOnImport::class, FullImport::class, CreditCardStatements::class]);
 
         return [
             'cashflow' => true,
@@ -313,6 +315,7 @@ class HandleInertiaRequests extends Middleware
             // pages pay for it.
             'fullImport' => $user->canUseFullImport(),
             'fullImportSettings' => request()->is('settings', 'settings/*') && $user->canSeeFullImportSettings(),
+            'creditCardStatements' => Feature::for($user)->active(CreditCardStatements::class),
         ];
     }
 
