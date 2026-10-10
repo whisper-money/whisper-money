@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\SavingsGoal;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use Illuminate\Console\Command;
+use Throwable;
 
 class GenerateSavingsGoalPeriods extends Command
 {
@@ -25,7 +26,12 @@ class GenerateSavingsGoalPeriods extends Command
         $goals = SavingsGoal::query()->monthly()->notArchived()->with('user')->lazyById();
 
         foreach ($goals as $goal) {
-            $closedCount += $this->periods->advance($goal)->count();
+            // One goal that fails must not hold back everybody else's months.
+            try {
+                $closedCount += $this->periods->advance($goal)->count();
+            } catch (Throwable $exception) {
+                report($exception);
+            }
         }
 
         $this->info("Closed {$closedCount} monthly savings goal periods");

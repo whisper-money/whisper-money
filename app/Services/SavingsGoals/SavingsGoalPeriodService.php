@@ -24,7 +24,12 @@ class SavingsGoalPeriodService
     {
         $month = $month->copy()->startOfMonth();
 
-        return SavingsGoalPeriod::query()->firstOrCreate(
+        $existing = $goal->periods()->where('month', $month->toDateString())->first();
+
+        // Checked first rather than left to firstOrCreate: resolving a
+        // share-of-income target reads three months of cashflow, which an
+        // already-open month does not need.
+        return $existing ?? SavingsGoalPeriod::query()->firstOrCreate(
             ['savings_goal_id' => $goal->id, 'month' => $month->toDateString()],
             $this->targetAttributes($goal, $month),
         );
@@ -48,8 +53,12 @@ class SavingsGoalPeriodService
     /**
      * Bring a goal up to today: open every month from its last period (or its
      * creation month) through the current one, then close every month that is
-     * over. A gap left by a command that did not run is filled rather than
-     * skipped, so the history has no holes.
+     * over.
+     *
+     * A gap left by a command that did not run is filled rather than skipped,
+     * so the history has no holes. Those months get the target in force when
+     * they are filled, which is the target the goal had all along unless it
+     * was edited during the outage.
      *
      * @return Collection<int, SavingsGoalPeriod> the periods this call closed, oldest first
      */
@@ -65,9 +74,21 @@ class SavingsGoalPeriodService
             $this->openPeriod($goal, $cursor);
         }
 
+        return $this->closeOpenPeriods($goal, before: $currentMonth);
+    }
+
+    /**
+     * Close every open month of the goal, or only those before $before. An
+     * archived goal closes all of them, the one in progress included, so a
+     * share-of-income target stops moving with the income that comes after.
+     *
+     * @return Collection<int, SavingsGoalPeriod> the periods this call closed, oldest first
+     */
+    public function closeOpenPeriods(SavingsGoal $goal, ?Carbon $before = null): Collection
+    {
         return $goal->periods()
             ->whereNull('closed_at')
-            ->where('month', '<', $currentMonth->toDateString())
+            ->when($before, fn ($query) => $query->where('month', '<', $before->toDateString()))
             ->orderBy('month')
             ->get()
             ->filter(fn (SavingsGoalPeriod $period): bool => $this->close($goal, $period))
@@ -76,21 +97,21 @@ class SavingsGoalPeriodService
 
     /**
      * Freeze the month's target and mark it closed. A share-of-income target
-     * that was still followed live is frozen at the month's full income.
+     * that was still followed live is frozen at the month's income so far.
      *
      * @return bool whether this call was the one that closed it
      */
     private function close(SavingsGoal $goal, SavingsGoalPeriod $period): bool
     {
-        $target = $this->targets->targetFor($period, $goal->user);
+        $frozen = [...$this->targets->current($period, $goal->user), 'closed_at' => now()];
 
         $claimed = SavingsGoalPeriod::query()
             ->whereKey($period->id)
             ->whereNull('closed_at')
-            ->update(['closed_at' => now(), 'resolved_target_amount' => $target, 'updated_at' => now()]);
+            ->update([...$frozen, 'updated_at' => $frozen['closed_at']]);
 
         if ($claimed === 1) {
-            $period->forceFill(['closed_at' => now(), 'resolved_target_amount' => $target]);
+            $period->forceFill($frozen);
         }
 
         return $claimed === 1;
@@ -105,13 +126,7 @@ class SavingsGoalPeriodService
             'target_type' => $goal->monthly_target_type,
             'target_amount' => $goal->monthly_target_amount,
             'target_rate' => $goal->monthly_target_rate,
-            'resolved_target_amount' => $this->targets->resolveAtOpen(
-                $goal->user,
-                $goal->monthly_target_type,
-                $goal->monthly_target_amount,
-                $goal->monthly_target_rate,
-                $month,
-            ),
+            ...$this->targets->resolveAtOpen($goal, $month),
         ];
     }
 }

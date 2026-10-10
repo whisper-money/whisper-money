@@ -45,7 +45,7 @@ class UpdateSavingsGoalRequest extends FormRequest
         ];
 
         if ($this->goal()?->isMonthly()) {
-            return [...$rules, ...$this->monthlyTargetRules('sometimes')];
+            return [...$rules, ...$this->monthlyTargetRules(creating: false)];
         }
 
         return [

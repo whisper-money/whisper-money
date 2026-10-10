@@ -453,6 +453,7 @@ class SummaryBuilder
     private function goalSection(User $user, Carbon $month): ?array
     {
         $goal = $user->savingsGoals()
+            ->oneOff()
             ->notArchived()
             ->where('target_amount', '>', 0)
             ->with('label')

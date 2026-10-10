@@ -3,6 +3,7 @@
 namespace App\Services\SavingsGoals;
 
 use App\Enums\MonthlyTargetType;
+use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
 use App\Models\Transaction;
 use App\Models\User;
@@ -16,6 +17,8 @@ use Carbon\Carbon;
  * complete calendar months before the one being opened, not against the month
  * itself: plenty of people are paid on the last day, and a target built on the
  * month's own income would read 0 until then.
+ *
+ * Months are calendar months in the app's timezone, like budget periods.
  */
 class MonthlyTargetResolver
 {
@@ -25,45 +28,59 @@ class MonthlyTargetResolver
     private const INCOME_BASE_MONTHS = 3;
 
     /**
-     * Income per user and month, memoized for the lifetime of this instance: a
-     * page that lists several share-of-income goals asks for the same months.
+     * Income figures per user and month, memoized for the lifetime of this
+     * instance: a page listing several share-of-income goals, or the daily
+     * command going through one user's goals, asks for the same months. An
+     * instance is resolved per request or per command run, so a figure is
+     * never older than that.
      *
-     * @var array<string, int>
+     * @var array<string, int|null>
      */
-    private array $incomeCache = [];
+    private array $cache = [];
 
     public function __construct(private CashflowSummaryService $cashflow) {}
 
     /**
-     * The target in money, or null when a share-of-income target has no
-     * complete month to stand on yet and has to be followed live.
+     * The frozen target of a month that is opening, and the income it came
+     * from. Both are null when a share-of-income target has no complete month
+     * to stand on yet and has to be followed live.
+     *
+     * @return array{resolved_target_amount: ?int, income_base: ?int}
      */
-    public function resolveAtOpen(User $user, MonthlyTargetType $type, ?int $amount, ?float $rate, Carbon $month): ?int
+    public function resolveAtOpen(SavingsGoal $goal, Carbon $month): array
     {
-        if ($type === MonthlyTargetType::Amount) {
-            return (int) $amount;
+        if ($goal->monthly_target_type === MonthlyTargetType::Amount) {
+            return ['resolved_target_amount' => (int) $goal->monthly_target_amount, 'income_base' => null];
         }
 
-        $base = $this->averageIncomeBefore($user, $month);
+        $base = $this->averageIncomeBefore($goal->user, $month);
 
-        return $base === null ? null : self::applyRate($rate, $base);
+        return [
+            'resolved_target_amount' => $base === null ? null : self::applyRate($goal->monthly_target_rate, $base),
+            'income_base' => $base,
+        ];
     }
 
     /**
-     * The target a period is held to right now: the frozen one, or — while it
-     * has none — the rate applied to what came in that month so far.
+     * The target a period is held to right now, and the income behind it: the
+     * frozen pair, or — while it has none — the rate applied to what came in
+     * that month so far.
+     *
+     * @return array{resolved_target_amount: int, income_base: ?int}
      */
-    public function targetFor(SavingsGoalPeriod $period, User $user): int
+    public function current(SavingsGoalPeriod $period, User $user): array
     {
         if ($period->resolved_target_amount !== null) {
-            return $period->resolved_target_amount;
+            return ['resolved_target_amount' => $period->resolved_target_amount, 'income_base' => $period->income_base];
         }
 
         if ($period->target_type === MonthlyTargetType::Amount) {
-            return (int) $period->target_amount;
+            return ['resolved_target_amount' => (int) $period->target_amount, 'income_base' => null];
         }
 
-        return self::applyRate($period->target_rate, $this->incomeIn($user, $period->month));
+        $income = $this->incomeIn($user, $period->month);
+
+        return ['resolved_target_amount' => self::applyRate($period->target_rate, $income), 'income_base' => $income];
     }
 
     /**
@@ -71,30 +88,36 @@ class MonthlyTargetResolver
      * $month, counting only months the user already had data in. Null when
      * there is no such month.
      */
-    public function averageIncomeBefore(User $user, Carbon $month): ?int
+    private function averageIncomeBefore(User $user, Carbon $month): ?int
     {
+        $key = 'average|'.$user->id.'|'.$month->format('Y-m');
+
+        if (array_key_exists($key, $this->cache)) {
+            return $this->cache[$key];
+        }
+
         $firstMonth = $this->firstActivityMonth($user);
         $lastComplete = $month->copy()->startOfMonth()->subMonth();
 
         if ($firstMonth === null || $firstMonth->gt($lastComplete)) {
-            return null;
+            return $this->cache[$key] = null;
         }
 
         $from = $lastComplete->copy()->subMonths(self::INCOME_BASE_MONTHS - 1)->max($firstMonth);
         $months = $this->cashflow->forMonths($user->id, $user->currency_code, $from, $lastComplete->copy()->endOfMonth());
         $average = array_sum(array_column($months, 'income')) / max(1, count($months));
 
-        return max(0, (int) round($average));
+        return $this->cache[$key] = max(0, (int) round($average));
     }
 
     /**
      * Income of one calendar month, in the user's currency.
      */
-    public function incomeIn(User $user, Carbon $month): int
+    private function incomeIn(User $user, Carbon $month): int
     {
-        $key = $user->id.'|'.$month->format('Y-m');
+        $key = 'month|'.$user->id.'|'.$month->format('Y-m');
 
-        return $this->incomeCache[$key] ??= max(0, (int) ($this->cashflow->forMonths(
+        return $this->cache[$key] ??= max(0, (int) ($this->cashflow->forMonths(
             $user->id,
             $user->currency_code,
             $month->copy()->startOfMonth(),

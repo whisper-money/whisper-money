@@ -16,7 +16,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
+use stdClass;
 
 /**
  * @property Carbon $created_at
@@ -148,12 +150,30 @@ class SavingsGoal extends Model
      * @param  iterable<int, string>  $labelIds
      * @return Builder<Transaction>
      */
-    public static function taggedContributions(iterable $labelIds): Builder
+    private static function taggedContributions(iterable $labelIds): Builder
     {
         return Transaction::query()
             ->join('label_transaction', 'label_transaction.transaction_id', '=', 'transactions.id')
             ->joinOwningAccount()
             ->whereIn('label_transaction.label_id', $labelIds);
+    }
+
+    /**
+     * What the transactions tagged with each label contributed per day since
+     * $since, one row per label and day — `label_id`, `day` and `total` in
+     * cents. Monthly goals fold these into months.
+     *
+     * @param  iterable<int, string>  $labelIds
+     * @return SupportCollection<int, stdClass>
+     */
+    public static function contributionsByDay(iterable $labelIds, Carbon $since): SupportCollection
+    {
+        return self::taggedContributions($labelIds)
+            ->where('transactions.transaction_date', '>=', $since->toDateString())
+            ->groupBy('label_transaction.label_id', 'transactions.transaction_date')
+            ->selectRaw('label_transaction.label_id as label_id, transactions.transaction_date as day, SUM('.self::CONTRIBUTION_AMOUNT_SQL.') as total')
+            ->toBase()
+            ->get();
     }
 
     /**
@@ -192,7 +212,8 @@ class SavingsGoal extends Model
     {
         // Archiving soft-deletes the label, so it has to be read through the
         // trashed scope or an archived goal loses the name it saved under.
-        $goals = $user->savingsGoals()->orderBy('position')->orderBy('name')->with(['label' => fn ($query) => $query->withTrashed()])->get();
+        // Monthly goals have no total to reach; they are listed on their own.
+        $goals = $user->savingsGoals()->oneOff()->orderBy('position')->orderBy('name')->with(['label' => fn ($query) => $query->withTrashed()])->get();
 
         // ponytail: one grouped sum+min for all goals' labels avoids N+1 across the list.
         $aggByLabel = self::taggedContributions($goals->pluck('label_id')->filter())
