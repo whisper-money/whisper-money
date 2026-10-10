@@ -17,6 +17,7 @@ import {
 import HeadingSmall from '@/components/heading-small';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import { Button } from '@/components/ui/button';
+import { PrivacyRevealScope } from '@/contexts/privacy-mode-context';
 import {
     deriveAccountMetrics,
     type AccountWithMetrics,
@@ -277,7 +278,9 @@ export default function Dashboard() {
                         </>
                     }
                 >
-                    <NetWorthChartComponent data={netWorthEvolution} />
+                    <PrivacyRevealScope>
+                        <NetWorthChartComponent data={netWorthEvolution} />
+                    </PrivacyRevealScope>
 
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold">
@@ -297,17 +300,18 @@ export default function Dashboard() {
 
                     <div className="grid gap-4 md:grid-cols-2">
                         {gridAccounts.map((account) => (
-                            <AccountBalanceCard
-                                key={account.id}
-                                account={account}
-                                onBalanceUpdated={refetch}
-                                linkedLoanMetrics={
-                                    linkedLoanMetricsMap[account.id]
-                                }
-                                displayCurrencyCode={
-                                    netWorthEvolution.currency_code
-                                }
-                            />
+                            <PrivacyRevealScope key={account.id}>
+                                <AccountBalanceCard
+                                    account={account}
+                                    onBalanceUpdated={refetch}
+                                    linkedLoanMetrics={
+                                        linkedLoanMetricsMap[account.id]
+                                    }
+                                    displayCurrencyCode={
+                                        netWorthEvolution.currency_code
+                                    }
+                                />
+                            </PrivacyRevealScope>
                         ))}
                     </div>
 
@@ -328,7 +332,9 @@ export default function Dashboard() {
                             <TopCategoriesCard categories={[]} loading={true} />
                         }
                     >
-                        <TopCategoriesCard categories={topCategories} />
+                        <PrivacyRevealScope>
+                            <TopCategoriesCard categories={topCategories} />
+                        </PrivacyRevealScope>
                     </Deferred>
 
                     {/* An empty fragment, not null: Deferred rejects a falsy
@@ -336,7 +342,9 @@ export default function Dashboard() {
                         nothing labelled, and a placeholder for a card that then
                         disappears reads as a glitch. */}
                     <Deferred data="topLabels" fallback={<></>}>
-                        <TopLabelsCard labels={props.topLabels ?? []} />
+                        <PrivacyRevealScope>
+                            <TopLabelsCard labels={props.topLabels ?? []} />
+                        </PrivacyRevealScope>
                     </Deferred>
 
                     {props.features.cashflow && (
@@ -344,9 +352,11 @@ export default function Dashboard() {
                             data="cashflowSummary"
                             fallback={<CashflowSummaryCard loading={true} />}
                         >
-                            <CashflowSummaryCard
-                                data={props.cashflowSummary ?? null}
-                            />
+                            <PrivacyRevealScope>
+                                <CashflowSummaryCard
+                                    data={props.cashflowSummary ?? null}
+                                />
+                            </PrivacyRevealScope>
                         </Deferred>
                     )}
                 </div>

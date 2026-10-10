@@ -1,6 +1,7 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { BankLogo } from '@/components/bank-logo';
+import { PrivacyRevealButton } from '@/components/privacy-reveal-button';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
@@ -189,8 +190,11 @@ export function AccountBalanceCard({
                         </span>
                     )}
                 </div>
-                <div className="mr-1 size-5 shrink-0">
-                    <AccountTypeIcon type={account.type} />
+                <div className="flex items-center gap-2">
+                    <PrivacyRevealButton className="-my-1.5" />
+                    <div className="mr-1 size-5 shrink-0">
+                        <AccountTypeIcon type={account.type} />
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
