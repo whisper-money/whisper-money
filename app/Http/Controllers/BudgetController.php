@@ -15,6 +15,7 @@ use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Services\BudgetPeriodService;
 use App\Services\BudgetService;
+use App\Services\SavingsGoals\MonthlySavingsGoalStats;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,7 @@ class BudgetController extends Controller
     public function __construct(
         protected BudgetPeriodService $budgetPeriodService,
         protected BudgetService $budgetService,
+        protected MonthlySavingsGoalStats $monthlySavingsGoals,
     ) {}
 
     public function index(Request $request): Response
@@ -52,6 +54,7 @@ class BudgetController extends Controller
         return Inertia::render('budgets/index', [
             'budgets' => $budgets,
             'savingsGoals' => SavingsGoal::withStatsForUser($user),
+            'monthlySavingsGoals' => $this->monthlySavingsGoals->presentForUser($user),
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }

@@ -6,6 +6,8 @@ import { BudgetListCard } from '@/components/budgets/budget-list-card';
 import { CreateBudgetDialog } from '@/components/budgets/create-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { CreateSavingsGoalDialog } from '@/components/savings-goals/create-savings-goal-dialog';
+import { MonthlySavingsGoalCard } from '@/components/savings-goals/monthly/monthly-savings-goal-card';
+import { MonthlySavingsSection } from '@/components/savings-goals/monthly/monthly-savings-section';
 import { SavingsGoalListCard } from '@/components/savings-goals/savings-goal-list-card';
 import { CreatePlaceholderCard } from '@/components/shared/create-placeholder-card';
 import { PlanningReorderDialog } from '@/components/shared/planning-reorder-dialog';
@@ -56,12 +58,15 @@ export function budgetTypeFilterFromUrl(url: string): BudgetTypeFilter {
 interface Props {
     budgets: Budget[];
     savingsGoals?: SavingsGoal[];
+    /** Monthly goals, archived ones included; they live outside the reorderable list. */
+    monthlySavingsGoals?: SavingsGoal[];
     currencyCode: string;
 }
 
 export default function BudgetsIndex({
     budgets,
     savingsGoals = [],
+    monthlySavingsGoals = [],
     currencyCode,
 }: Props) {
     const [createType, setCreateType] = useState<'budget' | 'goal' | null>(
@@ -98,25 +103,36 @@ export default function BudgetsIndex({
     // own collapsed section, ordered by the same rule so the two lists cannot
     // disagree about how they sort. They are not reorderable.
     const { liveItems, items, archivedItems } = useMemo(() => {
-        const merge = (archived: boolean) =>
-            mergePlanningItems(
-                budgets.filter((budget) => !!budget.archived_at === archived),
-                savingsGoals.filter((goal) => !!goal.archived_at === archived),
-                locale,
-            );
-
-        const live = merge(false);
+        const live = mergePlanningItems(
+            budgets.filter((budget) => !budget.archived_at),
+            savingsGoals.filter((goal) => !goal.archived_at),
+            locale,
+        );
         const ordered = order ? orderPlanningItems(live, order) : live;
         const matchesFilter = (item: PlanningItem) =>
             filter === 'all' ||
             item.type === (filter === 'budgets' ? 'budget' : 'goal');
+        // An archived monthly goal is a read-only leftover like any other, so
+        // it joins the archived section rather than the monthly block.
+        const archived = mergePlanningItems(
+            budgets.filter((budget) => !!budget.archived_at),
+            [...savingsGoals, ...monthlySavingsGoals].filter(
+                (goal) => !!goal.archived_at,
+            ),
+            locale,
+        );
 
         return {
             liveItems: ordered,
             items: ordered.filter(matchesFilter),
-            archivedItems: merge(true).filter(matchesFilter),
+            archivedItems: archived.filter(matchesFilter),
         };
-    }, [budgets, savingsGoals, filter, locale, order]);
+    }, [budgets, savingsGoals, monthlySavingsGoals, filter, locale, order]);
+
+    const activeMonthlyGoals = useMemo(
+        () => monthlySavingsGoals.filter((goal) => !goal.archived_at),
+        [monthlySavingsGoals],
+    );
 
     const handleReorder = useCallback(
         (orderedVisibleIds: string[]) => {
@@ -223,6 +239,13 @@ export default function BudgetsIndex({
                     )}
                 </div>
 
+                {filter !== 'budgets' && activeMonthlyGoals.length > 0 && (
+                    <MonthlySavingsSection
+                        goals={activeMonthlyGoals}
+                        currencyCode={currencyCode}
+                    />
+                )}
+
                 <div className="grid gap-4 lg:grid-cols-2">
                     <PlanningCards items={items} currencyCode={currencyCode} />
                     <CreateCard
@@ -296,6 +319,12 @@ function PlanningCards({
             <BudgetListCard
                 key={item.id}
                 budget={item.budget}
+                currencyCode={currencyCode}
+            />
+        ) : item.goal.kind === 'monthly' ? (
+            <MonthlySavingsGoalCard
+                key={item.id}
+                savingsGoal={item.goal}
                 currencyCode={currencyCode}
             />
         ) : (
