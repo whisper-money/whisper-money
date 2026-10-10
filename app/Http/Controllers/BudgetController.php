@@ -51,10 +51,14 @@ class BudgetController extends Controller
             }])
             ->get();
 
+        // Both kinds come from one query; each is presented its own way.
+        [$monthlyGoals, $oneOffGoals] = $user->savingsGoals()->listed()->get()
+            ->partition(fn (SavingsGoal $goal): bool => $goal->isMonthly());
+
         return Inertia::render('budgets/index', [
             'budgets' => $budgets,
-            'savingsGoals' => SavingsGoal::withStatsForUser($user),
-            'monthlySavingsGoals' => $this->monthlySavingsGoals->presentForUser($user),
+            'savingsGoals' => SavingsGoal::withStats($oneOffGoals),
+            'monthlySavingsGoals' => $this->monthlySavingsGoals->present($monthlyGoals),
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }
