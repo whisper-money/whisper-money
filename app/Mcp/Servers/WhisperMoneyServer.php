@@ -65,8 +65,8 @@ app is kept in their books.
   COP, CLP, PYG, JPY and PKR, 1000 for KWD, 100000000 for BTC. Read the row's
   `currency` before scaling one, and never assume cents.
 - Data is organised into "spaces" (the personal space and any shared spaces).
-  Transaction, account, category and label tools accept an optional `space` id and
-  default to the personal space; call `list_spaces` to discover ids. The cashflow,
+  Transaction, account, category, label and savings goal tools accept an optional
+  `space` id and default to the personal space; call `list_spaces` to discover ids. The cashflow,
   net-worth, spending and budget tools cover the user's whole account.
 - A budget is a per-period spending limit over the user's own categories and/or
   labels; tracking a parent category also tracks its children. `list_budgets`

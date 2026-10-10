@@ -4,9 +4,11 @@ namespace App\Mcp\Tools;
 
 use App\Enums\MonthlyTargetType;
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
+use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
 use App\Mcp\Tools\Concerns\PresentsSavingsGoals;
 use App\Mcp\Tools\Concerns\ValidatesSavingsGoalWrites;
 use App\Models\SavingsGoal;
+use App\Models\Space;
 use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -18,7 +20,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 #[Description('Edit a savings goal; only the fields you pass change. Its kind is fixed. A monthly target change applies to the month in progress and later ones, never to past months.')]
 class UpdateSavingsGoal extends WriteTool
 {
-    use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesSavingsGoalWrites;
+    use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalWrites;
 
     /**
      * @return array<string, mixed>
@@ -35,28 +37,25 @@ class UpdateSavingsGoal extends WriteTool
             'monthly_target_amount' => $schema->integer()->description('Monthly with "amount": new sum each month, in minor units.'),
             'monthly_target_rate' => $schema->number()->description('Monthly with "income_rate": new percentage of income, above 0 and up to 100.'),
             'notify_on_month_end_reminder' => $schema->boolean()->description('Monthly only: turn the month-end reminder email on or off.'),
+            'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }
 
     protected function write(Request $request, User $user): Response
     {
-        $goal = $this->savingsGoalOfUser($request, $user);
+        $space = $this->resolveSpace($request, $user);
+        $goal = $this->savingsGoalInSpace($request, $space);
 
-        $kind = $goal->kind->value;
-        [$otherKindRules, $messages] = $this->otherKindFieldRules($kind);
+        [$otherKindRules, $messages] = $this->otherKindFieldRules($goal->kind);
 
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             ...$otherKindRules,
-            ...($goal->isMonthly() ? $this->monthlyTargetRules(creating: false) : [
-                'target_amount' => ['sometimes', 'required', 'integer', 'min:1'],
-                'initial_amount' => ['sometimes', 'required', 'integer', 'min:0'],
-                'target_date' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'after_or_equal:1900-01-01', 'before_or_equal:2100-01-01'],
-            ]),
+            ...($goal->isMonthly() ? $this->monthlyTargetRules(creating: false) : $this->oneOffTargetRules(creating: false)),
         ], $messages);
 
         if (isset($validated['name'])) {
-            $this->assertSavingsGoalNameIsFree($user, $validated['name'], $goal->label_id);
+            $this->assertSavingsGoalNameIsFree($space, $validated['name'], $goal->label_id);
         }
 
         app(SavingsGoalService::class)->update($goal, $validated);
@@ -70,14 +69,14 @@ class UpdateSavingsGoal extends WriteTool
     /**
      * An archived goal is frozen for good, so it is refused rather than edited.
      */
-    private function savingsGoalOfUser(Request $request, User $user): SavingsGoal
+    private function savingsGoalInSpace(Request $request, Space $space): SavingsGoal
     {
         $id = $request->string('savings_goal_id')->toString();
-        $goal = $user->savingsGoals()->whereKey($id)->first();
+        $goal = SavingsGoal::query()->forSpace($space)->whereKey($id)->first();
 
         if ($goal === null) {
             throw ValidationException::withMessages([
-                'savings_goal_id' => "No savings goal with id {$id}. Call list_savings_goals to see valid ids.",
+                'savings_goal_id' => "No savings goal with id {$id} in space {$space->id}. Call list_savings_goals to see valid ids.",
             ]);
         }
 

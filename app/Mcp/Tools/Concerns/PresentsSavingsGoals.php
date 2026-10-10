@@ -2,8 +2,9 @@
 
 namespace App\Mcp\Tools\Concerns;
 
+use App\Enums\SavingsGoalKind;
 use App\Models\SavingsGoal;
-use App\Models\User;
+use App\Models\Space;
 use App\Services\SavingsGoals\MonthlySavingsGoalStats;
 
 /**
@@ -17,24 +18,31 @@ use App\Services\SavingsGoals\MonthlySavingsGoalStats;
 trait PresentsSavingsGoals
 {
     /**
+     * Every goal of the space, one-off ones first, read in one query.
+     *
      * @return list<array<string, mixed>>
      */
-    protected function presentSavingsGoals(User $user): array
+    protected function presentSavingsGoals(Space $space): array
     {
+        [$monthly, $oneOff] = SavingsGoal::query()->forSpace($space)->listed()->get()
+            ->partition(fn (SavingsGoal $goal): bool => $goal->isMonthly());
+
         return array_map(
             fn (array $row): array => $this->presentSavingsGoalRow($row),
-            [...SavingsGoal::withStatsForUser($user), ...app(MonthlySavingsGoalStats::class)->presentForUser($user)],
+            [...SavingsGoal::withStats($oneOff), ...app(MonthlySavingsGoalStats::class)->present($monthly)],
         );
     }
 
     /**
+     * One goal, with the stats of that goal alone.
+     *
      * @return array<string, mixed>
      */
     protected function presentSavingsGoal(SavingsGoal $goal): array
     {
         $row = $goal->isMonthly()
             ? [...$goal->toArray(), 'monthly' => app(MonthlySavingsGoalStats::class)->forGoal($goal)]
-            : collect(SavingsGoal::withStatsForUser($goal->user))->firstWhere('id', $goal->id);
+            : SavingsGoal::withStats($goal->newCollection([$goal]))[0];
 
         return $this->presentSavingsGoalRow($row);
     }
@@ -54,7 +62,7 @@ trait PresentsSavingsGoals
             'archived' => $row['archived_at'] !== null,
         ];
 
-        if ($row['kind'] !== 'monthly') {
+        if ($row['kind'] !== SavingsGoalKind::Monthly->value) {
             return [
                 ...$common,
                 'target_amount' => $row['target_amount'],
