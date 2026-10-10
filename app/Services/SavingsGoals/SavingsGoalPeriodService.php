@@ -2,6 +2,7 @@
 
 namespace App\Services\SavingsGoals;
 
+use App\Enums\MonthlyTargetType;
 use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
 use Carbon\Carbon;
@@ -44,34 +45,60 @@ class SavingsGoalPeriodService
         $period = $this->openPeriod($goal, today());
 
         if ($period->closed_at === null) {
-            $period->update($this->targetAttributes($goal, $period->month));
+            $period->update($this->editedTargetAttributes($goal, $period));
         }
 
         return $period;
     }
 
     /**
-     * Bring a goal up to today: open every month from its last period (or its
-     * creation month) through the current one, then close every month that is
-     * over.
+     * The month in progress after an edit. A share of income edited into
+     * another share keeps the income the month opened with and only applies
+     * the new rate: re-reading the three-month average now could move the base
+     * under a user who only changed the percentage.
+     *
+     * @return array<string, mixed>
+     */
+    private function editedTargetAttributes(SavingsGoal $goal, SavingsGoalPeriod $period): array
+    {
+        $staysShareOfIncome = $period->target_type === MonthlyTargetType::IncomeRate
+            && $goal->monthly_target_type === MonthlyTargetType::IncomeRate;
+
+        if (! $staysShareOfIncome) {
+            return $this->targetAttributes($goal, $period->month);
+        }
+
+        return [
+            'target_rate' => $goal->monthly_target_rate,
+            'resolved_target_amount' => $period->income_base === null
+                ? null
+                : MonthlyTargetResolver::applyRate($goal->monthly_target_rate, $period->income_base),
+        ];
+    }
+
+    /**
+     * Bring a goal up to today: open every month from its creation month
+     * through the current one that has no period yet, then close every month
+     * that is over.
      *
      * A gap left by a command that did not run is filled rather than skipped,
-     * so the history has no holes. Those months get the target in force when
-     * they are filled, which is the target the goal had all along unless it
-     * was edited during the outage.
+     * wherever it sits — an edit during the outage opens the current month
+     * early, and the months before it still need theirs. Those months get the
+     * target in force when they are filled, which is the target the goal had
+     * all along unless it was edited during the outage.
      *
      * @return Collection<int, SavingsGoalPeriod> the periods this call closed, oldest first
      */
     public function advance(SavingsGoal $goal): Collection
     {
         $currentMonth = today()->startOfMonth();
-        $lastMonth = $goal->periods()->max('month');
-        $cursor = $lastMonth === null
-            ? $goal->created_at->copy()->startOfMonth()
-            : Carbon::parse($lastMonth)->addMonthNoOverflow()->startOfMonth();
+        $opened = $goal->periods()->pluck('month')
+            ->mapWithKeys(fn (mixed $month): array => [Carbon::parse($month)->format('Y-m') => true]);
 
-        for (; $cursor->lte($currentMonth); $cursor->addMonthNoOverflow()) {
-            $this->openPeriod($goal, $cursor);
+        for ($cursor = $goal->created_at->copy()->startOfMonth(); $cursor->lte($currentMonth); $cursor->addMonthNoOverflow()) {
+            if (! $opened->has($cursor->format('Y-m'))) {
+                $this->openPeriod($goal, $cursor);
+            }
         }
 
         return $this->closeOpenPeriods($goal, before: $currentMonth);
@@ -103,7 +130,7 @@ class SavingsGoalPeriodService
      */
     private function close(SavingsGoal $goal, SavingsGoalPeriod $period): bool
     {
-        $frozen = [...$this->targets->current($period, $goal->user), 'closed_at' => now()];
+        $frozen = [...$this->targets->current($period, $goal), 'closed_at' => now()];
 
         $claimed = SavingsGoalPeriod::query()
             ->whereKey($period->id)

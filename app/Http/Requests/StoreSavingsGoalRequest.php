@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\AccountType;
 use App\Enums\SavingsGoalKind;
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
+use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -12,7 +13,7 @@ use Illuminate\Validation\Rule;
 
 class StoreSavingsGoalRequest extends FormRequest
 {
-    use ValidatesMonthlySavingsTarget, ValidatesUserOwnedResources;
+    use ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesUserOwnedResources;
 
     public function authorize(): bool
     {
@@ -41,23 +42,17 @@ class StoreSavingsGoalRequest extends FormRequest
                 ...$rules,
                 ...$this->monthlyTargetRules(creating: true),
                 // Only a savings account: on any other type an incoming transfer
-                // counts against the goal, not towards it.
-                'auto_tag_account_id' => ['nullable', 'uuid', $this->userOwnedAccountOfType(AccountType::Savings)],
+                // counts against the goal, not towards it. And one of the space
+                // the goal is created in, where its rule and label live.
+                'auto_tag_account_id' => [
+                    'nullable',
+                    'uuid',
+                    $this->userOwnedAccountOfType(AccountType::Savings)->where('space_id', $this->user()->activeSpace()->id),
+                ],
             ];
         }
 
-        return [
-            ...$rules,
-            'target_amount' => ['required', 'integer', 'min:1'],
-            'initial_amount' => ['nullable', 'integer', 'min:0'],
-            // Pin the format and cap the year: 'date' alone silently mangles a
-            // five-digit year typo like 20026-11-10 into 2006-11-10, so every
-            // range rule sees a plausible date while the raw string is what
-            // reaches MySQL and blows up as an out-of-range date (PHP-LARAVEL-5X).
-            // The date picker always sends Y-m-d, and 2100 rejects typos rather
-            // than real target dates.
-            'target_date' => ['nullable', 'date_format:Y-m-d', 'after:today', 'before_or_equal:2100-01-01'],
-        ];
+        return [...$rules, ...$this->oneOffTargetRules(creating: true)];
     }
 
     public function isMonthly(): bool
