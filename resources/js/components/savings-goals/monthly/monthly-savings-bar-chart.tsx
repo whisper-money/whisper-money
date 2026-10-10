@@ -5,9 +5,10 @@ import { cn } from '@/lib/utils';
 import { MonthlySavingsStatus } from '@/types/savings-goal';
 import { formatMonthFromYearMonth, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { useLayoutEffect, useRef } from 'react';
+import { RefObject, useLayoutEffect, useRef, useState } from 'react';
 import {
     differenceClassName,
+    hasNoVerdict,
     isJudged,
     MONTH_STATUS_FILL,
     monthStatusLabel,
@@ -18,6 +19,34 @@ const MIN_COLUMN_WIDTH = 56;
 
 /** So a goal in its first months draws bars, not one slab across the card. */
 const MAX_COLUMN_WIDTH = 96;
+
+/** The gap between columns, gap-3. */
+const COLUMN_GAP = 12;
+
+/**
+ * The width of an element, kept up to date. Null until measured, and where the
+ * browser cannot measure (tests).
+ */
+function useWidth(ref: RefObject<HTMLElement | null>): number | null {
+    const [width, setWidth] = useState<number | null>(null);
+
+    useLayoutEffect(() => {
+        const element = ref.current;
+
+        if (!element || typeof ResizeObserver === 'undefined') {
+            return;
+        }
+
+        const observer = new ResizeObserver(([entry]) =>
+            setWidth(entry.contentRect.width),
+        );
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, [ref]);
+
+    return width;
+}
 
 export interface MonthlySavingsBar {
     /** YYYY-MM */
@@ -48,39 +77,38 @@ export function MonthlySavingsBarChart({
     showDifference = false,
 }: Props) {
     const locale = useLocale();
+    const container = useRef<HTMLDivElement>(null);
+    const width = useWidth(container);
+    // As many of the latest months as fit whole: the newest is the one being
+    // looked at, and a bar cut in half reads as a smaller amount.
+    const fitting =
+        width === null
+            ? bars.length
+            : Math.max(
+                  1,
+                  Math.floor(
+                      (width + COLUMN_GAP) / (MIN_COLUMN_WIDTH + COLUMN_GAP),
+                  ),
+              );
+    const shown = bars.slice(-fitting);
     const scale = Math.max(
         1,
-        ...bars.flatMap((bar) =>
-            bar.status === 'partial' ? [bar.saved] : [bar.saved, bar.target],
+        ...shown.flatMap((bar) =>
+            hasNoVerdict(bar.status) ? [bar.saved] : [bar.saved, bar.target],
         ),
     );
     const percentOf = (value: number) =>
         `${(Math.max(0, value) / scale) * 100}%`;
-    const scroller = useRef<HTMLDivElement>(null);
-    const lastMonth = bars.at(-1)?.month;
-
-    // When the months outgrow the card, open on the latest ones: that is the
-    // month being looked at, and the oldest are a scroll away.
-    useLayoutEffect(() => {
-        const element = scroller.current;
-
-        if (element) {
-            element.scrollLeft = element.scrollWidth;
-        }
-    }, [lastMonth]);
 
     return (
-        <div ref={scroller} className="overflow-x-auto">
-            {/* w-max + mx-auto rather than justify-center: centred tracks that
-                outgrow a narrow card spill out of both sides, and the left half
-                can't be scrolled to. */}
+        <div ref={container} className="min-w-0">
             <div
-                className="mx-auto grid w-max items-end gap-3"
+                className="grid items-end justify-center gap-3"
                 style={{
-                    gridTemplateColumns: `repeat(${bars.length}, minmax(${MIN_COLUMN_WIDTH}px, ${MAX_COLUMN_WIDTH}px))`,
+                    gridTemplateColumns: `repeat(${shown.length}, minmax(${MIN_COLUMN_WIDTH}px, ${MAX_COLUMN_WIDTH}px))`,
                 }}
             >
-                {bars.map((bar) => {
+                {shown.map((bar) => {
                     const label = formatMonthFromYearMonth(bar.month, locale);
                     const barLabel = `${formatMonthYear(monthDate(bar.month), locale)}: ${monthStatusLabel(bar.status)}`;
 
@@ -90,9 +118,11 @@ export function MonthlySavingsBarChart({
                                 <span className="text-center text-xs tabular-nums">
                                     {!isJudged(bar.status) ? (
                                         <span className="text-muted-foreground">
-                                            {bar.status === 'partial'
-                                                ? __('partial')
-                                                : __('in progress')}
+                                            {bar.status === 'in_progress'
+                                                ? __('in progress')
+                                                : monthStatusLabel(
+                                                      bar.status,
+                                                  ).toLowerCase()}
                                         </span>
                                     ) : (
                                         <AmountDisplay
@@ -117,15 +147,24 @@ export function MonthlySavingsBarChart({
                                 aria-label={barLabel}
                                 title={barLabel}
                             >
-                                <div
-                                    className={cn(
-                                        'w-full rounded-t-md',
-                                        MONTH_STATUS_FILL[bar.status],
-                                    )}
-                                    style={{ height: percentOf(bar.saved) }}
-                                />
-                                {/* A partial month has no target to draw. */}
-                                {bar.status !== 'partial' && (
+                                {bar.saved > 0 ? (
+                                    <div
+                                        className={cn(
+                                            'w-full rounded-t-md',
+                                            MONTH_STATUS_FILL[bar.status],
+                                        )}
+                                        style={{
+                                            height: percentOf(bar.saved),
+                                        }}
+                                    />
+                                ) : (
+                                    // Nothing saved: a flat baseline, not a
+                                    // zero-height box whose border draws a
+                                    // wavy line.
+                                    <div className="h-px w-full bg-border" />
+                                )}
+                                {/* A month without a verdict has no target to draw. */}
+                                {!hasNoVerdict(bar.status) && (
                                     <div
                                         className="absolute -inset-x-1 h-0.5 bg-foreground"
                                         // Kept inside the box: the highest target sits at

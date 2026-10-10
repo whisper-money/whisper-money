@@ -91,7 +91,10 @@ export function CreateSavingsGoalDialog({
         }
     }, [dialogOpen, isMonthly, autoTagAccounts]);
 
-    const tagAccountId = autoTagAccountId || savingsAccounts[0]?.id || '';
+    const tagAccountId =
+        autoTagAccountId ||
+        savingsAccounts.find((account) => account.used_by === null)?.id ||
+        '';
 
     const payload = () =>
         isMonthly

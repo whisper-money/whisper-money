@@ -23,10 +23,15 @@ export type MonthlyTargetType = 'amount' | 'income_rate';
 
 /**
  * Mirrors App\Enums\SavingsGoalMonthStatus. A `partial` month (the goal started
- * in its last days, or was archived during it) shows what was saved but gets
- * no verdict.
+ * in its last days) and an `archived` one (the goal was archived during it)
+ * show what was saved but get no verdict.
  */
-export type MonthlySavingsStatus = 'met' | 'missed' | 'in_progress' | 'partial';
+export type MonthlySavingsStatus =
+    | 'met'
+    | 'missed'
+    | 'in_progress'
+    | 'partial'
+    | 'archived';
 
 /** One calendar month of a monthly goal, judged against its own target. */
 export interface MonthlySavingsMonth {
@@ -50,6 +55,8 @@ export interface AutoTagAccount {
     id: UUID;
     name: string;
     bank: { name: string } | null;
+    /** The running monthly goal this account already feeds, if any. */
+    used_by: string | null;
 }
 
 export interface MonthlySavingsCurrent extends MonthlySavingsMonth {
@@ -80,6 +87,8 @@ export interface SavingsGoal {
     monthly_target_amount: number | null;
     monthly_target_rate: number | null;
     notify_on_month_end_reminder: boolean;
+    /** The savings account a monthly goal's auto-tag rule watches. */
+    auto_tag_account_id: UUID | null;
     target_amount: number;
     initial_amount: number;
     target_date: string | null;

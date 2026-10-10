@@ -41,7 +41,7 @@ import { formatCurrency } from '@/utils/currency';
 import { formatDate, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -79,6 +79,9 @@ export default function SavingsGoalShow({
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [archiveOpen, setArchiveOpen] = useState(false);
     const archived = savingsGoal.archived_at !== null;
+    const autoTagAccount = accounts.find(
+        (account) => account.id === savingsGoal.auto_tag_account_id,
+    );
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -100,61 +103,100 @@ export default function SavingsGoalShow({
 
             <div className="space-y-6 p-6">
                 <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                    <HeadingSmall
-                        title={savingsGoal.name}
-                        description={
-                            <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
-                                {archived && (
-                                    <Badge variant="secondary">
-                                        {__('Archived')}
-                                    </Badge>
-                                )}
-                                {savingsGoal.kind === 'monthly' && (
-                                    <MonthlyBadge>
-                                        {__('Monthly')} ·{' '}
-                                        <MonthlyTargetRule
-                                            goal={savingsGoal}
-                                            currencyCode={currencyCode}
-                                        />
-                                    </MonthlyBadge>
-                                )}
-                                {savingsGoal.label && (
-                                    <LabelBadge label={savingsGoal.label} />
-                                )}
-                                {savingsGoal.kind === 'monthly' && (
-                                    <span className="opacity-50">
-                                        {__('Since :month', {
-                                            month: formatMonthYear(
-                                                new Date(
-                                                    savingsGoal.created_at,
+                    {/* min-w-0 + anywhere: a long name without spaces wraps
+                        inside the page instead of pushing it sideways. */}
+                    <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                        <HeadingSmall
+                            title={savingsGoal.name}
+                            description={
+                                <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
+                                    {archived && (
+                                        <Badge variant="secondary">
+                                            {__('Archived')}
+                                        </Badge>
+                                    )}
+                                    {savingsGoal.kind === 'monthly' && (
+                                        <MonthlyBadge>
+                                            {__('Monthly')} ·{' '}
+                                            <MonthlyTargetRule
+                                                goal={savingsGoal}
+                                                currencyCode={currencyCode}
+                                            />
+                                        </MonthlyBadge>
+                                    )}
+                                    {savingsGoal.label && (
+                                        <span className="max-w-full truncate">
+                                            <LabelBadge
+                                                label={savingsGoal.label}
+                                            />
+                                        </span>
+                                    )}
+                                    {autoTagAccount && !archived && (
+                                        <Badge
+                                            variant="outline"
+                                            className="max-w-full gap-1"
+                                        >
+                                            <Wand2 className="size-3 shrink-0" />
+                                            <span className="truncate">
+                                                {__(
+                                                    'Auto-tags transfers into :account',
+                                                    {
+                                                        account:
+                                                            autoTagAccount.name,
+                                                    },
+                                                )}
+                                            </span>
+                                        </Badge>
+                                    )}
+                                    {savingsGoal.kind === 'monthly' && (
+                                        <span className="opacity-50">
+                                            {__('Since :month', {
+                                                month: formatMonthYear(
+                                                    new Date(
+                                                        savingsGoal.created_at,
+                                                    ),
+                                                    locale,
                                                 ),
-                                                locale,
-                                            ),
-                                        })}
-                                    </span>
-                                )}
-                                {savingsGoal.target_date && (
-                                    <span className="opacity-50">
-                                        {__('Target :date', {
-                                            date: formatDate(
-                                                savingsGoal.target_date,
-                                                'MMM d, yyyy',
-                                                locale,
-                                            ),
-                                        })}
-                                    </span>
-                                )}
-                            </div>
-                        }
-                    />
+                                            })}
+                                        </span>
+                                    )}
+                                    {savingsGoal.target_date && (
+                                        <span className="opacity-50">
+                                            {__('Target :date', {
+                                                date: formatDate(
+                                                    savingsGoal.target_date,
+                                                    'MMM d, yyyy',
+                                                    locale,
+                                                ),
+                                            })}
+                                        </span>
+                                    )}
+                                </div>
+                            }
+                        />
+                    </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {/* Linking would change a frozen amount, so it goes
                             away with the rest of the editing. */}
                         {!archived && (
-                            <Button onClick={() => setLinkOpen(true)}>
-                                {__('Link transactions')}
-                            </Button>
+                            <>
+                                <Button onClick={() => setLinkOpen(true)}>
+                                    {__('Link transactions')}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setEditOpen(true)}
+                                >
+                                    {__('Edit')}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setArchiveOpen(true)}
+                                >
+                                    {__('Archive')}
+                                </Button>
+                            </>
                         )}
 
                         <DropdownMenu>
@@ -168,20 +210,6 @@ export default function SavingsGoalShow({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {!archived && (
-                                    <>
-                                        <DropdownMenuItem
-                                            onClick={() => setEditOpen(true)}
-                                        >
-                                            {__('Edit goal')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => setArchiveOpen(true)}
-                                        >
-                                            {__('Archive goal')}
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
                                 <DropdownMenuItem
                                     onClick={() => setDeleteOpen(true)}
                                     variant="destructive"

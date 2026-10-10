@@ -171,6 +171,7 @@ export function monthProgressPercent(month: MonthlySavingsMonth): number {
 export function isTargetUnknown(month: MonthlySavingsMonth): boolean {
     return (
         month.status === 'partial' ||
+        month.status === 'archived' ||
         (month.is_live_target && month.target <= 0)
     );
 }
@@ -178,7 +179,11 @@ export function isTargetUnknown(month: MonthlySavingsMonth): boolean {
 function isAddedUp<T extends MonthlySavingsMonth>(
     entry: T | null | undefined,
 ): entry is T {
-    return entry != null && entry.status !== 'partial';
+    return (
+        entry != null &&
+        entry.status !== 'partial' &&
+        entry.status !== 'archived'
+    );
 }
 
 function sum(values: number[]): number {
