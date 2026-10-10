@@ -252,6 +252,7 @@ class SavingsGoalService
         ]);
 
         $rule->labels()->sync([$goal->label_id]);
+        $goal->update(['auto_tag_account_id' => $account->id]);
 
         // A transfer already counting for another goal stays with it: one euro
         // set aside cannot fill two goals.

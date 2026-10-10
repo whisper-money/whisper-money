@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\NamesSavingsGoalAttributes;
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
 use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
 use App\Http\Requests\Concerns\ValidatesSavingsGoalName;
@@ -12,7 +13,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateSavingsGoalRequest extends FormRequest
 {
-    use ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName;
+    use NamesSavingsGoalAttributes, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName;
 
     public function authorize(): bool
     {
