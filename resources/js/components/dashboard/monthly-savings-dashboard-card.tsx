@@ -110,22 +110,36 @@ function GoalLine({
     goal: SavingsGoal;
     currencyCode: string;
 }) {
-    const saved = goal.monthly?.current?.saved ?? 0;
-    const target = goal.monthly?.current?.target ?? 0;
+    const current = goal.monthly?.current;
+    const saved = current?.saved ?? 0;
+    const target = current?.target ?? 0;
+    // A partial month has no target to measure against, and a share of an
+    // income that has not arrived yet is 0: both say so rather than draw an
+    // empty or a full bar.
+    const partial = current?.status === 'partial';
+    const note = partial
+        ? __('Partial month')
+        : current?.is_live_target && target <= 0
+          ? __('the target grows as income comes in')
+          : null;
 
     return (
-        <li className="grid grid-cols-[minmax(0,1fr)_5rem_auto] items-center gap-3">
+        <li className="grid grid-cols-[minmax(0,1fr)_5rem_auto] items-center gap-x-3 gap-y-0.5">
             <Link
                 href={show({ savingsGoal: goal.id }).url}
                 className="truncate hover:underline"
             >
                 {goal.name}
             </Link>
-            <MonthlyGoalProgress
-                saved={saved}
-                target={target}
-                className="h-1.5"
-            />
+            {partial ? (
+                <span />
+            ) : (
+                <MonthlyGoalProgress
+                    saved={saved}
+                    target={target}
+                    className="h-1.5"
+                />
+            )}
             <span className="text-right text-muted-foreground tabular-nums">
                 <AmountDisplay
                     amountInCents={saved}
@@ -133,14 +147,23 @@ function GoalLine({
                     minimumFractionDigits={0}
                     maximumFractionDigits={0}
                 />
-                {' / '}
-                <AmountDisplay
-                    amountInCents={target}
-                    currencyCode={currencyCode}
-                    minimumFractionDigits={0}
-                    maximumFractionDigits={0}
-                />
+                {!partial && (
+                    <>
+                        {' / '}
+                        <AmountDisplay
+                            amountInCents={target}
+                            currencyCode={currencyCode}
+                            minimumFractionDigits={0}
+                            maximumFractionDigits={0}
+                        />
+                    </>
+                )}
             </span>
+            {note && (
+                <span className="col-span-3 text-xs text-muted-foreground">
+                    {note}
+                </span>
+            )}
         </li>
     );
 }
