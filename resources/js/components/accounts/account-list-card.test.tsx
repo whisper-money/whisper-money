@@ -23,6 +23,7 @@ vi.mock('@/actions/App/Http/Controllers/AccountController', () => ({
 
 vi.mock('@/contexts/privacy-mode-context', () => ({
     usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+    usePrivacyReveal: () => null,
 }));
 
 vi.mock('@/components/accounts/update-balance-dialog', () => ({
