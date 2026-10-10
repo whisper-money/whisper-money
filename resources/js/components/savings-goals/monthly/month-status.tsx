@@ -14,6 +14,7 @@ export const MONTH_STATUS_FILL: Record<MonthStripStatus, string> = {
     missed: 'bg-orange-300 dark:bg-orange-400/70',
     in_progress:
         'border-[1.5px] border-dashed border-foreground/80 bg-background',
+    partial: 'bg-emerald-600/30 dark:bg-emerald-500/30',
     none: 'bg-muted',
 };
 
@@ -34,10 +35,40 @@ export function monthStatusLabel(status: MonthStripStatus): string {
         met: __('Met'),
         missed: __('Missed'),
         in_progress: __('In progress'),
+        partial: __('Partial month'),
         none: __('Before it existed'),
     };
 
     return labels[status];
+}
+
+/** Whether a month got a verdict, so its target and difference mean something. */
+export function isJudged(status: MonthlySavingsStatus): boolean {
+    return status === 'met' || status === 'missed';
+}
+
+/**
+ * The legend for a set of months: the given statuses, plus "partial" only
+ * when one of the months is, so goals without one are not taught a term they
+ * will never see.
+ */
+export function legendStatuses(
+    base: MonthStripStatus[],
+    months: { status: MonthlySavingsStatus }[],
+): MonthStripStatus[] {
+    return months.some((month) => month.status === 'partial')
+        ? [...base, 'partial']
+        : base;
+}
+
+/**
+ * What stands in for "months met" before any month was judged: the first one
+ * is still running, or — for an archived goal — none ever will be.
+ */
+export function noJudgedMonthYet(archived: boolean): string {
+    return archived
+        ? __('No full month before it was archived')
+        : __('The first month is still in progress');
 }
 
 /** Text colour for a signed difference: ahead reads green, behind orange. */
@@ -58,7 +89,8 @@ export function MonthStatusBadge({ status }: { status: MonthlySavingsStatus }) {
                     'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
                 status === 'missed' &&
                     'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
-                status === 'in_progress' && 'bg-muted text-muted-foreground',
+                (status === 'in_progress' || status === 'partial') &&
+                    'bg-muted text-muted-foreground',
             )}
         >
             {monthStatusLabel(status)}

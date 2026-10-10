@@ -197,6 +197,7 @@ export default function SavingsGoalShow({
                     <MonthlySavingsGoalView
                         savingsGoal={savingsGoal}
                         monthly={monthly}
+                        archived={archived}
                         transactions={transactions}
                         categories={categories}
                         accounts={accounts}

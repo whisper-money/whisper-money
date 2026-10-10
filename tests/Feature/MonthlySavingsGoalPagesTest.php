@@ -6,6 +6,7 @@ use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
+use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Support\Carbon;
 
 function monthlyPagesUser(): User
@@ -88,5 +89,19 @@ test('a one-off goal page is unchanged', function () {
         ->assertInertia(fn ($page) => $page
             ->where('monthly', null)
             ->where('stats.target', 100000)
+        );
+});
+
+test('an archived monthly goal page has no month in progress and its archive month is partial', function () {
+    $user = monthlyPagesUser();
+    $goal = monthlyPagesGoal($user, ['created_at' => '2026-08-15']);
+    app(SavingsGoalService::class)->archive($goal);
+
+    $this->actingAs($user)->get("/savings-goals/{$goal->id}")
+        ->assertInertia(fn ($page) => $page
+            ->whereNot('savingsGoal.archived_at', null)
+            ->where('monthly.current', null)
+            ->where('monthly.history.2.month', '2026-10')
+            ->where('monthly.history.2.status', 'partial')
         );
 });
