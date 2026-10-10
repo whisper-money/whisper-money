@@ -1,3 +1,4 @@
+export { AreaGradient } from './area-gradient';
 export { CashflowTrendChart } from './cashflow-trend-chart';
 export {
     ChartCurrencyToggle,
