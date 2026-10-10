@@ -63,6 +63,7 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
         Route::get('sankey', [CashflowAnalyticsController::class, 'sankey']);
         Route::get('trend', [CashflowAnalyticsController::class, 'trend']);
         Route::get('breakdown', [CashflowAnalyticsController::class, 'breakdown']);
+        Route::get('monthly-savings', [CashflowAnalyticsController::class, 'monthlySavings']);
     });
 
     // Full import from another app (the wizard). `block-shared` on the writes:
