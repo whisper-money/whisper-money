@@ -28,6 +28,9 @@ interface EditCreditCardDetailDialogProps {
 
 type DateField = keyof CreditCardDetail;
 
+/** Mirrors PaymentDueAfterStatementClosing::MAX_DAYS_TO_PAY on the server. */
+const MAX_DAYS_TO_PAY = 45;
+
 const EMPTY_DATES: CreditCardDetail = {
     statement_closing_date: '',
     payment_due_date: '',
@@ -83,12 +86,17 @@ export function EditCreditCardDetailDialog({
         {
             name: 'statement_closing_date',
             label: __('Statement closing date'),
-            hint: __('The day your next (or last) statement closes.'),
+            hint: __(
+                'Any closing date of this card, past or upcoming. Later ones are projected from it.',
+            ),
         },
         {
             name: 'payment_due_date',
             label: __('Payment due date'),
-            hint: __('The day that statement is charged.'),
+            hint: __(
+                'The day that statement is charged, at most :days days after it closes.',
+                { days: MAX_DAYS_TO_PAY },
+            ),
         },
     ];
 
@@ -138,7 +146,7 @@ export function EditCreditCardDetailDialog({
                                 onClick={handleRemove}
                                 disabled={isSubmitting}
                             >
-                                {__('Remove')}
+                                {__('Remove dates')}
                             </Button>
                         ) : (
                             <span />

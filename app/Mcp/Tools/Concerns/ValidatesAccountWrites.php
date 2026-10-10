@@ -7,6 +7,7 @@ use App\Enums\PropertyType;
 use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use App\Models\User;
+use App\Rules\PaymentDueAfterStatementClosing;
 use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -136,7 +137,7 @@ trait ValidatesAccountWrites
             'original_amount' => $schema->integer()->description('loan only: amount originally borrowed, in minor units.'),
             'loan_start_date' => $schema->string()->description('loan only: when the loan started, YYYY-MM-DD. Defaults to today.'),
             'statement_closing_date' => $schema->string()->description('credit_card only: a statement closing date, YYYY-MM-DD. Later cycles repeat monthly from it. Send with payment_due_date; both null clears them.'),
-            'payment_due_date' => $schema->string()->description('credit_card only: when that statement is charged, YYYY-MM-DD. After the closing date, at most 45 days later.'),
+            'payment_due_date' => $schema->string()->description('credit_card only: when that statement is charged, YYYY-MM-DD. After the closing date, at most '.PaymentDueAfterStatementClosing::MAX_DAYS_TO_PAY.' days later.'),
         ];
     }
 

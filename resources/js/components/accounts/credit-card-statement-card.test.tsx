@@ -91,7 +91,7 @@ describe('CreditCardStatementCard', () => {
             screen.getByLabelText('Statement closing date'),
         ).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: 'Remove' }),
+            screen.queryByRole('button', { name: 'Remove dates' }),
         ).not.toBeInTheDocument();
     });
 
@@ -106,7 +106,9 @@ describe('CreditCardStatementCard', () => {
         );
 
         expect(screen.getByText('€123.45')).toBeInTheDocument();
-        expect(screen.getByText(/Charged on Mar 20, 2026/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Expected on Mar 20, 2026/),
+        ).toBeInTheDocument();
         expect(
             screen.getByText(/Statement closed on Mar 5, 2026/),
         ).toBeInTheDocument();
@@ -143,6 +145,7 @@ describe('CreditCardStatementCard', () => {
         );
 
         expect(screen.getByText('Nothing to pay')).toBeInTheDocument();
+        expect(screen.getByText('€5.00')).toBeInTheDocument();
     });
 
     it('saves and removes the statement dates', () => {
@@ -170,7 +173,7 @@ describe('CreditCardStatementCard', () => {
             expect.any(Object),
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Remove dates' }));
 
         expect(router.delete).toHaveBeenCalledWith(
             '/accounts/card-1/credit-card-detail',

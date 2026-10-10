@@ -22,10 +22,7 @@ final readonly class StatementSchedule
 
     public static function fromDetail(CreditCardDetail $detail): self
     {
-        return new self(
-            CarbonImmutable::parse($detail->statement_closing_date->toDateString()),
-            CarbonImmutable::parse($detail->payment_due_date->toDateString()),
-        );
+        return new self($detail->statement_closing_date, $detail->payment_due_date);
     }
 
     /**
@@ -52,23 +49,25 @@ final readonly class StatementSchedule
     /**
      * The statement charged next as of $today, and whether it is final.
      *
-     * Between a closing and its due date (both ends counted on the due side)
-     * the closed statement is what gets charged, and its amount no longer
-     * moves. Once that due date has passed, the next charge is the open cycle,
-     * whose amount is still a running total.
+     * A closed statement whose due date has not passed yet (the due date
+     * itself still counts) is what gets charged, and its amount no longer
+     * moves. With a due date more than a cycle after its closing, two closed
+     * statements can be pending at once, and the older one is charged first.
+     * Once every closed statement is past due, the next charge is the open
+     * cycle, whose amount is still a running total.
      *
      * @return array{cycle: StatementCycle, is_final: bool}
      */
     public function nextPaymentOn(CarbonImmutable $today): array
     {
         $openOffset = $this->openOffsetOn($today);
-        $closedCycle = $this->cycle($openOffset - 1);
+        $offset = $openOffset;
 
-        if ($today->lessThanOrEqualTo($closedCycle->dueDate)) {
-            return ['cycle' => $closedCycle, 'is_final' => true];
+        while ($today->lessThanOrEqualTo($this->cycle($offset - 1)->dueDate)) {
+            $offset--;
         }
 
-        return ['cycle' => $this->cycle($openOffset), 'is_final' => false];
+        return ['cycle' => $this->cycle($offset), 'is_final' => $offset < $openOffset];
     }
 
     private function closingDate(int $offset): CarbonImmutable

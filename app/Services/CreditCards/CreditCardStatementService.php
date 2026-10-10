@@ -2,6 +2,7 @@
 
 namespace App\Services\CreditCards;
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Features\CreditCardStatements;
 use App\Models\Account;
@@ -33,6 +34,22 @@ class CreditCardStatementService
     }
 
     /**
+     * The statement fields an account row carries for this user: the dates
+     * and the estimate on a credit card when the feature is on, nothing at
+     * all otherwise.
+     *
+     * @return array<string, mixed>
+     */
+    public function presentFor(Account $account, User $user): array
+    {
+        if ($account->type !== AccountType::CreditCard || ! $this->isAvailableTo($user)) {
+            return [];
+        }
+
+        return $this->present($account, $user);
+    }
+
+    /**
      * A credit card's statement dates and, once they are set, the estimate
      * they give as of today in the user's timezone. Reads the
      * `creditCardDetail` relation, so eager-load it when presenting several
@@ -43,7 +60,7 @@ class CreditCardStatementService
      *     credit_card_statement: array<string, mixed>|null,
      * }
      */
-    public function present(Account $account, User $user): array
+    private function present(Account $account, User $user): array
     {
         $detail = $account->creditCardDetail;
 

@@ -185,9 +185,7 @@ class AccountController extends Controller
             }
         }
 
-        if ($account->type === AccountType::CreditCard && $this->creditCardStatementService->isAvailableTo($request->user())) {
-            $data = [...$data, ...$this->creditCardStatementService->present($account, $request->user())];
-        }
+        $data = [...$data, ...$this->creditCardStatementService->presentFor($account, $request->user())];
 
         return Inertia::render('Accounts/Show', [
             'account' => $data,

@@ -24,6 +24,8 @@ it('picks the statement charged next', function (string $closing, string $due, s
     'today is the due day: still the closed statement' => ['2026-03-05', '2026-03-20', '2026-03-20', '2026-02-06', '2026-03-05', '2026-03-20', true],
     'the day after the due date moves on to the open cycle' => ['2026-03-05', '2026-03-20', '2026-03-21', '2026-03-06', '2026-04-05', '2026-04-20', false],
     'anchor far in the past' => ['2020-01-15', '2020-02-05', '2026-07-01', '2026-05-16', '2026-06-15', '2026-07-05', true],
+    'due more than a cycle after closing: the older statement is still pending' => ['2026-09-01', '2026-10-11', '2026-10-02', '2026-08-02', '2026-09-01', '2026-10-11', true],
+    'due more than a cycle after closing: the newer one once the older is paid' => ['2026-09-01', '2026-10-11', '2026-10-12', '2026-09-02', '2026-10-01', '2026-11-11', true],
     'anchor far in the future' => ['2030-01-15', '2030-02-05', '2026-07-01', '2026-05-16', '2026-06-15', '2026-07-05', true],
 ]);
 

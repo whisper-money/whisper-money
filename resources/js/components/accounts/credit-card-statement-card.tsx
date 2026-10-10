@@ -111,6 +111,11 @@ function StatementSummary({
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    {nextPayment.is_final
+                        ? __('Estimated amount')
+                        : __('Estimated amount so far')}
+                </span>
                 {nextPayment.amount > 0 ? (
                     <AmountDisplay
                         amountInCents={nextPayment.amount}
@@ -120,19 +125,27 @@ function StatementSummary({
                         monospace
                     />
                 ) : (
-                    <span className="text-2xl font-semibold">
-                        {__('Nothing to pay')}
+                    <span className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-2xl font-semibold">
+                            {__('Nothing to pay')}
+                        </span>
+                        {nextPayment.amount < 0 && (
+                            <CreditNote
+                                amount={nextPayment.amount}
+                                currencyCode={currencyCode}
+                            />
+                        )}
                     </span>
                 )}
                 <span className="text-sm">
-                    {__('Charged on :date', {
+                    {__('Expected on :date', {
                         date: formatDay(nextPayment.due_date),
                     })}
                 </span>
                 <span className="text-xs text-muted-foreground">
                     {nextPayment.is_final
                         ? __(
-                              'Statement closed on :date. It only changes if its transactions are edited.',
+                              'Statement closed on :date. It can still change if transactions in that period are added or edited.',
                               { date: formatDay(nextPayment.closing_date) },
                           )
                         : __(
@@ -145,12 +158,19 @@ function StatementSummary({
             <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 p-3 text-sm dark:bg-muted/20">
                 <span className="font-medium">{__('Current cycle')}</span>
                 <span className="flex flex-wrap items-baseline gap-1">
-                    <AmountDisplay
-                        amountInCents={Math.max(currentCycle.amount, 0)}
-                        currencyCode={currencyCode}
-                        weight="medium"
-                        monospace
-                    />
+                    {currentCycle.amount < 0 ? (
+                        <CreditNote
+                            amount={currentCycle.amount}
+                            currencyCode={currencyCode}
+                        />
+                    ) : (
+                        <AmountDisplay
+                            amountInCents={currentCycle.amount}
+                            currencyCode={currencyCode}
+                            weight="medium"
+                            monospace
+                        />
+                    )}
                     <span className="text-muted-foreground">
                         {__(
                             'so far, closes on :closing and is charged on :due',
@@ -169,5 +189,25 @@ function StatementSummary({
                 )}
             </p>
         </div>
+    );
+}
+
+/** Refunds that outweigh the purchases leave the card owing the user. */
+function CreditNote({
+    amount,
+    currencyCode,
+}: {
+    amount: number;
+    currencyCode: CurrencyCode;
+}) {
+    return (
+        <span className="text-sm text-emerald-700 dark:text-emerald-400">
+            {__('Credit of')}{' '}
+            <AmountDisplay
+                amountInCents={-amount}
+                currencyCode={currencyCode}
+                monospace
+            />
+        </span>
     );
 }
