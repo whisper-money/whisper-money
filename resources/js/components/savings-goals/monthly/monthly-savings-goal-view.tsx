@@ -11,6 +11,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { isTargetUnknown, monthDate, monthKey } from '@/lib/monthly-savings';
 import { cn } from '@/lib/utils';
 import { Account, Bank } from '@/types/account';
@@ -23,6 +24,7 @@ import { __ } from '@/utils/i18n';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import {
+    hasNoVerdict,
     isJudged,
     legendStatuses,
     MonthStatusBadge,
@@ -285,7 +287,7 @@ function HistoryTable({
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground tabular-nums">
-                                    {entry.status === 'partial' ? (
+                                    {hasNoVerdict(entry.status) ? (
                                         '—'
                                     ) : (
                                         <MonthTarget
@@ -301,7 +303,7 @@ function HistoryTable({
                                     />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {entry.status === 'partial' ? (
+                                    {hasNoVerdict(entry.status) ? (
                                         <span className="text-muted-foreground">
                                             —
                                         </span>
@@ -340,6 +342,21 @@ function HistoryTable({
 }
 
 /**
+ * On a phone the contributions keep the date, the description and the
+ * amount: the amount is what the list is for, and the other columns push it
+ * off the screen.
+ */
+const MOBILE_HIDDEN_COLUMNS = [
+    'category_id',
+    'account',
+    'bank',
+    'creditor_name',
+    'debtor_name',
+    'labels',
+    'notes',
+];
+
+/**
  * The tagged transactions of one month at a time. The page receives every
  * tagged transaction, because the link dialog needs the whole set to save it
  * back, so stepping through months happens here without a round trip.
@@ -364,6 +381,7 @@ function Contributions({
     className?: string;
 }) {
     const locale = useLocale();
+    const isMobile = useIsMobile();
     // Kept as a month rather than an index: when the page reloads with a new
     // month in the history, "the latest" has to follow it.
     const latest = months.at(-1) ?? monthKey(new Date());
@@ -425,6 +443,7 @@ function Contributions({
                         showActionsMenu={false}
                         maxHeight={480}
                         hiddenLabelId={savingsGoal.label_id ?? undefined}
+                        hideColumns={isMobile ? MOBILE_HIDDEN_COLUMNS : []}
                     />
                 )}
             </CardContent>

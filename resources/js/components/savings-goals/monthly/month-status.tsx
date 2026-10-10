@@ -15,6 +15,7 @@ export const MONTH_STATUS_FILL: Record<MonthStripStatus, string> = {
     in_progress:
         'border-[1.5px] border-dashed border-foreground/80 bg-background',
     partial: 'bg-emerald-600/30 dark:bg-emerald-500/30',
+    archived: 'bg-muted-foreground/30',
     none: 'bg-muted',
 };
 
@@ -36,6 +37,7 @@ export function monthStatusLabel(status: MonthStripStatus): string {
         missed: __('Missed'),
         in_progress: __('In progress'),
         partial: __('Partial month'),
+        archived: __('Archived'),
         none: __('Before it existed'),
     };
 
@@ -47,18 +49,25 @@ export function isJudged(status: MonthlySavingsStatus): boolean {
     return status === 'met' || status === 'missed';
 }
 
+/** A month shown without a target or a verdict: partial or archived. */
+export function hasNoVerdict(status: MonthlySavingsStatus): boolean {
+    return status === 'partial' || status === 'archived';
+}
+
 /**
- * The legend for a set of months: the given statuses, plus "partial" only
- * when one of the months is, so goals without one are not taught a term they
- * will never see.
+ * The legend for a set of months: the given statuses, plus "partial" and
+ * "archived" only when one of the months is, so goals without one are not
+ * taught a term they will never see.
  */
 export function legendStatuses(
     base: MonthStripStatus[],
     months: { status: MonthlySavingsStatus }[],
 ): MonthStripStatus[] {
-    return months.some((month) => month.status === 'partial')
-        ? [...base, 'partial']
-        : base;
+    const extra = (['partial', 'archived'] as const).filter((status) =>
+        months.some((month) => month.status === status),
+    );
+
+    return [...base, ...extra];
 }
 
 /**
@@ -89,7 +98,7 @@ export function MonthStatusBadge({ status }: { status: MonthlySavingsStatus }) {
                     'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
                 status === 'missed' &&
                     'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
-                (status === 'in_progress' || status === 'partial') &&
+                (status === 'in_progress' || hasNoVerdict(status)) &&
                     'bg-muted text-muted-foreground',
             )}
         >
