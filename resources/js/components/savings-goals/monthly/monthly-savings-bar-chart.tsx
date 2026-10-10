@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { MonthlySavingsStatus } from '@/types/savings-goal';
 import { formatMonthFromYearMonth, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { useLayoutEffect, useRef } from 'react';
 import {
     differenceClassName,
     MONTH_STATUS_FILL,
@@ -52,11 +53,26 @@ export function MonthlySavingsBarChart({
     );
     const percentOf = (value: number) =>
         `${(Math.max(0, value) / scale) * 100}%`;
+    const scroller = useRef<HTMLDivElement>(null);
+    const lastMonth = bars.at(-1)?.month;
+
+    // When the months outgrow the card, open on the latest ones: that is the
+    // month being looked at, and the oldest are a scroll away.
+    useLayoutEffect(() => {
+        const element = scroller.current;
+
+        if (element) {
+            element.scrollLeft = element.scrollWidth;
+        }
+    }, [lastMonth]);
 
     return (
-        <div className="overflow-x-auto">
+        <div ref={scroller} className="overflow-x-auto">
+            {/* w-max + mx-auto rather than justify-center: centred tracks that
+                outgrow a narrow card spill out of both sides, and the left half
+                can't be scrolled to. */}
             <div
-                className="grid items-end justify-center gap-3"
+                className="mx-auto grid w-max items-end gap-3"
                 style={{
                     gridTemplateColumns: `repeat(${bars.length}, minmax(${MIN_COLUMN_WIDTH}px, ${MAX_COLUMN_WIDTH}px))`,
                 }}
@@ -105,7 +121,11 @@ export function MonthlySavingsBarChart({
                                 />
                                 <div
                                     className="absolute -inset-x-1 h-0.5 bg-foreground"
-                                    style={{ bottom: percentOf(bar.target) }}
+                                    // Kept inside the box: the highest target sits at
+                                    // 100%, where the scroll container would clip it.
+                                    style={{
+                                        bottom: `min(${percentOf(bar.target)}, calc(100% - 2px))`,
+                                    }}
                                     aria-hidden="true"
                                 />
                             </div>
