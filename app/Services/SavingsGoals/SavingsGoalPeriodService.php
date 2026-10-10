@@ -42,6 +42,7 @@ class SavingsGoalPeriodService
      */
     public function syncCurrentPeriod(SavingsGoal $goal): SavingsGoalPeriod
     {
+        $this->advance($goal);
         $period = $this->openPeriod($goal, today());
 
         if ($period->closed_at === null) {
@@ -91,17 +92,51 @@ class SavingsGoalPeriodService
      */
     public function advance(SavingsGoal $goal): Collection
     {
+        foreach ($this->missingMonths($goal, $goal->periods()->pluck('month')) as $month) {
+            $this->openPeriod($goal, $month);
+        }
+
+        return $this->closeOpenPeriods($goal, before: today()->startOfMonth());
+    }
+
+    /**
+     * The months a read finds without a period — the daily command has not
+     * opened them yet — as unsaved periods holding the target they would open
+     * with. A page shows the month from the 1st without writing anything: only
+     * the command and the write paths persist periods.
+     *
+     * @return Collection<int, SavingsGoalPeriod>
+     */
+    public function pendingPeriods(SavingsGoal $goal): Collection
+    {
+        return collect($this->missingMonths($goal, $goal->periods->pluck('month')))
+            ->map(fn (Carbon $month): SavingsGoalPeriod => new SavingsGoalPeriod([
+                'savings_goal_id' => $goal->id,
+                'month' => $month->toDateString(),
+                ...$this->targetAttributes($goal, $month),
+            ]));
+    }
+
+    /**
+     * Every month from the goal's creation month through the current one that
+     * is not among $opened.
+     *
+     * @param  Collection<int, mixed>  $opened  the months that have a period
+     * @return list<Carbon>
+     */
+    private function missingMonths(SavingsGoal $goal, Collection $opened): array
+    {
         $currentMonth = today()->startOfMonth();
-        $opened = $goal->periods()->pluck('month')
-            ->mapWithKeys(fn (mixed $month): array => [Carbon::parse($month)->format('Y-m') => true]);
+        $have = $opened->mapWithKeys(fn (mixed $month): array => [Carbon::parse($month)->format('Y-m') => true]);
+        $missing = [];
 
         for ($cursor = $goal->created_at->copy()->startOfMonth(); $cursor->lte($currentMonth); $cursor->addMonthNoOverflow()) {
-            if (! $opened->has($cursor->format('Y-m'))) {
-                $this->openPeriod($goal, $cursor);
+            if (! $have->has($cursor->format('Y-m'))) {
+                $missing[] = $cursor->copy();
             }
         }
 
-        return $this->closeOpenPeriods($goal, before: $currentMonth);
+        return $missing;
     }
 
     /**

@@ -175,6 +175,9 @@ class SavingsGoalService
             ]);
 
             if ($goal->isMonthly()) {
+                // Persist any month a read only showed, so the archive month
+                // exists and is closed with the rest.
+                $this->periods->advance($goal);
                 $this->periods->closeOpenPeriods($goal);
             }
 

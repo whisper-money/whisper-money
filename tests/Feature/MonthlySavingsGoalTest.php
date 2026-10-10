@@ -16,8 +16,10 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\SavingsGoals\MonthlySavingsGoalStats;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
+use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 function monthlyGoalUser(): User
 {
@@ -599,7 +601,7 @@ test('the daily command fills every missing month, also behind a month an edit o
     ]);
 });
 
-test('reading a goal opens the current month when the daily command has not yet', function () {
+test('reading a goal shows the current month before the daily command opened it, without writing', function () {
     $this->travelTo(Carbon::parse('2026-09-10'));
     $goal = createMonthlyGoal(monthlyGoalUser());
 
@@ -607,9 +609,54 @@ test('reading a goal opens the current month when the daily command has not yet'
 
     $stats = monthlyGoalStats($goal);
 
-    expect($stats['current']['month'])->toBe('2026-10')
+    expect($stats['current'])
+        ->month->toBe('2026-10')
+        ->target->toBe(30000)
         ->and($stats['history'][0]['status'])->toBe(SavingsGoalMonthStatus::Missed)
-        ->and($goal->periods()->where('month', '2026-09-01')->value('closed_at'))->not->toBeNull();
+        ->and($goal->periods()->count())->toBe(1)
+        ->and($goal->periods()->sole()->closed_at)->toBeNull();
+});
+
+test('archiving persists the month a read only showed, and closes it', function () {
+    $this->travelTo(Carbon::parse('2026-09-10'));
+    $user = monthlyGoalUser();
+    $goal = createMonthlyGoal($user);
+
+    $this->travelTo(Carbon::parse('2026-10-02'));
+    $this->actingAs($user)->post("/savings-goals/{$goal->id}/archive")->assertSessionHasNoErrors();
+
+    expect($goal->periods()->orderBy('month')->get()->map(fn (SavingsGoalPeriod $period): array => [$period->monthKey(), $period->closed_at !== null])->all())
+        ->toBe([['2026-09', true], ['2026-10', true]]);
+});
+
+test('a shared space measures a share-of-income target against every member\'s income', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = monthlyGoalUser();
+    $partner = monthlyGoalUser();
+    $household = Space::factory()->create(['owner_id' => $user->id]);
+    $household->members()->attach($partner->id, ['id' => (string) Str::uuid(), 'role' => 'member']);
+
+    foreach ([[$user, 200000], [$partner, 100000]] as [$member, $amount]) {
+        Transaction::factory()->create([
+            'user_id' => $member->id,
+            'account_id' => Account::factory()->create(['user_id' => $member->id, 'space_id' => $household->id, 'type' => AccountType::Checking, 'currency_code' => 'EUR'])->id,
+            'category_id' => Category::factory()->create(['user_id' => $member->id, 'space_id' => $household->id, 'type' => CategoryType::Income])->id,
+            'amount' => $amount,
+            'currency_code' => 'EUR',
+            'transaction_date' => '2026-09-20',
+        ]);
+    }
+
+    $goal = app(SavingsGoalService::class)->createFromInput($user, [
+        'name' => 'Household fund',
+        'kind' => 'monthly',
+        'monthly_target_type' => 'income_rate',
+        'monthly_target_rate' => 10,
+    ], $household);
+
+    expect($goal->periods()->sole())
+        ->income_base->toBe(300000)
+        ->resolved_target_amount->toBe(30000);
 });
 
 test('the daily command runs just after midnight', function () {

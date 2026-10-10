@@ -7,6 +7,7 @@ use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 /**
  * Where a monthly savings goal stands, month by month.
@@ -47,46 +48,45 @@ class MonthlySavingsGoalStats
     public function forGoals(Collection $goals): array
     {
         $goals->loadMissing(['periods' => fn ($query) => $query->orderBy('month'), 'user']);
-        $this->openCurrentMonths($goals);
 
         $savedByLabel = $this->savedByMonth($goals);
 
         return $goals
             ->mapWithKeys(fn (SavingsGoal $goal): array => [
-                $goal->id => $this->summarize($goal, $this->history($goal, $savedByLabel[$goal->label_id] ?? [])),
+                $goal->id => $this->summarize($goal, $this->history($goal, $this->periodsOf($goal), $savedByLabel[$goal->label_id] ?? [])),
             ])
             ->all();
     }
 
     /**
-     * The daily command opens each month just after midnight, but a page read
-     * before it ran — or while it was down — would show the month missing. A
-     * running goal without the current month is brought up to date here.
+     * The goal's periods, plus — for a running goal the daily command has not
+     * caught up with yet, say on the 1st before it ran — the missing months as
+     * unsaved periods. Reading never writes; the month still shows.
      *
-     * @param  Collection<int, SavingsGoal>  $goals
+     * @return SupportCollection<int, SavingsGoalPeriod>
      */
-    private function openCurrentMonths(Collection $goals): void
+    private function periodsOf(SavingsGoal $goal): SupportCollection
     {
-        $currentMonth = today()->format('Y-m');
+        if ($goal->isArchived()) {
+            return $goal->periods->toBase();
+        }
 
-        $goals
-            ->reject(fn (SavingsGoal $goal): bool => $goal->isArchived()
-                || $goal->periods->contains(fn (SavingsGoalPeriod $period): bool => $period->monthKey() === $currentMonth))
-            ->each(function (SavingsGoal $goal): void {
-                $this->periods->advance($goal);
-                $goal->load(['periods' => fn ($query) => $query->orderBy('month')]);
-            });
+        return $goal->periods->toBase()
+            ->concat($this->periods->pendingPeriods($goal))
+            ->sortBy(fn (SavingsGoalPeriod $period): string => $period->monthKey())
+            ->values();
     }
 
     /**
      * One row per period, oldest first.
      *
+     * @param  SupportCollection<int, SavingsGoalPeriod>  $periods
      * @param  array<string, int>  $savedByMonth
      * @return list<array<string, mixed>>
      */
-    private function history(SavingsGoal $goal, array $savedByMonth): array
+    private function history(SavingsGoal $goal, SupportCollection $periods, array $savedByMonth): array
     {
-        return $goal->periods
+        return $periods
             ->map(function (SavingsGoalPeriod $period) use ($goal, $savedByMonth): array {
                 $saved = $savedByMonth[$period->monthKey()] ?? 0;
                 ['resolved_target_amount' => $target, 'income_base' => $incomeBase] = $this->targets->current($period, $goal);
