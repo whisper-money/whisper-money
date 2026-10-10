@@ -43,6 +43,13 @@ class SavingsGoal extends Model
      */
     public const LATE_START_DAYS = 5;
 
+    /**
+     * The largest amount, in minor units, a goal's target or starting amount
+     * may be: 1,000,000,000.00. Well inside the integers a browser holds
+     * exactly, so figures never drift by a cent on the way to the screen.
+     */
+    public const MAX_AMOUNT = 100_000_000_000;
+
     protected $fillable = [
         'user_id',
         'space_id',
@@ -59,6 +66,7 @@ class SavingsGoal extends Model
         'monthly_target_amount',
         'monthly_target_rate',
         'notify_on_month_end_reminder',
+        'auto_tag_account_id',
     ];
 
     /**
@@ -133,13 +141,36 @@ class SavingsGoal extends Model
     }
 
     /**
-     * Whether $month is shown without a verdict: the goal started late in it,
-     * or was archived during it.
+     * Whether the goal was archived during $month.
+     */
+    public function wasArchivedIn(CarbonInterface $month): bool
+    {
+        return $this->archived_at !== null && $this->archived_at->isSameMonth($month);
+    }
+
+    /**
+     * Whether $month gets no verdict: the goal started late in it, or was
+     * archived during it.
      */
     public function isPartialMonth(CarbonInterface $month): bool
     {
-        return $this->startedLateIn($month)
-            || ($this->archived_at !== null && $this->archived_at->isSameMonth($month));
+        return $this->startedLateIn($month) || $this->wasArchivedIn($month);
+    }
+
+    /**
+     * The running monthly goal whose auto-tag rule already watches $accountId.
+     * Rules stop at the first match, so a second goal on the same account
+     * would never see a transfer.
+     */
+    public static function autoTaggingAccount(string $accountId): ?self
+    {
+        return self::query()->monthly()->notArchived()->where('auto_tag_account_id', $accountId)->first();
+    }
+
+    /** @return BelongsTo<Account, $this> */
+    public function autoTagAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'auto_tag_account_id');
     }
 
     /**

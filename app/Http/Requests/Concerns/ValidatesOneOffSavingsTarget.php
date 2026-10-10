@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Concerns;
 
+use App\Models\SavingsGoal;
+
 /**
  * The total, starting balance and date of a one-off savings goal, shared by the
  * create and edit forms and the MCP tools.
@@ -15,8 +17,8 @@ trait ValidatesOneOffSavingsTarget
     protected function oneOffTargetRules(bool $creating): array
     {
         return [
-            'target_amount' => [...($creating ? [] : ['sometimes']), 'required', 'integer', 'min:1'],
-            'initial_amount' => [...($creating ? ['nullable'] : ['sometimes', 'required']), 'integer', 'min:0'],
+            'target_amount' => [...($creating ? [] : ['sometimes']), 'required', 'integer', 'min:1', 'max:'.SavingsGoal::MAX_AMOUNT],
+            'initial_amount' => [...($creating ? ['nullable'] : ['sometimes', 'required']), 'integer', 'min:0', 'max:'.SavingsGoal::MAX_AMOUNT],
             // Pin the format and bound the year: 'date' alone silently mangles a
             // five-digit year typo like 20026-11-10 into 2006-11-10, so every
             // range rule sees a plausible date while the raw string is what
