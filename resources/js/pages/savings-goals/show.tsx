@@ -6,6 +6,8 @@ import { ArchiveSavingsGoalDialog } from '@/components/savings-goals/archive-sav
 import { DeleteSavingsGoalDialog } from '@/components/savings-goals/delete-savings-goal-dialog';
 import { EditSavingsGoalDialog } from '@/components/savings-goals/edit-savings-goal-dialog';
 import { LinkTransactionsDialog } from '@/components/savings-goals/link-transactions-dialog';
+import { MonthlyTargetRule } from '@/components/savings-goals/monthly/monthly-goal-figures';
+import { MonthlySavingsGoalView } from '@/components/savings-goals/monthly/monthly-savings-goal-view';
 import { SavingsGoalProgressChart } from '@/components/savings-goals/savings-goal-progress-chart';
 import { LabelBadge } from '@/components/shared/label-combobox';
 import { TransactionList } from '@/components/transactions/transaction-list';
@@ -29,12 +31,13 @@ import { Label } from '@/types/label';
 import {
     getSavingsGoalStatusColor,
     getSavingsGoalStatusLabel,
+    MonthlySavingsStats,
     SavingsGoal,
     SavingsGoalStats,
 } from '@/types/savings-goal';
 import { ServerTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
-import { formatDate } from '@/utils/date';
+import { formatDate, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
@@ -43,7 +46,10 @@ import { useState } from 'react';
 interface Props {
     savingsGoal: SavingsGoal;
     transactions: ServerTransaction[];
-    stats: SavingsGoalStats;
+    /** One-off goals only. */
+    stats?: SavingsGoalStats | null;
+    /** Monthly goals only. */
+    monthly?: MonthlySavingsStats | null;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
@@ -57,6 +63,7 @@ export default function SavingsGoalShow({
     savingsGoal,
     transactions,
     stats,
+    monthly,
     categories,
     accounts,
     banks,
@@ -71,10 +78,6 @@ export default function SavingsGoalShow({
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [archiveOpen, setArchiveOpen] = useState(false);
     const archived = savingsGoal.archived_at !== null;
-
-    const statusColor = stats.status
-        ? getSavingsGoalStatusColor(stats.status)
-        : 'text-muted-foreground';
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -105,8 +108,32 @@ export default function SavingsGoalShow({
                                         {__('Archived')}
                                     </Badge>
                                 )}
+                                {savingsGoal.kind === 'monthly' && (
+                                    <Badge
+                                        variant="outline"
+                                        className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+                                    >
+                                        {__('Monthly')} ·{' '}
+                                        <MonthlyTargetRule
+                                            goal={savingsGoal}
+                                            currencyCode={currencyCode}
+                                        />
+                                    </Badge>
+                                )}
                                 {savingsGoal.label && (
                                     <LabelBadge label={savingsGoal.label} />
+                                )}
+                                {savingsGoal.kind === 'monthly' && (
+                                    <span className="opacity-50">
+                                        {__('Since :month', {
+                                            month: formatMonthYear(
+                                                new Date(
+                                                    savingsGoal.created_at,
+                                                ),
+                                                locale,
+                                            ),
+                                        })}
+                                    </span>
                                 )}
                                 {savingsGoal.target_date && (
                                     <span className="opacity-50">
@@ -168,110 +195,31 @@ export default function SavingsGoalShow({
                     </div>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                            <span>
-                                <AmountDisplay
-                                    amountInCents={stats.saved}
-                                    currencyCode={currencyCode}
-                                />{' '}
-                                <span className="text-base font-normal text-muted-foreground">
-                                    {__('of')}{' '}
-                                    <AmountDisplay
-                                        amountInCents={stats.target}
-                                        currencyCode={currencyCode}
-                                    />
-                                </span>
-                            </span>
-                            {stats.status && (
-                                <Badge
-                                    variant="outline"
-                                    className={statusColor}
-                                >
-                                    {getSavingsGoalStatusLabel(stats.status)}
-                                </Badge>
-                            )}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {savingsGoal.initial_amount > 0 && (
-                            <p className="text-sm text-muted-foreground">
-                                {__('Includes :amount you had already saved.', {
-                                    amount: formatCurrency(
-                                        savingsGoal.initial_amount,
-                                        currencyCode,
-                                        locale,
-                                    ),
-                                })}
-                            </p>
-                        )}
-                        <Progress
-                            value={Math.min(Math.max(stats.percentage, 0), 100)}
-                            className="h-2"
+                {monthly ? (
+                    <MonthlySavingsGoalView
+                        savingsGoal={savingsGoal}
+                        monthly={monthly}
+                        transactions={transactions}
+                        categories={categories}
+                        accounts={accounts}
+                        banks={banks}
+                        labels={labels}
+                        currencyCode={currencyCode}
+                    />
+                ) : (
+                    stats && (
+                        <OneOffGoalBody
+                            savingsGoal={savingsGoal}
+                            stats={stats}
+                            transactions={transactions}
+                            categories={categories}
+                            accounts={accounts}
+                            banks={banks}
+                            labels={labels}
+                            currencyCode={currencyCode}
                         />
-                        <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-                            <div>
-                                <p className="text-muted-foreground">
-                                    {__('Progress')}
-                                </p>
-                                <p className="font-medium">
-                                    {Math.max(0, Math.round(stats.percentage))}%
-                                </p>
-                            </div>
-                            {savingsGoal.target_date &&
-                                stats.estimated_date && (
-                                    <div>
-                                        <p className="text-muted-foreground">
-                                            {__('Estimated completion')}
-                                        </p>
-                                        <p className="font-medium">
-                                            {formatDate(
-                                                stats.estimated_date,
-                                                'MMM d, yyyy',
-                                                locale,
-                                            )}
-                                        </p>
-                                    </div>
-                                )}
-                            {stats.required_per_month !== null &&
-                                stats.required_per_month > 0 && (
-                                    <div>
-                                        <p className="text-muted-foreground">
-                                            {__('Needed per month')}
-                                        </p>
-                                        <p className="font-medium">
-                                            <AmountDisplay
-                                                amountInCents={
-                                                    stats.required_per_month
-                                                }
-                                                currencyCode={currencyCode}
-                                            />
-                                        </p>
-                                    </div>
-                                )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <SavingsGoalProgressChart
-                    savingsGoal={savingsGoal}
-                    stats={stats}
-                    transactions={transactions}
-                    currencyCode={currencyCode}
-                />
-
-                <TransactionList
-                    categories={categories}
-                    accounts={accounts}
-                    banks={banks}
-                    labels={labels}
-                    transactions={transactions}
-                    pageSize={10}
-                    showActionsMenu={false}
-                    maxHeight={600}
-                    hiddenLabelId={savingsGoal.label_id ?? undefined}
-                />
+                    )
+                )}
             </div>
 
             <LinkTransactionsDialog
@@ -304,5 +252,139 @@ export default function SavingsGoalShow({
                 redirectTo={index().url}
             />
         </AppSidebarLayout>
+    );
+}
+
+/**
+ * A one-off goal's progress towards its total: the figures, the projection
+ * chart and every tagged transaction.
+ */
+function OneOffGoalBody({
+    savingsGoal,
+    stats,
+    transactions,
+    categories,
+    accounts,
+    banks,
+    labels,
+    currencyCode,
+}: {
+    savingsGoal: SavingsGoal;
+    stats: SavingsGoalStats;
+    transactions: ServerTransaction[];
+    categories: Category[];
+    accounts: Account[];
+    banks: Bank[];
+    labels: Label[];
+    currencyCode: string;
+}) {
+    const locale = useLocale();
+    const statusColor = stats.status
+        ? getSavingsGoalStatusColor(stats.status)
+        : 'text-muted-foreground';
+
+    return (
+        <>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                        <span>
+                            <AmountDisplay
+                                amountInCents={stats.saved}
+                                currencyCode={currencyCode}
+                            />{' '}
+                            <span className="text-base font-normal text-muted-foreground">
+                                {__('of')}{' '}
+                                <AmountDisplay
+                                    amountInCents={stats.target}
+                                    currencyCode={currencyCode}
+                                />
+                            </span>
+                        </span>
+                        {stats.status && (
+                            <Badge variant="outline" className={statusColor}>
+                                {getSavingsGoalStatusLabel(stats.status)}
+                            </Badge>
+                        )}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {savingsGoal.initial_amount > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                            {__('Includes :amount you had already saved.', {
+                                amount: formatCurrency(
+                                    savingsGoal.initial_amount,
+                                    currencyCode,
+                                    locale,
+                                ),
+                            })}
+                        </p>
+                    )}
+                    <Progress
+                        value={Math.min(Math.max(stats.percentage, 0), 100)}
+                        className="h-2"
+                    />
+                    <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+                        <div>
+                            <p className="text-muted-foreground">
+                                {__('Progress')}
+                            </p>
+                            <p className="font-medium">
+                                {Math.max(0, Math.round(stats.percentage))}%
+                            </p>
+                        </div>
+                        {savingsGoal.target_date && stats.estimated_date && (
+                            <div>
+                                <p className="text-muted-foreground">
+                                    {__('Estimated completion')}
+                                </p>
+                                <p className="font-medium">
+                                    {formatDate(
+                                        stats.estimated_date,
+                                        'MMM d, yyyy',
+                                        locale,
+                                    )}
+                                </p>
+                            </div>
+                        )}
+                        {stats.required_per_month !== null &&
+                            stats.required_per_month > 0 && (
+                                <div>
+                                    <p className="text-muted-foreground">
+                                        {__('Needed per month')}
+                                    </p>
+                                    <p className="font-medium">
+                                        <AmountDisplay
+                                            amountInCents={
+                                                stats.required_per_month
+                                            }
+                                            currencyCode={currencyCode}
+                                        />
+                                    </p>
+                                </div>
+                            )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            <SavingsGoalProgressChart
+                savingsGoal={savingsGoal}
+                stats={stats}
+                transactions={transactions}
+                currencyCode={currencyCode}
+            />
+
+            <TransactionList
+                categories={categories}
+                accounts={accounts}
+                banks={banks}
+                labels={labels}
+                transactions={transactions}
+                pageSize={10}
+                showActionsMenu={false}
+                maxHeight={600}
+                hiddenLabelId={savingsGoal.label_id ?? undefined}
+            />
+        </>
     );
 }

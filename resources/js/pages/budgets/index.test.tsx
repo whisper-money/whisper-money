@@ -91,6 +91,22 @@ vi.mock('@/components/savings-goals/create-savings-goal-dialog', () => ({
         onOpenChange ? null : <div>create-goal</div>,
 }));
 
+vi.mock('@/components/savings-goals/monthly/monthly-savings-section', () => ({
+    MonthlySavingsSection: ({ goals }: { goals: { name: string }[] }) => (
+        <div>
+            monthly-section: {goals.map((monthly) => monthly.name).join(', ')}
+        </div>
+    ),
+}));
+
+vi.mock('@/components/savings-goals/monthly/monthly-savings-goal-card', () => ({
+    MonthlySavingsGoalCard: ({
+        savingsGoal,
+    }: {
+        savingsGoal: { name?: string };
+    }) => <div>monthly-card: {savingsGoal.name}</div>,
+}));
+
 vi.mock('@/components/shared/create-placeholder-card', () => ({
     CreatePlaceholderCard: ({ children }: { children: React.ReactNode }) => (
         <div>create-either: {children}</div>
@@ -343,5 +359,61 @@ describe('BudgetsIndex reordering', () => {
         cleanup();
         render(<BudgetsIndex budgets={[budget]} currencyCode="EUR" />);
         expect(screen.queryByLabelText('Edit order')).not.toBeInTheDocument();
+    });
+});
+
+describe('BudgetsIndex monthly savings', () => {
+    const emergency = {
+        id: '3',
+        name: 'Emergency fund',
+        kind: 'monthly',
+        archived_at: null,
+    } as never;
+    const oldFund = {
+        id: '4',
+        name: 'Old fund',
+        kind: 'monthly',
+        archived_at: '2026-09-01T00:00:00Z',
+    } as never;
+
+    function renderWithMonthly() {
+        return render(
+            <BudgetsIndex
+                budgets={[budget]}
+                savingsGoals={[goal]}
+                monthlySavingsGoals={[emergency, oldFund]}
+                currencyCode="EUR"
+            />,
+        );
+    }
+
+    it('shows running monthly goals in their own section, outside the list', () => {
+        renderWithMonthly();
+
+        expect(
+            screen.getByText('monthly-section: Emergency fund'),
+        ).toBeTruthy();
+        expect(screen.queryByText('monthly-card: Emergency fund')).toBeNull();
+
+        cleanup();
+    });
+
+    it('hides the section when only budgets are shown', () => {
+        pageUrl = '/budgets?show=budgets';
+        renderWithMonthly();
+
+        expect(screen.queryByText(/monthly-section/)).toBeNull();
+
+        cleanup();
+    });
+
+    it('puts an archived monthly goal in the archived section', () => {
+        renderWithMonthly();
+
+        fireEvent.click(screen.getByText(/Archived \(1\)/));
+
+        expect(screen.getByText('monthly-card: Old fund')).toBeTruthy();
+
+        cleanup();
     });
 });
