@@ -7,6 +7,7 @@ use App\Enums\MonthlyTargetType;
 use App\Enums\SavingsGoalKind;
 use App\Models\Concerns\Archivable;
 use App\Models\Concerns\BelongsToSpace;
+use Carbon\CarbonInterface;
 use Database\Factories\SavingsGoalFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -35,6 +36,12 @@ class SavingsGoal extends Model
 {
     /** @use HasFactory<SavingsGoalFactory> */
     use Archivable, BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
+
+    /**
+     * A monthly goal created in the last this-many days of a month gets that
+     * month as a partial one, with no verdict.
+     */
+    public const LATE_START_DAYS = 5;
 
     protected $fillable = [
         'user_id',
@@ -112,6 +119,27 @@ class SavingsGoal extends Model
     public function isMonthly(): bool
     {
         return $this->kind === SavingsGoalKind::Monthly;
+    }
+
+    /**
+     * Whether the goal was created in the last LATE_START_DAYS days of $month,
+     * too late for that month to be held to a whole month's target.
+     */
+    public function startedLateIn(CarbonInterface $month): bool
+    {
+        $lateStart = $month->copy()->endOfMonth()->startOfDay()->subDays(self::LATE_START_DAYS - 1);
+
+        return $this->created_at->gte($lateStart) && $this->created_at->lte($month->copy()->endOfMonth());
+    }
+
+    /**
+     * Whether $month is shown without a verdict: the goal started late in it,
+     * or was archived during it.
+     */
+    public function isPartialMonth(CarbonInterface $month): bool
+    {
+        return $this->startedLateIn($month)
+            || ($this->archived_at !== null && $this->archived_at->isSameMonth($month));
     }
 
     /**

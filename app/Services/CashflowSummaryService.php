@@ -79,12 +79,14 @@ class CashflowSummaryService
      * monthly summary needs a year of savings rates to draw a streak and a
      * sparkline, and twelve round trips for that would be twelve too many.
      *
+     * @param  string|null  $spaceId  only that space's transactions, when given
      * @return array<string, array<string, mixed>>
      */
-    public function forMonths(string $userId, string $userCurrency, Carbon $from, Carbon $to): array
+    public function forMonths(string $userId, string $userCurrency, Carbon $from, Carbon $to, ?string $spaceId = null): array
     {
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
+            ->when($spaceId !== null, fn ($query) => $query->forSpace($spaceId))
             ->whereBetween('transactions.transaction_date', [$from->copy()->startOfMonth(), $to->copy()->endOfMonth()])
             ->countingTowardsTotals()
             ->with(['account', 'category'])

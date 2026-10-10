@@ -10,6 +10,7 @@ use App\Enums\SavingsGoalKind;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\SavingsGoal;
+use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleService;
@@ -28,17 +29,20 @@ class SavingsGoalService
     ) {}
 
     /**
-     * Create a goal from validated input. A monthly goal opens its first month
-     * and, given `auto_tag_account_id`, a rule that tags transfers into that
-     * savings account.
+     * Create a goal from validated input, in $space or the user's active one:
+     * the goal, its label and its auto-tag rule all live there. A monthly goal
+     * opens its first month and, given `auto_tag_account_id` (an account of
+     * that space), a rule that tags transfers into that savings account.
      *
      * @param  array<string, mixed>  $input
      */
-    public function createFromInput(User $user, array $input): SavingsGoal
+    public function createFromInput(User $user, array $input, ?Space $space = null): SavingsGoal
     {
-        return DB::transaction(function () use ($user, $input): SavingsGoal {
+        $space ??= $user->activeSpace();
+
+        return DB::transaction(function () use ($user, $input, $space): SavingsGoal {
             if (($input['kind'] ?? null) !== SavingsGoalKind::Monthly->value) {
-                return $this->create($user, [
+                return $this->create($user, $space, [
                     'name' => $input['name'],
                     'target_amount' => $input['target_amount'],
                     // Nullable input coerced to 0 cents: the column is NOT NULL.
@@ -47,11 +51,11 @@ class SavingsGoalService
                 ]);
             }
 
-            $goal = $this->create($user, $this->monthlyAttributes($input));
+            $goal = $this->create($user, $space, $this->monthlyAttributes($input));
             $this->periods->openPeriod($goal, today());
 
             if (filled($input['auto_tag_account_id'] ?? null)) {
-                $this->createAutoTagRule($goal, $user->accounts()->findOrFail($input['auto_tag_account_id']));
+                $this->createAutoTagRule($goal, Account::query()->forSpace($space)->findOrFail($input['auto_tag_account_id']));
             }
 
             return $goal;
@@ -61,15 +65,16 @@ class SavingsGoalService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function create(User $user, array $attributes): SavingsGoal
+    private function create(User $user, Space $space, array $attributes): SavingsGoal
     {
         $label = $user->labels()->create([
+            'space_id' => $space->id,
             'name' => $attributes['name'],
             'color' => LabelColor::Emerald->value,
             'source' => LabelSource::SavingsGoal,
         ]);
 
-        return $user->savingsGoals()->create([...$attributes, 'label_id' => $label->id]);
+        return $user->savingsGoals()->create([...$attributes, 'space_id' => $space->id, 'label_id' => $label->id]);
     }
 
     /**
@@ -232,6 +237,7 @@ class SavingsGoalService
         $account->loadMissing('bank');
 
         $rule = $goal->user->automationRules()->create([
+            'space_id' => $goal->space_id,
             'title' => __('Contributions to :goal', ['goal' => $goal->name]),
             'priority' => (int) $goal->user->automationRules()->max('priority') + 1,
             'origin' => RuleOrigin::User->value,

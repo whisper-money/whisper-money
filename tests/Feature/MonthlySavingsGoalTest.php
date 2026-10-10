@@ -4,16 +4,19 @@ use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Enums\MonthlyTargetType;
 use App\Enums\SavingsGoalKind;
+use App\Enums\SavingsGoalMonthStatus;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Bank;
 use App\Models\Category;
 use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
+use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\SavingsGoals\MonthlySavingsGoalStats;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 
 function monthlyGoalUser(): User
@@ -238,11 +241,11 @@ test('months are judged against their own target, with difference, cumulative an
     $stats = monthlyGoalStats($goal);
 
     expect(collect($stats['history'])->map(fn (array $month): array => [$month['month'], $month['target'], $month['saved'], $month['difference'], $month['status']])->all())->toBe([
-        ['2026-06', 25000, 32000, 7000, 'met'],
-        ['2026-07', 25000, 21000, -4000, 'missed'],
-        ['2026-08', 30000, 30000, 0, 'met'],
-        ['2026-09', 30000, 45000, 15000, 'met'],
-        ['2026-10', 30000, 12000, -18000, 'in_progress'],
+        ['2026-06', 25000, 32000, 7000, SavingsGoalMonthStatus::Met],
+        ['2026-07', 25000, 21000, -4000, SavingsGoalMonthStatus::Missed],
+        ['2026-08', 30000, 30000, 0, SavingsGoalMonthStatus::Met],
+        ['2026-09', 30000, 45000, 15000, SavingsGoalMonthStatus::Met],
+        ['2026-10', 30000, 12000, -18000, SavingsGoalMonthStatus::InProgress],
     ])
         ->and($stats['months_met'])->toBe(3)
         ->and($stats['months_closed'])->toBe(4)
@@ -265,14 +268,14 @@ test('a transaction that arrives late recalculates a closed month', function () 
     $this->artisan('savings-goals:generate-periods');
 
     $september = fn (): array => collect(monthlyGoalStats($goal)['history'])->firstWhere('month', '2026-09');
-    expect($september()['status'])->toBe('missed');
+    expect($september()['status'])->toBe(SavingsGoalMonthStatus::Missed);
 
     // A bank sync on 3 October brings in a transfer dated 29 September.
     monthlyGoalContribution($goal, 20000, '2026-09-29');
 
     expect($september())
         ->saved->toBe(30000)
-        ->status->toBe('met')
+        ->status->toBe(SavingsGoalMonthStatus::Met)
         ->difference->toBe(0);
 });
 
@@ -286,7 +289,7 @@ test('a target of zero counts as met', function () {
 
     expect(collect(monthlyGoalStats($goal)['history'])->firstWhere('month', '2026-09'))
         ->target->toBe(0)
-        ->status->toBe('met');
+        ->status->toBe(SavingsGoalMonthStatus::Met);
 });
 
 test('editing the target only changes the month in progress', function () {
@@ -462,4 +465,210 @@ test('monthly goals stay out of the one-off planning list', function () {
             ->has('savingsGoals', 1)
             ->where('savingsGoals.0.id', $oneOff->id)
         );
+});
+
+test('a goal created in the last days of a month gets that month as a partial one', function () {
+    $this->travelTo(Carbon::parse('2026-09-27'));
+    $user = monthlyGoalUser();
+    $goal = createMonthlyGoal($user);
+    monthlyGoalContribution($goal, 5000, '2026-09-28');
+
+    // The month in progress is partial from the start: saved, no verdict.
+    expect(monthlyGoalStats($goal)['current']['status'])->toBe(SavingsGoalMonthStatus::Partial);
+
+    monthlyGoalContribution($goal, 30000, '2026-10-05');
+    $this->travelTo(Carbon::parse('2026-11-02'));
+    $this->artisan('savings-goals:generate-periods');
+
+    $stats = monthlyGoalStats($goal);
+
+    expect(collect($stats['history'])->pluck('status', 'month')->all())->toBe([
+        '2026-09' => SavingsGoalMonthStatus::Partial,
+        '2026-10' => SavingsGoalMonthStatus::Met,
+        '2026-11' => SavingsGoalMonthStatus::InProgress,
+    ])
+        ->and($stats['history'][0]['saved'])->toBe(5000)
+        ->and($stats['months_met'])->toBe(1)
+        ->and($stats['months_closed'])->toBe(1)
+        ->and($stats['cumulative_saved'])->toBe(30000)
+        ->and($stats['cumulative_target'])->toBe(30000)
+        ->and($stats['streak'])->toBe(1);
+});
+
+test('a goal created before the last days of a month is judged on that month', function () {
+    $this->travelTo(Carbon::parse('2026-09-25'));
+    $goal = createMonthlyGoal(monthlyGoalUser());
+
+    $this->travelTo(Carbon::parse('2026-10-02'));
+    $this->artisan('savings-goals:generate-periods');
+
+    expect(monthlyGoalStats($goal)['history'][0]['status'])->toBe(SavingsGoalMonthStatus::Missed);
+});
+
+test('an archived goal has no month in progress and no verdict on the month it was archived in', function () {
+    $this->travelTo(Carbon::parse('2026-08-10'));
+    $user = monthlyGoalUser();
+    $goal = createMonthlyGoal($user);
+    monthlyGoalContribution($goal, 30000, '2026-08-12');
+    monthlyGoalContribution($goal, 4000, '2026-09-03');
+
+    $this->travelTo(Carbon::parse('2026-09-10'));
+    $this->artisan('savings-goals:generate-periods');
+    $this->actingAs($user)->post("/savings-goals/{$goal->id}/archive")->assertSessionHasNoErrors();
+
+    $stats = monthlyGoalStats($goal);
+
+    expect($stats['current'])->toBeNull()
+        ->and(collect($stats['history'])->pluck('status', 'month')->all())->toBe([
+            '2026-08' => SavingsGoalMonthStatus::Met,
+            '2026-09' => SavingsGoalMonthStatus::Partial,
+        ])
+        ->and($stats['history'][1]['saved'])->toBe(4000)
+        ->and($stats['months_closed'])->toBe(1)
+        ->and($stats['streak'])->toBe(1);
+});
+
+test('a target of zero is met even when withdrawals leave the month below zero', function () {
+    $this->travelTo(Carbon::parse('2026-09-10'));
+    $user = monthlyGoalUser();
+    $goal = createMonthlyGoal($user, ['monthly_target_type' => 'income_rate', 'monthly_target_rate' => 20]);
+    monthlyGoalContribution($goal, -5000, '2026-09-15');
+
+    $this->travelTo(Carbon::parse('2026-10-02'));
+    $this->artisan('savings-goals:generate-periods');
+
+    expect(monthlyGoalStats($goal)['history'][0])
+        ->target->toBe(0)
+        ->saved->toBe(-5000)
+        ->status->toBe(SavingsGoalMonthStatus::Met);
+});
+
+test('months that brought in no income are no base: the target follows the month live', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = monthlyGoalUser();
+    // History exists, but none of it is income.
+    Transaction::factory()->create(['user_id' => $user->id, 'account_id' => monthlyGoalAccount($user, AccountType::Checking, 'Checking')->id, 'amount' => -2000, 'currency_code' => 'EUR', 'transaction_date' => '2026-08-10']);
+    $goal = createMonthlyGoal($user, ['monthly_target_type' => 'income_rate', 'monthly_target_rate' => 10]);
+
+    expect($goal->periods()->sole())
+        ->income_base->toBeNull()
+        ->resolved_target_amount->toBeNull();
+
+    monthlyGoalIncome($user, 200000, '2026-10-05');
+
+    expect(monthlyGoalStats($goal)['current'])
+        ->target->toBe(20000)
+        ->is_live_target->toBeTrue();
+});
+
+test('editing only the rate keeps the income the month opened with', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = monthlyGoalUser();
+    monthlyGoalIncome($user, 300000, '2026-09-25');
+    $goal = createMonthlyGoal($user, ['monthly_target_type' => 'income_rate', 'monthly_target_rate' => 20]);
+
+    // Income that lands in a past month after the month opened: re-reading the
+    // average would now move the base.
+    monthlyGoalIncome($user, 600000, '2026-08-20');
+
+    $this->actingAs($user)->patch("/savings-goals/{$goal->id}", ['monthly_target_type' => 'income_rate', 'monthly_target_rate' => 10])
+        ->assertSessionHasNoErrors();
+
+    expect($goal->periods()->sole())
+        ->income_base->toBe(300000)
+        ->target_rate->toEqual(10)
+        ->resolved_target_amount->toBe(30000);
+});
+
+test('the daily command fills every missing month, also behind a month an edit opened early', function () {
+    $this->travelTo(Carbon::parse('2026-07-10'));
+    $user = monthlyGoalUser();
+    $goal = createMonthlyGoal($user);
+
+    // The command is down through August and September; an edit on 2 October
+    // opens October before anything else does.
+    $this->travelTo(Carbon::parse('2026-10-02'));
+    $this->actingAs($user)->patch("/savings-goals/{$goal->id}", ['monthly_target_type' => 'amount', 'monthly_target_amount' => 40000]);
+    $this->artisan('savings-goals:generate-periods');
+
+    expect($goal->periods()->orderBy('month')->get()->map(fn (SavingsGoalPeriod $period): array => [$period->monthKey(), $period->closed_at !== null])->all())->toBe([
+        ['2026-07', true],
+        ['2026-08', true],
+        ['2026-09', true],
+        ['2026-10', false],
+    ]);
+});
+
+test('reading a goal opens the current month when the daily command has not yet', function () {
+    $this->travelTo(Carbon::parse('2026-09-10'));
+    $goal = createMonthlyGoal(monthlyGoalUser());
+
+    $this->travelTo(Carbon::parse('2026-10-01 00:01:00'));
+
+    $stats = monthlyGoalStats($goal);
+
+    expect($stats['current']['month'])->toBe('2026-10')
+        ->and($stats['history'][0]['status'])->toBe(SavingsGoalMonthStatus::Missed)
+        ->and($goal->periods()->where('month', '2026-09-01')->value('closed_at'))->not->toBeNull();
+});
+
+test('the daily command runs just after midnight', function () {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn ($event): bool => str_contains($event->command ?? '', 'savings-goals:generate-periods'));
+
+    expect($event->expression)->toBe('5 0 * * *');
+});
+
+test('a share-of-income target only counts the income of the goal\'s space', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = monthlyGoalUser();
+    monthlyGoalIncome($user, 300000, '2026-09-25');
+
+    $household = Space::factory()->create(['owner_id' => $user->id]);
+    $sharedAccount = Account::factory()->create(['user_id' => $user->id, 'space_id' => $household->id, 'type' => AccountType::Checking, 'currency_code' => 'EUR']);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $sharedAccount->id,
+        'category_id' => Category::factory()->create(['user_id' => $user->id, 'space_id' => $household->id, 'type' => CategoryType::Income])->id,
+        'amount' => 900000,
+        'currency_code' => 'EUR',
+        'transaction_date' => '2026-09-26',
+    ]);
+
+    $goal = createMonthlyGoal($user, ['monthly_target_type' => 'income_rate', 'monthly_target_rate' => 10]);
+
+    expect($goal->space_id)->toBe($user->activeSpace()->id)
+        ->and($goal->periods()->sole()->income_base)->toBe(300000);
+});
+
+test('a monthly goal, its label and its auto-tag rule land in the active space', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = monthlyGoalUser();
+    $savings = monthlyGoalAccount($user);
+
+    $goal = createMonthlyGoal($user, ['auto_tag_account_id' => $savings->id]);
+    $space = $user->activeSpace()->id;
+
+    expect($goal->space_id)->toBe($space)
+        ->and($goal->label->space_id)->toBe($space)
+        ->and(AutomationRule::query()->where('user_id', $user->id)->sole()->space_id)->toBe($space);
+});
+
+test('the auto-tag account has to be in the active space', function () {
+    $user = monthlyGoalUser();
+    $elsewhere = Account::factory()->create([
+        'user_id' => $user->id,
+        'space_id' => Space::factory()->create(['owner_id' => $user->id])->id,
+        'type' => AccountType::Savings,
+    ]);
+
+    $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'Fund',
+        'kind' => 'monthly',
+        'monthly_target_type' => 'amount',
+        'monthly_target_amount' => 30000,
+        'auto_tag_account_id' => $elsewhere->id,
+    ])->assertSessionHasErrors('auto_tag_account_id');
+
+    expect(SavingsGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
