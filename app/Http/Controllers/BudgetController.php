@@ -65,6 +65,8 @@ class BudgetController extends Controller
             // the active space, the same set the server validates the auto-tag
             // account against, each with the running goal it already feeds.
             'autoTagAccounts' => Inertia::optional(fn () => $this->autoTagAccounts($user)),
+            // What the create dialog's month-end reminder starts at.
+            'savingsGoalReminderDefault' => (bool) ($user->setting->savings_goal_notify_on_month_end_reminder ?? true),
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }

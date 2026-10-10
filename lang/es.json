@@ -3951,5 +3951,20 @@
     "The first month is partial": "El primer mes es parcial",
     "Partial month: you started at the end of the month. The first verdict comes next month.": "Mes parcial: empezaste a final de mes. El primer veredicto llegará el mes que viene.",
     "Already used by “:goal”": "Ya la usa «:goal»",
-    "Auto-tags transfers into :account": "Etiqueta automáticamente lo que entra en :account"
+    "Auto-tags transfers into :account": "Etiqueta automáticamente lo que entra en :account",
+    "Partial month: it started too late to have a target. The first full month counts.": "Mes parcial: empezó demasiado tarde para tener objetivo. Cuenta el primer mes completo.",
+    "No full month before it was archived": "Ningún mes completo antes de archivarlo",
+    ":count months in a row.": ":count meses seguidos.",
+    ":days days left of :month": "Quedan :days días de :month",
+    ":goal: :days days left to reach this month's target": ":goal: quedan :days días para cumplir el objetivo de este mes",
+    ":goal: :month met by": ":goal: :month cumplido por",
+    ":goal: :month met": ":goal: :month cumplido",
+    ":goal: :month missed by": ":goal: en :month te faltaron",
+    "Hi :name, you have put aside :saved of the :target you wanted to save this month for **:goal**.": "Hola :name, llevas :saved de los :target que querías apartar este mes para **:goal**.",
+    "Still to save": "Te falta",
+    "View goal": "Ver objetivo",
+    "You can turn this reminder off on the goal or in [notification settings](:url).": "Puedes desactivar este recordatorio en el objetivo o en los [ajustes de notificaciones](:url).",
+    "An email 5 days before the month ends when a monthly goal is still short of its target. The default applies to newly created goals.": "Un email 5 días antes de cerrar el mes si aún no has cumplido un objetivo mensual. El valor por defecto se aplica a los objetivos nuevos.",
+    "Default (new monthly goals)": "Por defecto (objetivos mensuales nuevos)",
+    "Monthly savings goals": "Objetivos de ahorro mensual"
 }

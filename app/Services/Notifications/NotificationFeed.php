@@ -6,6 +6,7 @@ use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Notifications\AchievementsWelcome;
 use App\Notifications\AchievementUnlocked;
+use App\Notifications\MonthlySavingsGoalClosed;
 use App\Notifications\MonthlySummaryReady;
 use App\Services\Achievements\Catalog;
 use App\Services\Achievements\Presenter;
@@ -168,6 +169,7 @@ class NotificationFeed
                 MonthlySummaryReady::class => $this->monthlySummaryRow($notification->data),
                 AchievementUnlocked::class => $this->achievementRow($notification->data),
                 AchievementsWelcome::class => $this->welcomeRow($notification->data),
+                MonthlySavingsGoalClosed::class => $this->monthlySavingsGoalRow($notification->data),
                 default => [
                     'kind' => 'other',
                     'title' => class_basename($notification->type),
@@ -239,6 +241,40 @@ class NotificationFeed
                 $definition,
                 (string) ($data['currency_code'] ?? config('achievements.fallback_currency')),
             ),
+        ];
+    }
+
+    /**
+     * "Emergency fund: October met by €10". The amount travels as a figure for
+     * the client to write, like a medal's, so privacy mode masks it.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{kind: string, title: string, body: ?string, url: string, figure: ?array<string, mixed>}
+     */
+    private function monthlySavingsGoalRow(array $data): array
+    {
+        $month = Carbon::createFromFormat('Y-m-d', $data['month'].'-01')
+            ->locale(app()->getLocale())
+            ->isoFormat('MMMM');
+        $difference = (int) ($data['difference'] ?? 0);
+        $met = (bool) ($data['met'] ?? false);
+        $streak = (int) ($data['streak'] ?? 0);
+        $replace = ['goal' => $data['goal_name'] ?? '', 'month' => $month];
+
+        return [
+            'kind' => 'monthly_savings_goal',
+            'title' => match (true) {
+                $met && $difference === 0 => __(':goal: :month met', $replace),
+                $met => __(':goal: :month met by', $replace),
+                default => __(':goal: :month missed by', $replace),
+            },
+            'body' => $met && $streak > 1 ? __(':count months in a row.', ['count' => $streak]) : null,
+            'url' => route('savings-goals.show', $data['savings_goal_id']),
+            'figure' => $difference === 0 ? null : [
+                'type' => 'money',
+                'value' => abs($difference),
+                'currency' => $data['currency_code'] ?? null,
+            ],
         ];
     }
 

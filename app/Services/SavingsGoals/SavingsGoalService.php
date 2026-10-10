@@ -51,7 +51,7 @@ class SavingsGoalService
                 ]);
             }
 
-            $goal = $this->create($user, $space, $this->monthlyAttributes($input));
+            $goal = $this->create($user, $space, $this->monthlyAttributes($input, $user->setting->savings_goal_notify_on_month_end_reminder ?? true));
             $this->periods->openPeriod($goal, today());
 
             if (filled($input['auto_tag_account_id'] ?? null)) {
@@ -82,9 +82,10 @@ class SavingsGoalService
      * only the value its target type uses is kept.
      *
      * @param  array<string, mixed>  $input
+     * @param  bool  $remindByDefault  the user's default, for a caller that does not say
      * @return array<string, mixed>
      */
-    private function monthlyAttributes(array $input): array
+    private function monthlyAttributes(array $input, bool $remindByDefault): array
     {
         return [
             'name' => $input['name'],
@@ -94,7 +95,7 @@ class SavingsGoalService
             'initial_amount' => 0,
             'target_date' => null,
             ...self::monthlyTarget(MonthlyTargetType::from($input['monthly_target_type']), $input),
-            'notify_on_month_end_reminder' => (bool) ($input['notify_on_month_end_reminder'] ?? true),
+            'notify_on_month_end_reminder' => (bool) ($input['notify_on_month_end_reminder'] ?? $remindByDefault),
         ];
     }
 
