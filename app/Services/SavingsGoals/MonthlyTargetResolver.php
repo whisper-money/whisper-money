@@ -17,8 +17,9 @@ use Carbon\Carbon;
  * itself: plenty of people are paid on the last day, and a target built on the
  * month's own income would read 0 until then.
  *
- * Income is the goal's own space's: a goal set aside from a shared household
- * space is measured against that space's income, not the owner's whole wallet.
+ * Income is the goal's own space's, every member's included: a goal set aside
+ * in a shared household space is measured against that household's income,
+ * the same way what it saved counts tags from any member.
  *
  * Months are calendar months in the app's timezone, like budget periods.
  */
@@ -153,8 +154,11 @@ class MonthlyTargetResolver
     private function firstActivityMonth(SavingsGoal $goal): ?Carbon
     {
         $earliest = Transaction::query()
-            ->where('transactions.user_id', $goal->user_id)
-            ->when($goal->space_id !== null, fn ($query) => $query->forSpace($goal->space_id))
+            ->when(
+                $goal->space_id === null,
+                fn ($query) => $query->where('transactions.user_id', $goal->user_id),
+                fn ($query) => $query->forSpace($goal->space_id),
+            )
             ->countingTowardsTotals()
             ->min('transactions.transaction_date');
 

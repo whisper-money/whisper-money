@@ -3913,5 +3913,6 @@
     "No currency found.": "No se encontró ninguna moneda.",
     "We couldn't change your currency. Try again.": "No hemos podido cambiar tu moneda. Inténtalo de nuevo.",
     "A savings goal can't switch between one-off and monthly.": "Un objetivo de ahorro no puede pasar de puntual a mensual ni al revés.",
-    "Contributions to :goal": "Aportaciones a :goal"
+    "Contributions to :goal": "Aportaciones a :goal",
+    "Pick one of your savings accounts.": "Elige una de tus cuentas de ahorro."
 }

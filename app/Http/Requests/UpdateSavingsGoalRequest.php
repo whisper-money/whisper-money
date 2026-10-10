@@ -4,15 +4,15 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
 use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
+use App\Http\Requests\Concerns\ValidatesSavingsGoalName;
 use App\Models\SavingsGoal;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateSavingsGoalRequest extends FormRequest
 {
-    use ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget;
+    use ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName;
 
     public function authorize(): bool
     {
@@ -25,16 +25,7 @@ class UpdateSavingsGoalRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'name' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('labels', 'name')
-                    ->where('user_id', auth()->id())
-                    ->whereNull('deleted_at')
-                    ->ignore($this->goal()?->label_id),
-            ],
+            'name' => $this->savingsGoalNameRules((string) auth()->id(), creating: false, ownLabelId: $this->goal()?->label_id),
             // A goal keeps the kind it was created with: its months and its
             // one-off progress are two different histories, and neither turns
             // into the other.
