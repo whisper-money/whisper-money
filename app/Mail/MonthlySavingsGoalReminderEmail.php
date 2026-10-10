@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\SavingsGoal;
 use App\Models\User;
-use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,8 +16,9 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Sent once per month, a few days before it ends, when a monthly savings goal
- * is still short of its target. The subject names the goal but no amount: the
- * figures stay inside the message, like the budget alerts.
+ * is still short of its target. It carries no amount anywhere — only how far
+ * along the month is, as a share of the target — for the same reason the
+ * monthly summary email carries none: an inbox is not the app.
  */
 class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
 {
@@ -45,8 +45,7 @@ class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
         public User $user,
         public SavingsGoal $goal,
         public string $month,
-        public int $saved,
-        public int $target,
+        public int $percent,
         public int $daysLeft,
     ) {
         $this->onQueue('emails');
@@ -68,8 +67,6 @@ class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $currency = $this->user->currency_code ?? 'USD';
-
         return new Content(
             markdown: 'mail.monthly-savings-goal-reminder',
             with: [
@@ -79,9 +76,7 @@ class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
                     ->locale(app()->getLocale())
                     ->isoFormat('MMMM'),
                 'daysLeft' => $this->daysLeft,
-                'savedFormatted' => Money::format($this->saved, $currency),
-                'targetFormatted' => Money::format($this->target, $currency),
-                'remainingFormatted' => Money::format(max(0, $this->target - $this->saved), $currency),
+                'percent' => $this->percent,
             ],
         );
     }

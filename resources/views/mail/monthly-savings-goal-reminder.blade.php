@@ -1,15 +1,7 @@
 <x-mail::message>
 # {{ trans_choice('{1}1 day left in :month|[2,*]:days days left in :month', $daysLeft, ['days' => $daysLeft, 'month' => $monthName]) }}
 
-{{ __('Hi :name, you have put aside :saved of the :target you wanted to save this month for **:goal**.', ['name' => $userName, 'saved' => $savedFormatted, 'target' => $targetFormatted, 'goal' => $goal->name]) }}
-
-<x-mail::table>
-| {{ __('This month') }} | |
-| :--- | ---: |
-| {{ __('Saved') }} | {{ $savedFormatted }} |
-| {{ __('Target') }} | {{ $targetFormatted }} |
-| {{ __('Still to save') }} | **{{ $remainingFormatted }}** |
-</x-mail::table>
+{{ __('Hi :name, you are at :percent% of your :month target for **:goal**.', ['name' => $userName, 'percent' => $percent, 'month' => $monthName, 'goal' => $goal->name]) }}
 
 <x-mail::button :url="route('savings-goals.show', $goal)">
 {{ __('View goal') }}

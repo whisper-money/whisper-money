@@ -19,9 +19,9 @@ use Throwable;
  * runs send it once, and released again if sending fails, so the next run
  * retries it rather than losing it.
  *
- * A goal created in the last days of a month is left alone for that month: a
- * reminder a day after creating it, and a "missed" notice for a stub month,
- * would be noise.
+ * A partial month — the goal was created in its last days — is left alone,
+ * by the same rule the stats use to keep it unjudged: a reminder a day after
+ * creating the goal, and a "missed" notice for a stub month, would be noise.
  */
 class MonthlySavingsGoalNotifier
 {
@@ -30,6 +30,12 @@ class MonthlySavingsGoalNotifier
      * included.
      */
     private const REMINDER_DAYS_LEFT = 5;
+
+    /**
+     * The daily command also runs just after midnight; the reminder waits for
+     * the run at breakfast time in Europe rather than landing in the night.
+     */
+    private const REMINDER_HOUR = 7;
 
     public function __construct(private MonthlySavingsGoalStats $stats) {}
 
@@ -47,7 +53,7 @@ class MonthlySavingsGoalNotifier
     {
         $month = today()->startOfMonth()->subMonth();
 
-        if ($this->joinedLate($goal, $month)) {
+        if ($goal->isPartialMonth($month)) {
             return;
         }
 
@@ -86,7 +92,8 @@ class MonthlySavingsGoalNotifier
 
         $current = $this->stats->forGoal($goal)['current'];
 
-        if ($current === null || $current['saved'] >= $current['target']) {
+        // A target of nothing is already met, even when no income came in yet.
+        if ($current === null || $current['target'] <= 0 || $current['saved'] >= $current['target']) {
             return;
         }
 
@@ -94,8 +101,7 @@ class MonthlySavingsGoalNotifier
             $goal->user,
             $goal,
             $current['month'],
-            $current['saved'],
-            $current['target'],
+            self::percentOf($current['saved'], $current['target']),
             $current['days_left'],
         )));
     }
@@ -103,9 +109,19 @@ class MonthlySavingsGoalNotifier
     private function wantsReminderNow(SavingsGoal $goal): bool
     {
         return today()->gte(self::reminderWindowStart(today()))
+            && now()->hour >= self::REMINDER_HOUR
             && $goal->notify_on_month_end_reminder
-            && ! $this->joinedLate($goal, today())
+            && ! $goal->isPartialMonth(today())
             && $goal->user->canReceiveEmails();
+    }
+
+    /**
+     * How far along the month is, in whole percent. Rounded down and kept
+     * below 100, so a goal a cent short never reads as done.
+     */
+    private static function percentOf(int $saved, int $target): int
+    {
+        return min(99, max(0, intdiv($saved * 100, $target)));
     }
 
     /**
@@ -134,15 +150,6 @@ class MonthlySavingsGoalNotifier
 
             throw $exception;
         }
-    }
-
-    /**
-     * Whether the goal was created too late in $month for that month to be
-     * worth a reminder or a verdict.
-     */
-    private function joinedLate(SavingsGoal $goal, Carbon $month): bool
-    {
-        return $goal->created_at->gte(self::reminderWindowStart($month));
     }
 
     private static function reminderWindowStart(Carbon $month): Carbon

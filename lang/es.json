@@ -3960,8 +3960,6 @@
     ":goal: :month met by": ":goal: :month cumplido por",
     ":goal: :month met": ":goal: :month cumplido",
     ":goal: :month missed by": ":goal: en :month te faltaron",
-    "Hi :name, you have put aside :saved of the :target you wanted to save this month for **:goal**.": "Hola :name, llevas :saved de los :target que querías apartar este mes para **:goal**.",
-    "Still to save": "Te falta",
     "View goal": "Ver objetivo",
     "You can turn this reminder off on the goal or in [notification settings](:url).": "Puedes desactivar este recordatorio en el objetivo o en los [ajustes de notificaciones](:url).",
     "An email 5 days before the month ends when a monthly goal is still short of its target. The default applies to newly created goals.": "Un email 5 días antes de cerrar el mes si aún no has cumplido un objetivo mensual. El valor por defecto se aplica a los objetivos nuevos.",
@@ -3971,5 +3969,6 @@
     ":goal: :month goal met": ":goal: objetivo de :month cumplido",
     ":goal: :month goal missed": ":goal: objetivo de :month no cumplido",
     "{1}:goal: 1 day left to reach this month's target|[2,*]:goal: :days days left to reach this month's target": "{1}:goal: queda 1 día para cumplir el objetivo de este mes|[2,*]:goal: quedan :days días para cumplir el objetivo de este mes",
-    "{1}1 day left in :month|[2,*]:days days left in :month": "{1}Queda 1 día de :month|[2,*]Quedan :days días de :month"
+    "{1}1 day left in :month|[2,*]:days days left in :month": "{1}Queda 1 día de :month|[2,*]Quedan :days días de :month",
+    "Hi :name, you are at :percent% of your :month target for **:goal**.": "Hola :name, vas al :percent % de tu objetivo de :month para **:goal**."
 }

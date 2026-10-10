@@ -113,8 +113,7 @@ test('the month-end reminder goes out once, with five days left, when the goal i
 
     Mail::assertQueuedCount(1);
     Mail::assertQueued(MonthlySavingsGoalReminderEmail::class, fn (MonthlySavingsGoalReminderEmail $mail): bool => $mail->hasTo($user->email)
-        && $mail->saved === 12000
-        && $mail->target === 30000
+        && $mail->percent === 40
         && $mail->daysLeft === 5);
 
     expect($goal->periods()->where('month', '2026-10-01')->value('reminder_notified_at'))->not->toBeNull();
@@ -180,15 +179,45 @@ test('deleting a goal takes its notices out of the bell', function () {
     expect($user->notifications()->count())->toBe(0);
 });
 
-test('the reminder email renders the month and the figures', function () {
+test('the reminder email renders the month and the progress, never an amount', function () {
     $this->travelTo(Carbon::parse('2026-10-26 09:00'));
     $user = noticesUser();
     $goal = noticesGoal($user, ['name' => 'Emergency fund']);
 
-    $mail = new MonthlySavingsGoalReminderEmail($user, $goal, '2026-10', 12000, 30000, 1);
+    $mail = new MonthlySavingsGoalReminderEmail($user, $goal, '2026-10', 40, 1);
+    $html = $mail->render();
 
-    expect($mail->render())->toContain('Emergency fund')->toContain('1 day left in October')
+    expect($html)->toContain('Emergency fund')
+        ->toContain('1 day left in October')
+        ->toContain('you are at 40% of your October target')
+        ->not->toContain('€')
+        ->not->toContain('300')
         ->and($mail->envelope()->subject)->toBe("Emergency fund: 1 day left to reach this month's target");
+});
+
+test('the reminder waits for the morning run, not the one just after midnight', function () {
+    $this->travelTo(Carbon::parse('2026-10-15 09:00'));
+    $user = noticesUser();
+    noticesGoal($user);
+
+    $this->travelTo(Carbon::parse('2026-10-28 00:05'));
+    $this->artisan('savings-goals:generate-periods');
+    Mail::assertNothingOutgoing();
+
+    $this->travelTo(Carbon::parse('2026-10-28 07:00'));
+    $this->artisan('savings-goals:generate-periods');
+    Mail::assertQueuedCount(1);
+});
+
+test('a share-of-income goal with no income yet gets no reminder', function () {
+    $this->travelTo(Carbon::parse('2026-10-15 09:00'));
+    $user = noticesUser();
+    noticesGoal($user, ['monthly_target_type' => 'income_rate', 'monthly_target_amount' => null, 'monthly_target_rate' => 20]);
+
+    $this->travelTo(Carbon::parse('2026-10-28 09:00'));
+    $this->artisan('savings-goals:generate-periods');
+
+    Mail::assertNothingOutgoing();
 });
 
 test('a new monthly goal starts with the user\'s reminder default', function (bool $default) {
