@@ -11,6 +11,7 @@ use App\Services\MonthlySummary\CardRenderer;
 use App\Services\MonthlySummary\EmailPresenter;
 use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\MonthlySummary\SummaryBuilder;
+use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Support\Carbon;
@@ -260,4 +261,36 @@ test('the cashflow card counts goals reached so far in the month still running',
         ->assertJsonPath('data.status', 'in_progress')
         ->assertJsonPath('data.met', 1)
         ->assertJsonPath('data.total', 2);
+});
+
+test('a partial month adds nothing to the cashflow card or the monthly summary', function () {
+    [$user] = surfacesSeptember();
+    // Created on 28 September: September is partial for it.
+    test()->travelTo(Carbon::parse('2026-09-28'));
+    $late = surfacesGoal($user, ['name' => 'Late starter']);
+    surfacesSave($late, 9000, '2026-09-29');
+    test()->travelTo(Carbon::parse('2026-10-03'));
+    app(SavingsGoalPeriodService::class)->advance($late);
+
+    $this->actingAs($user)->getJson('/api/cashflow/monthly-savings?month=2026-09')
+        ->assertOk()
+        ->assertJsonPath('data.saved', 47000)
+        ->assertJsonPath('data.target', 50000)
+        ->assertJsonPath('data.total', 2);
+
+    $payload = app(SummaryBuilder::class)->build($user, Carbon::parse('2026-09-01'), complete: true);
+
+    expect($payload['monthly_goals']['total'])->toBe(2)
+        ->and(array_column($payload['monthly_goals']['goals'], 'name'))->not->toContain('Late starter');
+});
+
+test('the cashflow card only adds up the months it shows', function () {
+    [$user] = surfacesSeptember();
+
+    $this->actingAs($user)->getJson('/api/cashflow/monthly-savings?month=2026-09')
+        ->assertOk()
+        ->assertJsonCount(2, 'data.history');
+
+    expect(app(MonthlySavingsGoalTotals::class)->forMonth($user, Carbon::parse('2026-09-01'), historyMonths: 1)['history'])
+        ->toHaveCount(1);
 });

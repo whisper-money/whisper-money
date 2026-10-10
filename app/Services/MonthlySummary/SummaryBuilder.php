@@ -4,6 +4,7 @@ namespace App\Services\MonthlySummary;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\RuleSuggestionStatus;
+use App\Enums\SavingsGoalMonthStatus;
 use App\Models\Account;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
@@ -506,7 +507,7 @@ class SummaryBuilder
                 'saved' => $goal['saved'],
                 'target' => $goal['target'],
                 'difference' => $goal['difference'],
-                'met' => $goal['status'] === 'met',
+                'met' => $goal['status'] === SavingsGoalMonthStatus::Met,
                 'streak' => $goal['streak'],
             ], $totals['goals']),
         ];
