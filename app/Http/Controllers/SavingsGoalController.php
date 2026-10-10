@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\LabelColor;
-use App\Enums\LabelSource;
 use App\Http\Requests\StoreSavingsGoalRequest;
 use App\Http\Requests\SyncSavingsGoalTransactionsRequest;
 use App\Http\Requests\UpdateSavingsGoalRequest;
@@ -14,6 +12,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
 use App\Models\Transaction;
+use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,23 +43,30 @@ class SavingsGoalController extends Controller
      */
     private const TRANSACTION_RELATIONS = ['account.bank', 'category', 'labels'];
 
+    public function __construct(private SavingsGoalService $goals) {}
+
     public function store(StoreSavingsGoalRequest $request): RedirectResponse
     {
-        $goal = DB::transaction(function () use ($request) {
-            $label = $request->user()->labels()->create([
-                'name' => $request->name,
-                'color' => LabelColor::Emerald->value,
-                'source' => LabelSource::SavingsGoal,
-            ]);
+        $user = $request->user();
 
-            return $request->user()->savingsGoals()->create([
-                'label_id' => $label->id,
-                'name' => $request->name,
-                'target_amount' => $request->target_amount,
-                // Nullable input coerced to 0 cents: the column is NOT NULL.
-                'initial_amount' => $request->integer('initial_amount'),
-                'target_date' => $request->target_date,
-            ]);
+        $goal = DB::transaction(function () use ($request, $user): SavingsGoal {
+            if (! $request->isMonthly()) {
+                return $this->goals->create($user, [
+                    'name' => $request->name,
+                    'target_amount' => $request->target_amount,
+                    // Nullable input coerced to 0 cents: the column is NOT NULL.
+                    'initial_amount' => $request->integer('initial_amount'),
+                    'target_date' => $request->target_date,
+                ]);
+            }
+
+            $goal = $this->goals->create($user, SavingsGoalService::monthlyAttributes($request->validated()));
+
+            if ($request->filled('auto_tag_account_id')) {
+                $this->goals->createAutoTagRule($goal, Account::query()->findOrFail($request->auto_tag_account_id));
+            }
+
+            return $goal;
         });
 
         return redirect()->route('savings-goals.show', $goal);
@@ -185,13 +191,7 @@ class SavingsGoalController extends Controller
     {
         $this->authorize('update', $savingsGoal);
 
-        DB::transaction(function () use ($request, $savingsGoal) {
-            $savingsGoal->update($request->only(['name', 'target_amount', 'initial_amount', 'target_date']));
-
-            if ($request->has('name') && $savingsGoal->label) {
-                $savingsGoal->label->update(['name' => $request->name]);
-            }
-        });
+        $this->goals->update($savingsGoal, $request->safe()->except('kind'));
 
         return redirect()->route('savings-goals.show', $savingsGoal);
     }
