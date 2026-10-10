@@ -3858,7 +3858,7 @@
     "Credit of": "Saldo a favor de",
     "Remove dates": "Quitar fechas",
     "Card details": "Datos de la tarjeta",
-    "Both are optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.": "Ambos son opcionales. Se asume que los siguientes extractos se repiten los mismos días cada mes. Si tu banco los cambia, actualízalos aquí.",
+    "Every field is optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.": "Todos los campos son opcionales. Se asume que los siguientes extractos se repiten los mismos días cada mes. Si tu banco los cambia, actualízalos aquí.",
     "Credit limit": "Límite de crédito",
     "No limit set": "Sin límite",
     "The most your bank lets you spend on this card.": "Lo máximo que tu banco te deja gastar con esta tarjeta.",

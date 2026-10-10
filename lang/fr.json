@@ -2925,7 +2925,7 @@
     "Credit of": "Crédit de",
     "Remove dates": "Retirer les dates",
     "Card details": "Détails de la carte",
-    "Both are optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.": "Les deux sont facultatifs. Les relevés suivants sont supposés tomber aux mêmes jours chaque mois. Si votre banque les déplace, mettez-les à jour ici.",
+    "Every field is optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.": "Tous les champs sont facultatifs. Les relevés suivants sont supposés tomber aux mêmes jours chaque mois. Si votre banque les déplace, mettez-les à jour ici.",
     "Credit limit": "Plafond de crédit",
     "No limit set": "Aucun plafond",
     "The most your bank lets you spend on this card.": "Le maximum que votre banque vous permet de dépenser avec cette carte.",

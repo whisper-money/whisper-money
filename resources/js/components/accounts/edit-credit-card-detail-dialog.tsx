@@ -127,7 +127,7 @@ export function EditCreditCardDetailDialog({
                     <DialogTitle>{__('Card details')}</DialogTitle>
                     <DialogDescription>
                         {__(
-                            'Both are optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.',
+                            'Every field is optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.',
                         )}
                     </DialogDescription>
                 </DialogHeader>
