@@ -3,14 +3,15 @@ import {
     accountDailyBalanceEvolution,
 } from '@/actions/App/Http/Controllers/Api/DashboardAnalyticsController';
 import {
-    type ChartCurrencyMode,
-    type ChartGranularity,
+    AreaGradient,
     ChartCurrencyToggle,
     ChartGranularityToggle,
     ChartSettingsPopover,
     ChartViewToggle,
     MoMChart,
     MoMPercentChart,
+    type ChartCurrencyMode,
+    type ChartGranularity,
 } from '@/components/charts';
 import { PercentageTrendIndicator } from '@/components/dashboard/percentage-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
@@ -914,24 +915,10 @@ export function AccountBalanceChart({
                                     data={activeChartData.slice(1)}
                                 >
                                     <defs>
-                                        <linearGradient
+                                        <AreaGradient
                                             id="fillBalance"
-                                            x1="0"
-                                            y1="0"
-                                            x2="0"
-                                            y2="1"
-                                        >
-                                            <stop
-                                                offset="5%"
-                                                stopColor={accountMainLineColor}
-                                                stopOpacity={0.3}
-                                            />
-                                            <stop
-                                                offset="95%"
-                                                stopColor={accountMainLineColor}
-                                                stopOpacity={0.05}
-                                            />
-                                        </linearGradient>
+                                            color={accountMainLineColor}
+                                        />
                                     </defs>
                                     <XAxis
                                         dataKey="month"
@@ -1010,24 +997,10 @@ export function AccountBalanceChart({
                                     data={activeChartData.slice(1)}
                                 >
                                     <defs>
-                                        <linearGradient
+                                        <AreaGradient
                                             id="fillBalance"
-                                            x1="0"
-                                            y1="0"
-                                            x2="0"
-                                            y2="1"
-                                        >
-                                            <stop
-                                                offset="5%"
-                                                stopColor="var(--color-chart-2)"
-                                                stopOpacity={0.3}
-                                            />
-                                            <stop
-                                                offset="95%"
-                                                stopColor="var(--color-chart-2)"
-                                                stopOpacity={0.05}
-                                            />
-                                        </linearGradient>
+                                            color="var(--color-chart-2)"
+                                        />
                                     </defs>
                                     <XAxis
                                         dataKey="month"
@@ -1121,24 +1094,10 @@ export function AccountBalanceChart({
                                     data={activeChartData.slice(1)}
                                 >
                                     <defs>
-                                        <linearGradient
+                                        <AreaGradient
                                             id="fillBalance"
-                                            x1="0"
-                                            y1="0"
-                                            x2="0"
-                                            y2="1"
-                                        >
-                                            <stop
-                                                offset="5%"
-                                                stopColor="var(--color-chart-2)"
-                                                stopOpacity={0.3}
-                                            />
-                                            <stop
-                                                offset="95%"
-                                                stopColor="var(--color-chart-2)"
-                                                stopOpacity={0.05}
-                                            />
-                                        </linearGradient>
+                                            color="var(--color-chart-2)"
+                                        />
                                     </defs>
                                     <XAxis
                                         dataKey="month"

@@ -302,6 +302,11 @@ export interface TransactionListProps {
     maxHeight?: number;
     hideColumns?: string[];
     onBalanceUpdated?: () => void;
+    /**
+     * Called after a transaction in the list is edited or deleted, for pages
+     * whose figures are computed from the ledger on the server.
+     */
+    onTransactionsChanged?: () => void;
     /** A label every listed transaction already carries; hidden from the rows. */
     hiddenLabelId?: UUID;
 }
@@ -321,6 +326,7 @@ export function TransactionList({
     maxHeight,
     hideColumns = [],
     onBalanceUpdated,
+    onTransactionsChanged,
     hiddenLabelId,
 }: TransactionListProps) {
     const locale = useLocale();
@@ -414,8 +420,9 @@ export function TransactionList({
                     };
                 }),
             );
+            onTransactionsChanged?.();
         },
-        [setTransactions],
+        [setTransactions, onTransactionsChanged],
     );
 
     useEffect(() => {
@@ -888,6 +895,7 @@ export function TransactionList({
             if (balanceWasUpdated) {
                 onBalanceUpdated?.();
             }
+            onTransactionsChanged?.();
             setTransactions((previous) =>
                 previous.filter(
                     (transaction) => transaction.id !== deleteTransaction.id,
@@ -934,6 +942,7 @@ export function TransactionList({
                     return transaction;
                 }),
             );
+            onTransactionsChanged?.();
 
             setRowSelection({});
         } catch (error) {
@@ -1024,6 +1033,7 @@ export function TransactionList({
             if (balanceMayHaveUpdated) {
                 onBalanceUpdated?.();
             }
+            onTransactionsChanged?.();
             setTransactions((previous) =>
                 previous.filter(
                     (transaction) => !selectedIds.includes(transaction.id),
