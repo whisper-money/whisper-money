@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\SavingsGoal;
+use App\Models\User;
 use App\Services\SavingsGoals\MonthlySavingsGoalNotifier;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use Illuminate\Console\Command;
@@ -39,7 +40,20 @@ class GenerateSavingsGoalPeriods extends Command
             // Apart from the close: a notice that fails is retried tomorrow,
             // and must not keep the goal's months from moving on.
             try {
-                $this->notifier->notify($goal);
+                $this->notifier->announce($goal);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+
+        // One reminder per user, listing every goal of theirs that is behind.
+        $users = User::query()
+            ->whereIn('id', SavingsGoal::query()->monthly()->notArchived()->select('user_id'))
+            ->lazyById();
+
+        foreach ($users as $user) {
+            try {
+                $this->notifier->remind($user);
             } catch (Throwable $exception) {
                 report($exception);
             }

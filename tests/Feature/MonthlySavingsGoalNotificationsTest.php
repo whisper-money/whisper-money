@@ -113,7 +113,7 @@ test('the month-end reminder goes out once, with five days left, when the goal i
 
     Mail::assertQueuedCount(1);
     Mail::assertQueued(MonthlySavingsGoalReminderEmail::class, fn (MonthlySavingsGoalReminderEmail $mail): bool => $mail->hasTo($user->email)
-        && $mail->percent === 40
+        && $mail->goals === [['name' => $goal->name, 'percent' => 40]]
         && $mail->daysLeft === 5);
 
     expect($goal->periods()->where('month', '2026-10-01')->value('reminder_notified_at'))->not->toBeNull();
@@ -179,20 +179,69 @@ test('deleting a goal takes its notices out of the bell', function () {
     expect($user->notifications()->count())->toBe(0);
 });
 
-test('the reminder email renders the month and the progress, never an amount', function () {
+test('the reminder email lists each goal with its progress, never an amount', function () {
     $this->travelTo(Carbon::parse('2026-10-26 09:00'));
     $user = noticesUser();
-    $goal = noticesGoal($user, ['name' => 'Emergency fund']);
 
-    $mail = new MonthlySavingsGoalReminderEmail($user, $goal, '2026-10', 40, 1);
+    $mail = new MonthlySavingsGoalReminderEmail($user, '2026-10', [
+        ['name' => 'Emergency fund', 'percent' => 40],
+        ['name' => 'Japan <trip>', 'percent' => 75],
+    ], 1, []);
     $html = $mail->render();
 
-    expect($html)->toContain('Emergency fund')
-        ->toContain('1 day left in October')
-        ->toContain('you are at 40% of your October target')
+    expect($html)->toContain('1 day left in October')
+        ->toContain('these monthly goals are still short of their October target')
+        ->toContain('Emergency fund</strong>: you are at 40% of it.')
+        ->toContain('Japan &lt;trip&gt;')
         ->not->toContain('€')
-        ->not->toContain('300')
-        ->and($mail->envelope()->subject)->toBe("Emergency fund: 1 day left to reach this month's target");
+        ->and($mail->envelope()->subject)->toBe("1 day left to reach this month's savings targets");
+});
+
+test('one reminder per user lists every goal that is behind', function () {
+    $this->travelTo(Carbon::parse('2026-10-15 09:00'));
+    $user = noticesUser();
+    $fund = noticesGoal($user, ['name' => 'Fund']);
+    $trip = noticesGoal($user, ['name' => 'Trip']);
+    $done = noticesGoal($user, ['name' => 'Done']);
+    noticesSave($done, 30000, '2026-10-05');
+    noticesGoal(noticesUser());
+
+    $this->travelTo(Carbon::parse('2026-10-28 09:00'));
+    $this->artisan('savings-goals:generate-periods');
+    $this->artisan('savings-goals:generate-periods');
+
+    Mail::assertQueuedCount(2);
+    Mail::assertQueued(MonthlySavingsGoalReminderEmail::class, fn (MonthlySavingsGoalReminderEmail $mail): bool => $mail->hasTo($user->email)
+        && array_column($mail->goals, 'name') === ['Fund', 'Trip']);
+
+    expect($fund->periods()->sole()->reminder_notified_at)->not->toBeNull()
+        ->and($trip->periods()->sole()->reminder_notified_at)->not->toBeNull()
+        ->and($done->periods()->sole()->reminder_notified_at)->toBeNull();
+});
+
+test('a reminder whose delivery gives up is sent again on the next run', function () {
+    $this->travelTo(Carbon::parse('2026-10-15 09:00'));
+    $user = noticesUser();
+    $goal = noticesGoal($user);
+
+    $this->travelTo(Carbon::parse('2026-10-28 09:00'));
+    $this->artisan('savings-goals:generate-periods');
+
+    $mail = null;
+    Mail::assertQueued(MonthlySavingsGoalReminderEmail::class, function (MonthlySavingsGoalReminderEmail $queued) use (&$mail): bool {
+        $mail = $queued;
+
+        return true;
+    });
+    expect($goal->periods()->sole()->reminder_notified_at)->not->toBeNull();
+
+    // What SendQueuedMailable does once its retries run out.
+    $mail->failed(new RuntimeException('smtp down'));
+
+    expect($goal->periods()->sole()->reminder_notified_at)->toBeNull();
+
+    $this->artisan('savings-goals:generate-periods');
+    Mail::assertQueuedCount(2);
 });
 
 test('the reminder waits for the morning run, not the one just after midnight', function () {
