@@ -5,6 +5,7 @@ namespace App\Mcp\Tools\Concerns;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\CreditCards\CreditCardStatementService;
+use Illuminate\Support\Arr;
 
 trait PresentsAccounts
 {
@@ -25,10 +26,12 @@ trait PresentsAccounts
             'bank' => $account->bank?->name,
             'is_connected' => $account->isConnected(),
             'ownership_percentage' => $account->ownership_percentage,
-            // Statement dates and the next payment they estimate, on a credit
-            // card for a user who has the feature. Reads `creditCardDetail`, so
-            // eager-load it when presenting several accounts.
-            ...app(CreditCardStatementService::class)->presentFor($account, $user),
+            // Limit, statement dates, the next payment they estimate and the
+            // credit in use, on a credit card for a user who has the feature.
+            // The day-by-day series is for the app's chart, not the agent.
+            // Reads `creditCardDetail`, so eager-load it when presenting
+            // several accounts.
+            ...Arr::except(app(CreditCardStatementService::class)->presentFor($account, $user), 'credit_card_usage.daily'),
         ];
     }
 }

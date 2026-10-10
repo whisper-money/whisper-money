@@ -6,7 +6,6 @@ use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Features\CreditCardStatements;
 use App\Models\Account;
-use App\Models\CreditCardDetail;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Concerns\ConvertsTransactionCurrency;
@@ -34,9 +33,9 @@ class CreditCardStatementService
     }
 
     /**
-     * The statement fields an account row carries for this user: the dates
-     * and the estimate on a credit card when the feature is on, nothing at
-     * all otherwise.
+     * The credit card fields an account row carries for this user: the
+     * detail, the statement estimate and the credit usage on a credit card
+     * when the feature is on, nothing at all otherwise.
      *
      * @return array<string, mixed>
      */
@@ -46,63 +45,71 @@ class CreditCardStatementService
             return [];
         }
 
-        return $this->present($account, $user);
-    }
-
-    /**
-     * A credit card's statement dates and, once they are set, the estimate
-     * they give as of today in the user's timezone. Reads the
-     * `creditCardDetail` relation, so eager-load it when presenting several
-     * cards.
-     *
-     * @return array{
-     *     credit_card_detail: array{statement_closing_date: string, payment_due_date: string}|null,
-     *     credit_card_statement: array<string, mixed>|null,
-     * }
-     */
-    private function present(Account $account, User $user): array
-    {
+        $today = CarbonImmutable::parse(now($user->timezone ?? config('app.timezone'))->toDateString());
         $detail = $account->creditCardDetail;
 
-        if ($detail === null) {
-            return ['credit_card_detail' => null, 'credit_card_statement' => null];
-        }
-
-        $today = CarbonImmutable::parse(now($user->timezone ?? config('app.timezone'))->toDateString());
-
         return [
-            'credit_card_detail' => [
-                'statement_closing_date' => $detail->statement_closing_date->toDateString(),
-                'payment_due_date' => $detail->payment_due_date->toDateString(),
+            'credit_card_detail' => $detail === null ? null : [
+                'statement_closing_date' => $detail->statement_closing_date?->toDateString(),
+                'payment_due_date' => $detail->payment_due_date?->toDateString(),
+                'credit_limit' => $detail->credit_limit,
             ],
-            'credit_card_statement' => $this->estimate($account, $detail, $today),
+            ...$this->figuresOn($account, $today),
         ];
     }
 
     /**
+     * What a credit card's ledger says as of $today: the estimate its
+     * statement dates give (null while it has none) and how much of the card
+     * is in use. Both come from one query. Reads the `creditCardDetail`
+     * relation, so eager-load it when presenting several cards.
+     *
+     * Usage covers what is still to be charged: from the statement paid next
+     * (a closed one not charged yet, or else the open cycle) through the open
+     * cycle. Without statement dates there is no cycle to go by, so it covers
+     * the calendar month. Rows booked after today are left out of it, since
+     * they have not drawn on the limit yet. `available` goes negative over
+     * the limit, and both are null while no limit is set.
+     *
      * @return array{
-     *     next_payment: array{period_from: string, closing_date: string, due_date: string, amount: int, is_final: bool},
-     *     current_cycle: array{period_from: string, closing_date: string, due_date: string, amount: int},
+     *     credit_card_statement: array{
+     *         next_payment: array{period_from: string, closing_date: string, due_date: string, amount: int, is_final: bool},
+     *         current_cycle: array{period_from: string, closing_date: string, due_date: string, amount: int},
+     *     }|null,
+     *     credit_card_usage: array{
+     *         limit: int|null,
+     *         used: int,
+     *         available: int|null,
+     *         period_from: string,
+     *         period_to: string,
+     *         daily: list<array{date: string, used: int}>,
+     *     },
      * }
      */
-    public function estimate(Account $account, CreditCardDetail $detail, CarbonImmutable $today): array
+    public function figuresOn(Account $account, CarbonImmutable $today): array
     {
-        $schedule = StatementSchedule::fromDetail($detail);
-        $nextPayment = $schedule->nextPaymentOn($today);
-        $currentCycle = $schedule->openCycleOn($today);
+        $schedule = StatementSchedule::fromDetail($account->creditCardDetail);
+        $nextPayment = $schedule?->nextPaymentOn($today);
+        $currentCycle = $schedule?->openCycleOn($today);
 
-        $transactions = $this->chargeableTransactions($account, $nextPayment['cycle']->periodFrom, $currentCycle->closingDate);
+        $from = $nextPayment['cycle']->periodFrom ?? $today->startOfMonth();
+        $to = $currentCycle->closingDate ?? $today->endOfMonth()->startOfDay();
+
+        $transactions = $this->chargeableTransactions($account, $from, $to);
 
         return [
-            'next_payment' => [
-                ...$nextPayment['cycle']->toArray(),
-                'amount' => $this->amountToPay($transactions, $nextPayment['cycle'], $account->currency_code),
-                'is_final' => $nextPayment['is_final'],
+            'credit_card_statement' => $nextPayment === null || $currentCycle === null ? null : [
+                'next_payment' => [
+                    ...$nextPayment['cycle']->toArray(),
+                    'amount' => $this->amountToPay($transactions, $nextPayment['cycle'], $account->currency_code),
+                    'is_final' => $nextPayment['is_final'],
+                ],
+                'current_cycle' => [
+                    ...$currentCycle->toArray(),
+                    'amount' => $this->amountToPay($transactions, $currentCycle, $account->currency_code),
+                ],
             ],
-            'current_cycle' => [
-                ...$currentCycle->toArray(),
-                'amount' => $this->amountToPay($transactions, $currentCycle, $account->currency_code),
-            ],
+            'credit_card_usage' => $this->usage($transactions, $from, $to, $today, $account),
         ];
     }
 
@@ -152,6 +159,39 @@ class CreditCardStatementService
         return -$transactions
             ->filter(fn (Transaction $transaction): bool => $cycle->contains(self::bookedOn($transaction)))
             ->sum(fn (Transaction $transaction): int => $this->convertFullTransactionAmount($transaction, $currency));
+    }
+
+    /**
+     * Where the card stands against its limit, with the running total of
+     * what it has drawn day by day from $from through $today.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @return array{limit: int|null, used: int, available: int|null, period_from: string, period_to: string, daily: list<array{date: string, used: int}>}
+     */
+    private function usage(Collection $transactions, CarbonImmutable $from, CarbonImmutable $to, CarbonImmutable $today, Account $account): array
+    {
+        $drawnByDay = $transactions
+            ->groupBy(fn (Transaction $transaction): string => self::bookedOn($transaction)->toDateString())
+            ->map(fn (Collection $day): int => -$day->sum(fn (Transaction $transaction): int => $this->convertFullTransactionAmount($transaction, $account->currency_code)));
+
+        $used = 0;
+        $daily = [];
+
+        for ($day = $from; $day->lessThanOrEqualTo($today); $day = $day->addDay()) {
+            $used += $drawnByDay->get($day->toDateString(), 0);
+            $daily[] = ['date' => $day->toDateString(), 'used' => $used];
+        }
+
+        $limit = $account->creditCardDetail?->credit_limit;
+
+        return [
+            'limit' => $limit,
+            'used' => $used,
+            'available' => $limit === null ? null : $limit - $used,
+            'period_from' => $from->toDateString(),
+            'period_to' => $to->toDateString(),
+            'daily' => $daily,
+        ];
     }
 
     private static function bookedOn(Transaction $transaction): CarbonImmutable

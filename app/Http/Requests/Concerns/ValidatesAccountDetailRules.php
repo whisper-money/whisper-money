@@ -12,6 +12,11 @@ use Illuminate\Validation\Rule;
 trait ValidatesAccountDetailRules
 {
     /**
+     * Far above any real card, low enough to stay clear of the column's range.
+     */
+    private const MAX_CREDIT_LIMIT = 1_000_000_000_000_000;
+
+    /**
      * Validation rules for real estate detail fields.
      *
      * @return array<string, array<mixed>>
@@ -77,19 +82,30 @@ trait ValidatesAccountDetailRules
     }
 
     /**
-     * Validation rules for the statement dates of a credit card. Both travel
-     * together, since one is meaningless without the other. With
-     * `$allowClearing`, sending both as null forgets them.
+     * Validation rules for what a credit card carries: its limit and its
+     * statement dates, each optional, and null clears it. The two dates travel
+     * together, since one is meaningless without the other.
      *
      * @return array<string, array<mixed>>
      */
-    protected function creditCardDetailRules(bool $allowClearing = false): array
+    protected function creditCardDetailRules(): array
     {
-        $presence = $allowClearing ? 'nullable' : 'required';
-
         return [
-            'statement_closing_date' => [$presence, 'required_with:payment_due_date', 'date_format:Y-m-d'],
-            'payment_due_date' => [$presence, 'required_with:statement_closing_date', 'date_format:Y-m-d', new PaymentDueAfterStatementClosing],
+            'statement_closing_date' => ['nullable', 'required_with:payment_due_date', 'date_format:Y-m-d'],
+            'payment_due_date' => ['nullable', 'required_with:statement_closing_date', 'date_format:Y-m-d', new PaymentDueAfterStatementClosing],
+            ...$this->creditLimitRules(),
+        ];
+    }
+
+    /**
+     * Validation rules for a credit card's limit, in minor units.
+     *
+     * @return array<string, array<mixed>>
+     */
+    protected function creditLimitRules(): array
+    {
+        return [
+            'credit_limit' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_CREDIT_LIMIT],
         ];
     }
 

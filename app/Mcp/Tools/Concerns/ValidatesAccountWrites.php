@@ -59,15 +59,15 @@ trait ValidatesAccountWrites
                 // after that the link lives on the property's own detail.
                 ...$creating ? $this->linkedRealEstateAccountRules() : [],
             ],
-            AccountType::CreditCard => $this->creditCardDetailRules(allowClearing: true),
+            AccountType::CreditCard => $this->creditCardDetailRules(),
             default => [],
         };
     }
 
     /**
-     * The statement dates sit behind a per-user flag, while the schema that
+     * The credit card fields sit behind a per-user flag, while the schema that
      * offers them is the same for everyone. A user without the flag is told
-     * so instead of having the dates silently dropped.
+     * so instead of having them silently dropped.
      */
     protected function refuseUnavailableCreditCardFields(Request $request, User $user): void
     {
@@ -75,10 +75,10 @@ trait ValidatesAccountWrites
             return;
         }
 
-        foreach (['statement_closing_date', 'payment_due_date'] as $field) {
+        foreach (['statement_closing_date', 'payment_due_date', 'credit_limit'] as $field) {
             if ($request->has($field)) {
                 throw ValidationException::withMessages([
-                    $field => 'Credit card statement dates are not available for this account yet. Leave statement_closing_date and payment_due_date out.',
+                    $field => 'Credit card limits and statement dates are not available for this account yet. Leave statement_closing_date, payment_due_date and credit_limit out.',
                 ]);
             }
         }
@@ -138,6 +138,7 @@ trait ValidatesAccountWrites
             'loan_start_date' => $schema->string()->description('loan only: when the loan started, YYYY-MM-DD. Defaults to today.'),
             'statement_closing_date' => $schema->string()->description('credit_card only: a statement closing date, YYYY-MM-DD. Later cycles repeat monthly from it. Send with payment_due_date; both null clears them.'),
             'payment_due_date' => $schema->string()->description('credit_card only: when that statement is charged, YYYY-MM-DD. After the closing date, at most '.PaymentDueAfterStatementClosing::MAX_DAYS_TO_PAY.' days later.'),
+            'credit_limit' => $schema->integer()->description('credit_card only: the card\'s credit limit, in minor units. null clears it.'),
         ];
     }
 

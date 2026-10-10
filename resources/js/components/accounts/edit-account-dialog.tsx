@@ -66,6 +66,7 @@ export function EditAccountDialog({
         investedAmount: null,
         realEstate: null,
         loan: null,
+        creditLimit: null,
     });
 
     const loanInitialData: LoanFormData | null = useMemo(() => {

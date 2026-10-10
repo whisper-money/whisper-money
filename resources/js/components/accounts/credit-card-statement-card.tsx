@@ -57,7 +57,7 @@ export function CreditCardStatementCard({
                         onClick={() => setDialogOpen(true)}
                     >
                         <Pencil className="h-3.5 w-3.5" />
-                        {__('Edit dates')}
+                        {__('Edit card details')}
                     </Button>
                 )}
             </CardHeader>
@@ -88,6 +88,7 @@ export function CreditCardStatementCard({
 
             <EditCreditCardDetailDialog
                 accountId={accountId}
+                currencyCode={currencyCode}
                 detail={detail}
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}

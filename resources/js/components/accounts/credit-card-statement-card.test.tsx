@@ -31,6 +31,7 @@ vi.mock('@/contexts/privacy-mode-context', () => ({
 const detail = {
     statement_closing_date: '2026-03-05',
     payment_due_date: '2026-03-20',
+    credit_limit: 300000,
 };
 
 function statement(isFinal: boolean, amount = 12345): CreditCardStatement {
@@ -158,7 +159,9 @@ describe('CreditCardStatementCard', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /Edit dates/ }));
+        fireEvent.click(
+            screen.getByRole('button', { name: /Edit card details/ }),
+        );
         fireEvent.change(screen.getByLabelText('Payment due date'), {
             target: { value: '2026-03-22' },
         });
@@ -169,6 +172,7 @@ describe('CreditCardStatementCard', () => {
             {
                 statement_closing_date: '2026-03-05',
                 payment_due_date: '2026-03-22',
+                credit_limit: 300000,
             },
             expect.any(Object),
         );
@@ -179,5 +183,65 @@ describe('CreditCardStatementCard', () => {
             '/accounts/card-1/credit-card-detail',
             expect.any(Object),
         );
+    });
+
+    it('sets a credit limit without statement dates', () => {
+        render(
+            <CreditCardStatementCard
+                accountId="card-1"
+                currencyCode="EUR"
+                detail={null}
+                statement={null}
+            />,
+        );
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /Set statement dates/ }),
+        );
+        const limitInput = screen.getByLabelText('Credit limit');
+        fireEvent.focus(limitInput);
+        fireEvent.change(limitInput, { target: { value: '1500' } });
+        fireEvent.blur(limitInput);
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(router.patch).toHaveBeenCalledWith(
+            '/accounts/card-1/credit-card-detail',
+            {
+                statement_closing_date: null,
+                payment_due_date: null,
+                credit_limit: 150000,
+            },
+            expect.any(Object),
+        );
+    });
+
+    it('keeps the empty state on a card with a limit but no statement dates', () => {
+        render(
+            <CreditCardStatementCard
+                accountId="card-1"
+                currencyCode="EUR"
+                detail={{
+                    statement_closing_date: null,
+                    payment_due_date: null,
+                    credit_limit: 300000,
+                }}
+                statement={null}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: /Edit card details/ }),
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /Set statement dates/ }),
+        );
+
+        expect(screen.getByLabelText('Statement closing date')).toHaveValue('');
+        // The dialog focuses the limit, which shows it without grouping.
+        expect(screen.getByLabelText('Credit limit')).toHaveValue('3000.00');
+        expect(
+            screen.queryByRole('button', { name: 'Remove dates' }),
+        ).not.toBeInTheDocument();
     });
 });

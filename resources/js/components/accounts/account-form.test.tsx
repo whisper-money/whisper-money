@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AccountForm } from './account-form';
 
@@ -149,6 +149,85 @@ describe('AccountForm', () => {
         render(<AccountForm forceAccountType="loan" onChange={() => {}} />);
 
         expect(screen.getByLabelText('Owed Amount')).toBeInTheDocument();
+    });
+
+    describe('credit limit', () => {
+        const withoutFeatures = pageProps.current;
+        const withCreditCardStatements = (enabled: boolean) => {
+            pageProps.current = {
+                ...withoutFeatures,
+                features: { creditCardStatements: enabled },
+            };
+        };
+
+        afterEach(() => {
+            pageProps.current = withoutFeatures;
+        });
+
+        it('asks a new credit card for its limit and hands it over', () => {
+            withCreditCardStatements(true);
+            const onChange = vi.fn();
+
+            render(
+                <AccountForm
+                    forceAccountType="credit_card"
+                    onChange={onChange}
+                />,
+            );
+
+            const limit = screen.getByLabelText('Credit limit');
+            fireEvent.change(limit, { target: { value: '3000' } });
+            fireEvent.blur(limit);
+
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    type: 'credit_card',
+                    creditLimit: 300000,
+                }),
+            );
+        });
+
+        it('does not ask for a limit while the feature is off', () => {
+            withCreditCardStatements(false);
+
+            render(
+                <AccountForm
+                    forceAccountType="credit_card"
+                    onChange={() => {}}
+                />,
+            );
+
+            expect(
+                screen.queryByLabelText('Credit limit'),
+            ).not.toBeInTheDocument();
+        });
+
+        it('does not ask other account types for a limit', () => {
+            withCreditCardStatements(true);
+
+            render(
+                <AccountForm forceAccountType="checking" onChange={() => {}} />,
+            );
+
+            expect(
+                screen.queryByLabelText('Credit limit'),
+            ).not.toBeInTheDocument();
+        });
+
+        it('leaves the limit to the card page when editing an account', () => {
+            withCreditCardStatements(true);
+
+            render(
+                <AccountForm
+                    initialValues={{ ...initialValues, type: 'credit_card' }}
+                    onChange={() => {}}
+                />,
+            );
+
+            expect(
+                screen.queryByLabelText('Credit limit'),
+            ).not.toBeInTheDocument();
+        });
     });
 
     // The reader's own currency was already on their profile; the select opened
