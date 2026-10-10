@@ -25,8 +25,38 @@ class MonthlySavingsGoalTotals
      */
     public function forMonth(User $user, Carbon $month, int $historyMonths = 6): ?array
     {
+        return $this->forGoals($this->stats->presentForUser($user), $month, $historyMonths);
+    }
+
+    /**
+     * How the goals did in $month — met of judged — in the shape the Planning
+     * header and the dashboard card show it. The same calculation as the
+     * cashflow card and the monthly summary, so every surface agrees after an
+     * archive. Null when no goal was judged that month.
+     *
+     * @param  list<array<string, mixed>>  $goals  every monthly goal of the user, archived ones included, as presented
+     * @return array{month: string, met: int, total: int}|null
+     */
+    public function verdicts(array $goals, Carbon $month): ?array
+    {
+        $totals = $this->forGoals($goals, $month, historyMonths: 1);
+
+        return $totals === null || $totals['total'] === 0
+            ? null
+            : ['month' => $totals['month'], 'met' => $totals['met'], 'total' => $totals['total']];
+    }
+
+    /**
+     * The same as forMonth(), from goals already presented, so a page that
+     * has them spends no query.
+     *
+     * @param  list<array<string, mixed>>  $goals
+     * @return array<string, mixed>|null
+     */
+    private function forGoals(array $goals, Carbon $month, int $historyMonths): ?array
+    {
         $from = $month->copy()->startOfMonth()->subMonthsNoOverflow($historyMonths - 1);
-        $byMonth = $this->byMonth($user, $from->format('Y-m'), $month->format('Y-m'));
+        $byMonth = $this->byMonth($goals, $from->format('Y-m'), $month->format('Y-m'));
         $key = $month->format('Y-m');
 
         if ($byMonth === []) {
@@ -43,17 +73,19 @@ class MonthlySavingsGoalTotals
      * month. Each goal's streak still runs through its whole history, so a
      * month carries the streak the goal had reached by then.
      *
+     * @param  list<array<string, mixed>>  $goals
      * @return array<string, array<string, mixed>>
      */
-    private function byMonth(User $user, string $from, string $to): array
+    private function byMonth(array $goals, string $from, string $to): array
     {
         $months = [];
 
-        foreach ($this->stats->presentForUser($user) as $goal) {
+        foreach ($goals as $goal) {
             $run = 0;
 
             foreach ($goal['monthly']['history'] as $entry) {
-                if ($entry['status'] === SavingsGoalMonthStatus::Partial) {
+                // Partial and archived months have no target to add up.
+                if ($entry['status'] === SavingsGoalMonthStatus::Partial || $entry['status'] === SavingsGoalMonthStatus::Archived) {
                     continue;
                 }
 

@@ -12,6 +12,7 @@ use App\Services\LabelSpendingService;
 use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\PeriodComparator;
 use App\Services\SavingsGoals\MonthlySavingsGoalStats;
+use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -27,6 +28,7 @@ class DashboardController extends Controller
         private ReportPresenter $presenter,
         private CreditCardStatementService $creditCardStatementService,
         private MonthlySavingsGoalStats $monthlySavingsGoals,
+        private MonthlySavingsGoalTotals $monthlySavingsTotals,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -41,6 +43,12 @@ class DashboardController extends Controller
                 'creditCardUsage' => Inertia::defer(fn () => $this->getCreditCardUsage($request), 'dashboard'),
             ] : [],
             'monthlySavingsGoals' => Inertia::defer(fn () => $this->runningMonthlyGoals($request), 'dashboard'),
+            // Archived goals included: the same count the cashflow card and
+            // the monthly summary give for that month.
+            'monthlySavingsLastMonth' => Inertia::defer(fn () => $this->monthlySavingsTotals->verdicts(
+                $this->monthlySavingsGoals->presentForUser($request->user()),
+                today()->subMonthNoOverflow(),
+            ), 'dashboard'),
         ]);
     }
 
@@ -79,26 +87,17 @@ class DashboardController extends Controller
 
     /**
      * The monthly goals still running, for this month's card. An archived goal
-     * has nothing left to save towards. The card only needs this month and
-     * the one before (for "September: 1 of 2 met"), so that is all it gets:
-     * no full history, no goal fields it does not draw.
+     * has nothing left to save towards. The card only needs this month, so
+     * that is all it gets: no history, no goal fields it does not draw.
      *
-     * @return list<array{id: string, name: string, monthly: array{current: array<string, mixed>|null, history: list<array<string, mixed>>}}>
+     * @return list<array{id: string, name: string, monthly: array{current: array<string, mixed>|null}}>
      */
     private function runningMonthlyGoals(Request $request): array
     {
-        $previousMonth = today()->subMonthNoOverflow()->format('Y-m');
-
         return array_map(fn (array $goal): array => [
             'id' => $goal['id'],
             'name' => $goal['name'],
-            'monthly' => [
-                'current' => $goal['monthly']['current'],
-                'history' => array_values(array_filter(
-                    $goal['monthly']['history'],
-                    fn (array $month): bool => $month['month'] === $previousMonth,
-                )),
-            ],
+            'monthly' => ['current' => $goal['monthly']['current']],
         ], $this->monthlySavingsGoals->present(
             $request->user()->savingsGoals()->monthly()->notArchived()->listed()->get(),
         ));

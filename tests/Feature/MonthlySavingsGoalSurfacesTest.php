@@ -295,20 +295,35 @@ test('the cashflow card only adds up the months it shows', function () {
         ->toHaveCount(1);
 });
 
-test('the dashboard gets this month and the last for each goal, nothing more', function () {
-    [$user, $fund] = surfacesSeptember();
+test('the dashboard gets this month for each goal, nothing more', function () {
+    [$user] = surfacesSeptember();
 
     $response = $this->actingAs($user)->withoutVite()->get(route('dashboard'), [
         'X-Inertia' => 'true',
         'X-Inertia-Partial-Component' => 'dashboard',
-        'X-Inertia-Partial-Data' => 'monthlySavingsGoals',
+        'X-Inertia-Partial-Data' => 'monthlySavingsGoals,monthlySavingsLastMonth',
     ])->assertOk();
 
     expect($response->json('props.monthlySavingsGoals.0'))->toHaveKeys(['id', 'name', 'monthly'])
         ->not->toHaveKeys(['user', 'periods', 'label'])
-        ->and($response->json('props.monthlySavingsGoals.0.monthly'))->toHaveKeys(['current', 'history'])
-        ->and(array_column($response->json('props.monthlySavingsGoals.0.monthly.history'), 'month'))->toBe(['2026-09'])
-        ->and($response->json('props.monthlySavingsGoals.0.monthly.current.month'))->toBe('2026-10');
+        ->and(array_keys($response->json('props.monthlySavingsGoals.0.monthly')))->toBe(['current'])
+        ->and($response->json('props.monthlySavingsGoals.0.monthly.current.month'))->toBe('2026-10')
+        ->and($response->json('props.monthlySavingsLastMonth'))->toBe(['month' => '2026-09', 'met' => 1, 'total' => 2]);
+});
+
+test('every surface counts last month the same way after an archive', function () {
+    [$user, , $trip] = surfacesSeptember();
+    app(SavingsGoalService::class)->archive($trip);
+
+    $this->actingAs($user)->get('/budgets')
+        ->assertInertia(fn ($page) => $page->where('monthlySavingsLastMonth', ['month' => '2026-09', 'met' => 1, 'total' => 2]));
+
+    $this->actingAs($user)->getJson('/api/cashflow/monthly-savings?month=2026-09')
+        ->assertJsonPath('data.met', 1)
+        ->assertJsonPath('data.total', 2);
+
+    expect(app(SummaryBuilder::class)->build($user, Carbon::parse('2026-09-01'), complete: true)['monthly_goals'])
+        ->toMatchArray(['met' => 1, 'total' => 2]);
 });
 
 test('the cashflow card keeps the history for a month no goal was judged in', function () {

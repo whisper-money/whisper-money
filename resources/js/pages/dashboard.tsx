@@ -31,7 +31,7 @@ import { dashboard } from '@/routes';
 import { BreadcrumbItem, SharedData } from '@/types';
 import { type CreditCardUsage } from '@/types/account';
 import { Category } from '@/types/category';
-import { DashboardMonthlyGoal } from '@/types/savings-goal';
+import { DashboardMonthlyGoal, MonthlyVerdicts } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
@@ -65,6 +65,7 @@ interface DashboardProps extends SharedData {
     creditCardUsage?: Record<string, CreditCardUsage>;
     monthlySummary?: MonthlySummaryNoticeData | null;
     monthlySavingsGoals?: DashboardMonthlyGoal[];
+    monthlySavingsLastMonth?: MonthlyVerdicts | null;
 }
 
 export default function Dashboard() {
@@ -342,6 +343,7 @@ export default function Dashboard() {
                     <Deferred data="monthlySavingsGoals" fallback={<></>}>
                         <MonthlySavingsDashboardCard
                             goals={props.monthlySavingsGoals ?? []}
+                            lastMonth={props.monthlySavingsLastMonth}
                             currencyCode={props.auth.user.currency_code}
                         />
                     </Deferred>

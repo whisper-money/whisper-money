@@ -76,6 +76,7 @@ describe('MonthlySavingsDashboardCard', () => {
                     goal('a', 'Emergency fund', 12000, 30000, 'met'),
                     goal('b', 'Japan trip', 5000, 20000, 'missed'),
                 ]}
+                lastMonth={{ month: '2026-09', met: 1, total: 2 }}
                 currencyCode="EUR"
             />,
         );

@@ -61,33 +61,17 @@ export interface MonthlySavingsAggregate {
      */
     allPartial: boolean;
     daysLeft: number | null;
-    /** How the goals did in the month before the current one. */
-    previousMonth: string;
-    previousMet: number;
-    previousTotal: number;
 }
 
 /**
- * The current month across every running monthly goal, and how many of them
- * were met the month before. A goal created this month has no previous month
- * and is left out of that count, and so is a partial month: it has no target
- * and no verdict to add up.
+ * The current month across every running monthly goal. A partial month is
+ * left out: it has no target to add up. How the goals did last month comes
+ * from the server (MonthlySavingsGoalTotals), the same count the cashflow card
+ * and the monthly summary show.
  */
 export function aggregateMonthlyGoals(
     goals: MonthlyGoalSnapshot[],
-    currentMonth: string,
 ): MonthlySavingsAggregate {
-    const current = monthDate(currentMonth);
-    const previousMonth = monthKey(
-        new Date(current.getFullYear(), current.getMonth() - 1, 1),
-    );
-    const previous = goals
-        .map((goal) =>
-            goal.monthly?.history.find(
-                (entry) => entry.month === previousMonth,
-            ),
-        )
-        .filter(isAddedUp);
     const running = goals
         .map((goal) => goal.monthly?.current)
         .filter(isAddedUp);
@@ -101,9 +85,6 @@ export function aggregateMonthlyGoals(
         daysLeft:
             goals.find((goal) => goal.monthly?.current)?.monthly?.current
                 ?.days_left ?? null,
-        previousMonth,
-        previousMet: previous.filter((entry) => entry.status === 'met').length,
-        previousTotal: previous.length,
     };
 }
 

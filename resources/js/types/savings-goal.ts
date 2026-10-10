@@ -51,15 +51,22 @@ export interface MonthlySavingsMonth {
 }
 
 /**
- * What a page needs to add monthly goals up for one month: the month in
- * progress and as much history as it looks back at. A full goal fits it, and
- * so does the dashboard's slimmer row.
+ * What a page needs to add monthly goals up for the month in progress. A
+ * full goal fits it, and so does the dashboard's slimmer row.
  */
 export interface MonthlyGoalSnapshot {
-    monthly?: Pick<MonthlySavingsStats, 'current' | 'history'>;
+    monthly?: Pick<MonthlySavingsStats, 'current'>;
 }
 
-/** A running goal as the dashboard card gets it: this month and the last. */
+/** How the goals did in one month: met of judged, archived goals included. */
+export interface MonthlyVerdicts {
+    /** YYYY-MM */
+    month: string;
+    met: number;
+    total: number;
+}
+
+/** A running goal as the dashboard card gets it: this month only. */
 export interface DashboardMonthlyGoal extends MonthlyGoalSnapshot {
     id: UUID;
     name: string;
