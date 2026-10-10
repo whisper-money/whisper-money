@@ -2935,5 +2935,16 @@
     "Hide amounts in this block": "Masquer les montants de ce bloc",
     "In use": "Utilisé",
     "Credit limit in use": "Plafond de crédit utilisé",
-    "In use of": "Utilisé sur"
+    "In use of": "Utilisé sur",
+    "Credit used": "Crédit utilisé",
+    "Cycle from :from to :to": "Cycle du :from au :to",
+    "Over limit": "Plafond dépassé",
+    "Used": "Utilisé",
+    "Available": "Disponible",
+    "Limit": "Plafond",
+    "Set credit limit": "Définir le plafond",
+    ":percent% of the limit used": ":percent% du plafond utilisé",
+    "Over the limit by": "Au-dessus du plafond de",
+    "No spending recorded in this period yet": "Aucune dépense enregistrée sur cette période pour le moment",
+    "Add the credit limit of this card to see how much of it you have used and how much is still available.": "Ajoutez le plafond de cette carte pour voir combien vous en avez utilisé et combien il reste disponible."
 }

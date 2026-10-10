@@ -13,6 +13,7 @@ import {
 import { ArchiveAccountDialog } from '@/components/accounts/archive-account-dialog';
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { CreditCardStatementCard } from '@/components/accounts/credit-card-statement-card';
+import { CreditCardUsageChart } from '@/components/accounts/credit-card-usage-chart';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { EditLoanDetailDialog } from '@/components/accounts/edit-loan-detail-dialog';
 import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
@@ -158,6 +159,13 @@ export default function AccountShow({
     }
 
     const isCreditCard = account.type === 'credit_card';
+    // The server only sends the usage while the credit card statements
+    // feature is on, so its presence is what turns the card from a balance
+    // into a limit: no balance chart and no balance actions.
+    const creditCardUsage = isCreditCard
+        ? account.credit_card_usage
+        : undefined;
+    const tracksBalance = creditCardUsage === undefined;
 
     function handleTransactionCreated() {
         // A credit card's statement estimate is computed on the server from
@@ -166,6 +174,11 @@ export default function AccountShow({
             only: isCreditCard ? ['transactions', 'account'] : ['transactions'],
         });
         handleBalanceUpdated();
+    }
+
+    /** Edits and deletes from the list move the card's usage figures too. */
+    function handleTransactionsChanged() {
+        router.reload({ only: ['account'] });
     }
 
     const isArchived = !!account.archived_at;
@@ -276,7 +289,15 @@ export default function AccountShow({
                         )}
                     </div>
 
-                    {hasLinkedLoan ? (
+                    {!tracksBalance ? (
+                        <MoreOptionsMenu>
+                            <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                                {__('Edit account')}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {archiveMenuItem}
+                        </MoreOptionsMenu>
+                    ) : hasLinkedLoan ? (
                         <ButtonGroup>
                             <ButtonGroup>
                                 <Button
@@ -358,12 +379,21 @@ export default function AccountShow({
                     )}
                 </div>
 
-                <AccountBalanceChart
-                    account={account}
-                    refreshKey={chartRefreshKey}
-                    onBalanceClick={() => setUpdateBalanceOpen(true)}
-                    onDataLoaded={handleChartDataLoaded}
-                />
+                {creditCardUsage ? (
+                    <CreditCardUsageChart
+                        accountId={account.id}
+                        currencyCode={account.currency_code}
+                        usage={creditCardUsage}
+                        detail={account.credit_card_detail ?? null}
+                    />
+                ) : (
+                    <AccountBalanceChart
+                        account={account}
+                        refreshKey={chartRefreshKey}
+                        onBalanceClick={() => setUpdateBalanceOpen(true)}
+                        onDataLoaded={handleChartDataLoaded}
+                    />
+                )}
 
                 {isRealEstate &&
                     realEstateDetail &&
@@ -453,6 +483,11 @@ export default function AccountShow({
                             onBalanceUpdated={() =>
                                 setChartRefreshKey((key) => key + 1)
                             }
+                            onTransactionsChanged={
+                                tracksBalance
+                                    ? undefined
+                                    : handleTransactionsChanged
+                            }
                         />
                     </Deferred>
                 )}
@@ -472,12 +507,14 @@ export default function AccountShow({
                 onOpenChange={setArchiveOpen}
             />
 
-            <UpdateBalanceDialog
-                account={account}
-                open={updateBalanceOpen}
-                onOpenChange={setUpdateBalanceOpen}
-                onSuccess={handleBalanceUpdated}
-            />
+            {tracksBalance && (
+                <UpdateBalanceDialog
+                    account={account}
+                    open={updateBalanceOpen}
+                    onOpenChange={setUpdateBalanceOpen}
+                    onSuccess={handleBalanceUpdated}
+                />
+            )}
 
             <EditTransactionDialog
                 transaction={null}
@@ -494,21 +531,25 @@ export default function AccountShow({
                 origin="account_page"
             />
 
-            <BalancesModal
-                account={account}
-                open={balancesOpen}
-                onOpenChange={setBalancesOpen}
-                onBalanceChange={handleBalanceUpdated}
-            />
+            {tracksBalance && (
+                <>
+                    <BalancesModal
+                        account={account}
+                        open={balancesOpen}
+                        onOpenChange={setBalancesOpen}
+                        onBalanceChange={handleBalanceUpdated}
+                    />
 
-            <ImportBalancesDrawer
-                open={importBalancesOpen}
-                onOpenChange={setImportBalancesOpen}
-                accounts={accounts}
-                account={account}
-                accountId={account.id}
-                onSuccess={handleBalanceUpdated}
-            />
+                    <ImportBalancesDrawer
+                        open={importBalancesOpen}
+                        onOpenChange={setImportBalancesOpen}
+                        accounts={accounts}
+                        account={account}
+                        accountId={account.id}
+                        onSuccess={handleBalanceUpdated}
+                    />
+                </>
+            )}
 
             {hasLinkedLoan && (
                 <>

@@ -3868,5 +3868,13 @@
     "Hide amounts in this block": "Ocultar importes de este bloque",
     "In use": "Dispuesto",
     "Credit limit in use": "Límite de crédito dispuesto",
-    "In use of": "Dispuesto de"
+    "In use of": "Dispuesto de",
+    "Credit used": "Crédito dispuesto",
+    "Cycle from :from to :to": "Ciclo del :from al :to",
+    "Used": "Dispuesto",
+    "Set credit limit": "Añadir límite de crédito",
+    ":percent% of the limit used": ":percent% del límite dispuesto",
+    "Over the limit by": "Por encima del límite en",
+    "No spending recorded in this period yet": "Aún no hay gastos registrados en este periodo",
+    "Add the credit limit of this card to see how much of it you have used and how much is still available.": "Añade el límite de crédito de esta tarjeta para ver cuánto has dispuesto y cuánto te queda disponible."
 }
