@@ -1,4 +1,7 @@
-import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
+import {
+    EditTransactionDialog,
+    type TransactionCreateOrigin,
+} from '@/components/transactions/edit-transaction-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -8,18 +11,38 @@ import {
 } from '@/components/ui/tooltip';
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
 import { refreshPageAfterWrite } from '@/lib/refresh-page';
+import { cn } from '@/lib/utils';
 import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 /**
- * Squares the button around its icon while the label is hidden. The bar it
- * sits in is the size container (see TransactionFilters' actions slot), so
- * this follows the room actually left beside the sidebar, not the viewport.
+ * What a collapsible label measures itself against. `container`: the bar above
+ * a transactions list is the size container (see TransactionFilters' actions
+ * slot), so it follows the room actually left beside the sidebar, not the
+ * viewport. `viewport`: the app header has no container, so it collapses below
+ * `sm`, where the mobile header has no room left for it.
  */
-const COLLAPSIBLE_BUTTON_CLASSES =
-    'w-9 px-0 has-[>svg]:px-0 @xs:w-auto @xs:px-4 @xs:has-[>svg]:px-3';
+type LabelCollapse = 'container' | 'viewport';
+
+/**
+ * Per collapse mode: squaring the button around its icon while the label is
+ * hidden, and hiding the label. Spelled out so Tailwind sees every class.
+ */
+const COLLAPSE_CLASSES: Record<
+    LabelCollapse,
+    { button: string; label: string }
+> = {
+    container: {
+        button: 'w-9 px-0 has-[>svg]:px-0 @xs:w-auto @xs:px-4 @xs:has-[>svg]:px-3',
+        label: 'hidden @xs:inline',
+    },
+    viewport: {
+        button: 'w-9 px-0 has-[>svg]:px-0 sm:w-auto sm:px-4 sm:has-[>svg]:px-3',
+        label: 'hidden sm:inline',
+    },
+};
 
 /**
  * "+ Transaction", the face of every add-transaction button above a
@@ -29,13 +52,19 @@ const COLLAPSIBLE_BUTTON_CLASSES =
  */
 export function AddTransactionLabel({
     collapsible = false,
+    collapse = 'container',
 }: {
     collapsible?: boolean;
+    collapse?: LabelCollapse;
 }) {
     return (
         <>
             <Plus className="h-4 w-4" />
-            <span className={collapsible ? 'hidden @xs:inline' : undefined}>
+            <span
+                className={
+                    collapsible ? COLLAPSE_CLASSES[collapse].label : undefined
+                }
+            >
                 {__('Transaction')}
             </span>
         </>
@@ -45,6 +74,11 @@ export function AddTransactionLabel({
 interface AddTransactionButtonProps {
     /** Whether the user owns an account a manual transaction can be filed in. */
     hasTransactionalAccounts: boolean;
+    variant?: 'default' | 'outline';
+    /** Which surface the button sits on, for `transaction_created`. */
+    origin?: TransactionCreateOrigin;
+    collapse?: LabelCollapse;
+    testId?: string;
 }
 
 /**
@@ -54,6 +88,10 @@ interface AddTransactionButtonProps {
  */
 export function AddTransactionButton({
     hasTransactionalAccounts,
+    variant = 'default',
+    origin = 'quick_add',
+    collapse = 'container',
+    testId = 'add-transaction-button',
 }: AddTransactionButtonProps) {
     const { data, loading, load } = useTransactionDialogData();
     const [open, setOpen] = useState(false);
@@ -99,13 +137,21 @@ export function AddTransactionButton({
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button
-                            className={`${COLLAPSIBLE_BUTTON_CLASSES} ${isDisabled || loading ? 'cursor-not-allowed opacity-50' : ''}`}
+                            variant={variant}
+                            className={cn(
+                                COLLAPSE_CLASSES[collapse].button,
+                                (isDisabled || loading) &&
+                                    'cursor-not-allowed opacity-50',
+                            )}
                             onClick={handleOpen}
                             aria-disabled={isDisabled || loading}
                             aria-label={__('Add transaction')}
-                            data-testid="add-transaction-button"
+                            data-testid={testId}
                         >
-                            <AddTransactionLabel collapsible />
+                            <AddTransactionLabel
+                                collapsible
+                                collapse={collapse}
+                            />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -130,7 +176,7 @@ export function AddTransactionButton({
                         savedSomething.current = true;
                     }}
                     mode={editing ? 'edit' : 'create'}
-                    origin="quick_add"
+                    origin={origin}
                     onRequestEdit={(created) => {
                         setEditing(created);
                         setOpen(true);

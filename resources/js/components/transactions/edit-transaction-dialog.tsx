@@ -84,6 +84,7 @@ export type TransactionCreateOrigin =
     | 'quick_add'
     | 'full_dialog'
     | 'account_page'
+    | 'header'
     | 'duplicate';
 
 interface EditTransactionDialogProps {
