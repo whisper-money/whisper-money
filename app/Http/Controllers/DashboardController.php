@@ -11,6 +11,7 @@ use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\LabelSpendingService;
 use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\PeriodComparator;
+use App\Services\SavingsGoals\MonthlySavingsGoalStats;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -25,6 +26,7 @@ class DashboardController extends Controller
         private CashflowSummaryService $summaries,
         private ReportPresenter $presenter,
         private CreditCardStatementService $creditCardStatementService,
+        private MonthlySavingsGoalStats $monthlySavingsGoals,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -38,6 +40,7 @@ class DashboardController extends Controller
             ...$this->creditCardStatementService->isAvailableTo($request->user()) ? [
                 'creditCardUsage' => Inertia::defer(fn () => $this->getCreditCardUsage($request), 'dashboard'),
             ] : [],
+            'monthlySavingsGoals' => Inertia::defer(fn () => $this->runningMonthlyGoals($request), 'dashboard'),
         ]);
     }
 
@@ -72,6 +75,20 @@ class DashboardController extends Controller
             'monthLabel' => $summary->periodStart()->locale($locale)->isoFormat('MMMM'),
             'headline' => $this->presenter->headline($summary, $locale),
         ];
+    }
+
+    /**
+     * The monthly goals still running, for this month's card. An archived goal
+     * has nothing left to save towards.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function runningMonthlyGoals(Request $request): array
+    {
+        return array_values(array_filter(
+            $this->monthlySavingsGoals->presentForUser($request->user()),
+            fn (array $goal): bool => $goal['archived_at'] === null,
+        ));
     }
 
     private function getNetWorthEvolution(Request $request): array
