@@ -250,9 +250,18 @@ test('savings goal tools work inside the space they are given', function () {
     $household = Space::factory()->create(['owner_id' => $user->id, 'name' => 'Household']);
     $sharedSavings = Account::factory()->create(['user_id' => $user->id, 'space_id' => $household->id, 'type' => AccountType::Savings, 'currency_code' => 'EUR']);
 
-    // The same name is free in another space, like labels.
+    // Names are unique per user, as in the web forms, whatever the space.
+    Label::factory()->create(['user_id' => $user->id, 'name' => 'Taken']);
     callSavingsGoalTool($user, CreateSavingsGoal::class, [
-        'name' => 'Personal fund',
+        'name' => 'Taken',
+        'kind' => 'monthly',
+        'monthly_target_type' => 'amount',
+        'monthly_target_amount' => 20000,
+        'space' => $household->id,
+    ])->assertHasErrors()->assertSee('already exists');
+
+    callSavingsGoalTool($user, CreateSavingsGoal::class, [
+        'name' => 'Household fund',
         'kind' => 'monthly',
         'monthly_target_type' => 'amount',
         'monthly_target_amount' => 20000,
@@ -277,10 +286,10 @@ test('savings goal tools work inside the space they are given', function () {
 
     callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $shared->id, 'name' => 'Elsewhere'])
         ->assertHasErrors()->assertSee('No savings goal with id');
-    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $shared->id, 'space' => $household->id, 'name' => 'Household fund'])
+    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $shared->id, 'space' => $household->id, 'name' => 'Shared fund'])
         ->assertOk();
 
-    expect($shared->fresh()->name)->toBe('Household fund');
+    expect($shared->fresh()->name)->toBe('Shared fund');
 });
 
 test('create_savings_goal refuses an auto-tag account from another space', function () {
@@ -300,4 +309,18 @@ test('create_savings_goal refuses an auto-tag account from another space', funct
     ])->assertHasErrors()->assertSee('No account with id');
 
     expect($user->savingsGoals()->count())->toBe(0);
+});
+
+test('list_savings_goals shows a month the daily command has not opened, without writing it', function () {
+    $this->travelTo(Carbon::parse('2026-09-10'));
+    $user = mcpGoalUser();
+    $goal = mcpMonthlyGoal($user);
+
+    $this->travelTo(Carbon::parse('2026-10-01 00:01'));
+
+    callSavingsGoalTool($user, ListSavingsGoals::class, abilities: ['mcp:read'])
+        ->assertOk()
+        ->assertSee('"current":{"month":"2026-10"');
+
+    expect($goal->periods()->count())->toBe(1);
 });

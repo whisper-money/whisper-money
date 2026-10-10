@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Enums\MonthlyTargetType;
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
 use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
+use App\Http\Requests\Concerns\ValidatesSavingsGoalName;
 use App\Mcp\Tools\Concerns\PresentsSavingsGoals;
 use App\Mcp\Tools\Concerns\ValidatesSavingsGoalWrites;
 use App\Models\SavingsGoal;
@@ -20,7 +21,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 #[Description('Edit a savings goal; only the fields you pass change. Its kind is fixed. A monthly target change applies to the month in progress and later ones, never to past months.')]
 class UpdateSavingsGoal extends WriteTool
 {
-    use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalWrites;
+    use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesSavingsGoalWrites;
 
     /**
      * @return array<string, mixed>
@@ -49,14 +50,10 @@ class UpdateSavingsGoal extends WriteTool
         [$otherKindRules, $messages] = $this->otherKindFieldRules($goal->kind);
 
         $validated = $request->validate([
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'name' => $this->savingsGoalNameRules($user->id, creating: false, ownLabelId: $goal->label_id),
             ...$otherKindRules,
             ...($goal->isMonthly() ? $this->monthlyTargetRules(creating: false) : $this->oneOffTargetRules(creating: false)),
         ], $messages);
-
-        if (isset($validated['name'])) {
-            $this->assertSavingsGoalNameIsFree($space, $validated['name'], $goal->label_id);
-        }
 
         app(SavingsGoalService::class)->update($goal, $validated);
 
