@@ -227,10 +227,25 @@ export function AutoTagFields({
                         </SelectTrigger>
                         <SelectContent>
                             {savingsAccounts.map((account) => (
-                                <SelectItem key={account.id} value={account.id}>
+                                <SelectItem
+                                    key={account.id}
+                                    value={account.id}
+                                    // Rules stop at the first match: a second
+                                    // goal on this account would see nothing.
+                                    disabled={account.used_by !== null}
+                                >
                                     {account.bank
                                         ? `${account.name} · ${account.bank.name}`
                                         : account.name}
+                                    {account.used_by !== null && (
+                                        <span className="text-muted-foreground">
+                                            {' '}
+                                            ·{' '}
+                                            {__('Already used by “:goal”', {
+                                                goal: account.used_by,
+                                            })}
+                                        </span>
+                                    )}
                                 </SelectItem>
                             ))}
                         </SelectContent>

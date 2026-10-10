@@ -3949,5 +3949,7 @@
     "Month-end reminders stop, and its automation rule stops tagging transfers.": "Se acaban los recordatorios de fin de mes y su regla de automatización deja de etiquetar transferencias.",
     "Every past month keeps its target and result. You can still open the goal to look at its history.": "Cada mes pasado conserva su objetivo y su resultado. Podrás seguir abriendo el objetivo para ver su historial.",
     "The first month is partial": "El primer mes es parcial",
-    "Partial month: you started at the end of the month. The first verdict comes next month.": "Mes parcial: empezaste a final de mes. El primer veredicto llegará el mes que viene."
+    "Partial month: you started at the end of the month. The first verdict comes next month.": "Mes parcial: empezaste a final de mes. El primer veredicto llegará el mes que viene.",
+    "Already used by “:goal”": "Ya la usa «:goal»",
+    "Auto-tags transfers into :account": "Etiqueta automáticamente lo que entra en :account"
 }

@@ -93,7 +93,7 @@ test('a one-off goal page is unchanged', function () {
         );
 });
 
-test('an archived monthly goal page has no month in progress and its archive month is partial', function () {
+test('an archived monthly goal page has no month in progress and its archive month reads archived', function () {
     $user = monthlyPagesUser();
     $goal = monthlyPagesGoal($user, ['created_at' => '2026-08-15']);
     app(SavingsGoalService::class)->archive($goal);
@@ -103,7 +103,7 @@ test('an archived monthly goal page has no month in progress and its archive mon
             ->whereNot('savingsGoal.archived_at', null)
             ->where('monthly.current', null)
             ->where('monthly.history.2.month', '2026-10')
-            ->where('monthly.history.2.status', 'partial')
+            ->where('monthly.history.2.status', 'archived')
         );
 });
 
@@ -122,6 +122,7 @@ test('the planning page sends the auto-tag accounts only when the dialog asks, f
                 ->has('autoTagAccounts', 1)
                 ->where('autoTagAccounts.0.id', $savings->id)
                 ->where('autoTagAccounts.0.name', 'Rainy day')
+                ->where('autoTagAccounts.0.used_by', null)
             )
         );
 });
@@ -152,4 +153,17 @@ test('linking transactions persists the month a read only showed', function () {
     $this->actingAs($user)->put("/savings-goals/{$goal->id}/transactions", ['transaction_ids' => []]);
 
     expect($goal->periods()->orderBy('month')->pluck('month')->map->format('Y-m')->all())->toBe(['2026-09', '2026-10']);
+});
+
+test('the auto-tag accounts say which running goal already uses each one', function () {
+    $user = monthlyPagesUser();
+    $savings = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Savings]);
+    monthlyPagesGoal($user, ['name' => 'Emergency fund', 'auto_tag_account_id' => $savings->id]);
+
+    $this->actingAs($user)->get('/budgets')
+        ->assertInertia(fn ($page) => $page
+            ->reloadOnly('autoTagAccounts', fn ($reload) => $reload
+                ->where('autoTagAccounts.0.used_by', 'Emergency fund')
+            )
+        );
 });

@@ -59,4 +59,22 @@ describe('CreateSavingsGoalDialog', () => {
         ).toBeInTheDocument();
         expect(reload).not.toHaveBeenCalled();
     });
+
+    it('picks a free account and marks the ones another goal already uses', () => {
+        props = {
+            autoTagAccounts: [
+                { id: 'a1', name: 'Rainy day', bank: null, used_by: 'Fund' },
+                { id: 'a2', name: 'Holidays', bank: null, used_by: null },
+            ],
+        };
+
+        openMonthly();
+        fireEvent.click(
+            screen.getByRole('checkbox', {
+                name: /Tag contributions automatically/,
+            }),
+        );
+
+        expect(screen.getByRole('combobox')).toHaveTextContent('Holidays');
+    });
 });
