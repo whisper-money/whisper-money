@@ -85,10 +85,9 @@ class DashboardController extends Controller
      */
     private function runningMonthlyGoals(Request $request): array
     {
-        return array_values(array_filter(
-            $this->monthlySavingsGoals->presentForUser($request->user()),
-            fn (array $goal): bool => $goal['archived_at'] === null,
-        ));
+        return $this->monthlySavingsGoals->present(
+            $request->user()->savingsGoals()->monthly()->notArchived()->listed()->get(),
+        );
     }
 
     private function getNetWorthEvolution(Request $request): array

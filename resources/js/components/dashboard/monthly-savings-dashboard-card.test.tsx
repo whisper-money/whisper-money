@@ -119,4 +119,66 @@ describe('MonthlySavingsDashboardCard', () => {
 
         expect(container).toBeEmptyDOMElement();
     });
+
+    it('shows a partial month without a target and leaves it out of the total', () => {
+        const partial = {
+            id: 'p',
+            name: 'Late starter',
+            kind: 'monthly',
+            archived_at: null,
+            monthly: {
+                current: {
+                    ...month('2026-10', 900, 30000, 'partial'),
+                    remaining: 29100,
+                    days_left: 3,
+                },
+                history: [month('2026-10', 900, 30000, 'partial')],
+            },
+        } as never;
+
+        render(
+            <MonthlySavingsDashboardCard
+                goals={[
+                    goal('a', 'Emergency fund', 12000, 30000, 'met'),
+                    partial,
+                ]}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(screen.getByText('Partial month')).toBeInTheDocument();
+        expect(screen.getAllByText('12000')).toHaveLength(2);
+        expect(screen.getAllByText('30000')).toHaveLength(2);
+        expect(screen.getByText('900')).toBeInTheDocument();
+    });
+
+    it('explains a share-of-income target that is still empty', () => {
+        const waiting = {
+            id: 'w',
+            name: 'Twenty percent',
+            kind: 'monthly',
+            archived_at: null,
+            monthly: {
+                current: {
+                    ...month('2026-10', 0, 0, 'in_progress'),
+                    target_type: 'income_rate',
+                    is_live_target: true,
+                    remaining: 0,
+                    days_left: 22,
+                },
+                history: [],
+            },
+        } as never;
+
+        render(
+            <MonthlySavingsDashboardCard
+                goals={[waiting]}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(
+            screen.getByText('the target grows as income comes in'),
+        ).toBeInTheDocument();
+    });
 });

@@ -2,13 +2,15 @@
 
 namespace App\Services\SavingsGoals;
 
+use App\Enums\SavingsGoalMonthStatus;
 use App\Models\User;
 use Carbon\Carbon;
 
 /**
  * Every monthly goal of a user added up month by month: what the cashflow card
  * and the monthly summary read. A goal counts in the months it had, archived
- * or not, each judged against that month's own target.
+ * or not, each judged against that month's own target. A partial month adds
+ * nothing: it has no target and no verdict.
  */
 class MonthlySavingsGoalTotals
 {
@@ -16,36 +18,33 @@ class MonthlySavingsGoalTotals
 
     /**
      * The given month and the ones before it, oldest first. Null when no goal
-     * had that month.
+     * had that month, partial ones aside.
      *
-     * @return array{month: string, saved: int, target: int, difference: int, met: int, total: int, status: string, goals: list<array<string, mixed>>, history: list<array<string, mixed>>}|null
+     * @return array{month: string, saved: int, target: int, difference: int, met: int, total: int, status: SavingsGoalMonthStatus, goals: list<array<string, mixed>>, history: list<array<string, mixed>>}|null
      */
     public function forMonth(User $user, Carbon $month, int $historyMonths = 6): ?array
     {
-        $byMonth = $this->byMonth($user);
+        $from = $month->copy()->startOfMonth()->subMonthsNoOverflow($historyMonths - 1);
+        $byMonth = $this->byMonth($user, $from->format('Y-m'), $month->format('Y-m'));
         $key = $month->format('Y-m');
 
         if (! isset($byMonth[$key])) {
             return null;
         }
 
-        $history = [];
-
-        for ($cursor = $month->copy()->startOfMonth()->subMonthsNoOverflow($historyMonths - 1); $cursor->lte($month); $cursor->addMonthNoOverflow()) {
-            $entry = $byMonth[$cursor->format('Y-m')] ?? null;
-
-            if ($entry !== null) {
-                $history[] = array_diff_key($entry, ['goals' => true]);
-            }
-        }
+        $history = array_values(array_map(fn (array $entry): array => array_diff_key($entry, ['goals' => true]), $byMonth));
 
         return [...$byMonth[$key], 'history' => $history];
     }
 
     /**
-     * @return array<string, array<string, mixed>> keyed by YYYY-MM
+     * The months from $from to $to (YYYY-MM, inclusive), keyed and sorted by
+     * month. Each goal's streak still runs through its whole history, so a
+     * month carries the streak the goal had reached by then.
+     *
+     * @return array<string, array<string, mixed>>
      */
-    private function byMonth(User $user): array
+    private function byMonth(User $user, string $from, string $to): array
     {
         $months = [];
 
@@ -53,7 +52,16 @@ class MonthlySavingsGoalTotals
             $run = 0;
 
             foreach ($goal['monthly']['history'] as $entry) {
-                $run = $entry['status'] === 'met' ? $run + 1 : 0;
+                if ($entry['status'] === SavingsGoalMonthStatus::Partial) {
+                    continue;
+                }
+
+                $run = $entry['status'] === SavingsGoalMonthStatus::Met ? $run + 1 : 0;
+
+                if ($entry['month'] < $from || $entry['month'] > $to) {
+                    continue;
+                }
+
                 $months[$entry['month']][] = [
                     'id' => $goal['id'],
                     'name' => $goal['name'],
@@ -83,7 +91,7 @@ class MonthlySavingsGoalTotals
     {
         $saved = array_sum(array_column($goals, 'saved'));
         $target = array_sum(array_column($goals, 'target'));
-        $inProgress = in_array('in_progress', array_column($goals, 'status'), true);
+        $inProgress = in_array(SavingsGoalMonthStatus::InProgress, array_column($goals, 'status'), true);
 
         return [
             'month' => $month,
@@ -92,10 +100,22 @@ class MonthlySavingsGoalTotals
             'difference' => $saved - $target,
             // Reached rather than judged: in a month still running it reads as
             // "reached so far", and a closed month is met exactly when reached.
-            'met' => count(array_filter($goals, fn (array $goal): bool => $goal['saved'] >= $goal['target'])),
+            'met' => count(array_filter($goals, fn (array $goal): bool => self::reached($goal['saved'], $goal['target']))),
             'total' => count($goals),
-            'status' => $inProgress ? 'in_progress' : ($saved >= $target ? 'met' : 'missed'),
+            'status' => match (true) {
+                $inProgress => SavingsGoalMonthStatus::InProgress,
+                self::reached($saved, $target) => SavingsGoalMonthStatus::Met,
+                default => SavingsGoalMonthStatus::Missed,
+            },
             'goals' => $goals,
         ];
+    }
+
+    /**
+     * The stats' rule: a target of nothing is met, whatever was saved.
+     */
+    private static function reached(int $saved, int $target): bool
+    {
+        return $target <= 0 || $saved >= $target;
     }
 }
