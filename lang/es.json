@@ -3919,7 +3919,7 @@
     "Monthly savings": "Ahorro mensual",
     "Months met": "Meses cumplidos",
     "Nothing tagged with this goal in this month yet.": "Aún no hay nada etiquetado con este objetivo en este mes.",
-    "One-off (with a target)": "Puntual (con meta)",
+    "One-off (with a target)": "Puntual (con objetivo)",
     "Overall vs target": "Acumulado vs objetivo",
     "Saved each month": "Ahorrado cada mes",
     "Starts in :month. Each month is judged against the target in force that month.": "Empieza en :month. Cada mes se evalúa contra el objetivo vigente ese mes.",
@@ -3937,5 +3937,8 @@
     "planned": "previstos",
     "saved of": "ahorrados de",
     "the target grows as income comes in": "el objetivo sube según entran ingresos",
-    "to go": "por ahorrar"
+    "1 day left": "queda 1 día",
+    ":amount to go": "Faltan :amount",
+    "Fixed amount": "Importe fijo",
+    "Set how much to put aside every month. A label with the same name marks your contributions.": "Indica cuánto quieres apartar cada mes. Una etiqueta con el mismo nombre marcará tus aportaciones."
 }

@@ -24,6 +24,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { MonthStatusBadge, MonthStatusLegend } from './month-status';
 import {
+    AmountToGo,
     CurrentMonthProgress,
     MonthTarget,
     SignedAmount,
@@ -59,10 +60,10 @@ export function MonthlySavingsGoalView({
     currencyCode,
 }: Props) {
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
             <SummaryCards monthly={monthly} currencyCode={currencyCode} />
 
-            <Card>
+            <Card className="min-w-0">
                 <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
                     <CardTitle className="text-base">
                         {__('Saved each month')}
@@ -81,23 +82,17 @@ export function MonthlySavingsGoalView({
                 </CardContent>
             </Card>
 
-            <div className="grid gap-6 xl:grid-cols-5">
-                <HistoryTable
-                    monthly={monthly}
-                    currencyCode={currencyCode}
-                    className="xl:col-span-3"
-                />
-                <Contributions
-                    savingsGoal={savingsGoal}
-                    months={monthly.history.map((entry) => entry.month)}
-                    transactions={transactions}
-                    categories={categories}
-                    accounts={accounts}
-                    banks={banks}
-                    labels={labels}
-                    className="xl:col-span-2"
-                />
-            </div>
+            <HistoryTable monthly={monthly} currencyCode={currencyCode} />
+
+            <Contributions
+                savingsGoal={savingsGoal}
+                months={monthly.history.map((entry) => entry.month)}
+                transactions={transactions}
+                categories={categories}
+                accounts={accounts}
+                banks={banks}
+                labels={labels}
+            />
         </div>
     );
 }
@@ -148,10 +143,12 @@ function SummaryCards({
                 <SummaryCard
                     className="border-[1.5px] border-dashed border-foreground/60"
                     title={__(':month (in progress)', {
-                        month: formatDate(
-                            monthDate(current.month),
-                            'MMMM',
-                            locale,
+                        month: capitalize(
+                            formatDate(
+                                monthDate(current.month),
+                                'MMMM',
+                                locale,
+                            ),
                         ),
                     })}
                 >
@@ -215,6 +212,10 @@ function SummaryCards({
     );
 }
 
+function capitalize(text: string): string {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function monthsCount(count: number): string {
     return count === 1 ? __('1 month') : __(':count months', { count });
 }
@@ -231,7 +232,7 @@ function HistoryTable({
     const locale = useLocale();
 
     return (
-        <Card className={className}>
+        <Card className={cn('min-w-0', className)}>
             <CardHeader>
                 <CardTitle className="text-base">{__('History')}</CardTitle>
             </CardHeader>
@@ -277,17 +278,10 @@ function HistoryTable({
                                     {entry.status === 'in_progress' ? (
                                         <span className="text-muted-foreground tabular-nums">
                                             {entry.difference < 0 ? (
-                                                <>
-                                                    <AmountDisplay
-                                                        amountInCents={
-                                                            -entry.difference
-                                                        }
-                                                        currencyCode={
-                                                            currencyCode
-                                                        }
-                                                    />{' '}
-                                                    {__('to go')}
-                                                </>
+                                                <AmountToGo
+                                                    amount={-entry.difference}
+                                                    currencyCode={currencyCode}
+                                                />
                                             ) : (
                                                 __('Target met')
                                             )}
@@ -336,8 +330,12 @@ function Contributions({
     className?: string;
 }) {
     const locale = useLocale();
-    const [index, setIndex] = useState(Math.max(0, months.length - 1));
-    const month = months[index] ?? monthKey(new Date());
+    // Kept as a month rather than an index: when the page reloads with a new
+    // month in the history, "the latest" has to follow it.
+    const latest = months.at(-1) ?? monthKey(new Date());
+    const [selected, setSelected] = useState<string | null>(null);
+    const month = selected && months.includes(selected) ? selected : latest;
+    const index = months.indexOf(month);
 
     const inMonth = useMemo(
         () =>
@@ -348,8 +346,8 @@ function Contributions({
     );
 
     return (
-        <Card className={className}>
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <Card className={cn('min-w-0', className)}>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
                 <CardTitle className="text-base">
                     {__('Contributions')}
                 </CardTitle>
@@ -359,7 +357,7 @@ function Contributions({
                         size="icon"
                         aria-label={__('Previous month')}
                         disabled={index <= 0}
-                        onClick={() => setIndex(index - 1)}
+                        onClick={() => setSelected(months[index - 1])}
                     >
                         <ChevronLeft className="size-4" />
                     </Button>
@@ -371,7 +369,7 @@ function Contributions({
                         size="icon"
                         aria-label={__('Next month')}
                         disabled={index >= months.length - 1}
-                        onClick={() => setIndex(index + 1)}
+                        onClick={() => setSelected(months[index + 1])}
                     >
                         <ChevronRight className="size-4" />
                     </Button>

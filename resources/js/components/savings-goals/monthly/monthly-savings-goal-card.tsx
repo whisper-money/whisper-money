@@ -5,6 +5,7 @@ import { monthKey } from '@/lib/monthly-savings';
 import { SavingsGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { Repeat } from 'lucide-react';
+import { MonthlyBadge } from './month-status';
 import { MonthStrip } from './month-strip';
 import {
     CurrentMonthProgress,
@@ -24,7 +25,9 @@ interface Props {
 export function MonthlySavingsGoalCard({ savingsGoal, currencyCode }: Props) {
     const monthly = savingsGoal.monthly;
     const archived = !!savingsGoal.archived_at;
-    const lastMonth = monthly?.history.at(-1)?.month ?? monthKey(new Date());
+    // The server's month, not the browser's: the strip has to line up with the
+    // stats it draws.
+    const endMonth = monthly?.history.at(-1)?.month ?? monthKey(new Date());
 
     return (
         <PlanningCard
@@ -35,12 +38,7 @@ export function MonthlySavingsGoalCard({ savingsGoal, currencyCode }: Props) {
                 archived ? (
                     <Badge variant="secondary">{__('Archived')}</Badge>
                 ) : (
-                    <Badge
-                        variant="outline"
-                        className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
-                    >
-                        {__('Monthly')}
-                    </Badge>
+                    <MonthlyBadge>{__('Monthly')}</MonthlyBadge>
                 )
             }
             description={
@@ -62,16 +60,15 @@ export function MonthlySavingsGoalCard({ savingsGoal, currencyCode }: Props) {
 
             {monthly && (
                 <>
-                    <MonthStrip
-                        history={monthly.history}
-                        endMonth={archived ? lastMonth : monthKey(new Date())}
-                    />
+                    <MonthStrip history={monthly.history} endMonth={endMonth} />
                     <div className="flex items-center justify-between gap-2 text-sm">
                         <span>
-                            {__(':met of :total months met', {
-                                met: monthly.months_met,
-                                total: monthly.months_closed,
-                            })}
+                            {monthly.months_closed === 0
+                                ? __('The first month is still in progress')
+                                : __(':met of :total months met', {
+                                      met: monthly.months_met,
+                                      total: monthly.months_closed,
+                                  })}
                         </span>
                         {monthly.months_closed > 0 && (
                             <span>

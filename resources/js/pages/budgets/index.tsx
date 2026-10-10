@@ -251,7 +251,11 @@ export default function BudgetsIndex({
                     <CreateCard
                         currencyCode={currencyCode}
                         filter={filter}
-                        isListEmpty={items.length === 0}
+                        isListEmpty={
+                            items.length === 0 &&
+                            (filter === 'budgets' ||
+                                activeMonthlyGoals.length === 0)
+                        }
                         onCreate={setCreateType}
                     />
                 </div>

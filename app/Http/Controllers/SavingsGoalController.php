@@ -72,13 +72,15 @@ class SavingsGoalController extends Controller
                 ->get()
             : collect();
 
+        $isMonthly = $savingsGoal->isMonthly();
+
         return Inertia::render('savings-goals/show', [
             'savingsGoal' => $savingsGoal,
             'transactions' => $transactions->values(),
             // A monthly goal is read month by month; the one-off projection
             // towards a total means nothing for it.
-            'stats' => $savingsGoal->isMonthly() ? null : $this->oneOffStats($savingsGoal, $transactions),
-            'monthly' => $savingsGoal->isMonthly() ? $this->monthlyStats->forGoal($savingsGoal) : null,
+            'stats' => $isMonthly ? null : $this->oneOffStats($savingsGoal, $transactions),
+            'monthly' => $isMonthly ? $this->monthlyStats->forGoal($savingsGoal) : null,
             'categories' => Category::query()
                 ->where('user_id', $user->id)
                 ->forDisplay()

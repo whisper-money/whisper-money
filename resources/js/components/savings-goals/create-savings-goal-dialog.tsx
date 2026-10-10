@@ -154,9 +154,13 @@ export function CreateSavingsGoalDialog({
                     <DialogHeader>
                         <DialogTitle>{__('Create Savings Goal')}</DialogTitle>
                         <DialogDescription>
-                            {__(
-                                'Set a target to save toward. Tag transactions with the goal’s label to track your progress.',
-                            )}
+                            {isMonthly
+                                ? __(
+                                      'Set how much to put aside every month. A label with the same name marks your contributions.',
+                                  )
+                                : __(
+                                      'Set a target to save toward. Tag transactions with the goal’s label to track your progress.',
+                                  )}
                         </DialogDescription>
                     </DialogHeader>
 
