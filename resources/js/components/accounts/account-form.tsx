@@ -170,8 +170,13 @@ export function AccountForm({
     // sent people to a dashboard reading €0.00 one screen after being told it
     // would not be empty — a file import fills in the movements, never the
     // balance they add up to. A loan and a property keep their own wording
-    // (`balanceTermCapitalized`) and their own follow-up questions.
-    const showBalanceField = selectedType !== null;
+    // (`balanceTermCapitalized`) and their own follow-up questions. A credit
+    // card under the credit card feature is the exception: it has a limit and
+    // what is in use of it, never a balance.
+    const tracksCreditLimit =
+        selectedType === 'credit_card' &&
+        Boolean(features?.creditCardStatements);
+    const showBalanceField = selectedType !== null && !tracksCreditLimit;
     // What the account is worth is only half the story on the types that grow:
     // without what went in there is no gain to read anywhere.
     const showInvestedAmountField =
@@ -179,10 +184,7 @@ export function AccountForm({
     const isRealEstate = selectedType === 'real_estate';
     const isLoan = selectedType === 'loan';
     // Asked once, when the card is opened; the card's own page edits it later.
-    const showCreditLimitField =
-        selectedType === 'credit_card' &&
-        Boolean(features?.creditCardStatements) &&
-        !initialValues;
+    const showCreditLimitField = tracksCreditLimit && !initialValues;
     const availableRealEstateAccounts = availableLoanAccounts.filter(
         (account) =>
             account.type === 'real_estate' &&

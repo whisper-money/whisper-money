@@ -187,6 +187,46 @@ describe('AccountForm', () => {
             );
         });
 
+        it('does not ask a new credit card for a balance', () => {
+            withCreditCardStatements(true);
+            const onChange = vi.fn();
+
+            render(
+                <AccountForm
+                    forceAccountType="credit_card"
+                    onChange={onChange}
+                />,
+            );
+
+            expect(screen.queryByLabelText('Balance')).not.toBeInTheDocument();
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({ balance: null }),
+            );
+        });
+
+        it('still asks a new credit card for a balance while the feature is off', () => {
+            withCreditCardStatements(false);
+
+            render(
+                <AccountForm
+                    forceAccountType="credit_card"
+                    onChange={() => {}}
+                />,
+            );
+
+            expect(screen.getByLabelText('Balance')).toBeInTheDocument();
+        });
+
+        it('still asks other account types for a balance', () => {
+            withCreditCardStatements(true);
+
+            render(
+                <AccountForm forceAccountType="checking" onChange={() => {}} />,
+            );
+
+            expect(screen.getByLabelText('Balance')).toBeInTheDocument();
+        });
+
         it('does not ask for a limit while the feature is off', () => {
             withCreditCardStatements(false);
 

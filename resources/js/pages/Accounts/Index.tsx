@@ -7,11 +7,15 @@ import { CreateAccountDialog } from '@/components/accounts/create-account-dialog
 import HeadingSmall from '@/components/heading-small';
 import { SortableGrid } from '@/components/sortable-grid';
 import { Card, CardContent } from '@/components/ui/card';
-import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import {
+    AccountWithMetrics,
+    withCreditCardUsage,
+} from '@/hooks/use-dashboard-data';
+import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { netWorthContribution } from '@/lib/chart-calculations';
 import { BreadcrumbItem, SharedData } from '@/types';
-import { Account } from '@/types/account';
+import { Account, type CreditCardUsage } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
@@ -39,10 +43,17 @@ interface AccountMetrics {
 interface Props {
     accounts: Account[];
     accountMetrics?: Record<string, AccountMetrics>;
+    /** Only while the credit card feature is on. */
+    creditCardUsage?: Record<string, CreditCardUsage>;
 }
 
-export default function AccountsIndex({ accounts, accountMetrics }: Props) {
+export default function AccountsIndex({
+    accounts,
+    accountMetrics,
+    creditCardUsage,
+}: Props) {
     const { auth } = usePage<SharedData>().props;
+    const locale = useLocale();
     const isLoading = !accountMetrics;
 
     // Identify loan account IDs that are linked to a real estate account
@@ -72,19 +83,23 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
                 account.type,
                 metrics?.previousBalance ?? 0,
             );
-            return {
-                ...account,
-                currentBalance,
-                previousBalance,
-                diff: currentBalance - previousBalance,
-                history: (metrics?.history ?? []).map((point) => ({
-                    ...point,
-                    value: netWorthContribution(account.type, point.value),
-                })),
-                investedAmount: metrics?.investedAmount ?? null,
-            };
+            return withCreditCardUsage(
+                {
+                    ...account,
+                    currentBalance,
+                    previousBalance,
+                    diff: currentBalance - previousBalance,
+                    history: (metrics?.history ?? []).map((point) => ({
+                        ...point,
+                        value: netWorthContribution(account.type, point.value),
+                    })),
+                    investedAmount: metrics?.investedAmount ?? null,
+                },
+                creditCardUsage,
+                locale,
+            );
         });
-    }, [accounts, accountMetrics]);
+    }, [accounts, accountMetrics, creditCardUsage, locale]);
 
     // Flat list in the user-defined order; loan accounts linked to a real
     // estate account are surfaced inside that account instead.

@@ -1624,6 +1624,33 @@ it('creates a credit card with its credit limit', function () {
         ->statement_closing_date->toBeNull();
 });
 
+it('refuses a balance on a credit card that takes a credit limit', function () {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(CreditCardStatements::class);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Visa',
+        'type' => 'credit_card',
+        'currency_code' => 'EUR',
+        'balance' => -50000,
+    ])->assertHasErrors(['A credit card has no balance']);
+
+    expect($user->accounts()->exists())->toBeFalse();
+});
+
+it('still opens a credit card with a balance while the flag is off', function () {
+    $user = User::factory()->create();
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Visa',
+        'type' => 'credit_card',
+        'currency_code' => 'EUR',
+        'balance' => -50000,
+    ])->assertOk();
+
+    expect($user->accounts()->sole()->balances()->sole()->balance)->toBe(-50000);
+});
+
 it('sets and clears the credit limit through update_account, keeping the dates', function () {
     $user = User::factory()->create();
     Feature::for($user)->activate(CreditCardStatements::class);

@@ -1,11 +1,15 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
+import { CreditCardUsageSummary } from '@/components/accounts/credit-card-usage-summary';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { BankLogo } from '@/components/bank-logo';
 import { PrivacyRevealButton } from '@/components/privacy-reveal-button';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
-import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import {
+    AccountWithMetrics,
+    figuresCurrencyCode,
+} from '@/hooks/use-dashboard-data';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -43,7 +47,7 @@ export function AccountBalanceCard({
     linkedLoanMetrics,
     displayCurrencyCode,
 }: AccountBalanceCardProps) {
-    const currencyCode = displayCurrencyCode ?? account.currency_code;
+    const currencyCode = figuresCurrencyCode(account, displayCurrencyCode);
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
         useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
@@ -149,6 +153,7 @@ export function AccountBalanceCard({
         : account.previousBalance;
     const isPositive = displayDiff >= 0;
     const isConnected = !!account.banking_connection_id;
+    const creditCardUsage = account.creditCardUsage;
 
     const sparklineData = equityData ? equityData.dualHistory : account.history;
 
@@ -199,41 +204,49 @@ export function AccountBalanceCard({
             </CardHeader>
             <CardContent>
                 <div className="flex items-center justify-between gap-6">
-                    <div className="flex flex-col gap-1">
-                        {isConnected ? (
-                            <div className="-ml-2 px-2 py-1">
-                                <AmountDisplay
-                                    amountInCents={displayBalance}
-                                    currencyCode={currencyCode}
-                                    size="2xl"
-                                    weight="medium"
-                                />
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => setUpdateBalanceOpen(true)}
-                                className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
-                            >
-                                <AmountDisplay
-                                    amountInCents={displayBalance}
-                                    currencyCode={currencyCode}
-                                    size="2xl"
-                                    weight="medium"
-                                />
-                            </button>
-                        )}
-                        <AmountTrendIndicator
-                            isPositive={isPositive}
-                            trend={Math.abs(displayDiff)}
-                            label={__('vs last month')}
-                            className="text-sm"
-                            previousAmount={displayPreviousBalance}
-                            currentAmount={displayBalance}
-                            tooltipSide="bottom"
+                    {creditCardUsage ? (
+                        <CreditCardUsageSummary
+                            usage={creditCardUsage}
                             currencyCode={currencyCode}
+                            weight="medium"
                         />
-                    </div>
+                    ) : (
+                        <div className="flex flex-col gap-1">
+                            {isConnected ? (
+                                <div className="-ml-2 px-2 py-1">
+                                    <AmountDisplay
+                                        amountInCents={displayBalance}
+                                        currencyCode={currencyCode}
+                                        size="2xl"
+                                        weight="medium"
+                                    />
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setUpdateBalanceOpen(true)}
+                                    className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
+                                >
+                                    <AmountDisplay
+                                        amountInCents={displayBalance}
+                                        currencyCode={currencyCode}
+                                        size="2xl"
+                                        weight="medium"
+                                    />
+                                </button>
+                            )}
+                            <AmountTrendIndicator
+                                isPositive={isPositive}
+                                trend={Math.abs(displayDiff)}
+                                label={__('vs last month')}
+                                className="text-sm"
+                                previousAmount={displayPreviousBalance}
+                                currentAmount={displayBalance}
+                                tooltipSide="bottom"
+                                currencyCode={currencyCode}
+                            />
+                        </div>
+                    )}
                     <div
                         ref={chartWrapperRef}
                         className="h-[70px] w-full max-w-[250px] flex-1"
