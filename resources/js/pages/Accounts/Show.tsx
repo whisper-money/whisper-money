@@ -21,6 +21,7 @@ import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indica
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
 import { MobileBackButton } from '@/components/mobile-back-button';
+import { AddTransactionLabel } from '@/components/transactions/add-transaction-button';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import {
     TransactionList,
@@ -74,13 +75,7 @@ import { type Transaction } from '@/types/transaction';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Deferred, Head, router } from '@inertiajs/react';
-import {
-    Archive,
-    ArchiveRestore,
-    ChevronDown,
-    Pencil,
-    Plus,
-} from 'lucide-react';
+import { Archive, ArchiveRestore, ChevronDown, Pencil } from 'lucide-react';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -202,9 +197,12 @@ export default function AccountShow({
     // manual transactions too: a sync only inserts rows it has not seen, so
     // they survive.
     const addTransactionButton = (
-        <Button variant="outline" onClick={handleAddTransaction}>
-            <Plus className="h-4 w-4" />
-            {__('Add transaction')}
+        <Button
+            variant="outline"
+            onClick={handleAddTransaction}
+            aria-label={__('Add transaction')}
+        >
+            <AddTransactionLabel />
         </Button>
     );
 

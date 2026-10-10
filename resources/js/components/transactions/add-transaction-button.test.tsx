@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddTransactionButton } from './add-transaction-button';
 
@@ -52,6 +58,21 @@ describe('AddTransactionButton', () => {
     beforeEach(() => {
         load.mockClear();
         refreshPageAfterWrite.mockClear();
+    });
+
+    /**
+     * On /transactions the bar also holds Analysis and Columns, so the label
+     * only hides when its container is narrower than @xs (a 320px phone).
+     */
+    it('labels the button "Transaction", collapsing only on a narrow bar', () => {
+        render(<AddTransactionButton hasTransactionalAccounts />);
+
+        const button = screen.getByRole('button', { name: 'Add transaction' });
+
+        expect(within(button).getByText('Transaction')).toHaveClass(
+            'hidden',
+            '@xs:inline',
+        );
     });
 
     it('opens the create dialog once the lists are loaded', async () => {
