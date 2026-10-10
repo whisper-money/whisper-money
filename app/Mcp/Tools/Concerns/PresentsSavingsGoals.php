@@ -49,6 +49,8 @@ trait PresentsSavingsGoals
             'id' => $row['id'],
             'name' => $row['name'],
             'kind' => $row['kind'],
+            // Tag a transaction with this label to count it towards the goal.
+            'label_id' => $row['label_id'],
             'archived' => $row['archived_at'] !== null,
         ];
 

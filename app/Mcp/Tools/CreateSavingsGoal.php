@@ -8,6 +8,8 @@ use App\Enums\SavingsGoalKind;
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
 use App\Mcp\Tools\Concerns\PresentsSavingsGoals;
 use App\Mcp\Tools\Concerns\ValidatesSavingsGoalWrites;
+use App\Models\AutomationRule;
+use App\Models\SavingsGoal;
 use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -17,7 +19,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 
-#[Description('Create a savings goal: one-off (save a total, optionally by a date) or monthly (save a fixed amount or a share of income every month). Contributions are transactions tagged with its label.')]
+#[Description('Create a savings goal: one-off (a total, optionally by a date) or monthly (an amount or share of income each month). Monthly can auto-tag a savings account\'s past and future transfers.')]
 class CreateSavingsGoal extends WriteTool
 {
     use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesSavingsGoalWrites;
@@ -43,30 +45,59 @@ class CreateSavingsGoal extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $monthly = $request->string('kind')->toString() === SavingsGoalKind::Monthly->value;
+        $kind = $request->string('kind')->toString();
+        $monthly = $kind === SavingsGoalKind::Monthly->value;
+        [$otherKindRules, $messages] = $this->otherKindFieldRules($kind);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'kind' => ['required', Rule::enum(SavingsGoalKind::class)],
+            ...$otherKindRules,
             ...($monthly ? [
                 ...$this->monthlyTargetRules(creating: true),
-                'auto_tag_account_id' => ['nullable', 'string'],
+                'auto_tag_account_id' => ['nullable', 'uuid'],
             ] : [
                 'target_amount' => ['required', 'integer', 'min:1'],
                 'initial_amount' => ['nullable', 'integer', 'min:0'],
                 'target_date' => ['nullable', 'date_format:Y-m-d', 'after:today', 'before_or_equal:2100-01-01'],
             ]),
-        ]);
+        ], $messages);
 
         $this->assertSavingsGoalNameIsFree($user, $validated['name']);
 
-        if (filled($validated['auto_tag_account_id'] ?? null)) {
-            $this->assertSavingsAccount($user, $validated['auto_tag_account_id']);
+        $autoTagAccountId = $validated['auto_tag_account_id'] ?? null;
+
+        if (filled($autoTagAccountId)) {
+            $this->assertSavingsAccount($user, $autoTagAccountId);
         }
 
-        $goal = app(SavingsGoalService::class)->createFromInput($user, $validated);
+        $goal = app(SavingsGoalService::class)->createFromInput($user, $validated)->refresh();
 
-        return $this->json(['savings_goal' => $this->presentSavingsGoal($goal->refresh())]);
+        return $this->json([
+            'currency' => $this->reportingCurrency($user),
+            'savings_goal' => $this->presentSavingsGoal($goal),
+            'auto_tag' => filled($autoTagAccountId) ? $this->autoTagOutcome($goal, $autoTagAccountId) : null,
+        ]);
+    }
+
+    /**
+     * What the auto-tag option did, so the agent can tell the user: the rule it
+     * added (deletable with delete_automation_rule) and how many transfers
+     * already in the account it tagged. Rules stop at the first match, so an
+     * older rule matching the same transfers leaves this count at zero.
+     *
+     * @return array{rule_id: string|null, account_id: string, tagged_transactions: int}
+     */
+    private function autoTagOutcome(SavingsGoal $goal, string $accountId): array
+    {
+        return [
+            'rule_id' => AutomationRule::query()
+                ->where('user_id', $goal->user_id)
+                ->whereHas('labels', fn ($query) => $query->whereKey($goal->label_id))
+                ->value('id'),
+            'account_id' => $accountId,
+            'tagged_transactions' => $goal->label?->transactions()->count() ?? 0,
+        ];
     }
 
     /**
