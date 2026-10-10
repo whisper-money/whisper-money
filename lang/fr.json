@@ -2905,7 +2905,6 @@
     "one thing to close :month|:count things to close :month": "une chose pour clôturer :month|:count choses pour clôturer :month",
     "Next card payment": "Prochain prélèvement de la carte",
     "Estimate": "Estimation",
-    "Edit dates": "Modifier les dates",
     "Add the statement closing date and the payment due date of this card to see an estimate of how much will be charged and when.": "Ajoutez la date d'arrêté du relevé et la date de prélèvement de cette carte pour voir une estimation du montant prélevé et de sa date.",
     "Set statement dates": "Définir les dates du relevé",
     "Nothing to pay": "Rien à payer",
@@ -2930,5 +2929,6 @@
     "Credit limit": "Plafond de crédit",
     "No limit set": "Aucun plafond",
     "The most your bank lets you spend on this card.": "Le maximum que votre banque vous permet de dépenser avec cette carte.",
-    "Optional. The most your bank lets you spend on this card.": "Facultatif. Le maximum que votre banque vous permet de dépenser avec cette carte."
+    "Optional. The most your bank lets you spend on this card.": "Facultatif. Le maximum que votre banque vous permet de dépenser avec cette carte.",
+    "Edit card details": "Modifier les détails de la carte"
 }

@@ -442,13 +442,13 @@ it('forgets the card details once neither dates nor limit are left', function ()
     assertDatabaseMissing('credit_card_details', ['account_id' => test()->card->id]);
 });
 
-it('rejects a negative credit limit', function () {
+it('rejects a credit limit that is not positive', function (int $creditLimit) {
     Feature::for(test()->user)->activate(CreditCardStatements::class);
 
     actingAs(test()->user)
-        ->patch(route('accounts.credit-card-detail.update', test()->card), ['credit_limit' => -1])
+        ->patch(route('accounts.credit-card-detail.update', test()->card), ['credit_limit' => $creditLimit])
         ->assertSessionHasErrors('credit_limit');
-});
+})->with([-1, 0]);
 
 // -------------------------------------------------------------------
 // Credit limit at creation

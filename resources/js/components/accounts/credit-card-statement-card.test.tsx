@@ -159,7 +159,9 @@ describe('CreditCardStatementCard', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /Edit dates/ }));
+        fireEvent.click(
+            screen.getByRole('button', { name: /Edit card details/ }),
+        );
         fireEvent.change(screen.getByLabelText('Payment due date'), {
             target: { value: '2026-03-22' },
         });
@@ -228,8 +230,8 @@ describe('CreditCardStatementCard', () => {
         );
 
         expect(
-            screen.queryByRole('button', { name: /Edit dates/ }),
-        ).not.toBeInTheDocument();
+            screen.getByRole('button', { name: /Edit card details/ }),
+        ).toBeInTheDocument();
 
         fireEvent.click(
             screen.getByRole('button', { name: /Set statement dates/ }),

@@ -105,7 +105,7 @@ trait ValidatesAccountDetailRules
     protected function creditLimitRules(): array
     {
         return [
-            'credit_limit' => ['nullable', 'integer', 'min:0', 'max:'.self::MAX_CREDIT_LIMIT],
+            'credit_limit' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_CREDIT_LIMIT],
         ];
     }
 

@@ -50,14 +50,14 @@ export function CreditCardStatementCard({
                         <Badge variant="secondary">{__('Estimate')}</Badge>
                     )}
                 </CardTitle>
-                {statement && (
+                {detail && (
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setDialogOpen(true)}
                     >
                         <Pencil className="h-3.5 w-3.5" />
-                        {__('Edit dates')}
+                        {__('Edit card details')}
                     </Button>
                 )}
             </CardHeader>

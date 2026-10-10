@@ -3838,7 +3838,6 @@
     "one thing to close :month|:count things to close :month": "una cosa para cerrar :month|:count cosas para cerrar :month",
     "Next card payment": "Próximo pago de la tarjeta",
     "Estimate": "Estimación",
-    "Edit dates": "Editar fechas",
     "Add the statement closing date and the payment due date of this card to see an estimate of how much will be charged and when.": "Añade la fecha de cierre del extracto y la fecha de cargo de esta tarjeta para ver una estimación de cuánto se cobrará y cuándo.",
     "Set statement dates": "Configurar fechas del extracto",
     "Nothing to pay": "Nada que pagar",
@@ -3863,5 +3862,6 @@
     "Credit limit": "Límite de crédito",
     "No limit set": "Sin límite",
     "The most your bank lets you spend on this card.": "Lo máximo que tu banco te deja gastar con esta tarjeta.",
-    "Optional. The most your bank lets you spend on this card.": "Opcional. Lo máximo que tu banco te deja gastar con esta tarjeta."
+    "Optional. The most your bank lets you spend on this card.": "Opcional. Lo máximo que tu banco te deja gastar con esta tarjeta.",
+    "Edit card details": "Editar datos de la tarjeta"
 }
