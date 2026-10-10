@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $budget_notify_on_new_transaction
  * @property bool $budget_notify_on_close_to_limit
  * @property bool $budget_notify_on_over_limit
+ * @property bool $savings_goal_notify_on_month_end_reminder
  */
 class UserSetting extends Model
 {
@@ -40,6 +41,7 @@ class UserSetting extends Model
         'budget_notify_on_new_transaction',
         'budget_notify_on_close_to_limit',
         'budget_notify_on_over_limit',
+        'savings_goal_notify_on_month_end_reminder',
     ];
 
     protected function casts(): array
@@ -56,6 +58,7 @@ class UserSetting extends Model
             'budget_notify_on_new_transaction' => 'boolean',
             'budget_notify_on_close_to_limit' => 'boolean',
             'budget_notify_on_over_limit' => 'boolean',
+            'savings_goal_notify_on_month_end_reminder' => 'boolean',
         ];
     }
 

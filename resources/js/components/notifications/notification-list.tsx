@@ -9,6 +9,7 @@ import { Link } from '@inertiajs/react';
 import {
     BellIcon,
     FileTextIcon,
+    RepeatIcon,
     SparklesIcon,
     type LucideIcon,
 } from 'lucide-react';
@@ -101,6 +102,10 @@ const KINDS: Record<
     achievements_welcome: {
         label: () => __('Achievements'),
         icon: SparklesIcon,
+    },
+    monthly_savings_goal: {
+        label: () => __('Monthly savings'),
+        icon: RepeatIcon,
     },
     other: { label: () => __('Notification'), icon: BellIcon },
 };
