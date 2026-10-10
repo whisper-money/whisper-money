@@ -3911,5 +3911,7 @@
     "We'll show every amount in it. You can change it later in Settings.": "Te mostraremos todos los importes en ella. Puedes cambiarla más tarde en Configuración.",
     "Search currency...": "Buscar moneda...",
     "No currency found.": "No se encontró ninguna moneda.",
-    "We couldn't change your currency. Try again.": "No hemos podido cambiar tu moneda. Inténtalo de nuevo."
+    "We couldn't change your currency. Try again.": "No hemos podido cambiar tu moneda. Inténtalo de nuevo.",
+    "A savings goal can't switch between one-off and monthly.": "Un objetivo de ahorro no puede pasar de puntual a mensual ni al revés.",
+    "Contributions to :goal": "Aportaciones a :goal"
 }
