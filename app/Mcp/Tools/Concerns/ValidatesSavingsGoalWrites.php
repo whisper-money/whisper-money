@@ -3,12 +3,9 @@
 namespace App\Mcp\Tools\Concerns;
 
 use App\Enums\SavingsGoalKind;
-use App\Models\Label;
-use App\Models\Space;
-use Illuminate\Validation\ValidationException;
 
 /**
- * Checks shared by create_savings_goal and update_savings_goal.
+ * Rules shared by create_savings_goal and update_savings_goal.
  */
 trait ValidatesSavingsGoalWrites
 {
@@ -33,32 +30,14 @@ trait ValidatesSavingsGoalWrites
         $rules = [];
         $messages = [];
 
+        // The web forms' name rule, worded for an agent.
+        $messages['name.unique'] = 'A label or goal named ":input" already exists. Pick another name.';
+
         foreach (self::KIND_ONLY_FIELDS[$other->value] as $field) {
             $rules[$field] = ['prohibited'];
             $messages["{$field}.prohibited"] = "{$field} only applies to {$other->value} goals; this one is {$kind->value}.";
         }
 
         return [$rules, $messages];
-    }
-
-    /**
-     * A goal's name is also its label's, and label names are unique per space,
-     * like create_label checks them.
-     *
-     * @param  string|null  $exceptLabelId  the goal's own label, when renaming it
-     */
-    protected function assertSavingsGoalNameIsFree(Space $space, string $name, ?string $exceptLabelId = null): void
-    {
-        $taken = Label::query()
-            ->forSpace($space)
-            ->where('name', $name)
-            ->when($exceptLabelId, fn ($query, string $labelId) => $query->whereKeyNot($labelId))
-            ->exists();
-
-        if ($taken) {
-            throw ValidationException::withMessages([
-                'name' => "A label or goal named \"{$name}\" already exists. Pick another name.",
-            ]);
-        }
     }
 }
