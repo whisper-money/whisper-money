@@ -13,7 +13,7 @@ import {
     daysLeftLabel,
     monthDate,
 } from '@/lib/monthly-savings';
-import { DashboardMonthlyGoal } from '@/types/savings-goal';
+import { DashboardMonthlyGoal, MonthlyVerdicts } from '@/types/savings-goal';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -21,6 +21,8 @@ import { Repeat } from 'lucide-react';
 
 interface Props {
     goals: DashboardMonthlyGoal[];
+    /** How every goal, archived ones included, did last month. */
+    lastMonth?: MonthlyVerdicts | null;
     currencyCode: string;
 }
 
@@ -31,6 +33,7 @@ interface Props {
  */
 export function MonthlySavingsDashboardCard({
     goals: allGoals,
+    lastMonth = null,
     currencyCode,
 }: Props) {
     const locale = useLocale();
@@ -43,7 +46,7 @@ export function MonthlySavingsDashboardCard({
     }
 
     const currentMonth = currentMonthOf(goals);
-    const aggregate = aggregateMonthlyGoals(goals, currentMonth);
+    const aggregate = aggregateMonthlyGoals(goals);
     const monthName = (key: string) =>
         formatDate(monthDate(key), 'MMMM', locale);
 
@@ -89,11 +92,11 @@ export function MonthlySavingsDashboardCard({
                         {[
                             aggregate.daysLeft !== null &&
                                 daysLeftLabel(aggregate.daysLeft),
-                            aggregate.previousTotal > 0 &&
+                            lastMonth &&
                                 __(':month: :met of :total met', {
-                                    month: monthName(aggregate.previousMonth),
-                                    met: aggregate.previousMet,
-                                    total: aggregate.previousTotal,
+                                    month: monthName(lastMonth.month),
+                                    met: lastMonth.met,
+                                    total: lastMonth.total,
                                 }),
                         ]
                             .filter(Boolean)
