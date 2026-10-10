@@ -40,18 +40,19 @@ class MonthlySavingsGoalStats
     }
 
     /**
-     * A user's monthly goals as the pages render them: the goal's own fields
-     * plus a `monthly` block with its stats.
+     * A user's monthly goals, archived ones included, as the pages render them:
+     * the goal's own fields plus a `monthly` block with its stats. Shaping the
+     * page payload here keeps the one batched stats query next to the goals it
+     * was run for.
      *
      * @return list<array<string, mixed>>
      */
-    public function presentForUser(User $user, bool $activeOnly = false): array
+    public function presentForUser(User $user): array
     {
         // Archiving soft-deletes the label, so it has to be read through the
         // trashed scope or an archived goal loses the name it saved under.
         $goals = $user->savingsGoals()
             ->monthly()
-            ->when($activeOnly, fn ($query) => $query->notArchived())
             ->with(['label' => fn ($query) => $query->withTrashed()])
             ->orderBy('created_at')
             ->get();

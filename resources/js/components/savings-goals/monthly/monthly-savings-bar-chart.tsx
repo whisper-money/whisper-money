@@ -3,9 +3,19 @@ import { useLocale } from '@/hooks/use-locale';
 import { monthDate } from '@/lib/monthly-savings';
 import { cn } from '@/lib/utils';
 import { MonthlySavingsStatus } from '@/types/savings-goal';
-import { formatMonthFromYearMonth } from '@/utils/date';
+import { formatMonthFromYearMonth, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { MONTH_STATUS_FILL, monthStatusLabel } from './month-status';
+import {
+    differenceClassName,
+    MONTH_STATUS_FILL,
+    monthStatusLabel,
+} from './month-status';
+
+/** Room for a signed amount above each bar without touching its neighbours. */
+const MIN_COLUMN_WIDTH = 56;
+
+/** So a goal in its first months draws bars, not one slab across the card. */
+const MAX_COLUMN_WIDTH = 96;
 
 export interface MonthlySavingsBar {
     /** YYYY-MM */
@@ -46,13 +56,14 @@ export function MonthlySavingsBarChart({
     return (
         <div className="overflow-x-auto">
             <div
-                className="grid min-w-[420px] items-end gap-3"
+                className="grid items-end justify-center gap-3"
                 style={{
-                    gridTemplateColumns: `repeat(${bars.length}, minmax(0, 1fr))`,
+                    gridTemplateColumns: `repeat(${bars.length}, minmax(${MIN_COLUMN_WIDTH}px, ${MAX_COLUMN_WIDTH}px))`,
                 }}
             >
                 {bars.map((bar) => {
                     const label = formatMonthFromYearMonth(bar.month, locale);
+                    const barLabel = `${formatMonthYear(monthDate(bar.month), locale)}: ${monthStatusLabel(bar.status)}`;
 
                     return (
                         <div key={bar.month} className="flex flex-col gap-2">
@@ -71,11 +82,9 @@ export function MonthlySavingsBarChart({
                                             showSign
                                             maximumFractionDigits={0}
                                             minimumFractionDigits={0}
-                                            className={
-                                                bar.saved >= bar.target
-                                                    ? 'text-emerald-700 dark:text-emerald-400'
-                                                    : 'text-orange-700 dark:text-orange-400'
-                                            }
+                                            className={differenceClassName(
+                                                bar.saved - bar.target,
+                                            )}
                                         />
                                     )}
                                 </span>
@@ -83,14 +92,14 @@ export function MonthlySavingsBarChart({
                             <div
                                 className="relative flex items-end"
                                 style={{ height }}
-                                title={`${monthDate(bar.month).getFullYear()} ${label}: ${monthStatusLabel(bar.status)}`}
+                                role="img"
+                                aria-label={barLabel}
+                                title={barLabel}
                             >
                                 <div
                                     className={cn(
                                         'w-full rounded-t-md',
                                         MONTH_STATUS_FILL[bar.status],
-                                        bar.status === 'in_progress' &&
-                                            'border-emerald-600 bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-950',
                                     )}
                                     style={{ height: percentOf(bar.saved) }}
                                 />

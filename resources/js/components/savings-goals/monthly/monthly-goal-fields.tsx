@@ -82,7 +82,7 @@ export function MonthlyTargetFields({
                     aria-label={__('Target type')}
                 >
                     <ToggleGroupItem value="amount" className="px-3">
-                        {__('Amount')}
+                        {__('Fixed amount')}
                     </ToggleGroupItem>
                     <ToggleGroupItem value="income_rate" className="px-3">
                         {__('% of income')}

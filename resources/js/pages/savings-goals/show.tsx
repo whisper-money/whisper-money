@@ -6,6 +6,7 @@ import { ArchiveSavingsGoalDialog } from '@/components/savings-goals/archive-sav
 import { DeleteSavingsGoalDialog } from '@/components/savings-goals/delete-savings-goal-dialog';
 import { EditSavingsGoalDialog } from '@/components/savings-goals/edit-savings-goal-dialog';
 import { LinkTransactionsDialog } from '@/components/savings-goals/link-transactions-dialog';
+import { MonthlyBadge } from '@/components/savings-goals/monthly/month-status';
 import { MonthlyTargetRule } from '@/components/savings-goals/monthly/monthly-goal-figures';
 import { MonthlySavingsGoalView } from '@/components/savings-goals/monthly/monthly-savings-goal-view';
 import { SavingsGoalProgressChart } from '@/components/savings-goals/savings-goal-progress-chart';
@@ -109,16 +110,13 @@ export default function SavingsGoalShow({
                                     </Badge>
                                 )}
                                 {savingsGoal.kind === 'monthly' && (
-                                    <Badge
-                                        variant="outline"
-                                        className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
-                                    >
+                                    <MonthlyBadge>
                                         {__('Monthly')} ·{' '}
                                         <MonthlyTargetRule
                                             goal={savingsGoal}
                                             currencyCode={currencyCode}
                                         />
-                                    </Badge>
+                                    </MonthlyBadge>
                                 )}
                                 {savingsGoal.label && (
                                     <LabelBadge label={savingsGoal.label} />
