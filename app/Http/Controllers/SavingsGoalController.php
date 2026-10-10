@@ -16,7 +16,6 @@ use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -47,27 +46,7 @@ class SavingsGoalController extends Controller
 
     public function store(StoreSavingsGoalRequest $request): RedirectResponse
     {
-        $user = $request->user();
-
-        $goal = DB::transaction(function () use ($request, $user): SavingsGoal {
-            if (! $request->isMonthly()) {
-                return $this->goals->create($user, [
-                    'name' => $request->name,
-                    'target_amount' => $request->target_amount,
-                    // Nullable input coerced to 0 cents: the column is NOT NULL.
-                    'initial_amount' => $request->integer('initial_amount'),
-                    'target_date' => $request->target_date,
-                ]);
-            }
-
-            $goal = $this->goals->create($user, SavingsGoalService::monthlyAttributes($request->validated()));
-
-            if ($request->filled('auto_tag_account_id')) {
-                $this->goals->createAutoTagRule($goal, Account::query()->findOrFail($request->auto_tag_account_id));
-            }
-
-            return $goal;
-        });
+        $goal = $this->goals->createFromInput($request->user(), $request->validated());
 
         return redirect()->route('savings-goals.show', $goal);
     }
@@ -197,32 +176,13 @@ class SavingsGoalController extends Controller
     }
 
     /**
-     * Archiving is one-way and freezes the goal.
-     *
-     * Its label goes with it — the goal is done, so the label must never be
-     * pickable again, and soft-deleting it takes it out of every picker at once
-     * through the global scope. That also means the saved amount can no longer
-     * be derived (the sum would collapse to the starting balance, and re-tagging
-     * one of those transactions later would move a final figure), so it is
-     * snapshotted here. Both writes and the archive date share one transaction:
-     * a goal that is half-archived has no meaning.
+     * Archiving is one-way and freezes the goal; see SavingsGoalService::archive().
      */
     public function archive(Request $request, SavingsGoal $savingsGoal): RedirectResponse
     {
         $this->authorize('archive', $savingsGoal);
 
-        DB::transaction(function () use ($savingsGoal) {
-            // Read before the archive date is written: savedAmountInCents()
-            // switches to the snapshot the moment the goal counts as archived.
-            $saved = $savingsGoal->savedAmountInCents();
-
-            $savingsGoal->update([
-                'archived_at' => now(),
-                'archived_saved_amount' => $saved,
-            ]);
-
-            $savingsGoal->label?->delete();
-        });
+        $this->goals->archive($savingsGoal);
 
         // Named route, not back(): see syncTransactions — the previous-url
         // redirect resolves to the app's internal host behind a proxy.
@@ -233,10 +193,7 @@ class SavingsGoalController extends Controller
     {
         $this->authorize('delete', $savingsGoal);
 
-        DB::transaction(function () use ($savingsGoal) {
-            $savingsGoal->label?->delete();
-            $savingsGoal->delete();
-        });
+        $this->goals->delete($savingsGoal);
 
         return redirect()->route('budgets.index');
     }

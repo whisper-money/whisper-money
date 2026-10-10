@@ -4,7 +4,7 @@ use App\Models\Import;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('budgets:generate-periods')->daily();
-Schedule::command('savings-goals:generate-periods')->daily();
+Schedule::command('savings-goals:generate-periods')->daily()->withoutOverlapping();
 // The press account keeps itself alive: every reset re-derives its 12 months of
 // transactions and balances from today, so a journalist who logs in months after
 // the press round still lands on current data. It also provisions the account on

@@ -70,14 +70,14 @@ class MonthlySavingsGoalStats
         return $goal->periods
             ->map(function (SavingsGoalPeriod $period) use ($goal, $savedByMonth, $currentMonth): array {
                 $saved = $savedByMonth[$period->monthKey()] ?? 0;
-                $target = $this->targets->targetFor($period, $goal->user);
+                ['resolved_target_amount' => $target, 'income_base' => $incomeBase] = $this->targets->current($period, $goal->user);
 
                 return [
                     'month' => $period->monthKey(),
                     'target_type' => $period->target_type->value,
                     'target_amount' => $period->target_amount,
                     'target_rate' => $period->target_rate,
-                    'income_base' => $this->incomeBase($period, $target),
+                    'income_base' => $incomeBase,
                     'is_live_target' => $period->resolved_target_amount === null,
                     'target' => $target,
                     'saved' => $saved,
@@ -87,19 +87,6 @@ class MonthlySavingsGoalStats
             })
             ->values()
             ->all();
-    }
-
-    /**
-     * The income a share-of-income target was worked out from, for the "20% of
-     * 2,400" line. Read back from the target rather than stored twice.
-     */
-    private function incomeBase(SavingsGoalPeriod $period, int $target): ?int
-    {
-        if ($period->target_rate === null || $period->target_rate <= 0) {
-            return null;
-        }
-
-        return (int) round($target * 100 / $period->target_rate);
     }
 
     private static function status(Carbon $month, Carbon $currentMonth, int $saved, int $target): string
@@ -171,12 +158,7 @@ class MonthlySavingsGoalStats
             return [];
         }
 
-        $rows = SavingsGoal::taggedContributions($labelIds)
-            ->where('transactions.transaction_date', '>=', $firstMonth->toDateString())
-            ->groupBy('label_transaction.label_id', 'transactions.transaction_date')
-            ->selectRaw('label_transaction.label_id as label_id, transactions.transaction_date as day, SUM('.SavingsGoal::CONTRIBUTION_AMOUNT_SQL.') as total')
-            ->toBase()
-            ->get();
+        $rows = SavingsGoal::contributionsByDay($labelIds, $firstMonth);
 
         $saved = [];
 
