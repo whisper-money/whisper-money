@@ -3906,7 +3906,6 @@
     "Before it existed": "Antes de crearlo",
     "Best streak: :count": "Mejor racha: :count",
     "Contributions": "Aportaciones",
-    "Creates a rule so money arriving in the account counts on its own.": "Crea una regla para que el dinero que entre en la cuenta cuente solo.",
     "Current streak": "Racha actual",
     "Difference": "Diferencia",
     "History": "Historial",
@@ -3943,6 +3942,12 @@
     "Set how much to put aside every month. A label with the same name marks your contributions.": "Indica cuánto quieres apartar cada mes. Una etiqueta con el mismo nombre marcará tus aportaciones.",
     "Partial month": "Mes parcial",
     "partial": "parcial",
-    "Partial month: it started too late to have a target. The first full month counts.": "Mes parcial: empezó demasiado tarde para tener objetivo. Cuenta el primer mes completo.",
-    "No full month before it was archived": "Ningún mes completo antes de archivarlo"
+    "No full month before it was archived": "Ningún mes completo antes de archivarlo",
+    "Tags every incoming transaction into the account from the 1st of this month, interest and refunds included, and creates an automation rule you can edit in Settings › Automation rules.": "Etiqueta cada movimiento que entre en la cuenta desde el día 1 de este mes, intereses y devoluciones incluidos, y crea una regla de automatización que puedes editar en Configuración › Reglas de automatización.",
+    ":month will be a partial month, since it is almost over: the first verdict comes next month. Each month is judged against the target in force that month.": ":month será un mes parcial porque ya está acabando: el primer veredicto llegará el mes que viene. Cada mes se compara con el objetivo vigente ese mes.",
+    "This month becomes a partial month: what you saved stays, but it gets no verdict.": "Este mes pasa a ser un mes parcial: lo que has ahorrado se queda, pero no tendrá veredicto.",
+    "Month-end reminders stop, and its automation rule stops tagging transfers.": "Se acaban los recordatorios de fin de mes y su regla de automatización deja de etiquetar transferencias.",
+    "Every past month keeps its target and result. You can still open the goal to look at its history.": "Cada mes pasado conserva su objetivo y su resultado. Podrás seguir abriendo el objetivo para ver su historial.",
+    "The first month is partial": "El primer mes es parcial",
+    "Partial month: you started at the end of the month. The first verdict comes next month.": "Mes parcial: empezaste a final de mes. El primer veredicto llegará el mes que viene."
 }

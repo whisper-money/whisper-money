@@ -3,7 +3,7 @@ import { Progress } from '@/components/ui/progress';
 import {
     daysLeftLabel,
     formatRate,
-    progressPercent,
+    monthProgressPercent,
 } from '@/lib/monthly-savings';
 import { cn } from '@/lib/utils';
 import {
@@ -167,7 +167,7 @@ export function CurrentMonthProgress({
                 />
                 <span className="text-sm text-muted-foreground">
                     {__(
-                        'Partial month: it started too late to have a target. The first full month counts.',
+                        'Partial month: you started at the end of the month. The first verdict comes next month.',
                     )}
                 </span>
             </div>
@@ -189,7 +189,7 @@ export function CurrentMonthProgress({
                 </span>
             </div>
             <Progress
-                value={progressPercent(current.saved, current.target)}
+                value={monthProgressPercent(current)}
                 className="h-2"
                 indicatorClassName="bg-emerald-600 dark:bg-emerald-500"
             />

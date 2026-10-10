@@ -3,6 +3,7 @@
 use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\SavingsGoal;
+use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
@@ -104,4 +105,51 @@ test('an archived monthly goal page has no month in progress and its archive mon
             ->where('monthly.history.2.month', '2026-10')
             ->where('monthly.history.2.status', 'partial')
         );
+});
+
+test('the planning page sends the auto-tag accounts only when the dialog asks, from the active space', function () {
+    $user = monthlyPagesUser();
+    $savings = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Savings, 'name' => 'Rainy day']);
+    Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Checking]);
+    Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Savings, 'space_id' => Space::factory()->create(['owner_id' => $user->id])->id]);
+
+    $this->actingAs($user)->get('/budgets')
+        ->assertInertia(fn ($page) => $page->missing('autoTagAccounts'));
+
+    $this->actingAs($user)->get('/budgets')
+        ->assertInertia(fn ($page) => $page
+            ->reloadOnly('autoTagAccounts', fn ($reload) => $reload
+                ->has('autoTagAccounts', 1)
+                ->where('autoTagAccounts.0.id', $savings->id)
+                ->where('autoTagAccounts.0.name', 'Rainy day')
+            )
+        );
+});
+
+test('goal payloads carry no user or raw periods', function () {
+    $user = monthlyPagesUser();
+    $goal = monthlyPagesGoal($user);
+
+    $this->actingAs($user)->get('/budgets')
+        ->assertInertia(fn ($page) => $page
+            ->missing('monthlySavingsGoals.0.user')
+            ->missing('monthlySavingsGoals.0.periods')
+        );
+
+    $this->actingAs($user)->get("/savings-goals/{$goal->id}")
+        ->assertInertia(fn ($page) => $page
+            ->missing('savingsGoal.user')
+            ->missing('savingsGoal.periods')
+        );
+});
+
+test('linking transactions persists the month a read only showed', function () {
+    $this->travelTo(Carbon::parse('2026-09-10'));
+    $user = monthlyPagesUser();
+    $goal = monthlyPagesGoal($user);
+
+    $this->travelTo(Carbon::parse('2026-10-01 09:00'));
+    $this->actingAs($user)->put("/savings-goals/{$goal->id}/transactions", ['transaction_ids' => []]);
+
+    expect($goal->periods()->orderBy('month')->pluck('month')->map->format('Y-m')->all())->toBe(['2026-09', '2026-10']);
 });

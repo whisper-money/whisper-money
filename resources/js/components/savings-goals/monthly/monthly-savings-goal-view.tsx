@@ -11,7 +11,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
-import { monthDate, monthKey } from '@/lib/monthly-savings';
+import { isTargetUnknown, monthDate, monthKey } from '@/lib/monthly-savings';
 import { cn } from '@/lib/utils';
 import { Account, Bank } from '@/types/account';
 import { Category } from '@/types/category';
@@ -307,7 +307,11 @@ function HistoryTable({
                                         </span>
                                     ) : !isJudged(entry.status) ? (
                                         <span className="text-muted-foreground tabular-nums">
-                                            {entry.difference < 0 ? (
+                                            {isTargetUnknown(entry) ? (
+                                                __(
+                                                    'the target grows as income comes in',
+                                                )
+                                            ) : entry.difference < 0 ? (
                                                 <AmountToGo
                                                     amount={-entry.difference}
                                                     currencyCode={currencyCode}

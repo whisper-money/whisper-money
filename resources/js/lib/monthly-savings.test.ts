@@ -2,8 +2,10 @@ import { MonthlySavingsMonth, SavingsGoal } from '@/types/savings-goal';
 import { describe, expect, it } from 'vitest';
 import {
     aggregateMonthlyGoals,
+    monthProgressPercent,
     monthStrip,
     progressPercent,
+    startsLate,
 } from './monthly-savings';
 
 function month(
@@ -76,6 +78,7 @@ describe('aggregateMonthlyGoals', () => {
         expect(aggregate).toEqual({
             saved: 42000,
             target: 93000,
+            allPartial: false,
             daysLeft: 22,
             previousMonth: '2026-09',
             previousMet: 1,
@@ -118,5 +121,45 @@ describe('aggregateMonthlyGoals with partial months', () => {
         expect(aggregate.saved).toBe(12000);
         expect(aggregate.target).toBe(30000);
         expect(aggregate.previousTotal).toBe(0);
+    });
+});
+
+describe('partial and unknown targets', () => {
+    it('flags an aggregate where every running goal is in a partial month', () => {
+        const partialOnly = {
+            monthly: {
+                current: {
+                    ...month('2026-10', 'partial', 5000),
+                    remaining: 0,
+                    days_left: 3,
+                },
+                history: [month('2026-10', 'partial', 5000)],
+            },
+        } as unknown as SavingsGoal;
+
+        expect(aggregateMonthlyGoals([partialOnly], '2026-10').allPartial).toBe(
+            true,
+        );
+    });
+
+    it('draws no bar for a partial month or a live share still at 0', () => {
+        expect(monthProgressPercent(month('2026-10', 'partial', 5000))).toBe(0);
+        expect(
+            monthProgressPercent({
+                ...month('2026-10', 'in_progress', 0, 0),
+                is_live_target: true,
+            }),
+        ).toBe(0);
+        expect(
+            monthProgressPercent(month('2026-10', 'in_progress', 15000, 30000)),
+        ).toBe(50);
+    });
+
+    it('knows when a goal created today starts with a partial month', () => {
+        expect(startsLate(new Date(2026, 9, 26))).toBe(false);
+        expect(startsLate(new Date(2026, 9, 27))).toBe(true);
+        expect(startsLate(new Date(2026, 8, 26))).toBe(true);
+        expect(startsLate(new Date(2026, 1, 23))).toBe(false);
+        expect(startsLate(new Date(2026, 1, 24))).toBe(true);
     });
 });

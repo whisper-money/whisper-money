@@ -45,6 +45,13 @@ export interface MonthlySavingsMonth {
     status: MonthlySavingsStatus;
 }
 
+/** A savings account the auto-tag option can point at. */
+export interface AutoTagAccount {
+    id: UUID;
+    name: string;
+    bank: { name: string } | null;
+}
+
 export interface MonthlySavingsCurrent extends MonthlySavingsMonth {
     remaining: number;
     days_left: number;

@@ -10,8 +10,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Account } from '@/types/account';
-import { MonthlyTargetType } from '@/types/savings-goal';
+import { AutoTagAccount, MonthlyTargetType } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 
 export interface MonthlyTargetValue {
@@ -172,7 +171,7 @@ interface AutoTagFieldsProps {
     onEnabledChange: (enabled: boolean) => void;
     accountId: string;
     onAccountChange: (accountId: string) => void;
-    savingsAccounts: Account[];
+    savingsAccounts: AutoTagAccount[];
     error?: string;
 }
 
@@ -209,7 +208,7 @@ export function AutoTagFields({
                     <span>{__('Tag contributions automatically')}</span>
                     <span className="text-sm font-normal text-muted-foreground">
                         {__(
-                            'Creates a rule so money arriving in the account counts on its own.',
+                            'Tags every incoming transaction into the account from the 1st of this month, interest and refunds included, and creates an automation rule you can edit in Settings › Automation rules.',
                         )}
                     </span>
                 </UILabel>

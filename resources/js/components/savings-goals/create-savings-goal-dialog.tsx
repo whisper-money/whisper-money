@@ -16,12 +16,12 @@ import { Label as UILabel } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useControllableOpen } from '@/hooks/use-controllable-open';
 import { useLocale } from '@/hooks/use-locale';
-import { Account } from '@/types/account';
-import { SavingsGoalKind } from '@/types/savings-goal';
+import { startsLate } from '@/lib/monthly-savings';
+import { AutoTagAccount, SavingsGoalKind } from '@/types/savings-goal';
 import { formatMonthYear, todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     AutoTagFields,
     isMonthlyTargetValid,
@@ -59,20 +59,20 @@ export function CreateSavingsGoalDialog({
     } = useControllableOpen({ open, onOpenChange });
 
     const locale = useLocale();
-    const { accounts = [] } = usePage<{ accounts?: Account[] }>().props;
-    const savingsAccounts = useMemo(
-        () =>
-            accounts.filter(
-                (account) => account.type === 'savings' && !account.archived_at,
-            ),
-        [accounts],
-    );
+    // Loaded on demand: only a monthly goal offers the auto-tag option, and
+    // the server sends just the active space's savings accounts, the same set
+    // it validates the choice against.
+    const { autoTagAccounts } = usePage<{
+        autoTagAccounts?: AutoTagAccount[];
+    }>().props;
+    const savingsAccounts = autoTagAccounts ?? [];
 
     const [kind, setKind] = useState<SavingsGoalKind>('one_off');
     const [monthlyTarget, setMonthlyTarget] =
         useState<MonthlyTargetValue>(EMPTY_MONTHLY_TARGET);
-    // On by default when there is somewhere to point it.
-    const [autoTag, setAutoTag] = useState(true);
+    // Off by default: the rule tags every inflow into the account, which the
+    // user should opt into knowingly.
+    const [autoTag, setAutoTag] = useState(false);
     const [autoTagAccountId, setAutoTagAccountId] = useState('');
     const [notifyReminder, setNotifyReminder] = useState(true);
     const [name, setName] = useState('');
@@ -84,6 +84,13 @@ export function CreateSavingsGoalDialog({
 
     const today = todayDateString();
     const isMonthly = kind === 'monthly';
+
+    useEffect(() => {
+        if (dialogOpen && isMonthly && autoTagAccounts === undefined) {
+            router.reload({ only: ['autoTagAccounts'] });
+        }
+    }, [dialogOpen, isMonthly, autoTagAccounts]);
+
     const tagAccountId = autoTagAccountId || savingsAccounts[0]?.id || '';
 
     const payload = () =>
@@ -107,7 +114,7 @@ export function CreateSavingsGoalDialog({
     const reset = () => {
         setKind('one_off');
         setMonthlyTarget(EMPTY_MONTHLY_TARGET);
-        setAutoTag(true);
+        setAutoTag(false);
         setAutoTagAccountId('');
         setNotifyReminder(true);
         setName('');
@@ -227,15 +234,25 @@ export function CreateSavingsGoalDialog({
                                     onChange={setNotifyReminder}
                                 />
                                 <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-                                    {__(
-                                        'Starts in :month. Each month is judged against the target in force that month.',
-                                        {
-                                            month: formatMonthYear(
-                                                new Date(),
-                                                locale,
-                                            ),
-                                        },
-                                    )}
+                                    {startsLate(new Date())
+                                        ? __(
+                                              ':month will be a partial month, since it is almost over: the first verdict comes next month. Each month is judged against the target in force that month.',
+                                              {
+                                                  month: formatMonthYear(
+                                                      new Date(),
+                                                      locale,
+                                                  ),
+                                              },
+                                          )
+                                        : __(
+                                              'Starts in :month. Each month is judged against the target in force that month.',
+                                              {
+                                                  month: formatMonthYear(
+                                                      new Date(),
+                                                      locale,
+                                                  ),
+                                              },
+                                          )}
                                 </p>
                             </>
                         ) : (

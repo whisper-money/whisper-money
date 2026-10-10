@@ -53,17 +53,23 @@ export function MonthlySavingsSection({ goals, currencyCode }: Props) {
                         <span className="text-muted-foreground">
                             {__('This month')}
                         </span>
-                        <span className="font-semibold tabular-nums">
-                            <AmountDisplay
-                                amountInCents={aggregate.saved}
-                                currencyCode={currencyCode}
-                            />{' '}
-                            {__('of')}{' '}
-                            <AmountDisplay
-                                amountInCents={aggregate.target}
-                                currencyCode={currencyCode}
-                            />
-                        </span>
+                        {aggregate.allPartial ? (
+                            <span className="font-semibold">
+                                {__('The first month is partial')}
+                            </span>
+                        ) : (
+                            <span className="font-semibold tabular-nums">
+                                <AmountDisplay
+                                    amountInCents={aggregate.saved}
+                                    currencyCode={currencyCode}
+                                />{' '}
+                                {__('of')}{' '}
+                                <AmountDisplay
+                                    amountInCents={aggregate.target}
+                                    currencyCode={currencyCode}
+                                />
+                            </span>
+                        )}
                     </div>
                     {aggregate.previousTotal > 0 && (
                         <div className="flex flex-col gap-0.5">

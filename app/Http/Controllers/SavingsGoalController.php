@@ -13,6 +13,7 @@ use App\Models\Label;
 use App\Models\SavingsGoal;
 use App\Models\Transaction;
 use App\Services\SavingsGoals\MonthlySavingsGoalStats;
+use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -47,6 +48,7 @@ class SavingsGoalController extends Controller
     public function __construct(
         private SavingsGoalService $goals,
         private MonthlySavingsGoalStats $monthlyStats,
+        private SavingsGoalPeriodService $periods,
     ) {}
 
     public function store(StoreSavingsGoalRequest $request): RedirectResponse
@@ -170,6 +172,11 @@ class SavingsGoalController extends Controller
             ->all();
 
         $changes = $label->transactions()->sync($ids);
+
+        // A write, so the months a read only showed are persisted here too.
+        if ($savingsGoal->isMonthly() && ! $savingsGoal->isArchived()) {
+            $this->periods->advance($savingsGoal);
+        }
 
         $touched = array_merge($changes['attached'], $changes['detached']);
 
