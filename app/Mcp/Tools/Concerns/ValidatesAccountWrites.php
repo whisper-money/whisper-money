@@ -7,9 +7,12 @@ use App\Enums\PropertyType;
 use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use App\Models\User;
+use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Laravel\Mcp\Request;
 
 /**
  * The account write rules and schema fields, shared by create_account and
@@ -55,8 +58,29 @@ trait ValidatesAccountWrites
                 // after that the link lives on the property's own detail.
                 ...$creating ? $this->linkedRealEstateAccountRules() : [],
             ],
+            AccountType::CreditCard => $this->creditCardDetailRules(allowClearing: true),
             default => [],
         };
+    }
+
+    /**
+     * The statement dates sit behind a per-user flag, while the schema that
+     * offers them is the same for everyone. A user without the flag is told
+     * so instead of having the dates silently dropped.
+     */
+    protected function refuseUnavailableCreditCardFields(Request $request, User $user): void
+    {
+        if (app(CreditCardStatementService::class)->isAvailableTo($user)) {
+            return;
+        }
+
+        foreach (['statement_closing_date', 'payment_due_date'] as $field) {
+            if ($request->has($field)) {
+                throw ValidationException::withMessages([
+                    $field => 'Credit card statement dates are not available for this account yet. Leave statement_closing_date and payment_due_date out.',
+                ]);
+            }
+        }
     }
 
     /**
@@ -90,7 +114,7 @@ trait ValidatesAccountWrites
     }
 
     /**
-     * The real estate and loan detail fields, offered by both tools so an
+     * The real estate, loan and credit card detail fields, offered by both tools so an
      * account of either type can be described in one call.
      *
      * @return array<string, mixed>
@@ -111,6 +135,8 @@ trait ValidatesAccountWrites
             'loan_term_months' => $schema->integer()->description('loan only: term in months, 1 to 600.'),
             'original_amount' => $schema->integer()->description('loan only: amount originally borrowed, in minor units.'),
             'loan_start_date' => $schema->string()->description('loan only: when the loan started, YYYY-MM-DD. Defaults to today.'),
+            'statement_closing_date' => $schema->string()->description('credit_card only: a statement closing date, YYYY-MM-DD. Later cycles repeat monthly from it. Send with payment_due_date; both null clears them.'),
+            'payment_due_date' => $schema->string()->description('credit_card only: when that statement is charged, YYYY-MM-DD. After the closing date, at most 45 days later.'),
         ];
     }
 

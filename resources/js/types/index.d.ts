@@ -57,6 +57,8 @@ export interface Features {
     fullImport: boolean;
     /** Settings shows the import page: eligible, or an import can still be undone. */
     fullImportSettings: boolean;
+    /** Credit cards show their estimated next payment. */
+    creditCardStatements: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {

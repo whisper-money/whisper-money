@@ -2,7 +2,10 @@
 
 namespace App\Mcp\Tools\Concerns;
 
+use App\Enums\AccountType;
 use App\Models\Account;
+use App\Models\User;
+use App\Services\CreditCards\CreditCardStatementService;
 
 trait PresentsAccounts
 {
@@ -13,7 +16,7 @@ trait PresentsAccounts
      *
      * @return array<string, mixed>
      */
-    protected function presentAccount(Account $account): array
+    protected function presentAccount(Account $account, User $user): array
     {
         return [
             'id' => $account->id,
@@ -23,6 +26,25 @@ trait PresentsAccounts
             'bank' => $account->bank?->name,
             'is_connected' => $account->isConnected(),
             'ownership_percentage' => $account->ownership_percentage,
+            ...$this->presentCreditCardStatement($account, $user),
         ];
+    }
+
+    /**
+     * A credit card's statement dates and the next payment they estimate, for
+     * users who have the feature. Reads the `creditCardDetail` relation, so
+     * eager-load it when presenting several accounts.
+     *
+     * @return array<string, mixed>
+     */
+    private function presentCreditCardStatement(Account $account, User $user): array
+    {
+        $statements = app(CreditCardStatementService::class);
+
+        if ($account->type !== AccountType::CreditCard || ! $statements->isAvailableTo($user)) {
+            return [];
+        }
+
+        return $statements->present($account, $user);
     }
 }

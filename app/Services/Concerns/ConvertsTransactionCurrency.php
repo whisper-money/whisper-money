@@ -19,14 +19,21 @@ trait ConvertsTransactionCurrency
      */
     protected function convertTransactionAmount(Transaction $transaction, string $currency): int
     {
-        $converted = $this->exchangeRateService->convert(
+        return $transaction->ownerShareOf($this->convertFullTransactionAmount($transaction, $currency));
+    }
+
+    /**
+     * The whole transaction amount in $currency, ignoring the owner's share of
+     * the account. Requires the `account` relation to be eager loaded.
+     */
+    protected function convertFullTransactionAmount(Transaction $transaction, string $currency): int
+    {
+        return $this->exchangeRateService->convert(
             $transaction->currency_code ?: $transaction->account?->currency_code ?: $currency,
             $currency,
             $transaction->amount,
             $transaction->transaction_date->toDateString(),
         );
-
-        return $transaction->ownerShareOf($converted);
     }
 
     /**

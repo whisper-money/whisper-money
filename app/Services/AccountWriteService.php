@@ -67,6 +67,10 @@ class AccountWriteService
             $this->linkToRealEstateAccount($user, $account, $data['linked_real_estate_account_id'] ?? null);
         }
 
+        if ($account->type === AccountType::CreditCard) {
+            $this->syncCreditCardDetail($account, $data);
+        }
+
         $this->accountUserCurrencyService->syncFromFirstAccount($account);
 
         return $account;
@@ -100,7 +104,36 @@ class AccountWriteService
             return $this->syncLoanDetail($account, $data);
         }
 
+        if ($account->type === AccountType::CreditCard) {
+            $this->syncCreditCardDetail($account, $data);
+        }
+
         return [];
+    }
+
+    /**
+     * Set a credit card's statement dates, which become the anchor every later
+     * cycle is projected from, or forget them when both arrive as null. A
+     * payload without them leaves the card alone.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function syncCreditCardDetail(Account $account, array $data): void
+    {
+        if (! array_key_exists('statement_closing_date', $data) && ! array_key_exists('payment_due_date', $data)) {
+            return;
+        }
+
+        if (($data['statement_closing_date'] ?? null) === null) {
+            $account->creditCardDetail()->delete();
+
+            return;
+        }
+
+        $account->creditCardDetail()->updateOrCreate([], [
+            'statement_closing_date' => $data['statement_closing_date'],
+            'payment_due_date' => $data['payment_due_date'],
+        ]);
     }
 
     /**

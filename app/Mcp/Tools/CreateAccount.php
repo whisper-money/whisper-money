@@ -52,6 +52,7 @@ class CreateAccount extends WriteTool
         $this->buildRulesFor($user);
 
         $type = $this->validatedType($request);
+        $this->refuseUnavailableCreditCardFields($request, $user);
 
         $validated = $request->validate([
             'name' => ['required', 'string'],
@@ -69,7 +70,7 @@ class CreateAccount extends WriteTool
             $space->id,
         );
 
-        return $this->json(['account' => $this->presentAccount($account)]);
+        return $this->json(['account' => $this->presentAccount($account, $user)]);
     }
 
     /**
