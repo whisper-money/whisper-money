@@ -488,12 +488,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             ->where('created_at', '>=', now()->subDays(self::MANUAL_ENTRY_WINDOW_DAYS))
             ->toBase()
             ->selectRaw('COUNT(*) as total')
-            ->selectRaw('SUM(CASE WHEN source = ? THEN 1 ELSE 0 END) as manual', [TransactionSource::ManuallyCreated->value])
+            ->selectRaw('SUM(CASE WHEN source = ? THEN 1 ELSE 0 END) as manual_count', [TransactionSource::ManuallyCreated->value])
             ->first();
 
         $total = (int) $counts->total;
 
-        return $total > 0 && (int) $counts->manual / $total >= self::MANUAL_ENTRY_MIN_SHARE;
+        return $total > 0 && (int) $counts->manual_count / $total >= self::MANUAL_ENTRY_MIN_SHARE;
     }
 
     /**
