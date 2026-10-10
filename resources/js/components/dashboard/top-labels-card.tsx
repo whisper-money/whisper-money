@@ -1,4 +1,5 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
+import { PrivacyRevealButton } from '@/components/privacy-reveal-button';
 import {
     CategoryBreakdownRow,
     trendFrom,
@@ -82,7 +83,10 @@ export function TopLabelsCard({ labels }: { labels: LabelSpending[] }) {
     return (
         <Card className="w-full">
             <CardHeader className="gap-2">
-                <CardTitle>{__('Top labels')}</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                    <CardTitle>{__('Top labels')}</CardTitle>
+                    <PrivacyRevealButton className="-my-2" />
+                </div>
                 <CardDescription>{__('on the last 30 days')}</CardDescription>
             </CardHeader>
             <CardContent>

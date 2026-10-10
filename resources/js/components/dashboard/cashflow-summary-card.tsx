@@ -1,3 +1,4 @@
+import { PrivacyRevealButton } from '@/components/privacy-reveal-button';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
@@ -62,14 +63,17 @@ export function CashflowSummaryCard({
             <CardHeader className="gap-1">
                 <div className="flex items-center justify-between">
                     <CardTitle>{__('Cashflow')}</CardTitle>
-                    <Link
-                        href={cashflow().url}
-                        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        {__('View details')}
+                    <div className="flex items-center gap-2">
+                        <PrivacyRevealButton className="-my-2" />
+                        <Link
+                            href={cashflow().url}
+                            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                            {__('View details')}
 
-                        <ArrowRight className="size-4" />
-                    </Link>
+                            <ArrowRight className="size-4" />
+                        </Link>
+                    </div>
                 </div>
                 <CardDescription>
                     {__("This month's income and expenses")}
