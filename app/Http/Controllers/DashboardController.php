@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
+use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\LabelSpendingService;
 use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\PeriodComparator;
@@ -22,6 +24,7 @@ class DashboardController extends Controller
         private LabelSpendingService $labelSpendingService,
         private CashflowSummaryService $summaries,
         private ReportPresenter $presenter,
+        private CreditCardStatementService $creditCardStatementService,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -32,6 +35,9 @@ class DashboardController extends Controller
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
             'cashflowSummary' => Inertia::defer(fn () => $this->getCashflowSummary($request), 'dashboard'),
+            ...$this->creditCardStatementService->isAvailableTo($request->user()) ? [
+                'creditCardUsage' => Inertia::defer(fn () => $this->getCreditCardUsage($request), 'dashboard'),
+            ] : [],
         ]);
     }
 
@@ -83,6 +89,24 @@ class DashboardController extends Controller
             ->get();
 
         return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end);
+    }
+
+    /**
+     * What is in use of each live credit card, which its dashboard card shows
+     * instead of a balance. Archived cards have no card to show it on.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function getCreditCardUsage(Request $request): array
+    {
+        $creditCards = Account::query()
+            ->where('user_id', $request->user()->id)
+            ->where('type', AccountType::CreditCard)
+            ->notArchived()
+            ->with('creditCardDetail')
+            ->get();
+
+        return $this->creditCardStatementService->usageByAccount($creditCards, $request->user());
     }
 
     private function getTopCategories(Request $request): array

@@ -70,11 +70,13 @@ class StoreAccountRequest extends FormRequest
         }
 
         // The limit is offered only to users with the credit card feature;
-        // anyone else sending one has it left out of the validated data.
-        $isCreditCard = $this->input('type') === AccountType::CreditCard->value;
+        // anyone else sending one has it left out of the validated data. For
+        // them a card has a limit instead of a balance, so a balance sent
+        // along is left out the same way.
+        $type = AccountType::tryFrom((string) $this->input('type'));
 
-        if ($isCreditCard && app(CreditCardStatementService::class)->isAvailableTo($this->user())) {
-            $rules = array_merge($rules, $this->creditLimitRules());
+        if ($type !== null && app(CreditCardStatementService::class)->opensWithoutBalance($this->user(), $type)) {
+            $rules = array_merge($rules, ['balance' => ['exclude']], $this->creditLimitRules());
         }
 
         return $rules;

@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { PrivacyRevealScope } from '@/contexts/privacy-mode-context';
 import {
     deriveAccountMetrics,
+    withCreditCardUsage,
     type AccountWithMetrics,
     type NetWorthEvolutionData,
 } from '@/hooks/use-dashboard-data';
@@ -27,6 +28,7 @@ import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { dashboard } from '@/routes';
 import { BreadcrumbItem, SharedData } from '@/types';
+import { type CreditCardUsage } from '@/types/account';
 import { Category } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
@@ -57,6 +59,8 @@ interface DashboardProps extends SharedData {
         previous: CashflowSummary;
     };
     openIntegrationRequests?: boolean;
+    /** Only while the credit card feature is on. */
+    creditCardUsage?: Record<string, CreditCardUsage>;
     monthlySummary?: MonthlySummaryNoticeData | null;
 }
 
@@ -78,8 +82,11 @@ export default function Dashboard() {
     );
 
     const accountMetrics = useMemo(
-        () => deriveAccountMetrics(netWorthEvolution, locale),
-        [netWorthEvolution, locale],
+        () =>
+            deriveAccountMetrics(netWorthEvolution, locale).map((account) =>
+                withCreditCardUsage(account, props.creditCardUsage, locale),
+            ),
+        [netWorthEvolution, props.creditCardUsage, locale],
     );
 
     // Identify linked loan account IDs and filter them out
@@ -215,6 +222,7 @@ export default function Dashboard() {
         router.reload({
             only: [
                 'netWorthEvolution',
+                'creditCardUsage',
                 'topCategories',
                 'topLabels',
                 'cashflowSummary',

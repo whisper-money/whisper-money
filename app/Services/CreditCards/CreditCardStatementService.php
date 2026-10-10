@@ -12,6 +12,7 @@ use App\Services\Concerns\ConvertsTransactionCurrency;
 use App\Services\ExchangeRateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
 use Laravel\Pennant\Feature;
@@ -33,6 +34,43 @@ class CreditCardStatementService
     }
 
     /**
+     * Whether an account of this type is opened without a balance for this
+     * user. A credit card is about its limit and what is in use of it once
+     * the feature is on, so no starting balance is asked for or stored.
+     */
+    public function opensWithoutBalance(User $user, AccountType $type): bool
+    {
+        return $type === AccountType::CreditCard && $this->isAvailableTo($user);
+    }
+
+    /**
+     * The credit usage of every credit card among $accounts, keyed by account
+     * id, for the lists that show a card's usage instead of its balance.
+     * Empty while the feature is off. One query per card, with their details
+     * loaded together.
+     *
+     * @param  EloquentCollection<int, Account>  $accounts
+     * @return array<string, array{limit: int|null, used: int, available: int|null, period_from: string, period_to: string, daily: list<array{date: string, used: int}>}>
+     */
+    public function usageByAccount(EloquentCollection $accounts, User $user): array
+    {
+        if (! $this->isAvailableTo($user)) {
+            return [];
+        }
+
+        $creditCards = $accounts
+            ->filter(fn (Account $account): bool => $account->type === AccountType::CreditCard)
+            ->loadMissing('creditCardDetail');
+        $today = $this->todayFor($user);
+
+        return $creditCards
+            ->mapWithKeys(fn (Account $account): array => [
+                $account->id => $this->figuresOn($account, $today)['credit_card_usage'],
+            ])
+            ->all();
+    }
+
+    /**
      * The credit card fields an account row carries for this user: the
      * detail, the statement estimate and the credit usage on a credit card
      * when the feature is on, nothing at all otherwise.
@@ -45,7 +83,7 @@ class CreditCardStatementService
             return [];
         }
 
-        $today = CarbonImmutable::parse(now($user->timezone ?? config('app.timezone'))->toDateString());
+        $today = $this->todayFor($user);
         $detail = $account->creditCardDetail;
 
         return [
@@ -192,6 +230,11 @@ class CreditCardStatementService
             'period_to' => $to->toDateString(),
             'daily' => $daily,
         ];
+    }
+
+    private function todayFor(User $user): CarbonImmutable
+    {
+        return CarbonImmutable::parse(now($user->timezone ?? config('app.timezone'))->toDateString());
     }
 
     private static function bookedOn(Transaction $transaction): CarbonImmutable

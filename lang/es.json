@@ -3865,5 +3865,7 @@
     "Optional. The most your bank lets you spend on this card.": "Opcional. Lo máximo que tu banco te deja gastar con esta tarjeta.",
     "Edit card details": "Editar datos de la tarjeta",
     "Show amounts in this block": "Mostrar importes de este bloque",
-    "Hide amounts in this block": "Ocultar importes de este bloque"
+    "Hide amounts in this block": "Ocultar importes de este bloque",
+    "In use": "Dispuesto",
+    "Credit limit in use": "Límite de crédito dispuesto"
 }

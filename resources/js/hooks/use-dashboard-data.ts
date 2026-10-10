@@ -1,6 +1,11 @@
 import { netWorthContribution } from '@/lib/chart-calculations';
-import { Account, AccountType, Bank } from '@/types/account';
-import { formatMonthFromYearMonth } from '@/utils/date';
+import {
+    Account,
+    AccountType,
+    Bank,
+    type CreditCardUsage,
+} from '@/types/account';
+import { formatDayFromDate, formatMonthFromYearMonth } from '@/utils/date';
 
 export interface NetWorthEvolutionAccount {
     id: string;
@@ -38,6 +43,36 @@ export interface AccountWithMetrics extends Account {
     investedAmount: number | null;
     hidden_on_dashboard: boolean;
     archived_at: string | null;
+    /** Set on a credit card while the credit card feature is on. */
+    creditCardUsage?: CreditCardUsage;
+}
+
+/**
+ * A credit card's row once its usage is known: the usage stands in for the
+ * balance, and the sparkline follows what is in use day by day instead of a
+ * balance nobody keeps.
+ */
+export function withCreditCardUsage<
+    T extends Pick<AccountWithMetrics, 'id' | 'type' | 'history'>,
+>(
+    account: T,
+    usageByAccount: Record<string, CreditCardUsage> | undefined,
+    locale = 'en-US',
+): T & { creditCardUsage?: CreditCardUsage } {
+    const usage = usageByAccount?.[account.id];
+
+    if (account.type !== 'credit_card' || !usage) {
+        return account;
+    }
+
+    return {
+        ...account,
+        creditCardUsage: usage,
+        history: usage.daily.map((day) => ({
+            date: formatDayFromDate(day.date, locale),
+            value: day.used,
+        })),
+    };
 }
 
 export function deriveAccountMetrics(
