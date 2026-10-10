@@ -20,9 +20,20 @@ final readonly class StatementSchedule
         private CarbonImmutable $dueAnchor,
     ) {}
 
-    public static function fromDetail(CreditCardDetail $detail): self
+    /**
+     * The schedule a card's statement dates project, or null while it has
+     * none (a card can carry just a credit limit).
+     */
+    public static function fromDetail(?CreditCardDetail $detail): ?self
     {
-        return new self($detail->statement_closing_date, $detail->payment_due_date);
+        $closingDate = $detail?->statement_closing_date;
+        $dueDate = $detail?->payment_due_date;
+
+        if ($closingDate === null || $dueDate === null) {
+            return null;
+        }
+
+        return new self($closingDate, $dueDate);
     }
 
     /**

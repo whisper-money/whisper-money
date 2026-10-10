@@ -2919,12 +2919,16 @@
     "Any closing date of this card, past or upcoming. Later ones are projected from it.": "N'importe quelle date d'arrêté de cette carte, passée ou à venir. Les suivantes en sont déduites.",
     "Payment due date": "Date de prélèvement",
     "The day that statement is charged, at most :days days after it closes.": "Le jour où ce relevé est prélevé, au plus :days jours après son arrêté.",
-    "Statement dates": "Dates du relevé",
-    "Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.": "Les relevés suivants sont supposés tomber aux mêmes jours chaque mois. Si votre banque les déplace, mettez-les à jour ici.",
     "The payment due date must be after the statement closing date.": "La date de prélèvement doit être postérieure à la date d'arrêté du relevé.",
     "The payment due date must be within :days days of the statement closing date.": "La date de prélèvement doit tomber dans les :days jours suivant l'arrêté du relevé.",
     "Estimated amount": "Montant estimé",
     "Estimated amount so far": "Montant estimé à ce jour",
     "Credit of": "Crédit de",
-    "Remove dates": "Retirer les dates"
+    "Remove dates": "Retirer les dates",
+    "Card details": "Détails de la carte",
+    "Both are optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.": "Les deux sont facultatifs. Les relevés suivants sont supposés tomber aux mêmes jours chaque mois. Si votre banque les déplace, mettez-les à jour ici.",
+    "Credit limit": "Plafond de crédit",
+    "No limit set": "Aucun plafond",
+    "The most your bank lets you spend on this card.": "Le maximum que votre banque vous permet de dépenser avec cette carte.",
+    "Optional. The most your bank lets you spend on this card.": "Facultatif. Le maximum que votre banque vous permet de dépenser avec cette carte."
 }

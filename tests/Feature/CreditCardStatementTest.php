@@ -58,7 +58,15 @@ function cardTransaction(int $amount, string $date, array $attributes = []): Tra
  */
 function estimateOn(string $today): array
 {
-    return app(CreditCardStatementService::class)->estimate(test()->card, test()->detail, CarbonImmutable::parse($today));
+    return figuresOn($today)['credit_card_statement'];
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function figuresOn(string $today): array
+{
+    return app(CreditCardStatementService::class)->figuresOn(test()->card->load('creditCardDetail'), CarbonImmutable::parse($today));
 }
 
 // -------------------------------------------------------------------
@@ -165,6 +173,73 @@ it('ignores other accounts', function () {
 });
 
 // -------------------------------------------------------------------
+// Credit usage
+// -------------------------------------------------------------------
+
+it('counts the statement still to be charged and the open cycle as used', function () {
+    test()->detail->update(['credit_limit' => 10000]);
+    cardTransaction(-8000, '2026-02-05');
+    cardTransaction(-1000, '2026-02-06');
+    cardTransaction(-2000, '2026-03-05');
+    cardTransaction(-4000, '2026-03-06');
+    cardTransaction(-500, '2026-03-12');
+
+    $usage = figuresOn('2026-03-10')['credit_card_usage'];
+
+    expect($usage)->toMatchArray([
+        'limit' => 10000,
+        'used' => 7000,
+        'available' => 3000,
+        'period_from' => '2026-02-06',
+        'period_to' => '2026-04-05',
+    ])->and($usage['daily'])->toHaveCount(33)
+        ->and($usage['daily'][0])->toBe(['date' => '2026-02-06', 'used' => 1000])
+        ->and($usage['daily'][27])->toBe(['date' => '2026-03-05', 'used' => 3000])
+        ->and($usage['daily'][32])->toBe(['date' => '2026-03-10', 'used' => 7000]);
+});
+
+it('counts only the open cycle once the last statement has been charged', function () {
+    cardTransaction(-1000, '2026-03-01');
+    cardTransaction(-2500, '2026-03-15');
+
+    expect(figuresOn('2026-03-21')['credit_card_usage'])->toMatchArray([
+        'used' => 2500,
+        'period_from' => '2026-03-06',
+        'period_to' => '2026-04-05',
+    ]);
+});
+
+it('counts the calendar month as used on a card without statement dates', function () {
+    test()->detail->update(['statement_closing_date' => null, 'payment_due_date' => null, 'credit_limit' => 1000]);
+    cardTransaction(-1000, '2026-02-28');
+    cardTransaction(-3000, '2026-03-02');
+    cardTransaction(500, '2026-03-03');
+    cardTransaction(20000, '2026-03-04', ['category_id' => test()->transfer->id]);
+
+    $figures = figuresOn('2026-03-10');
+
+    expect($figures['credit_card_statement'])->toBeNull()
+        ->and($figures['credit_card_usage'])->toMatchArray([
+            'limit' => 1000,
+            'used' => 2500,
+            'available' => -1500,
+            'period_from' => '2026-03-01',
+            'period_to' => '2026-03-31',
+        ])
+        ->and($figures['credit_card_usage']['daily'])->toHaveCount(10);
+});
+
+it('leaves the available credit empty while no limit is set', function () {
+    cardTransaction(-1000, '2026-03-07');
+
+    expect(figuresOn('2026-03-10')['credit_card_usage'])->toMatchArray([
+        'limit' => null,
+        'used' => 1000,
+        'available' => null,
+    ]);
+});
+
+// -------------------------------------------------------------------
 // Account page payload
 // -------------------------------------------------------------------
 
@@ -174,6 +249,7 @@ it('sends neither the details nor the estimate while the flag is off', function 
         ->assertInertia(fn ($page) => $page
             ->missing('account.credit_card_detail')
             ->missing('account.credit_card_statement')
+            ->missing('account.credit_card_usage')
             ->where('features.creditCardStatements', false));
 });
 
@@ -192,6 +268,39 @@ it('sends the details and the estimate for a credit card when the flag is on', f
             ->where('account.credit_card_statement.next_payment.is_final', true));
 });
 
+it('sends the credit limit and the usage for a credit card when the flag is on', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+    $this->travelTo(CarbonImmutable::parse('2026-03-10 12:00', 'UTC'));
+    test()->detail->update(['credit_limit' => 50000]);
+    cardTransaction(-1000, '2026-03-01');
+
+    actingAs(test()->user)
+        ->get(route('accounts.show', test()->card))
+        ->assertInertia(fn ($page) => $page
+            ->where('account.credit_card_detail.credit_limit', 50000)
+            ->where('account.credit_card_usage.limit', 50000)
+            ->where('account.credit_card_usage.used', 1000)
+            ->where('account.credit_card_usage.available', 49000)
+            ->where('account.credit_card_usage.period_from', '2026-02-06')
+            ->has('account.credit_card_usage.daily', 33));
+});
+
+it('treats a card with a limit but no statement dates as having no dates', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+    $this->travelTo(CarbonImmutable::parse('2026-03-10 12:00', 'UTC'));
+    test()->detail->update(['statement_closing_date' => null, 'payment_due_date' => null, 'credit_limit' => 50000]);
+
+    actingAs(test()->user)
+        ->get(route('accounts.show', test()->card))
+        ->assertInertia(fn ($page) => $page
+            ->where('account.credit_card_detail.statement_closing_date', null)
+            ->where('account.credit_card_detail.payment_due_date', null)
+            ->where('account.credit_card_detail.credit_limit', 50000)
+            ->where('account.credit_card_statement', null)
+            ->where('account.credit_card_usage.period_from', '2026-03-01')
+            ->where('account.credit_card_usage.available', 50000));
+});
+
 it('sends an empty state when the card has no statement dates yet', function () {
     Feature::for(test()->user)->activate(CreditCardStatements::class);
     test()->detail->delete();
@@ -200,7 +309,8 @@ it('sends an empty state when the card has no statement dates yet', function () 
         ->get(route('accounts.show', test()->card))
         ->assertInertia(fn ($page) => $page
             ->where('account.credit_card_detail', null)
-            ->where('account.credit_card_statement', null));
+            ->where('account.credit_card_statement', null)
+            ->where('account.credit_card_usage.limit', null));
 });
 
 it('leaves other account types alone when the flag is on', function () {
@@ -270,6 +380,125 @@ it('clears the statement dates', function () {
         ->assertRedirect(route('accounts.show', test()->card));
 
     assertDatabaseMissing('credit_card_details', ['account_id' => test()->card->id]);
+});
+
+it('keeps the credit limit when the statement dates are cleared', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+    test()->detail->update(['credit_limit' => 50000]);
+
+    actingAs(test()->user)
+        ->delete(route('accounts.credit-card-detail.destroy', test()->card))
+        ->assertRedirect();
+
+    expect(test()->detail->fresh())
+        ->statement_closing_date->toBeNull()
+        ->payment_due_date->toBeNull()
+        ->credit_limit->toBe(50000);
+});
+
+it('sets the credit limit without touching the statement dates', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), ['credit_limit' => 150000])
+        ->assertSessionHasNoErrors();
+
+    expect(test()->detail->fresh())
+        ->statement_closing_date->toDateString()->toBe('2026-03-05')
+        ->credit_limit->toBe(150000);
+});
+
+it('saves a credit limit without statement dates', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+    test()->detail->delete();
+
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), [
+            'statement_closing_date' => null,
+            'payment_due_date' => null,
+            'credit_limit' => 150000,
+        ])
+        ->assertSessionHasNoErrors();
+
+    assertDatabaseHas('credit_card_details', [
+        'account_id' => test()->card->id,
+        'statement_closing_date' => null,
+        'credit_limit' => 150000,
+    ]);
+});
+
+it('forgets the card details once neither dates nor limit are left', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+    test()->detail->update(['credit_limit' => 50000]);
+
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), [
+            'statement_closing_date' => null,
+            'payment_due_date' => null,
+            'credit_limit' => null,
+        ])
+        ->assertSessionHasNoErrors();
+
+    assertDatabaseMissing('credit_card_details', ['account_id' => test()->card->id]);
+});
+
+it('rejects a negative credit limit', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), ['credit_limit' => -1])
+        ->assertSessionHasErrors('credit_limit');
+});
+
+// -------------------------------------------------------------------
+// Credit limit at creation
+// -------------------------------------------------------------------
+
+it('saves the credit limit a credit card is created with', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+
+    actingAs(test()->user)
+        ->post(route('accounts.store'), [
+            'name' => 'Visa',
+            'type' => 'credit_card',
+            'currency_code' => 'EUR',
+            'credit_limit' => 300000,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $detail = Account::query()->where('name', 'Visa')->sole()->creditCardDetail;
+
+    expect($detail)
+        ->credit_limit->toBe(300000)
+        ->statement_closing_date->toBeNull();
+});
+
+it('creates no card details when a credit card is created without a limit', function () {
+    Feature::for(test()->user)->activate(CreditCardStatements::class);
+
+    actingAs(test()->user)
+        ->post(route('accounts.store'), [
+            'name' => 'Visa',
+            'type' => 'credit_card',
+            'currency_code' => 'EUR',
+            'credit_limit' => null,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(Account::query()->where('name', 'Visa')->sole()->creditCardDetail)->toBeNull();
+});
+
+it('ignores a credit limit while the flag is off', function () {
+    actingAs(test()->user)
+        ->post(route('accounts.store'), [
+            'name' => 'Visa',
+            'type' => 'credit_card',
+            'currency_code' => 'EUR',
+            'credit_limit' => 300000,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(Account::query()->where('name', 'Visa')->sole()->creditCardDetail)->toBeNull();
 });
 
 it('rejects statement dates that do not make sense', function (array $payload, string $field) {

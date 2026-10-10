@@ -50,7 +50,7 @@ export function CreditCardStatementCard({
                         <Badge variant="secondary">{__('Estimate')}</Badge>
                     )}
                 </CardTitle>
-                {detail && (
+                {statement && (
                     <Button
                         variant="ghost"
                         size="sm"
@@ -88,6 +88,7 @@ export function CreditCardStatementCard({
 
             <EditCreditCardDetailDialog
                 accountId={accountId}
+                currencyCode={currencyCode}
                 detail={detail}
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}

@@ -3852,12 +3852,16 @@
     "Any closing date of this card, past or upcoming. Later ones are projected from it.": "Cualquier fecha de cierre de esta tarjeta, pasada o próxima. Las siguientes se calculan a partir de ella.",
     "Payment due date": "Fecha de cargo",
     "The day that statement is charged, at most :days days after it closes.": "El día en que se cobra ese extracto, como mucho :days días después del cierre.",
-    "Statement dates": "Fechas del extracto",
-    "Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.": "Se asume que los siguientes extractos se repiten los mismos días cada mes. Si tu banco los cambia, actualízalos aquí.",
     "The payment due date must be after the statement closing date.": "La fecha de cargo debe ser posterior a la fecha de cierre del extracto.",
     "The payment due date must be within :days days of the statement closing date.": "La fecha de cargo debe estar dentro de los :days días siguientes al cierre del extracto.",
     "Estimated amount": "Importe estimado",
     "Estimated amount so far": "Importe estimado hasta ahora",
     "Credit of": "Saldo a favor de",
-    "Remove dates": "Quitar fechas"
+    "Remove dates": "Quitar fechas",
+    "Card details": "Datos de la tarjeta",
+    "Both are optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.": "Ambos son opcionales. Se asume que los siguientes extractos se repiten los mismos días cada mes. Si tu banco los cambia, actualízalos aquí.",
+    "Credit limit": "Límite de crédito",
+    "No limit set": "Sin límite",
+    "The most your bank lets you spend on this card.": "Lo máximo que tu banco te deja gastar con esta tarjeta.",
+    "Optional. The most your bank lets you spend on this card.": "Opcional. Lo máximo que tu banco te deja gastar con esta tarjeta."
 }

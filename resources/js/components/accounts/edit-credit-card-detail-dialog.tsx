@@ -3,6 +3,7 @@ import {
     update as updateCreditCardDetail,
 } from '@/actions/App/Http/Controllers/CreditCardDetailController';
 import InputError from '@/components/input-error';
+import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,48 +15,63 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { CreditCardDetail } from '@/types/account';
+import type { CreditCardDetail, CurrencyCode } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 interface EditCreditCardDetailDialogProps {
     accountId: string;
+    currencyCode: CurrencyCode;
     detail: CreditCardDetail | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
-type DateField = keyof CreditCardDetail;
+type DateField = 'statement_closing_date' | 'payment_due_date';
+
+/** The dates as the inputs hold them: an empty string while unset. */
+type DateValues = Record<DateField, string>;
 
 /** Mirrors PaymentDueAfterStatementClosing::MAX_DAYS_TO_PAY on the server. */
 const MAX_DAYS_TO_PAY = 45;
 
-const EMPTY_DATES: CreditCardDetail = {
-    statement_closing_date: '',
-    payment_due_date: '',
-};
+function datesOf(detail: CreditCardDetail | null): DateValues {
+    return {
+        statement_closing_date: detail?.statement_closing_date ?? '',
+        payment_due_date: detail?.payment_due_date ?? '',
+    };
+}
 
 /**
- * Sets the two dates a card's statement estimate is projected from. Any
- * closing date and its due date will do: later cycles repeat monthly from
- * them, and editing them when the bank moves the dates sets a new anchor.
+ * Sets a card's credit limit and the two dates its statement estimate is
+ * projected from, each optional. Any closing date and its due date will do:
+ * later cycles repeat monthly from them, and editing them when the bank moves
+ * the dates sets a new anchor.
  */
 export function EditCreditCardDetailDialog({
     accountId,
+    currencyCode,
     detail,
     open,
     onOpenChange,
 }: EditCreditCardDetailDialogProps) {
-    const [dates, setDates] = useState<CreditCardDetail>(detail ?? EMPTY_DATES);
-    const [errors, setErrors] = useState<Partial<Record<DateField, string>>>(
-        {},
+    const [dates, setDates] = useState<DateValues>(datesOf(detail));
+    const [creditLimit, setCreditLimit] = useState<number | null>(
+        detail?.credit_limit ?? null,
     );
+    const [errors, setErrors] = useState<
+        Partial<Record<DateField | 'credit_limit', string>>
+    >({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const hasDates = Boolean(
+        detail?.statement_closing_date && detail.payment_due_date,
+    );
 
     useEffect(() => {
         if (open) {
-            setDates(detail ?? EMPTY_DATES);
+            setDates(datesOf(detail));
+            setCreditLimit(detail?.credit_limit ?? null);
             setErrors({});
         }
     }, [open, detail]);
@@ -73,7 +89,11 @@ export function EditCreditCardDetailDialog({
         event.preventDefault();
         router.patch(
             updateCreditCardDetail.url(accountId),
-            { ...dates },
+            {
+                statement_closing_date: dates.statement_closing_date || null,
+                payment_due_date: dates.payment_due_date || null,
+                credit_limit: creditLimit,
+            },
             visitOptions,
         );
     }
@@ -104,15 +124,38 @@ export function EditCreditCardDetailDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{__('Statement dates')}</DialogTitle>
+                    <DialogTitle>{__('Card details')}</DialogTitle>
                     <DialogDescription>
                         {__(
-                            'Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.',
+                            'Both are optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.',
                         )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="credit_card_credit_limit">
+                            {__('Credit limit')}
+                        </Label>
+                        <AmountInput
+                            id="credit_card_credit_limit"
+                            value={creditLimit ?? 0}
+                            placeholder={__('No limit set')}
+                            onChange={(valueInCents) =>
+                                setCreditLimit(
+                                    valueInCents > 0 ? valueInCents : null,
+                                )
+                            }
+                            currencyCode={currencyCode}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            {__(
+                                'The most your bank lets you spend on this card.',
+                            )}
+                        </p>
+                        <InputError message={errors.credit_limit} />
+                    </div>
+
                     {fields.map((field) => (
                         <div key={field.name} className="flex flex-col gap-2">
                             <Label htmlFor={`credit_card_${field.name}`}>
@@ -121,7 +164,6 @@ export function EditCreditCardDetailDialog({
                             <Input
                                 id={`credit_card_${field.name}`}
                                 type="date"
-                                required
                                 value={dates[field.name]}
                                 onChange={(event) =>
                                     setDates((previous) => ({
@@ -138,7 +180,7 @@ export function EditCreditCardDetailDialog({
                     ))}
 
                     <DialogFooter className="gap-2 sm:justify-between">
-                        {detail ? (
+                        {hasDates ? (
                             <Button
                                 type="button"
                                 variant="ghost"

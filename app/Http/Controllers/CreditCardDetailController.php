@@ -21,8 +21,8 @@ class CreditCardDetailController extends Controller
     ) {}
 
     /**
-     * Set the statement dates of a credit card, which become the new anchor
-     * every later cycle is projected from.
+     * Set a credit card's limit and statement dates. The dates become the new
+     * anchor every later cycle is projected from.
      */
     public function update(UpdateCreditCardDetailRequest $request, Account $account): RedirectResponse
     {
@@ -34,7 +34,8 @@ class CreditCardDetailController extends Controller
     }
 
     /**
-     * Forget the statement dates, which takes the card back to the empty state.
+     * Forget the statement dates, which takes the estimate back to the empty
+     * state. The credit limit stays.
      */
     public function destroy(Request $request, Account $account): RedirectResponse
     {
