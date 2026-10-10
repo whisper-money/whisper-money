@@ -6,7 +6,6 @@ use App\Enums\MonthlyTargetType;
 use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
 use App\Models\Transaction;
-use App\Models\User;
 use App\Services\CashflowSummaryService;
 use Carbon\Carbon;
 
@@ -17,6 +16,9 @@ use Carbon\Carbon;
  * complete calendar months before the one being opened, not against the month
  * itself: plenty of people are paid on the last day, and a target built on the
  * month's own income would read 0 until then.
+ *
+ * Income is the goal's own space's: a goal set aside from a shared household
+ * space is measured against that space's income, not the owner's whole wallet.
  *
  * Months are calendar months in the app's timezone, like budget periods.
  */
@@ -42,8 +44,9 @@ class MonthlyTargetResolver
 
     /**
      * The frozen target of a month that is opening, and the income it came
-     * from. Both are null when a share-of-income target has no complete month
-     * to stand on yet and has to be followed live.
+     * from. Both are null when a share-of-income target has no income to stand
+     * on yet — no complete month, or none with any income — and has to be
+     * followed live.
      *
      * @return array{resolved_target_amount: ?int, income_base: ?int}
      */
@@ -53,7 +56,7 @@ class MonthlyTargetResolver
             return ['resolved_target_amount' => (int) $goal->monthly_target_amount, 'income_base' => null];
         }
 
-        $base = $this->averageIncomeBefore($goal->user, $month);
+        $base = $this->averageIncomeBefore($goal, $month);
 
         return [
             'resolved_target_amount' => $base === null ? null : self::applyRate($goal->monthly_target_rate, $base),
@@ -68,7 +71,7 @@ class MonthlyTargetResolver
      *
      * @return array{resolved_target_amount: int, income_base: ?int}
      */
-    public function current(SavingsGoalPeriod $period, User $user): array
+    public function current(SavingsGoalPeriod $period, SavingsGoal $goal): array
     {
         if ($period->resolved_target_amount !== null) {
             return ['resolved_target_amount' => $period->resolved_target_amount, 'income_base' => $period->income_base];
@@ -78,25 +81,26 @@ class MonthlyTargetResolver
             return ['resolved_target_amount' => (int) $period->target_amount, 'income_base' => null];
         }
 
-        $income = $this->incomeIn($user, $period->month);
+        $income = $this->incomeIn($goal, $period->month);
 
         return ['resolved_target_amount' => self::applyRate($period->target_rate, $income), 'income_base' => $income];
     }
 
     /**
      * Average monthly income over the up-to-three complete months before
-     * $month, counting only months the user already had data in. Null when
-     * there is no such month.
+     * $month, counting only months the goal's space already had data in. Null
+     * when there is no such month, or when they brought in nothing: a target
+     * of 0 would be met by saving nothing, so it is followed live instead.
      */
-    private function averageIncomeBefore(User $user, Carbon $month): ?int
+    private function averageIncomeBefore(SavingsGoal $goal, Carbon $month): ?int
     {
-        $key = 'average|'.$user->id.'|'.$month->format('Y-m');
+        $key = 'average|'.$goal->user_id.'|'.$goal->space_id.'|'.$month->format('Y-m');
 
         if (array_key_exists($key, $this->cache)) {
             return $this->cache[$key];
         }
 
-        $firstMonth = $this->firstActivityMonth($user);
+        $firstMonth = $this->firstActivityMonth($goal);
         $lastComplete = $month->copy()->startOfMonth()->subMonth();
 
         if ($firstMonth === null || $firstMonth->gt($lastComplete)) {
@@ -104,39 +108,53 @@ class MonthlyTargetResolver
         }
 
         $from = $lastComplete->copy()->subMonths(self::INCOME_BASE_MONTHS - 1)->max($firstMonth);
-        $months = $this->cashflow->forMonths($user->id, $user->currency_code, $from, $lastComplete->copy()->endOfMonth());
-        $average = array_sum(array_column($months, 'income')) / max(1, count($months));
+        $months = $this->incomeMonths($goal, $from, $lastComplete);
+        $average = (int) round(array_sum(array_column($months, 'income')) / max(1, count($months)));
 
-        return $this->cache[$key] = max(0, (int) round($average));
+        return $this->cache[$key] = $average > 0 ? $average : null;
     }
 
     /**
      * Income of one calendar month, in the user's currency.
      */
-    private function incomeIn(User $user, Carbon $month): int
+    private function incomeIn(SavingsGoal $goal, Carbon $month): int
     {
-        $key = 'month|'.$user->id.'|'.$month->format('Y-m');
+        $key = 'month|'.$goal->user_id.'|'.$goal->space_id.'|'.$month->format('Y-m');
 
-        return $this->cache[$key] ??= max(0, (int) ($this->cashflow->forMonths(
-            $user->id,
-            $user->currency_code,
-            $month->copy()->startOfMonth(),
-            $month->copy()->endOfMonth(),
-        )[$month->format('Y-m')]['income'] ?? 0));
+        return $this->cache[$key] ??= max(0, (int) ($this->incomeMonths($goal, $month, $month)[$month->format('Y-m')]['income'] ?? 0));
     }
 
-    private static function applyRate(?float $rate, int $base): int
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function incomeMonths(SavingsGoal $goal, Carbon $from, Carbon $to): array
+    {
+        return $this->cashflow->forMonths(
+            $goal->user_id,
+            $goal->user->currency_code,
+            $from->copy()->startOfMonth(),
+            $to->copy()->endOfMonth(),
+            $goal->space_id,
+        );
+    }
+
+    /**
+     * A share of an income, in cents.
+     */
+    public static function applyRate(?float $rate, int $base): int
     {
         return (int) round($base * (float) $rate / 100);
     }
 
     /**
-     * The month of the user's earliest transaction that counts towards totals.
+     * The month of the earliest transaction of the goal's space that counts
+     * towards totals.
      */
-    private function firstActivityMonth(User $user): ?Carbon
+    private function firstActivityMonth(SavingsGoal $goal): ?Carbon
     {
         $earliest = Transaction::query()
-            ->where('transactions.user_id', $user->id)
+            ->where('transactions.user_id', $goal->user_id)
+            ->when($goal->space_id !== null, fn ($query) => $query->forSpace($goal->space_id))
             ->countingTowardsTotals()
             ->min('transactions.transaction_date');
 
