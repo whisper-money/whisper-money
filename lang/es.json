@@ -3878,5 +3878,19 @@
     "Add the credit limit of this card to see how much of it you have used and how much is still available.": "Añade el límite de crédito de esta tarjeta para ver cuánto has dispuesto y cuánto te queda disponible.",
     "From :from to :to": "Del :from al :to",
     "Used counts the purchases on this card that are still to be charged: the statement not paid yet and the open cycle. Payments to the card are not subtracted.": "El dispuesto suma las compras de esta tarjeta que aún no se han cargado: el extracto pendiente de pago y el ciclo abierto. Los pagos a la tarjeta no se restan.",
-    "Used counts the purchases on this card this month. Payments to the card are not subtracted.": "El dispuesto suma las compras de esta tarjeta este mes. Los pagos a la tarjeta no se restan."
+    "Used counts the purchases on this card this month. Payments to the card are not subtracted.": "El dispuesto suma las compras de esta tarjeta este mes. Los pagos a la tarjeta no se restan.",
+    "A savings goal can't switch between one-off and monthly.": "Un objetivo de ahorro no puede pasar de puntual a mensual ni al revés.",
+    "Contributions to :goal": "Aportaciones a :goal",
+    "Pick one of your savings accounts.": "Elige una de tus cuentas de ahorro.",
+    "goal name": "nombre del objetivo",
+    "goal type": "tipo de objetivo",
+    "target amount": "importe objetivo",
+    "amount already saved": "importe ya ahorrado",
+    "target date": "fecha objetivo",
+    "monthly target type": "tipo de objetivo mensual",
+    "monthly amount": "importe mensual",
+    "percentage of income": "porcentaje de ingresos",
+    "month-end reminder": "recordatorio de fin de mes",
+    "savings account": "cuenta de ahorro",
+    "This account already feeds “:goal”. Pick another one, or leave contributions to be linked by hand.": "Ya la usa «:goal». Elige otra cuenta o vincula las aportaciones a mano."
 }

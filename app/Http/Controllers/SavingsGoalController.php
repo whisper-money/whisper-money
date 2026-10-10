@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\LabelColor;
-use App\Enums\LabelSource;
 use App\Http\Requests\StoreSavingsGoalRequest;
 use App\Http\Requests\SyncSavingsGoalTransactionsRequest;
 use App\Http\Requests\UpdateSavingsGoalRequest;
@@ -14,10 +12,10 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
 use App\Models\Transaction;
+use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -44,24 +42,11 @@ class SavingsGoalController extends Controller
      */
     private const TRANSACTION_RELATIONS = ['account.bank', 'category', 'labels'];
 
+    public function __construct(private SavingsGoalService $goals) {}
+
     public function store(StoreSavingsGoalRequest $request): RedirectResponse
     {
-        $goal = DB::transaction(function () use ($request) {
-            $label = $request->user()->labels()->create([
-                'name' => $request->name,
-                'color' => LabelColor::Emerald->value,
-                'source' => LabelSource::SavingsGoal,
-            ]);
-
-            return $request->user()->savingsGoals()->create([
-                'label_id' => $label->id,
-                'name' => $request->name,
-                'target_amount' => $request->target_amount,
-                // Nullable input coerced to 0 cents: the column is NOT NULL.
-                'initial_amount' => $request->integer('initial_amount'),
-                'target_date' => $request->target_date,
-            ]);
-        });
+        $goal = $this->goals->createFromInput($request->user(), $request->validated());
 
         return redirect()->route('savings-goals.show', $goal);
     }
@@ -185,44 +170,19 @@ class SavingsGoalController extends Controller
     {
         $this->authorize('update', $savingsGoal);
 
-        DB::transaction(function () use ($request, $savingsGoal) {
-            $savingsGoal->update($request->only(['name', 'target_amount', 'initial_amount', 'target_date']));
-
-            if ($request->has('name') && $savingsGoal->label) {
-                $savingsGoal->label->update(['name' => $request->name]);
-            }
-        });
+        $this->goals->update($savingsGoal, $request->safe()->except('kind'));
 
         return redirect()->route('savings-goals.show', $savingsGoal);
     }
 
     /**
-     * Archiving is one-way and freezes the goal.
-     *
-     * Its label goes with it — the goal is done, so the label must never be
-     * pickable again, and soft-deleting it takes it out of every picker at once
-     * through the global scope. That also means the saved amount can no longer
-     * be derived (the sum would collapse to the starting balance, and re-tagging
-     * one of those transactions later would move a final figure), so it is
-     * snapshotted here. Both writes and the archive date share one transaction:
-     * a goal that is half-archived has no meaning.
+     * Archiving is one-way and freezes the goal; see SavingsGoalService::archive().
      */
     public function archive(Request $request, SavingsGoal $savingsGoal): RedirectResponse
     {
         $this->authorize('archive', $savingsGoal);
 
-        DB::transaction(function () use ($savingsGoal) {
-            // Read before the archive date is written: savedAmountInCents()
-            // switches to the snapshot the moment the goal counts as archived.
-            $saved = $savingsGoal->savedAmountInCents();
-
-            $savingsGoal->update([
-                'archived_at' => now(),
-                'archived_saved_amount' => $saved,
-            ]);
-
-            $savingsGoal->label?->delete();
-        });
+        $this->goals->archive($savingsGoal);
 
         // Named route, not back(): see syncTransactions — the previous-url
         // redirect resolves to the app's internal host behind a proxy.
@@ -233,10 +193,7 @@ class SavingsGoalController extends Controller
     {
         $this->authorize('delete', $savingsGoal);
 
-        DB::transaction(function () use ($savingsGoal) {
-            $savingsGoal->label?->delete();
-            $savingsGoal->delete();
-        });
+        $this->goals->delete($savingsGoal);
 
         return redirect()->route('budgets.index');
     }

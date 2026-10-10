@@ -294,7 +294,7 @@ class HistoryBuilder
      */
     private function goalReached(User $user): array
     {
-        foreach ($user->savingsGoals()->orderBy('created_at')->get() as $goal) {
+        foreach ($user->savingsGoals()->oneOff()->orderBy('created_at')->get() as $goal) {
             if ($goal->target_amount > 0 && $goal->savedAmountInCents() >= $goal->target_amount) {
                 return [
                     'month' => $goal->measuredAt()->format('Y-m'),
