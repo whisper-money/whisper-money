@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\SavingsGoalMonthStatus;
 use App\Models\SavingsGoal;
 use App\Models\User;
 use Illuminate\Notifications\Notification;
@@ -44,7 +45,7 @@ class MonthlySavingsGoalClosed extends Notification
             'saved' => $this->month['saved'],
             'target' => $this->month['target'],
             'difference' => $this->month['difference'],
-            'met' => $this->month['status'] === 'met',
+            'met' => $this->month['status'] === SavingsGoalMonthStatus::Met,
             'streak' => $this->streak,
             'currency_code' => $notifiable->currency_code ?? 'USD',
         ];
