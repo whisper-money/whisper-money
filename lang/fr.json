@@ -2930,5 +2930,7 @@
     "No limit set": "Aucun plafond",
     "The most your bank lets you spend on this card.": "Le maximum que votre banque vous permet de dépenser avec cette carte.",
     "Optional. The most your bank lets you spend on this card.": "Facultatif. Le maximum que votre banque vous permet de dépenser avec cette carte.",
-    "Edit card details": "Modifier les détails de la carte"
+    "Edit card details": "Modifier les détails de la carte",
+    "Show amounts in this block": "Afficher les montants de ce bloc",
+    "Hide amounts in this block": "Masquer les montants de ce bloc"
 }

@@ -1,5 +1,6 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { CategoryAnalysisButton } from '@/components/categories/category-analysis-button';
+import { PrivacyRevealButton } from '@/components/privacy-reveal-button';
 import {
     CategoryBreakdownRow,
     trendFrom,
@@ -153,14 +154,17 @@ export function TopCategoriesCard({
             <CardHeader className="gap-2">
                 <div className="flex items-start justify-between gap-2">
                     <CardTitle>{__('Top spending categories')}</CardTitle>
-                    <CategoryAnalysisButton
-                        widgetKey="dashboard-top-categories"
-                        firstCategoryId={
-                            categories[0]?.category?.id ??
-                            categories[0]?.category_id ??
-                            null
-                        }
-                    />
+                    <div className="flex items-center gap-1">
+                        <PrivacyRevealButton className="-my-2" />
+                        <CategoryAnalysisButton
+                            widgetKey="dashboard-top-categories"
+                            firstCategoryId={
+                                categories[0]?.category?.id ??
+                                categories[0]?.category_id ??
+                                null
+                            }
+                        />
+                    </div>
                 </div>
                 <CardDescription>{__('on the last 30 days')}</CardDescription>
             </CardHeader>
