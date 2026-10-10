@@ -83,9 +83,13 @@ app is kept in their books.
   or an `income_rate`, a share of the average income of the three previous
   complete months, frozen when the month opens. Each month is judged against its
   own target: `monthly.history` lists every month since the goal was created
-  with its `target`, `saved`, signed `difference` and `status` (`met`, `missed`
-  or `in_progress`); nothing carries over between months, and a transaction
-  tagged late recalculates the month it belongs to. A goal's kind is fixed, and
+  with its `target`, `saved`, signed `difference` and `status` (`met`, `missed`,
+  `in_progress` or `partial`); nothing carries over between months, and a
+  transaction tagged late recalculates the month it belongs to. A `partial`
+  month — the goal was created in the month's last 5 days, or archived during
+  it — shows what was saved but has no verdict: it is left out of
+  `months_met`, `months_closed`, the streaks and `cumulative_difference`, so
+  never report it as met or missed. A goal's kind is fixed, and
   editing a monthly target only changes the month in progress and later ones.
   A transaction counts towards a goal once it carries the goal's `label_id`
   (`label_transaction`). `create_savings_goal` can also add an automation rule

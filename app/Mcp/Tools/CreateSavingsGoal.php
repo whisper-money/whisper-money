@@ -7,6 +7,7 @@ use App\Enums\MonthlyTargetType;
 use App\Enums\SavingsGoalKind;
 use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
 use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
+use App\Http\Requests\Concerns\ValidatesSavingsGoalName;
 use App\Mcp\Tools\Concerns\PresentsSavingsGoals;
 use App\Mcp\Tools\Concerns\ValidatesSavingsGoalWrites;
 use App\Models\AutomationRule;
@@ -24,7 +25,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 #[Description('Create a savings goal: one-off (a total, optionally by a date) or monthly (an amount or share of income each month). Monthly can auto-tag a savings account\'s past and future transfers.')]
 class CreateSavingsGoal extends WriteTool
 {
-    use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalWrites;
+    use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesSavingsGoalWrites;
 
     /**
      * @return array<string, mixed>
@@ -52,7 +53,7 @@ class CreateSavingsGoal extends WriteTool
         [$otherKindRules, $messages] = $kind === null ? [[], []] : $this->otherKindFieldRules($kind);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => $this->savingsGoalNameRules($user->id, creating: true),
             'kind' => ['required', Rule::enum(SavingsGoalKind::class)],
             ...$otherKindRules,
             ...($kind === SavingsGoalKind::Monthly ? [
@@ -62,7 +63,6 @@ class CreateSavingsGoal extends WriteTool
         ], $messages);
 
         $space = $this->resolveSpace($request, $user);
-        $this->assertSavingsGoalNameIsFree($space, $validated['name']);
 
         $autoTagAccountId = $validated['auto_tag_account_id'] ?? null;
 
