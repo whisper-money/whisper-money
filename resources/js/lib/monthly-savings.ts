@@ -55,6 +55,11 @@ export function monthStrip(
 export interface MonthlySavingsAggregate {
     saved: number;
     target: number;
+    /**
+     * Every goal with a month in progress is in a partial one: there is no
+     * target to add up yet, so the aggregate says so instead of "0 of 0".
+     */
+    allPartial: boolean;
     daysLeft: number | null;
     /** How the goals did in the month before the current one. */
     previousMonth: string;
@@ -90,6 +95,9 @@ export function aggregateMonthlyGoals(
     return {
         saved: sum(running.map((entry) => entry.saved)),
         target: sum(running.map((entry) => entry.target)),
+        allPartial:
+            running.length === 0 &&
+            goals.some((goal) => goal.monthly?.current?.status === 'partial'),
         daysLeft:
             goals.find((goal) => goal.monthly?.current)?.monthly?.current
                 ?.days_left ?? null,
@@ -111,6 +119,23 @@ export function currentMonthOf(goals: SavingsGoal[]): string {
     );
 }
 
+/**
+ * Mirrors SavingsGoal::LATE_START_DAYS: a goal created in the last this-many
+ * days of a month gets that month as a partial one.
+ */
+const LATE_START_DAYS = 5;
+
+/** Whether a goal created on `date` would start with a partial month. */
+export function startsLate(date: Date): boolean {
+    const lastDay = new Date(
+        date.getFullYear(),
+        date.getMonth() + 1,
+        0,
+    ).getDate();
+
+    return date.getDate() > lastDay - LATE_START_DAYS;
+}
+
 export function daysLeftLabel(count: number): string {
     return count === 1 ? __('1 day left') : __(':count days left', { count });
 }
@@ -127,6 +152,27 @@ export function progressPercent(saved: number, target: number): number {
     }
 
     return Math.min(100, Math.max(0, (saved / target) * 100));
+}
+
+/**
+ * The bar of a month in progress. A partial month has no target, and a share
+ * of an income that has not arrived yet is a target of 0 that is not met:
+ * neither draws a full bar.
+ */
+export function monthProgressPercent(month: MonthlySavingsMonth): number {
+    if (isTargetUnknown(month)) {
+        return 0;
+    }
+
+    return progressPercent(month.saved, month.target);
+}
+
+/** A month whose target is not known yet: partial, or a live share still at 0. */
+export function isTargetUnknown(month: MonthlySavingsMonth): boolean {
+    return (
+        month.status === 'partial' ||
+        (month.is_live_target && month.target <= 0)
+    );
 }
 
 function isAddedUp<T extends MonthlySavingsMonth>(
