@@ -90,7 +90,9 @@ class MonthlySavingsGoalTotals
             'saved' => $saved,
             'target' => $target,
             'difference' => $saved - $target,
-            'met' => count(array_filter($goals, fn (array $goal): bool => $goal['status'] === 'met')),
+            // Reached rather than judged: in a month still running it reads as
+            // "reached so far", and a closed month is met exactly when reached.
+            'met' => count(array_filter($goals, fn (array $goal): bool => $goal['saved'] >= $goal['target'])),
             'total' => count($goals),
             'status' => $inProgress ? 'in_progress' : ($saved >= $target ? 'met' : 'missed'),
             'goals' => $goals,

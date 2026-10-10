@@ -93,6 +93,25 @@ describe('MonthlySavingsDashboardCard', () => {
         );
     });
 
+    it('leaves out a goal whose month has not opened yet', () => {
+        const unopened = {
+            id: 'c',
+            name: 'Not yet',
+            kind: 'monthly',
+            archived_at: null,
+            monthly: { current: null, history: [] },
+        } as never;
+
+        const { container } = render(
+            <MonthlySavingsDashboardCard
+                goals={[unopened]}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(container).toBeEmptyDOMElement();
+    });
+
     it('draws nothing without a monthly goal', () => {
         const { container } = render(
             <MonthlySavingsDashboardCard goals={[]} currencyCode="EUR" />,
