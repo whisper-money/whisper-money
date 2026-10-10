@@ -106,10 +106,15 @@ export interface LoanDetail {
     remaining_months: number | null;
 }
 
-/** The statement dates set on a credit card: the anchor its cycles repeat from. */
+/**
+ * What the user set on a credit card. The statement dates are the anchor its
+ * cycles repeat from; they travel together, both set or both null.
+ */
 export interface CreditCardDetail {
-    statement_closing_date: string;
-    payment_due_date: string;
+    statement_closing_date: string | null;
+    payment_due_date: string | null;
+    /** In the card currency's minor units. */
+    credit_limit: number | null;
 }
 
 /** One statement cycle and what it adds up to, as an amount to pay. */
@@ -125,6 +130,24 @@ export interface CreditCardStatement {
     /** `is_final` once the statement has closed and its amount no longer moves. */
     next_payment: CreditCardStatementCycle & { is_final: boolean };
     current_cycle: CreditCardStatementCycle;
+}
+
+/**
+ * How much of a credit card is in use, computed by the server from the card's
+ * own ledger. `used` covers what is still to be charged (the pending
+ * statement plus the open cycle, or the calendar month on a card without
+ * statement dates) up to today. Amounts are in minor units.
+ */
+export interface CreditCardUsage {
+    limit: number | null;
+    used: number;
+    /** `limit - used`: negative over the limit, null without a limit. */
+    available: number | null;
+    /** The window `used` covers, `Y-m-d`; it runs past today to its end. */
+    period_from: string;
+    period_to: string;
+    /** Cumulative `used` per day from `period_from` through today. */
+    daily: { date: string; used: number }[];
 }
 
 export function formatPropertyType(type: PropertyType): string {

@@ -8,6 +8,7 @@ use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Models\Account;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 
 /**
  * Creating and editing an account, shared by the settings controller and the
@@ -112,28 +113,35 @@ class AccountWriteService
     }
 
     /**
-     * Set a credit card's statement dates, which become the anchor every later
-     * cycle is projected from, or forget them when both arrive as null. A
-     * payload without them leaves the card alone.
+     * Set what the payload carries of a credit card's limit and statement
+     * dates, leaving the rest alone. The dates become the anchor every later
+     * cycle is projected from; null clears a field. Clearing the dates keeps
+     * the limit, and the row goes only once neither is left.
      *
      * @param  array<string, mixed>  $data
      */
     public function syncCreditCardDetail(Account $account, array $data): void
     {
-        if (! array_key_exists('statement_closing_date', $data) && ! array_key_exists('payment_due_date', $data)) {
+        $attributes = Arr::only($data, ['statement_closing_date', 'payment_due_date', 'credit_limit']);
+
+        if ($attributes === []) {
             return;
         }
 
-        if (($data['statement_closing_date'] ?? null) === null) {
-            $account->creditCardDetail()->delete();
+        $detail = $account->creditCardDetail()->firstOrNew()->fill($attributes);
+
+        if ($detail->isBlank()) {
+            if ($detail->exists) {
+                $detail->delete();
+            }
+
+            $account->setRelation('creditCardDetail', null);
 
             return;
         }
 
-        $account->creditCardDetail()->updateOrCreate([], [
-            'statement_closing_date' => $data['statement_closing_date'],
-            'payment_due_date' => $data['payment_due_date'],
-        ]);
+        $detail->save();
+        $account->setRelation('creditCardDetail', $detail);
     }
 
     /**

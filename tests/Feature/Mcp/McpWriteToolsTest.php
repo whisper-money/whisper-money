@@ -1608,6 +1608,51 @@ it('sets and clears the statement dates of a credit card through update_account'
     expect($card->creditCardDetail()->exists())->toBeFalse();
 });
 
+it('creates a credit card with its credit limit', function () {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(CreditCardStatements::class);
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Visa',
+        'type' => 'credit_card',
+        'currency_code' => 'EUR',
+        'credit_limit' => 300000,
+    ])->assertOk()->assertSee('"credit_limit":300000', false)->assertSee('"available":300000', false);
+
+    expect($user->accounts()->sole()->creditCardDetail)
+        ->credit_limit->toBe(300000)
+        ->statement_closing_date->toBeNull();
+});
+
+it('sets and clears the credit limit through update_account, keeping the dates', function () {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(CreditCardStatements::class);
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id]);
+    CreditCardDetail::factory()->create(['account_id' => $card->id, 'statement_closing_date' => '2026-04-25', 'payment_due_date' => '2026-05-10']);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'credit_limit' => 150000,
+    ])->assertOk()->assertSee('"credit_limit":150000', false);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'statement_closing_date' => null,
+        'payment_due_date' => null,
+    ])->assertOk();
+
+    expect($card->creditCardDetail()->sole())
+        ->credit_limit->toBe(150000)
+        ->statement_closing_date->toBeNull();
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'credit_limit' => null,
+    ])->assertOk();
+
+    expect($card->creditCardDetail()->exists())->toBeFalse();
+});
+
 it('leaves the statement dates alone when update_account is not passed them', function () {
     $user = User::factory()->create();
     Feature::for($user)->activate(CreditCardStatements::class);
@@ -1652,6 +1697,11 @@ it('tells a user without the feature that statement dates are not available yet'
         'currency_code' => 'EUR',
         'statement_closing_date' => '2026-04-25',
         'payment_due_date' => '2026-05-10',
+    ])->assertHasErrors(['not available for this account yet']);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'credit_limit' => 150000,
     ])->assertHasErrors(['not available for this account yet']);
 
     expect($card->creditCardDetail()->exists())->toBeFalse()

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Settings;
 use App\Enums\AccountType;
 use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
+use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -66,6 +67,14 @@ class StoreAccountRequest extends FormRequest
                 $this->loanDetailRules(requireCompleteSet: true),
                 $this->linkedRealEstateAccountRules(),
             );
+        }
+
+        // The limit is offered only to users with the credit card feature;
+        // anyone else sending one has it left out of the validated data.
+        $isCreditCard = $this->input('type') === AccountType::CreditCard->value;
+
+        if ($isCreditCard && app(CreditCardStatementService::class)->isAvailableTo($this->user())) {
+            $rules = array_merge($rules, $this->creditLimitRules());
         }
 
         return $rules;

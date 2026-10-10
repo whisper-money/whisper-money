@@ -183,7 +183,9 @@ it('presents the next credit card payment when the user has the feature', functi
         ->assertSee('credit_card_statement')
         ->assertSee('"amount":4321')
         ->assertSee('"is_final":true')
-        ->assertSee('2026-03-20');
+        ->assertSee('2026-03-20')
+        ->assertSee('"credit_card_usage":{"limit":null,"used":4321,"available":null,"period_from":"2026-02-06","period_to":"2026-04-05"}', false)
+        ->assertDontSee('daily');
 
     // One ledger query per card on top of the fixed ones, never one per row.
     expect(collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from `transactions`'))->count())->toBe(3);
@@ -198,7 +200,37 @@ it('presents no credit card estimate to a user without the feature', function ()
         ->tool(ListAccounts::class, [])
         ->assertOk()
         ->assertDontSee('credit_card_statement')
-        ->assertDontSee('credit_card_detail');
+        ->assertDontSee('credit_card_detail')
+        ->assertDontSee('credit_card_usage');
+});
+
+it('presents the credit limit and what is left of it', function () {
+    $user = User::factory()->create(['currency_code' => 'EUR']);
+    Feature::for($user)->activate(CreditCardStatements::class);
+    $this->travelTo(CarbonImmutable::parse('2026-03-10 12:00', 'UTC'));
+
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    CreditCardDetail::factory()->create([
+        'account_id' => $card->id,
+        'statement_closing_date' => null,
+        'payment_due_date' => null,
+        'credit_limit' => 100000,
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $card->id,
+        'category_id' => Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense])->id,
+        'currency_code' => 'EUR',
+        'amount' => -2500,
+        'transaction_date' => '2026-03-02',
+    ]);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(ListAccounts::class, [])
+        ->assertOk()
+        ->assertSee('"credit_card_detail":{"statement_closing_date":null,"payment_due_date":null,"credit_limit":100000}', false)
+        ->assertSee('"credit_card_statement":null', false)
+        ->assertSee('"credit_card_usage":{"limit":100000,"used":2500,"available":97500,"period_from":"2026-03-01","period_to":"2026-03-31"}', false);
 });
 
 it('lists the user\'s categories for the space', function () {

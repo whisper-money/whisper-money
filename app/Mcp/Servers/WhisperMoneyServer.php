@@ -149,6 +149,11 @@ also reweighs the budgets that already counted the account.
 When a credit card row carries `credit_card_statement`, it is an estimate of the
 next charge (`is_final` false means the cycle is still open), computed from the
 statement dates in `credit_card_detail`; it is not a transaction.
+`credit_card_usage` is how much of the card is in use: `used` adds up what is
+still to be charged between `period_from` and today (the pending statement plus
+the open cycle, or the calendar month when the card has no statement dates), and
+`available` is `limit` minus it, negative when over the limit, null while
+`credit_limit` is not set.
 MARKDOWN)]
 class WhisperMoneyServer extends Server
 {

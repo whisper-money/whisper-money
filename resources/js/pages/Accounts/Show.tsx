@@ -67,6 +67,7 @@ import {
     type AreaUnit,
     type CreditCardDetail,
     type CreditCardStatement,
+    type CreditCardUsage,
     type LoanDetail,
     type PropertyType,
     type RealEstateDetail,
@@ -89,6 +90,7 @@ interface AccountWithDetails extends Account {
     linked_loan_account?: Account;
     credit_card_detail?: CreditCardDetail | null;
     credit_card_statement?: CreditCardStatement | null;
+    credit_card_usage?: CreditCardUsage;
 }
 
 interface Props {
