@@ -50,6 +50,23 @@ test('the planning page lists monthly goals with their months, archived ones inc
         );
 });
 
+test('the planning page splits one read of the goals into both kinds, each in its own order', function () {
+    $user = monthlyPagesUser();
+    $newer = monthlyPagesGoal($user, ['name' => 'A newer', 'position' => 0, 'created_at' => '2026-09-20']);
+    $older = monthlyPagesGoal($user, ['name' => 'B older', 'position' => 1, 'created_at' => '2026-08-15']);
+    $second = SavingsGoal::factory()->create(['user_id' => $user->id, 'name' => 'House', 'position' => 2]);
+    $first = SavingsGoal::factory()->create(['user_id' => $user->id, 'name' => 'Car', 'position' => 1]);
+
+    $this->actingAs($user)->get('/budgets')
+        ->assertInertia(fn ($page) => $page
+            ->where('savingsGoals.0.id', $first->id)
+            ->where('savingsGoals.1.id', $second->id)
+            ->has('savingsGoals.0.stats')
+            ->where('monthlySavingsGoals.0.id', $older->id)
+            ->where('monthlySavingsGoals.1.id', $newer->id)
+        );
+});
+
 test('a monthly goal page carries its months instead of the one-off projection', function () {
     $user = monthlyPagesUser();
     $goal = monthlyPagesGoal($user);

@@ -5,7 +5,6 @@ namespace App\Services\SavingsGoals;
 use App\Enums\SavingsGoalMonthStatus;
 use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
@@ -40,23 +39,18 @@ class MonthlySavingsGoalStats
     }
 
     /**
-     * A user's monthly goals, archived ones included, as the pages render them:
-     * the goal's own fields plus a `monthly` block with its stats. Shaping the
-     * page payload here keeps the one batched stats query next to the goals it
-     * was run for.
+     * Monthly goals of one user, archived ones included, as the pages render
+     * them: the goal's own fields plus a `monthly` block with its stats, oldest
+     * first. Shaping the page payload here keeps the one batched stats query
+     * next to the goals it was run for. The goals come in already loaded with
+     * their labels, so a page that lists both kinds reads the goals once.
      *
+     * @param  Collection<int, SavingsGoal>  $goals
      * @return list<array<string, mixed>>
      */
-    public function presentForUser(User $user): array
+    public function present(Collection $goals): array
     {
-        // Archiving soft-deletes the label, so it has to be read through the
-        // trashed scope or an archived goal loses the name it saved under.
-        $goals = $user->savingsGoals()
-            ->monthly()
-            ->with(['label' => fn ($query) => $query->withTrashed()])
-            ->orderBy('created_at')
-            ->get();
-
+        $goals = $goals->sortBy('created_at')->values();
         $stats = $this->forGoals($goals);
 
         return $goals
