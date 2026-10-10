@@ -1,6 +1,6 @@
 ---
 name: whisper-money
-description: Work with the user's finances through the Whisper Money connector — spending, cashflow, net worth, budgets, categories, labels, automation rules and transaction splits. Use whenever the user asks about their money, their accounts, their budgets or their transactions, or asks to categorize, label, split, record or clean up transactions.
+description: Work with the user's finances through the Whisper Money connector — spending, cashflow, net worth, budgets, savings goals, categories, labels, automation rules and transaction splits. Use whenever the user asks about their money, their accounts, their budgets or their transactions, or asks to categorize, label, split, record or clean up transactions.
 ---
 
 # Whisper Money
@@ -11,8 +11,9 @@ budget or a split is). This skill covers how to get real work done with it.
 ## Before calling anything
 
 - Ids are opaque. Get them from `list_accounts`, `list_categories`,
-  `list_labels`, `list_budgets`, `list_automation_rules` — never guess one, and
-  reuse them for the rest of the conversation instead of listing again.
+  `list_labels`, `list_budgets`, `list_savings_goals`, `list_automation_rules` —
+  never guess one, and reuse them for the rest of the conversation instead of
+  listing again.
 - `search_transactions` has no paging: it returns at most 200 rows. Narrow with
   `from`/`to` and loop over periods rather than asking for "everything".
 - Only mention spaces if the user does. Everything defaults to the personal
@@ -83,6 +84,17 @@ period covers today, and treat `spent_amount` as provisional while
 Period length, start day, rollover and tracked categories are frozen after
 creation, so get them right the first time: confirm them with the user before
 creating, because changing them later means deleting and recreating the budget.
+
+**"Save €300 a month" / "How did my savings go?"** — a `monthly` savings goal
+(`create_savings_goal`): a fixed `amount` or an `income_rate` share of income,
+judged afresh every month with no carry-over. Offer `auto_tag_account_id` when
+the money lands in a savings account, or contributions only count once tagged.
+`list_savings_goals` gives each month's target, saved and difference; a kind
+cannot change later, and a new target applies from the month in progress. A
+month with status `partial` (created in its last 5 days) or `archived` (archived
+during it) has no verdict and stays out of months met, the streak and the
+cumulative figures — mention what was saved, not whether it was met. An account
+already auto-tagged by another running monthly goal is refused.
 
 ## What bites
 

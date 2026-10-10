@@ -10,6 +10,7 @@ use App\Mcp\Tools\CreateBalance;
 use App\Mcp\Tools\CreateBudget;
 use App\Mcp\Tools\CreateCategory;
 use App\Mcp\Tools\CreateLabel;
+use App\Mcp\Tools\CreateSavingsGoal;
 use App\Mcp\Tools\CreateTransaction;
 use App\Mcp\Tools\DeleteAutomationRule;
 use App\Mcp\Tools\DeleteBudget;
@@ -25,6 +26,7 @@ use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListLabels;
+use App\Mcp\Tools\ListSavingsGoals;
 use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SearchTransactions;
@@ -35,6 +37,7 @@ use App\Mcp\Tools\UpdateAutomationRule;
 use App\Mcp\Tools\UpdateBudget;
 use App\Mcp\Tools\UpdateCategory;
 use App\Mcp\Tools\UpdateLabel;
+use App\Mcp\Tools\UpdateSavingsGoal;
 use App\Mcp\Tools\UpdateTransaction;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
@@ -62,8 +65,8 @@ app is kept in their books.
   COP, CLP, PYG, JPY and PKR, 1000 for KWD, 100000000 for BTC. Read the row's
   `currency` before scaling one, and never assume cents.
 - Data is organised into "spaces" (the personal space and any shared spaces).
-  Transaction, account, category and label tools accept an optional `space` id and
-  default to the personal space; call `list_spaces` to discover ids. The cashflow,
+  Transaction, account, category, label and savings goal tools accept an optional
+  `space` id and default to the personal space; call `list_spaces` to discover ids. The cashflow,
   net-worth, spending and budget tools cover the user's whole account.
 - A budget is a per-period spending limit over the user's own categories and/or
   labels; tracking a parent category also tracks its children. `list_budgets`
@@ -73,6 +76,28 @@ app is kept in their books.
   so treat `spent_amount` as provisional while `processing_historical` is true.
   A budget's period length, start day, rollover and tracked categories are fixed
   once created: to change those, delete the budget and create it again.
+- A savings goal is tracked through a label: its contributions are the
+  transactions tagged with it. A `one_off` goal saves towards a total, optionally
+  by a date, and `list_savings_goals` reports its `progress`. A `monthly` goal
+  starts over every calendar month with a target that is either a fixed `amount`
+  or an `income_rate`, a share of the average income of the three previous
+  complete months, frozen when the month opens. Each month is judged against its
+  own target: `monthly.history` lists every month since the goal was created
+  with its `target`, `saved`, signed `difference` and `status` (`met`, `missed`,
+  `in_progress`, `partial` or `archived`); nothing carries over between months,
+  and a transaction tagged late recalculates the month it belongs to. A
+  `partial` month (the goal was created in the month's last 5 days) and an
+  `archived` one (the goal was archived during it) show what was saved but
+  have no verdict: they are left out of `months_met`, `months_closed`, the
+  streaks and `cumulative_difference`, so never report them as met or missed.
+  A savings account can feed only one running monthly goal's auto-tag rule. A goal's kind is fixed, and
+  editing a monthly target only changes the month in progress and later ones.
+  A transaction counts towards a goal once it carries the goal's `label_id`
+  (`label_transaction`). `create_savings_goal` can also add an automation rule
+  that tags incoming transfers to one of the user's savings accounts
+  (`auto_tag_account_id`), including the ones already there since the start of
+  the month; the response reports the rule and how many it tagged. Archiving
+  and deleting a goal happen in the app only.
 - An automation rule categorizes and labels transactions automatically. It only
   runs on transactions created after it, so applying one to the history already
   in the account is a separate, preview-first step: `list_automation_rules` for
@@ -111,9 +136,9 @@ app is kept in their books.
 Write tools (create_account, update_account, create_transaction,
 update_transaction, delete_transaction, split_transaction,
 merge_transaction_splits, categorize_transaction, label_transaction,
-create_balance, apply_automation_rule and full CRUD for budgets, categories,
-labels and automation rules) require a read & write token; a read-only token
-can analyse data but never change it.
+create_balance, apply_automation_rule, create_savings_goal, update_savings_goal
+and full CRUD for budgets, categories, labels and automation rules) require a
+read & write token; a read-only token can analyse data but never change it.
 Manual transactions can be created on any account, bank-connected ones included
 — a sync never removes them.
 Bank/imported transactions keep their core fields protected: only a
@@ -169,6 +194,7 @@ class WhisperMoneyServer extends Server
         ListCategories::class,
         ListLabels::class,
         ListBudgets::class,
+        ListSavingsGoals::class,
         ListAutomationRules::class,
         ListSpaces::class,
         ListAchievements::class,
@@ -197,5 +223,7 @@ class WhisperMoneyServer extends Server
         CreateBudget::class,
         UpdateBudget::class,
         DeleteBudget::class,
+        CreateSavingsGoal::class,
+        UpdateSavingsGoal::class,
     ];
 }

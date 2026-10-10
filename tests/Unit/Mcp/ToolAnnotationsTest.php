@@ -16,6 +16,7 @@ $readOnly = [
     'list_categories',
     'list_labels',
     'list_budgets',
+    'list_savings_goals',
     'list_automation_rules',
     'list_spaces',
     'list_achievements',
@@ -59,7 +60,7 @@ it('declares all three MCP hints on every tool', function () use ($readOnly, $de
     /** @var array<int, class-string<Tool>> $tools */
     $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
 
-    expect($tools)->toHaveCount(count($readOnly) + 23);
+    expect($tools)->toHaveCount(count($readOnly) + 25);
 
     foreach ($tools as $class) {
         $tool = new $class;
