@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
@@ -17,6 +18,7 @@ use App\Services\Notifications\NotificationFeed;
 use Closure;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Middleware;
 use Laravel\Pennant\Feature;
 
@@ -109,6 +111,14 @@ class HandleInertiaRequests extends Middleware
             'achievements' => fn (): ?array => $this->achievementsFor($request, $user),
             'challenges' => fn (): ?array => $this->challengesFor($request, $user),
             ...$this->userCollectionProps($user),
+            // Resolved once and kept by the client for an hour, so the aggregate
+            // runs on a full page load rather than on every visit. Keyed by the
+            // user: the client keeps once props across a login, and the guest's
+            // `false` from the login page would otherwise hide the button for
+            // the hour that follows.
+            'showHeaderAddTransaction' => Inertia::once(fn (): bool => $this->showsHeaderAddTransaction($user))
+                ->as('showHeaderAddTransaction:'.($user->id ?? 'guest'))
+                ->until(now()->addHour()),
             'locale' => $this->formatLocaleFor($request, $user),
             'translations' => $this->getTranslations(),
             'currencies' => [
@@ -125,6 +135,25 @@ class HandleInertiaRequests extends Middleware
             // the list never exists twice, once in PHP and once in TypeScript.
             'formatLocales' => $this->formatLocales->codes(),
         ];
+    }
+
+    /**
+     * Whether the header offers its own add-transaction button: only to the
+     * onboarded readers who add a meaningful share of their transactions by
+     * hand, and who still own an account to file one in. Everyone else reaches
+     * the dialog from the transactions list. The account check runs last, so
+     * only the readers who qualify pay for it.
+     */
+    private function showsHeaderAddTransaction(?User $user): bool
+    {
+        if ($user === null || ! $user->isOnboarded() || ! $user->addsTransactionsByHand()) {
+            return false;
+        }
+
+        return $user->accounts()
+            ->whereNull('archived_at')
+            ->whereIn('type', AccountType::withTransactionLedger())
+            ->exists();
     }
 
     /**

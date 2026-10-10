@@ -1,6 +1,7 @@
 import { StreakChip } from '@/components/achievements/streak-chip';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { HeaderAddTransactionButton } from '@/components/transactions/header-add-transaction-button';
 import { ImportTransactionsButton } from '@/components/transactions/import-transactions-button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -32,6 +33,7 @@ export function AppSidebarHeader({
                 </div>
                 <div className="flex items-center gap-2">
                     <StreakChip />
+                    <HeaderAddTransactionButton />
                     <ImportTransactionsButton />
                     {/* Tools on the left, the account on the right: the bell and
                         the avatar read as a pair.
