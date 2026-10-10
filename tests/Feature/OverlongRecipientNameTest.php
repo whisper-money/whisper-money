@@ -54,6 +54,28 @@ it('keeps the name of a recipient that fits', function () {
     expect($to[0]->getName())->toBe('عبد الرحمن');
 });
 
+it('drops an ascii name that only crosses the limit once quoted by toString()', function () {
+    $user = User::factory()->create(['email' => 'fine@example.com']);
+    $recipient = new Address('a@example.com', 'Jo '.str_repeat('a', 300));
+
+    expect(strlen($recipient->toString()))->toBe(321);
+
+    Mail::to($recipient)->send(new WelcomeEmail($user));
+
+    expect(sentRecipients('To')[0]->getName())->toBe('');
+});
+
+it('keeps an ascii name right at the limit', function () {
+    $user = User::factory()->create(['email' => 'fine@example.com']);
+    $recipient = new Address('a@example.com', 'Jo '.str_repeat('a', 299));
+
+    expect(strlen($recipient->toString()))->toBe(320);
+
+    Mail::to($recipient)->send(new WelcomeEmail($user));
+
+    expect(sentRecipients('To')[0]->getName())->toBe($recipient->getName());
+});
+
 it('only shortens the overlong recipients in cc and bcc', function () {
     $user = User::factory()->create(['email' => 'fine@example.com']);
 

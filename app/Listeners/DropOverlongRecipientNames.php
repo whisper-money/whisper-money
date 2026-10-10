@@ -34,23 +34,30 @@ class DropOverlongRecipientNames
             $header = $event->message->getHeaders()->get($name);
 
             if ($header instanceof MailboxListHeader) {
-                $header->setAddresses(array_map($this->shorten(...), $header->getAddresses()));
+                $header->setAddresses(array_map($this->withoutOverlongName(...), $header->getAddresses()));
             }
         }
 
         return null;
     }
 
-    private function shorten(Address $address): Address
+    private function withoutOverlongName(Address $address): Address
     {
         return $this->isTooLong($address) ? new Address($address->getAddress()) : $address;
     }
 
     /**
-     * Measures the address as it goes out in the header, with the name encoded.
+     * SES reports the Q-encoded header form, but the transport hands it the
+     * quoted `toString()` form, which is longer for plain ASCII names. Either
+     * one crossing the limit is enough.
      */
     private function isTooLong(Address $address): bool
     {
-        return strlen((new MailboxHeader('To', $address))->getBodyAsString()) > self::MAX_ADDRESS_LENGTH;
+        $encodedLength = max(
+            strlen((new MailboxHeader('To', $address))->getBodyAsString()),
+            strlen($address->toString()),
+        );
+
+        return $encodedLength > self::MAX_ADDRESS_LENGTH;
     }
 }
