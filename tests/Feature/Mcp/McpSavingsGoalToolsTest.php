@@ -91,6 +91,8 @@ test('create_savings_goal creates a monthly goal with its first month and an aut
     $this->travelTo(Carbon::parse('2026-10-03'));
     $user = mcpGoalUser();
     $savings = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Savings, 'name' => 'Rainy day', 'currency_code' => 'EUR']);
+    // A transfer in earlier this month: the new rule tags it on the way in.
+    Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $savings->id, 'currency_code' => 'EUR', 'amount' => 25000, 'transaction_date' => '2026-10-01']);
 
     callSavingsGoalTool($user, CreateSavingsGoal::class, [
         'name' => 'Emergency fund',
@@ -101,14 +103,16 @@ test('create_savings_goal creates a monthly goal with its first month and an aut
     ])
         ->assertOk()
         ->assertSee('"kind":"monthly"')
-        ->assertSee('"month":"2026-10"');
+        ->assertSee('"month":"2026-10"')
+        ->assertSee('"tagged_transactions":1');
 
     $goal = $user->savingsGoals()->sole();
+    $rule = AutomationRule::query()->where('user_id', $user->id)->sole();
 
     expect($goal->isMonthly())->toBeTrue()
         ->and($goal->monthly_target_amount)->toBe(30000)
         ->and($goal->periods()->count())->toBe(1)
-        ->and(AutomationRule::query()->where('user_id', $user->id)->count())->toBe(1);
+        ->and($rule->labels()->pluck('labels.id')->all())->toBe([$goal->label_id]);
 });
 
 test('create_savings_goal creates a one-off goal', function () {
@@ -206,17 +210,34 @@ test('update_savings_goal keeps a goal renamed to its own name', function () {
         ->assertOk();
 });
 
-test('update_savings_goal edits a one-off goal without touching its kind', function () {
+test('update_savings_goal edits a one-off goal and clears its date', function () {
     $user = mcpGoalUser();
-    $goal = SavingsGoal::factory()->create(['user_id' => $user->id, 'target_amount' => 100_000]);
+    $goal = SavingsGoal::factory()->create(['user_id' => $user->id, 'target_amount' => 100_000, 'target_date' => '2030-01-01']);
 
     callSavingsGoalTool($user, UpdateSavingsGoal::class, [
         'savings_goal_id' => $goal->id,
         'target_amount' => 200_000,
-        'monthly_target_type' => 'amount',
-    ])->assertOk();
+        'target_date' => null,
+    ])->assertOk()->assertSee('"label_id":"'.$goal->label_id.'"');
 
     expect($goal->fresh())
         ->target_amount->toBe(200_000)
+        ->target_date->toBeNull()
         ->isMonthly()->toBeFalse();
+});
+
+test('a field of the other kind is refused instead of ignored', function () {
+    $user = mcpGoalUser();
+    $oneOff = SavingsGoal::factory()->create(['user_id' => $user->id, 'target_amount' => 100_000]);
+    $monthly = mcpMonthlyGoal($user);
+
+    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $oneOff->id, 'monthly_target_type' => 'amount', 'monthly_target_amount' => 500])
+        ->assertHasErrors()->assertSee('monthly_target_type only applies to monthly goals; this one is one_off.');
+    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $monthly->id, 'target_amount' => 500])
+        ->assertHasErrors()->assertSee('target_amount only applies to one_off goals; this one is monthly.');
+    callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Fund', 'kind' => 'one_off', 'target_amount' => 500, 'auto_tag_account_id' => $oneOff->id])
+        ->assertHasErrors()->assertSee('auto_tag_account_id only applies to monthly goals');
+
+    expect($oneOff->fresh()->isMonthly())->toBeFalse()
+        ->and($monthly->fresh()->target_amount)->toBe(0);
 });

@@ -87,8 +87,12 @@ app is kept in their books.
   or `in_progress`); nothing carries over between months, and a transaction
   tagged late recalculates the month it belongs to. A goal's kind is fixed, and
   editing a monthly target only changes the month in progress and later ones.
-  `create_savings_goal` can also add an automation rule that tags incoming
-  transfers to one of the user's savings accounts (`auto_tag_account_id`).
+  A transaction counts towards a goal once it carries the goal's `label_id`
+  (`label_transaction`). `create_savings_goal` can also add an automation rule
+  that tags incoming transfers to one of the user's savings accounts
+  (`auto_tag_account_id`), including the ones already there since the start of
+  the month; the response reports the rule and how many it tagged. Archiving
+  and deleting a goal happen in the app only.
 - An automation rule categorizes and labels transactions automatically. It only
   runs on transactions created after it, so applying one to the history already
   in the account is a separate, preview-first step: `list_automation_rules` for
