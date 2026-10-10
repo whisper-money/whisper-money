@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccountType;
 use App\Http\Requests\ReorderPlanningItemsRequest;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
@@ -59,6 +60,17 @@ class BudgetController extends Controller
             'budgets' => $budgets,
             'savingsGoals' => SavingsGoal::withStats($oneOffGoals),
             'monthlySavingsGoals' => $this->monthlySavingsGoals->present($monthlyGoals),
+            // Only when the create dialog asks for them: the savings accounts of
+            // the active space, the same set the server validates the auto-tag
+            // account against.
+            'autoTagAccounts' => Inertia::optional(fn () => Account::query()
+                ->forSpace($user->activeSpace())
+                ->where('user_id', $user->id)
+                ->where('type', AccountType::Savings->value)
+                ->whereNull('archived_at')
+                ->with('bank:id,name')
+                ->orderBy('name')
+                ->get(['id', 'name', 'bank_id'])),
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }
