@@ -137,11 +137,13 @@ function StatementSummary({
                         )}
                     </span>
                 )}
-                <span className="text-sm">
-                    {__('Expected on :date', {
-                        date: formatDay(nextPayment.due_date),
-                    })}
-                </span>
+                {nextPayment.amount > 0 && (
+                    <span className="text-sm">
+                        {__('Expected on :date', {
+                            date: formatDay(nextPayment.due_date),
+                        })}
+                    </span>
+                )}
                 <span className="text-xs text-muted-foreground">
                     {nextPayment.is_final
                         ? __(
