@@ -66,7 +66,10 @@ export function PrivacyRevealButton({
                 <TooltipContent side="bottom">{label}</TooltipContent>
             </Tooltip>
             {withSeparator && (
-                <Separator orientation="vertical" className="!h-5" />
+                <Separator
+                    orientation="vertical"
+                    className="data-[orientation=vertical]:h-5"
+                />
             )}
         </>
     );
