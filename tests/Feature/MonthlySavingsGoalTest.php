@@ -6,6 +6,7 @@ use App\Enums\MonthlyTargetType;
 use App\Enums\SavingsGoalKind;
 use App\Models\Account;
 use App\Models\AutomationRule;
+use App\Models\Bank;
 use App\Models\Category;
 use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
@@ -138,6 +139,7 @@ test('a share-of-income target is the average income of the previous three compl
 
     $period = $goal->periods()->first();
     expect($period->resolved_target_amount)->toBe(66000)
+        ->and($period->income_base)->toBe(330000)
         ->and($period->target_rate)->toBe(20.0);
 
     $current = monthlyGoalStats($goal)['current'];
@@ -384,4 +386,66 @@ test('opening the same month twice returns the existing period', function () {
 
     expect($second->id)->toBe($first->id)
         ->and(SavingsGoalPeriod::query()->where('savings_goal_id', $goal->id)->count())->toBe(1);
+});
+
+test('an amount sent without its target type is rejected, not dropped', function () {
+    $user = monthlyGoalUser();
+    $goal = createMonthlyGoal($user);
+
+    $this->actingAs($user)->patch("/savings-goals/{$goal->id}", ['monthly_target_amount' => 45000])
+        ->assertSessionHasErrors('monthly_target_type');
+
+    expect($goal->fresh()->monthly_target_amount)->toBe(30000);
+});
+
+test('the auto-tag rule also matches the bank, so a same-named account elsewhere is left alone', function () {
+    $user = monthlyGoalUser();
+    $bank = Bank::factory()->create(['name' => 'ING']);
+    $savings = monthlyGoalAccount($user, AccountType::Savings, 'Savings');
+    $savings->update(['bank_id' => $bank->id]);
+    $namesake = monthlyGoalAccount($user, AccountType::Checking, 'Savings');
+
+    $salary = Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $namesake->id, 'amount' => 200000, 'transaction_date' => '2026-10-01']);
+
+    $goal = createMonthlyGoal($user, ['auto_tag_account_id' => $savings->id]);
+
+    $rule = AutomationRule::query()->where('user_id', $user->id)->firstOrFail();
+    expect(json_encode($rule->rules_json))->toContain('"bank_name"')
+        ->and($salary->labels()->count())->toBe(0)
+        ->and($goal->label_id)->not->toBeNull();
+});
+
+test('archiving a monthly goal closes its open months and retires its auto-tag rule', function () {
+    $user = monthlyGoalUser();
+    $savings = monthlyGoalAccount($user);
+    $goal = createMonthlyGoal($user, ['auto_tag_account_id' => $savings->id]);
+    $shared = AutomationRule::factory()->create(['user_id' => $user->id, 'action_note' => 'keep me']);
+    $shared->labels()->attach($goal->label_id);
+
+    $this->actingAs($user)->post("/savings-goals/{$goal->id}/archive")->assertRedirect();
+
+    expect($goal->periods()->whereNull('closed_at')->count())->toBe(0)
+        ->and(AutomationRule::query()->where('user_id', $user->id)->pluck('id')->all())->toBe([$shared->id])
+        ->and($shared->labels()->count())->toBe(0);
+});
+
+test('deleting a goal retires its auto-tag rule too', function () {
+    $user = monthlyGoalUser();
+    $goal = createMonthlyGoal($user, ['auto_tag_account_id' => monthlyGoalAccount($user)->id]);
+
+    $this->actingAs($user)->delete("/savings-goals/{$goal->id}")->assertRedirect();
+
+    expect(AutomationRule::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('monthly goals stay out of the one-off planning list', function () {
+    $user = monthlyGoalUser();
+    SavingsGoal::factory()->monthly()->create(['user_id' => $user->id]);
+    $oneOff = SavingsGoal::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)->get('/budgets')
+        ->assertInertia(fn ($page) => $page
+            ->has('savingsGoals', 1)
+            ->where('savingsGoals.0.id', $oneOff->id)
+        );
 });

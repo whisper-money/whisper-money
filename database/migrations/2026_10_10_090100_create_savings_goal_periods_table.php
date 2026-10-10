@@ -21,6 +21,9 @@ return new class extends Migration
             $table->bigInteger('target_amount')->nullable();
             $table->decimal('target_rate', 5, 2)->nullable();
             $table->bigInteger('resolved_target_amount')->nullable();
+            // The income a share-of-income target was worked out from, kept
+            // so "20% of 2,400" can be shown without reverse-engineering it.
+            $table->bigInteger('income_base')->nullable();
             $table->timestamp('closed_at')->nullable();
             $table->timestamp('reminder_notified_at')->nullable();
             $table->timestamps();

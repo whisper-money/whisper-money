@@ -16,9 +16,9 @@ use App\Services\AutomationRuleService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Creating and editing a savings goal, shared by the web controller and the MCP
- * tools so both surfaces create the label, open the first month and carry an
- * edited target the same way.
+ * Creating, editing and retiring a savings goal, shared by the web controller
+ * and the MCP tools so both surfaces create the label, open the first month and
+ * carry an edited target the same way.
  */
 class SavingsGoalService
 {
@@ -28,25 +28,48 @@ class SavingsGoalService
     ) {}
 
     /**
-     * @param  array<string, mixed>  $attributes  name, plus target_amount/initial_amount/target_date for a one-off goal or the monthly_* fields for a monthly one
+     * Create a goal from validated input. A monthly goal opens its first month
+     * and, given `auto_tag_account_id`, a rule that tags transfers into that
+     * savings account.
+     *
+     * @param  array<string, mixed>  $input
      */
-    public function create(User $user, array $attributes): SavingsGoal
+    public function createFromInput(User $user, array $input): SavingsGoal
     {
-        return DB::transaction(function () use ($user, $attributes): SavingsGoal {
-            $label = $user->labels()->create([
-                'name' => $attributes['name'],
-                'color' => LabelColor::Emerald->value,
-                'source' => LabelSource::SavingsGoal,
-            ]);
+        return DB::transaction(function () use ($user, $input): SavingsGoal {
+            if (($input['kind'] ?? null) !== SavingsGoalKind::Monthly->value) {
+                return $this->create($user, [
+                    'name' => $input['name'],
+                    'target_amount' => $input['target_amount'],
+                    // Nullable input coerced to 0 cents: the column is NOT NULL.
+                    'initial_amount' => (int) ($input['initial_amount'] ?? 0),
+                    'target_date' => $input['target_date'] ?? null,
+                ]);
+            }
 
-            $goal = $user->savingsGoals()->create([...$attributes, 'label_id' => $label->id]);
+            $goal = $this->create($user, $this->monthlyAttributes($input));
+            $this->periods->openPeriod($goal, today());
 
-            if ($goal->isMonthly()) {
-                $this->periods->openPeriod($goal, today());
+            if (filled($input['auto_tag_account_id'] ?? null)) {
+                $this->createAutoTagRule($goal, $user->accounts()->findOrFail($input['auto_tag_account_id']));
             }
 
             return $goal;
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function create(User $user, array $attributes): SavingsGoal
+    {
+        $label = $user->labels()->create([
+            'name' => $attributes['name'],
+            'color' => LabelColor::Emerald->value,
+            'source' => LabelSource::SavingsGoal,
+        ]);
+
+        return $user->savingsGoals()->create([...$attributes, 'label_id' => $label->id]);
     }
 
     /**
@@ -56,10 +79,8 @@ class SavingsGoalService
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    public static function monthlyAttributes(array $input, bool $notifyByDefault = true): array
+    private function monthlyAttributes(array $input): array
     {
-        $type = MonthlyTargetType::from($input['monthly_target_type']);
-
         return [
             'name' => $input['name'],
             'kind' => SavingsGoalKind::Monthly,
@@ -67,8 +88,8 @@ class SavingsGoalService
             'target_amount' => 0,
             'initial_amount' => 0,
             'target_date' => null,
-            ...self::monthlyTarget($type, $input),
-            'notify_on_month_end_reminder' => (bool) ($input['notify_on_month_end_reminder'] ?? $notifyByDefault),
+            ...self::monthlyTarget(MonthlyTargetType::from($input['monthly_target_type']), $input),
+            'notify_on_month_end_reminder' => (bool) ($input['notify_on_month_end_reminder'] ?? true),
         ];
     }
 
@@ -94,7 +115,7 @@ class SavingsGoalService
     public function update(SavingsGoal $goal, array $input): SavingsGoal
     {
         DB::transaction(function () use ($goal, $input): void {
-            $goal->update($goal->isMonthly() ? $this->monthlyChanges($goal, $input) : array_intersect_key($input, array_flip(['name', 'target_amount', 'initial_amount', 'target_date'])));
+            $goal->update($goal->isMonthly() ? $this->monthlyChanges($input) : array_intersect_key($input, array_flip(['name', 'target_amount', 'initial_amount', 'target_date'])));
 
             if (array_key_exists('name', $input)) {
                 $goal->label?->update(['name' => $input['name']]);
@@ -112,7 +133,7 @@ class SavingsGoalService
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    private function monthlyChanges(SavingsGoal $goal, array $input): array
+    private function monthlyChanges(array $input): array
     {
         $changes = array_intersect_key($input, array_flip(['name', 'notify_on_month_end_reminder']));
 
@@ -124,23 +145,100 @@ class SavingsGoalService
     }
 
     /**
+     * Archiving is one-way and freezes the goal.
+     *
+     * Its label goes with it — the goal is done, so the label must never be
+     * pickable again, and soft-deleting it takes it out of every picker at once
+     * through the global scope. That also means the saved amount can no longer
+     * be derived (the sum would collapse to the starting balance, and re-tagging
+     * one of those transactions later would move a final figure), so it is
+     * snapshotted here. A monthly goal also closes its open months, so a
+     * share-of-income target stops following the income that comes after.
+     * Everything shares one transaction: a goal that is half-archived has no
+     * meaning.
+     */
+    public function archive(SavingsGoal $goal): void
+    {
+        DB::transaction(function () use ($goal): void {
+            // Read before the archive date is written: savedAmountInCents()
+            // switches to the snapshot the moment the goal counts as archived.
+            $saved = $goal->savedAmountInCents();
+
+            $goal->update([
+                'archived_at' => now(),
+                'archived_saved_amount' => $saved,
+            ]);
+
+            if ($goal->isMonthly()) {
+                $this->periods->closeOpenPeriods($goal);
+            }
+
+            $this->retireLabel($goal);
+        });
+    }
+
+    public function delete(SavingsGoal $goal): void
+    {
+        DB::transaction(function () use ($goal): void {
+            $this->retireLabel($goal);
+            $goal->delete();
+        });
+    }
+
+    /**
+     * Soft-delete the goal's label and take it off every automation rule. A rule
+     * that did nothing but tag the goal — the one a monthly goal can create —
+     * goes too, rather than staying behind in the rules list doing nothing.
+     */
+    private function retireLabel(SavingsGoal $goal): void
+    {
+        if ($goal->label_id === null) {
+            return;
+        }
+
+        AutomationRule::query()
+            ->where('user_id', $goal->user_id)
+            ->whereHas('labels', fn ($query) => $query->whereKey($goal->label_id))
+            ->with('labels')
+            ->get()
+            ->each(function (AutomationRule $rule) use ($goal): void {
+                $rule->labels()->detach($goal->label_id);
+
+                if ($rule->labels->count() === 1 && $rule->action_category_id === null && blank($rule->action_note)) {
+                    $rule->delete();
+                }
+            });
+
+        $goal->label?->delete();
+    }
+
+    /**
      * Tag every transfer that lands in $account with the goal's label from now
      * on, and the ones already in it since the goal's first month, so the
      * month in progress starts with what was already moved.
      *
-     * The rule goes last in the user's order: rules stop at the first match,
-     * and one the user wrote for these same transfers should keep its say.
+     * Rules can only tell accounts apart by name, so the bank's name is matched
+     * too: a checking account somewhere else that happens to share the name
+     * would otherwise count its income as a contribution.
+     *
+     * The rule goes last in the user's order. Rules stop at the first match,
+     * and putting this one first would take those transfers away from a rule
+     * that already categorizes them, leaving them uncategorized income. When
+     * such a rule exists the transfers have to be linked from the goal's page.
      */
-    public function createAutoTagRule(SavingsGoal $goal, Account $account): AutomationRule
+    private function createAutoTagRule(SavingsGoal $goal, Account $account): AutomationRule
     {
+        $account->loadMissing('bank');
+
         $rule = $goal->user->automationRules()->create([
             'title' => __('Contributions to :goal', ['goal' => $goal->name]),
             'priority' => (int) $goal->user->automationRules()->max('priority') + 1,
             'origin' => RuleOrigin::User->value,
-            'rules_json' => ['and' => [
+            'rules_json' => ['and' => array_values(array_filter([
                 ['==' => [['var' => 'account_name'], mb_strtolower(trim($account->name))]],
+                $account->bank ? ['==' => [['var' => 'bank_name'], mb_strtolower($account->bank->name)]] : null,
                 ['>' => [['var' => 'amount'], 0]],
-            ]],
+            ]))],
         ]);
 
         $rule->labels()->sync([$goal->label_id]);

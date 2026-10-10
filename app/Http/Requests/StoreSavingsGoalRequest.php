@@ -39,7 +39,7 @@ class StoreSavingsGoalRequest extends FormRequest
         if ($this->isMonthly()) {
             return [
                 ...$rules,
-                ...$this->monthlyTargetRules('required'),
+                ...$this->monthlyTargetRules(creating: true),
                 // Only a savings account: on any other type an incoming transfer
                 // counts against the goal, not towards it.
                 'auto_tag_account_id' => ['nullable', 'uuid', $this->userOwnedAccountOfType(AccountType::Savings)],

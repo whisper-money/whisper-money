@@ -12,13 +12,16 @@ use Illuminate\Validation\Rule;
 trait ValidatesMonthlySavingsTarget
 {
     /**
-     * @param  string  $presence  'required' when creating, 'sometimes' when editing
+     * @param  bool  $creating  a new goal needs a target; an edit may leave it alone
      * @return array<string, array<mixed>>
      */
-    protected function monthlyTargetRules(string $presence): array
+    protected function monthlyTargetRules(bool $creating): array
     {
         return [
-            'monthly_target_type' => [$presence, Rule::enum(MonthlyTargetType::class)],
+            // On an edit it is still required alongside either value, so an
+            // amount sent without saying what kind of target it is fails
+            // instead of being quietly dropped.
+            'monthly_target_type' => [$creating ? 'required' : 'required_with:monthly_target_amount,monthly_target_rate', Rule::enum(MonthlyTargetType::class)],
             'monthly_target_amount' => ['nullable', 'required_if:monthly_target_type,'.MonthlyTargetType::Amount->value, 'integer', 'min:1'],
             // Two decimals, as stored. A share above 100% would ask for more than
             // came in.
