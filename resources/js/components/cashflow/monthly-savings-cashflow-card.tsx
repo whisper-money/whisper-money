@@ -1,6 +1,7 @@
 import { monthlySavings } from '@/actions/App/Http/Controllers/Api/CashflowAnalyticsController';
 import { MonthStatusLegend } from '@/components/savings-goals/monthly/month-status';
 import {
+    AmountToGo,
     SavedOfTarget,
     SignedAmount,
 } from '@/components/savings-goals/monthly/monthly-goal-figures';
@@ -45,7 +46,13 @@ export function MonthlySavingsCashflowCard({
 }: Props) {
     const locale = useLocale();
     const key = monthKey(month);
-    const [totals, setTotals] = useState<MonthlySavingsTotals | null>(null);
+    // Kept with the month it answers for, so stepping to another month never
+    // shows the last one's figures against the new month's net while it loads.
+    const [loaded, setLoaded] = useState<{
+        key: string;
+        totals: MonthlySavingsTotals | null;
+    } | null>(null);
+    const totals = loaded?.key === key ? loaded.totals : null;
 
     useEffect(() => {
         let current = true;
@@ -53,10 +60,13 @@ export function MonthlySavingsCashflowCard({
         fetchJson<{ data: MonthlySavingsTotals | null }>(
             monthlySavings.url({ query: { month: key } }),
         )
-            .then((response) => current && setTotals(response.data))
+            .then(
+                (response) =>
+                    current && setLoaded({ key, totals: response.data }),
+            )
             // The card is a side note on this page; a failed load just
             // leaves it out rather than taking the page's error banner.
-            .catch(() => current && setTotals(null));
+            .catch(() => current && setLoaded({ key, totals: null }));
 
         return () => {
             current = false;
@@ -67,8 +77,13 @@ export function MonthlySavingsCashflowCard({
         return null;
     }
 
+    const inProgress = totals.status === 'in_progress';
+    // Tagged contributions are not a slice of net cashflow by construction (a
+    // transfer in, a withdrawal tagged by hand), so a share outside 0-100 says
+    // nothing true and is left out.
     const share =
         net !== null && net > 0 ? Math.round((totals.saved / net) * 100) : null;
+    const showShare = share !== null && share >= 0 && share <= 100;
 
     return (
         <Card>
@@ -92,16 +107,31 @@ export function MonthlySavingsCashflowCard({
                         currencyCode={currencyCode}
                     />
                     <span className="text-sm">
-                        <SignedAmount
-                            amount={totals.difference}
-                            currencyCode={currencyCode}
-                        />{' '}
-                        <span className="text-muted-foreground">
-                            {__('against the plan')}
-                        </span>
+                        {inProgress ? (
+                            <span className="text-muted-foreground">
+                                {totals.difference < 0 ? (
+                                    <AmountToGo
+                                        amount={-totals.difference}
+                                        currencyCode={currencyCode}
+                                    />
+                                ) : (
+                                    __('Target met')
+                                )}
+                            </span>
+                        ) : (
+                            <>
+                                <SignedAmount
+                                    amount={totals.difference}
+                                    currencyCode={currencyCode}
+                                />{' '}
+                                <span className="text-muted-foreground">
+                                    {__('against the plan')}
+                                </span>
+                            </>
+                        )}
                     </span>
                     <div className="flex flex-col gap-1.5 border-t pt-3 text-sm text-muted-foreground">
-                        {share !== null && (
+                        {showShare && (
                             <span>
                                 {__(
                                     ":percent% of the month's net cashflow went to monthly goals",
@@ -112,16 +142,24 @@ export function MonthlySavingsCashflowCard({
                             </span>
                         )}
                         <span>
-                            {__(':met of :total goals met', {
-                                met: totals.met,
-                                total: totals.total,
-                            })}
+                            {__(
+                                inProgress
+                                    ? ':met of :total goals reached so far'
+                                    : ':met of :total goals met',
+                                { met: totals.met, total: totals.total },
+                            )}
                         </span>
                     </div>
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
                     <div className="flex flex-wrap justify-end gap-4">
-                        <MonthStatusLegend statuses={['met', 'missed']} />
+                        <MonthStatusLegend
+                            statuses={
+                                inProgress
+                                    ? ['met', 'missed', 'in_progress']
+                                    : ['met', 'missed']
+                            }
+                        />
                         <TargetLineLegend label={__('Sum of targets')} />
                     </div>
                     <MonthlySavingsBarChart
