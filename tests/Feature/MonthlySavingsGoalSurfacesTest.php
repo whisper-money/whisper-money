@@ -294,3 +294,48 @@ test('the cashflow card only adds up the months it shows', function () {
     expect(app(MonthlySavingsGoalTotals::class)->forMonth($user, Carbon::parse('2026-09-01'), historyMonths: 1)['history'])
         ->toHaveCount(1);
 });
+
+test('the dashboard gets this month and the last for each goal, nothing more', function () {
+    [$user, $fund] = surfacesSeptember();
+
+    $response = $this->actingAs($user)->withoutVite()->get(route('dashboard'), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Partial-Component' => 'dashboard',
+        'X-Inertia-Partial-Data' => 'monthlySavingsGoals',
+    ])->assertOk();
+
+    expect($response->json('props.monthlySavingsGoals.0'))->toHaveKeys(['id', 'name', 'monthly'])
+        ->not->toHaveKeys(['user', 'periods', 'label'])
+        ->and($response->json('props.monthlySavingsGoals.0.monthly'))->toHaveKeys(['current', 'history'])
+        ->and(array_column($response->json('props.monthlySavingsGoals.0.monthly.history'), 'month'))->toBe(['2026-09'])
+        ->and($response->json('props.monthlySavingsGoals.0.monthly.current.month'))->toBe('2026-10');
+});
+
+test('the cashflow card keeps the history for a month no goal was judged in', function () {
+    [$user] = surfacesSeptember();
+
+    $this->travelTo(Carbon::parse('2027-01-10'));
+
+    // Archived in October: nothing is judged after September.
+    SavingsGoal::query()->where('user_id', $user->id)->get()
+        ->each(fn (SavingsGoal $goal) => $goal->forceFill(['archived_at' => '2026-10-31 12:00:00'])->save());
+
+    $this->actingAs($user)->getJson('/api/cashflow/monthly-savings?month=2026-12')
+        ->assertOk()
+        ->assertJsonPath('data.month', '2026-12')
+        ->assertJsonPath('data.total', 0)
+        ->assertJsonPath('data.status', null)
+        ->assertJsonPath('data.history.0.month', '2026-08');
+});
+
+test('a month whose every target follows an income not yet in is pending, not reached', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = surfacesUser();
+    surfacesGoal($user, ['monthly_target_type' => 'income_rate', 'monthly_target_amount' => null, 'monthly_target_rate' => 20]);
+
+    $this->actingAs($user)->getJson('/api/cashflow/monthly-savings?month=2026-10')
+        ->assertOk()
+        ->assertJsonPath('data.target', 0)
+        ->assertJsonPath('data.target_pending', true)
+        ->assertJsonPath('data.met', 0);
+});
