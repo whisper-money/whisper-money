@@ -91,9 +91,10 @@ judged afresh every month with no carry-over. Offer `auto_tag_account_id` when
 the money lands in a savings account, or contributions only count once tagged.
 `list_savings_goals` gives each month's target, saved and difference; a kind
 cannot change later, and a new target applies from the month in progress. A
-month with status `partial` (created in its last 5 days, or archived during it)
-has no verdict and stays out of months met, the streak and the cumulative
-figures — mention what was saved, not whether it was met.
+month with status `partial` (created in its last 5 days) or `archived` (archived
+during it) has no verdict and stays out of months met, the streak and the
+cumulative figures — mention what was saved, not whether it was met. An account
+already auto-tagged by another running monthly goal is refused.
 
 ## What bites
 
