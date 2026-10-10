@@ -293,7 +293,7 @@
       "justifications": {
         "read_only_justification": "Writes: it creates a savings goal and the label its contributions are tagged with, and, when asked, an automation rule that tags incoming transfers to a chosen savings account.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Additive and reversible: it only adds a goal, a label and optionally a rule plus that label on matching transfers; nothing existing is overwritten, and all of it can be edited or removed afterwards."
+        "destructive_justification": "Additive and reversible: it only adds a goal, a label and optionally a rule plus that label on matching transfers, including the ones already in the account since the start of the month; nothing existing is overwritten, and all of it can be edited or removed afterwards."
       }
     },
     "update_savings_goal": {
