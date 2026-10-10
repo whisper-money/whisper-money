@@ -51,9 +51,22 @@ class UpdateSavingsGoal extends WriteTool
 
         $validated = $request->validate([
             'name' => $this->savingsGoalNameRules($user->id, creating: false, ownLabelId: $goal->label_id),
+            // Refused rather than ignored, like the other fields this goal
+            // does not take: the agent must not report a switch that did not
+            // happen.
+            'kind' => ['prohibited'],
             ...$otherKindRules,
             ...($goal->isMonthly() ? $this->monthlyTargetRules(creating: false) : $this->oneOffTargetRules(creating: false)),
-        ], $messages);
+        ], [
+            ...$messages,
+            'kind.prohibited' => 'A goal\'s kind is fixed once created. To switch, create a new goal of the other kind.',
+        ]);
+
+        if ($validated === []) {
+            throw ValidationException::withMessages([
+                'savings_goal_id' => 'Nothing to change: pass at least one field to update.',
+            ]);
+        }
 
         app(SavingsGoalService::class)->update($goal, $validated);
 

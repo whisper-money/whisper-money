@@ -113,5 +113,15 @@ class CreateSavingsGoal extends WriteTool
                 'auto_tag_account_id' => "Account {$account->id} is not a savings account. Call list_accounts and pick one of type savings.",
             ]);
         }
+
+        // Rules stop at the first match: a second goal on the same account
+        // would never see a transfer.
+        $owner = SavingsGoal::autoTaggingAccount($account->id);
+
+        if ($owner !== null) {
+            throw ValidationException::withMessages([
+                'auto_tag_account_id' => "Account {$account->id} already feeds the running monthly goal \"{$owner->name}\" ({$owner->id}). Pick another savings account, or leave auto_tag_account_id out and link contributions with label_transaction.",
+            ]);
+        }
     }
 }

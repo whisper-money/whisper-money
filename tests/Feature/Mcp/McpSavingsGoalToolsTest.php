@@ -324,3 +324,28 @@ test('list_savings_goals shows a month the daily command has not opened, without
 
     expect($goal->periods()->count())->toBe(1);
 });
+
+test('update_savings_goal refuses a kind and an empty update instead of reporting success', function () {
+    $user = mcpGoalUser();
+    $goal = mcpMonthlyGoal($user, ['name' => 'Fund']);
+
+    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $goal->id, 'kind' => 'one_off'])
+        ->assertHasErrors()->assertSee('kind is fixed once created');
+    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $goal->id])
+        ->assertHasErrors()->assertSee('Nothing to change');
+
+    expect($goal->fresh()->isMonthly())->toBeTrue();
+});
+
+test('create_savings_goal refuses an account another running goal already auto-tags', function () {
+    $this->travelTo(Carbon::parse('2026-10-03'));
+    $user = mcpGoalUser();
+    $savings = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Savings, 'currency_code' => 'EUR']);
+    $arguments = ['kind' => 'monthly', 'monthly_target_type' => 'amount', 'monthly_target_amount' => 10000, 'auto_tag_account_id' => $savings->id];
+
+    callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Emergency fund', ...$arguments])->assertOk();
+    callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Japan trip', ...$arguments])
+        ->assertHasErrors()->assertSee('already feeds the running monthly goal')->assertSee('Emergency fund');
+
+    expect($user->savingsGoals()->count())->toBe(1);
+});
