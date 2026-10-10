@@ -76,7 +76,7 @@ function createMonthlyGoal(User $user, array $attributes = []): SavingsGoal
         ...$attributes,
     ])->assertRedirect()->assertSessionHasNoErrors();
 
-    return SavingsGoal::query()->where('user_id', $user->id)->latest()->firstOrFail();
+    return SavingsGoal::query()->where('user_id', $user->id)->where('name', $attributes['name'] ?? 'Emergency fund')->firstOrFail();
 }
 
 beforeEach(fn () => $this->travelTo(Carbon::parse('2026-10-10 12:00:00')));
@@ -358,6 +358,20 @@ test('creating a monthly goal can add a rule that tags transfers into a savings 
         ->and($lastMonth->labels()->count())->toBe(0)
         ->and($elsewhere->labels()->count())->toBe(0)
         ->and(monthlyGoalStats($goal)['current']['saved'])->toBe(10000);
+});
+
+test('the auto-tag backfill leaves transfers another goal already counts', function () {
+    $user = monthlyGoalUser();
+    $savings = monthlyGoalAccount($user);
+    $other = SavingsGoal::factory()->monthly()->create(['user_id' => $user->id]);
+    $taken = Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $savings->id, 'amount' => 10000, 'transaction_date' => '2026-10-02']);
+    $taken->labels()->attach($other->label_id);
+    $free = Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $savings->id, 'amount' => 5000, 'transaction_date' => '2026-10-03']);
+
+    $goal = createMonthlyGoal($user, ['auto_tag_account_id' => $savings->id]);
+
+    expect($taken->labels()->pluck('labels.id')->all())->toBe([$other->label_id])
+        ->and($free->labels()->pluck('labels.id')->all())->toBe([$goal->label_id]);
 });
 
 test('the auto-tag rule only takes the user\'s own savings accounts', function (Closure $account) {
