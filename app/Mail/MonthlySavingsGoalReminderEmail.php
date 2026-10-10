@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
-use App\Models\SavingsGoal;
 use App\Models\User;
+use App\Services\SavingsGoals\MonthlySavingsGoalNotifier;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,23 +13,20 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 /**
- * Sent once per month, a few days before it ends, when a monthly savings goal
- * is still short of its target. It carries no amount anywhere — only how far
- * along the month is, as a share of the target — for the same reason the
- * monthly summary email carries none: an inbox is not the app.
+ * Sent once per month, a few days before it ends, listing every monthly
+ * savings goal still short of its target. It carries no amount anywhere —
+ * only how far along each goal is, as a share of its target — for the same
+ * reason the monthly summary email carries none: an inbox is not the app.
+ *
+ * The goals' periods were claimed before this was queued; if delivery gives
+ * up for good, the claims are released so the next run sends it again.
  */
 class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
-
-    /**
-     * A goal deleted before the email left has nothing left to remind about.
-     *
-     * @var bool
-     */
-    public $deleteWhenMissingModels = true;
 
     /**
      * @var int
@@ -43,10 +40,12 @@ class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
 
     public function __construct(
         public User $user,
-        public SavingsGoal $goal,
         public string $month,
-        public int $percent,
+        /** @var list<array{name: string, percent: int}> */
+        public array $goals,
         public int $daysLeft,
+        /** @var list<string> */
+        public array $periodIds,
     ) {
         $this->onQueue('emails');
     }
@@ -58,8 +57,7 @@ class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
                 config('mail.from.address', 'no-reply@whisper.money'),
                 config('mail.from.name', 'Whisper Money'),
             ),
-            subject: trans_choice('{1}:goal: 1 day left to reach this month\'s target|[2,*]:goal: :days days left to reach this month\'s target', $this->daysLeft, [
-                'goal' => $this->goal->name,
+            subject: trans_choice('{1}1 day left to reach this month\'s savings targets|[2,*]:days days left to reach this month\'s savings targets', $this->daysLeft, [
                 'days' => $this->daysLeft,
             ]),
         );
@@ -71,14 +69,22 @@ class MonthlySavingsGoalReminderEmail extends Mailable implements ShouldQueue
             markdown: 'mail.monthly-savings-goal-reminder',
             with: [
                 'userName' => $this->user->name,
-                'goal' => $this->goal,
+                'goals' => $this->goals,
                 'monthName' => Carbon::createFromFormat('Y-m-d', $this->month.'-01')
                     ->locale(app()->getLocale())
                     ->isoFormat('MMMM'),
                 'daysLeft' => $this->daysLeft,
-                'percent' => $this->percent,
+
             ],
         );
+    }
+
+    /**
+     * Delivery gave up: hand the goals back to the next run.
+     */
+    public function failed(Throwable $exception): void
+    {
+        MonthlySavingsGoalNotifier::release($this->periodIds, 'reminder_notified_at');
     }
 
     /**
