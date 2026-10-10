@@ -161,6 +161,8 @@ class AnalysisWriter
         'invested.contributed', 'invested.value', 'invested.gain',
         'budgets.overspent.*.over_by',
         'goal.saved', 'goal.target', 'goal.monthly_pace',
+        'monthly_goals.saved', 'monthly_goals.target',
+        'monthly_goals.goals.*.saved', 'monthly_goals.goals.*.target', 'monthly_goals.goals.*.difference',
         'todos.uncategorised.amount',
     ];
 

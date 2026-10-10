@@ -2,7 +2,7 @@ import { MonthlySavingsMonth, SavingsGoal } from '@/types/savings-goal';
 import { describe, expect, it } from 'vitest';
 import {
     aggregateMonthlyGoals,
-    monthProgressPercent,
+    isTargetUnknown,
     monthStrip,
     progressPercent,
     startsLate,
@@ -59,30 +59,24 @@ describe('monthStrip', () => {
 });
 
 describe('aggregateMonthlyGoals', () => {
-    it('adds up the current month and counts last month only for goals that had one', () => {
-        const aggregate = aggregateMonthlyGoals(
-            [
-                goal([
-                    month('2026-09', 'met'),
-                    month('2026-10', 'in_progress', 12000, 30000),
-                ]),
-                goal([
-                    month('2026-09', 'missed'),
-                    month('2026-10', 'in_progress', 30000, 48000),
-                ]),
-                goal([month('2026-10', 'in_progress', 0, 15000)]),
-            ],
-            '2026-10',
-        );
+    it('adds up the current month across running goals', () => {
+        const aggregate = aggregateMonthlyGoals([
+            goal([
+                month('2026-09', 'met'),
+                month('2026-10', 'in_progress', 12000, 30000),
+            ]),
+            goal([
+                month('2026-09', 'missed'),
+                month('2026-10', 'in_progress', 30000, 48000),
+            ]),
+            goal([month('2026-10', 'in_progress', 0, 15000)]),
+        ]);
 
         expect(aggregate).toEqual({
             saved: 42000,
             target: 93000,
             allPartial: false,
             daysLeft: 22,
-            previousMonth: '2026-09',
-            previousMet: 1,
-            previousTotal: 2,
         });
     });
 });
@@ -97,7 +91,7 @@ describe('progressPercent', () => {
 });
 
 describe('aggregateMonthlyGoals with partial months', () => {
-    it('leaves partial months out of this month and last month alike', () => {
+    it('leaves partial months out of this month', () => {
         const partialNow = {
             monthly: {
                 current: {
@@ -113,14 +107,10 @@ describe('aggregateMonthlyGoals with partial months', () => {
             month('2026-10', 'in_progress', 12000),
         ]);
 
-        const aggregate = aggregateMonthlyGoals(
-            [partialNow, partialBefore],
-            '2026-10',
-        );
+        const aggregate = aggregateMonthlyGoals([partialNow, partialBefore]);
 
         expect(aggregate.saved).toBe(12000);
         expect(aggregate.target).toBe(30000);
-        expect(aggregate.previousTotal).toBe(0);
     });
 });
 
@@ -137,22 +127,20 @@ describe('partial and unknown targets', () => {
             },
         } as unknown as SavingsGoal;
 
-        expect(aggregateMonthlyGoals([partialOnly], '2026-10').allPartial).toBe(
-            true,
-        );
+        expect(aggregateMonthlyGoals([partialOnly]).allPartial).toBe(true);
     });
 
-    it('draws no bar for a partial month or a live share still at 0', () => {
-        expect(monthProgressPercent(month('2026-10', 'partial', 5000))).toBe(0);
+    it('knows a target is unknown in a partial month or a live share still at 0', () => {
+        expect(isTargetUnknown(month('2026-10', 'partial', 5000))).toBe(true);
         expect(
-            monthProgressPercent({
+            isTargetUnknown({
                 ...month('2026-10', 'in_progress', 0, 0),
                 is_live_target: true,
             }),
-        ).toBe(0);
+        ).toBe(true);
         expect(
-            monthProgressPercent(month('2026-10', 'in_progress', 15000, 30000)),
-        ).toBe(50);
+            isTargetUnknown(month('2026-10', 'in_progress', 15000, 30000)),
+        ).toBe(false);
     });
 
     it('knows when a goal created today starts with a partial month', () => {

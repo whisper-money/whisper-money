@@ -34,7 +34,7 @@ import {
 } from '@/lib/planning-items';
 import { BreadcrumbItem } from '@/types';
 import { Budget } from '@/types/budget';
-import { SavingsGoal } from '@/types/savings-goal';
+import { MonthlyVerdicts, SavingsGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ChevronDown, ChevronRight, Pencil, Plus } from 'lucide-react';
@@ -60,6 +60,8 @@ interface Props {
     savingsGoals?: SavingsGoal[];
     /** Monthly goals, archived ones included; they live outside the reorderable list. */
     monthlySavingsGoals?: SavingsGoal[];
+    /** How every monthly goal, archived ones included, did last month. */
+    monthlySavingsLastMonth?: MonthlyVerdicts | null;
     /** The user's default for a new monthly goal's month-end reminder. */
     savingsGoalReminderDefault?: boolean;
     currencyCode: string;
@@ -69,6 +71,7 @@ export default function BudgetsIndex({
     budgets,
     savingsGoals = [],
     monthlySavingsGoals = [],
+    monthlySavingsLastMonth = null,
     savingsGoalReminderDefault = true,
     currencyCode,
 }: Props) {
@@ -245,6 +248,7 @@ export default function BudgetsIndex({
                 {filter !== 'budgets' && activeMonthlyGoals.length > 0 && (
                     <MonthlySavingsSection
                         goals={activeMonthlyGoals}
+                        lastMonth={monthlySavingsLastMonth}
                         currencyCode={currencyCode}
                     />
                 )}

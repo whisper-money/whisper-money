@@ -50,6 +50,28 @@ export interface MonthlySavingsMonth {
     status: MonthlySavingsStatus;
 }
 
+/**
+ * What a page needs to add monthly goals up for the month in progress. A
+ * full goal fits it, and so does the dashboard's slimmer row.
+ */
+export interface MonthlyGoalSnapshot {
+    monthly?: Pick<MonthlySavingsStats, 'current'>;
+}
+
+/** How the goals did in one month: met of judged, archived goals included. */
+export interface MonthlyVerdicts {
+    /** YYYY-MM */
+    month: string;
+    met: number;
+    total: number;
+}
+
+/** A running goal as the dashboard card gets it: this month only. */
+export interface DashboardMonthlyGoal extends MonthlyGoalSnapshot {
+    id: UUID;
+    name: string;
+}
+
 /** A savings account the auto-tag option can point at. */
 export interface AutoTagAccount {
     id: UUID;
