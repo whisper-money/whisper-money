@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * from the goal's tagged transactions, so a transaction that syncs late still
  * lands in the month it belongs to.
  *
+ * @property string $id
  * @property Carbon $month
  * @property MonthlyTargetType $target_type
  * @property int|null $target_amount
