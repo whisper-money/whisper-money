@@ -13,6 +13,7 @@ use App\Models\BankingConnection;
 use App\Models\LoanDetail;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
+use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\LoanAmortizationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +29,7 @@ class AccountController extends Controller
     public function __construct(
         private AccountMetricsService $accountMetricsService,
         private LoanAmortizationService $loanAmortizationService,
+        private CreditCardStatementService $creditCardStatementService,
     ) {}
 
     public function index(Request $request): Response
@@ -182,6 +184,8 @@ class AccountController extends Controller
                 $data['loan_detail'] = $this->loanDetailData($account->loanDetail, $account);
             }
         }
+
+        $data = [...$data, ...$this->creditCardStatementService->presentFor($account, $request->user())];
 
         return Inertia::render('Accounts/Show', [
             'account' => $data,

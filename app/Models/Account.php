@@ -220,6 +220,12 @@ class Account extends Model
         return $this->hasOne(LoanDetail::class);
     }
 
+    /** @return HasOne<CreditCardDetail, $this> */
+    public function creditCardDetail(): HasOne
+    {
+        return $this->hasOne(CreditCardDetail::class);
+    }
+
     /**
      * Whether the bank sync already holds transactions dated before $date for
      * this account, which is what makes a pagination resume marker there pure

@@ -106,6 +106,27 @@ export interface LoanDetail {
     remaining_months: number | null;
 }
 
+/** The statement dates set on a credit card: the anchor its cycles repeat from. */
+export interface CreditCardDetail {
+    statement_closing_date: string;
+    payment_due_date: string;
+}
+
+/** One statement cycle and what it adds up to, as an amount to pay. */
+export interface CreditCardStatementCycle {
+    period_from: string;
+    closing_date: string;
+    due_date: string;
+    amount: number;
+}
+
+/** The server's estimate of what a credit card charges next. */
+export interface CreditCardStatement {
+    /** `is_final` once the statement has closed and its amount no longer moves. */
+    next_payment: CreditCardStatementCycle & { is_final: boolean };
+    current_cycle: CreditCardStatementCycle;
+}
+
 export function formatPropertyType(type: PropertyType): string {
     const typeMap: Record<PropertyType, string> = {
         residential: __('Residential'),

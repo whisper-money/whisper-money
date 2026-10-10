@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\ComparisonController;
+use App\Http\Controllers\CreditCardDetailController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EmailUnsubscribeController;
@@ -262,6 +263,8 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');
     Route::patch('accounts/{account}/real-estate-detail', [RealEstateDetailController::class, 'update'])->name('accounts.real-estate-detail.update');
     Route::patch('accounts/{account}/loan-detail', [LoanDetailController::class, 'update'])->name('accounts.loan-detail.update');
+    Route::patch('accounts/{account}/credit-card-detail', [CreditCardDetailController::class, 'update'])->name('accounts.credit-card-detail.update');
+    Route::delete('accounts/{account}/credit-card-detail', [CreditCardDetailController::class, 'destroy'])->name('accounts.credit-card-detail.destroy');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('transactions/categorize', [TransactionController::class, 'categorize'])->name('transactions.categorize');

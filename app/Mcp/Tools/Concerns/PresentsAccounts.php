@@ -3,6 +3,8 @@
 namespace App\Mcp\Tools\Concerns;
 
 use App\Models\Account;
+use App\Models\User;
+use App\Services\CreditCards\CreditCardStatementService;
 
 trait PresentsAccounts
 {
@@ -13,7 +15,7 @@ trait PresentsAccounts
      *
      * @return array<string, mixed>
      */
-    protected function presentAccount(Account $account): array
+    protected function presentAccount(Account $account, User $user): array
     {
         return [
             'id' => $account->id,
@@ -23,6 +25,10 @@ trait PresentsAccounts
             'bank' => $account->bank?->name,
             'is_connected' => $account->isConnected(),
             'ownership_percentage' => $account->ownership_percentage,
+            // Statement dates and the next payment they estimate, on a credit
+            // card for a user who has the feature. Reads `creditCardDetail`, so
+            // eager-load it when presenting several accounts.
+            ...app(CreditCardStatementService::class)->presentFor($account, $user),
         ];
     }
 }

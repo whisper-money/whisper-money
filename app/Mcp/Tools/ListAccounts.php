@@ -33,10 +33,10 @@ class ListAccounts extends McpTool
 
         $accounts = Account::query()
             ->forSpace($space)
-            ->with('bank:id,name')
+            ->with(['bank:id,name', 'creditCardDetail'])
             ->orderBy('name')
             ->get()
-            ->map(fn (Account $account): array => $this->presentAccount($account));
+            ->map(fn (Account $account): array => $this->presentAccount($account, $user));
 
         return $this->json([
             'space_id' => $space->id,

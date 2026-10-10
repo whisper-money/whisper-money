@@ -12,6 +12,7 @@ import {
 } from '@/components/accounts/account-balance-chart';
 import { ArchiveAccountDialog } from '@/components/accounts/archive-account-dialog';
 import { BalancesModal } from '@/components/accounts/balances-modal';
+import { CreditCardStatementCard } from '@/components/accounts/credit-card-statement-card';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { EditLoanDetailDialog } from '@/components/accounts/edit-loan-detail-dialog';
 import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
@@ -63,6 +64,8 @@ import {
     PROPERTY_TYPES,
     supportsInvestedAmount,
     type AreaUnit,
+    type CreditCardDetail,
+    type CreditCardStatement,
     type LoanDetail,
     type PropertyType,
     type RealEstateDetail,
@@ -89,6 +92,8 @@ interface AccountWithDetails extends Account {
     available_loan_accounts?: Account[];
     loan_detail?: LoanDetail;
     linked_loan_account?: Account;
+    credit_card_detail?: CreditCardDetail | null;
+    credit_card_statement?: CreditCardStatement | null;
 }
 
 interface Props {
@@ -155,8 +160,14 @@ export default function AccountShow({
         setCreateTransactionOpen(true);
     }
 
+    const isCreditCard = account.type === 'credit_card';
+
     function handleTransactionCreated() {
-        router.reload({ only: ['transactions'] });
+        // A credit card's statement estimate is computed on the server from
+        // the ledger, so it is refreshed along with it.
+        router.reload({
+            only: isCreditCard ? ['transactions', 'account'] : ['transactions'],
+        });
         handleBalanceUpdated();
     }
 
@@ -408,6 +419,15 @@ export default function AccountShow({
                         account={account}
                         isEditing={editingLoanDetails}
                         onEditToggle={setEditingLoanDetails}
+                    />
+                )}
+
+                {isCreditCard && (
+                    <CreditCardStatementCard
+                        accountId={account.id}
+                        currencyCode={account.currency_code}
+                        detail={account.credit_card_detail ?? null}
+                        statement={account.credit_card_statement ?? null}
                     />
                 )}
 
