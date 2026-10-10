@@ -214,8 +214,9 @@ class SavingsGoalService
 
     /**
      * Tag every transfer that lands in $account with the goal's label from now
-     * on, and the ones already in it since the goal's first month, so the
-     * month in progress starts with what was already moved.
+     * on, and the ones already in it since the goal's first month that no
+     * other goal counts, so the month in progress starts with what was
+     * already moved.
      *
      * Rules can only tell accounts apart by name, so the bank's name is matched
      * too: a checking account somewhere else that happens to share the name
@@ -243,10 +244,13 @@ class SavingsGoalService
 
         $rule->labels()->sync([$goal->label_id]);
 
+        // A transfer already counting for another goal stays with it: one euro
+        // set aside cannot fill two goals.
         $existing = Transaction::query()
             ->where('account_id', $account->id)
             ->where('amount', '>', 0)
             ->where('transaction_date', '>=', $goal->created_at->copy()->startOfMonth()->toDateString())
+            ->whereDoesntHave('labels', fn ($query) => $query->where('source', LabelSource::SavingsGoal->value))
             ->get()
             ->filter(fn (Transaction $transaction): bool => $this->rules->ruleMatches($rule, $transaction));
 
