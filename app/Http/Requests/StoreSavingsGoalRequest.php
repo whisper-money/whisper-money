@@ -38,11 +38,15 @@ class StoreSavingsGoalRequest extends FormRequest
             return [
                 ...$rules,
                 ...$this->monthlyTargetRules(creating: true),
+                'auto_tag' => ['sometimes', 'boolean'],
                 // Only a savings account: on any other type an incoming transfer
                 // counts against the goal, not towards it. And one of the space
                 // the goal is created in, where its rule and label live.
                 'auto_tag_account_id' => [
                     'nullable',
+                    // Asked for, the rule needs an account: never create the
+                    // goal without the rule the user ticked.
+                    'required_if_accepted:auto_tag',
                     'uuid',
                     $this->userOwnedAccountOfType(AccountType::Savings)->where('space_id', $this->user()->activeSpace()->id),
                     // Rules stop at the first match: a second goal on the
@@ -72,8 +76,10 @@ class StoreSavingsGoalRequest extends FormRequest
     public function messages(): array
     {
         return [
+            ...$this->amountBoundMessages(),
             'name.unique' => __('You already have a label or goal with this name.'),
             'auto_tag_account_id.exists' => __('Pick one of your savings accounts.'),
+            'auto_tag_account_id.required_if_accepted' => __('Pick a savings account to tag contributions from, or untick automatic tagging.'),
             'target_date.date_format' => __('Please enter a valid target date.'),
         ];
     }
