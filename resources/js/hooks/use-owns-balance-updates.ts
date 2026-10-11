@@ -4,6 +4,7 @@ import { usePage } from '@inertiajs/react';
 import { useCallback, useMemo } from 'react';
 
 type BalanceAccount = Pick<Account, 'type' | 'banking_connection_id'>;
+type IdentifiedBalanceAccount = BalanceAccount & Pick<Account, 'id'>;
 
 /**
  * Whether a transaction may move this account's balance. A connected
@@ -40,7 +41,7 @@ export function useOwnsBalanceUpdates(): (account: BalanceAccount) => boolean {
  * move, for the delete flows that offer to update it.
  */
 export function useBalanceOwningAccountIds(
-    accounts: BalanceAccount[] & { id: string }[],
+    accounts: IdentifiedBalanceAccount[],
 ): Set<string> {
     const ownsBalance = useOwnsBalanceUpdates();
 
