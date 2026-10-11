@@ -57,6 +57,7 @@ class UpdateSavingsGoalRequest extends FormRequest
     public function messages(): array
     {
         return [
+            ...$this->amountBoundMessages(),
             'name.unique' => __('You already have a label or goal with this name.'),
             'target_date.date_format' => __('Please enter a valid target date.'),
         ];

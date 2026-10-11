@@ -3909,5 +3909,8 @@
     "percentage of income": "porcentaje de ingresos",
     "month-end reminder": "recordatorio de fin de mes",
     "savings account": "cuenta de ahorro",
-    "This account already feeds “:goal”. Pick another one, or leave contributions to be linked by hand.": "Ya la usa «:goal». Elige otra cuenta o vincula las aportaciones a mano."
+    "This account already feeds “:goal”. Pick another one, or leave contributions to be linked by hand.": "Ya la usa «:goal». Elige otra cuenta o vincula las aportaciones a mano.",
+    "The :attribute must be at least :amount.": "El campo :attribute debe ser al menos :amount.",
+    "The :attribute can't be more than :amount.": "El campo :attribute no puede superar :amount.",
+    "Pick a savings account to tag contributions from, or untick automatic tagging.": "Elige una cuenta de ahorro para el etiquetado automático o desmárcalo."
 }

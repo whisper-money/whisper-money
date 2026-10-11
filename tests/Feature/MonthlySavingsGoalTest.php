@@ -741,6 +741,47 @@ test('an account can feed only one running monthly goal', function () {
     createMonthlyGoal($user, ['name' => 'Japan trip', 'auto_tag_account_id' => $savings->id]);
 });
 
+test('automatic tagging asked for without an account creates nothing', function () {
+    $user = monthlyGoalUser();
+
+    $this->actingAs($user)->post('/savings-goals', [
+        'name' => 'Fund',
+        'kind' => 'monthly',
+        'monthly_target_type' => 'amount',
+        'monthly_target_amount' => 30000,
+        'auto_tag' => true,
+        'auto_tag_account_id' => null,
+    ])->assertSessionHasErrors(['auto_tag_account_id' => 'Pick a savings account to tag contributions from, or untick automatic tagging.']);
+
+    expect(SavingsGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
+
+    // Left unticked, the goal is created without a rule.
+    $goal = createMonthlyGoal($user, ['name' => 'Fund', 'auto_tag' => false, 'auto_tag_account_id' => null]);
+
+    expect($goal->auto_tag_account_id)->toBeNull();
+});
+
+test('amount bounds are stated in the money the user types', function (array $input, string $field, string $message) {
+    $user = User::factory()->create(['onboarded_at' => now(), 'locale' => 'es', 'format_locale' => 'es-ES', 'currency_code' => 'EUR']);
+    app()->setLocale('es');
+
+    $this->actingAs($user)->post('/savings-goals', ['name' => 'Fondo', ...$input])
+        ->assertSessionHasErrors([$field => $message]);
+})->with([
+    'monthly minimum' => [['kind' => 'monthly', 'monthly_target_type' => 'amount', 'monthly_target_amount' => 0], 'monthly_target_amount', "El campo importe mensual debe ser al menos 0,01\u{202F}€."],
+    'monthly maximum' => [['kind' => 'monthly', 'monthly_target_type' => 'amount', 'monthly_target_amount' => SavingsGoal::MAX_AMOUNT + 1], 'monthly_target_amount', "El campo importe mensual no puede superar 1.000.000.000,00\u{202F}€."],
+    'one-off minimum' => [['kind' => 'one_off', 'target_amount' => 0], 'target_amount', "El campo importe objetivo debe ser al menos 0,01\u{202F}€."],
+    'one-off maximum' => [['kind' => 'one_off', 'target_amount' => SavingsGoal::MAX_AMOUNT + 1], 'target_amount', "El campo importe objetivo no puede superar 1.000.000.000,00\u{202F}€."],
+]);
+
+test('an edit states the amount bounds the same way', function () {
+    $user = monthlyGoalUser();
+    $goal = createMonthlyGoal($user);
+
+    $this->actingAs($user)->patch("/savings-goals/{$goal->id}", ['monthly_target_type' => 'amount', 'monthly_target_amount' => SavingsGoal::MAX_AMOUNT + 1])
+        ->assertSessionHasErrors(['monthly_target_amount' => 'The monthly amount can\'t be more than €1,000,000,000.00.']);
+});
+
 test('targets are capped at the largest amount a goal takes', function (array $input, string $field) {
     $user = monthlyGoalUser();
 
