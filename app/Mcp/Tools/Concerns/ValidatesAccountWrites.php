@@ -8,12 +8,9 @@ use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use App\Models\User;
 use App\Rules\PaymentDueAfterStatementClosing;
-use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
-use Laravel\Mcp\Request;
 
 /**
  * The account write rules and schema fields, shared by create_account and
@@ -62,26 +59,6 @@ trait ValidatesAccountWrites
             AccountType::CreditCard => $this->creditCardDetailRules(),
             default => [],
         };
-    }
-
-    /**
-     * The credit card fields sit behind a per-user flag, while the schema that
-     * offers them is the same for everyone. A user without the flag is told
-     * so instead of having them silently dropped.
-     */
-    protected function refuseUnavailableCreditCardFields(Request $request, User $user): void
-    {
-        if (app(CreditCardStatementService::class)->isAvailableTo($user)) {
-            return;
-        }
-
-        foreach (['statement_closing_date', 'payment_due_date', 'credit_limit'] as $field) {
-            if ($request->has($field)) {
-                throw ValidationException::withMessages([
-                    $field => 'Credit card limits and statement dates are not available for this account yet. Leave statement_closing_date, payment_due_date and credit_limit out.',
-                ]);
-            }
-        }
     }
 
     /**

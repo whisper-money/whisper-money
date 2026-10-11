@@ -5,7 +5,6 @@ namespace App\Http\Requests\Settings;
 use App\Enums\AccountType;
 use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
-use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -69,13 +68,9 @@ class StoreAccountRequest extends FormRequest
             );
         }
 
-        // The limit is offered only to users with the credit card feature;
-        // anyone else sending one has it left out of the validated data. For
-        // them a card has a limit instead of a balance, so a balance sent
-        // along is left out the same way.
-        $type = AccountType::tryFrom((string) $this->input('type'));
-
-        if ($type !== null && app(CreditCardStatementService::class)->opensWithoutBalance($this->user(), $type)) {
+        // A card has a limit instead of a balance, so a balance sent along is
+        // left out of the validated data.
+        if (AccountType::tryFrom((string) $this->input('type'))?->hasBalance() === false) {
             $rules = array_merge($rules, ['balance' => ['exclude']], $this->creditLimitRules());
         }
 

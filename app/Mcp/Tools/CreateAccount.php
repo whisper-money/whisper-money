@@ -7,7 +7,6 @@ use App\Mcp\Tools\Concerns\PresentsAccounts;
 use App\Mcp\Tools\Concerns\ValidatesAccountWrites;
 use App\Models\User;
 use App\Services\AccountWriteService;
-use App\Services\CreditCards\CreditCardStatementService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -40,7 +39,7 @@ class CreateAccount extends WriteTool
             'type' => $schema->string()->enum(array_column(AccountType::cases(), 'value'))->description('Account type. checking, credit_card, savings and others keep a transaction ledger; investment, retirement, loan and real_estate track a balance only.')->required(),
             'currency_code' => $schema->string()->description('ISO currency code, e.g. EUR. The user\'s first account also sets the currency their whole account is reported in.')->required(),
             'bank_id' => $schema->string()->description('Optional id of the bank this account is held at, for its name and logo. It does not connect anything.'),
-            'balance' => $schema->integer()->description('Optional balance today, in the currency\'s minor units. On a loan or a property it is also what the generated balance history ends at. Refused on a credit card that takes a credit_limit instead.'),
+            'balance' => $schema->integer()->description('Optional balance today, in the currency\'s minor units. On a loan or a property it is also what the generated balance history ends at. Refused on a credit card, which takes a credit_limit instead.'),
             'linked_real_estate_account_id' => $schema->string()->description('loan only: id of the real_estate account this loan is the mortgage of. The property must not already be linked to a loan.'),
             ...$this->detailSchema($schema),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
@@ -53,8 +52,7 @@ class CreateAccount extends WriteTool
         $this->buildRulesFor($user);
 
         $type = $this->validatedType($request);
-        $this->refuseUnavailableCreditCardFields($request, $user);
-        $this->refuseCreditCardBalance($request, $user, $type);
+        $this->refuseCreditCardBalance($request, $type);
 
         $validated = $request->validate([
             'name' => ['required', 'string'],
@@ -87,13 +85,13 @@ class CreateAccount extends WriteTool
     }
 
     /**
-     * A card that takes a credit limit has no balance: what is in use of it
-     * comes from its transactions. Telling the agent beats storing a figure
+     * A credit card has no balance: what is in use of it comes from its
+     * transactions. Telling the agent beats storing a figure
      * nothing reads.
      */
-    private function refuseCreditCardBalance(Request $request, User $user, AccountType $type): void
+    private function refuseCreditCardBalance(Request $request, AccountType $type): void
     {
-        if (! $request->has('balance') || ! app(CreditCardStatementService::class)->opensWithoutBalance($user, $type)) {
+        if (! $request->has('balance') || $type->hasBalance()) {
             return;
         }
 

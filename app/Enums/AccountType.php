@@ -43,6 +43,16 @@ enum AccountType: string
     }
 
     /**
+     * Whether an account of this type has a balance. A credit card has a
+     * limit and what is in use of it instead, so no balance is asked for,
+     * stored by a transaction or shown for one.
+     */
+    public function hasBalance(): bool
+    {
+        return $this !== self::CreditCard;
+    }
+
+    /**
      * Whether this account type is non-transactional (balance tracking only).
      */
     public function isNonTransactional(): bool

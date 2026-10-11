@@ -65,7 +65,7 @@ export interface AccountFormData {
     investedAmount: number | null;
     realEstate: RealEstateFormData | null;
     loan: LoanFormData | null;
-    /** Minor units; only on a new credit card while the feature is on. */
+    /** Minor units; only on a new credit card. */
     creditLimit: number | null;
 }
 
@@ -123,7 +123,7 @@ export function AccountForm({
     onChange,
     errors = {},
 }: AccountFormProps) {
-    const { auth, currencies, features } = usePage<SharedData>().props;
+    const { auth, currencies } = usePage<SharedData>().props;
     const currencyOptions = usePrimaryCurrenciesOnly
         ? currencies.profile
         : currencies.accounts;
@@ -171,11 +171,9 @@ export function AccountForm({
     // would not be empty — a file import fills in the movements, never the
     // balance they add up to. A loan and a property keep their own wording
     // (`balanceTermCapitalized`) and their own follow-up questions. A credit
-    // card under the credit card feature is the exception: it has a limit and
-    // what is in use of it, never a balance.
-    const tracksCreditLimit =
-        selectedType === 'credit_card' &&
-        Boolean(features?.creditCardStatements);
+    // card is the exception: it has a limit and what is in use of it, never a
+    // balance.
+    const tracksCreditLimit = selectedType === 'credit_card';
     const showBalanceField = selectedType !== null && !tracksCreditLimit;
     // What the account is worth is only half the story on the types that grow:
     // without what went in there is no gain to read anywhere.

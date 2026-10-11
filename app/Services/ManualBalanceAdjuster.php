@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\Transaction;
-use App\Services\CreditCards\CreditCardStatementService;
 use Illuminate\Support\Facades\Log;
 
 class ManualBalanceAdjuster
@@ -19,10 +18,7 @@ class ManualBalanceAdjuster
      */
     public const BALANCE_AFFECTING_ATTRIBUTES = ['amount', 'transaction_date', 'account_id', 'currency_code'];
 
-    public function __construct(
-        private ExchangeRateService $exchangeRateService,
-        private CreditCardStatementService $creditCardStatementService,
-    ) {}
+    public function __construct(private ExchangeRateService $exchangeRateService) {}
 
     /**
      * Reverse a deleted transaction's effect on its manual account's balances.
@@ -96,17 +92,13 @@ class ManualBalanceAdjuster
      * Whether a transaction may move this account's balance snapshots.
      *
      * A connected account's balance comes from bank sync, and a credit card
-     * under the credit card feature has a limit and what is in use of it,
-     * never a balance, so neither gets snapshots written by a transaction.
+     * has a limit and what is in use of it, never a balance, so neither gets
+     * snapshots written by a transaction.
      * Existing snapshots are left as they are.
      */
     private function ownsBalance(Account $account): bool
     {
-        if ($account->isConnected()) {
-            return false;
-        }
-
-        return ! $this->creditCardStatementService->opensWithoutBalance($account->user, $account->type);
+        return ! $account->isConnected() && $account->type->hasBalance();
     }
 
     /**

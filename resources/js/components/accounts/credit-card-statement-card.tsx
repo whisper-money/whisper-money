@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLocale } from '@/hooks/use-locale';
-import type { SharedData } from '@/types';
 import type {
     CreditCardDetail,
     CreditCardStatement,
@@ -12,7 +11,6 @@ import type {
 } from '@/types/account';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { CalendarClock, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
@@ -34,12 +32,7 @@ export function CreditCardStatementCard({
     detail,
     statement,
 }: CreditCardStatementCardProps) {
-    const { features } = usePage<SharedData>().props;
     const [dialogOpen, setDialogOpen] = useState(false);
-
-    if (!features.creditCardStatements) {
-        return null;
-    }
 
     return (
         <Card>

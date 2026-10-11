@@ -27,7 +27,7 @@ trait PresentsAccounts
             'is_connected' => $account->isConnected(),
             'ownership_percentage' => $account->ownership_percentage,
             // Limit, statement dates, the next payment they estimate and the
-            // credit in use, on a credit card for a user who has the feature.
+            // credit in use, on a credit card.
             // The day-by-day series is for the app's chart, not the agent.
             // Reads `creditCardDetail`, so eager-load it when presenting
             // several accounts.

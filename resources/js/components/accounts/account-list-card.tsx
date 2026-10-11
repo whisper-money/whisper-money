@@ -463,7 +463,7 @@ export function AccountListCard({
                             )}
                         </div>
 
-                        {!isConnected && !creditCardUsage && (
+                        {!isConnected && account.type !== 'credit_card' && (
                             <Button
                                 className="cursor-pointer"
                                 variant="secondary"

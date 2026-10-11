@@ -68,8 +68,6 @@ vi.mock('@/services/transaction-sync', () => ({
     },
 }));
 
-const pageFeatures = vi.hoisted(() => ({ creditCardStatements: false }));
-
 vi.mock('@inertiajs/react', () => ({
     router: {
         visit: vi.fn(),
@@ -87,7 +85,6 @@ vi.mock('@inertiajs/react', () => ({
                 ],
                 decimals: { EUR: 2, USD: 2 },
             },
-            features: pageFeatures,
         },
     }),
 }));
@@ -175,7 +172,6 @@ vi.mock('@/components/ui/dialog', () => ({
 
 describe('EditTransactionDialog', () => {
     beforeEach(() => {
-        pageFeatures.creditCardStatements = false;
         globalThis.ResizeObserver = class {
             observe() {}
             unobserve() {}
@@ -604,8 +600,7 @@ describe('EditTransactionDialog', () => {
             });
         }
 
-        it('offers no balance update while the feature is on', async () => {
-            pageFeatures.creditCardStatements = true;
+        it('offers no balance update', async () => {
             vi.mocked(transactionSyncService.create).mockResolvedValue({
                 id: 'tx-new',
             } as never);
@@ -633,28 +628,7 @@ describe('EditTransactionDialog', () => {
             );
         });
 
-        it('still updates the balance while the feature is off', async () => {
-            vi.mocked(transactionSyncService.create).mockResolvedValue({
-                id: 'tx-new',
-            } as never);
-
-            renderCardDialog();
-
-            expect(screen.getByTestId('balance-chip')).toHaveAttribute(
-                'aria-pressed',
-                'true',
-            );
-
-            await fillAndSubmit('submit-transaction');
-
-            expect(transactionSyncService.create).toHaveBeenCalledWith(
-                expect.anything(),
-                { updateBalance: true },
-            );
-        });
-
-        it('sends no balance update when editing a card transaction with the feature on', async () => {
-            pageFeatures.creditCardStatements = true;
+        it('sends no balance update when editing a card transaction', async () => {
             vi.mocked(transactionSyncService.update).mockResolvedValue(
                 {} as never,
             );
