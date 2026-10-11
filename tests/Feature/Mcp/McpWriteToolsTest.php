@@ -117,7 +117,7 @@ it('edits a manual transaction', function () {
 
 it('moves a transaction onto a connected account, unwinding only the manual side', function () {
     $user = User::factory()->create();
-    $manualAccount = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $manualAccount = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $user->id, 'currency_code' => 'EUR']);
     $connectedAccount = Account::factory()->connected()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
 
     $manualAccount->balances()->create(['balance_date' => '2026-01-15', 'balance' => 9_000]);
@@ -229,7 +229,7 @@ it('writes notes on one part of a split', function () {
 
 it('leaves the balance alone when only the notes change', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $user->id, 'currency_code' => 'EUR']);
     $account->balances()->create(['balance_date' => '2026-01-15', 'balance' => 9_000]);
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
