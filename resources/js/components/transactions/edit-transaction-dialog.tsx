@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
+import { useOwnsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
 import { useShortcutHint } from '@/hooks/use-shortcut';
 import { fetchJson } from '@/lib/fetch-json';
 import { captureEvent } from '@/lib/posthog';
@@ -225,6 +226,7 @@ export function EditTransactionDialog({
     const locale = useLocale();
     const { auth, currencies } = usePage<SharedData>().props;
     const userCurrencyCode = auth.user.currency_code;
+    const ownsBalance = useOwnsBalanceUpdates();
 
     const { sync } = useSyncContext();
     const [transactionDate, setTransactionDate] = useState('');
@@ -467,6 +469,19 @@ export function EditTransactionDialog({
         }
     }
 
+    /**
+     * Whether the account the transaction leaves or the one it lands on has a
+     * balance this edit may move. An account missing from the list is left
+     * for the server to decide.
+     */
+    function editTouchesOwnedBalance(originalAccountId: string): boolean {
+        return [originalAccountId, accountId].some((id) => {
+            const account = accounts.find((acc) => acc.id === id);
+
+            return account === undefined || ownsBalance(account);
+        });
+    }
+
     function handleUpdateBalanceChange(checked: boolean) {
         setUpdateAccountBalance(checked);
         writeStoredValue(STORAGE_KEY_UPDATE_BALANCE, String(checked));
@@ -591,11 +606,11 @@ export function EditTransactionDialog({
                     throw new Error(__('Selected account not found'));
                 }
 
-                // A connected account's balance is the bank's to report, so
-                // the undo below must not try to reverse one either.
-                const balanceWasUpdated = selectedAccount.banking_connection_id
-                    ? false
-                    : updateAccountBalance;
+                // A connected account's balance is the bank's to report and a
+                // credit card under the feature has none, so the undo below
+                // must not try to reverse one either.
+                const balanceWasUpdated =
+                    ownsBalance(selectedAccount) && updateAccountBalance;
 
                 const createdTransaction = await transactionSyncService.create(
                     {
@@ -746,15 +761,17 @@ export function EditTransactionDialog({
                     transaction.id,
                     updateData,
                     {
-                        // Gate on the transaction being editable, not on the
-                        // target account: the backend adjuster skips connected
-                        // accounts per-account, so this still reverses the old
-                        // manual account when the edit moves it onto a connected
-                        // one. A moved date shifts the days in between by the
+                        // Gate on the transaction being editable and on either
+                        // side owning its balance, not on the target alone: the
+                        // backend adjuster skips the other side per-account, so
+                        // this still reverses the old manual account when the
+                        // edit moves it onto a connected one or a credit card.
+                        // A moved date shifts the days in between by the
                         // amount and leaves today's balance where it was.
-                        updateBalance: canEditDate
-                            ? updateAccountBalance
-                            : false,
+                        updateBalance:
+                            canEditDate &&
+                            updateAccountBalance &&
+                            editTouchesOwnedBalance(transaction.account_id),
                     },
                 );
 
@@ -862,6 +879,10 @@ export function EditTransactionDialog({
     }
 
     const selectedAccount = accounts.find((acc) => acc.id === accountId);
+    // A connected account's balance is the bank's and a credit card under the
+    // feature has none, so neither offers to update one.
+    const offersBalanceUpdate =
+        !selectedAccount || ownsBalance(selectedAccount);
     // A new transaction opens on the amount, the description and three chips;
     // everything else waits behind "More options". Editing is untouched.
     const isMinimal = mode === 'create' && !expanded;
@@ -1179,9 +1200,10 @@ export function EditTransactionDialog({
                 data-testid="category-chip"
             />
 
-            {/* The bank owns a connected account's balance, so there is
-                nothing here to switch off. */}
-            {!selectedAccount?.banking_connection_id && (
+            {/* The bank owns a connected account's balance and a credit card
+                under the feature has none, so there is nothing here to switch
+                off. */}
+            {offersBalanceUpdate && (
                 <Button
                     type="button"
                     variant="outline"
@@ -1219,23 +1241,25 @@ export function EditTransactionDialog({
             )}
         </p>
     ) : (
-        <div className="flex items-center gap-2 pt-1">
-            <Checkbox
-                id="update-balance"
-                checked={updateAccountBalance}
-                onCheckedChange={(checked) =>
-                    handleUpdateBalanceChange(checked === true)
-                }
-                disabled={isSubmitting}
-            />
+        offersBalanceUpdate && (
+            <div className="flex items-center gap-2 pt-1">
+                <Checkbox
+                    id="update-balance"
+                    checked={updateAccountBalance}
+                    onCheckedChange={(checked) =>
+                        handleUpdateBalanceChange(checked === true)
+                    }
+                    disabled={isSubmitting}
+                />
 
-            <FormLabel
-                htmlFor="update-balance"
-                className="cursor-pointer font-normal text-muted-foreground"
-            >
-                {__('Update account balance')}
-            </FormLabel>
-        </div>
+                <FormLabel
+                    htmlFor="update-balance"
+                    className="cursor-pointer font-normal text-muted-foreground"
+                >
+                    {__('Update account balance')}
+                </FormLabel>
+            </div>
+        )
     );
 
     const moreOptionsTrigger = (

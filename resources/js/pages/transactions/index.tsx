@@ -1,5 +1,6 @@
 import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
 import { useLocale } from '@/hooks/use-locale';
+import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
 import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -1240,15 +1241,7 @@ export default function Transactions({
         [accounts],
     );
 
-    const manualAccountIds = useMemo(
-        () =>
-            new Set(
-                accounts
-                    .filter((account) => account.banking_connection_id === null)
-                    .map((account) => account.id),
-            ),
-        [accounts],
-    );
+    const manualAccountIds = useBalanceOwningAccountIds(accounts);
 
     const bulkDeleteTouchesManualAccount = useMemo(
         () =>
@@ -1309,7 +1302,8 @@ export default function Transactions({
         setIsBulkDeleting(true);
         try {
             await transactionSyncService.deleteMany(selectedIds, {
-                updateBalance: updateBalanceOnDelete,
+                updateBalance:
+                    updateBalanceOnDelete && bulkDeleteTouchesManualAccount,
             });
             setAllTransactions((previous) =>
                 previous.filter(
