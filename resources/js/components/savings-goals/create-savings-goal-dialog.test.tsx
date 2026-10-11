@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CreateSavingsGoalDialog } from './create-savings-goal-dialog';
@@ -33,6 +34,7 @@ function openMonthly() {
 describe('CreateSavingsGoalDialog', () => {
     beforeEach(() => {
         reload.mockClear();
+        vi.mocked(router.post).mockClear();
         props = {};
     });
 
@@ -44,7 +46,9 @@ describe('CreateSavingsGoalDialog', () => {
 
     it('leaves the auto-tag option off and says what it would do', () => {
         props = {
-            autoTagAccounts: [{ id: 'a1', name: 'Rainy day', bank: null }],
+            autoTagAccounts: [
+                { id: 'a1', name: 'Rainy day', bank: null, used_by: null },
+            ],
         };
 
         openMonthly();
@@ -76,5 +80,66 @@ describe('CreateSavingsGoalDialog', () => {
         );
 
         expect(screen.getByRole('combobox')).toHaveTextContent('Holidays');
+    });
+
+    it('locks auto-tag and says why when no savings account is free', () => {
+        props = {
+            autoTagAccounts: [
+                { id: 'a1', name: 'Rainy day', bank: null, used_by: 'Fund' },
+            ],
+        };
+
+        openMonthly();
+
+        expect(
+            screen.getByRole('checkbox', {
+                name: /Tag contributions automatically/,
+            }),
+        ).toBeDisabled();
+        expect(
+            screen.getByText(/There are no free savings accounts/),
+        ).toBeInTheDocument();
+    });
+
+    it('says why when the space has no savings account at all', () => {
+        props = { autoTagAccounts: [] };
+
+        openMonthly();
+
+        expect(
+            screen.getByRole('checkbox', {
+                name: /Tag contributions automatically/,
+            }),
+        ).toBeDisabled();
+        expect(
+            screen.getByText(/There are no savings accounts in this space/),
+        ).toBeInTheDocument();
+    });
+
+    it('submits on the first click after typing the amount', () => {
+        props = { autoTagAccounts: [] };
+
+        openMonthly();
+        fireEvent.change(screen.getByLabelText('Goal Name'), {
+            target: { value: 'Rainy day' },
+        });
+        // Typed but never blurred: the button has to unlock from the typing.
+        fireEvent.change(screen.getByLabelText('I want to save every month'), {
+            target: { value: '300' },
+        });
+        const create = screen.getByRole('button', {
+            name: 'Create Savings Goal',
+        });
+
+        expect(create).toBeEnabled();
+
+        fireEvent.click(create);
+
+        expect(router.post).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(router.post).mock.calls[0][1]).toMatchObject({
+            monthly_target_amount: 30000,
+            auto_tag: false,
+            auto_tag_account_id: null,
+        });
     });
 });

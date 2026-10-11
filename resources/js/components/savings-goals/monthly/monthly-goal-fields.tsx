@@ -96,6 +96,9 @@ export function MonthlyTargetFields({
                                 onChange({ ...value, amount })
                             }
                             currencyCode={currencyCode}
+                            // The submit button unlocks on this value, so a
+                            // click straight after typing has to submit.
+                            commitOnChange
                         />
                     ) : (
                         <div className="relative">
@@ -171,7 +174,8 @@ interface AutoTagFieldsProps {
     onEnabledChange: (enabled: boolean) => void;
     accountId: string;
     onAccountChange: (accountId: string) => void;
-    savingsAccounts: AutoTagAccount[];
+    /** Undefined while the active space's accounts are still loading. */
+    savingsAccounts?: AutoTagAccount[];
     error?: string;
 }
 
@@ -179,6 +183,8 @@ interface AutoTagFieldsProps {
  * Offers a rule that tags every transfer into a savings account with the
  * goal's label, so contributions count on their own. Only savings accounts are
  * offered: on any other type the money arriving would count against the goal.
+ * With none free in the space the option is locked and says why, rather than
+ * letting the goal be created without the rule it asked for.
  */
 export function AutoTagFields({
     enabled,
@@ -188,9 +194,13 @@ export function AutoTagFields({
     savingsAccounts,
     error,
 }: AutoTagFieldsProps) {
-    if (savingsAccounts.length === 0) {
+    if (savingsAccounts === undefined) {
         return null;
     }
+
+    const hasFreeAccount = savingsAccounts.some(
+        (account) => account.used_by === null,
+    );
 
     return (
         <div className="flex flex-col gap-3 rounded-lg border p-4">
@@ -199,6 +209,9 @@ export function AutoTagFields({
                     id="goal-auto-tag"
                     checked={enabled}
                     onCheckedChange={(state) => onEnabledChange(state === true)}
+                    // Still untickable if it was on when the last account was
+                    // taken.
+                    disabled={!hasFreeAccount && !enabled}
                     className="mt-0.5"
                 />
                 <UILabel
@@ -213,7 +226,18 @@ export function AutoTagFields({
                     </span>
                 </UILabel>
             </div>
-            {enabled && (
+            {!hasFreeAccount && (
+                <p className="pl-7 text-sm text-muted-foreground">
+                    {savingsAccounts.length === 0
+                        ? __(
+                              'There are no savings accounts in this space. Link contributions to the goal by hand.',
+                          )
+                        : __(
+                              'There are no free savings accounts in this space: each one already feeds another monthly goal. Link contributions to the goal by hand.',
+                          )}
+                </p>
+            )}
+            {enabled && hasFreeAccount && (
                 <div className="flex flex-col gap-2 pl-7">
                     <UILabel
                         htmlFor="goal-auto-tag-account"
@@ -250,6 +274,10 @@ export function AutoTagFields({
                             ))}
                         </SelectContent>
                     </Select>
+                </div>
+            )}
+            {error && (
+                <div className="pl-7">
                     <FieldError message={error} />
                 </div>
             )}
