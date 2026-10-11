@@ -152,6 +152,7 @@ describe('reEvaluateTransactionRules', () => {
         ).resolves.toBe('queued');
 
         expect(axios.get).toHaveBeenCalledTimes(3);
+        expect(toast.loading).toHaveBeenCalledTimes(1);
         expect(toast.info).toHaveBeenCalledWith('Re-evaluation queued', {
             id: 'toast-1',
             description:
@@ -172,5 +173,9 @@ describe('reEvaluateTransactionRules', () => {
             reEvaluateTransactionRules(undefined, options),
         ).resolves.toBe('done');
         expect(toast.info).not.toHaveBeenCalled();
+        expect(toast.loading).toHaveBeenLastCalledWith(
+            'Re-evaluating 0 of 10 transactions...',
+            { id: 'toast-1' },
+        );
     });
 });

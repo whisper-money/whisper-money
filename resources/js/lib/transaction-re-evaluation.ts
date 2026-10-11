@@ -85,13 +85,15 @@ async function pollReEvaluation(
             return 'queued';
         }
 
-        toast.loading(
-            __('Re-evaluating :processed of :total transactions...', {
-                processed: data.processed,
-                total: data.total,
-            }),
-            { id: toastId },
-        );
+        if (data.status === 'processing') {
+            toast.loading(
+                __('Re-evaluating :processed of :total transactions...', {
+                    processed: data.processed,
+                    total: data.total,
+                }),
+                { id: toastId },
+            );
+        }
 
         await wait(intervalMs);
     }
