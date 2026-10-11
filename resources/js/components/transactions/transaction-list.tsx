@@ -1,5 +1,5 @@
 import { useLocale } from '@/hooks/use-locale';
-import { useOwnsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
+import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { reloadPage } from '@/lib/leave-page';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
@@ -331,7 +331,6 @@ export function TransactionList({
     hiddenLabelId,
 }: TransactionListProps) {
     const locale = useLocale();
-    const ownsBalance = useOwnsBalanceUpdates();
     const [labels, setLabels] = useState<Label[]>(() => initialLabels ?? []);
 
     useEffect(() => {
@@ -501,17 +500,7 @@ export function TransactionList({
         setIsSearching(false);
     }, [filters.searchText, transactions]);
 
-    // The accounts whose balance a deletion may move: not connected ones, nor
-    // credit cards under the credit card feature.
-    const manualAccountIds = useMemo(
-        () =>
-            new Set(
-                accounts
-                    .filter((account) => ownsBalance(account))
-                    .map((account) => account.id),
-            ),
-        [accounts, ownsBalance],
-    );
+    const manualAccountIds = useBalanceOwningAccountIds(accounts);
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter((transaction) => {
@@ -1032,7 +1021,7 @@ export function TransactionList({
             );
         try {
             await transactionSyncService.deleteMany(selectedIds, {
-                updateBalance: updateBalanceOnDelete,
+                updateBalance: balanceMayHaveUpdated,
             });
             if (balanceMayHaveUpdated) {
                 onBalanceUpdated?.();

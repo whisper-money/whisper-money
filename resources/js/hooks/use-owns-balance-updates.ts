@@ -1,7 +1,7 @@
 import { type SharedData } from '@/types';
 import { type Account } from '@/types/account';
 import { usePage } from '@inertiajs/react';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 type BalanceAccount = Pick<Account, 'type' | 'banking_connection_id'>;
 
@@ -32,5 +32,25 @@ export function useOwnsBalanceUpdates(): (account: BalanceAccount) => boolean {
     return useCallback(
         (account) => ownsBalanceUpdates(account, creditCardStatements),
         [creditCardStatements],
+    );
+}
+
+/**
+ * The ids of the accounts among $accounts whose balance a transaction may
+ * move, for the delete flows that offer to update it.
+ */
+export function useBalanceOwningAccountIds(
+    accounts: BalanceAccount[] & { id: string }[],
+): Set<string> {
+    const ownsBalance = useOwnsBalanceUpdates();
+
+    return useMemo(
+        () =>
+            new Set(
+                accounts
+                    .filter((account) => ownsBalance(account))
+                    .map((account) => account.id),
+            ),
+        [accounts, ownsBalance],
     );
 }

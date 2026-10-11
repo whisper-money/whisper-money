@@ -879,6 +879,10 @@ export function EditTransactionDialog({
     }
 
     const selectedAccount = accounts.find((acc) => acc.id === accountId);
+    // A connected account's balance is the bank's and a credit card under the
+    // feature has none, so neither offers to update one.
+    const offersBalanceUpdate =
+        !selectedAccount || ownsBalance(selectedAccount);
     // A new transaction opens on the amount, the description and three chips;
     // everything else waits behind "More options". Editing is untouched.
     const isMinimal = mode === 'create' && !expanded;
@@ -1199,7 +1203,7 @@ export function EditTransactionDialog({
             {/* The bank owns a connected account's balance and a credit card
                 under the feature has none, so there is nothing here to switch
                 off. */}
-            {(!selectedAccount || ownsBalance(selectedAccount)) && (
+            {offersBalanceUpdate && (
                 <Button
                     type="button"
                     variant="outline"
@@ -1229,32 +1233,33 @@ export function EditTransactionDialog({
         </div>
     );
 
-    // The collapsed form says this with the balance chip instead. A credit
-    // card under the feature has no balance to mention at all.
+    // The collapsed form says this with the balance chip instead.
     const balanceControl = selectedAccount?.banking_connection_id ? (
         <p className="text-sm text-muted-foreground">
             {__(
                 "This account's balance comes from your bank, so it won't change.",
             )}
         </p>
-    ) : selectedAccount && !ownsBalance(selectedAccount) ? null : (
-        <div className="flex items-center gap-2 pt-1">
-            <Checkbox
-                id="update-balance"
-                checked={updateAccountBalance}
-                onCheckedChange={(checked) =>
-                    handleUpdateBalanceChange(checked === true)
-                }
-                disabled={isSubmitting}
-            />
+    ) : (
+        offersBalanceUpdate && (
+            <div className="flex items-center gap-2 pt-1">
+                <Checkbox
+                    id="update-balance"
+                    checked={updateAccountBalance}
+                    onCheckedChange={(checked) =>
+                        handleUpdateBalanceChange(checked === true)
+                    }
+                    disabled={isSubmitting}
+                />
 
-            <FormLabel
-                htmlFor="update-balance"
-                className="cursor-pointer font-normal text-muted-foreground"
-            >
-                {__('Update account balance')}
-            </FormLabel>
-        </div>
+                <FormLabel
+                    htmlFor="update-balance"
+                    className="cursor-pointer font-normal text-muted-foreground"
+                >
+                    {__('Update account balance')}
+                </FormLabel>
+            </div>
+        )
     );
 
     const moreOptionsTrigger = (
