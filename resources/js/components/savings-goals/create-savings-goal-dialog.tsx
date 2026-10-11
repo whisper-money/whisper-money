@@ -103,8 +103,8 @@ export function CreateSavingsGoalDialog({
                   kind,
                   ...monthlyTargetPayload(monthlyTarget),
                   notify_on_month_end_reminder: notifyReminder,
-                  auto_tag_account_id:
-                      autoTag && tagAccountId ? tagAccountId : null,
+                  auto_tag: autoTag,
+                  auto_tag_account_id: autoTag ? tagAccountId || null : null,
               }
             : {
                   name,
@@ -129,7 +129,10 @@ export function CreateSavingsGoalDialog({
 
     const isValid =
         !!name &&
-        (isMonthly ? isMonthlyTargetValid(monthlyTarget) : targetAmount > 0);
+        (isMonthly
+            ? isMonthlyTargetValid(monthlyTarget) &&
+              (!autoTag || !!tagAccountId)
+            : targetAmount > 0);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -228,7 +231,7 @@ export function CreateSavingsGoalDialog({
                                     onEnabledChange={setAutoTag}
                                     accountId={tagAccountId}
                                     onAccountChange={setAutoTagAccountId}
-                                    savingsAccounts={savingsAccounts}
+                                    savingsAccounts={autoTagAccounts}
                                     error={errors.auto_tag_account_id}
                                 />
                                 <ReminderField
@@ -269,6 +272,7 @@ export function CreateSavingsGoalDialog({
                                         value={targetAmount}
                                         onChange={setTargetAmount}
                                         currencyCode={currencyCode}
+                                        commitOnChange
                                     />
                                     {errors.target_amount && (
                                         <p className="text-sm text-destructive">

@@ -3987,5 +3987,7 @@
     "The first month is partial": "El primer mes es parcial",
     "Partial month: you started at the end of the month. The first verdict comes next month.": "Mes parcial: empezaste a final de mes. El primer veredicto llegará el mes que viene.",
     "Already used by “:goal”": "Ya la usa «:goal»",
-    "Auto-tags transfers into :account": "Etiqueta automáticamente lo que entra en :account"
+    "Auto-tags transfers into :account": "Etiqueta automáticamente lo que entra en :account",
+    "There are no savings accounts in this space. Link contributions to the goal by hand.": "No hay cuentas de ahorro en este espacio. Vincula las aportaciones al objetivo a mano.",
+    "There are no free savings accounts in this space: each one already feeds another monthly goal. Link contributions to the goal by hand.": "No hay cuentas de ahorro libres en este espacio: todas alimentan ya otro objetivo mensual. Vincula las aportaciones al objetivo a mano."
 }
