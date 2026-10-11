@@ -1,5 +1,6 @@
 import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
 import { useLocale } from '@/hooks/use-locale';
+import { useOwnsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
 import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -466,6 +467,7 @@ export default function Transactions({
     lastVisitAt,
 }: Props) {
     const locale = useLocale();
+    const ownsBalance = useOwnsBalanceUpdates();
     const { auth } = usePage<SharedData>().props;
     const [aiConsentResolved, setAiConsentResolved] = useState(false);
     const [aiConsentSaving, setAiConsentSaving] = useState(false);
@@ -1240,14 +1242,16 @@ export default function Transactions({
         [accounts],
     );
 
+    // The accounts whose balance a deletion may move: not connected ones, nor
+    // credit cards under the credit card feature.
     const manualAccountIds = useMemo(
         () =>
             new Set(
                 accounts
-                    .filter((account) => account.banking_connection_id === null)
+                    .filter((account) => ownsBalance(account))
                     .map((account) => account.id),
             ),
-        [accounts],
+        [accounts, ownsBalance],
     );
 
     const bulkDeleteTouchesManualAccount = useMemo(

@@ -250,6 +250,52 @@ it('leaves the balance alone when only the notes change', function () {
     expect($account->balances()->where('balance_date', '2026-01-15')->value('balance'))->toBe(9_000);
 });
 
+it('never moves a credit card balance with the credit card feature on', function () {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(CreditCardStatements::class);
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $card->balances()->create(['balance_date' => '2026-01-15', 'balance' => 9_000]);
+
+    callWriteTool($user, CreateTransaction::class, [
+        'account_id' => $card->id,
+        'description' => 'Dinner',
+        'amount' => -1_000,
+        'transaction_date' => '2026-01-15',
+        'update_balance' => true,
+    ])->assertOk()->assertSee('"balance_updated":false');
+
+    $transaction = Transaction::query()->where('account_id', $card->id)->sole();
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'amount' => -2_000,
+        'update_balance' => true,
+    ])->assertOk()->assertSee('"balance_updated":false');
+
+    callWriteTool($user, DeleteTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'update_balance' => true,
+    ])->assertOk()->assertSee('"balance_updated":false');
+
+    expect($card->balances()->pluck('balance')->all())->toBe([9_000]);
+});
+
+it('still moves a credit card balance with the credit card feature off', function () {
+    $user = User::factory()->create();
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $card->balances()->create(['balance_date' => '2026-01-15', 'balance' => 9_000]);
+
+    callWriteTool($user, CreateTransaction::class, [
+        'account_id' => $card->id,
+        'description' => 'Dinner',
+        'amount' => -1_000,
+        'transaction_date' => '2026-01-15',
+        'update_balance' => true,
+    ])->assertOk()->assertSee('"balance_updated":true');
+
+    expect($card->balances()->pluck('balance')->all())->toBe([8_000]);
+});
+
 it('deletes a manual transaction', function () {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);

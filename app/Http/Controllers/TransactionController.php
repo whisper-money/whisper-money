@@ -284,7 +284,8 @@ class TransactionController extends Controller
         // forward. Like create/delete, this trusts the opt-in flag and keeps no
         // record of whether creation adjusted the balance, so mixing the flag
         // across create and edit can drift; a transaction-derived balance would
-        // remove that trust. Connected accounts are skipped inside the adjuster.
+        // remove that trust. Connected accounts, and credit cards under the credit
+        // card feature, are skipped inside the adjuster.
         if ($request->boolean('update_balance') && $transaction->wasChanged(ManualBalanceAdjuster::BALANCE_AFFECTING_ATTRIBUTES)) {
             $balanceAdjuster->reverseDeletedTransaction($originalSnapshot);
             $balanceAdjuster->applyCreatedTransaction($transaction->load('account'));

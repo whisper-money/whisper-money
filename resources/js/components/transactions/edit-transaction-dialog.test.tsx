@@ -68,6 +68,8 @@ vi.mock('@/services/transaction-sync', () => ({
     },
 }));
 
+const pageFeatures = vi.hoisted(() => ({ creditCardStatements: false }));
+
 vi.mock('@inertiajs/react', () => ({
     router: {
         visit: vi.fn(),
@@ -85,6 +87,7 @@ vi.mock('@inertiajs/react', () => ({
                 ],
                 decimals: { EUR: 2, USD: 2 },
             },
+            features: pageFeatures,
         },
     }),
 }));
@@ -172,6 +175,7 @@ vi.mock('@/components/ui/dialog', () => ({
 
 describe('EditTransactionDialog', () => {
     beforeEach(() => {
+        pageFeatures.creditCardStatements = false;
         globalThis.ResizeObserver = class {
             observe() {}
             unobserve() {}
@@ -579,6 +583,105 @@ describe('EditTransactionDialog', () => {
         updated_at: '2026-05-27T00:00:00Z',
         label_ids: [],
     };
+
+    describe('on a credit card', () => {
+        const creditCard = {
+            ...checkingAccount,
+            id: 'account-card',
+            name: 'Visa',
+            type: 'credit_card' as const,
+        };
+
+        function renderCardDialog(
+            props: Partial<
+                React.ComponentProps<typeof EditTransactionDialog>
+            > = {},
+        ) {
+            return renderCreateDialog({
+                accounts: [creditCard],
+                initialAccountId: 'account-card',
+                ...props,
+            });
+        }
+
+        it('offers no balance update while the feature is on', async () => {
+            pageFeatures.creditCardStatements = true;
+            vi.mocked(transactionSyncService.create).mockResolvedValue({
+                id: 'tx-new',
+            } as never);
+
+            renderCardDialog();
+
+            expect(
+                screen.queryByTestId('balance-chip'),
+            ).not.toBeInTheDocument();
+
+            fireEvent.click(screen.getByTestId('toggle-more-options'));
+
+            expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(
+                    "This account's balance comes from your bank, so it won't change.",
+                ),
+            ).not.toBeInTheDocument();
+
+            await fillAndSubmit('submit-transaction');
+
+            expect(transactionSyncService.create).toHaveBeenCalledWith(
+                expect.anything(),
+                { updateBalance: false },
+            );
+        });
+
+        it('still updates the balance while the feature is off', async () => {
+            vi.mocked(transactionSyncService.create).mockResolvedValue({
+                id: 'tx-new',
+            } as never);
+
+            renderCardDialog();
+
+            expect(screen.getByTestId('balance-chip')).toHaveAttribute(
+                'aria-pressed',
+                'true',
+            );
+
+            await fillAndSubmit('submit-transaction');
+
+            expect(transactionSyncService.create).toHaveBeenCalledWith(
+                expect.anything(),
+                { updateBalance: true },
+            );
+        });
+
+        it('sends no balance update when editing a card transaction with the feature on', async () => {
+            pageFeatures.creditCardStatements = true;
+            vi.mocked(transactionSyncService.update).mockResolvedValue(
+                {} as never,
+            );
+
+            renderCardDialog({
+                mode: 'edit',
+                initialAccountId: null,
+                transaction: {
+                    ...manualTransaction,
+                    account_id: 'account-card',
+                },
+            });
+
+            fireEvent.change(screen.getByPlaceholderText('0.00'), {
+                target: { value: '30' },
+            });
+            fireEvent.click(screen.getByTestId('submit-transaction'));
+
+            await waitFor(() => {
+                expect(transactionSyncService.update).toHaveBeenCalledWith(
+                    'tx-manual',
+                    expect.anything(),
+                    { updateBalance: false },
+                );
+            });
+        });
+    });
 
     it('closes the dialog and asks the parent to delete when Delete is clicked', () => {
         const onDelete = vi.fn();

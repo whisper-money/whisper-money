@@ -52,7 +52,7 @@ class UpdateTransaction extends WriteTool
             'creditor_name' => $schema->string()->description('New creditor (payee) name.'),
             'debtor_name' => $schema->string()->description('New debtor (payer) name.'),
             'notes' => $schema->string()->description('New free-text notes, or null to clear them. Editable on any transaction, bank/imported ones and split parts included.'),
-            'update_balance' => $schema->boolean()->description('When true and the amount/date/account changed, move the account balance snapshots accordingly. Ignored on connected accounts, whose balances come from the bank. Default false.'),
+            'update_balance' => $schema->boolean()->description('When true and the amount/date/account changed, move the account balance snapshots accordingly. Ignored on connected accounts, whose balances come from the bank, and on credit cards that track a limit instead of a balance. Default false.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }
@@ -114,8 +114,9 @@ class UpdateTransaction extends WriteTool
 
         if ($request->boolean('update_balance') && $transaction->wasChanged(ManualBalanceAdjuster::BALANCE_AFFECTING_ATTRIBUTES)) {
             $adjuster = app(ManualBalanceAdjuster::class);
-            // Either side no-ops on a connected account, so moving a transaction
-            // onto one still unwinds the manual account it came from.
+            // Either side no-ops on an account that does not own its balance (a
+            // connected one, or a credit card under the credit card feature), so
+            // moving a transaction onto one still unwinds the account it came from.
             $reversed = $adjuster->reverseDeletedTransaction($originalSnapshot);
             $applied = $adjuster->applyCreatedTransaction($transaction->load('account'));
             $balanceUpdated = $reversed || $applied;
