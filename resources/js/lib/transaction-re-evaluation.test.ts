@@ -123,9 +123,9 @@ describe('reEvaluateTransactionRules', () => {
     it('shows an error and resolves failed when the job fails', async () => {
         vi.mocked(axios.get).mockResolvedValueOnce(jobStatus('failed'));
 
-        await expect(reEvaluateTransactionRules(null, options)).resolves.toBe(
-            'failed',
-        );
+        await expect(
+            reEvaluateTransactionRules(undefined, options),
+        ).resolves.toBe('failed');
 
         expect(toast.error).toHaveBeenCalledWith(
             'Failed to re-evaluate rules. Please try again.',
@@ -136,9 +136,9 @@ describe('reEvaluateTransactionRules', () => {
     it('shows an error and resolves failed when a request fails', async () => {
         vi.mocked(axios.post).mockRejectedValueOnce(new Error('Network'));
 
-        await expect(reEvaluateTransactionRules(null, options)).resolves.toBe(
-            'failed',
-        );
+        await expect(
+            reEvaluateTransactionRules(undefined, options),
+        ).resolves.toBe('failed');
 
         expect(toast.error).toHaveBeenCalled();
         expect(axios.get).not.toHaveBeenCalled();
@@ -147,15 +147,15 @@ describe('reEvaluateTransactionRules', () => {
     it('tells the user the job is queued, without an error, when it is still pending after the wait', async () => {
         vi.mocked(axios.get).mockResolvedValue(jobStatus('pending'));
 
-        await expect(reEvaluateTransactionRules(null, options)).resolves.toBe(
-            'queued',
-        );
+        await expect(
+            reEvaluateTransactionRules(undefined, options),
+        ).resolves.toBe('queued');
 
         expect(axios.get).toHaveBeenCalledTimes(3);
         expect(toast.info).toHaveBeenCalledWith('Re-evaluation queued', {
             id: 'toast-1',
             description:
-                'Your transactions will be updated in the background in a few minutes.',
+                'Your transactions will be updated in the background shortly. Reload the page later to see the changes.',
         });
         expect(toast.error).not.toHaveBeenCalled();
         expect(toast.success).not.toHaveBeenCalled();
@@ -168,9 +168,9 @@ describe('reEvaluateTransactionRules', () => {
             .mockResolvedValueOnce(jobStatus('processing'))
             .mockResolvedValueOnce(jobStatus('done'));
 
-        await expect(reEvaluateTransactionRules(null, options)).resolves.toBe(
-            'done',
-        );
+        await expect(
+            reEvaluateTransactionRules(undefined, options),
+        ).resolves.toBe('done');
         expect(toast.info).not.toHaveBeenCalled();
     });
 });

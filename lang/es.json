@@ -3884,5 +3884,5 @@
     "Re-evaluation complete!": "¡Reevaluación completada!",
     ":count transaction(s) updated.": ":count movimiento(s) actualizado(s).",
     "Re-evaluation queued": "Reevaluación en cola",
-    "Your transactions will be updated in the background in a few minutes.": "Tus movimientos se actualizarán en segundo plano en unos minutos."
+    "Your transactions will be updated in the background shortly. Reload the page later to see the changes.": "Tus movimientos se actualizarán en segundo plano en breve. Recarga la página más tarde para ver los cambios."
 }

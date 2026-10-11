@@ -3,6 +3,7 @@ import {
     type TransactionFilters,
 } from '@/types/transaction';
 import {
+    act,
     fireEvent,
     render,
     screen,
@@ -239,7 +240,7 @@ describe('TransactionActionsMenu update categories automatically', () => {
             const onReEvaluateComplete = vi.fn();
 
             await clickUpdateCategories(onReEvaluateComplete);
-            await Promise.resolve();
+            await act(() => reEvaluateTransactionRules.mock.results[0].value);
 
             expect(onReEvaluateComplete).not.toHaveBeenCalled();
         },

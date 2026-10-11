@@ -688,9 +688,10 @@ export function TransactionList({
                 transaction_ids: selectedIds,
             });
 
-            if (outcome === 'done') {
+            // A queued job will still run, so the selection is handed off
+            // either way; keeping it would invite a duplicate job.
+            if (outcome !== 'failed') {
                 setRowSelection({});
-                consoleDebug('=== Bulk re-evaluation complete ===');
             }
         } finally {
             setIsReEvaluating(false);

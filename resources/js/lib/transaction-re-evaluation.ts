@@ -28,7 +28,7 @@ export function mergeReEvaluatedTransaction(
 
 export type ReEvaluationOutcome = 'done' | 'queued' | 'failed';
 
-export interface ReEvaluationPollOptions {
+interface ReEvaluationPollOptions {
     intervalMs?: number;
     /** Pending ticks to wait for before telling the user the job is queued. */
     maxPendingTicks?: number;
@@ -78,7 +78,7 @@ async function pollReEvaluation(
             toast.info(__('Re-evaluation queued'), {
                 id: toastId,
                 description: __(
-                    'Your transactions will be updated in the background in a few minutes.',
+                    'Your transactions will be updated in the background shortly. Reload the page later to see the changes.',
                 ),
             });
 
@@ -103,7 +103,9 @@ async function pollReEvaluation(
  * toast and resolve to `'failed'`.
  */
 export async function reEvaluateTransactionRules(
-    payload: { transaction_ids: string[] } | { filters: unknown } | null = null,
+    payload?:
+        | { transaction_ids: string[] }
+        | { filters: Record<string, unknown> },
     options: ReEvaluationPollOptions = {},
 ): Promise<ReEvaluationOutcome> {
     const toastId = toast.loading(__('Re-evaluating transactions...'));
@@ -111,7 +113,7 @@ export async function reEvaluateTransactionRules(
     try {
         const { data } = await axios.post<{ job_id: string }>(
             reEvaluateBulk().url,
-            payload ?? undefined,
+            payload,
         );
 
         return await pollReEvaluation(data.job_id, toastId, options);
