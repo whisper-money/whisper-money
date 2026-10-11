@@ -4,7 +4,6 @@ namespace App\Services\CreditCards;
 
 use App\Enums\AccountType;
 use App\Enums\CategoryType;
-use App\Features\CreditCardStatements;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\User;
@@ -15,7 +14,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
-use Laravel\Pennant\Feature;
 
 /**
  * Estimates what a credit card will charge next, and when, from its statement
@@ -28,36 +26,16 @@ class CreditCardStatementService
 
     public function __construct(private ExchangeRateService $exchangeRateService) {}
 
-    public function isAvailableTo(User $user): bool
-    {
-        return Feature::for($user)->active(CreditCardStatements::class);
-    }
-
-    /**
-     * Whether an account of this type is opened without a balance for this
-     * user. A credit card is about its limit and what is in use of it once
-     * the feature is on, so no starting balance is asked for or stored.
-     */
-    public function opensWithoutBalance(User $user, AccountType $type): bool
-    {
-        return $type === AccountType::CreditCard && $this->isAvailableTo($user);
-    }
-
     /**
      * The credit usage of every credit card among $accounts, keyed by account
      * id, for the lists that show a card's usage instead of its balance.
-     * Empty while the feature is off. One query per card, with their details
-     * loaded together.
+     * One query per card, with their details loaded together.
      *
      * @param  EloquentCollection<int, Account>  $accounts
      * @return array<string, array{limit: int|null, used: int, available: int|null, period_from: string, period_to: string, daily: list<array{date: string, used: int}>}>
      */
     public function usageByAccount(EloquentCollection $accounts, User $user): array
     {
-        if (! $this->isAvailableTo($user)) {
-            return [];
-        }
-
         $creditCards = $accounts
             ->filter(fn (Account $account): bool => $account->type === AccountType::CreditCard)
             ->loadMissing('creditCardDetail');
@@ -71,15 +49,15 @@ class CreditCardStatementService
     }
 
     /**
-     * The credit card fields an account row carries for this user: the
-     * detail, the statement estimate and the credit usage on a credit card
-     * when the feature is on, nothing at all otherwise.
+     * The credit card fields an account row carries: the detail, the
+     * statement estimate and the credit usage on a credit card, nothing at
+     * all on any other account.
      *
      * @return array<string, mixed>
      */
     public function presentFor(Account $account, User $user): array
     {
-        if ($account->type !== AccountType::CreditCard || ! $this->isAvailableTo($user)) {
+        if ($account->type !== AccountType::CreditCard) {
             return [];
         }
 

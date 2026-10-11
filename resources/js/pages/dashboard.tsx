@@ -59,7 +59,7 @@ interface DashboardProps extends SharedData {
         previous: CashflowSummary;
     };
     openIntegrationRequests?: boolean;
-    /** Only while the credit card feature is on. */
+    /** Deferred: what is in use of each credit card, by account id. */
     creditCardUsage?: Record<string, CreditCardUsage>;
     monthlySummary?: MonthlySummaryNoticeData | null;
 }

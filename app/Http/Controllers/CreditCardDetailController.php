@@ -6,19 +6,14 @@ use App\Enums\AccountType;
 use App\Http\Requests\UpdateCreditCardDetailRequest;
 use App\Models\Account;
 use App\Services\AccountWriteService;
-use App\Services\CreditCards\CreditCardStatementService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class CreditCardDetailController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(
-        private AccountWriteService $accountWriteService,
-        private CreditCardStatementService $creditCardStatementService,
-    ) {}
+    public function __construct(private AccountWriteService $accountWriteService) {}
 
     /**
      * Set a credit card's limit and statement dates. The dates become the new
@@ -26,7 +21,7 @@ class CreditCardDetailController extends Controller
      */
     public function update(UpdateCreditCardDetailRequest $request, Account $account): RedirectResponse
     {
-        $this->ensureCreditCardStatements($request, $account);
+        $this->ensureCreditCard($account);
 
         $this->accountWriteService->syncCreditCardDetail($account, $request->validated());
 
@@ -37,9 +32,9 @@ class CreditCardDetailController extends Controller
      * Forget the statement dates, which takes the estimate back to the empty
      * state. The credit limit stays.
      */
-    public function destroy(Request $request, Account $account): RedirectResponse
+    public function destroy(Account $account): RedirectResponse
     {
-        $this->ensureCreditCardStatements($request, $account);
+        $this->ensureCreditCard($account);
 
         $this->accountWriteService->syncCreditCardDetail($account, [
             'statement_closing_date' => null,
@@ -49,10 +44,8 @@ class CreditCardDetailController extends Controller
         return to_route('accounts.show', $account);
     }
 
-    private function ensureCreditCardStatements(Request $request, Account $account): void
+    private function ensureCreditCard(Account $account): void
     {
-        abort_unless($this->creditCardStatementService->isAvailableTo($request->user()), 404);
-
         $this->authorize('update', $account);
 
         abort_unless($account->type === AccountType::CreditCard, 404);

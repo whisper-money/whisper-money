@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
-import { useOwnsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
+import { ownsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
 import { useShortcutHint } from '@/hooks/use-shortcut';
 import { fetchJson } from '@/lib/fetch-json';
 import { captureEvent } from '@/lib/posthog';
@@ -226,7 +226,6 @@ export function EditTransactionDialog({
     const locale = useLocale();
     const { auth, currencies } = usePage<SharedData>().props;
     const userCurrencyCode = auth.user.currency_code;
-    const ownsBalance = useOwnsBalanceUpdates();
 
     const { sync } = useSyncContext();
     const [transactionDate, setTransactionDate] = useState('');
@@ -478,7 +477,7 @@ export function EditTransactionDialog({
         return [originalAccountId, accountId].some((id) => {
             const account = accounts.find((acc) => acc.id === id);
 
-            return account === undefined || ownsBalance(account);
+            return account === undefined || ownsBalanceUpdates(account);
         });
     }
 
@@ -607,10 +606,10 @@ export function EditTransactionDialog({
                 }
 
                 // A connected account's balance is the bank's to report and a
-                // credit card under the feature has none, so the undo below
+                // credit card has none, so the undo below
                 // must not try to reverse one either.
                 const balanceWasUpdated =
-                    ownsBalance(selectedAccount) && updateAccountBalance;
+                    ownsBalanceUpdates(selectedAccount) && updateAccountBalance;
 
                 const createdTransaction = await transactionSyncService.create(
                     {
@@ -879,10 +878,10 @@ export function EditTransactionDialog({
     }
 
     const selectedAccount = accounts.find((acc) => acc.id === accountId);
-    // A connected account's balance is the bank's and a credit card under the
-    // feature has none, so neither offers to update one.
+    // A connected account's balance is the bank's and a credit card has none,
+    // so neither offers to update one.
     const offersBalanceUpdate =
-        !selectedAccount || ownsBalance(selectedAccount);
+        !selectedAccount || ownsBalanceUpdates(selectedAccount);
     // A new transaction opens on the amount, the description and three chips;
     // everything else waits behind "More options". Editing is untouched.
     const isMinimal = mode === 'create' && !expanded;
@@ -1201,8 +1200,7 @@ export function EditTransactionDialog({
             />
 
             {/* The bank owns a connected account's balance and a credit card
-                under the feature has none, so there is nothing here to switch
-                off. */}
+                has none, so there is nothing here to switch off. */}
             {offersBalanceUpdate && (
                 <Button
                     type="button"

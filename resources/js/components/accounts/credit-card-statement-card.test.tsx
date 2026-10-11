@@ -8,7 +8,6 @@ const { page, router } = vi.hoisted(() => ({
     page: {
         props: {
             locale: 'en-US',
-            features: { creditCardStatements: true },
         },
     },
     router: { patch: vi.fn(), delete: vi.fn() },
@@ -54,24 +53,8 @@ function statement(isFinal: boolean, amount = 12345): CreditCardStatement {
 
 describe('CreditCardStatementCard', () => {
     beforeEach(() => {
-        page.props.features.creditCardStatements = true;
         router.patch.mockClear();
         router.delete.mockClear();
-    });
-
-    it('renders nothing while the feature is off', () => {
-        page.props.features.creditCardStatements = false;
-
-        const { container } = render(
-            <CreditCardStatementCard
-                accountId="card-1"
-                currencyCode="EUR"
-                detail={detail}
-                statement={statement(true)}
-            />,
-        );
-
-        expect(container).toBeEmptyDOMElement();
     });
 
     it('invites the user to set the statement dates when there are none', () => {

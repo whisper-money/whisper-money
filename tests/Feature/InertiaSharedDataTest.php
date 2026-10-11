@@ -68,7 +68,6 @@ test('shared feature flags do not include coinbase flag', function () {
         'calculateBalancesOnImport' => false,
         'fullImport' => false,
         'fullImportSettings' => false,
-        'creditCardStatements' => false,
     ]);
 });
 

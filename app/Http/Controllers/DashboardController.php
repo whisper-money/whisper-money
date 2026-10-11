@@ -35,9 +35,7 @@ class DashboardController extends Controller
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
             'cashflowSummary' => Inertia::defer(fn () => $this->getCashflowSummary($request), 'dashboard'),
-            ...$this->creditCardStatementService->isAvailableTo($request->user()) ? [
-                'creditCardUsage' => Inertia::defer(fn () => $this->getCreditCardUsage($request), 'dashboard'),
-            ] : [],
+            'creditCardUsage' => Inertia::defer(fn () => $this->getCreditCardUsage($request), 'dashboard'),
         ]);
     }
 

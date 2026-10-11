@@ -43,7 +43,7 @@ interface AccountMetrics {
 interface Props {
     accounts: Account[];
     accountMetrics?: Record<string, AccountMetrics>;
-    /** Only while the credit card feature is on. */
+    /** Deferred: what is in use of each credit card, by account id. */
     creditCardUsage?: Record<string, CreditCardUsage>;
 }
 

@@ -59,7 +59,6 @@ class UpdateAccount extends WriteTool
         $type = $requestedType ?? $account->type;
 
         $this->refuseSyncOwnedFields($request, $account, $requestedType);
-        $this->refuseUnavailableCreditCardFields($request, $user);
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string'],

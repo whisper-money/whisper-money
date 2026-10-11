@@ -7,7 +7,6 @@ use App\Jobs\GenerateHistoricalLoanBalancesJob;
 use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Models\Account;
 use App\Models\User;
-use App\Services\CreditCards\CreditCardStatementService;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 
@@ -24,13 +23,12 @@ class AccountWriteService
         private RealEstateBalanceGeneratorService $realEstateBalanceGenerator,
         private LoanBalanceGeneratorService $loanBalanceGenerator,
         private AccountUserCurrencyService $accountUserCurrencyService,
-        private CreditCardStatementService $creditCardStatementService,
     ) {}
 
     /**
      * Create an account with its balance, its type detail and the balance
-     * history implied by them. A credit card opened while the credit card
-     * feature is on takes no balance at all: its limit and usage replace it.
+     * history implied by them. A credit card takes no balance at all: its
+     * limit and usage replace it.
      *
      * `$spaceId` is for callers that know which space to write to (the MCP
      * tools resolve one per call); left null, the account falls back to the
@@ -45,9 +43,9 @@ class AccountWriteService
             ...$spaceId !== null ? ['space_id' => $spaceId] : [],
         ]);
 
-        $balance = $this->creditCardStatementService->opensWithoutBalance($user, $account->type)
-            ? null
-            : $data['balance'] ?? null;
+        $balance = $account->type->hasBalance()
+            ? $data['balance'] ?? null
+            : null;
 
         $investedAmount = $account->type->supportsInvestedAmount()
             ? $data['invested_amount'] ?? null

@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\CategoryType;
-use App\Features\CreditCardStatements;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\GetCashflow;
 use App\Mcp\Tools\GetNetWorth;
@@ -24,7 +23,6 @@ use App\Models\Transaction;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Laravel\Pennant\Feature;
 
 it('blocks read tools when subscriptions are enabled and the user has no paid plan', function () {
     config(['subscriptions.enabled' => true]);
@@ -155,9 +153,8 @@ it('lists the user\'s accounts for the space', function () {
         ->assertSee('Everyday Checking');
 });
 
-it('presents the next credit card payment when the user has the feature', function () {
+it('presents the next credit card payment', function () {
     $user = User::factory()->create(['currency_code' => 'EUR']);
-    Feature::for($user)->activate(CreditCardStatements::class);
     $this->travelTo(CarbonImmutable::parse('2026-03-10 12:00', 'UTC'));
 
     $cards = Account::factory()->creditCard()->count(3)->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
@@ -191,22 +188,8 @@ it('presents the next credit card payment when the user has the feature', functi
     expect(collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from `transactions`'))->count())->toBe(3);
 });
 
-it('presents no credit card estimate to a user without the feature', function () {
-    $user = User::factory()->create();
-    $card = Account::factory()->creditCard()->create(['user_id' => $user->id]);
-    CreditCardDetail::factory()->create(['account_id' => $card->id]);
-
-    WhisperMoneyServer::actingAs($user)
-        ->tool(ListAccounts::class, [])
-        ->assertOk()
-        ->assertDontSee('credit_card_statement')
-        ->assertDontSee('credit_card_detail')
-        ->assertDontSee('credit_card_usage');
-});
-
 it('presents the credit limit and what is left of it', function () {
     $user = User::factory()->create(['currency_code' => 'EUR']);
-    Feature::for($user)->activate(CreditCardStatements::class);
     $this->travelTo(CarbonImmutable::parse('2026-03-10 12:00', 'UTC'));
 
     $card = Account::factory()->creditCard()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
