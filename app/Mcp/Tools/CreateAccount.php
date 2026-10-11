@@ -86,8 +86,7 @@ class CreateAccount extends WriteTool
 
     /**
      * A credit card has no balance: what is in use of it comes from its
-     * transactions. Telling the agent beats storing a figure
-     * nothing reads.
+     * transactions. Telling the agent beats storing a figure nothing reads.
      */
     private function refuseCreditCardBalance(Request $request, AccountType $type): void
     {
