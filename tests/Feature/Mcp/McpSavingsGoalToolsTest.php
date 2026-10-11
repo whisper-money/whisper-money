@@ -349,3 +349,24 @@ test('create_savings_goal refuses an account another running goal already auto-t
 
     expect($user->savingsGoals()->count())->toBe(1);
 });
+
+test('the savings goal tools state amount limits in major units too', function () {
+    $user = mcpGoalUser();
+    $goal = mcpMonthlyGoal($user);
+
+    callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Fund', 'kind' => 'monthly', 'monthly_target_type' => 'amount', 'monthly_target_amount' => 0])
+        ->assertHasErrors()->assertSee('monthly_target_amount is in minor units of EUR: at least 1, which is €0.01.');
+    callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Fund', 'kind' => 'one_off', 'target_amount' => SavingsGoal::MAX_AMOUNT + 1])
+        ->assertHasErrors()->assertSee('target_amount is in minor units of EUR: at most 100000000000, which is €1,000,000,000.00.');
+    callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $goal->id, 'monthly_target_type' => 'amount', 'monthly_target_amount' => SavingsGoal::MAX_AMOUNT + 1])
+        ->assertHasErrors()->assertSee('at most 100000000000, which is €1,000,000,000.00.');
+});
+
+test('create_savings_goal refuses an empty auto-tag account instead of dropping the rule', function () {
+    $user = mcpGoalUser();
+
+    callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Fund', 'kind' => 'monthly', 'monthly_target_type' => 'amount', 'monthly_target_amount' => 10000, 'auto_tag_account_id' => ''])
+        ->assertHasErrors()->assertSee('auto_tag_account_id is empty');
+
+    expect($user->savingsGoals()->count())->toBe(0);
+});

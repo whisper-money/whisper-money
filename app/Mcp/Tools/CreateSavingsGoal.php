@@ -58,9 +58,15 @@ class CreateSavingsGoal extends WriteTool
             ...$otherKindRules,
             ...($kind === SavingsGoalKind::Monthly ? [
                 ...$this->monthlyTargetRules(creating: true),
-                'auto_tag_account_id' => ['nullable', 'uuid'],
+                // Null leaves the rule out; an empty string is a request for
+                // one with no account, refused rather than dropped.
+                'auto_tag_account_id' => ['nullable', 'filled', 'uuid'],
             ] : $this->oneOffTargetRules(creating: true)),
-        ], $messages);
+        ], [
+            ...$messages,
+            ...$this->amountLimitMessages($this->reportingCurrency($user)),
+            'auto_tag_account_id.filled' => 'auto_tag_account_id is empty. Pass the id of a savings account in the goal\'s space (list_accounts), or leave it out to create the goal without an automation rule.',
+        ]);
 
         $space = $this->resolveSpace($request, $user);
 

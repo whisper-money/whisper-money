@@ -59,6 +59,7 @@ class UpdateSavingsGoal extends WriteTool
             ...($goal->isMonthly() ? $this->monthlyTargetRules(creating: false) : $this->oneOffTargetRules(creating: false)),
         ], [
             ...$messages,
+            ...$this->amountLimitMessages($this->reportingCurrency($user)),
             'kind.prohibited' => 'A goal\'s kind is fixed once created. To switch, create a new goal of the other kind.',
         ]);
 
