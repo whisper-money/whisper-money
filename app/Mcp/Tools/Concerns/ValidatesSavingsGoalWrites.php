@@ -3,6 +3,8 @@
 namespace App\Mcp\Tools\Concerns;
 
 use App\Enums\SavingsGoalKind;
+use App\Models\SavingsGoal;
+use App\Support\Money;
 
 /**
  * Rules shared by create_savings_goal and update_savings_goal.
@@ -39,5 +41,23 @@ trait ValidatesSavingsGoalWrites
         }
 
         return [$rules, $messages];
+    }
+
+    /**
+     * The amount bounds with the major-unit figure next to the minor units the
+     * field takes, so an agent can tell the user the limit in their money.
+     *
+     * @return array<string, string>
+     */
+    protected function amountLimitMessages(string $currency): array
+    {
+        $messages = [];
+
+        foreach (['target_amount', 'monthly_target_amount'] as $field) {
+            $messages["{$field}.min"] = "{$field} is in minor units of {$currency}: at least :min, which is ".Money::format(1, $currency).'.';
+            $messages["{$field}.max"] = "{$field} is in minor units of {$currency}: at most :max, which is ".Money::format(SavingsGoal::MAX_AMOUNT, $currency).'.';
+        }
+
+        return $messages;
     }
 }
