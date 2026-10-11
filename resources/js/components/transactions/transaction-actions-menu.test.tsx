@@ -2,7 +2,13 @@ import {
     type ServerTransaction,
     type TransactionFilters,
 } from '@/types/transaction';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TransactionActionsMenu } from './transaction-actions-menu';
@@ -17,8 +23,10 @@ vi.mock('@/hooks/use-mobile', () => ({
     useIsMobile: () => isMobile,
 }));
 
-vi.mock('@/hooks/use-re-evaluate-all-transactions', () => ({
-    useReEvaluateAllTransactions: () => ({ reEvaluateAll: vi.fn() }),
+const reEvaluateTransactionRules = vi.fn();
+
+vi.mock('@/lib/transaction-re-evaluation', () => ({
+    reEvaluateTransactionRules: () => reEvaluateTransactionRules(),
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -62,12 +70,14 @@ function renderMenu(
     filters: TransactionFilters,
     transactions: ServerTransaction[] = [],
     hasTransactionalAccounts = true,
+    onReEvaluateComplete?: () => void,
 ) {
     return render(
         <TransactionActionsMenu
             transactions={transactions}
             hasTransactionalAccounts={hasTransactionalAccounts}
             filters={filters}
+            onReEvaluateComplete={onReEvaluateComplete}
         />,
     );
 }
@@ -93,6 +103,7 @@ function actionBarLabels(container: HTMLElement) {
 
 beforeEach(() => {
     isMobile = false;
+    reEvaluateTransactionRules.mockReset();
 });
 
 describe('TransactionActionsMenu analysis button', () => {
@@ -196,4 +207,41 @@ describe('TransactionActionsMenu action bar layout', () => {
         expect(categorizeItem).toHaveAttribute('data-disabled');
         expect(categorizeItem.closest('a')).toBeNull();
     });
+});
+
+describe('TransactionActionsMenu update categories automatically', () => {
+    async function clickUpdateCategories(onReEvaluateComplete: () => void) {
+        renderMenu(emptyFilters, [], true, onReEvaluateComplete);
+
+        const menu = await openMoreActionsMenu();
+        fireEvent.click(
+            within(menu).getByText('Update categories automatically'),
+        );
+
+        await waitFor(() =>
+            expect(reEvaluateTransactionRules).toHaveBeenCalledTimes(1),
+        );
+    }
+
+    it('refreshes the list once the re-evaluation is done', async () => {
+        reEvaluateTransactionRules.mockResolvedValue('done');
+        const onReEvaluateComplete = vi.fn();
+
+        await clickUpdateCategories(onReEvaluateComplete);
+
+        await waitFor(() => expect(onReEvaluateComplete).toHaveBeenCalled());
+    });
+
+    it.each(['queued', 'failed'])(
+        'does not refresh the list when the re-evaluation is %s',
+        async (outcome) => {
+            reEvaluateTransactionRules.mockResolvedValue(outcome);
+            const onReEvaluateComplete = vi.fn();
+
+            await clickUpdateCategories(onReEvaluateComplete);
+            await Promise.resolve();
+
+            expect(onReEvaluateComplete).not.toHaveBeenCalled();
+        },
+    );
 });

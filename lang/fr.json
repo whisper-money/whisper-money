@@ -2948,5 +2948,11 @@
     "Add the credit limit of this card to see how much of it you have used and how much is still available.": "Ajoutez le plafond de cette carte pour voir combien vous en avez utilisé et combien il reste disponible.",
     "From :from to :to": "Du :from au :to",
     "Used counts the purchases on this card that are still to be charged: the statement not paid yet and the open cycle. Payments to the card are not subtracted.": "L'utilisé additionne les achats de cette carte qui n'ont pas encore été prélevés : le relevé pas encore payé et le cycle en cours. Les remboursements de la carte ne sont pas déduits.",
-    "Used counts the purchases on this card this month. Payments to the card are not subtracted.": "L'utilisé additionne les achats de cette carte ce mois-ci. Les remboursements de la carte ne sont pas déduits."
+    "Used counts the purchases on this card this month. Payments to the card are not subtracted.": "L'utilisé additionne les achats de cette carte ce mois-ci. Les remboursements de la carte ne sont pas déduits.",
+    "Re-evaluating transactions...": "Réévaluation des transactions...",
+    "Re-evaluating :processed of :total transactions...": "Réévaluation de :processed sur :total transactions...",
+    "Re-evaluation complete!": "Réévaluation terminée !",
+    ":count transaction(s) updated.": ":count transaction(s) mise(s) à jour.",
+    "Re-evaluation queued": "Réévaluation en file d'attente",
+    "Your transactions will be updated in the background in a few minutes.": "Vos transactions seront mises à jour en arrière-plan dans quelques minutes."
 }
