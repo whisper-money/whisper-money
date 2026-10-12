@@ -76,3 +76,23 @@ it('swaps the video when the appearance changes', function () {
         ->assertScript("document.querySelectorAll('{$selector}').length", 1)
         ->assertNoJavascriptErrors();
 });
+
+it('plays the full tour in a dialog and resumes the hero loop when it closes', function () {
+    $page = visit('/?lang=es')->inDarkMode();
+
+    $hero = '[data-slot="hero-video"] video';
+    $tour = '[data-slot="product-tour-video"]';
+
+    $page->click('button[aria-label="Play the product tour"]')
+        ->assertPresent($tour)
+        ->assertAttribute($tour, 'src', '/images/landing_videos/product-es-dark.mp4')
+        // Not muted: the visitor asked for it, so it plays its audio once the
+        // renders carry a track. Native controls are the only sound toggle.
+        ->assertScript("document.querySelector('{$tour}').muted", false)
+        ->assertScript("document.querySelector('{$tour}').controls", true)
+        ->assertScript("document.querySelector('{$hero}').paused", true)
+        ->keys($tour, 'Escape')
+        ->assertNotPresent($tour)
+        ->assertScript("document.querySelector('{$hero}').paused", false)
+        ->assertNoJavascriptErrors();
+});

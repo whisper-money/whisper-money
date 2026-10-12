@@ -1,7 +1,10 @@
 export type ColorScheme = 'light' | 'dark';
 
 export type LandingVideoSources = {
+    /** The muted loop in the hero. */
     video: string;
+    /** The full tour the visitor opens on purpose, played with its audio. */
+    tour: string;
     poster: string;
 };
 
@@ -19,5 +22,7 @@ export function landingVideoSources(
 ): LandingVideoSources {
     const base = `/images/landing_videos/product-${landingVideoLanguage(language)}-${scheme}`;
 
-    return { video: `${base}.mp4`, poster: `${base}.jpg` };
+    // The renders carry no audio track yet, so the tour is the loop's file. A
+    // with-audio render only needs its own path here.
+    return { video: `${base}.mp4`, tour: `${base}.mp4`, poster: `${base}.jpg` };
 }

@@ -19,10 +19,12 @@ describe('landingVideoSources', () => {
     it('picks the video and poster for the language and color scheme', () => {
         expect(landingVideoSources('es', 'dark')).toEqual({
             video: '/images/landing_videos/product-es-dark.mp4',
+            tour: '/images/landing_videos/product-es-dark.mp4',
             poster: '/images/landing_videos/product-es-dark.jpg',
         });
         expect(landingVideoSources('fr', 'light')).toEqual({
             video: '/images/landing_videos/product-en-light.mp4',
+            tour: '/images/landing_videos/product-en-light.mp4',
             poster: '/images/landing_videos/product-en-light.jpg',
         });
     });
