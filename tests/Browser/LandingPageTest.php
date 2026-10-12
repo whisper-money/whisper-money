@@ -83,7 +83,8 @@ it('plays the full tour in a dialog and resumes the hero loop when it closes', f
     $hero = '[data-slot="hero-video"] video';
     $tour = '[data-slot="product-tour-video"]';
 
-    $page->click('button[aria-label="Play the product tour"]')
+    // The card itself is the button; its label is translated, the slot is not.
+    $page->click('[data-slot="hero-video"]')
         ->assertPresent($tour)
         ->assertAttribute($tour, 'src', '/images/landing_videos/product-es-dark.mp4')
         // Not muted: the visitor asked for it, so it plays its audio once the
@@ -92,6 +93,8 @@ it('plays the full tour in a dialog and resumes the hero loop when it closes', f
         ->assertScript("document.querySelector('{$tour}').controls", true)
         ->assertScript("document.querySelector('{$hero}').paused", true)
         ->keys($tour, 'Escape')
+        // Radix keeps the content mounted through its exit animation.
+        ->wait(1)
         ->assertNotPresent($tour)
         ->assertScript("document.querySelector('{$hero}').paused", false)
         ->assertNoJavascriptErrors();
