@@ -1,0 +1,23 @@
+{
+  "name": "whisper-money-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render LandingVideo out/landing-en-dark.mp4",
+    "still": "remotion still LandingVideo out/still.png"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.535",
+    "@remotion/google-fonts": "4.0.535",
+    "@remotion/transitions": "4.0.535",
+    "lucide-react": "1.55.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.535"
+  },
+  "devDependencies": {
+    "@types/react": "19",
+    "typescript": "^7.0.2"
+  }
+}
