@@ -1,4 +1,5 @@
 import { BankLogo } from '@/components/bank-logo';
+import { HeroVideo } from '@/components/landing/hero-video';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -65,30 +66,6 @@ import {
     useMemo,
     useState,
 } from 'react';
-
-const LANDING_IMAGES = [
-    {
-        key: 'bank-accounts',
-        light: '/images/landing/whisper.money_light_3.png',
-        dark: '/images/landing/whisper.money_dark_3.png',
-        alt: 'Your transactions at a glance',
-        className: 'left-[-24%] group-hover:left-[-32%]',
-    },
-    {
-        key: 'unlock-key',
-        light: '/images/landing/whisper.money_light_2.png',
-        dark: '/images/landing/whisper.money_dark_2.png',
-        alt: 'Manage all your accounts in a single place',
-        className: '',
-    },
-    {
-        key: 'transactions',
-        light: '/images/landing/whisper.money_light_1.png',
-        dark: '/images/landing/whisper.money_dark_1.png',
-        alt: 'Analyze your money, how it evolves, and how do you spent it',
-        className: 'left-[32%] group-hover:left-[48%]',
-    },
-] as const;
 
 type PopularBank = {
     name: string;
@@ -2466,11 +2443,14 @@ export default function Welcome({
     popularBanks,
     comparisonLinks,
     integrationsLink,
+    language,
 }: {
     canRegister?: boolean;
     popularBanks: PopularBank[];
     comparisonLinks: ComparisonLink[];
     integrationsLink: { heading: string; path: string };
+    /** The language the page is written in, not the format region in `locale`. */
+    language: string;
 }) {
     const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
         usePage<SharedData>().props;
@@ -2952,38 +2932,8 @@ export default function Welcome({
                                 </div>
                             </div>
 
-                            <div className="group relative sm:px-24">
-                                {LANDING_IMAGES.map((image, index) => (
-                                    <div
-                                        key={image.key}
-                                        className={cn(
-                                            'relative z-10 transition-all delay-200 duration-700 ease-in-out',
-                                            'rotate-[-24deg] skew-y-12 group-hover:rotate-[-12deg] group-hover:skew-y-6',
-                                            'max-sm:rotate-[-16deg] max-sm:skew-y-8 max-sm:group-hover:rotate-[-8deg] max-sm:group-hover:skew-y-4',
-                                            index < LANDING_IMAGES.length - 1 &&
-                                                'h-[24px]',
-                                            image.className,
-                                        )}
-                                    >
-                                        <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
-                                            <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                                <div className="rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                    <img
-                                                        src={image.light}
-                                                        alt={image.alt}
-                                                        className="w-full rounded-lg dark:hidden"
-                                                    />
-
-                                                    <img
-                                                        src={image.dark}
-                                                        alt={image.alt}
-                                                        className="hidden w-full rounded-lg dark:block"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="relative sm:px-24">
+                                <HeroVideo language={language} />
 
                                 <div
                                     data-slot="glow"
