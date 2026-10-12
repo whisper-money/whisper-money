@@ -2877,7 +2877,7 @@ export default function Welcome({
                 <Header canRegister={canRegister} />
 
                 <main className="flex flex-1 flex-col">
-                    <section className="relative w-full overflow-hidden px-6 py-28 sm:py-32 md:py-40">
+                    <section className="relative w-full overflow-hidden px-6 pt-28 pb-12 sm:pt-32 sm:pb-16 md:pt-40 md:pb-20">
                         <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-12">
                             <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-start gap-6 sm:gap-8">
                                 <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
