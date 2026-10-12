@@ -53,8 +53,10 @@ trait ValidatesSavingsGoalWrites
     {
         $messages = [];
 
-        foreach (['target_amount', 'monthly_target_amount'] as $field) {
-            $messages["{$field}.min"] = "{$field} is in minor units of {$currency}: at least :min, which is ".Money::format(1, $currency).'.';
+        // Each field with its own floor: a target needs one minor unit, what
+        // is already saved may be nothing.
+        foreach (['target_amount' => 1, 'monthly_target_amount' => 1, 'initial_amount' => 0] as $field => $min) {
+            $messages["{$field}.min"] = "{$field} is in minor units of {$currency}: at least :min, which is ".Money::format($min, $currency).'.';
             $messages["{$field}.max"] = "{$field} is in minor units of {$currency}: at most :max, which is ".Money::format(SavingsGoal::MAX_AMOUNT, $currency).'.';
         }
 

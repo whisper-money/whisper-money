@@ -358,6 +358,10 @@ test('the savings goal tools state amount limits in major units too', function (
         ->assertHasErrors()->assertSee('monthly_target_amount is in minor units of EUR: at least 1, which is €0.01.');
     callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Fund', 'kind' => 'one_off', 'target_amount' => SavingsGoal::MAX_AMOUNT + 1])
         ->assertHasErrors()->assertSee('target_amount is in minor units of EUR: at most 100000000000, which is €1,000,000,000.00.');
+    callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Fund', 'kind' => 'one_off', 'target_amount' => 100, 'initial_amount' => -1])
+        ->assertHasErrors()->assertSee('initial_amount is in minor units of EUR: at least 0, which is €0.00.');
+    callSavingsGoalTool($user, CreateSavingsGoal::class, ['name' => 'Fund', 'kind' => 'one_off', 'target_amount' => 100, 'initial_amount' => SavingsGoal::MAX_AMOUNT + 1])
+        ->assertHasErrors()->assertSee('initial_amount is in minor units of EUR: at most 100000000000, which is €1,000,000,000.00.');
     callSavingsGoalTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $goal->id, 'monthly_target_type' => 'amount', 'monthly_target_amount' => SavingsGoal::MAX_AMOUNT + 1])
         ->assertHasErrors()->assertSee('at most 100000000000, which is €1,000,000,000.00.');
 });
