@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Concerns;
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use Illuminate\Contracts\Validation\Validator;
 
@@ -10,7 +11,7 @@ use Illuminate\Contracts\Validation\Validator;
  * card has a limit and what is in use of it instead of a balance, so a balance
  * written for one is refused rather than stored and hidden.
  */
-trait RequiresAccountWithBalance
+trait RefusesCreditCardBalance
 {
     /**
      * @return array<int, callable>
@@ -27,7 +28,7 @@ trait RequiresAccountWithBalance
             }
 
             if (! $account->type->hasBalance()) {
-                $validator->errors()->add('balance', 'A credit card has no balance: it has a credit limit instead.');
+                $validator->errors()->add('balance', AccountType::NO_BALANCE_MESSAGE);
             }
         }];
     }

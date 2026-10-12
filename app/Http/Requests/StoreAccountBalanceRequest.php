@@ -2,12 +2,12 @@
 
 namespace App\Http\Requests;
 
-use App\Http\Requests\Concerns\RequiresAccountWithBalance;
+use App\Http\Requests\Concerns\RefusesCreditCardBalance;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAccountBalanceRequest extends FormRequest
 {
-    use RequiresAccountWithBalance;
+    use RefusesCreditCardBalance;
 
     public function authorize(): bool
     {

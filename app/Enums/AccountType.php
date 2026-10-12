@@ -13,6 +13,9 @@ enum AccountType: string
     case Savings = 'savings';
     case Others = 'others';
 
+    /** Why a balance written for an account without one is refused. */
+    public const string NO_BALANCE_MESSAGE = 'A credit card has no balance: it has a credit limit instead.';
+
     /**
      * Whether this account type supports tracking invested amount and gains/losses.
      */

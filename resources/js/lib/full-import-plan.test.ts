@@ -621,6 +621,27 @@ describe('buildImport', () => {
         ).toEqual([]);
     });
 
+    it('sends no balances for a credit card, created or mapped onto', () => {
+        const wise = input().accountPlan.wise;
+        const balancesWith = (entry: Partial<AccountPlanEntry>) =>
+            buildImport(
+                input({
+                    accountPlan: {
+                        ...input().accountPlan,
+                        wise: { ...wise, ...entry },
+                    },
+                    contextAccounts: [
+                        account({ id: 'card-id', type: 'credit_card' }),
+                    ],
+                }),
+            ).balances;
+
+        expect(balancesWith({ type: 'credit_card' })).toEqual([]);
+        expect(
+            balancesWith({ action: 'map', targetAccountId: 'card-id' }),
+        ).toEqual([]);
+    });
+
     it('sends a new bank name only when no known bank was picked', () => {
         const created = (entry: Partial<AccountPlanEntry>) =>
             buildImport(

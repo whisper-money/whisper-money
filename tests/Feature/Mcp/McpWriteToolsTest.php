@@ -586,7 +586,7 @@ it('refuses to record a balance on a credit card', function () {
     callWriteTool($user, CreateBalance::class, [
         'account_id' => $account->id,
         'balance' => 250000,
-    ])->assertHasErrors(['credit card']);
+    ])->assertHasErrors([AccountType::NO_BALANCE_MESSAGE]);
 
     expect($account->balances()->count())->toBe(0);
 });

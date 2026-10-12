@@ -351,7 +351,7 @@ export function ImportTransactionsDrawer({
             // of a credit card, which has no balance at all (a saved mapping
             // may still name a balance column).
             const carriesBalance = (transaction: ParsedTransaction): boolean =>
-                accountHasBalance(account) &&
+                tracksBalance &&
                 isInAccountCurrency(transaction, account.currency_code);
 
             const parsedTransactions = convertRowsToTransactions(
