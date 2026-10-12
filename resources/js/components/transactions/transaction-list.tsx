@@ -75,7 +75,10 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { consoleDebug } from '@/lib/debug';
 import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
-import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
+import {
+    mergeReEvaluatedTransaction,
+    reEvaluateTransactionRules,
+} from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
     filterTransactionalAccounts,
@@ -679,65 +682,17 @@ export function TransactionList({
         }
 
         setIsReEvaluating(true);
-        const toastId = toast.loading(`Re-evaluating 0 of ... transactions...`);
 
         try {
-            const bulkResponse = await axios.post<{ job_id: string }>(
-                reEvaluateBulk().url,
-                { transaction_ids: selectedIds },
-            );
-
-            const jobId = bulkResponse.data.job_id;
-
-            await new Promise<void>((resolve, reject) => {
-                const poll = async () => {
-                    try {
-                        const statusResponse = await axios.get<{
-                            status: string;
-                            processed: number;
-                            total: number;
-                            updated: number;
-                        }>(reEvaluateStatus({ jobId }).url);
-
-                        const { status, processed, total, updated } =
-                            statusResponse.data;
-
-                        toast.loading(
-                            `Re-evaluating ${processed} of ${total} transactions...`,
-                            { id: toastId },
-                        );
-
-                        if (status === 'done') {
-                            toast.dismiss(toastId);
-                            toast.success(() => (
-                                <div>
-                                    {`Re-evaluation complete!`}
-                                    <br />
-                                    {`${updated} transaction(s) updated.`}
-                                </div>
-                            ));
-                            resolve();
-                        } else if (status === 'failed') {
-                            reject(new Error('Job failed'));
-                        } else {
-                            setTimeout(poll, 1000);
-                        }
-                    } catch (error) {
-                        reject(error);
-                    }
-                };
-
-                poll();
+            const outcome = await reEvaluateTransactionRules({
+                transaction_ids: selectedIds,
             });
 
-            setRowSelection({});
-            consoleDebug('=== Bulk re-evaluation complete ===');
-        } catch (error) {
-            consoleDebug('❌ Error during bulk re-evaluation:', error);
-            console.error('Failed to re-evaluate rules:', error);
-            toast.error(__('Failed to re-evaluate rules. Please try again.'), {
-                id: toastId,
-            });
+            // A queued job will still run, so the selection is handed off
+            // either way; keeping it would invite a duplicate job.
+            if (outcome !== 'failed') {
+                setRowSelection({});
+            }
         } finally {
             setIsReEvaluating(false);
         }

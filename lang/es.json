@@ -3878,5 +3878,11 @@
     "Add the credit limit of this card to see how much of it you have used and how much is still available.": "Añade el límite de crédito de esta tarjeta para ver cuánto has dispuesto y cuánto te queda disponible.",
     "From :from to :to": "Del :from al :to",
     "Used counts the purchases on this card that are still to be charged: the statement not paid yet and the open cycle. Payments to the card are not subtracted.": "El dispuesto suma las compras de esta tarjeta que aún no se han cargado: el extracto pendiente de pago y el ciclo abierto. Los pagos a la tarjeta no se restan.",
-    "Used counts the purchases on this card this month. Payments to the card are not subtracted.": "El dispuesto suma las compras de esta tarjeta este mes. Los pagos a la tarjeta no se restan."
+    "Used counts the purchases on this card this month. Payments to the card are not subtracted.": "El dispuesto suma las compras de esta tarjeta este mes. Los pagos a la tarjeta no se restan.",
+    "Re-evaluating transactions...": "Reevaluando movimientos...",
+    "Re-evaluating :processed of :total transactions...": "Reevaluando :processed de :total movimientos...",
+    "Re-evaluation complete!": "¡Reevaluación completada!",
+    ":count transaction(s) updated.": ":count movimiento(s) actualizado(s).",
+    "Re-evaluation queued": "Reevaluación en cola",
+    "Your transactions will be updated in the background shortly. Reload the page later to see the changes.": "Tus movimientos se actualizarán en segundo plano en breve. Recarga la página más tarde para ver los cambios."
 }

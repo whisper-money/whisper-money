@@ -29,11 +29,7 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import {
-    bulk as reEvaluateBulk,
-    single as reEvaluateSingle,
-    status as reEvaluateStatus,
-} from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
+import { single as reEvaluateSingle } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import {
     AutomateCategorizationDialog,
@@ -95,7 +91,10 @@ import { isNewSince } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
-import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
+import {
+    mergeReEvaluatedTransaction,
+    reEvaluateTransactionRules,
+} from '@/lib/transaction-re-evaluation';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
 import { cn } from '@/lib/utils';
@@ -961,77 +960,24 @@ export default function Transactions({
         }
 
         setIsReEvaluating(true);
-        const toastId = toast.loading(`Re-evaluating 0 of ... transactions...`);
 
         try {
-            const payload = isSelectingAll
-                ? { filters: clientFiltersToBackendFilters(filters) }
-                : { transaction_ids: selectedIds };
-
-            const bulkResponse = await axios.post<{ job_id: string }>(
-                reEvaluateBulk().url,
-                payload,
+            const outcome = await reEvaluateTransactionRules(
+                isSelectingAll
+                    ? { filters: clientFiltersToBackendFilters(filters) }
+                    : { transaction_ids: selectedIds },
             );
 
-            const jobId = bulkResponse.data.job_id;
+            // A queued job will still run, so the selection is handed off
+            // either way; keeping it would invite a duplicate job.
+            if (outcome !== 'failed') {
+                setRowSelection({});
+                setIsSelectingAll(false);
+            }
 
-            await new Promise<void>((resolve, reject) => {
-                let pendingTicks = 0;
-                const poll = async () => {
-                    try {
-                        const statusResponse = await axios.get<{
-                            status: string;
-                            processed: number;
-                            total: number;
-                            updated: number;
-                        }>(reEvaluateStatus({ jobId }).url);
-
-                        const { status, processed, total, updated } =
-                            statusResponse.data;
-
-                        toast.loading(
-                            `Re-evaluating ${processed} of ${total} transactions...`,
-                            { id: toastId },
-                        );
-
-                        if (status === 'done') {
-                            toast.dismiss(toastId);
-                            toast.success(() => (
-                                <div>
-                                    {`Re-evaluation complete!`}
-                                    <br />
-                                    {`${updated} transaction(s) updated.`}
-                                </div>
-                            ));
-                            resolve();
-                        } else if (status === 'failed') {
-                            reject(new Error('Job failed'));
-                        } else if (
-                            status === 'pending' &&
-                            ++pendingTicks > 30
-                        ) {
-                            // The job never started (e.g. no queue worker
-                            // running) — give up instead of polling forever.
-                            reject(new Error('Job did not start'));
-                        } else {
-                            setTimeout(poll, 1000);
-                        }
-                    } catch (error) {
-                        reject(error);
-                    }
-                };
-
-                poll();
-            });
-
-            setRowSelection({});
-            setIsSelectingAll(false);
-            refreshTransactions();
-        } catch (error) {
-            console.error('Failed to re-evaluate rules:', error);
-            toast.error(__('Failed to re-evaluate rules. Please try again.'), {
-                id: toastId,
-            });
+            if (outcome === 'done') {
+                refreshTransactions();
+            }
         } finally {
             setIsReEvaluating(false);
         }
