@@ -8,8 +8,10 @@ use App\Models\Bank;
 use App\Models\LoanDetail;
 use App\Models\RealEstateDetail;
 use App\Models\User;
+use App\Services\AccountUserCurrencyService;
 use App\Services\LoanAmortizationService;
 use App\Services\LoanBalanceGeneratorService;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\actingAs;
@@ -306,6 +308,35 @@ it('rolls back the account and its balance when writing the loan detail fails', 
     assertDatabaseMissing('accounts', ['user_id' => $this->user->id, 'name' => 'Doomed Loan']);
     expect(AccountBalance::query()->count())->toBe(0)
         ->and(LoanDetail::query()->count())->toBe(0);
+});
+
+it('does not run the older balance history job when the account creation rolls back', function () {
+    $processedJobs = [];
+    Queue::before(function (JobProcessing $event) use (&$processedJobs): void {
+        $processedJobs[] = $event->job->resolveName();
+    });
+    actingAs($this->user);
+
+    $this->mock(AccountUserCurrencyService::class)
+        ->shouldReceive('syncFromFirstAccount')
+        ->andThrow(new RuntimeException('Currency sync failed'));
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Old Loan',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Loan->value,
+        'balance' => 500000,
+        'annual_interest_rate' => 4,
+        'loan_term_months' => 360,
+        'loan_start_date' => now()->subYears(3)->toDateString(),
+        'original_amount' => 1000000,
+    ]);
+
+    $response->assertServerError();
+
+    expect($processedJobs)->not->toContain(GenerateHistoricalLoanBalancesJob::class);
+    assertDatabaseMissing('accounts', ['user_id' => $this->user->id, 'name' => 'Old Loan']);
 });
 
 it('can create a loan account linked to an existing unlinked real estate account', function () {
