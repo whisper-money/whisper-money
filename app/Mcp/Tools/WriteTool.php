@@ -143,6 +143,12 @@ abstract class WriteTool extends McpTool
             ]);
         }
 
+        if (! $account->type->hasBalance()) {
+            throw ValidationException::withMessages([
+                $key => 'That account is a credit card, which has a credit limit instead of a balance, so it takes no balance snapshots.',
+            ]);
+        }
+
         return $account;
     }
 

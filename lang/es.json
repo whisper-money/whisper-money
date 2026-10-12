@@ -199,6 +199,7 @@
     "Currencies found:": "Monedas encontradas:",
     "Currency (Optional)": "Moneda (opcional)",
     "Currency, balance, creditor, debtor": "Moneda, balance, acreedor, deudor",
+    "Currency, creditor, debtor": "Moneda, acreedor, deudor",
     "Current accounts and cards come from the bank. Pensions and brokers need their own key, and mortgages nobody shares at all — but that is where most of your money sits.": "Las cuentas corrientes y las tarjetas vienen del banco. Los planes de pensiones y los brókeres necesitan su propia clave, y las hipotecas no las comparte nadie, y ahí es donde está casi todo tu dinero.",
     "Done. :count transactions moved to :category, and a new rule: anything from :merchant goes there from now on.": "Hecho. :count movimientos a :category y una regla nueva: lo que venga de :merchant va ahí a partir de ahora.",
     "Every euro already filed when you arrive": "Cada euro ya archivado cuando llegues",

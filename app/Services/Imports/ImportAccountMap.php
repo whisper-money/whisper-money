@@ -44,11 +44,15 @@ class ImportAccountMap
     /**
      * The account a file account's balances go to. A merged account's running
      * balance is its own, not the one it was merged into, so its balances
-     * stay out, as do a skipped account's.
+     * stay out, as do a skipped account's. A credit card has a limit instead
+     * of a balance, so the balances of one, created or mapped onto, stay out
+     * as well.
      */
     public function balanceTargetFor(string $key): ?Account
     {
-        return isset($this->balanceKeys[$key]) ? $this->targetFor($key) : null;
+        $account = isset($this->balanceKeys[$key]) ? $this->targetFor($key) : null;
+
+        return $account?->type->hasBalance() ? $account : null;
     }
 
     /** Whether the account held data before the import, so its rows are checked for duplicates. */

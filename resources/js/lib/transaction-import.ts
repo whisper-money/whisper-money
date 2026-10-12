@@ -1,4 +1,5 @@
 import { store as storeBalance } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
 import { getCsrfToken } from '@/lib/csrf';
 import {
     autoDetectColumns,
@@ -296,14 +297,17 @@ function categorizeRow(
     };
 }
 
-/** Write the balances the file carried, for the dates it carried them on. */
+/**
+ * Write the balances the file carried, for the dates it carried them on. A
+ * credit card has no balance, so nothing is written for one.
+ */
 async function importBalances(
     account: Account,
     rows: ParsedTransaction[],
 ): Promise<void> {
     const balances = collectBalancesToImport(rows);
 
-    if (balances.size === 0) {
+    if (!accountHasBalance(account) || balances.size === 0) {
         return;
     }
 

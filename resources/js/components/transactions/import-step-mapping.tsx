@@ -63,6 +63,8 @@ interface ImportStepMappingProps {
     rowNumbers: number[];
     currencyCode: string;
     supportedCurrencies: string[];
+    /** False for a credit card: it has no balance to map or work out. */
+    tracksBalance: boolean;
     calculateBalances: boolean;
     referenceBalance: number | null;
     referenceBalancePrefilled: boolean;
@@ -326,6 +328,7 @@ export function ImportStepMapping({
     rowNumbers,
     currencyCode,
     supportedCurrencies,
+    tracksBalance,
     calculateBalances,
     referenceBalance,
     referenceBalancePrefilled,
@@ -611,7 +614,11 @@ export function ImportStepMapping({
                 onOpenChange={setOptionalOpen}
                 className="border-sidebar-border bg-sidebar"
                 contentClassName="border-sidebar-border bg-background"
-                hint={__('Currency, balance, creditor, debtor')}
+                hint={
+                    tracksBalance
+                        ? __('Currency, balance, creditor, debtor')
+                        : __('Currency, creditor, debtor')
+                }
                 title={
                     <>
                         <span className="text-sm font-medium">
@@ -655,88 +662,92 @@ export function ImportStepMapping({
                     )}
                 </div>
 
-                <div className={`${ROW_GRID} border-t px-4 py-3`}>
-                    <Label htmlFor="balance-column" className="md:pt-2.5">
-                        {__('Balance')}
-                    </Label>
-                    <div className="flex flex-col gap-3">
-                        <ColumnSelect
-                            id="balance-column"
-                            value={columnMapping.balance}
-                            placeholder={__('Select balance column')}
-                            optional
-                            columnOptions={columnOptions}
-                            onChange={(value) =>
-                                onMappingChange('balance', value)
-                            }
-                        />
+                {tracksBalance && (
+                    <div className={`${ROW_GRID} border-t px-4 py-3`}>
+                        <Label htmlFor="balance-column" className="md:pt-2.5">
+                            {__('Balance')}
+                        </Label>
+                        <div className="flex flex-col gap-3">
+                            <ColumnSelect
+                                id="balance-column"
+                                value={columnMapping.balance}
+                                placeholder={__('Select balance column')}
+                                optional
+                                columnOptions={columnOptions}
+                                onChange={(value) =>
+                                    onMappingChange('balance', value)
+                                }
+                            />
 
-                        {calculateBalancesAvailable && (
-                            <div className="flex flex-col gap-3">
-                                <div className="flex items-start gap-2">
-                                    <Checkbox
-                                        id="calculate-balances"
-                                        checked={
-                                            balanceColumnSet
-                                                ? false
-                                                : calculateBalances
-                                        }
-                                        disabled={balanceColumnSet}
-                                        onCheckedChange={(checked) =>
-                                            onCalculateBalancesChange(
-                                                checked === true,
-                                            )
-                                        }
-                                        className="mt-0.5"
-                                    />
-                                    <Label
-                                        htmlFor="calculate-balances"
-                                        className={`cursor-pointer font-normal ${balanceColumnSet ? 'opacity-50' : ''}`}
-                                    >
-                                        {__(
-                                            'Work balances out from the transactions instead',
-                                        )}
-                                    </Label>
-                                </div>
-
-                                {effectiveCalculate && latestDate && (
-                                    <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
-                                        <Label htmlFor="reference-balance">
-                                            {__('Balance on')}{' '}
-                                            {formatRelativeDate(
-                                                latestDate,
-                                                locale,
-                                            )}{' '}
-                                            <span className="text-destructive">
-                                                *
-                                            </span>
-                                        </Label>
-                                        <AmountInput
-                                            id="reference-balance"
-                                            value={referenceBalance ?? 0}
-                                            onChange={onReferenceBalanceChange}
-                                            currencyCode={currencyCode}
+                            {calculateBalancesAvailable && (
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-start gap-2">
+                                        <Checkbox
+                                            id="calculate-balances"
+                                            checked={
+                                                balanceColumnSet
+                                                    ? false
+                                                    : calculateBalances
+                                            }
+                                            disabled={balanceColumnSet}
+                                            onCheckedChange={(checked) =>
+                                                onCalculateBalancesChange(
+                                                    checked === true,
+                                                )
+                                            }
+                                            className="mt-0.5"
                                         />
-                                        {referenceBalancePrefilled && (
-                                            <p className="text-xs text-muted-foreground">
-                                                {__(
-                                                    'Pre-filled from an existing balance for this date.',
-                                                )}
-                                            </p>
-                                        )}
+                                        <Label
+                                            htmlFor="calculate-balances"
+                                            className={`cursor-pointer font-normal ${balanceColumnSet ? 'opacity-50' : ''}`}
+                                        >
+                                            {__(
+                                                'Work balances out from the transactions instead',
+                                            )}
+                                        </Label>
                                     </div>
+
+                                    {effectiveCalculate && latestDate && (
+                                        <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
+                                            <Label htmlFor="reference-balance">
+                                                {__('Balance on')}{' '}
+                                                {formatRelativeDate(
+                                                    latestDate,
+                                                    locale,
+                                                )}{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <AmountInput
+                                                id="reference-balance"
+                                                value={referenceBalance ?? 0}
+                                                onChange={
+                                                    onReferenceBalanceChange
+                                                }
+                                                currencyCode={currencyCode}
+                                            />
+                                            {referenceBalancePrefilled && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    {__(
+                                                        'Pre-filled from an existing balance for this date.',
+                                                    )}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {columnMapping.currency && (
+                            <p className="text-xs text-muted-foreground md:pt-2.5">
+                                {__(
+                                    "Rows in another currency won't get a balance.",
                                 )}
-                            </div>
+                            </p>
                         )}
                     </div>
-                    {columnMapping.currency && (
-                        <p className="text-xs text-muted-foreground md:pt-2.5">
-                            {__(
-                                "Rows in another currency won't get a balance.",
-                            )}
-                        </p>
-                    )}
-                </div>
+                )}
 
                 <div className={`${ROW_GRID} border-t px-4 py-3`}>
                     <Label htmlFor="creditor-column" className="md:pt-2.5">

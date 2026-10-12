@@ -10,6 +10,7 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import { Progress } from '@/components/ui/progress';
+import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
 import {
     calculateBalancesFromTransactions,
     convertRowsToTransactions,
@@ -112,6 +113,11 @@ export function ImportTransactionsDrawer({
         null,
     );
     const [state, setState] = useState<ImportState>(EMPTY_STATE);
+    // A credit card has no balance, so the import neither asks for one nor
+    // carries one over from the file.
+    const tracksBalance = selectedAccount
+        ? accountHasBalance(selectedAccount)
+        : true;
 
     useEffect(() => {
         if (state.selectedAccountId) {
@@ -262,6 +268,7 @@ export function ImportTransactionsDrawer({
     // on that date. If found, no need to ask the user.
     useEffect(() => {
         if (
+            !tracksBalance ||
             !state.calculateBalances ||
             !state.referenceBalanceDate ||
             !state.selectedAccountId ||
@@ -317,6 +324,7 @@ export function ImportTransactionsDrawer({
             cancelled = true;
         };
     }, [
+        tracksBalance,
         state.calculateBalances,
         state.referenceBalanceDate,
         state.selectedAccountId,
@@ -338,11 +346,14 @@ export function ImportTransactionsDrawer({
                 return;
             }
 
-            const ownMoney = (transaction: ParsedTransaction): boolean =>
+            // A balance belongs to the account and is held in its currency, so
+            // a row in another currency carries none, and neither does any row
+            // of a credit card, which has no balance at all (a saved mapping
+            // may still name a balance column).
+            const carriesBalance = (transaction: ParsedTransaction): boolean =>
+                accountHasBalance(account) &&
                 isInAccountCurrency(transaction, account.currency_code);
 
-            // A balance belongs to the account and is held in its currency, so
-            // a row in another currency carries none.
             const parsedTransactions = convertRowsToTransactions(
                 state.parsedData,
                 state.columnMapping,
@@ -350,7 +361,7 @@ export function ImportTransactionsDrawer({
                 account.currency_code,
                 supportedCurrencies,
             ).map((transaction) =>
-                ownMoney(transaction)
+                carriesBalance(transaction)
                     ? transaction
                     : { ...transaction, balance: null },
             );
@@ -379,7 +390,7 @@ export function ImportTransactionsDrawer({
 
             if (shouldCalculate) {
                 const calculatedBalances = calculateBalancesFromTransactions(
-                    transactionsWithDuplicateCheck.filter(ownMoney),
+                    transactionsWithDuplicateCheck.filter(carriesBalance),
                     state.referenceBalanceDate as string,
                     state.referenceBalance as number,
                 );
@@ -387,7 +398,7 @@ export function ImportTransactionsDrawer({
                 transactionsWithDuplicateCheck =
                     transactionsWithDuplicateCheck.map((transaction) => ({
                         ...transaction,
-                        balance: ownMoney(transaction)
+                        balance: carriesBalance(transaction)
                             ? (calculatedBalances.get(
                                   transaction.transaction_date,
                               ) ??
@@ -608,14 +619,21 @@ export function ImportTransactionsDrawer({
                 return (
                     <ImportStepMapping
                         columnOptions={state.columnOptions}
-                        columnMapping={state.columnMapping}
+                        columnMapping={
+                            tracksBalance
+                                ? state.columnMapping
+                                : { ...state.columnMapping, balance: null }
+                        }
                         dateFormat={state.dateFormat}
                         dateFormatDetected={state.dateFormatDetected}
                         parsedData={state.parsedData}
                         rowNumbers={state.rowNumbers}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
                         supportedCurrencies={supportedCurrencies}
-                        calculateBalances={state.calculateBalances}
+                        tracksBalance={tracksBalance}
+                        calculateBalances={
+                            tracksBalance && state.calculateBalances
+                        }
                         referenceBalance={state.referenceBalance}
                         referenceBalancePrefilled={
                             state.referenceBalancePrefilled
