@@ -192,6 +192,34 @@ it('imports accounts, the category tree, transfers, ignored rows and balances', 
         ->and($efectivo->balances()->count())->toBe(0);
 });
 
+it('leaves out the balances of a credit card it creates or maps onto, importing its movements', function () {
+    $user = Fixtures::user();
+    $card = Account::factory()->creditCard()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+
+    $import = Fixtures::run($this, $user, Fixtures::plan([
+        Fixtures::newAccount('a0', 'Visa', ['type' => 'credit_card']),
+        ['key' => 'a1', 'action' => 'map', 'target_account_id' => $card->id],
+        Fixtures::newAccount('a2', 'Checking'),
+    ]), [
+        Fixtures::row('a0', '2026-09-01', -100, 'New card purchase'),
+        Fixtures::row('a1', '2026-09-01', -200, 'Mapped card purchase'),
+    ], [
+        ['account_key' => 'a0', 'date' => '2026-09-01', 'balance' => -100],
+        ['account_key' => 'a1', 'date' => '2026-09-01', 'balance' => -200],
+        ['account_key' => 'a2', 'date' => '2026-09-01', 'balance' => 5000],
+    ]);
+
+    $newCard = Account::query()->where('user_id', $user->id)->where('name', 'Visa')->firstOrFail();
+    $checking = Account::query()->where('user_id', $user->id)->where('name', 'Checking')->firstOrFail();
+
+    expect($import->status)->toBe(ImportStatus::Completed)
+        ->and($import->stats['transactions'])->toMatchArray(['imported' => 2])
+        ->and($import->stats['balances'])->toEqual(['total' => 3, 'imported' => 1])
+        ->and($newCard->balances()->count())->toBe(0)
+        ->and($card->balances()->count())->toBe(0)
+        ->and($checking->balances()->pluck('balance')->all())->toBe([5000]);
+});
+
 it('skips the rows of an account the user chose not to import', function () {
     $user = Fixtures::user();
 

@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\RefusesCreditCardBalance;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateCurrentAccountBalanceRequest extends FormRequest
 {
+    use RefusesCreditCardBalance;
+
     public function authorize(): bool
     {
         return true;

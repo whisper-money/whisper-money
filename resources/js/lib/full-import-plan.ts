@@ -1,3 +1,4 @@
+import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
 import { normalizeText, toSavedProfile } from '@/lib/full-import-profiles';
 import {
     type Category,
@@ -927,14 +928,27 @@ function balanceRows(
     const balances: BalancePayloadRow[] = [];
 
     for (const account of input.fileAccounts) {
-        const action = input.accountPlan[account.key]?.action;
+        const entry = input.accountPlan[account.key];
+        const action = entry?.action;
         const currency = targetCurrency(
             account.key,
             input.accountPlan,
             input.contextAccounts,
         );
+        // A credit card has a limit instead of a balance, whether the import
+        // creates it or maps the file account onto one the user has.
+        const type =
+            action === 'map'
+                ? input.contextAccounts.find(
+                      (target) => target.id === entry.targetAccountId,
+                  )?.type
+                : entry?.type;
 
-        if ((action !== 'create' && action !== 'map') || !currency) {
+        if (
+            (action !== 'create' && action !== 'map') ||
+            !currency ||
+            (type && !accountHasBalance({ type }))
+        ) {
             continue;
         }
 

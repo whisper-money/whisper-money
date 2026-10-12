@@ -5,13 +5,22 @@ type BalanceAccount = Pick<Account, 'type' | 'banking_connection_id'>;
 type IdentifiedBalanceAccount = BalanceAccount & Pick<Account, 'id'>;
 
 /**
+ * Whether an account of this type has a balance at all. A credit card has a
+ * limit and what is in use of it instead. Mirrors AccountType::hasBalance()
+ * on the server.
+ */
+export function accountHasBalance(account: Pick<Account, 'type'>): boolean {
+    return account.type !== 'credit_card';
+}
+
+/**
  * Whether a transaction may move this account's balance. A connected
  * account's balance is the bank's to report, and a credit card has a limit
  * and what is in use of it, never a balance. Mirrors
  * ManualBalanceAdjuster::ownsBalance() on the server.
  */
 export function ownsBalanceUpdates(account: BalanceAccount): boolean {
-    return !account.banking_connection_id && account.type !== 'credit_card';
+    return !account.banking_connection_id && accountHasBalance(account);
 }
 
 /**

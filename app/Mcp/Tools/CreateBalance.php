@@ -20,7 +20,7 @@ class CreateBalance extends WriteTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'account_id' => $schema->string()->description('Id of a non-connected (manual) account.')->required(),
+            'account_id' => $schema->string()->description('Id of a non-connected (manual) account that is not a credit card.')->required(),
             'balance' => $schema->integer()->description('Balance in the account currency\'s minor units (100 = 1.00 EUR, 1 = 1 COP, 1 = 0.00000001 BTC).')->required(),
             'balance_date' => $schema->string()->description('Snapshot date, YYYY-MM-DD. Defaults to today.'),
             'invested_amount' => $schema->integer()->description('Optional invested amount in the account currency\'s minor units, for investment accounts.'),

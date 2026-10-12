@@ -208,6 +208,7 @@
     "Currencies found:": "Devises détectées :",
     "Currency (Optional)": "Devise (facultatif)",
     "Currency, balance, creditor, debtor": "Devise, solde, créancier, débiteur",
+    "Currency, creditor, debtor": "Devise, créancier, débiteur",
     "Done. :count transactions moved to :category, and a new rule: anything from :merchant goes there from now on.": "C'est fait. :count opérations déplacées dans :category, et une nouvelle règle : tout ce qui vient de :merchant y va désormais.",
     "empty": "vide",
     "Every row uses": "Toutes les lignes utilisent",

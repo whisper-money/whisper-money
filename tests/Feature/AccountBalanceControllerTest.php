@@ -6,7 +6,7 @@ use App\Models\User;
 
 it('can update current balance for an account', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $balanceData = [
         'balance' => 134566,
@@ -39,7 +39,7 @@ it('can update current balance for an account', function () {
 
 it('updates existing balance for current date', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     AccountBalance::factory()->for($account)->create([
         'balance_date' => now()->toDateString(),
@@ -66,7 +66,7 @@ it('updates existing balance for current date', function () {
 it('cannot update balance for another user account', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
-    $account = Account::factory()->for($otherUser)->create();
+    $account = Account::factory()->withBalance()->for($otherUser)->create();
 
     $balanceData = [
         'balance' => 999999,
@@ -84,7 +84,7 @@ it('cannot update balance for another user account', function () {
 
 it('validates required balance field', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", []);
 
@@ -94,7 +94,7 @@ it('validates required balance field', function () {
 
 it('validates balance is an integer', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
         'balance' => 'not-a-number',
@@ -106,7 +106,7 @@ it('validates balance is an integer', function () {
 
 it('can list balances for an account', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     AccountBalance::factory()->for($account)->count(3)->create();
 
@@ -136,7 +136,7 @@ it('can list balances for an account', function () {
 it('cannot list balances for another user account', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
-    $account = Account::factory()->for($otherUser)->create();
+    $account = Account::factory()->withBalance()->for($otherUser)->create();
 
     AccountBalance::factory()->for($account)->count(3)->create();
 
@@ -147,7 +147,7 @@ it('cannot list balances for another user account', function () {
 
 it('can delete a balance record', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
     $balance = AccountBalance::factory()->for($account)->create();
 
     $response = $this->actingAs($user)->deleteJson("/api/accounts/{$account->id}/balances/{$balance->id}");
@@ -162,7 +162,7 @@ it('can delete a balance record', function () {
 it('cannot delete a balance for another user account', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
-    $account = Account::factory()->for($otherUser)->create();
+    $account = Account::factory()->withBalance()->for($otherUser)->create();
     $balance = AccountBalance::factory()->for($account)->create();
 
     $response = $this->actingAs($user)->deleteJson("/api/accounts/{$account->id}/balances/{$balance->id}");
@@ -176,8 +176,8 @@ it('cannot delete a balance for another user account', function () {
 
 it('returns 404 when deleting balance from wrong account', function () {
     $user = User::factory()->create();
-    $account1 = Account::factory()->for($user)->create();
-    $account2 = Account::factory()->for($user)->create();
+    $account1 = Account::factory()->withBalance()->for($user)->create();
+    $account2 = Account::factory()->withBalance()->for($user)->create();
     $balance = AccountBalance::factory()->for($account1)->create();
 
     $response = $this->actingAs($user)->deleteJson("/api/accounts/{$account2->id}/balances/{$balance->id}");
@@ -191,7 +191,7 @@ it('returns 404 when deleting balance from wrong account', function () {
 
 it('can update current balance with invested_amount', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
         'balance' => 500000,
@@ -211,7 +211,7 @@ it('can update current balance with invested_amount', function () {
 
 it('can update current balance without invested_amount', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
         'balance' => 500000,
@@ -229,7 +229,7 @@ it('can update current balance without invested_amount', function () {
 
 it('validates invested_amount must be an integer', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
         'balance' => 500000,
@@ -242,7 +242,7 @@ it('validates invested_amount must be an integer', function () {
 
 it('can store balance with invested_amount', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
         'balance' => 300000,
@@ -263,7 +263,7 @@ it('can store balance with invested_amount', function () {
 
 it('can store balance without invested_amount', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
         'balance' => 300000,
@@ -282,7 +282,7 @@ it('can store balance without invested_amount', function () {
 
 it('can store a zero balance', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
         'balance' => 0,
@@ -300,7 +300,7 @@ it('can store a zero balance', function () {
 
 it('can update the current balance to zero', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     AccountBalance::factory()->for($account)->create([
         'balance_date' => now()->toDateString(),
@@ -323,7 +323,7 @@ it('can update the current balance to zero', function () {
 
 it('validates store balance must be an integer', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
         'balance' => 'not-a-number',
@@ -336,7 +336,7 @@ it('validates store balance must be an integer', function () {
 
 it('rejects decimal balance on store', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
         'balance' => 123.45,
@@ -349,7 +349,7 @@ it('rejects decimal balance on store', function () {
 
 it('rejects decimal invested_amount on store', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
         'balance' => 300000,
@@ -363,7 +363,7 @@ it('rejects decimal invested_amount on store', function () {
 
 it('preserves existing invested_amount when updating balance without it', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     AccountBalance::factory()->for($account)->create([
         'balance_date' => now()->toDateString(),
@@ -391,7 +391,7 @@ it('preserves existing invested_amount when updating balance without it', functi
 // before for anyone at a negative offset — the symptom reported from Argentina.
 it('serialises the balance date as a plain calendar day, like a transaction date', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
+    $account = Account::factory()->withBalance()->for($user)->create();
 
     AccountBalance::factory()->for($account)->create([
         'balance_date' => '2026-09-09',
@@ -401,4 +401,37 @@ it('serialises the balance date as a plain calendar day, like a transaction date
     $response = $this->actingAs($user)->getJson("/api/accounts/{$account->id}/balances");
 
     expect($response->json('data.0.balance_date'))->toBe('2026-09-09');
+});
+
+it('refuses a balance for a credit card on both write endpoints', function (string $method, string $path, array $payload) {
+    $user = User::factory()->create();
+    $card = Account::factory()->creditCard()->for($user)->create();
+
+    $this->actingAs($user)
+        ->json($method, "/api/accounts/{$card->id}/{$path}", $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('balance');
+
+    expect($card->balances()->count())->toBe(0);
+})->with([
+    'store' => ['POST', 'balances', ['balance_date' => '2026-01-31', 'balance' => 50000]],
+    'update current' => ['PUT', 'balance/current', ['balance' => 50000]],
+]);
+
+it('answers 403 rather than 422 for another user\'s credit card', function () {
+    $card = Account::factory()->creditCard()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->postJson("/api/accounts/{$card->id}/balances", ['balance_date' => '2026-01-31', 'balance' => 50000])
+        ->assertForbidden();
+});
+
+it('still deletes a balance a credit card was left with', function () {
+    $user = User::factory()->create();
+    $card = Account::factory()->creditCard()->for($user)->create();
+    $balance = AccountBalance::factory()->for($card)->create();
+
+    $this->actingAs($user)
+        ->deleteJson("/api/accounts/{$card->id}/balances/{$balance->id}")
+        ->assertNoContent();
 });

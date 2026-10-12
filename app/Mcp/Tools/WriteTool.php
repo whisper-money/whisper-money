@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Enums\AccountType;
 use App\Mcp\Tools\Concerns\PresentsTransactions;
 use App\Models\Account;
 use App\Models\AutomationRule;
@@ -131,7 +132,8 @@ abstract class WriteTool extends McpTool
     /**
      * Resolve an account whose balance snapshots may be written. Connected
      * accounts are rejected: their balances come from the bank and any manual
-     * snapshot would be overwritten by the next sync.
+     * snapshot would be overwritten by the next sync. Credit cards are
+     * rejected too: they have a credit limit instead of a balance.
      */
     protected function balanceWritableAccount(Request $request, Space $space, string $key = 'account_id'): Account
     {
@@ -140,6 +142,12 @@ abstract class WriteTool extends McpTool
         if ($account->isConnected()) {
             throw ValidationException::withMessages([
                 $key => 'That account is connected to a bank, so its balances come from the sync and a manual snapshot would be overwritten. Only non-connected (manual) accounts accept balances.',
+            ]);
+        }
+
+        if (! $account->type->hasBalance()) {
+            throw ValidationException::withMessages([
+                $key => AccountType::NO_BALANCE_MESSAGE,
             ]);
         }
 

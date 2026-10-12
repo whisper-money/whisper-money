@@ -556,7 +556,7 @@ it('adds a label to an imported transaction', function () {
 
 it('records a balance on a manual account', function () {
     $user = User::factory()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->withBalance()->create(['user_id' => $user->id]);
 
     callWriteTool($user, CreateBalance::class, [
         'account_id' => $account->id,
@@ -575,6 +575,18 @@ it('refuses to record a balance on a connected account', function () {
         'account_id' => $account->id,
         'balance' => 250000,
     ])->assertHasErrors(['connected']);
+
+    expect($account->balances()->count())->toBe(0);
+});
+
+it('refuses to record a balance on a credit card', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->creditCard()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, CreateBalance::class, [
+        'account_id' => $account->id,
+        'balance' => 250000,
+    ])->assertHasErrors([AccountType::NO_BALANCE_MESSAGE]);
 
     expect($account->balances()->count())->toBe(0);
 });

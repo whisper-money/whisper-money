@@ -154,7 +154,7 @@ still to be charged between `period_from` and today (the pending statement plus
 the open cycle, or the calendar month when the card has no statement dates), and
 `available` is `limit` minus it, negative when over the limit, null while
 `credit_limit` is not set. A credit card has no balance:
-`create_account` refuses one for it.
+`create_account` refuses one for it and `create_balance` rejects the card.
 MARKDOWN)]
 class WhisperMoneyServer extends Server
 {
