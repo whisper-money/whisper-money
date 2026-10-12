@@ -9,6 +9,7 @@ use App\Models\LoanDetail;
 use App\Models\RealEstateDetail;
 use App\Models\User;
 use App\Services\LoanAmortizationService;
+use App\Services\LoanBalanceGeneratorService;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\actingAs;
@@ -255,6 +256,56 @@ it('can create a loan account with loan details', function () {
         'start_date' => '2024-01-15',
         'original_amount' => 20000000,
     ]);
+});
+
+it('can create a loan account at the top of the allowed interest rate range', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Expensive Loan',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Loan->value,
+        'annual_interest_rate' => 100,
+        'loan_term_months' => 15,
+        'loan_start_date' => now()->subMonth()->toDateString(),
+        'original_amount' => 1000000,
+    ]);
+
+    $response->assertRedirect();
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('name', 'Expensive Loan')
+        ->firstOrFail();
+
+    expect((float) $account->loanDetail->fresh()->annual_interest_rate)->toBe(100.0);
+});
+
+it('rolls back the account and its balance when writing the loan detail fails', function () {
+    actingAs($this->user);
+
+    $this->mock(LoanBalanceGeneratorService::class)
+        ->shouldReceive('generateHistoricalBalances')
+        ->andThrow(new RuntimeException('Balance history failed'));
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Doomed Loan',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Loan->value,
+        'balance' => 900000,
+        'annual_interest_rate' => 5,
+        'loan_term_months' => 120,
+        'loan_start_date' => now()->subMonths(2)->toDateString(),
+        'original_amount' => 1000000,
+    ]);
+
+    $response->assertServerError();
+
+    assertDatabaseMissing('accounts', ['user_id' => $this->user->id, 'name' => 'Doomed Loan']);
+    expect(AccountBalance::query()->count())->toBe(0)
+        ->and(LoanDetail::query()->count())->toBe(0);
 });
 
 it('can create a loan account linked to an existing unlinked real estate account', function () {
@@ -631,6 +682,28 @@ it('can update loan detail via loan detail controller', function () {
         'annual_interest_rate' => 4.750,
         'loan_term_months' => 300,
     ]);
+});
+
+it('can update loan detail to a 100% interest rate via loan detail controller', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    $loanDetail = LoanDetail::factory()->create([
+        'account_id' => $account->id,
+        'annual_interest_rate' => 3.5,
+    ]);
+
+    $response = $this->patch(route('accounts.loan-detail.update', $account), [
+        'annual_interest_rate' => 100,
+    ]);
+
+    $response->assertRedirect(route('accounts.show', $account));
+
+    expect((float) $loanDetail->fresh()->annual_interest_rate)->toBe(100.0);
 });
 
 it('can create loan detail via loan detail controller when none exists', function () {

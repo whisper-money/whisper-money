@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Creating and editing an account, shared by the settings controller and the
@@ -34,9 +35,21 @@ class AccountWriteService
      * tools resolve one per call); left null, the account falls back to the
      * owner's current space through BelongsToSpace.
      *
+     * Everything is written in one transaction: a detail that fails to save
+     * must not leave behind an account and balance the user never got to see,
+     * and that a retry would duplicate.
+     *
      * @param  array<string, mixed>  $data
      */
     public function create(User $user, array $data, ?string $spaceId = null): Account
+    {
+        return DB::transaction(fn (): Account => $this->createAccount($user, $data, $spaceId));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function createAccount(User $user, array $data, ?string $spaceId): Account
     {
         $account = $user->accounts()->create([
             ...$this->accountAttributes($data),
@@ -228,7 +241,7 @@ class AccountWriteService
                 $balance,
                 Carbon::parse($data['purchase_date']),
                 $until,
-            ),
+            )->afterCommit(),
         );
     }
 
@@ -269,7 +282,7 @@ class AccountWriteService
                 $balance,
                 $startDate,
                 $until,
-            ),
+            )->afterCommit(),
         );
     }
 
