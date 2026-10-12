@@ -39,11 +39,9 @@ it('sends the plan to the server as a hidden field on the register form', functi
 });
 
 it('plays the product video in the visitor language and color scheme', function (string $query, string $scheme, string $video) {
-    $page = visit('/'.$query);
-
-    if ($scheme === 'dark') {
-        $page->inDarkMode();
-    }
+    $page = $scheme === 'dark'
+        ? visit('/'.$query)->inDarkMode()
+        : visit('/'.$query)->inLightMode();
 
     $selector = '[data-slot="hero-video"] video';
 
@@ -66,7 +64,7 @@ it('plays the product video in the visitor language and color scheme', function 
 ]);
 
 it('swaps the video when the appearance changes', function () {
-    $page = visit('/?lang=es');
+    $page = visit('/?lang=es')->inLightMode();
 
     $selector = '[data-slot="hero-video"] video';
 
