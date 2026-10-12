@@ -14,7 +14,10 @@ import {
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { PlayIcon, XIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+
+/** Where the tour sends a visitor who is convinced: the hero's primary CTA. */
+type HeroCta = { href: string; label: string };
 
 /**
  * Plays only while on screen and not `paused`, so a looping video scrolled past
@@ -93,22 +96,31 @@ function ProductTourDialog({
     open,
     onOpenChange,
     sources,
-    ctaHref,
-    ctaLabel,
+    cta,
+    returnFocusTo,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     sources: LandingVideoSources;
-    ctaHref: string;
-    ctaLabel: string;
+    cta: HeroCta;
+    /** Opened without a Radix trigger, so Radix has nowhere to return focus. */
+    returnFocusTo: RefObject<HTMLButtonElement | null>;
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 aria-describedby={undefined}
                 showCloseButton={false}
+                onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    returnFocusTo.current?.focus();
+                }}
                 overlayClassName="bg-black/80 backdrop-blur-md"
-                className="w-[min(85rem,calc(100vw-2rem),calc((100dvh-10rem)*16/9))] max-w-none gap-4 overflow-visible border-0 bg-transparent p-0 shadow-none sm:max-w-none"
+                // Click-through everywhere but the controls: the rows around the
+                // player are full width, and a click beside them is a backdrop
+                // click that should close the dialog. Important, because Radix
+                // sets `pointer-events: auto` inline on the content.
+                className="pointer-events-none! w-[min(85rem,calc(100vw-2rem),calc((100dvh-10rem)*16/9))] max-w-none gap-4 overflow-visible border-0 bg-transparent p-0 shadow-none sm:max-w-none"
             >
                 <DialogTitle className="sr-only">
                     {__('Whisper Money product video')}
@@ -116,12 +128,12 @@ function ProductTourDialog({
                 <div className="flex justify-end">
                     <DialogClose
                         aria-label={__('Close the video')}
-                        className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full bg-white/12 text-white transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                        className="pointer-events-auto inline-flex size-11 cursor-pointer items-center justify-center rounded-full bg-white/12 text-white transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                     >
                         <XIcon className="size-5" />
                     </DialogClose>
                 </div>
-                <div className="aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_40px_160px_rgba(0,0,0,0.6)] sm:rounded-[20px]">
+                <div className="pointer-events-auto aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_40px_160px_rgba(0,0,0,0.6)] sm:rounded-[20px]">
                     <video
                         data-slot="product-tour-video"
                         src={sources.tour}
@@ -135,9 +147,9 @@ function ProductTourDialog({
                 <div className="flex justify-end">
                     <Button
                         asChild
-                        className="h-12 bg-white px-6 text-base font-semibold text-[#1C1C1A] hover:bg-zinc-100"
+                        className="pointer-events-auto h-12 bg-white px-6 text-base font-semibold text-[#1C1C1A] hover:bg-zinc-100"
                     >
-                        <Link href={ctaHref}>{ctaLabel}</Link>
+                        <Link href={cta.href}>{cta.label}</Link>
                     </Button>
                 </div>
             </DialogContent>
@@ -158,12 +170,10 @@ function ProductTourDialog({
  */
 export function HeroVideo({
     language,
-    ctaHref,
-    ctaLabel,
+    cta,
 }: {
     language: string;
-    ctaHref: string;
-    ctaLabel: string;
+    cta: HeroCta;
 }) {
     const scheme = useDocumentColorScheme();
     const prefersReducedMotion = useMediaQuery(
@@ -171,6 +181,12 @@ export function HeroVideo({
         true,
     );
     const [isTourOpen, setIsTourOpen] = useState(false);
+    const cardRef = useRef<HTMLButtonElement>(null);
+    // Fixed when the tour opens: following a theme switch mid-play would swap
+    // the source and restart it from 0:00.
+    const [tourSources, setTourSources] = useState<LandingVideoSources | null>(
+        null,
+    );
     const light = landingVideoSources(language, 'light');
     const dark = landingVideoSources(language, 'dark');
     const schemeSources = scheme === 'dark' ? dark : light;
@@ -182,9 +198,13 @@ export function HeroVideo({
                 className="absolute inset-x-[10%] inset-y-[20%] rounded-full bg-[#1b1b18]/8 blur-[50px] lg:inset-x-[5%] lg:inset-y-[10%] lg:blur-[70px] dark:bg-[#EDEDEC]/10"
             />
             <button
+                ref={cardRef}
                 type="button"
                 aria-label={__('Play the product tour')}
-                onClick={() => setIsTourOpen(true)}
+                onClick={() => {
+                    setTourSources(schemeSources);
+                    setIsTourOpen(true);
+                }}
                 className="group relative block w-full [transform:rotateY(-9deg)_rotateX(5deg)_rotateZ(1deg)] cursor-pointer rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC]/60 p-1.5 shadow-[0_24px_60px_rgba(27,27,24,0.16)] focus-visible:ring-2 focus-visible:ring-[#1b1b18] focus-visible:outline-none lg:origin-left lg:[transform:rotateY(-14deg)_rotateX(6deg)_rotateZ(1deg)] lg:rounded-[22px] lg:p-2 lg:shadow-[0_40px_120px_rgba(27,27,24,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615]/60 dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)] dark:focus-visible:ring-[#EDEDEC] lg:dark:shadow-[0_40px_120px_rgba(0,0,0,0.6)]"
             >
                 <span
@@ -210,12 +230,12 @@ export function HeroVideo({
                         />
                     )}
                     <span className="absolute inset-0 flex items-center justify-center lg:hidden">
-                        <span className="inline-flex size-15 items-center justify-center rounded-full bg-[#1b1b18]/86 text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition-transform group-hover:scale-105 dark:bg-[#161615]/82 dark:ring-1 dark:ring-white/15">
+                        <span className="inline-flex size-15 items-center justify-center rounded-full bg-[#1b1b18]/86 text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition-transform group-hover:scale-105 motion-reduce:transition-none dark:bg-[#161615]/82 dark:ring-1 dark:ring-white/15">
                             <PlayIcon className="size-5.5 translate-x-0.5 fill-current" />
                         </span>
                     </span>
-                    <span className="absolute bottom-5 left-5 hidden items-center gap-3 rounded-full bg-[#1b1b18]/86 py-2 pr-4 pl-2 text-[15px] font-semibold text-white shadow-[0_12px_40px_rgba(0,0,0,0.3)] transition-transform group-hover:scale-105 lg:inline-flex dark:bg-[#161615]/82 dark:ring-1 dark:ring-white/15">
-                        <span className="inline-flex size-11 items-center justify-center rounded-full bg-white text-[#1b1b18] dark:text-[#0a0a0a]">
+                    <span className="absolute bottom-4 left-4 hidden items-center gap-2.5 rounded-full bg-[#1b1b18]/86 py-1.5 pr-3.5 pl-1.5 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(0,0,0,0.3)] transition-transform group-hover:scale-105 motion-reduce:transition-none lg:inline-flex xl:bottom-5 xl:left-5 xl:gap-3 xl:py-2 xl:pr-4 xl:pl-2 xl:text-[15px] dark:bg-[#161615]/82 dark:ring-1 dark:ring-white/15">
+                        <span className="inline-flex size-9 items-center justify-center rounded-full bg-white text-[#1b1b18] xl:size-11 dark:text-[#0a0a0a]">
                             <PlayIcon className="size-4.5 translate-x-px fill-current" />
                         </span>
                         {__('See it in 40 seconds')}
@@ -225,13 +245,15 @@ export function HeroVideo({
             <p className="relative text-center text-[13px] font-medium text-[#706f6c] lg:hidden dark:text-[#A1A09A]">
                 {__('Tap to watch · 0:40')}
             </p>
-            <ProductTourDialog
-                open={isTourOpen}
-                onOpenChange={setIsTourOpen}
-                sources={schemeSources}
-                ctaHref={ctaHref}
-                ctaLabel={ctaLabel}
-            />
+            {tourSources && (
+                <ProductTourDialog
+                    open={isTourOpen}
+                    onOpenChange={setIsTourOpen}
+                    sources={tourSources}
+                    cta={cta}
+                    returnFocusTo={cardRef}
+                />
+            )}
         </div>
     );
 }

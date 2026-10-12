@@ -2908,22 +2908,22 @@ export default function Welcome({
                 <Header canRegister={canRegister} />
 
                 <main className="flex flex-1 flex-col">
-                    <section className="relative w-full overflow-hidden px-6 pt-28 pb-12 sm:pt-32 sm:pb-16 md:pt-40 md:pb-20 lg:pt-32">
+                    <section className="relative w-full overflow-hidden px-6 pt-28 pb-12 sm:pt-32 sm:pb-16 md:pt-40 md:pb-20 lg:pt-28">
                         {/*
                          * One grid for both layouts: stacked below lg, in DOM
                          * order, and split from lg up, where the copy fills the
                          * left column (benefits before the CTA) around the
                          * tilted video on the right.
                          */}
-                        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_1.25fr] lg:grid-rows-[1fr_auto_auto_auto_1fr] lg:gap-x-16 lg:gap-y-7">
-                            <div className="flex flex-col items-start gap-6 lg:col-start-1 lg:row-start-2">
+                        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_1.25fr] lg:grid-rows-[auto_auto_auto] lg:gap-x-16 lg:gap-y-7">
+                            <div className="flex flex-col items-start gap-6 lg:col-start-1 lg:row-start-1">
                                 <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
                                     <LockIcon className="size-3.5 opacity-75" />
                                     <span className="text-[#706f6c] dark:text-[#A1A09A]">
                                         {__('Private & Secure')}
                                     </span>
                                 </span>
-                                <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-balance text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight xl:text-[3.5rem] xl:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
+                                <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-balance text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-[2.75rem] lg:leading-tight xl:text-[3.5rem] xl:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
                                     {__(
                                         'All your money in one place. No spreadsheets. Private.',
                                     )}
@@ -2935,15 +2935,14 @@ export default function Welcome({
                                 </p>
                             </div>
 
-                            <div className="lg:col-start-2 lg:row-span-5 lg:row-start-1 lg:self-center">
+                            <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-center">
                                 <HeroVideo
                                     language={language}
-                                    ctaHref={cta.href}
-                                    ctaLabel={ctaLabel}
+                                    cta={{ href: cta.href, label: ctaLabel }}
                                 />
                             </div>
 
-                            <div className="flex w-full max-w-lg flex-col gap-4 lg:col-start-1 lg:row-start-4">
+                            <div className="flex w-full max-w-lg flex-col gap-4 lg:col-start-1 lg:row-start-3">
                                 {isMobile ? (
                                     <InstallAppButton />
                                 ) : (
@@ -2974,7 +2973,7 @@ export default function Welcome({
                                 </p>
                             </div>
 
-                            <HeroBenefits className="lg:col-start-1 lg:row-start-3" />
+                            <HeroBenefits className="lg:col-start-1 lg:row-start-2" />
                         </div>
                     </section>
 

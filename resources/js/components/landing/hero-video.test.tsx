@@ -66,7 +66,10 @@ afterEach(() => {
 
 function renderHero() {
     return render(
-        <HeroVideo language="es" ctaHref="/register" ctaLabel="Get Started" />,
+        <HeroVideo
+            language="es"
+            cta={{ href: '/register', label: 'Get Started' }}
+        />,
     );
 }
 
@@ -111,6 +114,27 @@ describe('HeroVideo', () => {
 
         await waitFor(() => expect(tourVideo()).toBeNull());
         expect(play).toHaveBeenCalled();
+    });
+
+    it('keeps playing the tour it opened when the theme changes', async () => {
+        stubBrowser({ reducedMotion: false });
+        renderHero();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Play the product tour' }),
+        );
+        act(() => document.documentElement.classList.remove('dark'));
+
+        await waitFor(() =>
+            expect(heroVideo()).toHaveAttribute(
+                'src',
+                '/images/landing_videos/product-es-light.mp4',
+            ),
+        );
+        expect(tourVideo()).toHaveAttribute(
+            'src',
+            '/images/landing_videos/product-es-dark.mp4',
+        );
     });
 
     it('keeps the poster for reduced motion, and still plays the tour on request', async () => {
