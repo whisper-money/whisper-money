@@ -72,8 +72,9 @@ export function Cta() {
                 >
                     {copy.cta.button}
                 </div>
-                <div style={{ position: 'absolute', left: 0, top: 0 }}>
-                    <Cursor x={interpolate(cursorMove, [0, 1], [680, 400])} y={interpolate(cursorMove, [0, 1], [260, 70])} pressed={pressed} />
+                {/* Anchored to the button's center so the click lands on it whatever the label's length. */}
+                <div style={{ position: 'absolute', left: '50%', top: 0 }}>
+                    <Cursor x={interpolate(cursorMove, [0, 1], [440, 90])} y={interpolate(cursorMove, [0, 1], [260, 70])} pressed={pressed} />
                 </div>
             </div>
             <div style={{ opacity: footIn, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>

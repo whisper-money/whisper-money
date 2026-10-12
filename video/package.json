@@ -5,7 +5,8 @@
   "scripts": {
     "studio": "remotion studio",
     "render": "remotion render LandingVideo out/landing-en-dark.mp4",
-    "still": "remotion still LandingVideo out/still.png"
+    "still": "remotion still LandingVideo out/still.png",
+    "render:all": "sh scripts/render-all.sh"
   },
   "dependencies": {
     "@remotion/cli": "4.0.535",

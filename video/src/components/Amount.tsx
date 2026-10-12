@@ -4,7 +4,7 @@ import { formatEuros } from '../format';
 
 /** Transaction amount, with the app's green pill for income. */
 export function Amount({ value, size = 22 }: { value: number; size?: number }) {
-    const { theme } = useVideo();
+    const { theme, locale } = useVideo();
     const isIncome = value > 0;
 
     return (
@@ -19,7 +19,7 @@ export function Amount({ value, size = 22 }: { value: number; size?: number }) {
                 padding: isIncome ? '2px 8px' : 0,
             }}
         >
-            {formatEuros(value)}
+            {formatEuros(value, locale)}
         </span>
     );
 }

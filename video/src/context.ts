@@ -1,10 +1,12 @@
 import { createContext, useContext } from 'react';
-import { type Copy } from './copy';
+import { type Copy, type Locale } from './copy';
 import { type Theme } from './theme';
 
-export const VideoContext = createContext<{ theme: Theme; copy: Copy } | null>(null);
+type VideoContextValue = { theme: Theme; copy: Copy; locale: Locale };
 
-export function useVideo(): { theme: Theme; copy: Copy } {
+export const VideoContext = createContext<VideoContextValue | null>(null);
+
+export function useVideo(): VideoContextValue {
     const value = useContext(VideoContext);
 
     if (value === null) {

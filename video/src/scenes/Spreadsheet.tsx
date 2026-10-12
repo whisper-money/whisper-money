@@ -167,7 +167,7 @@ export function Spreadsheet() {
                                     color: theme.muted,
                                 }}
                             >
-                                TOTAL
+                                {copy.spreadsheet.total}
                             </div>
                             <div
                                 style={{
@@ -183,7 +183,7 @@ export function Spreadsheet() {
                                     transform: `scale(${1 + errorIn * 0.08 - Math.max(0, errorIn - 0.5) * 0.16})`,
                                 }}
                             >
-                                {frame >= ERROR_AT ? '#REF!' : frame > 100 ? '=SUM(D2:D7' : ''}
+                                {frame >= ERROR_AT ? copy.spreadsheet.formulaError : frame > 100 ? copy.spreadsheet.formula : ''}
                             </div>
                         </div>
                         <div style={{ height: ROW_HEIGHT }} />

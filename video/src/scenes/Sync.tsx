@@ -8,10 +8,10 @@ import { SceneLayout } from '../components/SceneLayout';
 import { useVideo } from '../context';
 
 const ACCOUNTS = [
-    { name: 'Payroll', initials: 'PB', color: '#1d4ed8', connectedAt: 36 },
-    { name: 'Daily', initials: 'DB', color: '#ea580c', connectedAt: 48 },
-    { name: 'Savings', initials: 'SV', color: '#0f766e', connectedAt: 60 },
-];
+    { key: 'payroll', color: '#1d4ed8', connectedAt: 36 },
+    { key: 'daily', color: '#ea580c', connectedAt: 48 },
+    { key: 'savings', color: '#0f766e', connectedAt: 60 },
+] as const;
 const FIRST_ROW_AT = 44;
 const ROW_STAGGER = 9;
 const CATEGORIZE_DELAY = 22;
@@ -27,13 +27,14 @@ export function Sync() {
                 <div style={{ display: 'flex', gap: 28, height: '100%' }}>
                     <div style={{ width: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {ACCOUNTS.map((account, index) => {
+                            const { name, initials } = copy.accounts[account.key];
                             const cardIn = enter(frame, 14 + index * 6);
                             const isConnected = frame >= account.connectedAt;
                             const checkIn = pop(frame, account.connectedAt);
 
                             return (
                                 <div
-                                    key={account.name}
+                                    key={account.key}
                                     style={{
                                         opacity: cardIn,
                                         transform: `translateX(${(1 - cardIn) * -40}px)`,
@@ -60,10 +61,10 @@ export function Sync() {
                                             fontWeight: 700,
                                         }}
                                     >
-                                        {account.initials}
+                                        {initials}
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                        <span style={{ fontSize: 24, fontWeight: 600 }}>{account.name}</span>
+                                        <span style={{ fontSize: 24, fontWeight: 600 }}>{name}</span>
                                         <span style={{ fontSize: 18, color: isConnected ? theme.positive : theme.muted }}>
                                             {isConnected ? copy.sync.connected : copy.sync.syncing}
                                         </span>

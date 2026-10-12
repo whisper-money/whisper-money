@@ -39,7 +39,7 @@ export const LANDING_VIDEO_DURATION =
 
 export function LandingVideo({ locale, theme }: LandingVideoProps) {
     return (
-        <VideoContext.Provider value={{ theme: themes[theme], copy: copy[locale] }}>
+        <VideoContext.Provider value={{ theme: themes[theme], copy: copy[locale], locale }}>
             <AbsoluteFill>
                 <Background />
                 <TransitionSeries>

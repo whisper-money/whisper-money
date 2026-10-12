@@ -18,12 +18,12 @@ const CHART_HEIGHT = 300;
 const NET_WORTH = 87031;
 
 const ACCOUNTS = [
-    { name: 'Daily', balance: 1214.8, color: '#ea580c', points: [12, 14, 13, 22, 10, 6, 11, 9, 24, 15] },
-    { name: 'Payroll', balance: 4763.34, color: '#1d4ed8', points: [16, 20, 4, 18, 18, 17, 22, 16, 21, 14] },
-    { name: 'Savings', balance: 23412.0, color: '#0f766e', points: [4, 6, 7, 9, 10, 13, 15, 16, 19, 22] },
-];
+    { key: 'daily', balance: 1214.8, color: '#ea580c', points: [12, 14, 13, 22, 10, 6, 11, 9, 24, 15] },
+    { key: 'payroll', balance: 4763.34, color: '#1d4ed8', points: [16, 20, 4, 18, 18, 17, 22, 16, 21, 14] },
+    { key: 'savings', balance: 23412.0, color: '#0f766e', points: [4, 6, 7, 9, 10, 13, 15, 16, 19, 22] },
+] as const;
 
-function sparklinePath(points: number[], width: number, height: number): string {
+function sparklinePath(points: readonly number[], width: number, height: number): string {
     const step = width / (points.length - 1);
 
     return points
@@ -33,7 +33,7 @@ function sparklinePath(points: number[], width: number, height: number): string 
 
 export function Dashboard() {
     const frame = useCurrentFrame();
-    const { theme, copy } = useVideo();
+    const { theme, copy, locale } = useVideo();
     const counter = progress(frame, 16, 70);
 
     return (
@@ -52,7 +52,7 @@ export function Dashboard() {
                         <div style={{ width: 340, display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <span style={{ fontSize: 22, fontWeight: 500 }}>{copy.dashboard.netWorth}</span>
                             <span style={{ fontSize: 64, fontWeight: 600, letterSpacing: -1 }}>
-                                {formatEuros(Math.round(NET_WORTH * counter), 0)}
+                                {formatEuros(Math.round(NET_WORTH * counter), locale, 0)}
                             </span>
                             <span
                                 style={{
@@ -64,7 +64,7 @@ export function Dashboard() {
                                     color: theme.muted,
                                 }}
                             >
-                                +3.2% {copy.dashboard.thisMonth}
+                                {copy.dashboard.change} {copy.dashboard.thisMonth}
                                 <TrendingUpIcon size={22} color={theme.positive} />
                             </span>
                         </div>
@@ -111,7 +111,7 @@ export function Dashboard() {
 
                             return (
                                 <div
-                                    key={account.name}
+                                    key={account.key}
                                     style={{
                                         flex: 1,
                                         opacity: cardIn,
@@ -127,10 +127,10 @@ export function Dashboard() {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 21, fontWeight: 500 }}>
                                             <span style={{ width: 22, height: 22, borderRadius: 999, background: account.color }} />
-                                            {account.name}
+                                            {copy.accounts[account.key].name}
                                         </span>
                                         <span style={{ fontFamily: fonts.sans, fontSize: 34, fontWeight: 600 }}>
-                                            {formatEuros(account.balance * interpolate(draw, [0, 1], [0.6, 1]))}
+                                            {formatEuros(account.balance * interpolate(draw, [0, 1], [0.6, 1]), locale)}
                                         </span>
                                     </div>
                                     <svg width={170} height={64} style={{ overflow: 'visible' }}>

@@ -13,7 +13,7 @@ const ALERT_AT = 78;
 
 export function Budgets() {
     const frame = useCurrentFrame();
-    const { theme, copy } = useVideo();
+    const { theme, copy, locale } = useVideo();
     const { goal } = copy.budgets;
     const goalFill = progress(frame, 30, 100);
     const radius = (RING_SIZE - RING_STROKE) / 2;
@@ -53,7 +53,7 @@ export function Budgets() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                         <span style={{ fontSize: 28, fontWeight: 600 }}>{item.name}</span>
                                         <span style={{ fontFamily: fonts.mono, fontSize: 24, color: isOver ? theme.negative : theme.muted }}>
-                                            {formatEuros(item.spent * fill, 0)} {copy.budgets.spentOf} {formatEuros(item.limit, 0)}
+                                            {formatEuros(item.spent * fill, locale, 0)} {copy.budgets.spentOf} {formatEuros(item.limit, locale, 0)}
                                         </span>
                                     </div>
                                     <div style={{ height: 16, borderRadius: 999, background: theme.surfaceMuted, overflow: 'hidden' }}>
@@ -118,7 +118,7 @@ export function Budgets() {
                                 {goal.name}
                             </span>
                             <span style={{ fontFamily: fonts.mono, fontSize: 22, color: theme.muted }}>
-                                {formatEuros(goal.saved * goalFill, 0)} / {formatEuros(goal.target, 0)}
+                                {formatEuros(goal.saved * goalFill, locale, 0)} / {formatEuros(goal.target, locale, 0)}
                             </span>
                         </div>
                     </div>
@@ -143,7 +143,7 @@ export function Budgets() {
                     >
                         <BellIcon size={26} color={theme.negative} style={{ transform: `rotate(${Math.sin(frame / 2) * 12 * Math.max(0, 1 - (frame - ALERT_AT) / 30)}deg)` }} />
                         <span style={{ fontSize: 22, fontWeight: 600 }}>
-                            {overspent.name}: {formatEuros(overspent.spent - overspent.limit, 0)} {copy.budgets.overBudget}
+                            {overspent.name}: {formatEuros(overspent.spent - overspent.limit, locale, 0)} {copy.budgets.overBudget}
                         </span>
                     </div>
                 )}

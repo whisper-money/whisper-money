@@ -3,7 +3,9 @@ import { AbsoluteFill, interpolate, random, useCurrentFrame } from 'remotion';
 import { enter, rise } from '../animation';
 import { Caption } from '../components/Caption';
 import { useVideo } from '../context';
+import { type Locale } from '../copy';
 import { fonts } from '../fonts';
+import { formatEuros } from '../format';
 
 /** Small charges that drift away from the balance and fade out of sight. */
 const LEAK_POSITIONS = [
@@ -15,17 +17,15 @@ const LEAK_POSITIONS = [
     { x: 220, y: 270 },
 ];
 
-function scrambledAmount(frame: number): string {
-    const digits = Array.from({ length: 6 }, (_, index) =>
-        Math.floor(random(`digit-${index}-${Math.floor(frame / 2)}`) * 10),
-    );
+function scrambledAmount(frame: number, locale: Locale): string {
+    const amount = 1000 + random(`amount-${Math.floor(frame / 2)}`) * 8999.99;
 
-    return `€${digits[0]},${digits[1]}${digits[2]}${digits[3]}.${digits[4]}${digits[5]}`;
+    return formatEuros(amount, locale);
 }
 
 export function NoTracking() {
     const frame = useCurrentFrame();
-    const { theme, copy } = useVideo();
+    const { theme, copy, locale } = useVideo();
     const cardIn = enter(frame, 6);
 
     return (
@@ -109,7 +109,7 @@ export function NoTracking() {
                             opacity: 0.7,
                         }}
                     >
-                        {scrambledAmount(frame)}
+                        {scrambledAmount(frame, locale)}
                     </div>
                 </div>
             </div>
