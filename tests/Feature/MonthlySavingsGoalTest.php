@@ -772,6 +772,8 @@ test('amount bounds are stated in the money the user types', function (array $in
     'monthly maximum' => [['kind' => 'monthly', 'monthly_target_type' => 'amount', 'monthly_target_amount' => SavingsGoal::MAX_AMOUNT + 1], 'monthly_target_amount', "El campo importe mensual no puede superar 1.000.000.000,00\u{202F}€."],
     'one-off minimum' => [['kind' => 'one_off', 'target_amount' => 0], 'target_amount', "El campo importe objetivo debe ser al menos 0,01\u{202F}€."],
     'one-off maximum' => [['kind' => 'one_off', 'target_amount' => SavingsGoal::MAX_AMOUNT + 1], 'target_amount', "El campo importe objetivo no puede superar 1.000.000.000,00\u{202F}€."],
+    'already saved minimum' => [['kind' => 'one_off', 'target_amount' => 100, 'initial_amount' => -1], 'initial_amount', "El campo importe ya ahorrado debe ser al menos 0,00\u{202F}€."],
+    'already saved maximum' => [['kind' => 'one_off', 'target_amount' => 100, 'initial_amount' => SavingsGoal::MAX_AMOUNT + 1], 'initial_amount', "El campo importe ya ahorrado no puede superar 1.000.000.000,00\u{202F}€."],
 ]);
 
 test('an edit states the amount bounds the same way', function () {
